@@ -90,8 +90,6 @@ fn dpc_execute_circuits_test<N: Network>(
         <N as Network>::InputSNARK::setup(&InputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
     // Compute the input circuit proofs.
-    let mut input_proofs = Vec::with_capacity(N::NUM_INPUTS as usize);
-    let mut input_public_variables = Vec::with_capacity(N::NUM_INPUTS as usize);
     for (
         ((((record, serial_number), ledger_proof), signature), input_value_commitment),
         input_value_commitment_randomness,
@@ -157,9 +155,6 @@ fn dpc_execute_circuits_test<N: Network>(
         assert!(<N as Network>::InputSNARK::verify(&input_verifying_key, &input_public, &input_proof).unwrap());
 
         //////////////////////////////////////////////////////////////////////////
-
-        input_proofs.push(input_proof.into());
-        input_public_variables.push(input_public);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -169,8 +164,6 @@ fn dpc_execute_circuits_test<N: Network>(
         <N as Network>::OutputSNARK::setup(&OutputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
     // Compute the output circuit proofs.
-    let mut output_proofs = Vec::with_capacity(N::NUM_OUTPUTS as usize);
-    let mut output_public_variables = Vec::with_capacity(N::NUM_OUTPUTS as usize);
     for (
         (((record, commitment), encryption_randomness), output_value_commitment),
         output_value_commitment_randomness,
@@ -226,26 +219,15 @@ fn dpc_execute_circuits_test<N: Network>(
 
         // Verify that the inner circuit proof passes.
         assert!(<N as Network>::OutputSNARK::verify(&output_verifying_key, &output_public, &output_proof).unwrap());
-
-        //////////////////////////////////////////////////////////////////////////
-
-        output_proofs.push(output_proof.into());
-        output_public_variables.push(output_public);
     }
 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the execution.
-    let execution = Execution::<N>::from(None, input_proofs, output_proofs).unwrap();
+    let execution = Execution::<N>::from(None).unwrap();
 
     // Verify that the program proof passes.
-    assert!(execution.verify(
-        &input_verifying_key,
-        &output_verifying_key,
-        &input_public_variables,
-        &output_public_variables,
-        transition_id
-    ));
+    assert!(execution.verify(transition_id));
 }
 
 mod testnet1 {

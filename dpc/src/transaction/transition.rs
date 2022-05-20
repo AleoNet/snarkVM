@@ -203,13 +203,7 @@ impl<N: Network> Transition<N> {
         }
 
         // Returns `false` if the execution is invalid.
-        self.execution.verify(
-            N::input_verifying_key(),
-            N::output_verifying_key(),
-            &input_public_variables,
-            &output_public_variables,
-            self.transition_id,
-        )
+        self.execution.verify(self.transition_id)
     }
 
     /// Returns `true` if the given serial number exists.

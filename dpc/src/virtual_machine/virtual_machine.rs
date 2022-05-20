@@ -22,7 +22,8 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Derivative)]
+#[derivative(Debug(bound = "N: Network"))]
 pub struct VirtualMachine<N: Network> {
     /// The root of the ledger tree used to prove inclusion of ledger-consumed records.
     ledger_root: N::LedgerRoot,
@@ -30,12 +31,24 @@ pub struct VirtualMachine<N: Network> {
     local_transitions: Transitions<N>,
     /// The current list of transitions.
     transitions: Vec<Transition<N>>,
+    /// The current list of input circuits.
+    #[derivative(Debug = "ignore")]
+    input_circuits: Vec<InputCircuit<N>>,
+    /// The current list of output circuits.
+    #[derivative(Debug = "ignore")]
+    output_circuits: Vec<OutputCircuit<N>>,
 }
 
 impl<N: Network> VirtualMachine<N> {
     /// Initializes a new instance of the virtual machine, with the given request.
     pub fn new(ledger_root: N::LedgerRoot) -> Result<Self> {
-        Ok(Self { ledger_root, local_transitions: Transitions::new()?, transitions: Default::default() })
+        Ok(Self {
+            ledger_root,
+            local_transitions: Transitions::new()?,
+            transitions: Default::default(),
+            input_circuits: Default::default(),
+            output_circuits: Default::default(),
+        })
     }
 
     /// Returns the local proof for a given commitment.
@@ -75,7 +88,6 @@ impl<N: Network> VirtualMachine<N> {
 
         // TODO (raychu86): Clean this up.
         // Compute the input circuit proofs.
-        let mut input_proofs = Vec::with_capacity(N::NUM_INPUTS as usize);
         for (
             ((((record, serial_number), ledger_proof), signature), input_value_commitment),
             input_value_commitment_randomness,
@@ -103,16 +115,11 @@ impl<N: Network> VirtualMachine<N> {
             )?;
 
             let input_circuit = InputCircuit::<N>::new(input_public.clone(), input_private);
-            let input_proof = N::InputSNARK::prove(N::input_proving_key(), &input_circuit, rng)?;
-
-            assert!(N::InputSNARK::verify(N::input_verifying_key(), &input_public, &input_proof)?);
-
-            input_proofs.push(input_proof.into());
+            self.input_circuits.push(input_circuit);
         }
 
         // TODO (raychu86): Clean this up.
         // Compute the output circuit proofs.
-        let mut output_proofs = Vec::with_capacity(N::NUM_OUTPUTS as usize);
         for (
             (((record, commitment), encryption_randomness), output_value_commitment),
             output_value_commitment_randomness,
@@ -133,15 +140,11 @@ impl<N: Network> VirtualMachine<N> {
             )?;
 
             let output_circuit = OutputCircuit::<N>::new(output_public.clone(), output_private);
-            let output_proof = N::OutputSNARK::prove(N::output_proving_key(), &output_circuit, rng)?;
-
-            assert!(N::OutputSNARK::verify(N::output_verifying_key(), &output_public, &output_proof)?);
-
-            output_proofs.push(output_proof.into());
+            self.output_circuits.push(output_circuit);
         }
 
         // Compute the noop execution, for now.
-        let execution = Execution::from(None, input_proofs, output_proofs)?;
+        let execution = Execution::from(None)?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;
@@ -154,8 +157,18 @@ impl<N: Network> VirtualMachine<N> {
     }
 
     /// Finalizes the virtual machine state and returns a transaction.
-    pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(*N::input_circuit_id(), *N::output_circuit_id(), self.ledger_root, self.transitions.clone())
+    pub fn finalize<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Transaction<N>> {
+        let input_proof = N::InputSNARK::prove_batch(N::input_proving_key(), &self.input_circuits, rng)?.into();
+        let output_proof = N::OutputSNARK::prove_batch(N::output_proving_key(), &self.output_circuits, rng)?.into();
+        let kernel_proof = KernelProof::<N> { input_proof, output_proof };
+
+        Transaction::from(
+            *N::input_circuit_id(),
+            *N::output_circuit_id(),
+            self.ledger_root,
+            self.transitions.clone(),
+            kernel_proof,
+        )
     }
 
     /// Performs a noop transition.
@@ -309,7 +322,6 @@ impl<N: Network> VirtualMachine<N> {
 
         // TODO (raychu86): Clean this up.
         // Compute the input circuit proofs.
-        let mut input_proofs = Vec::with_capacity(N::NUM_INPUTS as usize);
         for (
             ((((record, serial_number), ledger_proof), signature), input_value_commitment),
             input_value_commitment_randomness,
@@ -336,17 +348,13 @@ impl<N: Network> VirtualMachine<N> {
                 *input_value_commitment_randomness,
             )?;
 
-            let input_circuit = InputCircuit::<N>::new(input_public.clone(), input_private);
-            let input_proof = N::InputSNARK::prove(N::input_proving_key(), &input_circuit, rng)?;
+            let input_circuit = InputCircuit::<N>::new(input_public, input_private);
 
-            assert!(N::InputSNARK::verify(N::input_verifying_key(), &input_public, &input_proof)?);
-
-            input_proofs.push(input_proof.into());
+            self.input_circuits.push(input_circuit);
         }
 
         // TODO (raychu86): Clean this up.
         // Compute the output circuit proofs.
-        let mut output_proofs = Vec::with_capacity(N::NUM_OUTPUTS as usize);
         for (
             (((record, commitment), encryption_randomness), output_value_commitment),
             output_value_commitment_randomness,
@@ -366,19 +374,17 @@ impl<N: Network> VirtualMachine<N> {
                 *output_value_commitment_randomness,
             )?;
 
-            let output_circuit = OutputCircuit::<N>::new(output_public.clone(), output_private);
-            let output_proof = N::OutputSNARK::prove(N::output_proving_key(), &output_circuit, rng)?;
+            let output_circuit = OutputCircuit::<N>::new(output_public, output_private);
 
-            assert!(N::OutputSNARK::verify(N::output_verifying_key(), &output_public, &output_proof)?);
-
-            output_proofs.push(output_proof.into());
+            self.output_circuits.push(output_circuit);
         }
 
-        let execution = Execution::from(
-            Some(ProgramExecution::from(program_id, function_path.clone(), function_verifying_key, program_proof)?),
-            input_proofs,
-            output_proofs,
-        )?;
+        let execution = Execution::from(Some(ProgramExecution::from(
+            program_id,
+            function_path.clone(),
+            function_verifying_key,
+            program_proof,
+        )?))?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;

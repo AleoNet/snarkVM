@@ -19,7 +19,6 @@ use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::Result;
-use itertools::Itertools;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
@@ -53,64 +52,16 @@ impl<N: Network> ProgramExecution<N> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Execution<N: Network> {
     pub program_execution: Option<ProgramExecution<N>>,
-    pub input_proofs: Vec<N::InputProof>,
-    pub output_proofs: Vec<N::OutputProof>,
 }
 
 impl<N: Network> Execution<N> {
-    pub fn from(
-        program_execution: Option<ProgramExecution<N>>,
-        input_proofs: Vec<N::InputProof>,
-        output_proofs: Vec<N::OutputProof>,
-    ) -> Result<Self> {
-        Ok(Self { program_execution, input_proofs, output_proofs })
+    pub fn from(program_execution: Option<ProgramExecution<N>>) -> Result<Self> {
+        Ok(Self { program_execution })
     }
 
     /// Returns `true` if the program execution is valid.
     #[inline]
-    pub fn verify(
-        &self,
-        input_verifying_key: &<N::InputSNARK as SNARK>::VerifyingKey,
-        output_verifying_key: &<N::OutputSNARK as SNARK>::VerifyingKey,
-        input_public_variables: &[<N::InputSNARK as SNARK>::VerifierInput],
-        output_public_variables: &[<N::OutputSNARK as SNARK>::VerifierInput],
-        transition_id: N::TransitionID,
-    ) -> bool {
-        // Returns `false` if any input proof is invalid.
-        for (i, (input_proof, public_variables)) in self.input_proofs.iter().zip_eq(input_public_variables).enumerate()
-        {
-            match N::InputSNARK::verify(input_verifying_key, public_variables, input_proof) {
-                Ok(is_valid) => {
-                    if !is_valid {
-                        eprintln!("Input proof {} failed to verify", i);
-                        return false;
-                    }
-                }
-                Err(error) => {
-                    eprintln!("Failed to validate input proof {}: {:?}", i, error);
-                    return false;
-                }
-            };
-        }
-
-        // Returns `false` if any output proof is invalid.
-        for (i, (output_proof, public_variables)) in
-            self.output_proofs.iter().zip_eq(output_public_variables).enumerate()
-        {
-            match N::OutputSNARK::verify(output_verifying_key, public_variables, output_proof) {
-                Ok(is_valid) => {
-                    if !is_valid {
-                        eprintln!("Output proof {} failed to verify", i);
-                        return false;
-                    }
-                }
-                Err(error) => {
-                    eprintln!("Failed to validate output proof {}: {:?}", i, error);
-                    return false;
-                }
-            };
-        }
-
+    pub fn verify(&self, transition_id: N::TransitionID) -> bool {
         if let Some(program_execution) = &self.program_execution {
             // Returns `false` if the program proof is invalid.
             match N::ProgramSNARK::verify(
@@ -144,22 +95,7 @@ impl<N: Network> FromBytes for Execution<N> {
             false => None,
         };
 
-        let num_input_proofs = u16::read_le(&mut reader)?;
-
-        let mut input_proofs = Vec::with_capacity(num_input_proofs as usize);
-        for _ in 0..num_input_proofs {
-            input_proofs.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        let num_output_proofs = u16::read_le(&mut reader)?;
-
-        let mut output_proofs = Vec::with_capacity(num_output_proofs as usize);
-        for _ in 0..num_output_proofs {
-            output_proofs.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        Self::from(program_execution, input_proofs, output_proofs)
-            .map_err(|e| error(format!("Failed to deserialize execution: {e}")))
+        Self::from(program_execution).map_err(|e| error(format!("Failed to deserialize execution: {e}")))
     }
 }
 
@@ -172,26 +108,10 @@ impl<N: Network> ToBytes for Execution<N> {
                 program_execution.program_id.write_le(&mut writer)?;
                 program_execution.program_path.write_le(&mut writer)?;
                 program_execution.verifying_key.write_le(&mut writer)?;
-                program_execution.program_proof.write_le(&mut writer)?;
+                program_execution.program_proof.write_le(&mut writer)
             }
-            None => false.write_le(&mut writer)?,
+            None => false.write_le(&mut writer),
         }
-
-        // Ensure the number of input proofs is within bounds.
-        if self.input_proofs.len() > N::NUM_INPUTS as usize {
-            return Err(error(format!("The number of input proofs cannot exceed {}", N::NUM_INPUTS)));
-        }
-
-        (self.input_proofs.len() as u16).write_le(&mut writer)?;
-        self.input_proofs.write_le(&mut writer)?;
-
-        // Ensure the number of output proofs is within bounds.
-        if self.output_proofs.len() > N::NUM_OUTPUTS as usize {
-            return Err(error(format!("The number of output proofs cannot exceed {}", N::NUM_OUTPUTS)));
-        }
-
-        (self.output_proofs.len() as u16).write_le(&mut writer)?;
-        self.output_proofs.write_le(&mut writer)
     }
 }
 
@@ -217,8 +137,6 @@ impl<N: Network> Serialize for Execution<N> {
             true => {
                 let mut execution = serializer.serialize_struct("Execution", 3)?;
                 execution.serialize_field("program_execution", &self.program_execution)?;
-                execution.serialize_field("input_proofs", &self.input_proofs)?;
-                execution.serialize_field("output_proofs", &self.output_proofs)?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -232,12 +150,8 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
             true => {
                 let execution = serde_json::Value::deserialize(deserializer)?;
                 // Recover the execution.
-                Self::from(
-                    serde_json::from_value(execution["program_execution"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(execution["input_proofs"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(execution["output_proofs"].clone()).map_err(de::Error::custom)?,
-                )
-                .map_err(de::Error::custom)
+                Self::from(serde_json::from_value(execution["program_execution"].clone()).map_err(de::Error::custom)?)
+                    .map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }
