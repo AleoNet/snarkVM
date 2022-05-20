@@ -133,7 +133,7 @@ impl<N: Network> fmt::Display for PrivateKey<N> {
 impl<N: Network> FromBytes for PrivateKey<N> {
     /// Reads an account private key from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self::try_from(FromBytes::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?)
+        Self::try_from(FromBytes::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))
     }
 }
 

@@ -17,7 +17,6 @@
 use crate::{ComputeKey, Network, PrivateKey};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
-    error,
     io::{Read, Result as IoResult, Write},
     FromBytes,
     FromBytesDeserializer,
@@ -89,7 +88,7 @@ impl<N: Network> fmt::Display for ViewKey<N> {
 impl<N: Network> FromBytes for ViewKey<N> {
     /// Reads an account view key from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(FromBytes::read_le(&mut reader).map_err(|e| error(format!("{e}")))?))
+        Ok(Self(FromBytes::read_le(&mut reader)?))
     }
 }
 
