@@ -44,15 +44,15 @@ mod tests {
             let (private_key, compute_key, _view_key, _address) = generate_account()?;
 
             // Retrieve the native private key components.
-            let sk_sig = *private_key.sk_sig();
-            let r_sig = *private_key.r_sig();
-            let sk_vrf = *private_key.sk_vrf();
+            let sk_sig = private_key.sk_sig();
+            let r_sig = private_key.r_sig();
+            let sk_vrf = private_key.sk_vrf();
 
             // Retrieve the native compute key components.
-            let pk_sig = *compute_key.pk_sig();
-            let pr_sig = *compute_key.pr_sig();
-            let pk_vrf = *compute_key.pk_vrf();
-            let sk_prf = *compute_key.sk_prf();
+            let pk_sig = compute_key.pk_sig();
+            let pr_sig = compute_key.pr_sig();
+            let pk_vrf = compute_key.pk_vrf();
+            let sk_prf = compute_key.sk_prf();
 
             // Initialize the private key.
             let candidate = PrivateKey::<Circuit>::new(mode, (sk_sig, r_sig, sk_vrf));

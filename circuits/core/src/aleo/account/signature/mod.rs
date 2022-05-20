@@ -84,10 +84,10 @@ mod tests {
         let (private_key, compute_key, _view_key, _address) = generate_account()?;
 
         // Retrieve the native compute key components.
-        let pk_sig = *compute_key.pk_sig();
-        let pr_sig = *compute_key.pr_sig();
-        let pk_vrf = *compute_key.pk_vrf();
-        let sk_prf = *compute_key.sk_prf();
+        let pk_sig = compute_key.pk_sig();
+        let pr_sig = compute_key.pr_sig();
+        let pk_vrf = compute_key.pk_vrf();
+        let sk_prf = compute_key.sk_prf();
 
         for i in 0..ITERATIONS {
             // Generate a signature.
@@ -96,8 +96,8 @@ mod tests {
             let signature = NativeSignature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
 
             // Retrieve the challenge and response.
-            let challenge = *signature.challenge();
-            let response = *signature.response();
+            let challenge = signature.challenge();
+            let response = signature.response();
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Signature::<Circuit>::new(mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)));

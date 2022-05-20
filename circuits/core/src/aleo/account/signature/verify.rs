@@ -82,9 +82,9 @@ pub(crate) mod tests {
             let (private_key, compute_key, _view_key, address) = generate_account()?;
 
             // Retrieve the native compute key components.
-            let pk_sig = *compute_key.pk_sig();
-            let pr_sig = *compute_key.pr_sig();
-            let pk_vrf = *compute_key.pk_vrf();
+            let pk_sig = compute_key.pk_sig();
+            let pr_sig = compute_key.pr_sig();
+            let pk_vrf = compute_key.pk_vrf();
 
             // Sample a random message.
             let rng = &mut test_rng();
@@ -101,8 +101,8 @@ pub(crate) mod tests {
             let signature = NativeSignature::sign(&private_key, &message.to_bits_le().eject_value(), randomizer)?;
 
             // Retrieve the challenge and response.
-            let challenge = *signature.challenge();
-            let response = *signature.response();
+            let challenge = signature.challenge();
+            let response = signature.response();
 
             // Initialize the signature and address.
             let signature = Signature::<Circuit>::new(mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)));

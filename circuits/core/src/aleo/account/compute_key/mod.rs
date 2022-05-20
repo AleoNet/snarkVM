@@ -113,10 +113,10 @@ pub(crate) mod tests {
             let (_private_key, compute_key, _view_key, _address) = generate_account()?;
 
             // Retrieve the native compute key components.
-            let pk_sig = *compute_key.pk_sig();
-            let pr_sig = *compute_key.pr_sig();
-            let pk_vrf = *compute_key.pk_vrf();
-            let sk_prf = *compute_key.sk_prf();
+            let pk_sig = compute_key.pk_sig();
+            let pr_sig = compute_key.pr_sig();
+            let pk_vrf = compute_key.pk_vrf();
+            let sk_prf = compute_key.sk_prf();
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = ComputeKey::<Circuit>::new(mode, (pk_sig, pr_sig, pk_vrf));

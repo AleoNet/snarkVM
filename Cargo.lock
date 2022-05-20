@@ -2212,6 +2212,7 @@ dependencies = [
  "bech32",
  "bincode",
  "itertools",
+ "rand",
  "serde",
  "serde_json",
  "snarkvm-circuits-environment",
