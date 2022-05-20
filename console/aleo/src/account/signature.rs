@@ -109,6 +109,7 @@ impl<N: Network> Signature<N> {
 }
 
 impl<N: Network> FromBytes for Signature<N> {
+    /// Reads an account signature from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let challenge = N::Scalar::read_le(&mut reader)?;
@@ -119,6 +120,7 @@ impl<N: Network> FromBytes for Signature<N> {
 }
 
 impl<N: Network> ToBytes for Signature<N> {
+    /// Writes an account signature to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.challenge.write_le(&mut writer)?;
