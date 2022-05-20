@@ -98,15 +98,7 @@ impl<N: Network> Record<N> {
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = N::commit_ped64(&state.balance().to_bits_le(), &r_bcm)?;
 
-        Ok(Self {
-            program: state.program().clone(),
-            owner,
-            balance,
-            data: state.data().clone(),
-            nonce: state.nonce().clone(),
-            mac,
-            bcm,
-        })
+        Ok(Self { program: *state.program(), owner, balance, data: *state.data(), nonce: *state.nonce(), mac, bcm })
     }
 
     /// Returns the state corresponding to the record using the given view key.
