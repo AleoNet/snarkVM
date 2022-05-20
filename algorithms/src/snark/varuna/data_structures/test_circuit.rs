@@ -52,20 +52,20 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for TestCircuit<Cons
         let mut num_tables = 0;
         if let Some(tables) = self.tables.as_ref() {
             num_tables = tables.len();
-            let num_table_entries = tables.iter().map(|t| t.table.len()).sum::<usize>();
+            let num_table_entries = tables.iter().map(|t| t.0.len()).sum::<usize>();
             assert!(!tables.is_empty());
             assert!(num_table_entries > 0);
             entries_per_table = num_table_entries / tables.len();
             lookups_per_table_entry = (self.num_lookups / num_table_entries).max(1);
             for (i, table) in tables.iter().enumerate() {
-                for (j, (key, &val)) in table.table.iter().enumerate() {
+                for (j, (key_1, key_2, val)) in table.0.iter().enumerate() {
                     // Only declare new lookup variables when all the following conditions hold:
                     // (1) we declared less lookup variables than the number of lookups we want to perform
                     // (2) we declared less lookup variables than the number of table entries
                     if lookup_vars.len() < self.num_lookups && lookup_vars.len() < num_table_entries {
-                        let key_0 = cs.alloc(|| format!("key_0_{i}_{j}"), || Ok(key[0]))?;
-                        let key_1 = cs.alloc(|| format!("key_1_{i}_{j}"), || Ok(key[1]))?;
-                        let val = cs.alloc(|| format!("val_{i}_{j}"), || Ok(val))?;
+                        let key_0 = cs.alloc(|| format!("key_0_{i}_{j}"), || Ok(*key_1))?;
+                        let key_1 = cs.alloc(|| format!("key_1_{i}_{j}"), || Ok(*key_2))?;
+                        let val = cs.alloc(|| format!("val_{i}_{j}"), || Ok(*val))?;
                         lookup_vars.push([key_0, key_1, val]);
                     }
                 }
@@ -181,8 +181,8 @@ impl<F: Field> TestCircuit<F> {
         for _ in 0..num_tables {
             let mut table = LookupTable::default();
             for _ in 0..num_entries_per_table {
-                let lookup_value = [a.pow([table_entry_index]), a];
-                table.fill(lookup_value, b);
+                let varying_lookup_value = a.pow([table_entry_index]);
+                table.fill(varying_lookup_value, a, b);
                 table_entry_index += 1;
             }
             tables.push(table);

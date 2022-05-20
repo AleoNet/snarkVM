@@ -16,52 +16,97 @@ use crate::{prelude::*, *};
 use snarkvm_fields::PrimeField;
 
 #[derive(Clone, Debug)]
-pub struct Constraint<F: PrimeField>(
+pub(crate) struct BaseConstraint<F: PrimeField>(
     pub(crate) Scope,
     pub(crate) LinearCombination<F>,
     pub(crate) LinearCombination<F>,
     pub(crate) LinearCombination<F>,
 );
 
+#[derive(Clone, Debug)]
+pub(crate) enum Constraint<F: PrimeField> {
+    MulConstraint(BaseConstraint<F>),
+    LookupConstraint(BaseConstraint<F>, usize),
+}
+
 impl<F: PrimeField> Constraint<F> {
     /// Returns the number of non-zero terms required by this constraint.
     pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
-        let (a, b, c) = (&self.1, &self.2, &self.3);
-        (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros())
+        if let Constraint::MulConstraint(constraint) = self {
+            let (a, b, c) = (&constraint.1, &constraint.2, &constraint.3);
+            (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros())
+        } else {
+            // TODO clean this up
+            (0, 0, 0)
+        }
     }
+
+    // /// Returns the number of gates consumed by this constraint.
+    // pub(crate) fn num_gates(&self) -> u64 {
+    //     match self {
+    //         Constraint::MulConstraint(base_constraint) => {
+    //             let (a, b, c) = (&base_constraint.1, &base_constraint.2, &base_constraint.3);
+    //             1 + a.num_additions() + b.num_additions() + c.num_additions()
+    //         }
+    //         _ => 1,
+    //     }
+    // }
 
     /// Returns `true` if the constraint is satisfied.
     pub(crate) fn is_satisfied(&self) -> bool {
-        let (scope, a, b, c) = (&self.0, &self.1, &self.2, &self.3);
-        let a = a.value();
-        let b = b.value();
-        let c = c.value();
+        match self {
+            Constraint::MulConstraint(base_constraint) => {
+                let (scope, a, b, c) = (&base_constraint.0, &base_constraint.1, &base_constraint.2, &base_constraint.3);
+                let a = a.value();
+                let b = b.value();
+                let c = c.value();
 
-        match a * b == c {
-            true => true,
-            false => {
-                eprintln!("Failed constraint at {scope}:\n\t({a} * {b}) != {c}");
-                false
+                match a * b == c {
+                    true => true,
+                    false => {
+                        eprintln!("Failed constraint at {scope}:\n\t({a} * {b}) != {c}");
+                        false
+                    }
+                }
             }
+            // TODO: how can we actually check this
+            Constraint::LookupConstraint(..) => true,
         }
     }
 
     /// Returns a reference to the terms `(a, b, c)`.
-    pub fn to_terms(&self) -> (&LinearCombination<F>, &LinearCombination<F>, &LinearCombination<F>) {
-        (&self.1, &self.2, &self.3)
+    pub(crate) fn to_terms(&self) -> (&LinearCombination<F>, &LinearCombination<F>, &LinearCombination<F>) {
+        match self {
+            Constraint::MulConstraint(base_constraint) => (&base_constraint.1, &base_constraint.2, &base_constraint.3),
+            Constraint::LookupConstraint(base_constraint, ..) => {
+                (&base_constraint.1, &base_constraint.2, &base_constraint.3)
+            }
+        }
     }
 }
 
 impl<F: PrimeField> Display for Constraint<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (scope, a, b, c) = (&self.0, &self.1, &self.2, &self.3);
-        let a = a.value();
-        let b = b.value();
-        let c = c.value();
+        match self {
+            Constraint::MulConstraint(base_constraint) => {
+                let (scope, a, b, c) = (&base_constraint.0, &base_constraint.1, &base_constraint.2, &base_constraint.3);
+                let a = a.value();
+                let b = b.value();
+                let c = c.value();
 
-        match (a * b) == c {
-            true => write!(f, "Constraint {scope}:\n\t{a} * {b} == {c}\n"),
-            false => write!(f, "Constraint {scope}:\n\t{a} * {b} != {c} (Unsatisfied)\n"),
+                match (a * b) == c {
+                    true => write!(f, "Constraint {scope}:\n\t{a} * {b} == {c}\n"),
+                    false => write!(f, "Constraint {scope}:\n\t{a} * {b} != {c} (Unsatisfied)\n"),
+                }
+            }
+            Constraint::LookupConstraint(base_constraint, ..) => {
+                let (scope, a, b, c) = (&base_constraint.0, &base_constraint.1, &base_constraint.2, &base_constraint.3);
+                let a = a.value();
+                let b = b.value();
+                let c = c.value();
+
+                write!(f, "Constraint {scope}:\n\t{a}, {b}, {c}\n")
+            }
         }
     }
 }

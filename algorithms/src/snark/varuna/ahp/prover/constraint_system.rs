@@ -22,6 +22,7 @@ use crate::r1cs::{
     LookupTable,
     Variable,
 };
+use itertools::Itertools;
 use snarkvm_fields::Field;
 use std::collections::{BTreeMap, HashSet};
 
@@ -132,7 +133,8 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         let a = a(LinearCombination::zero());
         let b = b(LinearCombination::zero());
         let c = c(LinearCombination::zero());
-        let table = self.lookup_constraints.get_mut(table_index).ok_or(SynthesisError::LookupTableMissing)?;
+        let table_constraints =
+            self.lookup_constraints.get_mut(table_index).ok_or(SynthesisError::LookupTableMissing)?;
         let evaluated_values = vec![a, b, c]
             .iter()
             .map(|lc| {
@@ -147,10 +149,10 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
                     .sum::<F>()
             })
             .collect::<Vec<F>>();
-        let (table_entry_index, _, value) =
-            table.lookup(&[evaluated_values[0], evaluated_values[1]]).ok_or(SynthesisError::LookupValueMissing)?;
-        if evaluated_values[2] == *value {
-            table.insert(self.num_constraints);
+        if let Some((table_entry_index, _)) = table_constraints.table.0.iter().find_position(|row| {
+            row.0 == evaluated_values[0] && row.1 == evaluated_values[1] && row.2 == evaluated_values[2]
+        }) {
+            table_constraints.insert(self.num_constraints);
             self.num_constraints += 1;
             *self.table_indices_used.entry((table_index, table_entry_index)).or_insert(F::zero()) += F::one();
             Ok(())

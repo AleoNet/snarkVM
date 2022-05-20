@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::*;
+use crate::{constraint::Constraint, *};
 use snarkvm_fields::PrimeField;
 
 #[derive(Debug, Default)]
@@ -106,15 +106,15 @@ impl<F: PrimeField> Counter<F> {
         self.constraints.push(constraint);
     }
 
-    /// Increments the number of lookup constraints by 1.
-    pub(crate) fn add_lookup_constraint(&mut self, constraint: LookupConstraint<F>) {
-        let (a_nonzeros, b_nonzeros, c_nonzeros) = constraint.num_nonzeros();
-        self.nonzeros.0 += a_nonzeros;
-        self.nonzeros.1 += b_nonzeros;
-        self.nonzeros.2 += c_nonzeros;
+    // /// Increments the number of lookup constraints by 1.
+    // pub(crate) fn add_lookup_constraint(&mut self, constraint: LookupConstraint<F>) {
+    //     let (a_nonzeros, b_nonzeros, c_nonzeros) = constraint.num_nonzeros();
+    //     self.nonzeros.0 += a_nonzeros;
+    //     self.nonzeros.1 += b_nonzeros;
+    //     self.nonzeros.2 += c_nonzeros;
 
-        self.lookup_constraints.push(constraint);
-    }
+    //     self.lookup_constraints.push(constraint);
+    // }
 
     /// Returns `true` if all constraints in the scope are satisfied.
     pub(crate) fn is_satisfied_in_scope(&self) -> bool {

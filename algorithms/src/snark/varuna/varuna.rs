@@ -569,7 +569,7 @@ where
                         .lookups_used
                         .then(|| *first_commitments[instance_index + 1].commitment()),
                 });
-                instance_index += batch_size.lookups_used.then_some(2).unwrap_or(1);
+                instance_index += if batch_size.lookups_used { 2 } else { 1 };
             }
         }
 

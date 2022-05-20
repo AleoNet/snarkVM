@@ -11,3 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+use super::*;
+
+impl<E: Environment, const NUM_WINDOWS: u8> Hash for Sinsemilla<E, NUM_WINDOWS> {
+    type Input = bool;
+    type Output = Field<E>;
+
+    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {
+        Ok(self.hash_uncompressed(input)?.to_x_coordinate())
+    }
+}

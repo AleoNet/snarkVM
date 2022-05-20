@@ -25,11 +25,11 @@ pub(crate) struct LookupConstraint<F: PrimeField>(
 );
 
 impl<F: PrimeField> LookupConstraint<F> {
-    /// Returns the number of non-zero terms required by this constraint.
-    pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
-        let (a, b, c) = (&self.1, &self.2, &self.3);
-        (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros())
-    }
+    // /// Returns the number of non-zero terms required by this constraint.
+    // pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
+    //     let (a, b, c) = (&self.1, &self.2, &self.3);
+    //     (a.num_nonzeros(), b.num_nonzeros(), c.num_nonzeros())
+    // }
 
     /// Returns `true` if the constraint is satisfied.
     pub(crate) fn is_satisfied(&self) -> bool {

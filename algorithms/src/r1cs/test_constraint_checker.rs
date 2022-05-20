@@ -163,7 +163,12 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         let c = self.eval_lc(&c(LinearCombination::zero()));
 
         let res = if let Some(lookup_table) = &self.lookup_table {
-            lookup_table.lookup(&[a, b]).ok_or(SynthesisError::LookupValueMissing)?
+            lookup_table
+                .0
+                .iter()
+                .find(|row| row.0 == a && row.1 == b && row.2 == c)
+                .ok_or(SynthesisError::LookupValueMissing)?
+                .2
         } else {
             if self.first_unsatisfied_constraint.is_none() {
                 self.found_unsatisfactory_constraint = true;
@@ -172,7 +177,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
             return Err(SynthesisError::LookupTableMissing);
         };
 
-        if *res.2 == c {
+        if res == c {
             self.num_constraints += 1;
             Ok(())
         } else {

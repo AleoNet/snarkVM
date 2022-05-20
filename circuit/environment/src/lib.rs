@@ -15,6 +15,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
 
+#[macro_use]
+extern crate thiserror;
+
 extern crate snarkvm_circuit_environment_witness;
 
 pub use snarkvm_circuit_environment_witness::rename_selfs;
@@ -25,8 +28,14 @@ pub use circuit::*;
 pub mod environment;
 pub use environment::*;
 
+pub mod errors;
+pub use errors::*;
+
 pub mod helpers;
 pub use helpers::*;
+
+pub mod lookup;
+pub use lookup::*;
 
 pub mod macros;
 pub use macros::*;

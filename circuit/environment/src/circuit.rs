@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    helpers::{Constraint, LookupConstraint},
+    constraint::{BaseConstraint, Constraint},
     Mode,
     *,
 };
@@ -30,6 +30,7 @@ thread_local! {
     pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
     pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
     pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
+    pub(super) static LOOKUP_TABLES: Rc<RefCell<Vec<LookupTable<Field>>>> = Rc::new(RefCell::new(vec![]));
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -184,7 +185,8 @@ impl Environment for Circuit {
                         }
                         false => {
                             // Construct the constraint object.
-                            let constraint = Constraint((**circuit).borrow().scope(), a, b, c);
+                            let constraint =
+                                Constraint::MulConstraint(BaseConstraint((**circuit).borrow().scope(), a, b, c));
                             // Append the constraint.
                             (**circuit).borrow_mut().enforce(constraint)
                         }
@@ -210,7 +212,8 @@ impl Environment for Circuit {
                     // let z = LinearCombination::zero();
                     let (a, b, c, table_index) = constraint();
                     let (a, b, c) = (a.into(), b.into(), c.into());
-                    let constraint = LookupConstraint((**circuit).borrow().scope(), a, b, c, table_index);
+                    let constraint =
+                        Constraint::LookupConstraint(BaseConstraint(circuit.borrow().scope(), a, b, c), table_index);
 
                     // let constraint = LookupConstraint((**circuit).borrow().scope(), a(z.clone()), b(z.clone()), c(z), table_index);
                     // Append the constraint.

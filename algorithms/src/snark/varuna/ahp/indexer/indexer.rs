@@ -101,7 +101,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
         // TODO: consider abstracting lookup poly calculations into their own function
         let lookup_state = lookup_helper_state.is_some().then(|| {
             ensure!(
-                lookup_helper_state.as_ref().unwrap().lookup_tables.iter().map(|t| t.table.len()).sum::<usize>()
+                lookup_helper_state.as_ref().unwrap().lookup_tables.iter().map(|t| t.0.len()).sum::<usize>()
                     <= constraint_domain.size(),
                 "The number of lookup table entries must be less than or equal to the number of constraints"
             );
@@ -319,7 +319,7 @@ impl<F: PrimeField, MM: SNARKMode> AHPForR1CS<F, MM> {
 
             let (mut t_a_evals, mut t_b_evals, mut t_c_evals): (Vec<F>, Vec<F>, Vec<F>) = lookup_tables
                 .iter()
-                .flat_map(|table| table.table.iter().map(|(key, value)| (key[0], key[1], value)).collect_vec())
+                .flat_map(|table| table.0.clone()) // TODO: can we do without the clone
                 .multiunzip();
             t_a_evals.resize(num_constraints, t_a_evals[0]);
             t_b_evals.resize(num_constraints, t_b_evals[0]);

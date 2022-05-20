@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
-
-impl<E: Environment> Verify for TableExampleVerifier<E> {
-    type Input = Field<E>;
-
-    fn verify(&self, input: &[Self::Input]) -> Result<bool> {
-        let input = input.to_vec();
-
-        let key_0 = input[0];
-        let key_1 = input[1];
-        let value = input[2];
-        let table_index = 0;
-
-        let result = *self.tables[table_index].lookup(&[key_0, key_1]).unwrap().2 == value;
-
-        Ok(result)
-    }
+/// This is an error that could occur during circuit construction contexts.
+#[derive(Debug, Error)]
+pub enum EnvironmentError {
+    /// During synthesis, we attempted to lookup a variable without a lookup table
+    /// being present in the constraint system.
+    #[error("Lookup table missing")]
+    LookupTableMissing,
+    /// During synthesis, we attempted to lookup a variable without this variable
+    /// being present in the lookup table.
+    #[error("Lookup value missing")]
+    LookupValueMissing,
 }

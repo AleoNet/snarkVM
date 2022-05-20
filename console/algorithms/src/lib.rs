@@ -22,9 +22,6 @@ pub use snarkvm_console_types::prelude::*;
 pub mod bhp;
 pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 
-pub mod table_example;
-pub use table_example::TableExample;
-
 mod blake2xs;
 pub use blake2xs::Blake2Xs;
 
@@ -36,3 +33,6 @@ pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
 
 mod poseidon;
 pub use poseidon::{Poseidon, Poseidon2, Poseidon4, Poseidon8};
+
+mod sinsemilla;
+pub use sinsemilla::{Sinsemilla, Sinsemilla1024, Sinsemilla256, Sinsemilla512, Sinsemilla768, SINSEMILLA_WINDOW_SIZE};

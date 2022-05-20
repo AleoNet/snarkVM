@@ -474,12 +474,17 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         let evaluated = vec![a.clone(), b.clone(), c.clone()].iter().map(|lc| self.eval_lc(lc)).collect::<Vec<F>>();
 
         let res = if let Some(lookup_table) = &self.lookup_table {
-            lookup_table.lookup(&evaluated[..1]).ok_or(SynthesisError::LookupValueMissing)?
+            lookup_table
+                .0
+                .iter()
+                .find(|row| row.0 == evaluated[0] && row.1 == evaluated[1] && row.2 == evaluated[2])
+                .ok_or(SynthesisError::LookupValueMissing)?
+                .2
         } else {
             return Err(SynthesisError::LookupTableMissing);
         };
 
-        if *res.2 == evaluated[2] {
+        if res == evaluated[2] {
             self.constraints.insert(TestConstraint { interned_path, a, b, c });
             Ok(())
         } else {

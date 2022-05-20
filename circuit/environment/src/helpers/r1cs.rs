@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-    helpers::{Constraint, Counter},
-    prelude::*,
-    LookupConstraint,
-};
+use crate::{constraint::Constraint, helpers::Counter, prelude::*, LookupConstraint};
 use snarkvm_algorithms::r1cs::LookupTable;
 use snarkvm_fields::PrimeField;
 
@@ -100,15 +96,12 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.add_constraint(constraint);
     }
 
-    /// Adds one constraint enforcing that `(A * B) == C`.
-    pub(crate) fn enforce_lookup(&mut self, constraint: LookupConstraint<F>) {
-        let (a_nonzeros, b_nonzeros, c_nonzeros) = constraint.num_nonzeros();
-        self.nonzeros.0 += a_nonzeros;
-        self.nonzeros.1 += b_nonzeros;
-        self.nonzeros.2 += c_nonzeros;
-
-        self.lookup_constraints.push(constraint.clone());
-        self.counter.add_lookup_constraint(constraint);
+    /// Adds one constraint enforcing that a row comprising of A, B and C exists
+    /// in the specified lookup table.
+    pub(crate) fn enforce_lookup(&mut self, constraint: Constraint<F>) {
+        // self.gates += constraint.num_gates();
+        self.constraints.push(constraint.clone());
+        self.counter.add_constraint(constraint);
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
@@ -146,10 +139,10 @@ impl<F: PrimeField> R1CS<F> {
         self.constraints.len() as u64
     }
 
-    /// Returns the number of lookup constraints in the constraint system.
-    pub(crate) fn num_lookup_constraints(&self) -> u64 {
-        self.lookup_constraints.len() as u64
-    }
+    // /// Returns the number of lookup constraints in the constraint system.
+    // pub(crate) fn num_lookup_constraints(&self) -> u64 {
+    //     self.lookup_constraints.len() as u64
+    // }
 
     /// Returns the number of nonzeros in the constraint system.
     pub(crate) fn num_nonzeros(&self) -> (u64, u64, u64) {
@@ -197,7 +190,7 @@ impl<F: PrimeField> R1CS<F> {
     }
 
     /// Returns the constraints in the constraint system.
-    pub fn to_constraints(&self) -> &Vec<Constraint<F>> {
+    pub(crate) fn to_constraints(&self) -> &Vec<Constraint<F>> {
         &self.constraints
     }
 

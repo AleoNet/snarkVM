@@ -136,7 +136,7 @@ impl<'a, F: PrimeField, MM: SNARKMode> State<'a, F, MM> {
                     .lookup_tables
                     .iter()
                     .enumerate()
-                    .for_each(|(i, table)| table_sizes.push(table_sizes[i] + table.table.len()));
+                    .for_each(|(i, table)| table_sizes.push(table_sizes[i] + table.0.len()));
                 cumulative_table_sizes.push(Some(table_sizes));
             } else {
                 cumulative_table_sizes.push(None);

@@ -18,9 +18,6 @@
 pub mod bhp;
 pub use bhp::*;
 
-pub mod table_example;
-pub use table_example::*;
-
 pub mod elligator2;
 pub use elligator2::Elligator2;
 
@@ -32,3 +29,6 @@ pub use poseidon::*;
 
 pub mod traits;
 pub use traits::*;
+
+pub mod sinsemilla;
+pub use sinsemilla::*;
