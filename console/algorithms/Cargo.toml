@@ -2,7 +2,7 @@
 name = "snarkvm-console-algorithms"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Console operations for a decentralized virtual machine"
+description = "Console algorithms for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 

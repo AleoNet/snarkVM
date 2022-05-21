@@ -19,18 +19,23 @@
 #[macro_use]
 extern crate enum_index_derive;
 
-pub use snarkvm_circuits_core::*;
+// pub use snarkvm_circuits_core as core;
+pub use snarkvm_circuits_core::{
+    aleo::{Aleo, AleoV0, Literal},
+    *,
+};
+
+pub use snarkvm_circuits_edge as edge;
 pub use snarkvm_circuits_edge::*;
-pub use snarkvm_circuits_environment::*;
-pub use snarkvm_circuits_types::*;
 
 pub use snarkvm_circuits_environment as environment;
+pub use snarkvm_circuits_environment::*;
+
+pub use snarkvm_circuits_types as types;
+pub use snarkvm_circuits_types::*;
 
 // mod identifier;
 // pub use identifier::*;
-
-mod literal;
-pub use literal::*;
 
 mod literal_type;
 pub use literal_type::*;

@@ -27,6 +27,9 @@ pub mod cli;
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;
 
+#[cfg(feature = "bytecode")]
+pub use snarkvm_bytecode as bytecode;
+
 #[cfg(feature = "circuits")]
 pub use snarkvm_circuits as circuits;
 

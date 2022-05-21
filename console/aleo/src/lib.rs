@@ -17,6 +17,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+#[macro_use]
+extern crate enum_index_derive;
+
 pub mod account;
 pub use account::*;
 
@@ -45,7 +48,6 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
         ScalarField = Self::Scalar,
         Coordinates = (Self::Field, Self::Field),
     >;
-    type AffineParameters: TwistedEdwardsParameters<BaseField = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
     type Field: PrimeField + Copy;
     type Scalar: PrimeField + Copy;

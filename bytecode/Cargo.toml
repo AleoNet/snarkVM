@@ -10,6 +10,10 @@ edition = "2021"
 path = "../circuits"
 version = "0.7.5"
 
+[dependencies.snarkvm-console-aleo]
+path = "../console/aleo"
+version = "0.7.5"
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.5"

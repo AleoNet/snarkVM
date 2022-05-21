@@ -17,7 +17,5 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod aleo;
-pub use aleo::{Aleo, Devnet};
-
-pub mod algorithms;
+pub use snarkvm_circuits_core_aleo as aleo;
+pub use snarkvm_circuits_core_algorithms as algorithms;

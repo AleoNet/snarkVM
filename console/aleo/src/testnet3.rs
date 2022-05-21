@@ -28,10 +28,7 @@ use snarkvm_console_algorithms::{
     BHP512,
     BHP768,
 };
-use snarkvm_curves::{
-    edwards_bls12::{EdwardsAffine, EdwardsParameters},
-    AffineCurve,
-};
+use snarkvm_curves::{edwards_bls12::EdwardsAffine, AffineCurve};
 use snarkvm_utilities::ToBits;
 
 use anyhow::{bail, Result};
@@ -92,7 +89,6 @@ impl Testnet3 {
 
 impl Network for Testnet3 {
     type Affine = EdwardsAffine;
-    type AffineParameters = EdwardsParameters;
     type Field = <Self::Affine as AffineCurve>::BaseField;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;

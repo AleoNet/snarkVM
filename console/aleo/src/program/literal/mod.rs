@@ -17,7 +17,15 @@
 // mod from_bits;
 // mod to_bits;
 
-use crate::{Network, Address};
+use crate::{Address, Network};
+use snarkvm_utilities::{
+    error,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    ToBytes,
+};
+
+use enum_index::EnumIndex;
 
 /// The literal enum represents all supported types in snarkVM.
 #[derive(Clone, EnumIndex)]
@@ -54,6 +62,64 @@ pub enum Literal<N: Network> {
     Scalar(N::Scalar),
     /// The string type.
     String(String),
+}
+
+impl<N: Network> FromBytes for Literal<N> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let index = u16::read_le(&mut reader)?;
+        let literal = match index {
+            0 => Self::Address(FromBytes::read_le(&mut reader)?),
+            1 => Self::Boolean(FromBytes::read_le(&mut reader)?),
+            2 => Self::Field(FromBytes::read_le(&mut reader)?),
+            3 => Self::Group(FromBytes::read_le(&mut reader)?),
+            4 => Self::I8(FromBytes::read_le(&mut reader)?),
+            5 => Self::I16(FromBytes::read_le(&mut reader)?),
+            6 => Self::I32(FromBytes::read_le(&mut reader)?),
+            7 => Self::I64(FromBytes::read_le(&mut reader)?),
+            8 => Self::I128(FromBytes::read_le(&mut reader)?),
+            9 => Self::U8(FromBytes::read_le(&mut reader)?),
+            10 => Self::U16(FromBytes::read_le(&mut reader)?),
+            11 => Self::U32(FromBytes::read_le(&mut reader)?),
+            12 => Self::U64(FromBytes::read_le(&mut reader)?),
+            13 => Self::U128(FromBytes::read_le(&mut reader)?),
+            14 => Self::Scalar(FromBytes::read_le(&mut reader)?),
+            15 => {
+                let size = u32::read_le(&mut reader)?;
+                let mut buffer = vec![0u8; size as usize];
+                reader.read_exact(&mut buffer)?;
+                Self::String(String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?)
+            }
+            16.. => return Err(error(format!("Failed to deserialize primitive variant {index}"))),
+        };
+        Ok(literal)
+    }
+}
+
+impl<N: Network> ToBytes for Literal<N> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.enum_index() as u16).write_le(&mut writer)?;
+        match self {
+            Self::Address(primitive) => primitive.write_le(&mut writer),
+            Self::Boolean(primitive) => primitive.write_le(&mut writer),
+            Self::Field(primitive) => primitive.write_le(&mut writer),
+            Self::Group(primitive) => primitive.write_le(&mut writer),
+            Self::I8(primitive) => primitive.write_le(&mut writer),
+            Self::I16(primitive) => primitive.write_le(&mut writer),
+            Self::I32(primitive) => primitive.write_le(&mut writer),
+            Self::I64(primitive) => primitive.write_le(&mut writer),
+            Self::I128(primitive) => primitive.write_le(&mut writer),
+            Self::U8(primitive) => primitive.write_le(&mut writer),
+            Self::U16(primitive) => primitive.write_le(&mut writer),
+            Self::U32(primitive) => primitive.write_le(&mut writer),
+            Self::U64(primitive) => primitive.write_le(&mut writer),
+            Self::U128(primitive) => primitive.write_le(&mut writer),
+            Self::Scalar(primitive) => primitive.write_le(&mut writer),
+            Self::String(primitive) => {
+                (primitive.as_bytes().len() as u32).write_le(&mut writer)?;
+                primitive.as_bytes().write_le(&mut writer)
+            }
+        }
+    }
 }
 
 // impl<N: Network> Inject for Literal<N> {

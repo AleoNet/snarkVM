@@ -37,6 +37,12 @@ version = "0.2"
 [dependencies.bech32]
 version = "0.9"
 
+[dependencies.enum_index]
+version = "0.2"
+
+[dependencies.enum_index_derive]
+version = "0.2"
+
 [dependencies.itertools]
 version = "0.10.1"
 

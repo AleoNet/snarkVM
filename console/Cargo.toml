@@ -2,7 +2,7 @@
 name = "snarkvm-console"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Native console operations for a decentralized virtual machine"
+description = "Console environment for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
@@ -16,7 +16,13 @@ path = "./algorithms"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-console-types]
+path = "./types"
+version = "0.7.5"
+optional = true
+
 [features]
-default = [ "aleo", "algorithms" ]
+default = [ "aleo", "algorithms", "types" ]
 aleo = [ "snarkvm-console-aleo" ]
 algorithms = [ "snarkvm-console-algorithms" ]
+types = [ "snarkvm-console-types" ]

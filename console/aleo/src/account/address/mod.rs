@@ -37,7 +37,14 @@ use core::{fmt, ops::Deref, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Address<N: Network>(pub(crate) N::Affine);
+pub struct Address<N: Network>(N::Affine);
+
+impl<N: Network> Address<N> {
+    /// Returns a new address from an affine group element.
+    pub fn from_group(group: N::Affine) -> Self {
+        Self(group)
+    }
+}
 
 impl<N: Network> Deref for Address<N> {
     type Target = N::Affine;
@@ -69,7 +76,7 @@ mod tests {
 
             // Check the group representation.
             let candidate = *expected;
-            assert_eq!(expected, Address(candidate));
+            assert_eq!(expected, Address::from_group(candidate));
         }
         Ok(())
     }

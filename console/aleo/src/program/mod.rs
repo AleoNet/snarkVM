@@ -14,20 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod data;
+mod data;
 pub use data::*;
 
-pub mod literal;
+mod entry;
+pub use entry::{Entry, EntryType};
+
+mod literal;
 pub use literal::*;
 
-pub mod record;
+// mod literal_type;
+// pub use literal_type::*;
+
+mod record;
 pub use record::*;
 
-pub mod state;
+mod state;
 pub use state::*;
 
-mod value;
-pub use value::{Value, ValueType};
-
 // Do not leak these outside of this module.
-pub(in crate::program) use value::{Plaintext, Ciphertext};
+pub(in crate::program) use entry::{Ciphertext, Plaintext};

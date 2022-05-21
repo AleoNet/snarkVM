@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use snarkvm_circuits_core::aleo::Literal;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -121,37 +122,37 @@ impl<E: Environment> LiteralType<E> {
     }
 }
 
-impl<E: Environment> From<Literal<E>> for LiteralType<E> {
-    #[inline]
-    fn from(literal: Literal<E>) -> Self {
-        Self::from(&literal)
-    }
-}
-
-impl<E: Environment> From<&Literal<E>> for LiteralType<E> {
-    #[inline]
-    fn from(literal: &Literal<E>) -> Self {
-        let mode = literal.eject_mode();
-        match literal {
-            Literal::Address(..) => Self::Address(mode),
-            Literal::Boolean(..) => Self::Boolean(mode),
-            Literal::Field(..) => Self::Field(mode),
-            Literal::Group(..) => Self::Group(mode),
-            Literal::I8(..) => Self::I8(mode),
-            Literal::I16(..) => Self::I16(mode),
-            Literal::I32(..) => Self::I32(mode),
-            Literal::I64(..) => Self::I64(mode),
-            Literal::I128(..) => Self::I128(mode),
-            Literal::U8(..) => Self::U8(mode),
-            Literal::U16(..) => Self::U16(mode),
-            Literal::U32(..) => Self::U32(mode),
-            Literal::U64(..) => Self::U64(mode),
-            Literal::U128(..) => Self::U128(mode),
-            Literal::Scalar(..) => Self::Scalar(mode),
-            Literal::String(..) => Self::String(mode, None),
-        }
-    }
-}
+// impl<E: Environment> From<Literal<E>> for LiteralType<E> {
+//     #[inline]
+//     fn from(literal: Literal<E>) -> Self {
+//         Self::from(&literal)
+//     }
+// }
+//
+// impl<E: Environment> From<&Literal<E>> for LiteralType<E> {
+//     #[inline]
+//     fn from(literal: &Literal<E>) -> Self {
+//         let mode = literal.eject_mode();
+//         match literal {
+//             Literal::Address(..) => Self::Address(mode),
+//             Literal::Boolean(..) => Self::Boolean(mode),
+//             Literal::Field(..) => Self::Field(mode),
+//             Literal::Group(..) => Self::Group(mode),
+//             Literal::I8(..) => Self::I8(mode),
+//             Literal::I16(..) => Self::I16(mode),
+//             Literal::I32(..) => Self::I32(mode),
+//             Literal::I64(..) => Self::I64(mode),
+//             Literal::I128(..) => Self::I128(mode),
+//             Literal::U8(..) => Self::U8(mode),
+//             Literal::U16(..) => Self::U16(mode),
+//             Literal::U32(..) => Self::U32(mode),
+//             Literal::U64(..) => Self::U64(mode),
+//             Literal::U128(..) => Self::U128(mode),
+//             Literal::Scalar(..) => Self::Scalar(mode),
+//             Literal::String(..) => Self::String(mode, None),
+//         }
+//     }
+// }
 
 #[allow(clippy::let_and_return)]
 impl<E: Environment> Parser for LiteralType<E> {

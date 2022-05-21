@@ -1971,6 +1971,7 @@ dependencies = [
  "rusty-hook",
  "self_update",
  "snarkvm-algorithms",
+ "snarkvm-bytecode",
  "snarkvm-circuits",
  "snarkvm-console",
  "snarkvm-curves",
@@ -2038,6 +2039,7 @@ dependencies = [
  "paste",
  "snarkvm-algorithms",
  "snarkvm-circuits",
+ "snarkvm-console-aleo",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
@@ -2059,12 +2061,32 @@ dependencies = [
 name = "snarkvm-circuits-core"
 version = "0.7.5"
 dependencies = [
+ "snarkvm-circuits-core-aleo",
+ "snarkvm-circuits-core-algorithms",
+]
+
+[[package]]
+name = "snarkvm-circuits-core-aleo"
+version = "0.7.5"
+dependencies = [
  "anyhow",
  "nom",
+ "snarkvm-circuits-core-algorithms",
+ "snarkvm-circuits-types",
+ "snarkvm-console-aleo",
+ "snarkvm-console-algorithms",
+ "snarkvm-curves",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-circuits-core-algorithms"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
  "snarkvm-algorithms",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
- "snarkvm-console-aleo",
  "snarkvm-console-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
@@ -2200,6 +2222,7 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-console-aleo",
  "snarkvm-console-algorithms",
+ "snarkvm-console-types",
 ]
 
 [[package]]
@@ -2210,6 +2233,8 @@ dependencies = [
  "base58",
  "bech32",
  "bincode",
+ "enum_index",
+ "enum_index_derive",
  "itertools",
  "rand",
  "serde",
@@ -2237,6 +2262,10 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-utilities",
 ]
+
+[[package]]
+name = "snarkvm-console-types"
+version = "0.7.5"
 
 [[package]]
 name = "snarkvm-curves"

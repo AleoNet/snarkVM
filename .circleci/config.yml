@@ -170,6 +170,24 @@ jobs:
           workspace_member: circuits/core
           cache_key: snarkvm-circuits-core-cache
 
+  circuits-core-aleo:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/core
+          cache_key: snarkvm-circuits-core-aleo-cache
+
+  circuits-core-algorithms:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/core
+          cache_key: snarkvm-circuits-core-algorithms-cache
+
   circuits-edge:
     docker:
       - image: cimg/rust:1.61
@@ -288,6 +306,15 @@ jobs:
       - run_serial:
           workspace_member: console/algorithms
           cache_key: snarkvm-console-algorithms-cache
+
+  console-types:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types
+          cache_key: snarkvm-console-types-cache
 
   curves:
     docker:
@@ -438,6 +465,8 @@ workflows:
       - bytecode
       - circuits
       - circuits-core
+      - circuits-core-aleo
+      - circuits-core-algorithms
       - circuits-edge
       - circuits-environment
       - circuits-types
@@ -451,6 +480,7 @@ workflows:
       - console
       - console-aleo
       - console-algorithms
+      - console-types
       - curves
       - dpc
       - fields

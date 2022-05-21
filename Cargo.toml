@@ -23,6 +23,8 @@ members = [
   "bytecode",
   "circuits",
   "circuits/core",
+  "circuits/core/aleo",
+  "circuits/core/algorithms",
   "circuits/edge",
   "circuits/environment",
   "circuits/environment/witness",
@@ -37,6 +39,7 @@ members = [
   "console",
   "console/aleo",
   "console/algorithms",
+  "console/types",
   "curves",
   "dpc",
   "fields",
@@ -65,10 +68,11 @@ default = ["core"]
 # If you need more granular control of members and/or member features,
 # please import the requisite crates directly and enable features as needed.
 core = ["dpc", "utilities"]
-full = ["algorithms", "circuits", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+full = ["algorithms", "bytecode", "circuits", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
+bytecode = ["snarkvm-bytecode"]
 circuits = ["snarkvm-circuits"]
 console = ["snarkvm-console"]
 curves = ["snarkvm-curves"]
@@ -91,6 +95,11 @@ noconfig = []
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-bytecode]
+path = "./bytecode"
 version = "0.7.5"
 optional = true
 

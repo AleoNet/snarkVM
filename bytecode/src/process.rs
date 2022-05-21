@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Annotation, Definition, Function, Identifier, Program, Sanitizer};
-use snarkvm_circuits::{prelude::*, Devnet};
+use snarkvm_circuits::{prelude::*, AleoV0};
 
 use indexmap::IndexMap;
 use std::cell::RefCell;
@@ -35,7 +35,7 @@ thread_local! {
 pub struct Process;
 
 impl Program for Process {
-    type Aleo = Devnet;
+    type Aleo = AleoV0;
 
     /// Adds a new definition to the process.
     ///
