@@ -30,7 +30,7 @@ impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
         let mut curr_hash = leaf_crh.hash(leaf);
 
         // Padding used to match the native merkle tree.
-        let padding = TwoToOneCRH::Input::blank(Mode::Constant);
+        let padding = TwoToOneCRH::Input::constant(Default::default());
 
         // To traverse up a MT, we iterate over the path from bottom to top
 

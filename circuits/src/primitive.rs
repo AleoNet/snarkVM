@@ -60,12 +60,6 @@ pub enum Primitive<E: Environment> {
     String(<StringType<E> as Eject>::Primitive),
 }
 
-impl<E: Environment> Default for Primitive<E> {
-    fn default() -> Self {
-        Primitive::Field(Default::default())
-    }
-}
-
 impl<E: Environment> FromBytes for Primitive<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;

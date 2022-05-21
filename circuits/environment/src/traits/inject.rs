@@ -18,7 +18,7 @@ use crate::Mode;
 
 /// Operations to inject from a primitive form into a circuit environment.
 pub trait Inject {
-    type Primitive: Default;
+    type Primitive;
 
     ///
     /// Initializes a circuit of the given mode and primitive value.
@@ -34,24 +34,13 @@ pub trait Inject {
     {
         Self::new(Mode::Constant, value)
     }
-
-    ///
-    /// Initializes a blank default of the circuit for the given mode.
-    /// This operation is used commonly to derive a proving and verifying key.
-    ///
-    fn blank(mode: Mode) -> Self
-    where
-        Self: Sized,
-    {
-        Self::new(mode, Default::default())
-    }
 }
 
 /********************/
 /****** Arrays ******/
 /********************/
 
-impl<C: Inject<Primitive = P>, P: Default> Inject for Vec<C> {
+impl<C: Inject<Primitive = P>, P> Inject for Vec<C> {
     type Primitive = Vec<P>;
 
     #[inline]
