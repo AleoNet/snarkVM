@@ -102,298 +102,171 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_constant_condition() {
-        // false ? Constant : Constant
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
+    fn run_test(
+        mode_condition: Mode,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) {
+        for flag in [true, false] {
+            for first in [true, false] {
+                for second in [true, false] {
+                    let condition = Boolean::<Circuit>::new(mode_condition, flag);
+                    let a = Boolean::<Circuit>::new(mode_a, first);
+                    let b = Boolean::<Circuit>::new(mode_b, second);
 
-        // false ? Constant : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Public : Constant
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Public : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Public : Private
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Private : Private
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Constant : Constant
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Constant : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Public : Constant
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Public : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Public : Private
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Private : Private
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 0, 0);
+                    let name = format!("{} ? {} : {}", mode_condition, mode_a, mode_b);
+                    check_ternary(
+                        &name,
+                        if flag { first } else { second },
+                        condition,
+                        a,
+                        b,
+                        num_constants,
+                        num_public,
+                        num_private,
+                        num_constraints,
+                    );
+                }
+            }
+        }
     }
 
     #[test]
-    fn test_public_condition_and_constant_input() {
-        // false ? Constant : Constant
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Constant : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // false ? Public : Constant
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Constant : Constant
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Constant : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Public : Constant
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
+    fn test_if_constant_then_constant_else_constant() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_private_condition_and_constant_input() {
-        // false ? Constant : Constant
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // false ? Constant : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // false ? Public : Constant
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Constant : Constant
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
-
-        // true ? Constant : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Public : Constant
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 1, 1);
+    fn test_if_constant_then_constant_else_public() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_public_condition_and_variable_inputs() {
-        // false ? Public : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // false ? Public : Private
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
-
-        // false ? Private : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // false ? Private : Private
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Public : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Public : Private
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Private : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
-
-        // true ? Private : Private
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
+    fn test_if_constant_then_constant_else_private() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_private_condition_and_variable_inputs() {
-        // false ? Public : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
+    fn test_if_constant_then_public_else_constant() {
+        run_test(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
+    }
 
-        // false ? Public : Private
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_constant_then_public_else_public() {
+        run_test(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 0, 0);
+    }
 
-        // false ? Private : Public
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_constant_then_public_else_private() {
+        run_test(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 0, 0);
+    }
 
-        // false ? Private : Private
-        let expected = false;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_constant_then_private_else_constant() {
+        run_test(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
+    }
 
-        // true ? Public : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_constant_then_private_else_public() {
+        run_test(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 0, 0);
+    }
 
-        // true ? Public : Private
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_constant_then_private_else_private() {
+        run_test(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 0, 0);
+    }
 
-        // true ? Private : Public
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_public_then_constant_else_constant() {
+        run_test(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    }
 
-        // true ? Private : Private
-        let expected = true;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 1, 1);
+    #[test]
+    fn test_if_public_then_constant_else_public() {
+        run_test(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_constant_else_private() {
+        run_test(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_public_else_constant() {
+        run_test(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_public_else_public() {
+        run_test(Mode::Public, Mode::Public, Mode::Public, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_public_else_private() {
+        run_test(Mode::Public, Mode::Public, Mode::Private, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_private_else_constant() {
+        run_test(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_private_else_public() {
+        run_test(Mode::Public, Mode::Private, Mode::Public, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_public_then_private_else_private() {
+        run_test(Mode::Public, Mode::Private, Mode::Private, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_constant_else_constant() {
+        run_test(Mode::Private, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_if_private_then_constant_else_public() {
+        run_test(Mode::Private, Mode::Constant, Mode::Public, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_constant_else_private() {
+        run_test(Mode::Private, Mode::Constant, Mode::Private, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_public_else_constant() {
+        run_test(Mode::Private, Mode::Public, Mode::Constant, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_public_else_public() {
+        run_test(Mode::Private, Mode::Public, Mode::Public, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_public_else_private() {
+        run_test(Mode::Private, Mode::Public, Mode::Private, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_private_else_constant() {
+        run_test(Mode::Private, Mode::Private, Mode::Constant, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_private_else_public() {
+        run_test(Mode::Private, Mode::Private, Mode::Public, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_if_private_then_private_else_private() {
+        run_test(Mode::Private, Mode::Private, Mode::Private, 0, 0, 1, 1);
     }
 }
