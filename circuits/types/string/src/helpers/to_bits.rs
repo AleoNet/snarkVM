@@ -35,14 +35,12 @@ impl<E: Environment> ToBits for &StringType<E> {
 
     /// Outputs the little-endian bit representation of `self` *with* trailing zeros (to byte-alignment).
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bytes.iter().flat_map(|character| character.to_bits_le()).collect()
+        self.bytes.to_bits_le()
     }
 
     /// Outputs the big-endian bit representation of `self` *with* leading zeros (to byte-alignment).
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.to_bits_le();
-        bits_le.reverse();
-        bits_le
+        self.bytes.to_bits_be()
     }
 }
 

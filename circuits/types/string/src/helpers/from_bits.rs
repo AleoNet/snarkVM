@@ -31,12 +31,12 @@ impl<E: Environment> FromBits for StringType<E> {
 
     /// Initializes a new scalar field element from a list of big-endian bits *with* leading zeros (to byte-alignment).
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
-        // Reverse the given bits from big-endian into little-endian.
-        // Note: This is safe as the bit representation is consistent (there are leading zeros).
-        let mut bits_le = bits_be.to_vec();
-        bits_le.reverse();
-
-        Self::from_bits_le(&bits_le)
+        // Ensure the list of booleans is byte-aligned.
+        let num_bits = bits_be.len();
+        match num_bits % 8 == 0 {
+            true => StringType { mode: bits_be.eject_mode(), bytes: bits_be.chunks(8).map(U8::from_bits_be).collect() },
+            false => E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned")),
+        }
     }
 }
 
