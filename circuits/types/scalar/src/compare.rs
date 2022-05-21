@@ -21,23 +21,22 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Output {
-        let mut is_less_than = Boolean::constant(false);
-        let mut are_previous_bits_equal = Boolean::constant(true);
+        debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
 
-        // Initialize an iterator over `self` and `other` from MSB to LSB.
-        let bits_be = self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev());
-
-        for (index, (self_bit, other_bit)) in bits_be.enumerate() {
-            // Determine if `self` is less than `other` up to the `index`-th bit.
-            is_less_than |= &are_previous_bits_equal & (!self_bit & other_bit);
-
-            // Skip the update to the LSB, as this boolean is subsequently discarded.
-            if index != self.bits_le.len() - 1 {
-                are_previous_bits_equal &= self_bit.is_equal(other_bit);
-            }
+        // If all elements of the scalar field are less than (p - 1)/2, where p is the modulus of
+        // the base field, then we can perform an optimized check for `less_than`.
+        // We compute the less than operation by checking the parity of 2 * (self - other) mod p.
+        // If a < b, then 2 * (self - other) mod p is odd.
+        // If a >= b, then 2 * (self - other) mod p is even.
+        if self.is_constant() && other.is_constant() {
+            Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
+        } else {
+            (self.to_field() - other.to_field())
+                .double()
+                .to_bits_be()
+                .pop()
+                .unwrap_or_else(|| E::halt("Expected at least one bit the bit representation of the base field."))
         }
-
-        is_less_than
     }
 
     /// Returns `true` if `self` is greater than `other`.
@@ -93,37 +92,46 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+        check_is_less_than(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
     }
 
-    // TODO (howardwu): These variate in num_constraints.
-    // #[test]
-    // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
-    // }
+    #[test]
+    fn test_constant_is_less_than_public() {
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_public_is_less_than_constant() {
+        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 253, 254);
+    }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_private_is_less_than_constant() {
+        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 253, 254);
     }
 }
