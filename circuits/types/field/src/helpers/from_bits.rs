@@ -19,7 +19,11 @@ use super::*;
 impl<E: Environment> FromBits for Field<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
+    /// Initializes a new base field element from a list of little-endian bits.
+    /// If the length of the list is greater than `E::BaseField::size_in_bits()`, the excess bits
+    /// are checked to ensure they are all zero.
+    /// If the length of the list is less than or equal to `E::BaseField::size_in_bits()`, `bits_le`
+    /// is padded with zeros to the right to match the size of the base field.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Retrieve the data and field size.
         let size_in_data_bits = E::BaseField::size_in_data_bits();
@@ -31,7 +35,43 @@ impl<E: Environment> FromBits for Field<E> {
             // Check if all excess bits are zero.
             let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
             // Ensure `should_be_zero` is zero.
-            E::assert_eq(E::zero(), should_be_zero);
+            match (should_be_zero.is_constant(), should_be_zero.eject_value()) {
+                (true, true) => {
+                    E::halt("Detected nonzero excess bits while initializing a base field element from bits.")
+                }
+                (true, false) => (), // Constraint is satisfied.
+                (false, _) => E::assert(!should_be_zero),
+            }
+        }
+
+        // If the number of bits is greater than `size_in_data_bits`, then check that it is a valid field element.
+        if num_bits > size_in_data_bits {
+            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+            // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
+            let modulus_minus_one = -E::BaseField::one();
+
+            // Pad `bits_le` with zeros to the size of the base field modulus, if necessary.
+            let boolean_false = Boolean::constant(false);
+            let padded_bits_le = bits_le.iter().chain(core::iter::repeat(&boolean_false)).take(size_in_bits);
+
+            // Zip `modulus_minus_one` and `padded_bits_le` together and construct a check on the sequence of bit pairs.
+            // See `Field::is_less_than` for more details.
+            let modulus_minus_one_less_than_bits = modulus_minus_one.to_bits_le().iter().zip_eq(padded_bits_le).fold(
+                Boolean::constant(false),
+                |rest_is_less, (self_bit, other_bit)| {
+                    if *self_bit { other_bit.bitand(&rest_is_less) } else { other_bit.bitor(&rest_is_less) }
+                },
+            );
+
+            // Enforce that BaseField::MODULUS - 1 is not less than the field element given by `bits_le`.
+            // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
+            match (modulus_minus_one_less_than_bits.is_constant(), modulus_minus_one_less_than_bits.eject_value()) {
+                (true, true) => {
+                    E::halt("Detected nonzero excess bits while initializing a base field element from bits.")
+                }
+                (true, false) => (), // Constraint is satisfied.
+                (false, _) => E::assert(!modulus_minus_one_less_than_bits),
+            }
         }
 
         // Reconstruct the bits as a linear combination representing the original field value.
@@ -41,46 +81,6 @@ impl<E: Environment> FromBits for Field<E> {
         for bit in bits_le.iter().take(size_in_bits) {
             output += Field::from_boolean(bit) * &coefficient;
             coefficient = coefficient.double();
-        }
-
-        // If the number of bits is equivalent to the field size in bits (or greater),
-        // ensure the reconstructed field element lies within the field modulus.
-        if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
-            // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus = -E::BaseField::one();
-
-            // Initialize an iterator for big-endian bits, skipping the excess bits, which are checked above.
-            let mut bits_be = bits_le.iter().rev().skip(bits_le.len() - size_in_bits);
-
-            // Initialize trackers for the sequence of ones.
-            let mut previous = Boolean::constant(true);
-            let mut sequence = vec![];
-
-            for (modulus_bit, current_bit) in modulus.to_bits_be().iter().zip_eq(&mut bits_be) {
-                match modulus_bit {
-                    // This bit *continues* a sequence of ones.
-                    true => sequence.push(current_bit),
-                    // This bit *breaks* a sequence of ones.
-                    false => {
-                        // Process the previous sequence and reset for the new sequence.
-                        if !sequence.is_empty() {
-                            // Check if all bits were true.
-                            previous = sequence.iter().fold(previous, |a, b| a & *b);
-                            sequence.clear();
-                        }
-
-                        // Ensure either `previous` or `current_bit` must be false: `previous` NAND `current_bit`
-                        //
-                        // If `previous` is true, `current_bit` must be false, or it is not in the field.
-                        // If `previous` is false, `current_bit` can be true or false.
-                        // Thus, either `previous` or `current_bit` must be false.
-                        E::assert(previous.nand(current_bit));
-                    }
-                }
-            }
-            // The sequence will always finish empty, because we subtracted 1 from the `modulus`.
-            debug_assert!(sequence.is_empty());
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
@@ -110,7 +110,6 @@ impl<E: Environment> Metrics<dyn FromBits<Boolean = Boolean<E>>> for Field<E> {
     type Case = Vec<Mode>;
 
     fn count(_modes: &Self::Case) -> Count {
-        // TODO: Waiting for PR#711 to land as it significantly changes the counts.
         todo!()
     }
 }
@@ -217,12 +216,12 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 0, 252, 418);
+        check_from_bits_le(Mode::Public, 0, 0, 252, 253);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 252, 418);
+        check_from_bits_le(Mode::Private, 0, 0, 252, 253);
     }
 
     #[test]
@@ -232,11 +231,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 0, 252, 418);
+        check_from_bits_be(Mode::Public, 0, 0, 252, 253);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 252, 418);
+        check_from_bits_be(Mode::Private, 0, 0, 252, 253);
     }
 }
