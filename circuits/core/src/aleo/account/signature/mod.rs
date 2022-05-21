@@ -20,7 +20,7 @@ pub mod verify;
 use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::aleo::{Aleo, ComputeKey};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Literal, Scalar, ToBits};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Scalar};
 
 pub struct Signature<A: Aleo> {
     /// The verifier challenge to check against.

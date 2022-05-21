@@ -18,7 +18,7 @@ use super::*;
 
 impl<A: Aleo> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
-    pub fn verify(&self, address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
+    pub fn verify(&self, address: &Address<A>, message: &[Boolean<A>]) -> Boolean<A> {
         // Compute G^sk_sig^challenge.
         let pk_sig_challenge = self.compute_key.pk_sig() * &self.challenge;
 
@@ -27,16 +27,15 @@ impl<A: Aleo> Signature<A> {
 
         // Compute the candidate verifier challenge.
         let candidate_challenge = {
-            // Convert the message into little-endian bits.
-            let message_bits = message.to_bits_le();
+            // Convert the message into field elements.
             let message_elements =
-                message_bits.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect::<Vec<_>>();
+                message.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect::<Vec<_>>();
 
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^randomizer, message).
             let mut preimage = Vec::with_capacity(3 + message_elements.len());
             preimage.push(address.to_field());
             preimage.push(g_randomizer.to_x_coordinate());
-            preimage.push(Field::constant((message_bits.len() as u128).into())); // <- Message length *must* be constant.
+            preimage.push(Field::constant((message.len() as u128).into())); // <- Message length *must* be constant.
             preimage.extend_from_slice(&message_elements);
 
             // Hash to derive the verifier challenge.
@@ -88,17 +87,20 @@ pub(crate) mod tests {
 
             // Sample a random message.
             let rng = &mut test_rng();
-            let message = vec![
-                Literal::Address(Address::new(mode, UniformRand::rand(rng))),
-                Literal::Boolean(Boolean::new(mode, UniformRand::rand(rng))),
-                Literal::Field(Field::new(mode, UniformRand::rand(rng))),
-                Literal::Group(Group::new(mode, UniformRand::rand(rng))),
-                Literal::Scalar(Scalar::new(mode, UniformRand::rand(rng))),
-            ];
+            let message = [
+                Address::new(mode, UniformRand::rand(rng)).to_bits_le(),
+                Boolean::new(mode, UniformRand::rand(rng)).to_bits_le(),
+                Field::new(mode, UniformRand::rand(rng)).to_bits_le(),
+                Group::new(mode, UniformRand::rand(rng)).to_bits_le(),
+                Scalar::new(mode, UniformRand::rand(rng)).to_bits_le(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
 
             // Generate a signature.
             let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = NativeSignature::sign(&private_key, &message.to_bits_le().eject_value(), randomizer)?;
+            let signature = NativeSignature::sign(&private_key, &message.eject_value(), randomizer)?;
 
             // Retrieve the challenge and response.
             let challenge = signature.challenge();
