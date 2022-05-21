@@ -63,6 +63,9 @@ mod tests {
             let candidate = Scalar::ternary(&condition, &a, &b);
             assert_eq!(expected, candidate.eject_value(), "{case}");
             assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            // Check that `candidate` has a valid mode.
+            candidate.eject_mode()
         });
     }
 
