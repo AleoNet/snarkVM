@@ -50,6 +50,10 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     type Field: PrimeField + Copy;
     type Scalar: PrimeField + Copy;
 
+    /// The maximum recursive depth of a value.
+    /// Note: This value must be strictly less than u8::MAX.
+    const DEPTH: u8 = 32;
+
     /// The maximum number of bytes allowed in a string.
     const NUM_STRING_BYTES: u32;
 

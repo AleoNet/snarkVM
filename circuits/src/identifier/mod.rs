@@ -1,0 +1,209 @@
+// Copyright (C) 2019-2022 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::prelude::*;
+
+/// An identifier is a string of alphanumeric (and underscore) characters.
+///
+/// # Requirements
+/// The identifier must be less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+/// The identifier must be alphanumeric (or underscore).
+/// The identifier must not start with a number.
+/// The identifier must not be a keyword.
+/// The identifier must not be a register format.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Identifier<E: Environment>(Field<E>);
+
+
+impl<E: Environment> Inject for Identifier<E> {
+    type Primitive = String;
+
+    /// Initializes a new identifier from a string.
+    fn new(_: Mode, identifier: Self::Primitive) -> Self {
+        // Ensure identifier fits within the field.
+        let num_bytes = E::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
+        if identifier.as_bytes().len() > num_bytes {
+            E::halt(format!("Identifier is too large. Identifiers must be <= {num_bytes} bytes long"));
+        }
+
+        // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
+        // for reconstructing the string when recovering the field element back into bytes.
+        Self(Field::from_bits_le(&Vec::<Boolean<_>>::constant(identifier.as_bytes().to_bits_le())))
+
+        // // TODO (howardwu): Use `if E::keywords().contains(name)` instead of `KEYWORDS.contains(name)`.
+        // // Ensure identifier is not a keyword.
+        // if KEYWORDS.contains(&identifier) {
+        //     // if E::keywords().contains(name) {
+        //     return Err(error(format!("Identifier `{identifier}` is a keyword")));
+        // }
+        // // Ensure the identifier is not a register format.
+        // if Register::<E>::parse(identifier).is_ok() {
+        //     return Err(error(format!("Identifier `{identifier}` cannot be of a register format")));
+        // }
+    }
+}
+
+impl<E: Environment> Eject for Identifier<E> {
+    type Primitive = String;
+
+    /// Ejects the mode of the identifier.
+    fn eject_mode(&self) -> Mode {
+        self.0.eject_mode()
+    }
+
+    /// Ejects the identifier as a string.
+    fn eject_value(&self) -> Self::Primitive {
+        match String::from_utf8(Vec::<u8>::from_bits_le(&self.0.to_bits_le().eject_value())) {
+            Ok(identifier) => identifier,
+            Err(error) => E::halt(format!("Failed to eject identifier as string: {error}")),
+        }
+    }
+}
+
+impl<E: Environment> ToField for Identifier<E> {
+    type Field = Field<E>;
+
+    /// Returns the identifier as a base field element.
+    fn to_field(&self) -> Self::Field {
+        // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+        if self.0.as_bytes().len() > P::NUM_IDENTIFIER_BYTES {
+            P::halt(format!("Identifier is too large. Identifiers must be <= {} bytes long", P::NUM_IDENTIFIER_BYTES))
+        }
+
+        // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
+        // for reconstructing the string when recovering the field element back into bytes.
+        Field::from_bits_le(&Vec::<Boolean<_>>::constant(self.0.as_bytes().to_bits_le()))
+    }
+}
+
+impl<E: Environment> Parser for Identifier<E> {
+    type Environment = E;
+
+    /// Parses a string into an identifier.
+    ///
+    /// # Requirements
+    /// The identifier must be less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+    /// The identifier must be alphanumeric (or underscore).
+    /// The identifier must not start with a number.
+    /// The identifier must not be a keyword.
+    /// The identifier must not be a register format.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Check for alphanumeric characters and underscores.
+        map_res(recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_")))))), |identifier: &str| {
+            // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+            if identifier.len() > P::NUM_IDENTIFIER_BYTES {
+                return Err(error(format!(
+                    "Identifier is too large. Identifiers must be <= {} bytes long",
+                    P::NUM_IDENTIFIER_BYTES
+                )));
+            }
+
+            // TODO (howardwu): Use `if E::keywords().contains(name)` instead of `KEYWORDS.contains(name)`.
+            // Ensure identifier is not a keyword.
+            if KEYWORDS.contains(&identifier) {
+                // if E::keywords().contains(name) {
+                return Err(error(format!("Identifier `{identifier}` is a keyword")));
+            }
+
+            // Ensure the identifier is not a register format.
+            if Register::<E>::parse(identifier).is_ok() {
+                return Err(error(format!("Identifier `{identifier}` cannot be of a register format")));
+            }
+
+            Ok(Self(identifier.to_string(), PhantomData))
+        })(string)
+    }
+}
+
+impl<E: Environment> fmt::Display for Identifier<E> {
+    /// Prints the identifier as a string.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl<E: Environment> FromBytes for Identifier<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the number of bytes.
+        let size = u8::read_le(&mut reader)?;
+        // Read the identifier bytes.
+        let mut buffer = vec![0u8; size as usize];
+        reader.read_exact(&mut buffer)?;
+        // Parse the identifier.
+        Ok(Self::from_str(
+            &String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?,
+        ))
+    }
+}
+
+impl<E: Environment> ToBytes for Identifier<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+        if self.0.as_bytes().len() > P::NUM_IDENTIFIER_BYTES {
+            return Err(error(format!(
+                "Identifier is too large. Identifiers must be <= {} bytes long",
+                P::NUM_IDENTIFIER_BYTES
+            )));
+        }
+
+        (self.0.as_bytes().len() as u8).write_le(&mut writer)?;
+        self.0.as_bytes().write_le(&mut writer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Process;
+
+    type P = Process;
+
+    #[test]
+    fn test_identifier_parse() {
+        let candidate = Identifier::<E>::parse("foo_bar").unwrap();
+        assert_eq!("", candidate.0);
+        assert_eq!("foo_bar".to_string(), candidate.1.0);
+    }
+
+    #[test]
+    fn test_identifier_parse_fails() {
+        // Must be less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+        let identifier = Identifier::<E>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        assert!(identifier.is_err());
+        // Must be alphanumeric or underscore.
+        assert_eq!(Ok(("~baz", Identifier::<E>::from_str("foo_bar"))), Identifier::<E>::parse("foo_bar~baz"));
+        assert_eq!(Ok(("-baz", Identifier::<E>::from_str("foo_bar"))), Identifier::<E>::parse("foo_bar-baz"));
+        // Must not start with a number.
+        assert!(Identifier::<E>::parse("2").is_err());
+        assert!(Identifier::<E>::parse("1foo").is_err());
+        // Must not be a keyword.
+        assert!(Identifier::<E>::parse("input").is_err());
+        assert!(Identifier::<E>::parse("record").is_err());
+        // Must not be a register format.
+        assert!(Identifier::<E>::parse("r0").is_err());
+        assert!(Identifier::<E>::parse("r123").is_err());
+        assert!(Identifier::<E>::parse("r0.owner").is_err());
+        // Must not be an opcode.
+        assert!(Identifier::<E>::parse("add").is_err());
+    }
+
+    #[test]
+    fn test_identifier_display() {
+        let identifier = Identifier::<E>::from_str("foo_bar");
+        assert_eq!("foo_bar", format!("{}", identifier));
+    }
+}

@@ -14,20 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod data;
-pub use data::*;
+use crate::{Value, ValueType};
+use crate::{Address, Network, ViewKey};
+use snarkvm_circuits_environment::Mode;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{FromBits, ToBits};
 
-pub mod literal;
-pub use literal::*;
+use anyhow::{bail, Result};
+use itertools::Itertools;
 
-pub mod record;
-pub use record::*;
+struct Literal<N: Network>(N::Field);
+struct LiteralType<N: Network>(N::Field);
 
-pub mod state;
-pub use state::*;
+/// A value stored in program data.
+pub struct Data<N: Network, Private: ValueType> {
+    data: Vec<Value<N, Private>>
+}
 
-mod value;
-pub use value::{Value, ValueType};
-
-// Do not leak these outside of this module.
-pub(in crate::program) use value::{Plaintext, Ciphertext};
+impl<N: Network, Private: ValueType> Data<N, Private> {
+    /// Returns the data ID, as a hash over the **`Data<N, Ciphertext<N>>` variant**.
+    pub fn to_id(&self) -> Result<N::Field> {
+        N::hash_psd8([self.data])
+    }
+}

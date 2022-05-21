@@ -26,6 +26,9 @@ pub use snarkvm_circuits_types::*;
 
 pub use snarkvm_circuits_environment as environment;
 
+// mod identifier;
+// pub use identifier::*;
+
 mod literal;
 pub use literal::*;
 

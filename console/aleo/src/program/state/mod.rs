@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Network, Record, ViewKey};
+use crate::{Address, Network, program::Plaintext, Data, Record, ViewKey};
 use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::ToBits;
 
@@ -27,15 +27,15 @@ pub struct State<N: Network> {
     owner: Address<N>,
     /// The account balance in this program state.
     balance: u64,
-    /// The data ID for this program state.
-    data: N::Field,
+    /// The data for this program state.
+    data: Data<N, Plaintext<N>>,
     /// The nonce for this program state (i.e. `G^r`).
     nonce: N::Affine,
 }
 
-impl<N: Network> From<(Address<N>, u64, N::Field, N::Affine)> for State<N> {
+impl<N: Network> From<(Address<N>, u64, Data<N, Plaintext<N>>, N::Affine)> for State<N> {
     #[inline]
-    fn from((owner, balance, data, nonce): (Address<N>, u64, N::Field, N::Affine)) -> Self {
+    fn from((owner, balance, data, nonce): (Address<N>, u64, Data<N, Plaintext<N>>, N::Affine)) -> Self {
         Self { owner, balance, data, nonce }
     }
 }
@@ -51,16 +51,18 @@ impl<N: Network> State<N> {
         record.decrypt(view_key)
     }
 
-    /// Returns the program state commitment.
-    pub fn to_commitment(&self, program: &N::Field, process: &N::Field) -> Result<N::Field> {
+    /// Returns the program state commitment, given the program ID, process ID, and data ID.
+    pub fn to_commitment(&self, program: N::Field, process: N::Field, data: N::Field) -> Result<N::Field> {
         // Retrieve the x-coordinate of the owner.
         let owner = self.owner.to_x_coordinate();
         // Convert the balance into a field element.
         let balance = N::Field::from(self.balance as u128);
+        // Retrieve the x-coordinate of the nonce.
+        let nonce = self.nonce.to_x_coordinate();
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
-        let left = N::hash_bhp1024(&[*program, *process, owner, balance].to_bits_le())?;
-        let right = N::hash_bhp1024(&[self.data, self.nonce.to_x_coordinate()].to_bits_le())?;
+        let left = N::hash_bhp1024(&[program, process, owner, balance].to_bits_le())?;
+        let right = N::hash_bhp1024(&[data, nonce].to_bits_le())?;
         N::hash_bhp512(&[left, right].to_bits_le())
     }
 
@@ -75,7 +77,7 @@ impl<N: Network> State<N> {
     }
 
     /// Returns the program data ID.
-    pub const fn data(&self) -> &N::Field {
+    pub const fn data(&self) -> &Data<N, Plaintext<N>> {
         &self.data
     }
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Network, State, ViewKey};
+use crate::{Address, Data, program::Ciphertext, Network, State, ViewKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{ToBits, ToBytes};
 
@@ -27,8 +27,8 @@ pub struct Record<N: Network> {
     owner: N::Field,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
     balance: N::Field,
-    /// The ID for the program data.
-    data: N::Field,
+    /// The program data.
+    data: Data<N, Ciphertext<N>>,
     /// The nonce for this record (i.e. `G^r`).
     nonce: N::Affine,
     /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
@@ -56,10 +56,12 @@ impl<N: Network> Record<N> {
 
     /// Returns the record ID.
     pub fn to_id(&self, program: &N::Field, process: &N::Field) -> Result<N::Field> {
+        // Retrieve the x-coordinate of the nonce.
+        let nonce = self.nonce.to_x_coordinate();
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
         let left = N::hash_bhp1024(&[*program, *process, self.owner, self.balance].to_bits_le())?;
-        let right = N::hash_bhp1024(&[self.data, self.nonce.to_x_coordinate(), self.mac, self.bcm].to_bits_le())?;
+        let right = N::hash_bhp1024(&[self.data.to_id()?, nonce, self.mac, self.bcm].to_bits_le())?;
         N::hash_bhp512(&[left, right].to_bits_le())
     }
 
