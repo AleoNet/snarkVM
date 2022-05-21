@@ -20,26 +20,23 @@ use snarkvm_utilities::ToBits;
 
 use anyhow::Result;
 
-// TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.
 pub struct State<N: Network> {
-    /// The program this state belongs to.
-    program: N::Field,
     /// The Aleo address this state belongs to.
     owner: Address<N>,
     /// The account balance in this program state.
     balance: u64,
-    /// The ID for the program data.
+    /// The data ID for this program state.
     data: N::Field,
     /// The nonce for this program state (i.e. `G^r`).
     nonce: N::Affine,
 }
 
-impl<N: Network> From<(N::Field, Address<N>, u64, N::Field, N::Affine)> for State<N> {
+impl<N: Network> From<(Address<N>, u64, N::Field, N::Affine)> for State<N> {
     #[inline]
-    fn from((program, owner, balance, data, nonce): (N::Field, Address<N>, u64, N::Field, N::Affine)) -> Self {
-        Self { program, owner, balance, data, nonce }
+    fn from((owner, balance, data, nonce): (Address<N>, u64, N::Field, N::Affine)) -> Self {
+        Self { owner, balance, data, nonce }
     }
 }
 
@@ -55,21 +52,16 @@ impl<N: Network> State<N> {
     }
 
     /// Returns the program state commitment.
-    pub fn to_commitment(&self) -> Result<N::Field> {
+    pub fn to_commitment(&self, program: &N::Field, process: &N::Field) -> Result<N::Field> {
         // Retrieve the x-coordinate of the owner.
         let owner = self.owner.to_x_coordinate();
         // Convert the balance into a field element.
         let balance = N::Field::from(self.balance as u128);
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
-        let left = N::hash_bhp1024(&[self.program, owner, balance, self.data].to_bits_le())?;
-        let right = N::hash_bhp1024(&[self.nonce.to_x_coordinate()].to_bits_le())?;
+        let left = N::hash_bhp1024(&[*program, *process, owner, balance].to_bits_le())?;
+        let right = N::hash_bhp1024(&[self.data, self.nonce.to_x_coordinate()].to_bits_le())?;
         N::hash_bhp512(&[left, right].to_bits_le())
-    }
-
-    /// Returns the program ID.
-    pub const fn program(&self) -> &N::Field {
-        &self.program
     }
 
     /// Returns the account owner.

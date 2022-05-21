@@ -26,6 +26,12 @@ pub use program::*;
 pub mod testnet3;
 pub use testnet3::*;
 
+pub mod transaction;
+pub use transaction::*;
+
+pub mod transition;
+pub use transition::*;
+
 use snarkvm_curves::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 

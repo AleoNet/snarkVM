@@ -34,7 +34,7 @@ pub struct State<A: Aleo> {
     owner: Address<A>,
     /// The account balance in this program state.
     balance: U64<A>,
-    /// The ID for the program data.
+    /// The data ID for this program state.
     data: Field<A>,
     /// The nonce for this program state (i.e. `G^r`).
     nonce: Field<A>,

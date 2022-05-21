@@ -23,8 +23,6 @@ use anyhow::{bail, Result};
 /// A program's record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 pub struct Record<N: Network> {
-    /// The program this record belongs to.
-    program: N::Field,
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: N::Field,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
@@ -57,11 +55,11 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the record ID.
-    pub fn to_id(&self) -> Result<N::Field> {
+    pub fn to_id(&self, program: &N::Field, process: &N::Field) -> Result<N::Field> {
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
-        let left = N::hash_bhp1024(&[self.program, self.owner, self.balance, self.data].to_bits_le())?;
-        let right = N::hash_bhp1024(&[self.nonce.to_x_coordinate(), self.mac, self.bcm].to_bits_le())?;
+        let left = N::hash_bhp1024(&[*program, *process, self.owner, self.balance].to_bits_le())?;
+        let right = N::hash_bhp1024(&[self.data, self.nonce.to_x_coordinate(), self.mac, self.bcm].to_bits_le())?;
         N::hash_bhp512(&[left, right].to_bits_le())
     }
 
@@ -98,7 +96,7 @@ impl<N: Network> Record<N> {
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = N::commit_ped64(&state.balance().to_bits_le(), &r_bcm)?;
 
-        Ok(Self { program: *state.program(), owner, balance, data: *state.data(), nonce: *state.nonce(), mac, bcm })
+        Ok(Self { owner, balance, data: *state.data(), nonce: *state.nonce(), mac, bcm })
     }
 
     /// Returns the state corresponding to the record using the given view key.
@@ -150,7 +148,7 @@ impl<N: Network> Record<N> {
         }
 
         // Output the state.
-        Ok(State::from((self.program, owner, balance, self.data, self.nonce)))
+        Ok(State::from((owner, balance, self.data, self.nonce)))
     }
 }
 
