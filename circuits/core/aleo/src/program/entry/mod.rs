@@ -19,14 +19,13 @@ use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U16, U8};
 
 use core::ops::Deref;
 
-pub trait Visibility<A: Aleo>:
-    ToBits<Boolean = Boolean<A>> + FromBits<Boolean = Boolean<A>> + ToFields + FromFields
-{
+pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> usize;
 }
 
 /// An entry stored in program data.
+#[derive(Clone)]
 pub enum Entry<A: Aleo, Private: Visibility<A>> {
     /// A constant entry.
     Constant(Plaintext<A>),
@@ -38,7 +37,7 @@ pub enum Entry<A: Aleo, Private: Visibility<A>> {
 
 impl<A: Aleo> Entry<A, Plaintext<A>> {
     /// Returns the number of field elements to encode `self`.
-    fn num_randomizers(&self) -> usize {
+    pub(crate) fn num_randomizers(&self) -> usize {
         match self {
             // Constant and public entries do not need to be encrypted.
             Self::Constant(..) | Self::Public(..) => 0,
@@ -48,7 +47,7 @@ impl<A: Aleo> Entry<A, Plaintext<A>> {
     }
 
     /// Encrypts the entry using the given randomizers.
-    fn encrypt(self, randomizers: &[Field<A>]) -> Entry<A, Ciphertext<A>> {
+    pub(crate) fn encrypt(&self, randomizers: &[Field<A>]) -> Entry<A, Ciphertext<A>> {
         // Ensure that the number of randomizers is correct.
         if randomizers.len() != self.num_randomizers() {
             A::halt(format!(
@@ -59,9 +58,9 @@ impl<A: Aleo> Entry<A, Plaintext<A>> {
         }
         match self {
             // Constant entries do not need to be encrypted.
-            Self::Constant(plaintext) => Entry::Constant(plaintext),
+            Self::Constant(plaintext) => Entry::Constant(plaintext.clone()),
             // Public entries do not need to be encrypted.
-            Self::Public(plaintext) => Entry::Public(plaintext),
+            Self::Public(plaintext) => Entry::Public(plaintext.clone()),
             // Private entries are encrypted with the given randomizers.
             Self::Private(private) => Entry::Private(Ciphertext(
                 private
@@ -77,7 +76,7 @@ impl<A: Aleo> Entry<A, Plaintext<A>> {
 
 impl<A: Aleo> Entry<A, Ciphertext<A>> {
     /// Returns the number of field elements to encode `self`.
-    fn num_randomizers(&self) -> usize {
+    pub(crate) fn num_randomizers(&self) -> usize {
         match self {
             // Constant and public entries do not need to be encrypted.
             Self::Constant(..) | Self::Public(..) => 0,
@@ -87,7 +86,7 @@ impl<A: Aleo> Entry<A, Ciphertext<A>> {
     }
 
     /// Decrypts the entry using the given randomizers.
-    fn decrypt(self, randomizers: &[Field<A>]) -> Entry<A, Plaintext<A>> {
+    pub(crate) fn decrypt(&self, randomizers: &[Field<A>]) -> Entry<A, Plaintext<A>> {
         // Ensure that the number of randomizers is correct.
         if randomizers.len() != self.num_randomizers() {
             A::halt(format!(
@@ -98,9 +97,9 @@ impl<A: Aleo> Entry<A, Ciphertext<A>> {
         }
         match self {
             // Constant entries do not need to be decrypted.
-            Self::Constant(plaintext) => Entry::Constant(plaintext),
+            Self::Constant(plaintext) => Entry::Constant(plaintext.clone()),
             // Public entries do not need to be decrypted.
-            Self::Public(plaintext) => Entry::Public(plaintext),
+            Self::Public(plaintext) => Entry::Public(plaintext.clone()),
             // Private entries are decrypted with the given randomizers.
             Self::Private(private) => Entry::Private(Plaintext::from_fields(
                 &*private
@@ -147,6 +146,7 @@ impl<A: Aleo, Private: Visibility<A>> ToBits for Entry<A, Private> {
     }
 }
 
+#[derive(Clone)]
 pub enum Plaintext<A: Aleo> {
     /// A literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
@@ -273,7 +273,6 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             counter += 16;
 
             let literal = Literal::from_bits_le(&literal_variant, &bits_le[counter..counter + literal_size as usize]);
-            counter += literal_size as usize;
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
@@ -390,6 +389,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
 //     // }
 // }
 
+#[derive(Clone)]
 pub struct Ciphertext<A: Aleo>(Vec<Field<A>>);
 
 impl<A: Aleo> Visibility<A> for Ciphertext<A> {

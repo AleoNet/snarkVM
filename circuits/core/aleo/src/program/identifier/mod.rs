@@ -74,20 +74,6 @@ impl<A: Aleo> Inject for Identifier<A> {
 
         // Return the identifier.
         Self(field, identifier.as_bytes().len() as u8)
-
-        // // Convert the identifier to bits.
-        // let bits_le = field.to_bits_le().eject_value();
-        //
-        // // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-        // match String::from_utf8(bits_le.chunks(8).map(u8::from_bits_le).collect()) {
-        //     // Truncate the UTF-8 string at the first instance of '\0'.
-        //     Ok(string) => match string.split('\0').next() {
-        //         // Return the identifier.
-        //         Some(string) => Self(field, string.len() as u8),
-        //         None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
-        //     },
-        //     Err(error) => A::halt(format!("Failed to eject identifier as string: {error}")),
-        // }
     }
 }
 
