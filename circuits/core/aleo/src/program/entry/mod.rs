@@ -18,43 +18,40 @@ use crate::{Aleo, Identifier, Literal};
 use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U16, U8};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
-/// An entry stored in program data.
-pub enum Entry<A: Aleo, Private: EntryMode<A>> {
-    /// A constant entry.
-    Constant(Value<A, Plaintext<A>>),
-    /// A publicly-visible entry.
-    Public(Value<A, Plaintext<A>>),
-    /// A private entry encrypted under the account owner's address.
-    Private(Value<A, Private>),
+pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> {
+    fn from_bits_le(bits_le: &[Boolean<A>]) -> Self;
 }
 
-// impl<A: Aleo, Private: EntryMode<A>> ToBits for Entry<A, Private> {
-//     type Boolean = Boolean<A>;
-//
-//     /// Returns this entry as a list of **little-endian** bits.
-//     fn to_bits_le(&self) -> Vec<Self::Boolean> {
-//         match self {
-//             Entry::Constant(entry) => entry.to_bits_le(),
-//             Entry::Public(entry) => entry.to_bits_le(),
-//             Entry::Private(entry) => entry.to_bits_le(),
-//         }
-//     }
-//
-//     /// Returns this entry as a list of **big-endian** bits.
-//     fn to_bits_be(&self) -> Vec<Self::Boolean> {
-//         match self {
-//             Entry::Constant(entry) => entry.to_bits_be(),
-//             Entry::Public(entry) => entry.to_bits_be(),
-//             Entry::Private(entry) => entry.to_bits_be(),
-//         }
-//     }
-// }
+/// An entry stored in program data.
+pub enum Entry<A: Aleo, Private: Visibility<A>> {
+    /// A constant entry.
+    Constant(Plaintext<A>),
+    /// A publicly-visible entry.
+    Public(Plaintext<A>),
+    /// A private entry encrypted under the account owner's address.
+    Private(Private),
+}
 
-pub enum Value<A: Aleo, Literal: EntryMode<A>> {
-    /// A literal.
-    Literal(Literal),
-    /// A composite.
-    Composite(Vec<(Identifier<A>, Value<A, Literal>)>),
+impl<A: Aleo, Private: Visibility<A>> ToBits for Entry<A, Private> {
+    type Boolean = Boolean<A>;
+
+    /// Returns this entry as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        match self {
+            Entry::Constant(entry) => entry.to_bits_le(),
+            Entry::Public(entry) => entry.to_bits_le(),
+            Entry::Private(entry) => entry.to_bits_le(),
+        }
+    }
+
+    /// Returns this entry as a list of **big-endian** bits.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        match self {
+            Entry::Constant(entry) => entry.to_bits_be(),
+            Entry::Public(entry) => entry.to_bits_be(),
+            Entry::Private(entry) => entry.to_bits_be(),
+        }
+    }
 }
 
 // impl<A: Aleo> Value<A, Plaintext<A>> {
@@ -75,7 +72,14 @@ pub enum Value<A: Aleo, Literal: EntryMode<A>> {
 //     }
 // }
 
-impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
+pub enum Plaintext<A: Aleo> {
+    /// A literal.
+    Literal(Literal<A>),
+    /// A composite.
+    Composite(Vec<(Identifier<A>, Plaintext<A>)>),
+}
+
+impl<A: Aleo> Visibility<A> for Plaintext<A> {
     /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
         let mut counter = 0;
@@ -112,7 +116,7 @@ impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
                 let composite_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let entry = Value::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
+                let entry = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
                 counter += composite_size as usize;
 
                 composites.push((identifier, entry));
@@ -123,7 +127,9 @@ impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
     }
 }
 
-impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
+impl<A: Aleo> ToBits for Plaintext<A> {
+    type Boolean = Boolean<A>;
+
     /// Returns this entry as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<Boolean<A>> {
         match self {
@@ -150,6 +156,33 @@ impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
             }
         }
     }
+
+    /// Returns this entry as a list of **big-endian** bits.
+    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+        match self {
+            Self::Literal(literal) => {
+                let mut bits_be = Vec::new();
+                bits_be.push(Boolean::constant(false));
+                bits_be.extend(literal.variant().to_bits_be());
+                bits_be.extend(literal.size_in_bits().to_bits_be());
+                bits_be.extend(literal.to_bits_be());
+                bits_be
+            }
+            Self::Composite(composite) => {
+                let mut bits_be = Vec::new();
+                bits_be.push(Boolean::constant(true));
+                bits_be.extend(U8::constant(composite.len() as u8).to_bits_be());
+                for (identifier, value) in composite {
+                    let mut value_bits = value.to_bits_be();
+                    bits_be.extend(identifier.size_in_bits().to_bits_be());
+                    bits_be.extend(identifier.to_bits_be());
+                    bits_be.extend(U16::constant(value_bits.len() as u16).to_bits_be());
+                    bits_be.extend(value_bits);
+                }
+                bits_be
+            }
+        }
+    }
 }
 
 // impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
@@ -168,15 +201,7 @@ impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
 //     // }
 // }
 
-pub trait EntryMode<A: Aleo>: ToBits<Boolean = Boolean<A>> {
-    fn variant(&self) -> U8<A>;
-
-    fn size_in_bits(&self) -> U16<A>;
-
-    fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self;
-}
-
-pub struct Plaintext<A: Aleo>(Literal<A>);
+// pub struct Plaintext<A: Aleo>(Literal<A>);
 
 // impl<A: Aleo> Plaintext<A> {
 //     /// Returns the number of field elements required to represent this plaintext.
@@ -189,50 +214,25 @@ pub struct Plaintext<A: Aleo>(Literal<A>);
 //     }
 // }
 
-impl<A: Aleo> EntryMode<A> for Plaintext<A> {
-    fn variant(&self) -> U8<A> {
-        self.0.variant()
-    }
+// impl<A: Aleo> ToBits for Plaintext<A> {
+//     type Boolean = Boolean<A>;
+//
+//     /// Returns this entry as a list of **little-endian** bits.
+//     fn to_bits_le(&self) -> Vec<Self::Boolean> {
+//         self.0.to_bits_le()
+//     }
+//
+//     /// Returns this entry as a list of **big-endian** bits.
+//     fn to_bits_be(&self) -> Vec<Self::Boolean> {
+//         self.0.to_bits_be()
+//     }
+// }
 
-    fn size_in_bits(&self) -> U16<A> {
-        self.0.size_in_bits()
-    }
+pub struct Ciphertext<A: Aleo>(Vec<Field<A>>);
 
-    fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self {
-        Self(Literal::from_bits_le(variant, bits_le))
-    }
-}
-
-impl<A: Aleo> ToBits for Plaintext<A> {
-    type Boolean = Boolean<A>;
-
-    /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()
-    }
-
-    /// Returns this entry as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_be()
-    }
-}
-
-pub struct Ciphertext<A: Aleo>(U8<A>, Vec<Field<A>>);
-
-impl<A: Aleo> EntryMode<A> for Ciphertext<A> {
-    fn variant(&self) -> U8<A> {
-        self.0.clone()
-    }
-
-    fn size_in_bits(&self) -> U16<A> {
-        U16::constant(self.to_bits_le().len() as u16)
-    }
-
-    fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self {
-        Self(
-            variant.clone(),
-            bits_le.chunks(A::BaseField::size_in_bits()).map(|chunk| Field::from_bits_le(chunk)).collect(),
-        )
+impl<A: Aleo> Visibility<A> for Ciphertext<A> {
+    fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
+        Self(bits_le.chunks(A::BaseField::size_in_bits()).map(|chunk| Field::from_bits_le(chunk)).collect())
     }
 }
 
@@ -241,17 +241,15 @@ impl<A: Aleo> ToBits for Ciphertext<A> {
 
     /// Returns this entry as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = self.0.to_bits_le();
-        bits_le.extend(self.1.iter().flat_map(|field| field.to_bits_le()));
-        assert_eq!(8 + self.1.len() * A::BaseField::size_in_bits(), bits_le.len());
+        let bits_le = self.0.to_bits_le();
+        assert_eq!(self.0.len() * A::BaseField::size_in_bits(), bits_le.len());
         bits_le
     }
 
     /// Returns this entry as a list of **big-endian** bits.
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_be = self.0.to_bits_be();
-        bits_be.extend(self.1.iter().flat_map(|field| field.to_bits_be()));
-        assert_eq!(8 + self.1.len() * A::BaseField::size_in_bits(), bits_be.len());
+        let bits_be = self.0.to_bits_be();
+        assert_eq!(self.0.len() * A::BaseField::size_in_bits(), bits_be.len());
         bits_be
     }
 }
@@ -282,101 +280,87 @@ mod tests {
 
     #[test]
     fn test_value() {
-        let value = Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
-            Mode::Private,
-            true,
-        ))));
+        let value = Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)));
         assert_eq!(
             value.to_bits_le().eject(),
-            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+        let value = Plaintext::<Circuit>::Literal(Literal::Field(Field::new(
             Mode::Private,
             UniformRand::rand(&mut test_rng()),
-        ))));
+        )));
         assert_eq!(
             value.to_bits_le().eject(),
-            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+        let value = Plaintext::<Circuit>::Composite(vec![
             (
                 Identifier::new(Mode::Private, "a".into()),
-                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
-                    Mode::Private,
-                    true,
-                )))),
+                Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true))),
             ),
             (
                 Identifier::new(Mode::Private, "b".into()),
-                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                Plaintext::<Circuit>::Literal(Literal::Field(Field::new(
                     Mode::Private,
                     UniformRand::rand(&mut test_rng()),
-                )))),
+                ))),
             ),
         ]);
         assert_eq!(
             value.to_bits_le().eject(),
-            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+        let value = Plaintext::<Circuit>::Composite(vec![
             (
                 Identifier::new(Mode::Private, "a".into()),
-                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
-                    Mode::Private,
-                    true,
-                )))),
+                Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true))),
             ),
             (
                 Identifier::new(Mode::Private, "b".into()),
-                Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+                Plaintext::<Circuit>::Composite(vec![
                     (
                         Identifier::new(Mode::Private, "c".into()),
-                        Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
-                            Mode::Private,
-                            true,
-                        )))),
+                        Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true))),
                     ),
                     (
                         Identifier::new(Mode::Private, "d".into()),
-                        Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+                        Plaintext::<Circuit>::Composite(vec![
                             (
                                 Identifier::new(Mode::Private, "e".into()),
-                                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(
-                                    Boolean::new(Mode::Private, true),
-                                ))),
+                                Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true))),
                             ),
                             (
                                 Identifier::new(Mode::Private, "f".into()),
-                                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                                Plaintext::<Circuit>::Literal(Literal::Field(Field::new(
                                     Mode::Private,
                                     UniformRand::rand(&mut test_rng()),
-                                )))),
+                                ))),
                             ),
                         ]),
                     ),
                     (
                         Identifier::new(Mode::Private, "g".into()),
-                        Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                        Plaintext::<Circuit>::Literal(Literal::Field(Field::new(
                             Mode::Private,
                             UniformRand::rand(&mut test_rng()),
-                        )))),
+                        ))),
                     ),
                 ]),
             ),
             (
                 Identifier::new(Mode::Private, "h".into()),
-                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                Plaintext::<Circuit>::Literal(Literal::Field(Field::new(
                     Mode::Private,
                     UniformRand::rand(&mut test_rng()),
-                )))),
+                ))),
             ),
         ]);
         assert_eq!(
             value.to_bits_le().eject(),
-            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+            Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
     }
 }

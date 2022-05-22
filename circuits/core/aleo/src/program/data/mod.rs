@@ -21,12 +21,12 @@
 // mod encrypt;
 // mod to_data_id;
 
-use crate::{Aleo, Ciphertext, Entry, EntryMode, Identifier, Plaintext};
+use crate::{Aleo, Ciphertext, Entry, Identifier, Plaintext, Visibility};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
 use std::collections::HashMap;
 
-pub struct Data<A: Aleo, Private: EntryMode<A>>(HashMap<Identifier<A>, Entry<A, Private>>);
+pub struct Data<A: Aleo, Private: Visibility<A>>(HashMap<Identifier<A>, Entry<A, Private>>);
 
 // impl<A: Aleo, Private: EntryMode<A>> Data<A, Private> {
 //     pub fn new() -> Self {

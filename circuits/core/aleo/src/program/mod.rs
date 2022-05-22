@@ -18,7 +18,7 @@ mod data;
 pub use data::Data;
 
 mod entry;
-pub use entry::{Ciphertext, Entry, EntryMode, Plaintext};
+pub use entry::{Ciphertext, Entry, Plaintext, Visibility};
 
 mod identifier;
 pub use identifier::Identifier;
