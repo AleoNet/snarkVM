@@ -54,34 +54,26 @@ pub enum Value<A: Aleo, Literal: EntryMode<A>> {
     /// A literal.
     Literal(Literal),
     /// A composite.
-    Composite(Vec<Composite<A, Literal>>),
+    Composite(Vec<(Identifier<A>, Value<A, Literal>)>),
 }
 
-pub struct Composite<A: Aleo, Literal: EntryMode<A>>(Identifier<A>, Value<A, Literal>);
-
-impl<A: Aleo, Literal: EntryMode<A>> Composite<A, Literal> {
-    /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        let identifier = &self.0;
-        let entry = &self.1;
-
-        let mut bits_le = vec![];
-        bits_le.extend(identifier.size_in_bits().to_bits_le());
-        bits_le.extend(identifier.to_bits_le());
-        bits_le.extend(entry.to_bits_le());
-        bits_le
-    }
-}
-
-impl<A: Aleo, Literal: EntryMode<A>> Composite<A, Literal> {
-    /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
-    fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
-        let identifier_size = U8::from_bits_le(&bits_le[..8]).eject_value();
-        let identifier = Identifier::from_bits_le(&bits_le[8..8 + identifier_size as usize]);
-        let entry = Value::from_bits_le(&bits_le[8 + identifier_size as usize..]);
-        Self(identifier, entry)
-    }
-}
+// impl<A: Aleo> Value<A, Plaintext<A>> {
+//     fn size_in_fields(&self) -> usize {
+//         self.to_bits_le().chunks(A::BaseField::size_in_data_bits()).len()
+//     }
+//
+//     fn encrypt(&self, randomizers: &[Field<A>]) -> Value<A, Ciphertext<A>> {
+//         let ciphertext = self.to_bits_le()
+//             .chunks(A::BaseField::size_in_data_bits())
+//             .map(|bits_le| Field::from_bits_le(bits_le))
+//             .into_iter()
+//             .zip_eq(randomizers.iter())
+//             .map(|(plaintext, randomizer)| plaintext + randomizer)
+//             .collect();
+//
+//
+//     }
+// }
 
 impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
     /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
@@ -109,15 +101,21 @@ impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
             let num_composites = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
             counter += 8;
 
-            let mut composites = Vec::new();
+            let mut composites = Vec::with_capacity(num_composites as usize);
             for _ in 0..num_composites {
+                let identifier_size = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
+                counter += 8;
+
+                let identifier = Identifier::from_bits_le(&bits_le[counter..counter + identifier_size as usize]);
+                counter += identifier_size as usize;
+
                 let composite_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let composite = Composite::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
+                let entry = Value::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
                 counter += composite_size as usize;
 
-                composites.push(composite);
+                composites.push((identifier, entry));
             }
 
             Self::Composite(composites)
@@ -141,10 +139,12 @@ impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
                 let mut bits_le = Vec::new();
                 bits_le.push(Boolean::constant(true));
                 bits_le.extend(U8::constant(composite.len() as u8).to_bits_le());
-                for composite in composite {
-                    let composite_bits = composite.to_bits_le();
-                    bits_le.extend(U16::constant(composite_bits.len() as u16).to_bits_le());
-                    bits_le.extend(composite_bits);
+                for (identifier, value) in composite {
+                    let mut value_bits = value.to_bits_le();
+                    bits_le.extend(identifier.size_in_bits().to_bits_le());
+                    bits_le.extend(identifier.to_bits_le());
+                    bits_le.extend(U16::constant(value_bits.len() as u16).to_bits_le());
+                    bits_le.extend(value_bits);
                 }
                 bits_le
             }
@@ -301,14 +301,14 @@ mod tests {
         );
 
         let value = Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
-            Composite(
+            (
                 Identifier::new(Mode::Private, "a".into()),
                 Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
                     Mode::Private,
                     true,
                 )))),
             ),
-            Composite(
+            (
                 Identifier::new(Mode::Private, "b".into()),
                 Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
                     Mode::Private,
@@ -322,33 +322,33 @@ mod tests {
         );
 
         let value = Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
-            Composite(
+            (
                 Identifier::new(Mode::Private, "a".into()),
                 Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
                     Mode::Private,
                     true,
                 )))),
             ),
-            Composite(
+            (
                 Identifier::new(Mode::Private, "b".into()),
                 Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
-                    Composite(
+                    (
                         Identifier::new(Mode::Private, "c".into()),
                         Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
                             Mode::Private,
                             true,
                         )))),
                     ),
-                    Composite(
+                    (
                         Identifier::new(Mode::Private, "d".into()),
                         Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
-                            Composite(
+                            (
                                 Identifier::new(Mode::Private, "e".into()),
                                 Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(
                                     Boolean::new(Mode::Private, true),
                                 ))),
                             ),
-                            Composite(
+                            (
                                 Identifier::new(Mode::Private, "f".into()),
                                 Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
                                     Mode::Private,
@@ -357,7 +357,7 @@ mod tests {
                             ),
                         ]),
                     ),
-                    Composite(
+                    (
                         Identifier::new(Mode::Private, "g".into()),
                         Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
                             Mode::Private,
@@ -366,7 +366,7 @@ mod tests {
                     ),
                 ]),
             ),
-            Composite(
+            (
                 Identifier::new(Mode::Private, "h".into()),
                 Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
                     Mode::Private,
