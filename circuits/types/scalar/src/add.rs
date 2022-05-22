@@ -106,7 +106,7 @@ impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
-            (_, _) => Count::is(1, 0, 748, 750),
+            (_, _) => Count::is(1, 0, 757, 759),
         }
     }
 }

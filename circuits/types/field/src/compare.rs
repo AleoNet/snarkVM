@@ -118,10 +118,6 @@ mod tests {
     ) {
         // Perform the less than comparison.
         Circuit::scope(name, || {
-            println!("{}", name);
-            println!("  a: {}", a);
-            println!("  b: {}", b);
-            println!("  expected: {}", expected);
             let candidate = a.is_less_than(b);
             assert_eq!(expected, candidate.eject_value());
             match (a.eject_mode(), b.eject_mode()) {
