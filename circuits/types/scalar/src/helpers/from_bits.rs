@@ -58,21 +58,17 @@ impl<E: Environment> FromBits for Scalar<E> {
             // See `Field::is_less_than` for more details.
             let modulus_minus_one_less_than_bits = modulus_minus_one.to_bits_le().iter().zip_eq(padded_bits_le).fold(
                 Boolean::constant(false),
-                |rest_is_less, (modulus_minus_one_bit, other_bit)| {
-                    if *modulus_minus_one_bit {
-                        Boolean::ternary(&!other_bit, other_bit, &rest_is_less)
-                    } else {
-                        Boolean::ternary(other_bit, other_bit, &rest_is_less)
-                    }
+                |rest_is_less, (self_bit, other_bit)| {
+                    if *self_bit { other_bit.bitand(&rest_is_less) } else { other_bit.bitor(&rest_is_less) }
                 },
             );
 
             // Enforce that ScalarField::MODULUS - 1 is not less than the field element given by `bits_le`.
             // In other words, enforce that ScalarField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
             match (modulus_minus_one_less_than_bits.is_constant(), modulus_minus_one_less_than_bits.eject_value()) {
-                (true, true) => {
-                    E::halt("Detected nonzero excess bits while initializing a scalar field element from bits.")
-                }
+                (true, true) => E::halt(
+                    "Attempted to instantiate a scalar field element that is greater than ScalarField::MODULUS - 1.",
+                ),
                 (true, false) => (), // Constraint is satisfied.
                 (false, _) => E::assert(!modulus_minus_one_less_than_bits),
             }
@@ -177,12 +173,12 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 0, 251, 252);
+        check_from_bits_le(Mode::Public, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 251, 252);
+        check_from_bits_le(Mode::Private, 0, 0, 250, 251);
     }
 
     #[test]
@@ -192,11 +188,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 0, 251, 252);
+        check_from_bits_be(Mode::Public, 0, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 251, 252);
+        check_from_bits_be(Mode::Private, 0, 0, 250, 251);
     }
 }

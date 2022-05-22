@@ -67,7 +67,7 @@ impl<E: Environment> FromBits for Field<E> {
             // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
             match (modulus_minus_one_less_than_bits.is_constant(), modulus_minus_one_less_than_bits.eject_value()) {
                 (true, true) => {
-                    E::halt("Detected nonzero excess bits while initializing a base field element from bits.")
+                    E::halt("Attempted to instantiate a field element that is greater than BaseField::MODULUS - 1.")
                 }
                 (true, false) => (), // Constraint is satisfied.
                 (false, _) => E::assert(!modulus_minus_one_less_than_bits),
