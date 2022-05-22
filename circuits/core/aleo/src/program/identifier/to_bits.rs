@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::Data;
+use super::*;
 
-mod entry;
-pub use entry::{Ciphertext, Entry, EntryMode, Plaintext};
+impl<A: Aleo> ToBits for Identifier<A> {
+    type Boolean = Boolean<A>;
 
-mod identifier;
-pub use identifier::Identifier;
+    /// Returns the little-endian bits of the identifier.
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        self.0.to_bits_le()[..8 * self.1 as usize].to_vec()
+    }
 
-mod literal;
-pub use literal::Literal;
-
-mod record;
-pub use record::Record;
-
-mod state;
-pub use state::State;
+    /// Returns the big-endian bits of the identifier.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        let mut bits = self.to_bits_le();
+        bits.reverse();
+        bits
+    }
+}

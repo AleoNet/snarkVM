@@ -99,6 +99,10 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
 
 // TODO (@pranav) Document
 impl<E: Environment, I: IntegerType> Integer<E, I> {
+    pub fn size_in_bits() -> u16 {
+        I::BITS as u16
+    }
+
     fn cast_as_dual(self) -> Integer<E, I::Dual> {
         Integer::<E, I::Dual> { bits_le: self.bits_le, phantom: Default::default() }
     }

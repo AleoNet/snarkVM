@@ -62,7 +62,7 @@ pub trait ToField {
 pub trait ToFields {
     type Field: FieldTrait;
 
-    /// Casts a circuit into a list of base fields.
+    /// Returns the circuit as a list of base field elements.
     fn to_fields(&self) -> Vec<Self::Field>;
 }
 
@@ -71,6 +71,6 @@ pub trait ToGroup {
     type Group: GroupTrait<Self::Scalar>;
     type Scalar: ScalarTrait;
 
-    /// Casts a circuit into an affine group element.
+    /// Returns the circuit as a list of affine group elements.
     fn to_group(&self) -> &Self::Group;
 }

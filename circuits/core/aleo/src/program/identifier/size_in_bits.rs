@@ -14,20 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::Data;
+use super::*;
 
-mod entry;
-pub use entry::{Ciphertext, Entry, EntryMode, Plaintext};
-
-mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::Literal;
-
-mod record;
-pub use record::Record;
-
-mod state;
-pub use state::State;
+impl<A: Aleo> Identifier<A> {
+    /// Returns the number of bits of this identifier.
+    pub fn size_in_bits(&self) -> U8<A> {
+        match self.1.checked_mul(8) {
+            Some(num_bits) => U8::constant(num_bits),
+            None => A::halt("Identifier exceeds maximum allowed size"),
+        }
+    }
+}

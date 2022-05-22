@@ -14,20 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::Data;
+use super::*;
 
-mod entry;
-pub use entry::{Ciphertext, Entry, EntryMode, Plaintext};
+impl<A: Aleo> ToField for Identifier<A> {
+    type Field = Field<A>;
 
-mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::Literal;
-
-mod record;
-pub use record::Record;
-
-mod state;
-pub use state::State;
+    /// Returns the identifier as a base field element.
+    fn to_field(&self) -> Self::Field {
+        self.0.clone()
+    }
+}

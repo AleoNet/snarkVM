@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod from_bits;
+mod size_in_bits;
+mod to_bits;
+mod to_field;
+
 use crate::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field};
+use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U8};
 use snarkvm_utilities::{error, FromBits as FB, ToBits as TB};
 
 use nom::character::complete::{alpha1, alphanumeric1};
@@ -30,7 +35,7 @@ use nom::character::complete::{alpha1, alphanumeric1};
 /// The identifier must not consist solely of underscores.
 /// The identifier must fit within the data capacity of a base field element.
 #[derive(Clone)]
-pub struct Identifier<A: Aleo>(Field<A>, u8);
+pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes
 
 impl<A: Aleo> Inject for Identifier<A> {
     type Primitive = String;
@@ -59,7 +64,7 @@ impl<A: Aleo> Inject for Identifier<A> {
 
         // Ensure identifier fits within the data capacity of the base field.
         let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        if identifier.as_bytes().len() > max_bytes {
+        if identifier.len() > max_bytes {
             A::halt(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long"))
         }
 
@@ -69,6 +74,20 @@ impl<A: Aleo> Inject for Identifier<A> {
 
         // Return the identifier.
         Self(field, identifier.as_bytes().len() as u8)
+
+        // // Convert the identifier to bits.
+        // let bits_le = field.to_bits_le().eject_value();
+        //
+        // // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
+        // match String::from_utf8(bits_le.chunks(8).map(u8::from_bits_le).collect()) {
+        //     // Truncate the UTF-8 string at the first instance of '\0'.
+        //     Ok(string) => match string.split('\0').next() {
+        //         // Return the identifier.
+        //         Some(string) => Self(field, string.len() as u8),
+        //         None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
+        //     },
+        //     Err(error) => A::halt(format!("Failed to eject identifier as string: {error}")),
+        // }
     }
 }
 
@@ -98,85 +117,6 @@ impl<A: Aleo> Eject for Identifier<A> {
             },
             Err(error) => A::halt(format!("Failed to eject identifier as string: {error}")),
         }
-    }
-}
-
-impl<A: Aleo> FromBits for Identifier<A> {
-    type Boolean = Boolean<A>;
-
-    /// Initializes a new identifier from little-endian bits.
-    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        // Recover the field element from the bits.
-        let field = Field::from_bits_le(bits_le);
-        // Recover the identifier length from the bits.
-        let num_bytes = {
-            // Eject the bits in **little-endian** form.
-            let bits_le = field.to_bits_le().eject_value();
-            // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-            let bytes = bits_le.chunks(8).map(u8::from_bits_le).collect::<Vec<_>>();
-            // Find the first instance of a `0` byte, which is the null character '\0' in UTF-8,
-            // and an invalid character according to our rules for representing an identifier.
-            match bytes.iter().position(|&byte| byte == 0) {
-                Some(index) => index,
-                None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
-            }
-        };
-        // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        match num_bytes <= max_bytes {
-            // Return the identifier.
-            true => Self(field, num_bytes as u8),
-            false => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
-        }
-    }
-
-    /// Initializes a new identifier from big-endian bits.
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
-        // Recover the field element from the bits.
-        let field = Field::from_bits_be(bits_be);
-        // Recover the identifier length from the bits.
-        let num_bytes = {
-            // Eject the bits in **little-endian** form (this is correct for this `from_bits_be` case).
-            let bits_le = field.to_bits_le().eject_value();
-            // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-            let bytes = bits_le.chunks(8).map(u8::from_bits_le).collect::<Vec<_>>();
-            // Find the first instance of a `0` byte, which is the null character '\0' in UTF-8,
-            // and an invalid character according to our rules for representing an identifier.
-            match bytes.iter().position(|&byte| byte == 0) {
-                Some(index) => index,
-                None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
-            }
-        };
-        // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        match num_bytes <= max_bytes {
-            // Return the identifier.
-            true => Self(field, num_bytes as u8),
-            false => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
-        }
-    }
-}
-
-impl<A: Aleo> ToBits for Identifier<A> {
-    type Boolean = Boolean<A>;
-
-    /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()[..self.1 as usize].to_vec()
-    }
-
-    /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_be()[..self.1 as usize].to_vec()
-    }
-}
-
-impl<A: Aleo> ToField for Identifier<A> {
-    type Field = Field<A>;
-
-    /// Returns the identifier as a base field element.
-    fn to_field(&self) -> Self::Field {
-        self.0.clone()
     }
 }
 
@@ -293,5 +233,18 @@ mod tests {
     fn test_identifier_display() {
         let identifier = Identifier::<Circuit>::from_str("foo_bar");
         assert_eq!("foo_bar", format!("{identifier}"));
+    }
+
+    #[test]
+    fn test_identifier_bits() {
+        let identifier = Identifier::<Circuit>::from_str("foo_bar");
+        assert_eq!(
+            identifier.to_bits_le().eject(),
+            Identifier::from_bits_le(&identifier.to_bits_le()).to_bits_le().eject()
+        );
+        assert_eq!(
+            identifier.to_bits_be().eject(),
+            Identifier::from_bits_be(&identifier.to_bits_be()).to_bits_be().eject()
+        );
     }
 }

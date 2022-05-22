@@ -15,218 +15,368 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Aleo, Identifier, Literal};
-use snarkvm_circuits_types::{Field, Mode, U8};
+use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U16, U8};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
-pub struct LiteralType<A: Aleo>(U8<A>);
-
-pub trait EntryType<A: Aleo> {
-    /// Returns the recursive depth of this entry.
-    /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
-    fn depth(&self, counter: usize) -> usize;
-    /// Returns the identifiers that compose this entry.
-    fn to_identifiers(&self) -> Vec<Identifier<A>>;
-    /// Returns `true` if the entry is a literal.
-    fn is_literal(&self) -> bool;
-    /// Returns `true` if the entry is a composite.
-    fn is_composite(&self) -> bool;
-}
-
 /// An entry stored in program data.
-pub enum Entry<A: Aleo, Private: EntryType<A>> {
+pub enum Entry<A: Aleo, Private: EntryMode<A>> {
     /// A constant entry.
-    Constant(Plaintext<A>),
+    Constant(Value<A, Plaintext<A>>),
     /// A publicly-visible entry.
-    Public(Plaintext<A>),
+    Public(Value<A, Plaintext<A>>),
     /// A private entry encrypted under the account owner's address.
-    Private(Private),
+    Private(Value<A, Private>),
 }
 
-impl<A: Aleo, Private: EntryType<A>> Entry<A, Private> {
-    /// Returns the recursive depth of this entry.
-    /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
-    fn depth(&self) -> usize {
-        match self {
-            Self::Constant(constant) => constant.depth(0),
-            Self::Public(public) => public.depth(0),
-            Self::Private(private) => private.depth(0),
-        }
-    }
+// impl<A: Aleo, Private: EntryMode<A>> ToBits for Entry<A, Private> {
+//     type Boolean = Boolean<A>;
+//
+//     /// Returns this entry as a list of **little-endian** bits.
+//     fn to_bits_le(&self) -> Vec<Self::Boolean> {
+//         match self {
+//             Entry::Constant(entry) => entry.to_bits_le(),
+//             Entry::Public(entry) => entry.to_bits_le(),
+//             Entry::Private(entry) => entry.to_bits_le(),
+//         }
+//     }
+//
+//     /// Returns this entry as a list of **big-endian** bits.
+//     fn to_bits_be(&self) -> Vec<Self::Boolean> {
+//         match self {
+//             Entry::Constant(entry) => entry.to_bits_be(),
+//             Entry::Public(entry) => entry.to_bits_be(),
+//             Entry::Private(entry) => entry.to_bits_be(),
+//         }
+//     }
+// }
 
-    /// Returns the identifiers that compose this entry.
-    fn to_identifiers(&self) -> Vec<Identifier<A>> {
-        match self {
-            Self::Constant(constant) => constant.to_identifiers(),
-            Self::Public(public) => public.to_identifiers(),
-            Self::Private(private) => private.to_identifiers(),
-        }
-    }
+pub enum Value<A: Aleo, Literal: EntryMode<A>> {
+    /// A literal.
+    Literal(Literal),
+    /// A composite.
+    Composite(Vec<Composite<A, Literal>>),
+}
 
-    // /// If this entry is private, returns the field elements that compose the entry.
-    // /// Otherwise, returns `None`.
-    // fn to_fields(&self) -> Option<Vec<Field<A>>> {
-    //     match self {
-    //         Self::Constant(..) => None,
-    //         Self::Public(..) => None,
-    //         Self::Private(private) => Some(private.to_fields()),
-    //     }
-    // }
+pub struct Composite<A: Aleo, Literal: EntryMode<A>>(Identifier<A>, Value<A, Literal>);
 
-    /// Returns `true` if the entry is a literal.
-    pub fn is_literal(&self) -> bool {
-        match self {
-            Self::Constant(constant) => constant.is_literal(),
-            Self::Public(public) => public.is_literal(),
-            Self::Private(private) => private.is_literal(),
-        }
-    }
+impl<A: Aleo, Literal: EntryMode<A>> Composite<A, Literal> {
+    /// Returns this entry as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
+        let identifier = &self.0;
+        let entry = &self.1;
 
-    /// Returns `true` if the entry is a composite.
-    pub fn is_composite(&self) -> bool {
-        match self {
-            Self::Constant(constant) => constant.is_composite(),
-            Self::Public(public) => public.is_composite(),
-            Self::Private(private) => private.is_composite(),
-        }
-    }
-
-    /// Returns the mode of the entry.
-    pub const fn mode(&self) -> Mode {
-        match self {
-            Self::Constant(..) => Mode::Constant,
-            Self::Public(..) => Mode::Public,
-            Self::Private(..) => Mode::Private,
-        }
-    }
-
-    /// Returns `true` if the entry is constant.
-    pub const fn is_constant(&self) -> bool {
-        matches!(self, Self::Constant(..))
-    }
-
-    /// Returns `true` if the entry is public.
-    pub const fn is_public(&self) -> bool {
-        matches!(self, Self::Public(..))
-    }
-
-    /// Returns `true` if the entry is private.
-    pub const fn is_private(&self) -> bool {
-        matches!(self, Self::Private(..))
+        let mut bits_le = vec![];
+        bits_le.extend(identifier.size_in_bits().to_bits_le());
+        bits_le.extend(identifier.to_bits_le());
+        bits_le.extend(entry.to_bits_le());
+        bits_le
     }
 }
 
-pub enum Plaintext<A: Aleo> {
-    /// A public literal.
-    Literal(Literal<A>),
-    /// A public composite.
-    Composite(Vec<(Identifier<A>, Plaintext<A>)>),
+impl<A: Aleo, Literal: EntryMode<A>> Composite<A, Literal> {
+    /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
+    fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
+        let identifier_size = U8::from_bits_le(&bits_le[..8]).eject_value();
+        let identifier = Identifier::from_bits_le(&bits_le[8..8 + identifier_size as usize]);
+        let entry = Value::from_bits_le(&bits_le[8 + identifier_size as usize..]);
+        Self(identifier, entry)
+    }
 }
 
-impl<A: Aleo> EntryType<A> for Plaintext<A> {
-    /// Returns the recursive depth of this public entry.
-    /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
-    fn depth(&self, counter: usize) -> usize {
+impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
+    /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
+    fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
+        let mut counter = 0;
+
+        let is_literal = !Boolean::from_bits_le(&[bits_le[counter].clone()]).eject_value();
+        counter += 1;
+
+        // Literal
+        if is_literal {
+            let literal_variant = U8::from_bits_le(&bits_le[counter..counter + 8]);
+            counter += 8;
+
+            let literal_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
+            counter += 16;
+
+            let literal = Literal::from_bits_le(&literal_variant, &bits_le[counter..counter + literal_size as usize]);
+            counter += literal_size as usize;
+
+            Self::Literal(literal)
+        }
+        // Composite
+        else {
+            let num_composites = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
+            counter += 8;
+
+            let mut composites = Vec::new();
+            for _ in 0..num_composites {
+                let composite_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
+                counter += 16;
+
+                let composite = Composite::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
+                counter += composite_size as usize;
+
+                composites.push(composite);
+            }
+
+            Self::Composite(composites)
+        }
+    }
+}
+
+impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
+    /// Returns this entry as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
         match self {
-            Self::Literal(..) => 1,
+            Self::Literal(literal) => {
+                let mut bits_le = Vec::new();
+                bits_le.push(Boolean::constant(false));
+                bits_le.extend(literal.variant().to_bits_le());
+                bits_le.extend(literal.size_in_bits().to_bits_le());
+                bits_le.extend(literal.to_bits_le());
+                bits_le
+            }
             Self::Composite(composite) => {
-                // Determine the maximum depth of the composite.
-                let max_depth = composite.iter().map(|(_, public)| public.depth(counter)).fold(0, |a, b| a.max(b));
-                // Add `1` to the depth of the member with the largest depth.
-                max_depth.saturating_add(1)
+                let mut bits_le = Vec::new();
+                bits_le.push(Boolean::constant(true));
+                bits_le.extend(U8::constant(composite.len() as u8).to_bits_le());
+                for composite in composite {
+                    let composite_bits = composite.to_bits_le();
+                    bits_le.extend(U16::constant(composite_bits.len() as u16).to_bits_le());
+                    bits_le.extend(composite_bits);
+                }
+                bits_le
             }
         }
     }
+}
 
-    /// Returns the identifiers that compose this public entry.
-    fn to_identifiers(&self) -> Vec<Identifier<A>> {
-        match self {
-            Self::Literal(..) => vec![],
-            Self::Composite(composite) => composite
-                .iter()
-                .flat_map(|(identifier, public)| {
-                    // Recursively get the identifiers of the member.
-                    let mut identifiers = vec![identifier.clone()];
-                    identifiers.extend(public.to_identifiers());
-                    identifiers
-                })
-                .collect(),
-        }
+// impl<A: Aleo, Literal: EntryMode<A>> Value<A, Literal> {
+//     // /// Returns the recursive depth of this entry.
+//     // /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
+//     // fn depth(&self, counter: usize) -> usize {
+//     //     match self {
+//     //         Self::Literal(..) => 1,
+//     //         Self::Composite(composite) => {
+//     //             // Determine the maximum depth of the composite.
+//     //             let max_depth = composite.iter().map(|(_, entry)| entry.depth(counter)).fold(0, |a, b| a.max(b));
+//     //             // Add `1` to the depth of the member with the largest depth.
+//     //             max_depth.saturating_add(1)
+//     //         }
+//     //     }
+//     // }
+// }
+
+pub trait EntryMode<A: Aleo>: ToBits<Boolean = Boolean<A>> {
+    fn variant(&self) -> U8<A>;
+
+    fn size_in_bits(&self) -> U16<A>;
+
+    fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self;
+}
+
+pub struct Plaintext<A: Aleo>(Literal<A>);
+
+// impl<A: Aleo> Plaintext<A> {
+//     /// Returns the number of field elements required to represent this plaintext.
+//     fn size_in_fields(&self) -> usize {
+//         // self.0.
+//     }
+//
+//     fn encrypt(&self, randomizers: &[Field<A>]) -> Ciphertext<A> {
+//
+//     }
+// }
+
+impl<A: Aleo> EntryMode<A> for Plaintext<A> {
+    fn variant(&self) -> U8<A> {
+        self.0.variant()
     }
 
-    /// Returns `true` if the entry is a literal.
-    fn is_literal(&self) -> bool {
-        matches!(self, Self::Literal(..))
+    fn size_in_bits(&self) -> U16<A> {
+        self.0.size_in_bits()
     }
 
-    /// Returns `true` if the entry is a composite.
-    fn is_composite(&self) -> bool {
-        matches!(self, Self::Composite(..))
+    fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self {
+        Self(Literal::from_bits_le(variant, bits_le))
     }
 }
 
-pub enum Ciphertext<A: Aleo> {
-    /// A private literal.
-    Literal(LiteralType<A>, Vec<Field<A>>),
-    /// A private composite.
-    Composite(Vec<(Identifier<A>, Ciphertext<A>)>),
-}
+impl<A: Aleo> ToBits for Plaintext<A> {
+    type Boolean = Boolean<A>;
 
-impl<A: Aleo> EntryType<A> for Ciphertext<A> {
-    /// Returns the recursive depth of this private entry.
-    /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
-    fn depth(&self, counter: usize) -> usize {
-        match self {
-            Self::Literal(..) => 1,
-            Self::Composite(composite) => {
-                // Determine the maximum depth of the composite.
-                let max_depth = composite.iter().map(|(_, private)| private.depth(counter)).fold(0, |a, b| a.max(b));
-                // Add `1` to the depth of the member with the largest depth.
-                max_depth.saturating_add(1)
-            }
-        }
+    /// Returns this entry as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        self.0.to_bits_le()
     }
 
-    /// Returns the identifiers that compose this private entry.
-    fn to_identifiers(&self) -> Vec<Identifier<A>> {
-        match self {
-            Self::Literal(..) => vec![],
-            Self::Composite(composite) => composite
-                .iter()
-                .flat_map(|(identifier, private)| {
-                    // Recursively get the identifiers of the member.
-                    let mut identifiers = vec![identifier.clone()];
-                    identifiers.extend(private.to_identifiers());
-                    identifiers
-                })
-                .collect(),
-        }
-    }
-
-    /// Returns `true` if the entry is a literal.
-    fn is_literal(&self) -> bool {
-        matches!(self, Self::Literal(..))
-    }
-
-    /// Returns `true` if the entry is a composite.
-    fn is_composite(&self) -> bool {
-        matches!(self, Self::Composite(..))
+    /// Returns this entry as a list of **big-endian** bits.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        self.0.to_bits_be()
     }
 }
 
-impl<A: Aleo> Ciphertext<A> {
-    /// Returns the field elements that compose this private entry.
-    fn to_fields(&self) -> Vec<Field<A>> {
-        match self {
-            Self::Literal(_, literal) => (*literal).clone(),
-            Self::Composite(composite) => composite.iter().flat_map(|(_, private)| private.to_fields()).collect(),
-        }
+pub struct Ciphertext<A: Aleo>(U8<A>, Vec<Field<A>>);
+
+impl<A: Aleo> EntryMode<A> for Ciphertext<A> {
+    fn variant(&self) -> U8<A> {
+        self.0.clone()
     }
 
-    /// Returns the number of field elements required to represent this private entry.
-    fn len(&self) -> usize {
-        match self {
-            Self::Literal(_, literal) => literal.len(),
-            Self::Composite(composite) => composite.iter().map(|(_, private)| private.len()).sum(),
-        }
+    fn size_in_bits(&self) -> U16<A> {
+        U16::constant(self.to_bits_le().len() as u16)
+    }
+
+    fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self {
+        Self(
+            variant.clone(),
+            bits_le.chunks(A::BaseField::size_in_bits()).map(|chunk| Field::from_bits_le(chunk)).collect(),
+        )
+    }
+}
+
+impl<A: Aleo> ToBits for Ciphertext<A> {
+    type Boolean = Boolean<A>;
+
+    /// Returns this entry as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        let mut bits_le = self.0.to_bits_le();
+        bits_le.extend(self.1.iter().flat_map(|field| field.to_bits_le()));
+        assert_eq!(8 + self.1.len() * A::BaseField::size_in_bits(), bits_le.len());
+        bits_le
+    }
+
+    /// Returns this entry as a list of **big-endian** bits.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        let mut bits_be = self.0.to_bits_be();
+        bits_be.extend(self.1.iter().flat_map(|field| field.to_bits_be()));
+        assert_eq!(8 + self.1.len() * A::BaseField::size_in_bits(), bits_be.len());
+        bits_be
+    }
+}
+
+// impl<A: Aleo> Ciphertext<A> {
+//     /// Returns the field elements that compose this entry.
+//     fn to_fields(&self) -> Vec<Field<A>> {
+//         match self {
+//             Self::Literal(_, literal) => (*literal).clone(),
+//             Self::Composite(composite) => composite.iter().flat_map(|(_, private)| private.to_fields()).collect(),
+//         }
+//     }
+//
+//     /// Returns the number of field elements required to represent this entry.
+//     fn len(&self) -> usize {
+//         match self {
+//             Self::Literal(_, literal) => literal.len(),
+//             Self::Composite(composite) => composite.iter().map(|(_, private)| private.len()).sum(),
+//         }
+//     }
+// }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::AleoV0 as Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    #[test]
+    fn test_value() {
+        let value = Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
+            Mode::Private,
+            true,
+        ))));
+        assert_eq!(
+            value.to_bits_le().eject(),
+            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+        );
+
+        let value = Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+            Mode::Private,
+            UniformRand::rand(&mut test_rng()),
+        ))));
+        assert_eq!(
+            value.to_bits_le().eject(),
+            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+        );
+
+        let value = Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+            Composite(
+                Identifier::new(Mode::Private, "a".into()),
+                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
+                    Mode::Private,
+                    true,
+                )))),
+            ),
+            Composite(
+                Identifier::new(Mode::Private, "b".into()),
+                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                    Mode::Private,
+                    UniformRand::rand(&mut test_rng()),
+                )))),
+            ),
+        ]);
+        assert_eq!(
+            value.to_bits_le().eject(),
+            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+        );
+
+        let value = Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+            Composite(
+                Identifier::new(Mode::Private, "a".into()),
+                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
+                    Mode::Private,
+                    true,
+                )))),
+            ),
+            Composite(
+                Identifier::new(Mode::Private, "b".into()),
+                Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+                    Composite(
+                        Identifier::new(Mode::Private, "c".into()),
+                        Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(Boolean::new(
+                            Mode::Private,
+                            true,
+                        )))),
+                    ),
+                    Composite(
+                        Identifier::new(Mode::Private, "d".into()),
+                        Value::<Circuit, Plaintext<Circuit>>::Composite(vec![
+                            Composite(
+                                Identifier::new(Mode::Private, "e".into()),
+                                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Boolean(
+                                    Boolean::new(Mode::Private, true),
+                                ))),
+                            ),
+                            Composite(
+                                Identifier::new(Mode::Private, "f".into()),
+                                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                                    Mode::Private,
+                                    UniformRand::rand(&mut test_rng()),
+                                )))),
+                            ),
+                        ]),
+                    ),
+                    Composite(
+                        Identifier::new(Mode::Private, "g".into()),
+                        Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                            Mode::Private,
+                            UniformRand::rand(&mut test_rng()),
+                        )))),
+                    ),
+                ]),
+            ),
+            Composite(
+                Identifier::new(Mode::Private, "h".into()),
+                Value::<Circuit, Plaintext<Circuit>>::Literal(Plaintext(Literal::Field(Field::new(
+                    Mode::Private,
+                    UniformRand::rand(&mut test_rng()),
+                )))),
+            ),
+        ]);
+        assert_eq!(
+            value.to_bits_le().eject(),
+            Value::<Circuit, Plaintext<Circuit>>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
+        );
     }
 }
