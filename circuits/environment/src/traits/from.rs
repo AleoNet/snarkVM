@@ -38,7 +38,7 @@ pub trait FromBits {
         Self: Sized;
 }
 
-/// Unary operator for converting from a base field.
+/// Unary operator for converting from a base field element.
 pub trait FromField {
     type Field: FieldTrait;
 
@@ -46,7 +46,15 @@ pub trait FromField {
     fn from_field(field: Self::Field) -> Self;
 }
 
-/// Unary operator for converting from an affine group.
+/// Unary operator for converting from a list of base elements.
+pub trait FromFields {
+    type Field: FieldTrait;
+
+    /// Casts a circuit from a list of base field elements.
+    fn from_fields(fields: &[Self::Field]) -> Self;
+}
+
+/// Unary operator for converting from an affine group element.
 pub trait FromGroup {
     type Group: GroupTrait<Self::Scalar>;
     type Scalar: ScalarTrait;
