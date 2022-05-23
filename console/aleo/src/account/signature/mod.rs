@@ -22,12 +22,11 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
-    FromBits,
     FromBytes,
     ToBytes,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {

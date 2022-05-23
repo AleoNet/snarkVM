@@ -52,6 +52,10 @@ version = "1.4"
 [dependencies.once_cell]
 version = "1.10.0"
 
+[dependencies.rayon]
+version = "1"
+optional = true
+
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
@@ -64,3 +68,7 @@ version = "1.3"
 
 [dev-dependencies.rand]
 version = "0.8"
+
+[features]
+default = ["parallel"]
+parallel = ["rayon"]

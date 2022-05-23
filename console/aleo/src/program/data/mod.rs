@@ -22,13 +22,11 @@ use crate::{
     ViewKey,
     Visibility,
 };
-use snarkvm_circuits_environment::Mode;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBits, ToBits, ToBytes};
 
 use anyhow::{bail, Result};
-use itertools::Itertools;
 
 struct Literal<N: Network>(N::Field);
 struct LiteralType<N: Network>(N::Field);

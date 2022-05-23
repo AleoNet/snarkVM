@@ -17,7 +17,7 @@
 use super::*;
 
 /// A trait for a Merkle path hash function.
-pub trait PathHash<N: Network>: Clone {
+pub trait PathHash<N: Network>: Clone + Send + Sync {
     /// Returns the hash of the given path nodes.
     fn hash(&self, left: &N::Field, right: &N::Field) -> Result<N::Field>;
 

@@ -17,8 +17,8 @@
 use super::*;
 
 /// A trait for a Merkle leaf hash function.
-pub trait LeafHash<N: Network>: Clone {
-    type Leaf: Clone;
+pub trait LeafHash<N: Network>: Clone + Send + Sync {
+    type Leaf: Clone + Send + Sync;
 
     /// Returns the hash of the given leaf node.
     fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field>;

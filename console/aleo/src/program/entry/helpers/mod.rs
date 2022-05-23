@@ -16,26 +16,8 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Identifier<N> {
-    /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<bool> {
-        (&self).to_bits_le()
-    }
+mod ciphertext;
+pub use ciphertext::*;
 
-    /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<bool> {
-        (&self).to_bits_be()
-    }
-}
-
-impl<N: Network> ToBits for &Identifier<N> {
-    /// Returns the little-endian bits of the identifier.
-    fn to_bits_le(&self) -> Vec<bool> {
-        self.0.to_bits_le()
-    }
-
-    /// Returns the big-endian bits of the identifier.
-    fn to_bits_be(&self) -> Vec<bool> {
-        self.0.to_bits_be()
-    }
-}
+mod plaintext;
+pub use plaintext::*;

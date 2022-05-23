@@ -43,7 +43,7 @@ pub use transaction::*;
 pub mod transition;
 pub use transition::*;
 
-use snarkvm_curves::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters};
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::traits::*;
 
 use anyhow::Result;

@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod from_bits;
-mod size_in_bits;
-mod to_bits;
+mod bits;
 
 use crate::Network;
 use snarkvm_fields::PrimeField;
@@ -159,14 +157,6 @@ mod tests {
     fn test_identifier_display() -> Result<()> {
         let identifier = Identifier::<CurrentNetwork>::from_str("foo_bar")?;
         assert_eq!("foo_bar", format!("{identifier}"));
-        Ok(())
-    }
-
-    #[test]
-    fn test_identifier_bits() -> Result<()> {
-        let identifier = Identifier::<CurrentNetwork>::from_str("foo_bar")?;
-        assert_eq!(identifier, Identifier::from_bits_le(&identifier.to_bits_le())?);
-        assert_eq!(identifier, Identifier::from_bits_be(&identifier.to_bits_be())?);
         Ok(())
     }
 }
