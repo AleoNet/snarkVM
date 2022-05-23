@@ -14,19 +14,46 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::Result;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::Network;
+use crate::{InputPublicVariables, Network, OutputPublicVariables};
 
 /// Program ID, program path, verifying key, and proof.
 #[derive(Clone, Derivative)]
 #[derivative(Debug(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
 pub struct KernelProof<N: Network> {
-    pub input_proof: N::InputProof,
-    pub output_proof: N::OutputProof,
+    pub input_proof: Option<N::InputProof>,
+    pub output_proof: Option<N::OutputProof>,
+}
+
+impl<N: Network> KernelProof<N> {
+    pub fn verify(
+        &self,
+        input_public_variables: &[InputPublicVariables<N>],
+        output_public_variables: &[OutputPublicVariables<N>],
+    ) -> Result<bool, SNARKError> {
+        let input_is_valid = match input_public_variables.is_empty() {
+            true => true,
+            false => N::InputSNARK::verify_batch(
+                N::input_verifying_key(),
+                input_public_variables,
+                self.input_proof.as_ref().unwrap(),
+            )?,
+        };
+        let output_is_valid = match output_public_variables.is_empty() {
+            true => true,
+            false => N::OutputSNARK::verify_batch(
+                N::output_verifying_key(),
+                output_public_variables,
+                self.output_proof.as_ref().unwrap(),
+            )?,
+        };
+        Ok(input_is_valid & output_is_valid)
+    }
 }
 
 impl<N: Network> ToBytes for KernelProof<N> {
@@ -34,8 +61,15 @@ impl<N: Network> ToBytes for KernelProof<N> {
     where
         Self: Sized,
     {
-        self.input_proof.write_le(&mut writer)?;
-        self.output_proof.write_le(&mut writer)
+        self.input_proof.is_some().write_le(&mut writer)?;
+        if let Some(proof) = &self.input_proof {
+            proof.write_le(&mut writer)?;
+        }
+        self.output_proof.is_some().write_le(&mut writer)?;
+        if let Some(proof) = &self.output_proof {
+            proof.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 
@@ -44,8 +78,10 @@ impl<N: Network> FromBytes for KernelProof<N> {
     where
         Self: Sized,
     {
-        let input_proof = FromBytes::read_le(&mut reader)?;
-        let output_proof = FromBytes::read_le(&mut reader)?;
+        let input_proof_is_present = bool::read_le(&mut reader)?;
+        let input_proof = input_proof_is_present.then(|| N::InputProof::read_le(&mut reader)).transpose()?;
+        let output_proof_is_present = bool::read_le(&mut reader)?;
+        let output_proof = output_proof_is_present.then(|| N::OutputProof::read_le(&mut reader)).transpose()?;
         Ok(KernelProof { input_proof, output_proof })
     }
 }

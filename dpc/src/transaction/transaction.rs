@@ -204,6 +204,27 @@ impl<N: Network> Transaction<N> {
             return false;
         }
 
+        let input_public_variables: Vec<_> = self
+            .transitions
+            .iter()
+            .flat_map(|t| t.input_public_variables(self.ledger_root, transitions.root()))
+            .collect();
+
+        let output_public_variables: Vec<_> =
+            self.transitions.iter().flat_map(|t| t.output_public_variables()).collect();
+
+        match self.kernel_proof.verify(&input_public_variables, &output_public_variables) {
+            Ok(false) => {
+                eprintln!("Transaction contains an invalid kernel proof");
+                return false;
+            }
+            Err(error) => {
+                eprintln!("Transaction failed to verify kernel proof: {}", error);
+                return false;
+            }
+            _ => {}
+        }
+
         true
     }
 

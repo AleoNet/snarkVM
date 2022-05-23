@@ -158,8 +158,14 @@ impl<N: Network> VirtualMachine<N> {
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Transaction<N>> {
-        let input_proof = N::InputSNARK::prove_batch(N::input_proving_key(), &self.input_circuits, rng)?.into();
-        let output_proof = N::OutputSNARK::prove_batch(N::output_proving_key(), &self.output_circuits, rng)?.into();
+        let input_proof = (!self.input_circuits.is_empty())
+            .then(|| N::InputSNARK::prove_batch(N::input_proving_key(), &self.input_circuits, rng))
+            .transpose()?
+            .map(Into::into);
+        let output_proof = (!self.output_circuits.is_empty())
+            .then(|| N::OutputSNARK::prove_batch(N::output_proving_key(), &self.output_circuits, rng))
+            .transpose()?
+            .map(Into::into);
         let kernel_proof = KernelProof::<N> { input_proof, output_proof };
 
         Transaction::from(

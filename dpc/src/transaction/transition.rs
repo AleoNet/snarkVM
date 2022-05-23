@@ -125,6 +125,32 @@ impl<N: Network> Transition<N> {
         }
     }
 
+    pub fn input_public_variables(
+        &self,
+        ledger_root: N::LedgerRoot,
+        local_transitions_root: N::TransactionID,
+    ) -> impl Iterator<Item = InputPublicVariables<N>> + '_ {
+        let program_id = self.execution.program_execution.as_ref().map(|x| x.program_id);
+        self.serial_numbers().zip_eq(self.input_value_commitments()).map(
+            move |(serial_number, input_value_commitment)| {
+                InputPublicVariables::new(
+                    *serial_number,
+                    input_value_commitment.clone(),
+                    ledger_root,
+                    local_transitions_root,
+                    program_id,
+                )
+            },
+        )
+    }
+
+    pub fn output_public_variables(&self) -> impl Iterator<Item = OutputPublicVariables<N>> + '_ {
+        let program_id = self.execution.program_execution.as_ref().map(|x| x.program_id);
+        self.commitments().zip_eq(self.output_value_commitments()).map(move |(commitment, output_value_commitment)| {
+            OutputPublicVariables::new(*commitment, output_value_commitment.clone(), program_id)
+        })
+    }
+
     /// Returns `true` if the transition ID is well-formed and the transition proof is valid.
     #[inline]
     pub fn verify(
