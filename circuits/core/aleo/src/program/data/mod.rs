@@ -22,7 +22,7 @@ mod encrypt;
 // mod to_data_id;
 
 use crate::{Aleo, Ciphertext, Entry, Identifier, Plaintext, Visibility};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Group, Scalar};
 
 pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Entry<A, Private>)>);
 

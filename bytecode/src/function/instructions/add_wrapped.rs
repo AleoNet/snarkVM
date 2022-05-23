@@ -16,6 +16,7 @@
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
+    LiteralType,
     Program,
     Value,
 };
@@ -24,7 +25,6 @@ use snarkvm_circuits::{
     AddWrapped as AddWrappedCircuit,
     Count,
     Literal,
-    LiteralType,
     Metrics,
     Parser,
     ParserResult,

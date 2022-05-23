@@ -178,7 +178,8 @@ where
         Ok(plaintext_bits
             .chunks(capacity)
             .map(|chunk| {
-                TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap()
+                TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk).unwrap())
+                    .unwrap()
             })
             .collect())
     }

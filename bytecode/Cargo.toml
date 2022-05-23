@@ -19,6 +19,12 @@ path = "../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.enum_index]
+version = "0.2"
+
+[dependencies.enum_index_derive]
+version = "0.2"
+
 [dependencies.indexmap]
 version = "1.8"
 

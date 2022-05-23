@@ -200,7 +200,6 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             counter += 16;
 
             let literal = Literal::from_bits_be(&literal_variant, &bits_be[counter..counter + literal_size as usize]);
-            counter += literal_size as usize;
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();

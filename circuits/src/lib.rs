@@ -16,9 +16,6 @@
 
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
 // pub use snarkvm_circuits_core as core;
 pub use snarkvm_circuits_core::{
     aleo::{Aleo, AleoV0, Literal},
@@ -34,14 +31,8 @@ pub use snarkvm_circuits_environment::*;
 pub use snarkvm_circuits_types as types;
 pub use snarkvm_circuits_types::*;
 
-// mod identifier;
-// pub use identifier::*;
-
-mod literal_type;
-pub use literal_type::*;
-
-mod primitive;
-pub use primitive::*;
+// mod primitive;
+// pub use primitive::*;
 
 pub mod prelude {
     pub use super::*;

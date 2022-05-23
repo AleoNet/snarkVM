@@ -333,7 +333,7 @@ where
         bits.resize(TE::ScalarField::size_in_data_bits(), false);
 
         // Output the scalar field.
-        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
+        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits).unwrap();
         match <TE::ScalarField as PrimeField>::from_repr(biginteger) {
             // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
             Some(scalar) => scalar,

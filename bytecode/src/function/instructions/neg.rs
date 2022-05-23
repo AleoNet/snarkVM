@@ -16,25 +16,11 @@
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{
-    count,
-    Count,
-    Field,
-    Group,
-    Literal,
-    LiteralType,
-    Metrics,
-    Parser,
-    ParserResult,
-    I128,
-    I16,
-    I32,
-    I64,
-    I8,
-};
+use snarkvm_circuits::{count, Count, Field, Group, Literal, Metrics, Parser, ParserResult, I128, I16, I32, I64, I8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

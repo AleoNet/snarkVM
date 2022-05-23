@@ -93,7 +93,8 @@ mod tests {
                 bits.resize(<Circuit as Environment>::ScalarField::size_in_data_bits(), false);
 
                 // Output the scalar field.
-                let biginteger = <<Circuit as Environment>::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
+                let biginteger =
+                    <<Circuit as Environment>::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits).unwrap();
                 match <<Circuit as Environment>::ScalarField as PrimeField>::from_repr(biginteger) {
                     // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
                     Some(scalar) => scalar,

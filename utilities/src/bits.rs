@@ -199,20 +199,22 @@ mod tests {
     use super::*;
     use crate::{test_rng, UniformRand};
 
+    use anyhow::Result;
+
     const ITERATIONS: u64 = 10000;
 
     #[test]
-    fn test_integers() {
+    fn test_integers() -> Result<()> {
         macro_rules! check_integer {
             ($integer:tt) => {{
                 for _ in 0..ITERATIONS {
                     let expected: $integer = UniformRand::rand(&mut test_rng());
 
                     let bits_le = expected.to_bits_le();
-                    assert_eq!(expected, $integer::from_bits_le(&bits_le));
+                    assert_eq!(expected, $integer::from_bits_le(&bits_le)?);
 
                     let bits_be = expected.to_bits_be();
-                    assert_eq!(expected, $integer::from_bits_be(&bits_be));
+                    assert_eq!(expected, $integer::from_bits_be(&bits_be)?);
                 }
             }};
         }
@@ -228,5 +230,7 @@ mod tests {
         check_integer!(i32);
         check_integer!(i64);
         check_integer!(i128);
+
+        Ok(())
     }
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{variable_length::*, Annotation, Identifier, Program, Sanitizer};
+use crate::{variable_length::*, Annotation, Identifier, LiteralType, Program, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -208,7 +208,7 @@ impl<P: Program> ToBytes for Value<P> {
 #[cfg(test)] // Do not remove the `#[cfg(test)]`. It is not a performant way to compare values.
 impl<P: Program> PartialEq for Value<P> {
     fn eq(&self, other: &Self) -> bool {
-        self.to_literals().eject() == other.to_literals().eject()
+        self.to_bytes_le().unwrap() == other.to_bytes_le().unwrap()
     }
 }
 

@@ -14,18 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, Program};
+use crate::{Identifier, LiteralType, Program};
 use snarkvm_circuits::prelude::*;
-use snarkvm_utilities::{error, FromBytes, ToBytes};
-
-use std::io::{Read, Result as IoResult, Write};
+use snarkvm_utilities::{
+    error,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    ToBytes,
+};
 
 /// An annotation defines the type parameter for a register.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Annotation<P: Program> {
     /// A literal annotation contains its type name and mode.
     /// The format of the annotation is `<type_name>.<mode>`.
-    Literal(LiteralType<P::Environment>),
+    Literal(LiteralType<P>),
     /// A definition annotation contains its identifier.
     /// The format of the annotation is `<identifier>`.
     Definition(Identifier<P>),
