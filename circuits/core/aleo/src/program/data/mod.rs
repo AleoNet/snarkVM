@@ -17,64 +17,14 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-// mod decrypt;
-// mod encrypt;
+mod decrypt;
+mod encrypt;
 // mod to_data_id;
 
 use crate::{Aleo, Ciphertext, Entry, Identifier, Plaintext, Visibility};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
 pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Entry<A, Private>)>);
-
-impl<A: Aleo> Data<A, Plaintext<A>> {
-    /// Encrypts `self` under the given Aleo address and randomizer.
-    pub fn encrypt(&self, address: Address<A>, randomizer: Scalar<A>) -> Data<A, Ciphertext<A>> {
-        // Compute the data view key.
-        let data_view_key = (address.to_group() * randomizer).to_x_coordinate();
-        // Determine the number of randomizers needed to encrypt the data.
-        let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
-        // Prepare a randomizer for each field element.
-        let randomizers = A::hash_many_psd8(&[A::encryption_domain(), data_view_key], num_randomizers);
-        // Encrypt the data.
-        let mut index: usize = 0;
-        let mut encrypted_data = Vec::with_capacity(self.0.len());
-        for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
-            // Retrieve the randomizers for this entry.
-            let randomizers = &randomizers[index..index + num_randomizers];
-            // Encrypt the entry, and add the entry.
-            encrypted_data.push((id.clone(), entry.encrypt(randomizers)));
-            // Increment the index.
-            index += num_randomizers;
-        }
-        Data(encrypted_data)
-    }
-}
-
-impl<A: Aleo> Data<A, Ciphertext<A>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce,
-    pub fn decrypt(&self, view_key: Scalar<A>, nonce: Field<A>) -> Data<A, Plaintext<A>> {
-        // Recover the nonce as a group.
-        let nonce = Group::from_x_coordinate(nonce);
-        // Compute the data view key.
-        let data_view_key = (view_key * nonce).to_x_coordinate();
-        // Determine the number of randomizers needed to encrypt the data.
-        let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
-        // Prepare a randomizer for each field element.
-        let randomizers = A::hash_many_psd8(&[A::encryption_domain(), data_view_key], num_randomizers);
-        // Decrypt the data.
-        let mut index: usize = 0;
-        let mut decrypted_data = Vec::with_capacity(self.0.len());
-        for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
-            // Retrieve the randomizers for this entry.
-            let randomizers = &randomizers[index..index + num_randomizers];
-            // Decrypt the entry, and add the entry.
-            decrypted_data.push((id.clone(), entry.decrypt(randomizers)));
-            // Increment the index.
-            index += num_randomizers;
-        }
-        Data(decrypted_data)
-    }
-}
 
 impl<A: Aleo, Private: Visibility<A>> TypeName for Data<A, Private> {
     fn type_name() -> &'static str {

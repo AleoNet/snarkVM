@@ -90,7 +90,15 @@ impl<A: Aleo> Eject for Identifier<A> {
         // Convert the identifier to bits.
         let bits_le = self.0.to_bits_le().eject_value();
         // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-        match String::from_utf8(bits_le.chunks(8).map(u8::from_bits_le).collect()) {
+        match String::from_utf8(
+            bits_le
+                .chunks(8)
+                .map(|byte| match u8::from_bits_le(byte) {
+                    Ok(byte) => byte,
+                    Err(error) => A::halt(format!("Failed to recover an identifier from bits: {error}")),
+                })
+                .collect::<Vec<_>>(),
+        ) {
             // Truncate the UTF-8 string at the first instance of '\0'.
             Ok(string) => match string.split('\0').next() {
                 // Check that the UTF-8 string matches the expected length.

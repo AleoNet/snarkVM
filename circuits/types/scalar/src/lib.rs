@@ -64,7 +64,10 @@ impl<E: Environment> Eject for Scalar<E> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         let bits = self.bits_le.eject_value();
-        let biginteger = <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]);
+        let biginteger = match <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]) {
+            Ok(biginteger) => biginteger,
+            Err(error) => E::halt(format!("Failed to compose scalar biginteger from bits: {error}")),
+        };
         match <E::ScalarField as PrimeField>::from_repr(biginteger) {
             Some(scalar) => scalar,
             None => E::halt("Failed to eject scalar field value"),

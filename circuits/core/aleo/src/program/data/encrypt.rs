@@ -16,56 +16,27 @@
 
 use super::*;
 
-impl<A: Aleo, D: DataType<A>> Data<A, D> {
-    /// Encrypts `self` under the given Aleo address and randomizer,
-    /// turning `self` into `Data::Ciphertext(..)` if the `mode` is private.
-    /// Note: The output is guaranteed to satisfy `Data::is_valid(output)`.
-    pub fn encrypt(&self, address: Address<A>, randomizer: Scalar<A>) -> Self {
-        match self {
-            Self::Plaintext(data, Mode::Private) => {
-                // Encode the data as field elements.
-                let plaintext = Self::encode(data);
-                // Compute the data view key.
-                let data_view_key = (address.to_group() * randomizer).to_x_coordinate();
-                // Prepare a randomizer for each field element.
-                let randomizers = A::hash_many_psd8(&[A::encryption_domain(), data_view_key], plaintext.len());
-                // Compute the ciphertext field elements.
-                let ciphertext = plaintext.iter().zip_eq(randomizers).map(|(p, r)| p + r).collect();
-                // Output the ciphertext.
-                Self::Ciphertext(ciphertext, Mode::Private)
-            }
-            _ => (*self).clone(),
+impl<A: Aleo> Data<A, Plaintext<A>> {
+    /// Encrypts `self` under the given Aleo address and randomizer.
+    pub fn encrypt(&self, address: Address<A>, randomizer: Scalar<A>) -> Data<A, Ciphertext<A>> {
+        // Compute the data view key.
+        let data_view_key = (address.to_group() * randomizer).to_x_coordinate();
+        // Determine the number of randomizers needed to encrypt the data.
+        let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
+        // Prepare a randomizer for each field element.
+        let randomizers = A::hash_many_psd8(&[A::encryption_domain(), data_view_key], num_randomizers);
+        // Encrypt the data.
+        let mut index: usize = 0;
+        let mut encrypted_data = Vec::with_capacity(self.0.len());
+        for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
+            // Retrieve the randomizers for this entry.
+            let randomizers = &randomizers[index..index + num_randomizers];
+            // Encrypt the entry, and add the entry.
+            encrypted_data.push((id.clone(), entry.encrypt(randomizers)));
+            // Increment the index.
+            index += num_randomizers;
         }
-    }
-}
-
-impl<A: Aleo, D: DataType<A>> Data<A, D> {
-    /// Returns a list of field elements encoding the given data.
-    pub(super) fn encode(data: &D) -> Vec<Field<A>> {
-        // Encode the data as little-endian bits.
-        let mut bits = data.to_bits_le();
-        // Adds one final bit to the data, to serve as a terminus indicator.
-        // During decryption, this final bit ensures we've reached the end.
-        bits.push(Boolean::constant(true));
-        // Pack the bits into field elements.
-        bits.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
-    }
-
-    /// Returns the recovered data from encoded field elements.
-    pub(super) fn decode(plaintext: &[Field<A>]) -> D {
-        // Unpack the field elements into bits, and reverse the list to pop the terminus bit off.
-        let mut bits =
-            plaintext.iter().flat_map(|p| p.to_bits_le()[..A::BaseField::size_in_data_bits()].to_vec()).rev();
-        // Remove the terminus bit that was added during encoding.
-        for boolean in bits.by_ref() {
-            // Drop all extraneous `0` bits, in addition to the final `1` bit.
-            if boolean.eject_value() {
-                // This case will always be reached, since the terminus bit is always `1`.
-                break;
-            }
-        }
-        // Reverse the bits back and recover the data from the bits.
-        D::from_bits_le(&bits.rev().collect::<Vec<_>>())
+        Data(encrypted_data)
     }
 }
 
