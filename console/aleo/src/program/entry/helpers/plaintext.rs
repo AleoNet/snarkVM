@@ -16,12 +16,26 @@
 
 use super::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
     /// A composite.
     Composite(Vec<(Identifier<N>, Plaintext<N>)>, OnceCell<Vec<bool>>),
+}
+
+impl<N: Network> From<Literal<N>> for Plaintext<N> {
+    /// Returns a new `Plaintext` from a `Literal`.
+    fn from(literal: Literal<N>) -> Self {
+        Self::Literal(literal, OnceCell::new())
+    }
+}
+
+impl<N: Network> From<&Literal<N>> for Plaintext<N> {
+    /// Returns a new `Plaintext` from a `Literal`.
+    fn from(literal: &Literal<N>) -> Self {
+        Self::Literal(literal.clone(), OnceCell::new())
+    }
 }
 
 impl<N: Network> Visibility<N> for Plaintext<N> {
@@ -36,7 +50,13 @@ impl<N: Network> ToFields for Plaintext<N> {
 
     /// Returns this plaintext as a list of field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
-        self.to_bits_le().chunks(N::Field::size_in_data_bits()).map(|bits_le| N::field_from_bits_le(bits_le)).collect()
+        // Encode the data as little-endian bits.
+        let mut bits_le = self.to_bits_le();
+        // Adds one final bit to the data, to serve as a terminus indicator.
+        // During decryption, this final bit ensures we've reached the end.
+        bits_le.push(true);
+        // Pack the bits into field elements.
+        bits_le.chunks(N::Field::size_in_data_bits()).map(|bits_le| N::field_from_bits_le(bits_le)).collect()
     }
 }
 
@@ -45,13 +65,19 @@ impl<N: Network> FromFields for Plaintext<N> {
 
     /// Creates a plaintext from a list of field elements.
     fn from_fields(fields: &[Self::Field]) -> Result<Self> {
-        Self::from_bits_le(
-            &fields
-                .iter()
-                .map(|field| field.to_bits_le()[..N::Field::size_in_data_bits()].to_vec())
-                .flatten()
-                .collect::<Vec<_>>(),
-        )
+        // Unpack the field elements into little-endian bits, and reverse the list for popping the terminus bit off.
+        let mut bits_le =
+            fields.iter().flat_map(|field| field.to_bits_le()[..N::Field::size_in_data_bits()].to_vec()).rev();
+        // Remove the terminus bit that was added during encoding.
+        for boolean in bits_le.by_ref() {
+            // Drop all extraneous `0` bits, in addition to the final `1` bit.
+            if boolean {
+                // This case will always be reached, since the terminus bit is always `1`.
+                break;
+            }
+        }
+        // Reverse the bits back and recover the data from the bits.
+        Self::from_bits_le(&bits_le.rev().collect::<Vec<_>>())
     }
 }
 

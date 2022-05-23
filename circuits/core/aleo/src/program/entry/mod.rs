@@ -40,6 +40,28 @@ pub enum Entry<A: Aleo, Private: Visibility<A>> {
     Private(Private),
 }
 
+impl<A: Aleo> Eject for Entry<A, Plaintext<A>> {
+    type Primitive = snarkvm_console_aleo::Entry<A::Network, snarkvm_console_aleo::Plaintext<A::Network>>;
+
+    /// Ejects the mode of the entry.
+    fn eject_mode(&self) -> Mode {
+        match self {
+            Entry::Constant(_) => Mode::Constant,
+            Entry::Public(_) => Mode::Public,
+            Entry::Private(_) => Mode::Private,
+        }
+    }
+
+    /// Ejects the entry.
+    fn eject_value(&self) -> Self::Primitive {
+        match self {
+            Entry::Constant(plaintext) => snarkvm_console_aleo::Entry::Constant(plaintext.eject_value()),
+            Entry::Public(plaintext) => snarkvm_console_aleo::Entry::Public(plaintext.eject_value()),
+            Entry::Private(private) => snarkvm_console_aleo::Entry::Private(private.eject_value()),
+        }
+    }
+}
+
 // impl<A: Aleo, Literal: EntryMode<A>> Entry<A, Literal> {
 //     // /// Returns the recursive depth of this entry.
 //     // /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.

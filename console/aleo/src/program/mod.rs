@@ -18,7 +18,7 @@ mod data;
 pub use data::*;
 
 mod entry;
-pub use entry::{Entry, Visibility};
+pub use entry::{Ciphertext, Entry, Plaintext, Visibility};
 
 mod identifier;
 pub use identifier::*;
@@ -26,14 +26,8 @@ pub use identifier::*;
 mod literal;
 pub use literal::*;
 
-// mod literal_type;
-// pub use literal_type::*;
-
 mod record;
 pub use record::*;
 
 mod state;
 pub use state::*;
-
-// Do not leak these outside of this module.
-pub(in crate::program) use entry::{Ciphertext, Plaintext};

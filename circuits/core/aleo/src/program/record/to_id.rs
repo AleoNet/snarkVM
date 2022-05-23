@@ -22,7 +22,7 @@ impl<A: Aleo> Record<A> {
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
         let left = A::hash_bhp1024(&[&self.program, &self.owner, &self.balance, &self.data].to_bits_le());
-        let right = A::hash_bhp1024(&[&self.nonce, &self.mac, &self.bcm].to_bits_le());
+        let right = A::hash_bhp1024(&[&self.nonce.to_x_coordinate(), &self.mac, &self.bcm].to_bits_le());
         A::hash_bhp512(&[&left, &right].to_bits_le())
     }
 }

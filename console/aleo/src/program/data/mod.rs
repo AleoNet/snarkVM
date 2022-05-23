@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod encrypt;
+
 use crate::{
     program::{Ciphertext, Plaintext},
     Address,
     Entry,
+    Identifier,
     Network,
     ViewKey,
     Visibility,
@@ -28,12 +31,15 @@ use snarkvm_utilities::{FromBits, ToBits, ToBytes};
 
 use anyhow::{bail, Result};
 
-struct Literal<N: Network>(N::Field);
-struct LiteralType<N: Network>(N::Field);
-
 /// A value stored in program data.
-pub struct Data<N: Network, Private: Visibility<N>> {
-    data: Vec<Entry<N, Private>>,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Data<N: Network, Private: Visibility<N>>(Vec<(Identifier<N>, Entry<N, Private>)>);
+
+impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Entry<N, Private>)>> for Data<N, Private> {
+    /// Initializes a new `Data` value from a vector of `(Identifier, Entry)` pairs.
+    fn from(entries: Vec<(Identifier<N>, Entry<N, Private>)>) -> Self {
+        Self(entries)
+    }
 }
 
 impl<N: Network> Data<N, Ciphertext<N>> {

@@ -20,7 +20,7 @@ impl<A: Aleo> Record<A> {
     /// Initializes a new record by encrypting the given state with a given randomizer.
     pub fn encrypt(state: &State<A>, randomizer: &Scalar<A>) -> Self {
         // Ensure the nonce matches the given randomizer.
-        A::assert_eq(state.nonce(), A::g_scalar_multiply(randomizer).to_x_coordinate());
+        A::assert_eq(state.nonce(), A::g_scalar_multiply(randomizer));
 
         // Compute the record view key.
         let record_view_key = (state.owner().to_group() * randomizer).to_x_coordinate();

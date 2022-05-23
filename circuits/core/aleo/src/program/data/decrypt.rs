@@ -17,12 +17,10 @@
 use super::*;
 
 impl<A: Aleo> Data<A, Ciphertext<A>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce,
-    pub fn decrypt(&self, view_key: Scalar<A>, nonce: Field<A>) -> Data<A, Plaintext<A>> {
-        // Recover the nonce as a group.
-        let nonce = Group::from_x_coordinate(nonce);
+    /// Decrypts `self` into plaintext using the given view key & nonce.
+    pub fn decrypt(&self, view_key: &ViewKey<A>, nonce: &Group<A>) -> Data<A, Plaintext<A>> {
         // Compute the data view key.
-        let data_view_key = (view_key * nonce).to_x_coordinate();
+        let data_view_key = (&**view_key * nonce).to_x_coordinate();
         // Determine the number of randomizers needed to encrypt the data.
         let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
         // Prepare a randomizer for each field element.

@@ -38,10 +38,13 @@ use nom::character::complete::{alpha1, alphanumeric1};
 pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes
 
 impl<A: Aleo> Inject for Identifier<A> {
-    type Primitive = String;
+    type Primitive = snarkvm_console_aleo::Identifier<A::Network>;
 
     /// Initializes a new identifier from a string.
     fn new(_: Mode, identifier: Self::Primitive) -> Self {
+        // Convert the identifier to a string to check its validity.
+        let identifier = identifier.to_string();
+
         // Ensure the identifier is not an empty string, and does not start with a number.
         match identifier.chars().next() {
             Some(character) => {
@@ -78,7 +81,7 @@ impl<A: Aleo> Inject for Identifier<A> {
 }
 
 impl<A: Aleo> Eject for Identifier<A> {
-    type Primitive = String;
+    type Primitive = snarkvm_console_aleo::Identifier<A::Network>;
 
     /// Ejects the mode of the identifier.
     fn eject_mode(&self) -> Mode {
@@ -104,7 +107,10 @@ impl<A: Aleo> Eject for Identifier<A> {
                 // Check that the UTF-8 string matches the expected length.
                 Some(string) => match string.len() == self.1 as usize {
                     // Return the string.
-                    true => string.to_string(),
+                    true => match Self::Primitive::try_from(string) {
+                        Ok(identifier) => identifier,
+                        Err(error) => A::halt(format!("Failed to convert an identifier to a string: {error}")),
+                    },
                     false => A::halt(format!("Identifier should be {} bytes, found {} bytes", self.1, string.len())),
                 },
                 None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
@@ -142,7 +148,9 @@ impl<A: Aleo> Parser for Identifier<A> {
                 return Err(error(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")));
             }
 
-            Ok(Self::constant(identifier.to_string()))
+            Ok(Self::constant(
+                snarkvm_console_aleo::Identifier::try_from(identifier).map_err(|e| error(format!("{e}")))?,
+            ))
         })(string)
     }
 }
@@ -154,45 +162,19 @@ impl<A: Aleo> fmt::Display for Identifier<A> {
     }
 }
 
-// impl<A: Aleo> FromBytes for Identifier<A> {
-//     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-//         // Read the number of bytes.
-//         let size = u8::read_le(&mut reader)?;
-//         // Read the identifier bytes.
-//         let mut buffer = vec![0u8; size as usize];
-//         reader.read_exact(&mut buffer)?;
-//         // Parse the identifier.
-//         Ok(Self::from_str(
-//             &String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?,
-//         ))
-//     }
-// }
-//
-// impl<A: Aleo> ToBytes for Identifier<A> {
-//     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-//         // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
-//         if self.0.as_bytes().len() > P::NUM_IDENTIFIER_BYTES {
-//             return Err(error(format!(
-//                 "Identifier is too large. Identifiers must be <= {} bytes long",
-//                 P::NUM_IDENTIFIER_BYTES
-//             )));
-//         }
-//
-//         (self.0.as_bytes().len() as u8).write_le(&mut writer)?;
-//         self.0.as_bytes().write_le(&mut writer)
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::AleoV0 as Circuit;
 
+    use anyhow::Result;
+
     #[test]
-    fn test_identifier_parse() {
+    fn test_identifier_parse() -> Result<()> {
         let candidate = Identifier::<Circuit>::parse("foo_bar").unwrap();
         assert_eq!("", candidate.0);
-        assert_eq!(Identifier::<Circuit>::constant("foo_bar".to_string()).eject(), candidate.1.eject());
+        assert_eq!(Identifier::<Circuit>::constant("foo_bar".try_into()?).eject(), candidate.1.eject());
+        Ok(())
     }
 
     #[test]

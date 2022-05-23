@@ -129,6 +129,18 @@ impl<E: Environment> Display for Group<E> {
     }
 }
 
+impl<E: Environment> From<Group<E>> for LinearCombination<E::BaseField> {
+    fn from(group: Group<E>) -> Self {
+        From::from(&group)
+    }
+}
+
+impl<E: Environment> From<&Group<E>> for LinearCombination<E::BaseField> {
+    fn from(group: &Group<E>) -> Self {
+        group.to_x_coordinate().into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

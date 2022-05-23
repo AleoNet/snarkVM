@@ -38,7 +38,7 @@ pub struct Record<A: Aleo> {
     /// The ID for the program data.
     data: Field<A>,
     /// The nonce for this record (i.e. `G^r`).
-    nonce: Field<A>,
+    nonce: Group<A>,
     /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
     mac: Field<A>,
     /// The balance commitment for this record (i.e. `G^balance H^HashToScalar(G^r^view_key)`).

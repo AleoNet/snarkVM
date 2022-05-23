@@ -16,7 +16,7 @@
 
 use super::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Ciphertext<N: Network>(pub(in crate::program::entry) Vec<N::Field>);
 
 impl<N: Network> Visibility<N> for Ciphertext<N> {

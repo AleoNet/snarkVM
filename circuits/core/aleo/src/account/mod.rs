@@ -27,7 +27,7 @@ pub mod view_key;
 pub use view_key::*;
 
 #[cfg(test)]
-mod helpers {
+pub(crate) mod helpers {
     use snarkvm_console_aleo::{
         Address as NativeAddress,
         ComputeKey as NativeComputeKey,

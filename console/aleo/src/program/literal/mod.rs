@@ -33,7 +33,7 @@ use anyhow::{bail, Result};
 use enum_index::EnumIndex;
 
 /// The literal enum represents all supported types in snarkVM.
-#[derive(Clone, EnumIndex)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIndex)]
 pub enum Literal<N: Network> {
     /// The Aleo address type.
     Address(Address<N>),

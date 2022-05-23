@@ -18,10 +18,53 @@ use super::*;
 
 #[derive(Clone)]
 pub enum Plaintext<A: Aleo> {
-    /// A literal.
+    /// A plaintext literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
-    /// A composite.
+    /// A plaintext composite.
     Composite(Vec<(Identifier<A>, Plaintext<A>)>, OnceCell<Vec<Boolean<A>>>),
+}
+
+impl<A: Aleo> Eject for Plaintext<A> {
+    type Primitive = snarkvm_console_aleo::Plaintext<A::Network>;
+
+    /// Ejects the mode of the plaintext entry.
+    fn eject_mode(&self) -> Mode {
+        match self {
+            Self::Literal(literal, _) => literal.eject_mode(),
+            Self::Composite(composite, _) => composite
+                .iter()
+                .map(|(identifier, entry)| (identifier, entry).eject_mode())
+                .collect::<Vec<_>>()
+                .eject_mode(),
+        }
+    }
+
+    /// Ejects the plaintext entry.
+    fn eject_value(&self) -> Self::Primitive {
+        match self {
+            Self::Literal(literal, _) => {
+                snarkvm_console_aleo::Plaintext::Literal(literal.eject_value(), Default::default())
+            }
+            Self::Composite(composite, _) => snarkvm_console_aleo::Plaintext::Composite(
+                composite.iter().map(|pair| pair.eject_value()).collect(),
+                Default::default(),
+            ),
+        }
+    }
+}
+
+impl<A: Aleo> From<Literal<A>> for Plaintext<A> {
+    /// Returns a new `Plaintext` from a `Literal`.
+    fn from(literal: Literal<A>) -> Self {
+        Self::Literal(literal, OnceCell::new())
+    }
+}
+
+impl<A: Aleo> From<&Literal<A>> for Plaintext<A> {
+    /// Returns a new `Plaintext` from a `Literal`.
+    fn from(literal: &Literal<A>) -> Self {
+        Self::Literal((*literal).clone(), OnceCell::new())
+    }
 }
 
 impl<A: Aleo> Visibility<A> for Plaintext<A> {
@@ -36,10 +79,13 @@ impl<A: Aleo> ToFields for Plaintext<A> {
 
     /// Returns this plaintext as a list of field elements.
     fn to_fields(&self) -> Vec<Self::Field> {
-        self.to_bits_le()
-            .chunks(A::BaseField::size_in_data_bits())
-            .map(|bits_le| Field::from_bits_le(bits_le))
-            .collect()
+        // Encode the data as little-endian bits.
+        let mut bits_le = self.to_bits_le();
+        // Adds one final bit to the data, to serve as a terminus indicator.
+        // During decryption, this final bit ensures we've reached the end.
+        bits_le.push(Boolean::constant(true));
+        // Pack the bits into field elements.
+        bits_le.chunks(A::BaseField::size_in_data_bits()).map(|bits_le| Field::from_bits_le(bits_le)).collect()
     }
 }
 
@@ -48,13 +94,19 @@ impl<A: Aleo> FromFields for Plaintext<A> {
 
     /// Creates a plaintext from a list of field elements.
     fn from_fields(fields: &[Self::Field]) -> Self {
-        Self::from_bits_le(
-            &fields
-                .iter()
-                .map(|field| field.to_bits_le()[..A::BaseField::size_in_data_bits()].to_vec())
-                .flatten()
-                .collect::<Vec<_>>(),
-        )
+        // Unpack the field elements into little-endian bits, and reverse the list for popping the terminus bit off.
+        let mut bits_le =
+            fields.iter().flat_map(|field| field.to_bits_le()[..A::BaseField::size_in_data_bits()].to_vec()).rev();
+        // Remove the terminus bit that was added during encoding.
+        for boolean in bits_le.by_ref() {
+            // Drop all extraneous `0` bits, in addition to the final `1` bit.
+            if boolean.eject_value() {
+                // This case will always be reached, since the terminus bit is always `1`.
+                break;
+            }
+        }
+        // Reverse the bits back and recover the data from the bits.
+        Self::from_bits_le(&bits_le.rev().collect::<Vec<_>>())
     }
 }
 
@@ -248,8 +300,10 @@ mod tests {
     use crate::AleoV0 as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    use anyhow::Result;
+
     #[test]
-    fn test_plaintext() {
+    fn test_plaintext() -> Result<()> {
         let value = Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new());
         assert_eq!(
             value.to_bits_le().eject(),
@@ -268,11 +322,11 @@ mod tests {
         let value = Plaintext::<Circuit>::Composite(
             vec![
                 (
-                    Identifier::new(Mode::Private, "a".into()),
+                    Identifier::new(Mode::Private, "a".try_into()?),
                     Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new()),
                 ),
                 (
-                    Identifier::new(Mode::Private, "b".into()),
+                    Identifier::new(Mode::Private, "b".try_into()?),
                     Plaintext::<Circuit>::Literal(
                         Literal::Field(Field::new(Mode::Private, UniformRand::rand(&mut test_rng()))),
                         OnceCell::new(),
@@ -289,33 +343,33 @@ mod tests {
         let value = Plaintext::<Circuit>::Composite(
             vec![
                 (
-                    Identifier::new(Mode::Private, "a".into()),
+                    Identifier::new(Mode::Private, "a".try_into()?),
                     Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new()),
                 ),
                 (
-                    Identifier::new(Mode::Private, "b".into()),
+                    Identifier::new(Mode::Private, "b".try_into()?),
                     Plaintext::<Circuit>::Composite(
                         vec![
                             (
-                                Identifier::new(Mode::Private, "c".into()),
+                                Identifier::new(Mode::Private, "c".try_into()?),
                                 Plaintext::<Circuit>::Literal(
                                     Literal::Boolean(Boolean::new(Mode::Private, true)),
                                     OnceCell::new(),
                                 ),
                             ),
                             (
-                                Identifier::new(Mode::Private, "d".into()),
+                                Identifier::new(Mode::Private, "d".try_into()?),
                                 Plaintext::<Circuit>::Composite(
                                     vec![
                                         (
-                                            Identifier::new(Mode::Private, "e".into()),
+                                            Identifier::new(Mode::Private, "e".try_into()?),
                                             Plaintext::<Circuit>::Literal(
                                                 Literal::Boolean(Boolean::new(Mode::Private, true)),
                                                 OnceCell::new(),
                                             ),
                                         ),
                                         (
-                                            Identifier::new(Mode::Private, "f".into()),
+                                            Identifier::new(Mode::Private, "f".try_into()?),
                                             Plaintext::<Circuit>::Literal(
                                                 Literal::Field(Field::new(
                                                     Mode::Private,
@@ -329,7 +383,7 @@ mod tests {
                                 ),
                             ),
                             (
-                                Identifier::new(Mode::Private, "g".into()),
+                                Identifier::new(Mode::Private, "g".try_into()?),
                                 Plaintext::<Circuit>::Literal(
                                     Literal::Field(Field::new(Mode::Private, UniformRand::rand(&mut test_rng()))),
                                     OnceCell::new(),
@@ -340,7 +394,7 @@ mod tests {
                     ),
                 ),
                 (
-                    Identifier::new(Mode::Private, "h".into()),
+                    Identifier::new(Mode::Private, "h".try_into()?),
                     Plaintext::<Circuit>::Literal(
                         Literal::Field(Field::new(Mode::Private, UniformRand::rand(&mut test_rng()))),
                         OnceCell::new(),
@@ -353,5 +407,6 @@ mod tests {
             value.to_bits_le().eject(),
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
+        Ok(())
     }
 }

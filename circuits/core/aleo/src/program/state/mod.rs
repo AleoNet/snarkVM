@@ -22,7 +22,7 @@ mod encrypt;
 mod to_commitment;
 
 use crate::{Aleo, Record, ViewKey};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Scalar, U64};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Group, Scalar, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's state is a set of **plaintext** variables used by a program.
@@ -37,12 +37,12 @@ pub struct State<A: Aleo> {
     /// The data ID for this program state.
     data: Field<A>,
     /// The nonce for this program state (i.e. `G^r`).
-    nonce: Field<A>,
+    nonce: Group<A>,
 }
 
-impl<A: Aleo> From<(Field<A>, Address<A>, U64<A>, Field<A>, Field<A>)> for State<A> {
+impl<A: Aleo> From<(Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)> for State<A> {
     #[inline]
-    fn from((program, owner, balance, data, nonce): (Field<A>, Address<A>, U64<A>, Field<A>, Field<A>)) -> Self {
+    fn from((program, owner, balance, data, nonce): (Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)) -> Self {
         Self { program, owner, balance, data, nonce }
     }
 }
@@ -69,7 +69,7 @@ impl<A: Aleo> State<A> {
     }
 
     /// Returns the nonce for this program state.
-    pub fn nonce(&self) -> &Field<A> {
+    pub fn nonce(&self) -> &Group<A> {
         &self.nonce
     }
 }

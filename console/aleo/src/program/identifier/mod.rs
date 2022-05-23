@@ -42,6 +42,15 @@ use core::{fmt, marker::PhantomData, str::FromStr};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier<N: Network>(String, PhantomData<N>);
 
+impl<N: Network> TryFrom<&str> for Identifier<N> {
+    type Error = Error;
+
+    /// Initializes an identifier from a string.
+    fn try_from(identifier: &str) -> Result<Self> {
+        Self::from_str(identifier)
+    }
+}
+
 impl<N: Network> FromStr for Identifier<N> {
     type Err = Error;
 

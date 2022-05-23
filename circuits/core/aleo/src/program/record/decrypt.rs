@@ -19,10 +19,8 @@ use super::*;
 impl<A: Aleo> Record<A> {
     /// Returns the state corresponding to the record using the given view key.
     pub fn decrypt(&self, view_key: &ViewKey<A>) -> State<A> {
-        // Recover the nonce as a group.
-        let nonce = Group::from_x_coordinate(self.nonce.clone());
         // Compute the record view key := G^r^view_key.
-        let record_view_key = (nonce * &**view_key).to_x_coordinate();
+        let record_view_key = (&self.nonce * &**view_key).to_x_coordinate();
 
         // Decrypt the record.
         let state = self.decrypt_symmetric(&record_view_key);

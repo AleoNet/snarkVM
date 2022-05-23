@@ -35,7 +35,7 @@ pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
 }
 
 /// An entry stored in program data.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Entry<N: Network, Private: Visibility<N>> {
     /// A constant entry.
     Constant(Plaintext<N>),
