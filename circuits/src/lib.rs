@@ -31,9 +31,6 @@ pub use snarkvm_circuits_environment::*;
 pub use snarkvm_circuits_types as types;
 pub use snarkvm_circuits_types::*;
 
-// mod primitive;
-// pub use primitive::*;
-
 pub mod prelude {
     pub use super::*;
     pub use snarkvm_circuits_environment::*;
