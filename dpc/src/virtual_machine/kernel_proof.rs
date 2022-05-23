@@ -78,9 +78,9 @@ impl<N: Network> FromBytes for KernelProof<N> {
     where
         Self: Sized,
     {
-        let input_proof_is_present = bool::read_le(&mut reader)?;
+        let input_proof_is_present: bool = FromBytes::read_le(&mut reader)?;
         let input_proof = input_proof_is_present.then(|| N::InputProof::read_le(&mut reader)).transpose()?;
-        let output_proof_is_present = bool::read_le(&mut reader)?;
+        let output_proof_is_present: bool = FromBytes::read_le(&mut reader)?;
         let output_proof = output_proof_is_present.then(|| N::OutputProof::read_le(&mut reader)).transpose()?;
         Ok(KernelProof { input_proof, output_proof })
     }
@@ -90,7 +90,7 @@ impl<N: Network> Serialize for KernelProof<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut proof = serializer.serialize_struct("kernel_proof", 3)?;
+                let mut proof = serializer.serialize_struct("kernel_proof", 2)?;
                 proof.serialize_field("input_proof", &self.input_proof)?;
                 proof.serialize_field("output_proof", &self.output_proof)?;
                 proof.end()
