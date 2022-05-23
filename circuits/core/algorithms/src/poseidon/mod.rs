@@ -69,7 +69,7 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         match E::BaseField::default_poseidon_parameters::<RATE>() {
-            Some(parameters) => {
+            Ok(parameters) => {
                 let full_rounds = parameters.full_rounds;
                 let partial_rounds = parameters.partial_rounds;
                 let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
@@ -90,7 +90,7 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
 
                 Self { full_rounds, partial_rounds, alpha, ark, mds }
             }
-            None => E::halt("Failed to initialize the Poseidon hash function"),
+            Err(error) => E::halt(format!("Failed to initialize the Poseidon hash function: {error}")),
         }
     }
 }

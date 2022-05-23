@@ -31,7 +31,7 @@ use snarkvm_console_algorithms::{
 use snarkvm_curves::{edwards_bls12::EdwardsAffine, AffineCurve};
 use snarkvm_utilities::ToBits;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use itertools::Itertools;
 
 // TODO (howardwu):
@@ -112,6 +112,38 @@ impl Network for Testnet3 {
             }
         }
         bail!("Failed to recover an affine group from an x-coordinate of {x}")
+    }
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a field element from **little-endian** bits.
+    fn field_from_bits_le(bits: &[bool]) -> Result<Self::Field> {
+        use snarkvm_utilities::FromBits;
+        Self::Field::from_repr(<Self::Field as PrimeField>::BigInteger::from_bits_le(bits)?)
+            .ok_or_else(|| anyhow!("Invalid field element from bits"))
+    }
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a field element from **big-endian** bits.
+    fn field_from_bits_be(bits: &[bool]) -> Result<Self::Field> {
+        let mut bits = bits.to_vec();
+        bits.reverse();
+        Self::field_from_bits_le(&bits)
+    }
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a scalar from **little-endian** bits.
+    fn scalar_from_bits_le(bits: &[bool]) -> Result<Self::Scalar> {
+        use snarkvm_utilities::FromBits;
+        Self::Scalar::from_repr(<Self::Scalar as PrimeField>::BigInteger::from_bits_le(bits)?)
+            .ok_or_else(|| anyhow!("Invalid scalar from bits"))
+    }
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a scalar from **big-endian** bits.
+    fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar> {
+        let mut bits = bits.to_vec();
+        bits.reverse();
+        Self::scalar_from_bits_le(&bits)
     }
 
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.

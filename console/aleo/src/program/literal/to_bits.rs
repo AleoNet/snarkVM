@@ -15,35 +15,28 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_curves::AffineCurve;
 
-// use enum_index::EnumIndex;
-
-impl<E: Environment> ToBits for Literal<E> {
-    type Boolean = Boolean<E>;
-
+impl<N: Network> ToBits for Literal<N> {
     /// Returns the little-endian bits of the literal.
-    fn to_bits_le(&self) -> Vec<Boolean<E>> {
+    fn to_bits_le(&self) -> Vec<bool> {
         (&self).to_bits_le()
     }
 
     /// Returns the big-endian bits of the literal.
-    fn to_bits_be(&self) -> Vec<Boolean<E>> {
+    fn to_bits_be(&self) -> Vec<bool> {
         (&self).to_bits_be()
     }
 }
 
-impl<E: Environment> ToBits for &Literal<E> {
-    type Boolean = Boolean<E>;
-
+impl<N: Network> ToBits for &Literal<N> {
     /// Returns the little-endian bits of the literal.
-    fn to_bits_le(&self) -> Vec<Boolean<E>> {
-        // let variant = U8::constant(self.enum_index() as u8).to_bits_le();
-        // let literal = match self {
+    fn to_bits_le(&self) -> Vec<bool> {
         match self {
-            Literal::Address(literal) => literal.to_bits_le(),
-            Literal::Boolean(literal) => literal.to_bits_le(),
+            Literal::Address(literal) => (*literal).to_x_coordinate().to_bits_le(),
+            Literal::Boolean(literal) => vec![*literal],
             Literal::Field(literal) => literal.to_bits_le(),
-            Literal::Group(literal) => literal.to_bits_le(),
+            Literal::Group(literal) => literal.to_x_coordinate().to_bits_le(),
             Literal::I8(literal) => literal.to_bits_le(),
             Literal::I16(literal) => literal.to_bits_le(),
             Literal::I32(literal) => literal.to_bits_le(),
@@ -55,20 +48,17 @@ impl<E: Environment> ToBits for &Literal<E> {
             Literal::U64(literal) => literal.to_bits_le(),
             Literal::U128(literal) => literal.to_bits_le(),
             Literal::Scalar(literal) => literal.to_bits_le(),
-            Literal::String(literal) => literal.to_bits_le(),
+            Literal::String(literal) => literal.as_bytes().to_bits_le(),
         }
-        // variant.into_iter().chain(literal).collect()
     }
 
     /// Returns the big-endian bits of the literal.
-    fn to_bits_be(&self) -> Vec<Boolean<E>> {
-        // let variant = U8::constant(self.enum_index() as u8).to_bits_be();
-        // let literal = match self {
+    fn to_bits_be(&self) -> Vec<bool> {
         match self {
-            Literal::Address(literal) => literal.to_bits_be(),
-            Literal::Boolean(literal) => literal.to_bits_be(),
+            Literal::Address(literal) => (*literal).to_x_coordinate().to_bits_be(),
+            Literal::Boolean(literal) => vec![*literal],
             Literal::Field(literal) => literal.to_bits_be(),
-            Literal::Group(literal) => literal.to_bits_be(),
+            Literal::Group(literal) => literal.to_x_coordinate().to_bits_be(),
             Literal::I8(literal) => literal.to_bits_be(),
             Literal::I16(literal) => literal.to_bits_be(),
             Literal::I32(literal) => literal.to_bits_be(),
@@ -80,8 +70,7 @@ impl<E: Environment> ToBits for &Literal<E> {
             Literal::U64(literal) => literal.to_bits_be(),
             Literal::U128(literal) => literal.to_bits_be(),
             Literal::Scalar(literal) => literal.to_bits_be(),
-            Literal::String(literal) => literal.to_bits_be(),
+            Literal::String(literal) => literal.as_bytes().to_bits_be(),
         }
-        // variant.into_iter().chain(literal).collect()
     }
 }

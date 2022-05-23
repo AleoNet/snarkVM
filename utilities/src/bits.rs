@@ -16,6 +16,8 @@
 
 use crate::Vec;
 
+use anyhow::Result;
+
 pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool>;
@@ -26,10 +28,10 @@ pub trait ToBits: Sized {
 
 pub trait FromBits: Sized {
     /// Reads `Self` from a boolean array in little-endian order.
-    fn from_bits_le(bits: &[bool]) -> Self;
+    fn from_bits_le(bits: &[bool]) -> Result<Self>;
 
     /// Reads `Self` from a boolean array in big-endian order.
-    fn from_bits_be(bits: &[bool]) -> Self;
+    fn from_bits_be(bits: &[bool]) -> Result<Self>;
 }
 
 pub trait ToMinimalBits: Sized {
@@ -76,16 +78,16 @@ macro_rules! impl_bits_for_integer {
         impl FromBits for $int {
             /// Reads `Self` from a boolean array in little-endian order.
             #[inline]
-            fn from_bits_le(bits: &[bool]) -> Self {
-                bits.iter().rev().fold(0, |value, bit| match bit {
+            fn from_bits_le(bits: &[bool]) -> Result<Self> {
+                Ok(bits.iter().rev().fold(0, |value, bit| match bit {
                     true => (value.wrapping_shl(1)) ^ 1,
                     false => (value.wrapping_shl(1)) ^ 0,
-                })
+                }))
             }
 
             /// Reads `Self` from a boolean array in big-endian order.
             #[inline]
-            fn from_bits_be(bits: &[bool]) -> Self {
+            fn from_bits_be(bits: &[bool]) -> Result<Self> {
                 Self::from_bits_le(&bits.iter().rev().copied().collect::<Vec<_>>())
             }
         }
@@ -103,6 +105,26 @@ impl_bits_for_integer!(i16);
 impl_bits_for_integer!(i32);
 impl_bits_for_integer!(i64);
 impl_bits_for_integer!(i128);
+
+/********************/
+/****** String ******/
+/********************/
+
+impl ToBits for String {
+    /// A helper method to return a concatenated list of little-endian bits.
+    #[inline]
+    fn to_bits_le(&self) -> Vec<bool> {
+        // The vector is order-preserving, meaning the first byte in is the first byte bits out.
+        self.as_bytes().to_bits_le()
+    }
+
+    /// A helper method to return a concatenated list of big-endian bits.
+    #[inline]
+    fn to_bits_be(&self) -> Vec<bool> {
+        // The vector is order-preserving, meaning the first byte in is the first byte bits out.
+        self.as_bytes().to_bits_be()
+    }
+}
 
 /********************/
 /****** Arrays ******/
@@ -153,6 +175,22 @@ impl<C: ToBits> ToBits for &[C] {
     fn to_bits_be(&self) -> Vec<bool> {
         // The slice is order-preserving, meaning the first variable in is the first variable bits out.
         self.iter().flat_map(|c| c.to_bits_be()).collect()
+    }
+}
+
+impl FromBits for Vec<u8> {
+    /// A helper method to return `Self` from a concatenated list of little-endian bits.
+    #[inline]
+    fn from_bits_le(bits: &[bool]) -> Result<Self> {
+        // The vector is order-preserving, meaning the first variable in is the first variable bits out.
+        bits.chunks(8).map(|chunk| u8::from_bits_le(chunk)).collect::<Result<Vec<_>>>()
+    }
+
+    /// A helper method to return `Self` from a concatenated list of big-endian bits.
+    #[inline]
+    fn from_bits_be(bits: &[bool]) -> Result<Self> {
+        // The vector is order-preserving, meaning the first variable in is the first variable bits out.
+        bits.chunks(8).map(|chunk| u8::from_bits_be(chunk)).collect::<Result<Vec<_>>>()
     }
 }
 

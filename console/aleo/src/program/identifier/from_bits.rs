@@ -14,26 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::*;
+use super::*;
 
-mod entry;
-pub use entry::{Entry, Visibility};
+impl<N: Network> FromBits for Identifier<N> {
+    /// Initializes a new identifier from a list of little-endian bits *without* trailing zeros.
+    fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
+        Self::from_str(&String::from_utf8(Vec::<u8>::from_bits_le(bits_le)?)?)
+    }
 
-mod identifier;
-pub use identifier::*;
-
-mod literal;
-pub use literal::*;
-
-// mod literal_type;
-// pub use literal_type::*;
-
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
-// Do not leak these outside of this module.
-pub(in crate::program) use entry::{Ciphertext, Plaintext};
+    /// Initializes a new identifier from a list of big-endian bits *without* leading zeros.
+    fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
+        Self::from_str(&String::from_utf8(Vec::<u8>::from_bits_be(bits_be)?)?)
+    }
+}

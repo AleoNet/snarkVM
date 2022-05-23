@@ -19,9 +19,10 @@
 use crate::{FieldParameters, PrimeField};
 use snarkvm_utilities::{cmp::Ordering, vec::Vec, FromBits};
 
-pub struct PoseidonGrainLFSR {
-    pub prime_num_bits: u64,
+use anyhow::{bail, Result};
 
+pub struct PoseidonGrainLFSR {
+    pub field_size_in_bits: u64,
     pub state: [bool; 80],
     pub head: usize,
 }
@@ -89,43 +90,49 @@ impl PoseidonGrainLFSR {
         }
 
         // Initialize.
-        let mut res = Self { prime_num_bits: field_size_in_bits, state, head: 0 };
+        let mut res = Self { field_size_in_bits, state, head: 0 };
         for _ in 0..160 {
             res.next_bit();
         }
         res
     }
 
-    pub fn get_field_elements_rejection_sampling<F: PrimeField>(&mut self, num_elems: usize) -> Vec<F> {
-        assert_eq!(F::Parameters::MODULUS_BITS as u64, self.prime_num_bits);
+    pub fn get_field_elements_rejection_sampling<F: PrimeField>(&mut self, num_elements: usize) -> Result<Vec<F>> {
+        // Ensure the number of bits matches the modulus.
+        if self.field_size_in_bits != F::Parameters::MODULUS_BITS as u64 {
+            bail!("The number of bits in the field must match the modulus");
+        }
 
-        let mut res = Vec::new();
-        for _ in 0..num_elems {
-            // Perform rejection sampling
+        let mut output = Vec::with_capacity(num_elements);
+        for _ in 0..num_elements {
+            // Perform rejection sampling.
             loop {
-                // Obtain n bits and make it most-significant-bit first
-                let bits = self.get_bits(self.prime_num_bits as usize);
-
-                // Construct the number
-                let bigint = F::BigInteger::from_bits_be(&bits);
-
+                // Obtain `n` bits and make it most-significant-bit first.
+                let bits = self.get_bits(self.field_size_in_bits as usize);
+                // Construct the number.
+                let bigint = F::BigInteger::from_bits_be(&bits)?;
+                // Ensure the number is in the field.
                 if bigint.cmp(&F::Parameters::MODULUS) == Ordering::Less {
-                    res.push(F::from_repr(bigint).unwrap());
-                    break;
+                    if let Some(element) = F::from_repr(bigint) {
+                        output.push(element);
+                        break;
+                    }
                 }
             }
         }
-
-        res
+        Ok(output)
     }
 
-    pub fn get_field_elements_mod_p<F: PrimeField>(&mut self, num_elems: usize) -> Vec<F> {
-        assert_eq!(F::Parameters::MODULUS_BITS as u64, self.prime_num_bits);
+    pub fn get_field_elements_mod_p<F: PrimeField>(&mut self, num_elems: usize) -> Result<Vec<F>> {
+        // Ensure the number of bits matches the modulus.
+        if self.field_size_in_bits != F::Parameters::MODULUS_BITS as u64 {
+            bail!("The number of bits in the field must match the modulus");
+        }
 
-        let mut res = Vec::with_capacity(num_elems);
+        let mut output = Vec::with_capacity(num_elems);
         for _ in 0..num_elems {
-            // Obtain n bits and make it most-significant-bit first
-            let mut bits = self.get_bits(self.prime_num_bits as usize);
+            // Obtain `n` bits and make it most-significant-bit first.
+            let mut bits = self.get_bits(self.field_size_in_bits as usize);
             bits.reverse();
 
             let bytes = bits
@@ -142,10 +149,9 @@ impl PoseidonGrainLFSR {
                 .rev()
                 .collect::<Vec<u8>>();
 
-            res.push(F::from_bytes_be_mod_order(&bytes));
+            output.push(F::from_bytes_be_mod_order(&bytes));
         }
-
-        res
+        Ok(output)
     }
 }
 

@@ -24,6 +24,7 @@ use crate::{
     ToBytes,
 };
 
+use anyhow::Result;
 use core::fmt::{Debug, Display};
 use num_bigint::BigUint;
 use rand::{
@@ -246,7 +247,7 @@ impl ToBits for BigInteger384 {
 impl FromBits for BigInteger384 {
     #[doc = " Returns a `BigInteger` by parsing a slice of bits in little-endian format"]
     #[doc = " and transforms it into a slice of little-endian u64 elements."]
-    fn from_bits_le(bits: &[bool]) -> Self {
+    fn from_bits_le(bits: &[bool]) -> Result<Self> {
         let mut res = Self::default();
         for (i, bits64) in bits.chunks(64).enumerate() {
             let mut acc: u64 = 0;
@@ -256,12 +257,12 @@ impl FromBits for BigInteger384 {
             }
             res.0[i] = acc;
         }
-        res
+        Ok(res)
     }
 
     #[doc = " Returns a `BigInteger` by parsing a slice of bits in big-endian format"]
     #[doc = " and transforms it into a slice of little-endian u64 elements."]
-    fn from_bits_be(bits: &[bool]) -> Self {
+    fn from_bits_be(bits: &[bool]) -> Result<Self> {
         let mut bits_reversed = bits.to_vec();
         bits_reversed.reverse();
         Self::from_bits_le(&bits_reversed)

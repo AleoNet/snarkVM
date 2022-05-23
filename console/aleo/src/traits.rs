@@ -14,26 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::*;
+use snarkvm_fields::PrimeField;
 
-mod entry;
-pub use entry::{Entry, Visibility};
+use anyhow::Result;
 
-mod identifier;
-pub use identifier::*;
+/// Unary operator for converting to a list of base fields.
+pub trait ToFields {
+    type Field: PrimeField;
 
-mod literal;
-pub use literal::*;
+    /// Returns the circuit as a list of base field elements.
+    fn to_fields(&self) -> Result<Vec<Self::Field>>;
+}
 
-// mod literal_type;
-// pub use literal_type::*;
+/// Unary operator for converting from a list of base elements.
+pub trait FromFields {
+    type Field: PrimeField;
 
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
-// Do not leak these outside of this module.
-pub(in crate::program) use entry::{Ciphertext, Plaintext};
+    /// Casts a circuit from a list of base field elements.
+    fn from_fields(fields: &[Self::Field]) -> Result<Self>
+    where
+        Self: Sized;
+}

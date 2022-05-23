@@ -14,17 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// mod from_bits;
-// mod to_bits;
+mod from_bits;
+mod size_in_bits;
+mod to_bits;
 
 use crate::{Address, Network};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
+    FromBits,
     FromBytes,
+    ToBits,
     ToBytes,
 };
 
+use anyhow::{bail, Result};
 use enum_index::EnumIndex;
 
 /// The literal enum represents all supported types in snarkVM.
@@ -64,6 +69,30 @@ pub enum Literal<N: Network> {
     String(String),
 }
 
+impl<N: Network> Literal<N> {
+    /// Returns the type name of the literal.
+    pub fn variant(&self) -> u8 {
+        match self {
+            Self::Address(..) => 0,
+            Self::Boolean(..) => 1,
+            Self::Field(..) => 2,
+            Self::Group(..) => 3,
+            Self::I8(..) => 4,
+            Self::I16(..) => 5,
+            Self::I32(..) => 6,
+            Self::I64(..) => 7,
+            Self::I128(..) => 8,
+            Self::U8(..) => 9,
+            Self::U16(..) => 10,
+            Self::U32(..) => 11,
+            Self::U64(..) => 12,
+            Self::U128(..) => 13,
+            Self::Scalar(..) => 14,
+            Self::String(..) => 15,
+        }
+    }
+}
+
 impl<N: Network> FromBytes for Literal<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;
@@ -85,6 +114,12 @@ impl<N: Network> FromBytes for Literal<N> {
             14 => Self::Scalar(FromBytes::read_le(&mut reader)?),
             15 => {
                 let size = u32::read_le(&mut reader)?;
+                if size > N::NUM_STRING_BYTES {
+                    return Err(error(format!(
+                        "String literal exceeds maximum length of {} bytes.",
+                        N::NUM_STRING_BYTES
+                    )));
+                }
                 let mut buffer = vec![0u8; size as usize];
                 reader.read_exact(&mut buffer)?;
                 Self::String(String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?)

@@ -14,26 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::*;
+use super::*;
 
-mod entry;
-pub use entry::{Entry, Visibility};
+impl<N: Network> ToBits for Identifier<N> {
+    /// Returns the little-endian bits of the identifier.
+    fn to_bits_le(&self) -> Vec<bool> {
+        (&self).to_bits_le()
+    }
 
-mod identifier;
-pub use identifier::*;
+    /// Returns the big-endian bits of the identifier.
+    fn to_bits_be(&self) -> Vec<bool> {
+        (&self).to_bits_be()
+    }
+}
 
-mod literal;
-pub use literal::*;
+impl<N: Network> ToBits for &Identifier<N> {
+    /// Returns the little-endian bits of the identifier.
+    fn to_bits_le(&self) -> Vec<bool> {
+        self.0.to_bits_le()
+    }
 
-// mod literal_type;
-// pub use literal_type::*;
-
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
-// Do not leak these outside of this module.
-pub(in crate::program) use entry::{Ciphertext, Plaintext};
+    /// Returns the big-endian bits of the identifier.
+    fn to_bits_be(&self) -> Vec<bool> {
+        self.0.to_bits_be()
+    }
+}

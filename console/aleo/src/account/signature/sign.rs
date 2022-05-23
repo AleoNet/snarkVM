@@ -33,10 +33,7 @@ impl<N: Network> Signature<N> {
         // Convert the message into field elements.
         let message_elements = message
             .chunks(N::Field::size_in_data_bits())
-            .map(|data_bits| {
-                N::Field::from_repr(<N::Field as PrimeField>::BigInteger::from_bits_le(data_bits))
-                    .ok_or_else(|| anyhow!("Invalid message element"))
-            })
+            .map(|data_bits| N::field_from_bits_le(data_bits))
             .collect::<Result<Vec<_>>>()?;
 
         // Construct the hash input (address, G^randomizer, message).
@@ -79,10 +76,7 @@ impl<N: Network> Signature<N> {
         // Convert the message into field elements.
         let message_elements = match message
             .chunks(N::Field::size_in_data_bits())
-            .map(|data_bits| {
-                N::Field::from_repr(<N::Field as PrimeField>::BigInteger::from_bits_le(data_bits))
-                    .ok_or_else(|| anyhow!("Invalid message element"))
-            })
+            .map(|data_bits| N::field_from_bits_le(data_bits))
             .collect::<Result<Vec<_>>>()
         {
             // Output the computed message elements.

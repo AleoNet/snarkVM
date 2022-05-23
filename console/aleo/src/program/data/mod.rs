@@ -18,9 +18,9 @@ use crate::{
     program::{Ciphertext, Plaintext},
     Address,
     Entry,
-    EntryType,
     Network,
     ViewKey,
+    Visibility,
 };
 use snarkvm_circuits_environment::Mode;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
@@ -34,7 +34,7 @@ struct Literal<N: Network>(N::Field);
 struct LiteralType<N: Network>(N::Field);
 
 /// A value stored in program data.
-pub struct Data<N: Network, Private: EntryType> {
+pub struct Data<N: Network, Private: Visibility<N>> {
     data: Vec<Entry<N, Private>>,
 }
 

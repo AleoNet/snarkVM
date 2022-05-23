@@ -20,10 +20,11 @@ pub(super) use sponge::*;
 mod state;
 pub(super) use state::*;
 
-use smallvec::SmallVec;
 use snarkvm_fields::PrimeField;
 
+use anyhow::Result;
 use core::fmt::Debug;
+use smallvec::SmallVec;
 
 /// The interface for a cryptographic sponge.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.
@@ -43,7 +44,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
 }
 
 pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: AlgebraicSponge<F, RATE, 1> {
-    fn sample_parameters() -> Self::Parameters;
+    fn sample_parameters() -> Result<Self::Parameters>;
 }
 
 /// The mode structure for duplex sponges.

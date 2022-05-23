@@ -34,6 +34,9 @@ pub use program::*;
 pub mod testnet3;
 pub use testnet3::*;
 
+pub mod traits;
+pub use traits::*;
+
 pub mod transaction;
 pub use transaction::*;
 
@@ -67,6 +70,22 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// A helper method to recover the y-coordinate given the x-coordinate for
     /// a twisted Edwards point, returning the affine curve point.
     fn affine_from_x_coordinate(x: Self::Field) -> Result<Self::Affine>;
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a field element from **little-endian** bits.
+    fn field_from_bits_le(bits: &[bool]) -> Result<Self::Field>;
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a field element from **big-endian** bits.
+    fn field_from_bits_be(bits: &[bool]) -> Result<Self::Field>;
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a scalar from **little-endian** bits.
+    fn scalar_from_bits_le(bits: &[bool]) -> Result<Self::Scalar>;
+
+    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
+    /// A helper method to recover a scalar from **big-endian** bits.
+    fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar>;
 
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;

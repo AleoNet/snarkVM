@@ -14,26 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::*;
+use super::*;
 
-mod entry;
-pub use entry::{Entry, Visibility};
-
-mod identifier;
-pub use identifier::*;
-
-mod literal;
-pub use literal::*;
-
-// mod literal_type;
-// pub use literal_type::*;
-
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
-// Do not leak these outside of this module.
-pub(in crate::program) use entry::{Ciphertext, Plaintext};
+impl<N: Network> Identifier<N> {
+    /// Returns the number of bits of this identifier.
+    pub fn size_in_bits(&self) -> u8 {
+        8 * self.0.len() as u8
+    }
+}

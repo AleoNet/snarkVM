@@ -20,6 +20,7 @@ use crate::poseidon::{
 };
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
+use anyhow::Result;
 use smallvec::SmallVec;
 use std::sync::Arc;
 
@@ -40,8 +41,8 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
 }
 
 impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
-    fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
-        Arc::new(F::default_poseidon_parameters::<RATE>().unwrap())
+    fn sample_parameters() -> Result<Arc<PoseidonParameters<F, RATE, 1>>> {
+        Ok(Arc::new(F::default_poseidon_parameters::<RATE>()?))
     }
 }
 

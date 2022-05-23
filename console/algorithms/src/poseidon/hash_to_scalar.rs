@@ -37,7 +37,7 @@ impl<F: PrimeField, const RATE: usize> HashToScalar for Poseidon<F, RATE> {
         let bits = &output.to_bits_le()[..Scalar::size_in_data_bits()];
 
         // Output the scalar field.
-        match Scalar::from_repr(Scalar::BigInteger::from_bits_le(bits)) {
+        match Scalar::from_repr(Scalar::BigInteger::from_bits_le(bits)?) {
             // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
             Some(scalar) => Ok(scalar),
             _ => bail!("Failed to hash input into scalar field"),

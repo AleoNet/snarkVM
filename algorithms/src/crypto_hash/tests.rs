@@ -18,6 +18,7 @@ use crate::{crypto_hash::PoseidonSponge, AlgebraicSponge, DuplexSpongeMode};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_fields::{PoseidonDefaultField, PoseidonGrainLFSR};
 
+use anyhow::Result;
 use itertools::Itertools;
 use std::{path::PathBuf, sync::Arc};
 
@@ -41,10 +42,11 @@ fn expect_file_with_name(name: impl ToString, val: impl std::fmt::Debug) {
 }
 
 #[test]
-fn test_grain_lfsr_consistency() {
+fn test_grain_lfsr_consistency() -> Result<()> {
     let mut lfsr = PoseidonGrainLFSR::new(false, 253, 3, 8, 31);
-    expect_file_with_name("first sample", lfsr.get_field_elements_rejection_sampling::<Fr>(1));
-    expect_file_with_name("second sample", lfsr.get_field_elements_rejection_sampling::<Fr>(1));
+    expect_file_with_name("first sample", lfsr.get_field_elements_rejection_sampling::<Fr>(1)?);
+    expect_file_with_name("second sample", lfsr.get_field_elements_rejection_sampling::<Fr>(1)?);
+    Ok(())
 }
 
 #[test]

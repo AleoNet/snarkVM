@@ -100,10 +100,11 @@ mod tests {
     }
 
     #[test]
-    fn test_grain_lfsr() {
+    fn test_grain_lfsr() -> Result<()> {
         let mut lfsr = PoseidonGrainLFSR::new(false, 253, 3, 8, 31);
-        assert_snapshot("test_grain_lfsr", "first_sample", lfsr.get_field_elements_rejection_sampling::<Fq>(1));
-        assert_snapshot("test_grain_lfsr", "second_sample", lfsr.get_field_elements_rejection_sampling::<Fq>(1));
+        assert_snapshot("test_grain_lfsr", "first_sample", lfsr.get_field_elements_rejection_sampling::<Fq>(1)?);
+        assert_snapshot("test_grain_lfsr", "second_sample", lfsr.get_field_elements_rejection_sampling::<Fq>(1)?);
+        Ok(())
     }
 
     #[test]
