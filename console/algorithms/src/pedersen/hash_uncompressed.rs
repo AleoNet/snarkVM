@@ -33,7 +33,7 @@ impl<G: AffineCurve, const NUM_BITS: usize> HashUncompressed for Pedersen<G, NUM
         // Compute sum of h_i^{m_i} for all i.
         Ok(input
             .iter()
-            .zip_eq(&self.base_window)
+            .zip_eq(&*self.base_window)
             .flat_map(|(bit, base)| match bit {
                 true => Some(*base),
                 false => None,

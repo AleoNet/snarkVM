@@ -35,7 +35,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
         // Ensure the input size is within the parameter size,
         if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
             bail!(
-                "Invalid input size for Pedersen: expected <= {}, found {}",
+                "Invalid input size for BHP: expected <= {}, found {}",
                 NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE,
                 input.len()
             )
@@ -56,7 +56,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
         // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
         Ok(input
             .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
-            .zip(&self.bases_lookup)
+            .zip(&*self.bases_lookup)
             .flat_map(|(bits, bases)| {
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
                     base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]

@@ -26,7 +26,7 @@ use snarkvm_utilities::ToBits;
 
 use anyhow::{bail, Result};
 use itertools::Itertools;
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
 pub type Pedersen64<G> = Pedersen<G, 64>;
@@ -37,9 +37,9 @@ pub type Pedersen128<G> = Pedersen<G, 128>;
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct Pedersen<G: AffineCurve, const NUM_BITS: usize> {
     /// The base window for the Pedersen hash.
-    base_window: [G::Projective; NUM_BITS],
+    base_window: Arc<[G::Projective; NUM_BITS]>,
     /// The random base window for the Pedersen commitment.
-    random_base_window: Vec<G::Projective>,
+    random_base_window: Arc<Vec<G::Projective>>,
 }
 
 impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
@@ -65,16 +65,16 @@ impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
         }
         assert_eq!(random_base_window.len(), num_scalar_bits);
 
-        Self { base_window, random_base_window }
+        Self { base_window: Arc::new(base_window), random_base_window: Arc::new(random_base_window) }
     }
 
     /// Returns the base window.
-    pub fn base_window(&self) -> &[G::Projective; NUM_BITS] {
+    pub fn base_window(&self) -> &Arc<[G::Projective; NUM_BITS]> {
         &self.base_window
     }
 
     /// Returns the random base window.
-    pub fn random_base_window(&self) -> &[G::Projective] {
+    pub fn random_base_window(&self) -> &Arc<Vec<G::Projective>> {
         &self.random_base_window
     }
 }

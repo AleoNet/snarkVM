@@ -46,6 +46,9 @@ version = "0.2"
 [dependencies.itertools]
 version = "0.10.1"
 
+[dependencies.lazy_static]
+version = "1.4"
+
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]

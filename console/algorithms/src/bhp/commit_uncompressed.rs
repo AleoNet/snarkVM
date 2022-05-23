@@ -28,7 +28,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitU
         let mut output = self.hash_uncompressed(input)?.to_projective();
 
         // Compute h^r.
-        randomizer.to_bits_le().iter().zip_eq(&self.random_base).filter(|(bit, _)| **bit).for_each(|(_, base)| {
+        randomizer.to_bits_le().iter().zip_eq(&*self.random_base).filter(|(bit, _)| **bit).for_each(|(_, base)| {
             output += base;
         });
 

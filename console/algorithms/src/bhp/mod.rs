@@ -27,6 +27,7 @@ use snarkvm_utilities::{cfg_iter, BigInteger, ToBits};
 use anyhow::{bail, Result};
 use core::ops::Neg;
 use itertools::Itertools;
+use std::sync::Arc;
 
 pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
@@ -42,13 +43,14 @@ pub type BHP1024<G> = BHP<G, 6, 57>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
+#[derive(Clone)]
 pub struct BHP<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The bases for the BHP hash.
-    bases: Vec<Vec<G::Projective>>,
+    bases: Arc<Vec<Vec<G::Projective>>>,
     /// The bases lookup table for the BHP hash.
-    bases_lookup: Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>,
+    bases_lookup: Arc<Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>>,
     /// The random base for the BHP commitment.
-    random_base: Vec<G::Projective>,
+    random_base: Arc<Vec<G::Projective>>,
 }
 
 impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
@@ -121,16 +123,16 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, 
         }
         assert_eq!(random_base.len(), num_scalar_bits);
 
-        Self { bases, bases_lookup, random_base }
+        Self { bases: Arc::new(bases), bases_lookup: Arc::new(bases_lookup), random_base: Arc::new(random_base) }
     }
 
     /// Returns the bases.
-    pub fn bases(&self) -> &[Vec<G::Projective>] {
+    pub fn bases(&self) -> &Arc<Vec<Vec<G::Projective>>> {
         &self.bases
     }
 
     /// Returns the random base window.
-    pub fn random_base(&self) -> &[G::Projective] {
+    pub fn random_base(&self) -> &Arc<Vec<G::Projective>> {
         &self.random_base
     }
 }

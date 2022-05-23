@@ -36,6 +36,7 @@ pub type Poseidon4<F> = Poseidon<F, 4>;
 /// Poseidon8 is a cryptographic hash function of input rate 8.
 pub type Poseidon8<F> = Poseidon<F, 8>;
 
+#[derive(Clone)]
 pub struct Poseidon<F: PrimeField, const RATE: usize> {
     /// The Poseidon parameters for hashing.
     parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,

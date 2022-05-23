@@ -19,9 +19,14 @@
 
 #[macro_use]
 extern crate enum_index_derive;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod account;
 pub use account::*;
+
+mod merkle_tree;
+pub use merkle_tree::MerkleTree;
 
 pub mod program;
 pub use program::*;

@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Network, Transition};
+use super::*;
 
-pub enum Transaction<N: Network> {
-    Deploy {},
-    Execute {
-        /// The state transition.
-        transitions: Vec<Transition<N>>,
-    },
-}
+mod leaf_hash;
+pub use leaf_hash::*;
+
+mod path_hash;
+pub use path_hash::*;

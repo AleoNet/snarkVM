@@ -2236,6 +2236,7 @@ dependencies = [
  "enum_index",
  "enum_index_derive",
  "itertools",
+ "lazy_static",
  "rand",
  "serde",
  "serde_json",

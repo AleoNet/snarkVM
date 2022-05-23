@@ -49,6 +49,7 @@ impl<A: Aleo> Data<A, Plaintext<A>> {
         Data(encrypted_data)
     }
 }
+
 impl<A: Aleo> Data<A, Ciphertext<A>> {
     /// Decrypts `self` into plaintext using the given view key & nonce,
     pub fn decrypt(&self, view_key: Scalar<A>, nonce: Field<A>) -> Data<A, Plaintext<A>> {

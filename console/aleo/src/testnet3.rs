@@ -34,6 +34,8 @@ use snarkvm_utilities::ToBits;
 use anyhow::{bail, Result};
 use itertools::Itertools;
 
+// TODO (howardwu):
+// lazy_static! {
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<<Testnet3 as Network>::Projective> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
