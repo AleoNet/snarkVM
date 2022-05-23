@@ -49,20 +49,20 @@ impl<A: Aleo> Inject for Identifier<A> {
         match identifier.chars().next() {
             Some(character) => {
                 if character.is_numeric() {
-                    A::halt(format!("Identifier cannot start with a number"))
+                    A::halt("Identifier cannot start with a number")
                 }
             }
-            None => A::halt(format!("Identifier cannot be an empty string")),
+            None => A::halt("Identifier cannot be an empty string"),
         }
 
         // Ensure the identifier is alphanumeric and underscores.
         if !identifier.chars().all(|character| character.is_alphanumeric() || character == '_') {
-            A::halt(format!("Identifier must be alphanumeric and underscores"))
+            A::halt("Identifier must be alphanumeric and underscores")
         }
 
         // Ensure the identifier is not solely underscores.
         if identifier.chars().all(|character| character == '_') {
-            A::halt(format!("Identifier cannot consist solely of underscores"))
+            A::halt("Identifier cannot consist solely of underscores")
         }
 
         // Ensure identifier fits within the data capacity of the base field.
@@ -113,7 +113,7 @@ impl<A: Aleo> Eject for Identifier<A> {
                     },
                     false => A::halt(format!("Identifier should be {} bytes, found {} bytes", self.1, string.len())),
                 },
-                None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
+                None => A::halt("Identifier exceeds the maximum capacity allowed"),
             },
             Err(error) => A::halt(format!("Failed to eject identifier as string: {error}")),
         }
@@ -139,7 +139,7 @@ impl<A: Aleo> Parser for Identifier<A> {
         map_res(recognize(pair(alt((alpha1, tag("_"))), many0(alt((alphanumeric1, tag("_")))))), |identifier: &str| {
             // Ensure the identifier is not solely underscores.
             if identifier.chars().all(|character| character == '_') {
-                return Err(error(format!("Identifier cannot consist solely of underscores")));
+                return Err(error("Identifier cannot consist solely of underscores"));
             }
 
             // Ensure identifier fits within the data capacity of the base field.

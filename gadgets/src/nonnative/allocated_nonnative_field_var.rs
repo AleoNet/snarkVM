@@ -346,7 +346,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         for _ in 0..params.num_limbs {
             let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
             let cur_mod_r =
-                <BaseField as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..]); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
+                <BaseField as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..])
+                    .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(BaseField::from_repr(cur_mod_r).unwrap());
             cur.divn(params.bits_per_limb as u32);
         }
