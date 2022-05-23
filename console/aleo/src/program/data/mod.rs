@@ -26,8 +26,6 @@ use crate::{
     Visibility,
 };
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{FromBits, ToBits, ToBytes};
 
 use anyhow::{bail, Result};
 

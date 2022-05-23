@@ -41,15 +41,15 @@ impl<N: Network> From<(Address<N>, u64, Data<N, Plaintext<N>>, N::Affine)> for S
 }
 
 impl<N: Network> State<N> {
-    // /// Returns the record corresponding to the state.
-    // pub fn encrypt(&self, randomizer: &N::Scalar) -> Result<Record<N>> {
-    //     Record::encrypt(self, randomizer)
-    // }
-    //
-    // /// Initializes a new instance of `State` given a record and view key.
-    // pub fn decrypt(record: &Record<N>, view_key: &ViewKey<N>) -> Result<Self> {
-    //     record.decrypt(view_key)
-    // }
+    /// Returns the record corresponding to the state.
+    pub fn encrypt(&self, randomizer: &N::Scalar) -> Result<Record<N>> {
+        Record::encrypt(self, randomizer)
+    }
+
+    /// Initializes a new instance of `State` given a record and view key.
+    pub fn decrypt(record: &Record<N>, view_key: &ViewKey<N>) -> Result<Self> {
+        record.decrypt(view_key)
+    }
 
     /// Returns the program state commitment, given the program ID, process ID, and data ID.
     pub fn to_commitment(&self, program: N::Field, process: N::Field, data: N::Field) -> Result<N::Field> {

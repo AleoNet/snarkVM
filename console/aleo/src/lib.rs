@@ -19,8 +19,8 @@
 
 #[macro_use]
 extern crate enum_index_derive;
-#[macro_use]
-extern crate lazy_static;
+// #[macro_use]
+// extern crate lazy_static;
 
 pub mod account;
 pub use account::*;
@@ -37,11 +37,11 @@ pub use testnet3::*;
 pub mod traits;
 pub use traits::*;
 
-pub mod transaction;
-pub use transaction::*;
+// pub mod transaction;
+// pub use transaction::*;
 
-pub mod transition;
-pub use transition::*;
+// pub mod transition;
+// pub use transition::*;
 
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::traits::*;

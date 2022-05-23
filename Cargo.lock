@@ -2235,7 +2235,6 @@ dependencies = [
  "enum_index",
  "enum_index_derive",
  "itertools",
- "lazy_static",
  "once_cell",
  "rand",
  "rayon",
