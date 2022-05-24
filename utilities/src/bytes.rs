@@ -196,7 +196,7 @@ impl<'a, 'de> Visitor<'de> for FromBytesVisitor<'a> {
 
 struct FromBytesWithU8Visitor<T: FromBytes>(String, PhantomData<T>);
 
-impl<'de, T: FromBytes> FromBytesWithU8Visitor<T> {
+impl<T: FromBytes> FromBytesWithU8Visitor<T> {
     /// Initializes a new `FromBytesWithU8Visitor` with the given `name`.
     pub fn new(name: &str) -> Self {
         Self(name.to_string(), PhantomData)
@@ -230,7 +230,7 @@ impl<'de, T: FromBytes> Visitor<'de> for FromBytesWithU8Visitor<T> {
 
 struct FromBytesWithU16Visitor<T: FromBytes>(String, PhantomData<T>);
 
-impl<'de, T: FromBytes> FromBytesWithU16Visitor<T> {
+impl<T: FromBytes> FromBytesWithU16Visitor<T> {
     /// Initializes a new `FromBytesWithU16Visitor` with the given `name`.
     pub fn new(name: &str) -> Self {
         Self(name.to_string(), PhantomData)
@@ -264,7 +264,7 @@ impl<'de, T: FromBytes> Visitor<'de> for FromBytesWithU16Visitor<T> {
 
 struct FromBytesWithU32Visitor<T: FromBytes>(String, PhantomData<T>);
 
-impl<'de, T: FromBytes> FromBytesWithU32Visitor<T> {
+impl<T: FromBytes> FromBytesWithU32Visitor<T> {
     /// Initializes a new `FromBytesWithU32Visitor` with the given `name`.
     pub fn new(name: &str) -> Self {
         Self(name.to_string(), PhantomData)
