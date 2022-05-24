@@ -17,7 +17,6 @@
 use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
 use rand::thread_rng;
@@ -89,6 +88,9 @@ fn dpc_execute_circuits_test<N: Network>(
     let (input_proving_key, input_verifying_key) =
         <N as Network>::InputSNARK::setup(&InputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
+    let mut input_circuits = Vec::new();
+    let mut input_public_inputs = Vec::new();
+
     // Compute the input circuit proofs.
     for (
         ((((record, serial_number), ledger_proof), signature), input_value_commitment),
@@ -148,20 +150,26 @@ fn dpc_execute_circuits_test<N: Network>(
 
         //////////////////////////////////////////////////////////////////////////
 
-        let input_proof = <N as Network>::InputSNARK::prove(&input_proving_key, &input_circuit, rng).unwrap();
-        assert_eq!(N::INPUT_PROOF_SIZE_IN_BYTES, input_proof.to_bytes_le().unwrap().len());
-
-        // Verify that the inner circuit proof passes.
-        assert!(<N as Network>::InputSNARK::verify(&input_verifying_key, &input_public, &input_proof).unwrap());
+        input_circuits.push(input_circuit);
+        input_public_inputs.push(input_public);
 
         //////////////////////////////////////////////////////////////////////////
     }
+    let input_proof = <N as Network>::InputSNARK::prove_batch(&input_proving_key, &input_circuits, rng).unwrap();
+
+    // Verify that the inner circuit proof passes.
+    assert!(
+        <N as Network>::InputSNARK::verify_batch(&input_verifying_key, &input_public_inputs, &input_proof).unwrap()
+    );
 
     //////////////////////////////////////////////////////////////////////////
 
     // Generate output circuit parameters and proof.
     let (output_proving_key, output_verifying_key) =
         <N as Network>::OutputSNARK::setup(&OutputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
+
+    let mut output_circuits = Vec::new();
+    let mut output_public_inputs = Vec::new();
 
     // Compute the output circuit proofs.
     for (
@@ -214,12 +222,15 @@ fn dpc_execute_circuits_test<N: Network>(
 
         //////////////////////////////////////////////////////////////////////////
 
-        let output_proof = <N as Network>::OutputSNARK::prove(&output_proving_key, &output_circuit, rng).unwrap();
-        assert_eq!(N::OUTPUT_PROOF_SIZE_IN_BYTES, output_proof.to_bytes_le().unwrap().len());
-
-        // Verify that the inner circuit proof passes.
-        assert!(<N as Network>::OutputSNARK::verify(&output_verifying_key, &output_public, &output_proof).unwrap());
+        output_circuits.push(output_circuit);
+        output_public_inputs.push(output_public);
     }
+    let output_proof = <N as Network>::OutputSNARK::prove_batch(&output_proving_key, &output_circuits, rng).unwrap();
+
+    // Verify that the inner circuit proof passes.
+    assert!(
+        <N as Network>::OutputSNARK::verify_batch(&output_verifying_key, &output_public_inputs, &output_proof).unwrap()
+    );
 
     //////////////////////////////////////////////////////////////////////////
 
