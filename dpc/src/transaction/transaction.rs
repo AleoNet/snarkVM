@@ -394,7 +394,8 @@ impl<N: Network> ToBytes for Transaction<N> {
         }
 
         (self.transitions.len() as u16).write_le(&mut writer)?;
-        self.transitions.write_le(&mut writer)
+        self.transitions.write_le(&mut writer)?;
+        self.kernel_proof.write_le(&mut writer)
     }
 }
 
@@ -548,7 +549,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(631, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1517, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
