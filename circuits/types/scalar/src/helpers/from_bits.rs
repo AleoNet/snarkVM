@@ -25,7 +25,7 @@ impl<E: Environment> FromBits for Scalar<E> {
     /// If the length of the list is less than or equal to `E::ScalarField::size_in_bits()`, `bits_le`
     /// is padded with zeros to the right to match the size of the scalar field.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        // Retrieve the data and field size.
+        // Retrieve the data and scalar field size.
         let size_in_data_bits = E::ScalarField::size_in_data_bits();
         let size_in_bits = E::ScalarField::size_in_bits();
 
@@ -35,43 +35,29 @@ impl<E: Environment> FromBits for Scalar<E> {
             // Check if all excess bits are zero.
             let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
             // Ensure `should_be_zero` is zero.
-            match (should_be_zero.is_constant(), should_be_zero.eject_value()) {
-                (true, true) => {
-                    E::halt("Detected nonzero excess bits while initializing a scalar field element from bits.")
-                }
-                (true, false) => (), // Constraint is satisfied.
-                (false, _) => E::assert(!should_be_zero),
-            }
+            E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // If the number of bits is greater than `size_in_data_bits`, then check that it is a valid field element.
+        // If `num_bits` is greater than `size_in_data_bits`, check it is less than `ScalarField::MODULUS`.
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
             let modulus_minus_one = -E::ScalarField::one();
 
-            // Pad `bits_le` with zeros to the size of the scalar field modulus, if necessary.
-            let boolean_false = Boolean::constant(false);
-            let padded_bits_le = bits_le.iter().chain(core::iter::repeat(&boolean_false)).take(size_in_bits);
+            // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
+            // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
+            let bits_le = &bits_le[..size_in_bits];
 
-            // Zip `modulus_minus_one` and `padded_bits_le` together and construct a check on the sequence of bit pairs.
-            // See `Field::is_less_than` for more details.
-            let modulus_minus_one_less_than_bits = modulus_minus_one.to_bits_le().iter().zip_eq(padded_bits_le).fold(
+            // Compute `!((ScalarField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < ScalarField::MODULUS`.
+            let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le).fold(
                 Boolean::constant(false),
-                |rest_is_less, (self_bit, other_bit)| {
-                    if *self_bit { other_bit.bitand(&rest_is_less) } else { other_bit.bitor(&rest_is_less) }
+                |rest_is_less, (this, that)| {
+                    if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
                 },
             );
 
-            // Enforce that ScalarField::MODULUS - 1 is not less than the field element given by `bits_le`.
-            // In other words, enforce that ScalarField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
-            match (modulus_minus_one_less_than_bits.is_constant(), modulus_minus_one_less_than_bits.eject_value()) {
-                (true, true) => E::halt(
-                    "Attempted to instantiate a scalar field element that is greater than ScalarField::MODULUS - 1.",
-                ),
-                (true, false) => (), // Constraint is satisfied.
-                (false, _) => E::assert(!modulus_minus_one_less_than_bits),
-            }
+            // Ensure the scalar is less than `ScalarField::MODULUS`.
+            E::assert(is_less_than_modulus);
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
