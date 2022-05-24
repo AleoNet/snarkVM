@@ -21,21 +21,24 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Output {
+        // If all scalar field elements are less than (MODULUS - 1)/2 on the base field,
+        // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
         debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
 
-        // If all elements of the scalar field are less than (p - 1)/2, where p is the modulus of
-        // the base field, then we can perform an optimized check for `less_than`.
-        // We compute the less than operation by checking the parity of 2 * (self - other) mod p.
-        // If a < b, then 2 * (self - other) mod p is odd.
-        // If a >= b, then 2 * (self - other) mod p is even.
+        // Constant case
         if self.is_constant() && other.is_constant() {
             Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
-        } else {
-            (self.to_field() - other.to_field())
-                .double()
-                .to_bits_be()
-                .pop()
-                .unwrap_or_else(|| E::halt("Expected at least one bit the bit representation of the base field."))
+        }
+        // Public and private cases
+        else {
+            // Check the parity of 2 * (`self` - `other`) mod MODULUS.
+            //   - If `self` < `other`, then 2 * (`self` - `other`) mod MODULUS is odd.
+            //   - If `self` >= `other`, then 2 * (`self` - `other`) mod MODULUS is even.
+
+            // Compute 2 * (`self` - `other`).
+            let outcome = (self.to_field() - other.to_field()).double();
+            // Retrieve the LSB from the computation to determine even / odd parity.
+            outcome.to_bits_be().pop().unwrap_or_else(|| E::halt("Failed to retrieve the LSB from the field element."))
         }
     }
 
