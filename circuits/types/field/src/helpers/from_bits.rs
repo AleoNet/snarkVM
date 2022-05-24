@@ -21,7 +21,7 @@ impl<E: Environment> FromBits for Field<E> {
 
     /// Initializes a new base field element from a list of **little-endian** bits.
     ///   - If `bits_le` is longer than `E::BaseField::size_in_bits()`, the excess bits are enforced to be `0`s.
-    ///   - If `bits_le` is shorter than `E::BaseField::size_in_bits()`, it is padded with `0`s up to scalar field size.
+    ///   - If `bits_le` is shorter than `E::BaseField::size_in_bits()`, it is padded with `0`s up to base field size.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Retrieve the data and base field size.
         let size_in_data_bits = E::BaseField::size_in_data_bits();
