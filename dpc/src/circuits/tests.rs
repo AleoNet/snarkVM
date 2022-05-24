@@ -155,12 +155,16 @@ fn dpc_execute_circuits_test<N: Network>(
 
         //////////////////////////////////////////////////////////////////////////
     }
+    let proving_start = std::time::Instant::now();
     let input_proof = <N as Network>::InputSNARK::prove_batch(&input_proving_key, &input_circuits, rng).unwrap();
+    println!("Proving time for {num_inputs} x {num_outputs}: {}", proving_start.elapsed().as_secs_f64());
 
+    let verifying_start = std::time::Instant::now();
     // Verify that the inner circuit proof passes.
     assert!(
         <N as Network>::InputSNARK::verify_batch(&input_verifying_key, &input_public_inputs, &input_proof).unwrap()
     );
+    println!("Verifying time: {}", verifying_start.elapsed().as_secs_f64());
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -225,12 +229,16 @@ fn dpc_execute_circuits_test<N: Network>(
         output_circuits.push(output_circuit);
         output_public_inputs.push(output_public);
     }
+    let proving_start = std::time::Instant::now();
     let output_proof = <N as Network>::OutputSNARK::prove_batch(&output_proving_key, &output_circuits, rng).unwrap();
+    println!("Proving time for {num_inputs} x {num_outputs}: {}", proving_start.elapsed().as_secs_f64());
 
+    let verifying_start = std::time::Instant::now();
     // Verify that the inner circuit proof passes.
     assert!(
         <N as Network>::OutputSNARK::verify_batch(&output_verifying_key, &output_public_inputs, &output_proof).unwrap()
     );
+    println!("Verifying time: {}", verifying_start.elapsed().as_secs_f64());
 
     //////////////////////////////////////////////////////////////////////////
 
