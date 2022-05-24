@@ -21,9 +21,12 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Output {
+        // Case 1: Constant < Constant
         if self.is_constant() && other.is_constant() {
             Boolean::constant(self.eject_value() < other.eject_value())
-        } else if self.is_constant() {
+        }
+        // Case 2: Constant < Variable
+        else if self.is_constant() {
             // See the `else` case below for the truth table and description of the logic.
             self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
@@ -32,7 +35,9 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
                     false => that.bitor(&is_less_than),
                 },
             )
-        } else if other.is_constant() {
+        }
+        // Case 3: Variable < Constant
+        else if other.is_constant() {
             // See the `else` case below for the truth table and description of the logic.
             self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
@@ -41,7 +46,9 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
                     false => (!this).bitand(&is_less_than),
                 },
             )
-        } else {
+        }
+        // Case 4: Variable < Variable
+        else {
             // Check each bitwise pair of `(self, other)` from MSB to LSB as follows:
             //   - If `this` != `that`, and if `this` is `true`, return `false`.
             //   - If `this` != `that`, and if `this` is `false`, return `true`.

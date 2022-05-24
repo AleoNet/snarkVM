@@ -21,10 +21,6 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Output {
-        // If all scalar field elements are less than (MODULUS - 1)/2 on the base field,
-        // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
-        debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
-
         // Case 1: Constant < Constant
         if self.is_constant() && other.is_constant() {
             Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
@@ -53,7 +49,11 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         }
         // Case 4: Variable < Variable
         else {
-            // Check the parity of 2 * (`self` - `other`) mod MODULUS.
+            // If all scalar field elements are less than (MODULUS - 1)/2 on the base field,
+            // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
+            debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
+
+            // Intuition: Check the parity of 2 * (`self` - `other`) mod MODULUS.
             //   - If `self` < `other`, then 2 * (`self` - `other`) mod MODULUS is odd.
             //   - If `self` >= `other`, then 2 * (`self` - `other`) mod MODULUS is even.
 
