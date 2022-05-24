@@ -24,59 +24,48 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
         if self.is_constant() && other.is_constant() {
             Boolean::constant(self.eject_value() < other.eject_value())
         } else if self.is_constant() {
-            // (For advanced users) this implementation saves us from instantiating 253 constants for
-            // the bits of `self`. The implementation in the `else` case invokes `to_bits_le` on
-            // `self` which would allocate 253 constants. Since `self` is constant, we can directly
-            // inspect its bits and construct an equivalent ternary expression to that in the `else`
-            // case. We describe the logic below:
-            // - If `self_bit` is `true`, then `self` is less than `other` iff `other_bit` is `true` and `rest_is_less` is `true.
-            // - If `self_bit` is `false`, then `self` is less than `other` iff `other_bit` is `true` or `rest_is_less` is `true`.
-            self.eject_value().to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+            // See the `else` case below for the truth table and description of the logic.
+            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
-                |rest_is_less, (self_bit, other_bit)| {
-                    if self_bit { other_bit.bitand(&rest_is_less) } else { other_bit.bitor(&rest_is_less) }
+                |is_less_than, (this, that)| match this.eject_value() {
+                    true => that.bitand(&is_less_than),
+                    false => that.bitor(&is_less_than),
                 },
             )
         } else if other.is_constant() {
-            // (For advanced users) this implementation saves us from instantiating 253 constants for
-            // the bits of `self`. The implementation in the `else` case invokes `to_bits_le` on
-            // `self` which would allocate 253 constants. Since `self` is constant, we can directly
-            // inspect its bits and construct an equivalent ternary expression to that in the `else`
-            // case. We describe the logic below:
-            // - If `other_bit` is `true`, then `self` is less than `other` iff `self_bit` is `false` or `rest_is_less` is `true.
-            // - If `other_bit` is `false`, then `self` is less than `other` iff `self_bit` is `false` and `rest_is_less` is `true`.
-            self.to_bits_le().into_iter().zip_eq(other.eject_value().to_bits_le()).fold(
+            // See the `else` case below for the truth table and description of the logic.
+            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
-                |rest_is_less, (self_bit, other_bit)| {
-                    if other_bit { (!self_bit).bitor(rest_is_less) } else { (!self_bit).bitand(&rest_is_less) }
+                |is_less_than, (this, that)| match that.eject_value() {
+                    true => (!this).bitor(is_less_than),
+                    false => (!this).bitand(&is_less_than),
                 },
             )
         } else {
-            // Zip `self.to_bits_le()` and `other.to_bits_le()` together and construct a check on the sequence of bit pairs.
-            // The bitwise check begins with the most-significant bit pair and ends with the least-significant bit pair.
-            // For each bit pair,
-            // - If `self_bit` and `other_bit` are different signs, then if `self_bit` is `true`, return false.
-            // - If `self_bit` and `other_bit` are different signs, then if `self_bit` is `false`, return true.
-            // - If `self_bit` and `other_bit` are the same sign, then check the following bits.
+            // Check each bitwise pair of `(self, other)` from MSB to LSB as follows:
+            //   - If `this` != `that`, and if `this` is `true`, return `false`.
+            //   - If `this` != `that`, and if `this` is `false`, return `true`.
+            //   - If `this` == `that`, return `is_less_than`.
             //
-            // The truth table is as follows:
-            // | self_bit | other_bit | rest_is_less | result |
-            // |----------+-----------+--------------+--------|
-            // | `true`   | `true`    | `true`       | `true` |
-            // | `true`   | `true`    | `false`      | `false`|
-            // | `true`   | `false`   | `true`       | `true` |
-            // | `true`   | `false`   | `false`      | `true` |
-            // | `false`  | `true`    | `true`       | `false`|
-            // | `false`  | `true`    | `false`      | `false`|
-            // | `false`  | `false`   | `true`       | `true` |
-            // | `false`  | `false`   | `false`      | `false`|
+            // The following is the truth table:
             //
-            self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
-                Boolean::constant(false),
-                |rest_is_less, (self_bit, other_bit)| {
-                    Boolean::ternary(&self_bit.bitxor(&other_bit), &other_bit, &rest_is_less)
-                },
-            )
+            // | this    | that    | is_less_than | result |
+            // |---------+---------+--------------+--------|
+            // | `true`  | `true`  | `true`       | `true` |
+            // | `true`  | `true`  | `false`      | `false`|
+            // | `true`  | `false` | `true`       | `true` |
+            // | `true`  | `false` | `false`      | `true` |
+            // | `false` | `true`  | `true`       | `false`|
+            // | `false` | `true`  | `false`      | `false`|
+            // | `false` | `false` | `true`       | `true` |
+            // | `false` | `false` | `false`      | `false`|
+            //
+            self.to_bits_le()
+                .iter()
+                .zip_eq(other.to_bits_le())
+                .fold(Boolean::constant(false), |is_less_than, (this, that)| {
+                    Boolean::ternary(&this.bitxor(&that), &that, &is_less_than)
+                })
         }
     }
 
@@ -174,17 +163,17 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        run_test(Mode::Constant, Mode::Public, 0, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Public, 253, 0, 506, 507);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        run_test(Mode::Constant, Mode::Private, 0, 0, 506, 507);
+        run_test(Mode::Constant, Mode::Private, 253, 0, 506, 507);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        run_test(Mode::Public, Mode::Constant, 0, 0, 506, 507);
+        run_test(Mode::Public, Mode::Constant, 253, 0, 506, 507);
     }
 
     #[test]
@@ -199,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_private_is_less_than_constant() {
-        run_test(Mode::Private, Mode::Constant, 0, 0, 506, 507);
+        run_test(Mode::Private, Mode::Constant, 253, 0, 506, 507);
     }
 
     #[test]
