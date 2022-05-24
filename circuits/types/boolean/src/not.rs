@@ -31,8 +31,9 @@ impl<E: Environment> Not for &Boolean<E> {
 
     /// Returns `(NOT a)`.
     fn not(self) -> Self::Output {
-        // Suppose that `self is `0`. Then `1 - self` is `1`.
-        // Suppose that `self is `1`. Then `1 - self` is `0`.
+        // The `NOT` operation behaves as follows:
+        //     Case 1: If `(self == 0)`, then `(1 - self) == 1`.
+        //     Case 2: If `(self == 1)`, then `(1 - self) == 0`.
         match self.is_constant() {
             // Constant case.
             true => Boolean(E::one() - &self.0),
