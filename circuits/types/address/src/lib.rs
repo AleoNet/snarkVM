@@ -38,21 +38,10 @@ pub struct Address<E: Environment>(Group<E>);
 
 impl<E: Environment> AddressTrait for Address<E> {}
 
-impl<E: Environment> Address<E> {
-    ///
-    /// Initializes a new instance of an address from an affine group.
-    ///
-    pub fn from(value: Group<E>) -> Self {
-        Self(value)
-    }
-}
-
 impl<E: Environment> Inject for Address<E> {
     type Primitive = E::Affine;
 
-    ///
     /// Initializes a new instance of an address from a string.
-    ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self(Group::new(mode, value))
     }
@@ -61,16 +50,12 @@ impl<E: Environment> Inject for Address<E> {
 impl<E: Environment> Eject for Address<E> {
     type Primitive = E::Affine;
 
-    ///
     /// Ejects the mode of the group element.
-    ///
     fn eject_mode(&self) -> Mode {
         self.0.eject_mode()
     }
 
-    ///
     /// Ejects the address as a constant affine group element.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         self.0.eject_value()
     }

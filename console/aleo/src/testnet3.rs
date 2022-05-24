@@ -100,8 +100,6 @@ impl Network for Testnet3 {
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;
 
-    // 128 KiB
-
     /// A helper method to recover the y-coordinate given the x-coordinate for
     /// a twisted Edwards point, returning the affine curve point.
     fn affine_from_x_coordinate(x: Self::Field) -> Result<Self::Affine> {

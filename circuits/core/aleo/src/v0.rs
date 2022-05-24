@@ -112,8 +112,6 @@ impl Aleo for AleoV0 {
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::BaseField as PrimeField>::Parameters::CAPACITY;
 
-    // 128 KiB
-
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))

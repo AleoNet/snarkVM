@@ -16,6 +16,20 @@
 
 use super::*;
 
+impl<E: Environment> From<Group<E>> for Address<E> {
+    /// Initializes a new instance of an address from an affine group.
+    fn from(value: Group<E>) -> Self {
+        Self(value)
+    }
+}
+
+impl<E: Environment> From<&Group<E>> for Address<E> {
+    /// Initializes a new instance of an address from an affine group.
+    fn from(value: &Group<E>) -> Self {
+        Self(value.clone())
+    }
+}
+
 impl<E: Environment> FromGroup for Address<E> {
     type Group = Group<E>;
     type Scalar = Scalar<E>;
