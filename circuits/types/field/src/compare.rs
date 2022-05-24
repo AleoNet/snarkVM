@@ -21,25 +21,59 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Output {
-        let mut is_less_than = Boolean::constant(false);
-        let mut are_previous_bits_equal = Boolean::constant(true);
-
-        // Initialize an iterator over `self` and `other` from MSB to LSB.
-        let self_bits_be = self.to_bits_be();
-        let other_bits_be = other.to_bits_be();
-        let bits_be = self_bits_be.iter().zip_eq(&other_bits_be);
-
-        for (index, (self_bit, other_bit)) in bits_be.enumerate() {
-            // Determine if `self` is less than `other` up to the `index`-th bit.
-            is_less_than |= &are_previous_bits_equal & (!self_bit & other_bit);
-
-            // Skip the update to the LSB, as this boolean is subsequently discarded.
-            if index != self_bits_be.len() - 1 {
-                are_previous_bits_equal &= self_bit.is_equal(other_bit);
-            }
+        // Case 1: Constant < Constant
+        if self.is_constant() && other.is_constant() {
+            Boolean::constant(self.eject_value() < other.eject_value())
         }
-
-        is_less_than
+        // Case 2: Constant < Variable
+        else if self.is_constant() {
+            // See the `else` case below for the truth table and description of the logic.
+            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+                Boolean::constant(false),
+                |is_less_than, (this, that)| match this.eject_value() {
+                    true => that.bitand(&is_less_than),
+                    false => that.bitor(&is_less_than),
+                },
+            )
+        }
+        // Case 3: Variable < Constant
+        else if other.is_constant() {
+            // See the `else` case below for the truth table and description of the logic.
+            self.to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+                Boolean::constant(false),
+                |is_less_than, (this, that)| match that.eject_value() {
+                    true => (!this).bitor(is_less_than),
+                    false => (!this).bitand(&is_less_than),
+                },
+            )
+        }
+        // Case 4: Variable < Variable
+        else {
+            // Check each bitwise pair of `(self, other)` from MSB to LSB as follows:
+            //   - If `this` != `that`, and if `this` is `true`, return `false`.
+            //   - If `this` != `that`, and if `this` is `false`, return `true`.
+            //   - If `this` == `that`, return `is_less_than`.
+            //
+            // The following is the truth table:
+            //
+            // | this    | that    | is_less_than | result |
+            // |---------+---------+--------------+--------|
+            // | `true`  | `true`  | `true`       | `true` |
+            // | `true`  | `true`  | `false`      | `false`|
+            // | `true`  | `false` | `true`       | `true` |
+            // | `true`  | `false` | `false`      | `true` |
+            // | `false` | `true`  | `true`       | `false`|
+            // | `false` | `true`  | `false`      | `false`|
+            // | `false` | `false` | `true`       | `true` |
+            // | `false` | `false` | `false`      | `false`|
+            //
+            self.to_bits_le()
+                .iter()
+                .zip_eq(other.to_bits_le())
+                .fold(Boolean::constant(false), |is_less_than, (this, that)| {
+                    Boolean::ternary(&this.bitxor(&that), &that, &is_less_than)
+                })
+        }
     }
 
     /// Returns `true` if `self` is greater than `other`.
@@ -69,6 +103,33 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_is_less_than(
+        name: &str,
+        expected: bool,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) {
+        // Perform the less than comparison.
+        Circuit::scope(name, || {
+            let candidate = a.is_less_than(b);
+            assert_eq!(expected, candidate.eject_value());
+            match (a.eject_mode(), b.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => {
+                    assert_scope!(num_constants, num_public, num_private, num_constraints)
+                }
+                (_, Mode::Constant) | (Mode::Constant, _) => {
+                    assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints)
+                }
+                _ => assert_scope!(num_constants, num_public, num_private, num_constraints),
+            }
+        });
+        Circuit::reset();
+    }
+
+    fn run_test(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: u64,
@@ -77,57 +138,73 @@ mod tests {
         num_constraints: u64,
     ) {
         for i in 0..ITERATIONS {
-            // Sample a random element `a`.
-            let expected_a: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate_a = Field::<Circuit>::new(mode_a, expected_a);
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-            // Sample a random element `b`.
-            let expected_b: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate_b = Field::<Circuit>::new(mode_b, expected_b);
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+            let expected = first < second;
+            let name = format!("{} {} {}", mode_a, mode_b, i);
+            check_is_less_than(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
 
-            // Perform the less than comparison.
-            Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
-                let candidate = candidate_a.is_less_than(&candidate_b);
-                assert_eq!(expected_a < expected_b, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-            Circuit::reset();
+            // Check `first` is not less than `first`.
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, first);
+            check_is_less_than(
+                "first !< first",
+                false,
+                &a,
+                &b,
+                num_constants,
+                num_public,
+                num_private,
+                num_constraints,
+            );
         }
     }
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 506, 0, 0, 0);
+        run_test(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
-    // TODO (howardwu): These variate in num_constraints.
-    // #[test]
-    // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
-    // }
+    #[test]
+    fn test_constant_is_less_than_public() {
+        run_test(Mode::Constant, Mode::Public, 253, 0, 506, 507);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        run_test(Mode::Constant, Mode::Private, 253, 0, 506, 507);
+    }
+
+    #[test]
+    fn test_public_is_less_than_constant() {
+        run_test(Mode::Public, Mode::Constant, 253, 0, 506, 507);
+    }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1766, 1768);
+        run_test(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1766, 1768);
+        run_test(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
+    }
+
+    #[test]
+    fn test_private_is_less_than_constant() {
+        run_test(Mode::Private, Mode::Constant, 253, 0, 506, 507);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1766, 1768);
+        run_test(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1766, 1768);
+        run_test(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
     }
 }

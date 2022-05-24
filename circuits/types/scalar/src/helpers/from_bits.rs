@@ -15,14 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new scalar field element from a list of little-endian bits *without* trailing zeros.
+    /// Initializes a new scalar field element from a list of **little-endian** bits.
+    ///   - If `bits_le` is longer than `E::ScalarField::size_in_bits()`, the excess bits are enforced to be `0`s.
+    ///   - If `bits_le` is shorter than `E::ScalarField::size_in_bits()`, it is padded with `0`s up to scalar field size.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        // Retrieve the data and scalar size.
+        // Retrieve the data and scalar field size.
         let size_in_data_bits = E::ScalarField::size_in_data_bits();
         let size_in_bits = E::ScalarField::size_in_bits();
 
@@ -35,34 +36,29 @@ impl<E: Environment> FromBits for Scalar<E> {
             E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // Construct the sanitized list of bits, resizing up if necessary.
-        let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
-        bits_le.resize(size_in_bits, Boolean::constant(false));
-
-        // Construct the candidate scalar field element.
-        let output = Scalar { bits_le };
-
-        // If the number of bits is equivalent to the scalar size in bits,
-        // ensure the scalar is below the scalar field modulus.
+        // If `num_bits` is greater than `size_in_data_bits`, check it is less than `ScalarField::MODULUS`.
         if num_bits > size_in_data_bits {
-            // Initialize the scalar field modulus as a constant base field variable.
-            //
-            // Note: We are reconstituting the scalar field into a base field here in order to check
-            // that the scalar was synthesized correctly. This is safe as the scalar field modulus
-            // is less that the base field modulus, and thus will always fit in a base field element.
-            let modulus = Field::constant(match E::ScalarField::modulus().to_bytes_le() {
-                Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
-                    Ok(modulus) => modulus,
-                    Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
-                },
-                Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
-            });
+            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
+            // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
+            let modulus_minus_one = Scalar::constant(-E::ScalarField::one());
 
-            // Ensure `output` is less than `E::ScalarField::modulus()`.
-            E::assert(output.to_field().is_less_than(&modulus));
+            // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
+            // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
+            let scalar = Scalar { bits_le: bits_le[..size_in_bits].to_vec() };
+
+            // Ensure the scalar is less than `ScalarField::MODULUS`.
+            E::assert(scalar.is_less_than_or_equal(&modulus_minus_one));
+
+            // Return the scalar.
+            scalar
+        } else {
+            // Construct the sanitized list of bits, resizing up if necessary.
+            let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
+            bits_le.resize(size_in_bits, Boolean::constant(false));
+
+            // Return the scalar.
+            Scalar { bits_le }
         }
-
-        output
     }
 
     /// Initializes a new scalar field element from a list of big-endian bits *without* leading zeros.
@@ -152,31 +148,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 507, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 252, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 254, 0, 769, 771);
+        check_from_bits_le(Mode::Public, 251, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 254, 0, 769, 771);
+        check_from_bits_le(Mode::Private, 251, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 507, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 252, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 254, 0, 769, 771);
+        check_from_bits_be(Mode::Public, 251, 0, 250, 251);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 254, 0, 769, 771);
+        check_from_bits_be(Mode::Private, 251, 0, 250, 251);
     }
 }

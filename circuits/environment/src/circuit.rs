@@ -157,7 +157,15 @@ impl Environment for Circuit {
                     // Ensure the constraint is not comprised of constants.
                     match a.is_constant() && b.is_constant() && c.is_constant() {
                         true => {
-                            // Disabled for now until better control handling for this can be defined (using scope).
+                            // Evaluate the constant constraint.
+                            assert_eq!(
+                                a.value() * b.value(),
+                                c.value(),
+                                "Constant constraint failed: ({} * {}) =?= {}",
+                                a,
+                                b,
+                                c
+                            );
 
                             // match self.counter.scope().is_empty() {
                             //     true => println!("Enforced constraint with constant terms: ({} * {}) =?= {}", a, b, c),
