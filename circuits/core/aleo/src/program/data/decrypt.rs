@@ -30,11 +30,11 @@ impl<A: Aleo> Data<A, Ciphertext<A>> {
         let mut decrypted_data = Vec::with_capacity(self.0.len());
         for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
             // Retrieve the randomizers for this entry.
-            let randomizers = &randomizers[index..index + num_randomizers];
+            let randomizers = &randomizers[index..index + num_randomizers as usize];
             // Decrypt the entry, and add the entry.
             decrypted_data.push((id.clone(), entry.decrypt(randomizers)));
             // Increment the index.
-            index += num_randomizers;
+            index += num_randomizers as usize;
         }
         Data(decrypted_data)
     }

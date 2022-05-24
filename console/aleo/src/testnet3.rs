@@ -95,8 +95,12 @@ impl Network for Testnet3 {
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
 
+    /// The maximum number of bits in data (must not exceed u16::MAX).
+    const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::Field as PrimeField>::Parameters::CAPACITY;
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;
+
+    // 128 KiB
 
     /// A helper method to recover the y-coordinate given the x-coordinate for
     /// a twisted Edwards point, returning the affine curve point.
@@ -251,17 +255,17 @@ impl Network for Testnet3 {
     }
 
     /// Returns the extended Poseidon hash with an input rate of 2.
-    fn hash_many_psd2(input: &[Self::Field], num_outputs: usize) -> Vec<Self::Field> {
+    fn hash_many_psd2(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field> {
         POSEIDON_2.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 
     /// Returns the extended Poseidon hash with an input rate of 4.
-    fn hash_many_psd4(input: &[Self::Field], num_outputs: usize) -> Vec<Self::Field> {
+    fn hash_many_psd4(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field> {
         POSEIDON_4.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 
     /// Returns the extended Poseidon hash with an input rate of 8.
-    fn hash_many_psd8(input: &[Self::Field], num_outputs: usize) -> Vec<Self::Field> {
+    fn hash_many_psd8(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field> {
         POSEIDON_8.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 

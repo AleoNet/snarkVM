@@ -17,20 +17,10 @@
 use super::*;
 
 impl<A: Aleo> Entry<A, Ciphertext<A>> {
-    /// Returns the number of field elements to encode `self`.
-    pub(crate) fn num_randomizers(&self) -> usize {
-        match self {
-            // Constant and public entries do not need to be encrypted.
-            Self::Constant(..) | Self::Public(..) => 0,
-            // Private entries need one randomizer per field element.
-            Self::Private(private) => private.size_in_fields(),
-        }
-    }
-
     /// Decrypts the entry using the given randomizers.
     pub(crate) fn decrypt(&self, randomizers: &[Field<A>]) -> Entry<A, Plaintext<A>> {
         // Ensure that the number of randomizers is correct.
-        if randomizers.len() != self.num_randomizers() {
+        if randomizers.len() != self.num_randomizers() as usize {
             A::halt(format!(
                 "Failed to decrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),

@@ -66,7 +66,7 @@ impl<A: Aleo> Literal<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use crate::AleoV0 as Circuit;

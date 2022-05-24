@@ -24,8 +24,9 @@ pub enum Plaintext<A: Aleo> {
     Composite(Vec<(Identifier<A>, Plaintext<A>)>, OnceCell<Vec<Boolean<A>>>),
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for Plaintext<A> {
-    type Primitive = snarkvm_console_aleo::Plaintext<A::Network>;
+    type Primitive = console::Plaintext<A::Network>;
 
     /// Ejects the mode of the plaintext entry.
     fn eject_mode(&self) -> Mode {
@@ -42,10 +43,8 @@ impl<A: Aleo> Eject for Plaintext<A> {
     /// Ejects the plaintext entry.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Self::Literal(literal, _) => {
-                snarkvm_console_aleo::Plaintext::Literal(literal.eject_value(), Default::default())
-            }
-            Self::Composite(composite, _) => snarkvm_console_aleo::Plaintext::Composite(
+            Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
+            Self::Composite(composite, _) => console::Plaintext::Composite(
                 composite.iter().map(|pair| pair.eject_value()).collect(),
                 Default::default(),
             ),
@@ -69,8 +68,16 @@ impl<A: Aleo> From<&Literal<A>> for Plaintext<A> {
 
 impl<A: Aleo> Visibility<A> for Plaintext<A> {
     /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> usize {
-        self.to_bits_le().chunks(A::BaseField::size_in_data_bits()).len()
+    fn size_in_fields(&self) -> u16 {
+        // Compute the number of bits.
+        let num_bits = self.to_bits_le().len() + 1; // 1 extra bit for the terminus indicator.
+        // Compute the ceiling division of the number of bits by the number of bits in a field element.
+        let num_fields = (num_bits + A::BaseField::size_in_data_bits() - 1) / A::BaseField::size_in_data_bits();
+        match num_fields < A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => num_fields as u16,
+            false => A::halt("Plaintext is too large to encode in field elements."),
+        }
     }
 }
 
@@ -294,7 +301,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use crate::AleoV0 as Circuit;

@@ -40,8 +40,16 @@ impl<N: Network> From<&Literal<N>> for Plaintext<N> {
 
 impl<N: Network> Visibility<N> for Plaintext<N> {
     /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> usize {
-        self.to_bits_le().chunks(N::Field::size_in_data_bits()).len()
+    fn size_in_fields(&self) -> Result<u16> {
+        // Compute the number of bits.
+        let num_bits = self.to_bits_le().len() + 1; // 1 extra bit for the terminus indicator.
+        // Compute the ceiling division of the number of bits by the number of bits in a field element.
+        let num_fields = (num_bits + N::Field::size_in_data_bits() - 1) / N::Field::size_in_data_bits();
+        match num_fields < N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => Ok(num_fields as u16),
+            false => bail!("Plaintext is too large to encode in field elements."),
+        }
     }
 }
 

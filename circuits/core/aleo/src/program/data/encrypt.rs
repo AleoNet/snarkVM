@@ -30,17 +30,17 @@ impl<A: Aleo> Data<A, Plaintext<A>> {
         let mut encrypted_data = Vec::with_capacity(self.0.len());
         for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
             // Retrieve the randomizers for this entry.
-            let randomizers = &randomizers[index..index + num_randomizers];
+            let randomizers = &randomizers[index..index + num_randomizers as usize];
             // Encrypt the entry, and add the entry.
             encrypted_data.push((id.clone(), entry.encrypt(randomizers)));
             // Increment the index.
-            index += num_randomizers;
+            index += num_randomizers as usize;
         }
         Data(encrypted_data)
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use crate::{account::helpers::generate_account, AleoV0 as Circuit, Field, Literal};

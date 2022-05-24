@@ -18,10 +18,10 @@ mod from_bits;
 mod size_in_bits;
 mod to_bits;
 mod to_fields;
+mod variant;
 
 use crate::Aleo;
 use snarkvm_circuits_types::prelude::*;
-use snarkvm_console_aleo::Literal as Primitive;
 
 /// The literal enum represents all supported circuit types in snarkVM.
 #[derive(Clone)]
@@ -60,34 +60,36 @@ pub enum Literal<A: Aleo> {
     String(StringType<A>),
 }
 
+#[cfg(console)]
 impl<A: Aleo> Inject for Literal<A> {
-    type Primitive = Primitive<A::Network>;
+    type Primitive = console::Literal<A::Network>;
 
     /// Initializes a new literal from a primitive.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
-            Primitive::Address(address) => Self::Address(Address::new(mode, *address)),
-            Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, boolean)),
-            Primitive::Field(field) => Self::Field(Field::new(mode, field)),
-            Primitive::Group(group) => Self::Group(Group::new(mode, group)),
-            Primitive::I8(i8) => Self::I8(I8::new(mode, i8)),
-            Primitive::I16(i16) => Self::I16(I16::new(mode, i16)),
-            Primitive::I32(i32) => Self::I32(I32::new(mode, i32)),
-            Primitive::I64(i64) => Self::I64(I64::new(mode, i64)),
-            Primitive::I128(i128) => Self::I128(I128::new(mode, i128)),
-            Primitive::U8(u8) => Self::U8(U8::new(mode, u8)),
-            Primitive::U16(u16) => Self::U16(U16::new(mode, u16)),
-            Primitive::U32(u32) => Self::U32(U32::new(mode, u32)),
-            Primitive::U64(u64) => Self::U64(U64::new(mode, u64)),
-            Primitive::U128(u128) => Self::U128(U128::new(mode, u128)),
-            Primitive::Scalar(scalar) => Self::Scalar(Scalar::new(mode, scalar)),
-            Primitive::String(string) => Self::String(StringType::new(mode, string)),
+            Self::Primitive::Address(address) => Self::Address(Address::new(mode, *address)),
+            Self::Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, boolean)),
+            Self::Primitive::Field(field) => Self::Field(Field::new(mode, field)),
+            Self::Primitive::Group(group) => Self::Group(Group::new(mode, group)),
+            Self::Primitive::I8(i8) => Self::I8(I8::new(mode, i8)),
+            Self::Primitive::I16(i16) => Self::I16(I16::new(mode, i16)),
+            Self::Primitive::I32(i32) => Self::I32(I32::new(mode, i32)),
+            Self::Primitive::I64(i64) => Self::I64(I64::new(mode, i64)),
+            Self::Primitive::I128(i128) => Self::I128(I128::new(mode, i128)),
+            Self::Primitive::U8(u8) => Self::U8(U8::new(mode, u8)),
+            Self::Primitive::U16(u16) => Self::U16(U16::new(mode, u16)),
+            Self::Primitive::U32(u32) => Self::U32(U32::new(mode, u32)),
+            Self::Primitive::U64(u64) => Self::U64(U64::new(mode, u64)),
+            Self::Primitive::U128(u128) => Self::U128(U128::new(mode, u128)),
+            Self::Primitive::Scalar(scalar) => Self::Scalar(Scalar::new(mode, scalar)),
+            Self::Primitive::String(string) => Self::String(StringType::new(mode, string)),
         }
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for Literal<A> {
-    type Primitive = Primitive<A::Network>;
+    type Primitive = console::Literal<A::Network>;
 
     /// Ejects the mode of the literal.
     fn eject_mode(&self) -> Mode {
@@ -114,75 +116,27 @@ impl<A: Aleo> Eject for Literal<A> {
     /// Ejects the literal into its primitive.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Self::Address(literal) => {
-                Primitive::Address(snarkvm_console_aleo::Address::from_group(literal.eject_value()))
-            }
-            Self::Boolean(literal) => Primitive::Boolean(literal.eject_value()),
-            Self::Field(literal) => Primitive::Field(literal.eject_value()),
-            Self::Group(literal) => Primitive::Group(literal.eject_value()),
-            Self::I8(literal) => Primitive::I8(literal.eject_value()),
-            Self::I16(literal) => Primitive::I16(literal.eject_value()),
-            Self::I32(literal) => Primitive::I32(literal.eject_value()),
-            Self::I64(literal) => Primitive::I64(literal.eject_value()),
-            Self::I128(literal) => Primitive::I128(literal.eject_value()),
-            Self::U8(literal) => Primitive::U8(literal.eject_value()),
-            Self::U16(literal) => Primitive::U16(literal.eject_value()),
-            Self::U32(literal) => Primitive::U32(literal.eject_value()),
-            Self::U64(literal) => Primitive::U64(literal.eject_value()),
-            Self::U128(literal) => Primitive::U128(literal.eject_value()),
-            Self::Scalar(literal) => Primitive::Scalar(literal.eject_value()),
-            Self::String(literal) => Primitive::String(literal.eject_value()),
+            Self::Address(literal) => Self::Primitive::Address(console::Address::from_group(literal.eject_value())),
+            Self::Boolean(literal) => Self::Primitive::Boolean(literal.eject_value()),
+            Self::Field(literal) => Self::Primitive::Field(literal.eject_value()),
+            Self::Group(literal) => Self::Primitive::Group(literal.eject_value()),
+            Self::I8(literal) => Self::Primitive::I8(literal.eject_value()),
+            Self::I16(literal) => Self::Primitive::I16(literal.eject_value()),
+            Self::I32(literal) => Self::Primitive::I32(literal.eject_value()),
+            Self::I64(literal) => Self::Primitive::I64(literal.eject_value()),
+            Self::I128(literal) => Self::Primitive::I128(literal.eject_value()),
+            Self::U8(literal) => Self::Primitive::U8(literal.eject_value()),
+            Self::U16(literal) => Self::Primitive::U16(literal.eject_value()),
+            Self::U32(literal) => Self::Primitive::U32(literal.eject_value()),
+            Self::U64(literal) => Self::Primitive::U64(literal.eject_value()),
+            Self::U128(literal) => Self::Primitive::U128(literal.eject_value()),
+            Self::Scalar(literal) => Self::Primitive::Scalar(literal.eject_value()),
+            Self::String(literal) => Self::Primitive::String(literal.eject_value()),
         }
     }
 }
 
-impl<A: Aleo> Literal<A> {
-    /// Returns the type name of the literal.
-    pub fn variant(&self) -> U8<A> {
-        match self {
-            Self::Address(..) => U8::constant(0),
-            Self::Boolean(..) => U8::constant(1),
-            Self::Field(..) => U8::constant(2),
-            Self::Group(..) => U8::constant(3),
-            Self::I8(..) => U8::constant(4),
-            Self::I16(..) => U8::constant(5),
-            Self::I32(..) => U8::constant(6),
-            Self::I64(..) => U8::constant(7),
-            Self::I128(..) => U8::constant(8),
-            Self::U8(..) => U8::constant(9),
-            Self::U16(..) => U8::constant(10),
-            Self::U32(..) => U8::constant(11),
-            Self::U64(..) => U8::constant(12),
-            Self::U128(..) => U8::constant(13),
-            Self::Scalar(..) => U8::constant(14),
-            Self::String(..) => U8::constant(15),
-        }
-    }
-
-    /// Returns the type name of the literal.
-    pub fn type_name(&self) -> &str {
-        match self {
-            Self::Address(..) => Address::<A>::type_name(),
-            Self::Boolean(..) => Boolean::<A>::type_name(),
-            Self::Field(..) => Field::<A>::type_name(),
-            Self::Group(..) => Group::<A>::type_name(),
-            Self::I8(..) => I8::<A>::type_name(),
-            Self::I16(..) => I16::<A>::type_name(),
-            Self::I32(..) => I32::<A>::type_name(),
-            Self::I64(..) => I64::<A>::type_name(),
-            Self::I128(..) => I128::<A>::type_name(),
-            Self::U8(..) => U8::<A>::type_name(),
-            Self::U16(..) => U16::<A>::type_name(),
-            Self::U32(..) => U32::<A>::type_name(),
-            Self::U64(..) => U64::<A>::type_name(),
-            Self::U128(..) => U128::<A>::type_name(),
-            Self::Scalar(..) => Scalar::<A>::type_name(),
-            Self::String(..) => StringType::<A>::type_name(),
-        }
-    }
-}
-
-#[allow(clippy::let_and_return)]
+#[cfg(console)]
 impl<A: Aleo> Parser for Literal<A> {
     type Environment = A;
 
@@ -210,6 +164,32 @@ impl<A: Aleo> Parser for Literal<A> {
     }
 }
 
+#[cfg(console)]
+impl<A: Aleo> Literal<A> {
+    /// Returns the type name of the literal.
+    pub fn type_name(&self) -> &str {
+        match self {
+            Self::Address(..) => Address::<A>::type_name(),
+            Self::Boolean(..) => Boolean::<A>::type_name(),
+            Self::Field(..) => Field::<A>::type_name(),
+            Self::Group(..) => Group::<A>::type_name(),
+            Self::I8(..) => I8::<A>::type_name(),
+            Self::I16(..) => I16::<A>::type_name(),
+            Self::I32(..) => I32::<A>::type_name(),
+            Self::I64(..) => I64::<A>::type_name(),
+            Self::I128(..) => I128::<A>::type_name(),
+            Self::U8(..) => U8::<A>::type_name(),
+            Self::U16(..) => U16::<A>::type_name(),
+            Self::U32(..) => U32::<A>::type_name(),
+            Self::U64(..) => U64::<A>::type_name(),
+            Self::U128(..) => U128::<A>::type_name(),
+            Self::Scalar(..) => Scalar::<A>::type_name(),
+            Self::String(..) => StringType::<A>::type_name(),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<A: Aleo> Debug for Literal<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -233,6 +213,7 @@ impl<A: Aleo> Debug for Literal<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Display for Literal<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

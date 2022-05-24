@@ -37,8 +37,9 @@ use nom::character::complete::{alpha1, alphanumeric1};
 #[derive(Clone)]
 pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes
 
+#[cfg(console)]
 impl<A: Aleo> Inject for Identifier<A> {
-    type Primitive = snarkvm_console_aleo::Identifier<A::Network>;
+    type Primitive = console::Identifier<A::Network>;
 
     /// Initializes a new identifier from a string.
     fn new(_: Mode, identifier: Self::Primitive) -> Self {
@@ -80,8 +81,9 @@ impl<A: Aleo> Inject for Identifier<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for Identifier<A> {
-    type Primitive = snarkvm_console_aleo::Identifier<A::Network>;
+    type Primitive = console::Identifier<A::Network>;
 
     /// Ejects the mode of the identifier.
     fn eject_mode(&self) -> Mode {
@@ -120,6 +122,7 @@ impl<A: Aleo> Eject for Identifier<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Parser for Identifier<A> {
     type Environment = A;
 
@@ -148,13 +151,12 @@ impl<A: Aleo> Parser for Identifier<A> {
                 return Err(error(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")));
             }
 
-            Ok(Self::constant(
-                snarkvm_console_aleo::Identifier::try_from(identifier).map_err(|e| error(format!("{e}")))?,
-            ))
+            Ok(Self::constant(console::Identifier::try_from(identifier).map_err(|e| error(format!("{e}")))?))
         })(string)
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> fmt::Display for Identifier<A> {
     /// Prints the identifier as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -162,7 +164,7 @@ impl<A: Aleo> fmt::Display for Identifier<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use crate::AleoV0 as Circuit;

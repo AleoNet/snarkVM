@@ -45,6 +45,7 @@ pub struct Record<A: Aleo> {
     bcm: Field<A>,
 }
 
+#[cfg(console)]
 impl<A: Aleo> TypeName for Record<A> {
     fn type_name() -> &'static str {
         "record"

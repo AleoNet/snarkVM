@@ -14,18 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
-impl<F: PrimeField, const RATE: usize> HashMany for Poseidon<F, RATE> {
-    type Input = F;
-    type Output = F;
-
-    /// Returns the cryptographic hash for a list of field elements as input,
-    /// and returns the specified number of field elements as output.
-    #[inline]
-    fn hash_many(&self, input: &[Self::Input], num_outputs: u16) -> Vec<Self::Output> {
-        let mut sponge = PoseidonSponge::<F, RATE, CAPACITY>::new(&self.parameters);
-        sponge.absorb(input);
-        sponge.squeeze(num_outputs).to_vec()
+fn main() {
+    if cfg!(feature = "enable_console") {
+        println!("cargo:rustc-cfg=console");
     }
 }

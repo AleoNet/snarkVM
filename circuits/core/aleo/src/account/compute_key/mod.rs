@@ -33,6 +33,7 @@ pub struct ComputeKey<A: Aleo> {
     sk_prf: Scalar<A>,
 }
 
+#[cfg(console)]
 impl<A: Aleo> Inject for ComputeKey<A> {
     type Primitive = (A::Affine, A::Affine, A::Affine);
 
@@ -74,25 +75,22 @@ impl<A: Aleo> ComputeKey<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for ComputeKey<A> {
     type Primitive = (A::Affine, A::Affine, A::Affine, A::ScalarField);
 
-    ///
     /// Ejects the mode of the compute key.
-    ///
     fn eject_mode(&self) -> Mode {
         (&self.pk_sig, &self.pr_sig, &self.pk_vrf, &self.sk_prf).eject_mode()
     }
 
-    ///
     /// Ejects the compute key as `(pk_sig, pr_sig, pk_vrf, sk_prf)`.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         (&self.pk_sig, &self.pr_sig, &self.pk_vrf, &self.sk_prf).eject_value()
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 pub(crate) mod tests {
     use super::*;
     use crate::{account::helpers::generate_account, AleoV0 as Circuit};

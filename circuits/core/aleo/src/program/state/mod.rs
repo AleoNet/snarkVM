@@ -41,7 +41,7 @@ pub struct State<A: Aleo> {
 }
 
 impl<A: Aleo> From<(Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)> for State<A> {
-    #[inline]
+    /// Initializes a new `State` from the given parameters.
     fn from((program, owner, balance, data, nonce): (Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)) -> Self {
         Self { program, owner, balance, data, nonce }
     }
@@ -74,6 +74,7 @@ impl<A: Aleo> State<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> TypeName for State<A> {
     fn type_name() -> &'static str {
         "state"

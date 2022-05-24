@@ -38,9 +38,9 @@ use snarkvm_circuits_types::{
     Group,
     Scalar,
 };
-use snarkvm_console_aleo::Testnet3;
 use snarkvm_console_algorithms::Blake2Xs;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_fields::FieldParameters;
 
 use core::fmt;
 
@@ -106,7 +106,13 @@ impl AleoV0 {
 }
 
 impl Aleo for AleoV0 {
-    type Network = Testnet3;
+    #[cfg(console)]
+    type Network = console::Testnet3;
+
+    /// The maximum number of bits in data (must not exceed u16::MAX).
+    const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::BaseField as PrimeField>::Parameters::CAPACITY;
+
+    // 128 KiB
 
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
@@ -210,17 +216,17 @@ impl Aleo for AleoV0 {
     }
 
     /// Returns the extended Poseidon hash with an input rate of 2.
-    fn hash_many_psd2(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
+    fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_2.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 
     /// Returns the extended Poseidon hash with an input rate of 4.
-    fn hash_many_psd4(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
+    fn hash_many_psd4(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_4.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 
     /// Returns the extended Poseidon hash with an input rate of 8.
-    fn hash_many_psd8(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
+    fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_8.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 

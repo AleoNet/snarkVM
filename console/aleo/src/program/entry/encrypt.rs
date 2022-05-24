@@ -16,25 +16,27 @@
 
 use super::*;
 
-impl<N: Network> Entry<N, Plaintext<N>> {
+impl<N: Network, Private: Visibility<N>> Entry<N, Private> {
     /// Returns the number of field elements to encode `self`.
-    pub(crate) fn num_randomizers(&self) -> usize {
+    pub(crate) fn num_randomizers(&self) -> Result<u16> {
         match self {
             // Constant and public entries do not need to be encrypted.
-            Self::Constant(..) | Self::Public(..) => 0,
+            Self::Constant(..) | Self::Public(..) => Ok(0u16),
             // Private entries need one randomizer per field element.
             Self::Private(private) => private.size_in_fields(),
         }
     }
+}
 
+impl<N: Network> Entry<N, Plaintext<N>> {
     /// Encrypts the entry using the given randomizers.
     pub(crate) fn encrypt(&self, randomizers: &[N::Field]) -> Result<Entry<N, Ciphertext<N>>> {
         // Ensure that the number of randomizers is correct.
-        if randomizers.len() != self.num_randomizers() {
+        if randomizers.len() != self.num_randomizers()? as usize {
             bail!(
                 "Failed to encrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),
-                self.num_randomizers()
+                self.num_randomizers()?
             )
         }
         match self {
@@ -56,24 +58,14 @@ impl<N: Network> Entry<N, Plaintext<N>> {
 }
 
 impl<N: Network> Entry<N, Ciphertext<N>> {
-    /// Returns the number of field elements to encode `self`.
-    pub(crate) fn num_randomizers(&self) -> usize {
-        match self {
-            // Constant and public entries do not need to be encrypted.
-            Self::Constant(..) | Self::Public(..) => 0,
-            // Private entries need one randomizer per field element.
-            Self::Private(private) => private.size_in_fields(),
-        }
-    }
-
     /// Decrypts the entry using the given randomizers.
     pub(crate) fn decrypt(&self, randomizers: &[N::Field]) -> Result<Entry<N, Plaintext<N>>> {
         // Ensure that the number of randomizers is correct.
-        if randomizers.len() != self.num_randomizers() {
+        if randomizers.len() != self.num_randomizers()? as usize {
             bail!(
                 "Failed to decrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),
-                self.num_randomizers()
+                self.num_randomizers()?
             )
         }
         match self {

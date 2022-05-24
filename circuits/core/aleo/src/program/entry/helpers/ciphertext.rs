@@ -23,8 +23,14 @@ pub struct Ciphertext<A: Aleo>(pub(in crate::program::entry) Vec<Field<A>>);
 
 impl<A: Aleo> Visibility<A> for Ciphertext<A> {
     /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> usize {
-        self.0.len()
+    fn size_in_fields(&self) -> u16 {
+        // Retrieve the number of field elements.
+        let num_fields = self.0.len();
+        match num_fields < A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => num_fields as u16,
+            false => A::halt("Ciphertext is too large to encode in field elements."),
+        }
     }
 }
 

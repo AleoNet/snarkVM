@@ -53,7 +53,7 @@ pub trait HashMany {
     type Output;
 
     /// Returns the hash of the given input.
-    fn hash_many(&self, input: &[Self::Input], num_outputs: usize) -> Vec<Self::Output>;
+    fn hash_many(&self, input: &[Self::Input], num_outputs: u16) -> Vec<Self::Output>;
 }
 
 /// A trait for a hash function that projects the value to a scalar.

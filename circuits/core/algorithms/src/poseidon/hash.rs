@@ -103,9 +103,9 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
         &self,
         state: &mut [Field<E>],
         mode: &mut DuplexSpongeMode,
-        num_outputs: usize,
+        num_outputs: u16,
     ) -> Vec<Field<E>> {
-        let mut output = vec![Field::zero(); num_outputs];
+        let mut output = vec![Field::zero(); num_outputs as usize];
         if num_outputs != 0 {
             self.squeeze_internal(state, mode, &mut output);
         }

@@ -21,8 +21,14 @@ pub struct Ciphertext<N: Network>(pub(in crate::program::entry) Vec<N::Field>);
 
 impl<N: Network> Visibility<N> for Ciphertext<N> {
     /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> usize {
-        self.0.len()
+    fn size_in_fields(&self) -> Result<u16> {
+        // Retrieve the number of field elements.
+        let num_fields = self.0.len();
+        match num_fields < N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => Ok(num_fields as u16),
+            false => bail!("Ciphertext is too large to encode in field elements."),
+        }
     }
 }
 

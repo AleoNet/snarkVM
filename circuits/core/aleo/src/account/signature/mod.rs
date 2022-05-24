@@ -31,6 +31,7 @@ pub struct Signature<A: Aleo> {
     compute_key: ComputeKey<A>,
 }
 
+#[cfg(console)]
 impl<A: Aleo> Inject for Signature<A> {
     type Primitive = (A::ScalarField, A::ScalarField, (A::Affine, A::Affine, A::Affine));
 
@@ -44,29 +45,25 @@ impl<A: Aleo> Inject for Signature<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for Signature<A> {
     type Primitive = (A::ScalarField, A::ScalarField, (A::Affine, A::Affine, A::Affine, A::ScalarField));
 
-    ///
     /// Ejects the mode of the signature.
-    ///
     fn eject_mode(&self) -> Mode {
         (&self.challenge, &self.response, &self.compute_key).eject_mode()
     }
 
-    ///
     /// Ejects the signature as `(challenge, response, (pk_sig, pr_sig, pk_vrf, sk_prf))`.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         (&self.challenge, &self.response, &self.compute_key).eject_value()
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use crate::{account::helpers::generate_account, AleoV0 as Circuit};
-    use snarkvm_console_aleo::Signature as NativeSignature;
     use snarkvm_utilities::{test_crypto_rng, ToBits as T, UniformRand};
 
     use anyhow::Result;
@@ -93,7 +90,7 @@ mod tests {
             // Generate a signature.
             let message = "Hi, I am an Aleo signature!";
             let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = NativeSignature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
+            let signature = console::Signature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
 
             // Retrieve the challenge and response.
             let challenge = signature.challenge();

@@ -21,7 +21,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
     type Output = Field<E>;
 
     #[inline]
-    fn hash_many(&self, input: &[Self::Input], num_outputs: usize) -> Vec<Self::Output> {
+    fn hash_many(&self, input: &[Self::Input], num_outputs: u16) -> Vec<Self::Output> {
         // Initialize a new sponge.
         let mut state = vec![Field::zero(); RATE + CAPACITY];
         let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
@@ -60,20 +60,20 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
-    const RATE: usize = 4;
+    const RATE: u16 = 4;
 
     fn check_hash_many(
         mode: Mode,
         num_inputs: usize,
-        num_outputs: usize,
+        num_outputs: u16,
         num_constants: u64,
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
     ) {
         let rng = &mut test_rng();
-        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
-        let poseidon = Poseidon::<Circuit, RATE>::new();
+        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, { RATE as usize }>::setup();
+        let poseidon = Poseidon::<Circuit, { RATE as usize }>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
@@ -99,7 +99,7 @@ mod tests {
     fn test_hash_many_constant() {
         for num_inputs in 0..=RATE {
             for num_outputs in 0..=RATE {
-                check_hash_many(Mode::Constant, num_inputs, num_outputs, 0, 0, 0, 0);
+                check_hash_many(Mode::Constant, num_inputs as usize, num_outputs, 0, 0, 0, 0);
             }
         }
     }

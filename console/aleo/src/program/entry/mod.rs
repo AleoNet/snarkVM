@@ -31,7 +31,7 @@ use once_cell::sync::OnceCell;
 
 pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
     /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> usize;
+    fn size_in_fields(&self) -> Result<u16>;
 }
 
 /// An entry stored in program data.

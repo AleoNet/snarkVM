@@ -27,10 +27,13 @@ pub mod program;
 pub use program::*;
 
 use snarkvm_circuits_types::{environment::Environment, Boolean, Field, Group, Scalar};
-use snarkvm_console_aleo::Network;
 
 pub trait Aleo: Environment {
-    type Network: Network<Affine = Self::Affine, Field = Self::BaseField, Scalar = Self::ScalarField>;
+    #[cfg(console)]
+    type Network: console::Network<Affine = Self::Affine, Field = Self::BaseField, Scalar = Self::ScalarField>;
+
+    /// The maximum number of field elements in data (must not exceed u16::MAX).
+    const MAX_DATA_SIZE_IN_FIELDS: u32;
 
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
@@ -90,13 +93,13 @@ pub trait Aleo: Environment {
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self>;
 
     /// Returns the extended Poseidon hash with an input rate of 2.
-    fn hash_many_psd2(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+    fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
     /// Returns the extended Poseidon hash with an input rate of 4.
-    fn hash_many_psd4(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+    fn hash_many_psd4(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
     /// Returns the extended Poseidon hash with an input rate of 8.
-    fn hash_many_psd8(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+    fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Field<Self>]) -> Scalar<Self>;

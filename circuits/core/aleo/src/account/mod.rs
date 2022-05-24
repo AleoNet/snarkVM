@@ -26,35 +26,29 @@ pub use signature::*;
 pub mod view_key;
 pub use view_key::*;
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 pub(crate) mod helpers {
-    use snarkvm_console_aleo::{
-        Address as NativeAddress,
-        ComputeKey as NativeComputeKey,
-        PrivateKey as NativePrivateKey,
-        Testnet3,
-        ViewKey as NativeViewKey,
-    };
+    use crate::{Aleo, AleoV0};
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentNetwork = <AleoV0 as Aleo>::Network;
 
     #[allow(clippy::type_complexity)]
     pub(crate) fn generate_account() -> Result<(
-        NativePrivateKey<CurrentNetwork>,
-        NativeComputeKey<CurrentNetwork>,
-        NativeViewKey<CurrentNetwork>,
-        NativeAddress<CurrentNetwork>,
+        console::PrivateKey<CurrentNetwork>,
+        console::ComputeKey<CurrentNetwork>,
+        console::ViewKey<CurrentNetwork>,
+        console::Address<CurrentNetwork>,
     )> {
         // Sample a random private key.
-        let private_key = NativePrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+        let private_key = console::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
 
         // Derive the compute key, view key, and address.
-        let compute_key = NativeComputeKey::try_from(&private_key)?;
-        let view_key = NativeViewKey::try_from(&private_key)?;
-        let address = NativeAddress::try_from(&compute_key)?;
+        let compute_key = console::ComputeKey::try_from(&private_key)?;
+        let view_key = console::ViewKey::try_from(&private_key)?;
+        let address = console::Address::try_from(&compute_key)?;
 
         // Return the private key and compute key components.
         Ok((private_key, compute_key, view_key, address))

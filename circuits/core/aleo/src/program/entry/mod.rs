@@ -19,6 +19,7 @@ pub use helpers::*;
 
 mod decrypt;
 mod encrypt;
+mod num_randomizers;
 mod to_bits;
 
 use crate::{Aleo, Identifier, Literal};
@@ -26,7 +27,7 @@ use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U16, U8};
 
 pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {
     /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> usize;
+    fn size_in_fields(&self) -> u16;
 }
 
 /// An entry stored in program data.
@@ -40,8 +41,9 @@ pub enum Entry<A: Aleo, Private: Visibility<A>> {
     Private(Private),
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for Entry<A, Plaintext<A>> {
-    type Primitive = snarkvm_console_aleo::Entry<A::Network, snarkvm_console_aleo::Plaintext<A::Network>>;
+    type Primitive = console::Entry<A::Network, console::Plaintext<A::Network>>;
 
     /// Ejects the mode of the entry.
     fn eject_mode(&self) -> Mode {
@@ -55,9 +57,9 @@ impl<A: Aleo> Eject for Entry<A, Plaintext<A>> {
     /// Ejects the entry.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Entry::Constant(plaintext) => snarkvm_console_aleo::Entry::Constant(plaintext.eject_value()),
-            Entry::Public(plaintext) => snarkvm_console_aleo::Entry::Public(plaintext.eject_value()),
-            Entry::Private(private) => snarkvm_console_aleo::Entry::Private(private.eject_value()),
+            Entry::Constant(plaintext) => console::Entry::Constant(plaintext.eject_value()),
+            Entry::Public(plaintext) => console::Entry::Public(plaintext.eject_value()),
+            Entry::Private(private) => console::Entry::Private(private.eject_value()),
         }
     }
 }

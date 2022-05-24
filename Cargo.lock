@@ -2075,6 +2075,7 @@ dependencies = [
  "snarkvm-console-aleo",
  "snarkvm-console-algorithms",
  "snarkvm-curves",
+ "snarkvm-fields",
  "snarkvm-utilities",
 ]
 

@@ -178,6 +178,10 @@ jobs:
       - run_serial:
           workspace_member: circuits/core
           cache_key: snarkvm-circuits-core-aleo-cache
+      - run_serial:
+          workspace_member: circuits/core
+          flags: --no-default-features # This checks that no `console` structs are used in core circuit logic.
+          cache_key: snarkvm-circuits-core-aleo-cache
 
   circuits-core-algorithms:
     docker:

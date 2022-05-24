@@ -77,31 +77,31 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
         }
     }
 
-    fn squeeze(&mut self, num_elements: usize) -> SmallVec<[F; 10]> {
+    fn squeeze(&mut self, num_elements: u16) -> SmallVec<[F; 10]> {
         if num_elements == 0 {
             return SmallVec::new();
         }
         let mut output = if num_elements <= 10 {
             smallvec::smallvec_inline![F::zero(); 10]
         } else {
-            smallvec::smallvec![F::zero(); num_elements]
+            smallvec::smallvec![F::zero(); num_elements as usize]
         };
 
         match self.mode {
             DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
                 self.permute();
-                self.squeeze_internal(0, &mut output[..num_elements]);
+                self.squeeze_internal(0, &mut output[..num_elements as usize]);
             }
             DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
                 if next_squeeze_index == RATE {
                     self.permute();
                     next_squeeze_index = 0;
                 }
-                self.squeeze_internal(next_squeeze_index, &mut output[..num_elements]);
+                self.squeeze_internal(next_squeeze_index, &mut output[..num_elements as usize]);
             }
         }
 
-        output.truncate(num_elements);
+        output.truncate(num_elements as usize);
         output
     }
 }

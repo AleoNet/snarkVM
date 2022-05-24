@@ -28,13 +28,16 @@ impl<N: Network> Data<N, Plaintext<N>> {
     /// Encrypts `self` under the given data view key.
     pub fn encrypt_symmetric(&self, data_view_key: &N::Field) -> Result<Data<N, Ciphertext<N>>> {
         // Determine the number of randomizers needed to encrypt the data.
-        let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
+        let num_randomizers =
+            self.0.iter().map(|(_, entry)| entry.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
         // Prepare a randomizer for each field element.
         let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *data_view_key], num_randomizers);
         // Encrypt the data.
         let mut index: usize = 0;
         let mut encrypted_data = Vec::with_capacity(self.0.len());
         for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
+            // Retrieve the result for `num_randomizers`.
+            let num_randomizers = num_randomizers? as usize;
             // Retrieve the randomizers for this entry.
             let randomizers = &randomizers[index..index + num_randomizers];
             // Encrypt the entry, and add the entry.
@@ -58,13 +61,16 @@ impl<N: Network> Data<N, Ciphertext<N>> {
     /// Decrypts `self` into plaintext using the given data view key.
     pub fn decrypt_symmetric(&self, data_view_key: &N::Field) -> Result<Data<N, Plaintext<N>>> {
         // Determine the number of randomizers needed to encrypt the data.
-        let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
+        let num_randomizers =
+            self.0.iter().map(|(_, entry)| entry.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
         // Prepare a randomizer for each field element.
         let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *data_view_key], num_randomizers);
         // Decrypt the data.
         let mut index: usize = 0;
         let mut decrypted_data = Vec::with_capacity(self.0.len());
         for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
+            // Retrieve the result for `num_randomizers`.
+            let num_randomizers = num_randomizers? as usize;
             // Retrieve the randomizers for this entry.
             let randomizers = &randomizers[index..index + num_randomizers];
             // Decrypt the entry, and add the entry.

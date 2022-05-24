@@ -26,8 +26,9 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, Group, Scalar};
 
 pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Entry<A, Private>)>);
 
+#[cfg(console)]
 impl<A: Aleo> Eject for Data<A, Plaintext<A>> {
-    type Primitive = snarkvm_console_aleo::Data<A::Network, snarkvm_console_aleo::Plaintext<A::Network>>;
+    type Primitive = console::Data<A::Network, console::Plaintext<A::Network>>;
 
     /// Ejects the mode of the data.
     fn eject_mode(&self) -> Mode {
@@ -36,12 +37,13 @@ impl<A: Aleo> Eject for Data<A, Plaintext<A>> {
 
     /// Ejects the data.
     fn eject_value(&self) -> Self::Primitive {
-        snarkvm_console_aleo::Data::from(
+        console::Data::from(
             self.0.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<Vec<_>>(),
         )
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo, Private: Visibility<A>> TypeName for Data<A, Private> {
     fn type_name() -> &'static str {
         "data"

@@ -57,12 +57,11 @@ impl<A: Aleo> Signature<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 pub(crate) mod tests {
     use super::*;
     use crate::{account::helpers::generate_account, AleoV0 as Circuit};
     use snarkvm_circuits_types::Group;
-    use snarkvm_console_aleo::Signature as NativeSignature;
     use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 
     use anyhow::Result;
@@ -100,7 +99,7 @@ pub(crate) mod tests {
 
             // Generate a signature.
             let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = NativeSignature::sign(&private_key, &message.eject_value(), randomizer)?;
+            let signature = console::Signature::sign(&private_key, &message.eject_value(), randomizer)?;
 
             // Retrieve the challenge and response.
             let challenge = signature.challenge();

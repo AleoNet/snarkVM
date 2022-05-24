@@ -31,6 +31,7 @@ pub struct PrivateKey<A: Aleo> {
     sk_vrf: Scalar<A>,
 }
 
+#[cfg(console)]
 impl<A: Aleo> Inject for PrivateKey<A> {
     type Primitive = (A::ScalarField, A::ScalarField, A::ScalarField);
 
@@ -57,6 +58,7 @@ impl<A: Aleo> PrivateKey<A> {
     }
 }
 
+#[cfg(console)]
 impl<A: Aleo> Eject for PrivateKey<A> {
     type Primitive = (A::ScalarField, A::ScalarField, A::ScalarField);
 

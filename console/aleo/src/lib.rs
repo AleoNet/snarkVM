@@ -67,6 +67,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// The maximum number of bytes allowed in a string.
     const NUM_STRING_BYTES: u32;
 
+    /// The maximum number of bits in data (must not exceed u16::MAX).
+    const MAX_DATA_SIZE_IN_FIELDS: u32;
+
     /// A helper method to recover the y-coordinate given the x-coordinate for
     /// a twisted Edwards point, returning the affine curve point.
     fn affine_from_x_coordinate(x: Self::Field) -> Result<Self::Affine>;
@@ -145,13 +148,13 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn hash_psd8(input: &[Self::Field]) -> Result<Self::Field>;
 
     /// Returns the extended Poseidon hash with an input rate of 2.
-    fn hash_many_psd2(input: &[Self::Field], num_outputs: usize) -> Vec<Self::Field>;
+    fn hash_many_psd2(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
 
     /// Returns the extended Poseidon hash with an input rate of 4.
-    fn hash_many_psd4(input: &[Self::Field], num_outputs: usize) -> Vec<Self::Field>;
+    fn hash_many_psd4(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
 
     /// Returns the extended Poseidon hash with an input rate of 8.
-    fn hash_many_psd8(input: &[Self::Field], num_outputs: usize) -> Vec<Self::Field>;
+    fn hash_many_psd8(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Self::Field]) -> Result<Self::Scalar>;

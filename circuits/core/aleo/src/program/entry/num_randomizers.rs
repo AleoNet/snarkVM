@@ -16,16 +16,14 @@
 
 use super::*;
 
-impl<F: PrimeField, const RATE: usize> HashMany for Poseidon<F, RATE> {
-    type Input = F;
-    type Output = F;
-
-    /// Returns the cryptographic hash for a list of field elements as input,
-    /// and returns the specified number of field elements as output.
-    #[inline]
-    fn hash_many(&self, input: &[Self::Input], num_outputs: u16) -> Vec<Self::Output> {
-        let mut sponge = PoseidonSponge::<F, RATE, CAPACITY>::new(&self.parameters);
-        sponge.absorb(input);
-        sponge.squeeze(num_outputs).to_vec()
+impl<A: Aleo, Private: Visibility<A>> Entry<A, Private> {
+    /// Returns the number of field elements to encode `self`.
+    pub(crate) fn num_randomizers(&self) -> u16 {
+        match self {
+            // Constant and public entries do not need to be encrypted.
+            Self::Constant(..) | Self::Public(..) => 0u16,
+            // Private entries need one randomizer per field element.
+            Self::Private(private) => private.size_in_fields(),
+        }
     }
 }
