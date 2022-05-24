@@ -31,8 +31,8 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         }
         // Case 2: Constant < Variable
         else if self.is_constant() {
-            // Compute `self < other`.
-            self.to_bits_le().iter().zip_eq(&other.to_bits_le()).fold(
+            // Compute `self < other`. See `Field::is_less_than` for the truth table.
+            self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
                 |is_less_than, (this, that)| match this.eject_value() {
                     true => that.bitand(&is_less_than),
@@ -42,12 +42,12 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         }
         // Case 3: Variable < Constant
         else if other.is_constant() {
-            // Compute `!(other < self)`, which is equivalent to `self < other`.
-            !other.to_bits_le().iter().zip_eq(&self.to_bits_le()).fold(
+            // Compute `self < other`. See `Field::is_less_than` for the truth table.
+            self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
-                |is_less_than, (this, that)| match this.eject_value() {
-                    true => that.bitand(&is_less_than),
-                    false => that.bitor(&is_less_than),
+                |is_less_than, (this, that)| match that.eject_value() {
+                    true => (!this).bitor(is_less_than),
+                    false => (!this).bitand(&is_less_than),
                 },
             )
         }
