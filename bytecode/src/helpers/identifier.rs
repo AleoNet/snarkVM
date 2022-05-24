@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{function::Register, Program};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuits::{environment::prelude::*, Boolean, Field, StringType};
 use snarkvm_utilities::{error, FromBytes, ToBits, ToBytes};
 
 use core::{fmt, marker::PhantomData};

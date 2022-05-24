@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Aleo;
-use snarkvm_circuits_core_algorithms::{
+use snarkvm_circuits_algorithms::{
     Commit,
     Hash,
     HashMany,

@@ -2050,27 +2050,20 @@ dependencies = [
 name = "snarkvm-circuits"
 version = "0.7.5"
 dependencies = [
- "snarkvm-circuits-core",
+ "snarkvm-circuits-aleo",
+ "snarkvm-circuits-algorithms",
  "snarkvm-circuits-edge",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
 ]
 
 [[package]]
-name = "snarkvm-circuits-core"
-version = "0.7.5"
-dependencies = [
- "snarkvm-circuits-core-aleo",
- "snarkvm-circuits-core-algorithms",
-]
-
-[[package]]
-name = "snarkvm-circuits-core-aleo"
+name = "snarkvm-circuits-aleo"
 version = "0.7.5"
 dependencies = [
  "anyhow",
  "nom",
- "snarkvm-circuits-core-algorithms",
+ "snarkvm-circuits-algorithms",
  "snarkvm-circuits-types",
  "snarkvm-console-aleo",
  "snarkvm-console-algorithms",
@@ -2080,7 +2073,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-circuits-core-algorithms"
+name = "snarkvm-circuits-algorithms"
 version = "0.7.5"
 dependencies = [
  "anyhow",

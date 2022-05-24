@@ -161,36 +161,34 @@ jobs:
           workspace_member: circuits
           cache_key: snarkvm-circuits-cache
 
-  circuits-core:
+  circuits-aleo:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/core
-          cache_key: snarkvm-circuits-core-cache
+          workspace_member: circuits/aleo
+          cache_key: snarkvm-circuits-aleo-cache
 
-  circuits-core-aleo:
+  # This checks that no `console` structs are used in core circuit logic.
+  circuits-aleo-safety:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/core/aleo
-          cache_key: snarkvm-circuits-core-aleo-cache
-      - run_serial:
-          workspace_member: circuits/core/aleo
-          flags: --no-default-features # This checks that no `console` structs are used in core circuit logic.
-          cache_key: snarkvm-circuits-core-aleo-cache
+          workspace_member: circuits/aleo
+          flags: --no-default-features
+          cache_key: snarkvm-circuits-aleo-safety-cache
 
-  circuits-core-algorithms:
+  circuits-algorithms:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/core/algorithms
-          cache_key: snarkvm-circuits-core-algorithms-cache
+          workspace_member: circuits/algorithms
+          cache_key: snarkvm-circuits-algorithms-cache
 
   circuits-edge:
     docker:
@@ -468,9 +466,9 @@ workflows:
       - algorithms
       - bytecode
       - circuits
-      - circuits-core
-      - circuits-core-aleo
-      - circuits-core-algorithms
+      - circuits-aleo
+      - circuits-aleo-safety
+      - circuits-algorithms
       - circuits-edge
       - circuits-environment
       - circuits-types

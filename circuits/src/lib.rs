@@ -16,11 +16,11 @@
 
 #![forbid(unsafe_code)]
 
-// pub use snarkvm_circuits_core as core;
-pub use snarkvm_circuits_core::{
-    aleo::{Aleo, AleoV0, Literal},
-    *,
-};
+pub use snarkvm_circuits_aleo as aleo;
+pub use snarkvm_circuits_aleo::*;
+
+pub use snarkvm_circuits_algorithms as algorithms;
+pub use snarkvm_circuits_algorithms::*;
 
 pub use snarkvm_circuits_edge as edge;
 pub use snarkvm_circuits_edge::*;

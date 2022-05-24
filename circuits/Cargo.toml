@@ -17,8 +17,12 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-circuits-core]
-path = "./core"
+[dependencies.snarkvm-circuits-aleo]
+path = "./aleo"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-algorithms]
+path = "./algorithms"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuits-edge]
