@@ -107,6 +107,33 @@ mod tests {
     }
 
     #[test]
+    fn test_constant_equal_private() {
+        // false == false
+        let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Constant, false);
+        let b = Boolean::<Circuit>::new(Mode::Private, false);
+        check_is_equal("false == false", expected, a, b, 0, 0, 0, 0);
+
+        // false == true
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Constant, false);
+        let b = Boolean::<Circuit>::new(Mode::Private, true);
+        check_is_equal("false == true", expected, a, b, 0, 0, 0, 0);
+
+        // true == false
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Constant, true);
+        let b = Boolean::<Circuit>::new(Mode::Private, false);
+        check_is_equal("true == false", expected, a, b, 0, 0, 0, 0);
+
+        // true == true
+        let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Constant, true);
+        let b = Boolean::<Circuit>::new(Mode::Private, true);
+        check_is_equal("true == true", expected, a, b, 0, 0, 0, 0);
+    }
+
+    #[test]
     fn test_public_equals_constant() {
         // false == false
         let expected = true;
@@ -184,6 +211,60 @@ mod tests {
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
+        check_is_equal("true == true", expected, a, b, 0, 0, 1, 1);
+    }
+
+    #[test]
+    fn test_private_equals_constant() {
+        // false == false
+        let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Private, false);
+        let b = Boolean::<Circuit>::new(Mode::Constant, false);
+        check_is_equal("false == false", expected, a, b, 0, 0, 0, 0);
+
+        // false == true
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Private, false);
+        let b = Boolean::<Circuit>::new(Mode::Constant, true);
+        check_is_equal("false == true", expected, a, b, 0, 0, 0, 0);
+
+        // true == false
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Private, true);
+        let b = Boolean::<Circuit>::new(Mode::Constant, false);
+        check_is_equal("true == false", expected, a, b, 0, 0, 0, 0);
+
+        // true == true
+        let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Private, true);
+        let b = Boolean::<Circuit>::new(Mode::Constant, true);
+        check_is_equal("true == true", expected, a, b, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_private_equal_public() {
+        // false == false
+        let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Private, false);
+        let b = Boolean::<Circuit>::new(Mode::Public, false);
+        check_is_equal("false == false", expected, a, b, 0, 0, 1, 1);
+
+        // false == true
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Private, false);
+        let b = Boolean::<Circuit>::new(Mode::Public, true);
+        check_is_equal("false == true", expected, a, b, 0, 0, 1, 1);
+
+        // true == false
+        let expected = false;
+        let a = Boolean::<Circuit>::new(Mode::Private, true);
+        let b = Boolean::<Circuit>::new(Mode::Public, false);
+        check_is_equal("true == false", expected, a, b, 0, 0, 1, 1);
+
+        // true == true
+        let expected = true;
+        let a = Boolean::<Circuit>::new(Mode::Private, true);
+        let b = Boolean::<Circuit>::new(Mode::Public, true);
         check_is_equal("true == true", expected, a, b, 0, 0, 1, 1);
     }
 

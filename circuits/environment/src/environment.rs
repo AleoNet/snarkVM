@@ -24,7 +24,7 @@ pub trait Environment: Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq
     type Affine: AffineCurve<BaseField = Self::BaseField, Coordinates = (Self::BaseField, Self::BaseField)>;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;
-    type ScalarField: PrimeField + Copy;
+    type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger> + Copy;
 
     /// The maximum number of bytes allowed in a string.
     const NUM_STRING_BYTES: u32;
