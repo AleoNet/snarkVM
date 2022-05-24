@@ -72,5 +72,5 @@ pub trait ToGroup {
     type Scalar: ScalarTrait;
 
     /// Returns the circuit as a list of affine group elements.
-    fn to_group(&self) -> &Self::Group;
+    fn to_group(&self) -> Self::Group;
 }

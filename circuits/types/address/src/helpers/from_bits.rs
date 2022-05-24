@@ -19,12 +19,12 @@ use super::*;
 impl<E: Environment> FromBits for Address<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new address from a list of little-endian bits *without* trailing zeros.
+    /// Initializes an address from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         Self(Group::from_bits_le(bits_le))
     }
 
-    /// Initializes a new address from a list of big-endian bits *without* leading zeros.
+    /// Initializes an address from a list of big-endian bits *without* leading zeros.
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         Self(Group::from_bits_be(bits_be))
     }

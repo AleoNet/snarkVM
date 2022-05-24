@@ -16,10 +16,24 @@
 
 use super::*;
 
+impl<E: Environment> From<Address<E>> for Field<E> {
+    /// Returns the **x-coordinate** of the affine group element in the address.
+    fn from(value: Address<E>) -> Self {
+        value.to_field()
+    }
+}
+
+impl<E: Environment> From<&Address<E>> for Field<E> {
+    /// Returns the **x-coordinate** of the affine group element in the address.
+    fn from(value: &Address<E>) -> Self {
+        value.to_field()
+    }
+}
+
 impl<E: Environment> ToField for Address<E> {
     type Field = Field<E>;
 
-    /// Returns the x-coordinate of the group element in the address.
+    /// Returns the **x-coordinate** of the affine group element in the address.
     fn to_field(&self) -> Field<E> {
         self.0.to_x_coordinate()
     }

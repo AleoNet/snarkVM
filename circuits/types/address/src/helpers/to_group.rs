@@ -16,13 +16,27 @@
 
 use super::*;
 
+impl<E: Environment> From<Address<E>> for Group<E> {
+    /// Returns the affine group element in the address.
+    fn from(value: Address<E>) -> Self {
+        value.to_group()
+    }
+}
+
+impl<E: Environment> From<&Address<E>> for Group<E> {
+    /// Returns the affine group element in the address.
+    fn from(value: &Address<E>) -> Self {
+        value.to_group()
+    }
+}
+
 impl<E: Environment> ToGroup for Address<E> {
     type Group = Group<E>;
     type Scalar = Scalar<E>;
 
-    /// Casts an address into a group element.
-    fn to_group(&self) -> &Self::Group {
-        &self.0
+    /// Returns the affine group element in the address.
+    fn to_group(&self) -> Self::Group {
+        self.0.clone()
     }
 }
 
