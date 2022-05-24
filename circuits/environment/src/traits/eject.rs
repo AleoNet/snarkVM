@@ -70,9 +70,10 @@ fn eject_mode(start_mode: Mode, modes: &[Mode]) -> Mode {
     for next_mode in modes {
         // Check if the current mode matches the next mode.
         if !current_mode.is_private() && current_mode != *next_mode {
-            // - If `current_mode` is Mode::Constant and `next_mode` is not Mode::Constant, then `current_mode = next_mode`.
-            // - If `current_mode` is Mode::Public and `next_mode` is Mode::Private, then `current_mode = next_mode`.
-            // - Otherwise, do nothing.
+            // Intuition: Start from `Mode::Constant`, and see if one needs to lift to `Mode::Public` or `Mode::Private`.
+            //   - If `current_mode == Mode::Constant`, then `current_mode = next_mode`.
+            //   - If `current_mode == Mode::Public` && `next_mode == Mode::Private`, then `current_mode = next_mode`.
+            //   - Otherwise, do nothing.
             match (current_mode, next_mode) {
                 (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
                     current_mode = *next_mode
