@@ -14,27 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod helpers;
-pub use helpers::*;
-
 mod decrypt;
 mod encrypt;
 mod num_randomizers;
 // mod to_bits;
 
-use crate::{FromFields, Identifier, Literal, Network, ToFields};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{FromBits, ToBits};
+use crate::{Ciphertext, FromFields, Network, Plaintext, ToFields, Visibility};
+use snarkvm_utilities::ToBits;
 
 use anyhow::{bail, Result};
-use core::ops::Deref;
 use itertools::Itertools;
-use once_cell::sync::OnceCell;
-
-pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> Result<u16>;
-}
 
 /// An entry stored in program data.
 #[derive(Clone, Debug, PartialEq, Eq)]

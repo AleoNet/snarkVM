@@ -16,29 +16,18 @@
 
 use super::*;
 
-impl<A: Aleo> From<Vec<Field<A>>> for Ciphertext<A> {
-    /// Initializes a ciphertext from a list of base field elements.
-    fn from(fields: Vec<Field<A>>) -> Self {
+impl<N: Network> Visibility<N> for Plaintext<N> {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16> {
+        // Compute the number of bits.
+        let num_bits = self.to_bits_le().len() + 1; // 1 extra bit for the terminus indicator.
+        // Compute the ceiling division of the number of bits by the number of bits in a field element.
+        let num_fields = (num_bits + N::Field::size_in_data_bits() - 1) / N::Field::size_in_data_bits();
         // Ensure the number of field elements does not exceed the maximum allowed size.
-        match fields.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
-            true => Self(fields),
-            false => A::halt("Ciphertext exceeds maximum allowed size"),
+        match num_fields <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => Ok(num_fields as u16),
+            false => bail!("Plaintext is too large to encode in field elements."),
         }
-    }
-}
-
-impl<A: Aleo> From<&[Field<A>]> for Ciphertext<A> {
-    /// Initializes a ciphertext from a list of base field elements.
-    fn from(fields: &[Field<A>]) -> Self {
-        Self::from_fields(fields)
-    }
-}
-
-impl<A: Aleo> FromFields for Ciphertext<A> {
-    type Field = Field<A>;
-
-    /// Initializes a ciphertext from a list of base field elements.
-    fn from_fields(fields: &[Self::Field]) -> Self {
-        Self::from(fields.to_vec())
     }
 }

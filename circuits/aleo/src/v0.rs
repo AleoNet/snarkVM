@@ -46,12 +46,9 @@ use core::fmt;
 
 type E = Circuit;
 
-/// The setup message for the Aleo encryption and signature scheme.
-static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
-
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Vec<Group<AleoV0>> = AleoV0::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+    static BASES: Vec<Group<AleoV0>> = AleoV0::new_bases("AleoAccountEncryptionAndSignatureScheme0");
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<AleoV0 as Environment>::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
     /// The MAC domain as a constant field element.

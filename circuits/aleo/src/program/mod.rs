@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod data;
-pub use data::{Ciphertext, Data, Entry, Identifier, Literal, Plaintext, Visibility};
+pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
 
 mod record;
 pub use record::Record;

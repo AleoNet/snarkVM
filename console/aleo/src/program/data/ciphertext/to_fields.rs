@@ -16,8 +16,15 @@
 
 use super::*;
 
-mod ciphertext;
-pub use ciphertext::*;
+impl<N: Network> ToFields for Ciphertext<N> {
+    type Field = N::Field;
 
-mod plaintext;
-pub use plaintext::*;
+    /// Returns this ciphertext as a list of field elements.
+    fn to_fields(&self) -> Result<Vec<Self::Field>> {
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match self.0.len() <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => Ok(self.0.clone()),
+            false => bail!("Ciphertext exceeds maximum allowed size"),
+        }
+    }
+}

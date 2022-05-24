@@ -17,15 +17,6 @@
 mod data;
 pub use data::*;
 
-mod entry;
-pub use entry::{Ciphertext, Entry, Plaintext, Visibility};
-
-mod identifier;
-pub use identifier::*;
-
-mod literal;
-pub use literal::*;
-
 mod record;
 pub use record::*;
 

@@ -16,29 +16,33 @@
 
 use super::*;
 
-impl<A: Aleo> From<Vec<Field<A>>> for Ciphertext<A> {
+impl<N: Network> TryFrom<Vec<N::Field>> for Ciphertext<N> {
+    type Error = Error;
+
     /// Initializes a ciphertext from a list of base field elements.
-    fn from(fields: Vec<Field<A>>) -> Self {
+    fn try_from(fields: Vec<N::Field>) -> Result<Self, Self::Error> {
         // Ensure the number of field elements does not exceed the maximum allowed size.
-        match fields.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
-            true => Self(fields),
-            false => A::halt("Ciphertext exceeds maximum allowed size"),
+        match fields.len() <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => Ok(Self(fields)),
+            false => bail!("Ciphertext exceeds maximum allowed size"),
         }
     }
 }
 
-impl<A: Aleo> From<&[Field<A>]> for Ciphertext<A> {
+impl<N: Network> TryFrom<&[N::Field]> for Ciphertext<N> {
+    type Error = Error;
+
     /// Initializes a ciphertext from a list of base field elements.
-    fn from(fields: &[Field<A>]) -> Self {
+    fn try_from(fields: &[N::Field]) -> Result<Self, Self::Error> {
         Self::from_fields(fields)
     }
 }
 
-impl<A: Aleo> FromFields for Ciphertext<A> {
-    type Field = Field<A>;
+impl<N: Network> FromFields for Ciphertext<N> {
+    type Field = N::Field;
 
     /// Initializes a ciphertext from a list of base field elements.
-    fn from_fields(fields: &[Self::Field]) -> Self {
-        Self::from(fields.to_vec())
+    fn from_fields(fields: &[Self::Field]) -> Result<Self> {
+        Self::try_from(fields.to_vec())
     }
 }

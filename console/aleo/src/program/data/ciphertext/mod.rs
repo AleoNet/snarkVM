@@ -14,17 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+mod from_bits;
+mod from_fields;
+mod size_in_fields;
+mod to_bits;
+mod to_fields;
 
-impl<A: Aleo> ToFields for Ciphertext<A> {
-    type Field = Field<A>;
+use crate::{FromFields, Network, ToFields, Visibility};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{FromBits, ToBits};
 
-    /// Returns this ciphertext as a list of field elements.
-    fn to_fields(&self) -> Vec<Self::Field> {
-        // Ensure the number of field elements does not exceed the maximum allowed size.
-        match self.0.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
-            true => self.0.clone(),
-            false => A::halt("Ciphertext exceeds maximum allowed size"),
-        }
+use anyhow::{bail, Error, Result};
+use core::ops::Deref;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Ciphertext<N: Network>(Vec<N::Field>);
+
+impl<N: Network> Deref for Ciphertext<N> {
+    type Target = [N::Field];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

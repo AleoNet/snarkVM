@@ -33,14 +33,14 @@ impl<N: Network> Entry<N, Plaintext<N>> {
             // Public entries do not need to be encrypted.
             Self::Public(plaintext) => Ok(Entry::Public(plaintext.clone())),
             // Private entries are encrypted with the given randomizers.
-            Self::Private(private) => Ok(Entry::Private(Ciphertext(
+            Self::Private(private) => Ok(Entry::Private(Ciphertext::try_from(
                 private
                     .to_fields()?
                     .iter()
                     .zip_eq(randomizers)
                     .map(|(plaintext, randomizer)| *plaintext + randomizer)
-                    .collect(),
-            ))),
+                    .collect::<Vec<_>>(),
+            )?)),
         }
     }
 }

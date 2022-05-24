@@ -27,6 +27,11 @@ impl<A: Aleo> ToFields for Plaintext<A> {
         // During decryption, this final bit ensures we've reached the end.
         bits_le.push(Boolean::constant(true));
         // Pack the bits into field elements.
-        bits_le.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
+        let fields = bits_le.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect::<Vec<_>>();
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match fields.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => fields,
+            false => A::halt("Plaintext exceeds maximum allowed size"),
+        }
     }
 }

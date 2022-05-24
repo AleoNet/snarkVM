@@ -14,21 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod ciphertext;
+pub use ciphertext::Ciphertext;
+
+mod entry;
+pub use entry::Entry;
+
+mod identifier;
+pub use identifier::Identifier;
+
+mod literal;
+pub use literal::Literal;
+
+mod plaintext;
+pub use plaintext::Plaintext;
+
 mod decrypt;
 mod encrypt;
 
-use crate::{
-    program::{Ciphertext, Plaintext},
-    Address,
-    Entry,
-    Identifier,
-    Network,
-    ViewKey,
-    Visibility,
-};
+use crate::{Address, FromFields, Network, ToFields, ViewKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_utilities::{FromBits, ToBits};
 
 use anyhow::{bail, Result};
+
+pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16>;
+}
 
 /// A value stored in program data.
 #[derive(Clone, Debug, PartialEq, Eq)]

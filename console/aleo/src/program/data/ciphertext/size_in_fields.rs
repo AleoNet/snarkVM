@@ -16,29 +16,16 @@
 
 use super::*;
 
-impl<A: Aleo> From<Vec<Field<A>>> for Ciphertext<A> {
-    /// Initializes a ciphertext from a list of base field elements.
-    fn from(fields: Vec<Field<A>>) -> Self {
+impl<N: Network> Visibility<N> for Ciphertext<N> {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16> {
+        // Retrieve the number of field elements.
+        let num_fields = self.0.len();
         // Ensure the number of field elements does not exceed the maximum allowed size.
-        match fields.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
-            true => Self(fields),
-            false => A::halt("Ciphertext exceeds maximum allowed size"),
+        match num_fields <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
+            // Return the number of field elements.
+            true => Ok(num_fields as u16),
+            false => bail!("Ciphertext is too large to encode in field elements."),
         }
-    }
-}
-
-impl<A: Aleo> From<&[Field<A>]> for Ciphertext<A> {
-    /// Initializes a ciphertext from a list of base field elements.
-    fn from(fields: &[Field<A>]) -> Self {
-        Self::from_fields(fields)
-    }
-}
-
-impl<A: Aleo> FromFields for Ciphertext<A> {
-    type Field = Field<A>;
-
-    /// Initializes a ciphertext from a list of base field elements.
-    fn from_fields(fields: &[Self::Field]) -> Self {
-        Self::from(fields.to_vec())
     }
 }

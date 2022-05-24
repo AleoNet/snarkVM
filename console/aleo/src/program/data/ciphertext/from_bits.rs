@@ -16,15 +16,24 @@
 
 use super::*;
 
-impl<A: Aleo> ToFields for Ciphertext<A> {
-    type Field = Field<A>;
+impl<N: Network> FromBits for Ciphertext<N> {
+    /// Returns this entry as a list of **little-endian** bits.
+    fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
+        Ok(Self(
+            bits_le
+                .chunks(N::Field::size_in_bits())
+                .map(|chunk| N::field_from_bits_le(chunk))
+                .collect::<Result<Vec<_>>>()?,
+        ))
+    }
 
-    /// Returns this ciphertext as a list of field elements.
-    fn to_fields(&self) -> Vec<Self::Field> {
-        // Ensure the number of field elements does not exceed the maximum allowed size.
-        match self.0.len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
-            true => self.0.clone(),
-            false => A::halt("Ciphertext exceeds maximum allowed size"),
-        }
+    /// Returns this entry as a list of **big-endian** bits.
+    fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
+        Ok(Self(
+            bits_be
+                .chunks(N::Field::size_in_bits())
+                .map(|chunk| N::field_from_bits_be(chunk))
+                .collect::<Result<Vec<_>>>()?,
+        ))
     }
 }
