@@ -114,7 +114,17 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     pub fn deserialize<D: Deserializer<'de>>(deserializer: D, name: &str, size: usize) -> Result<T, D::Error> {
         let mut buffer = Vec::with_capacity(size);
         deserializer.deserialize_tuple(size, FromBytesVisitor::new(&mut buffer, name))?;
-        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
+        FromBytes::read_le(&*buffer).map_err(de::Error::custom)
+    }
+
+    ///
+    /// Deserializes a static-sized byte array, with a u8 length encoding at the start.
+    ///
+    /// This method fails if `deserializer` is given an insufficient `size`.
+    ///
+    pub fn deserialize_with_u8<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
+        let buffer = deserializer.deserialize_tuple(1 << 8, FromU8SizedBytesVisitor(name.to_string()))?;
+        FromBytes::read_le(&*buffer).map_err(de::Error::custom)
     }
 
     ///
@@ -123,7 +133,7 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     pub fn deserialize_with_size_encoding<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
         let mut buffer = Vec::with_capacity(32);
         deserializer.deserialize_bytes(FromBytesVisitor::new(&mut buffer, name))?;
-        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
+        FromBytes::read_le(&*buffer).map_err(de::Error::custom)
     }
 
     ///
@@ -185,6 +195,39 @@ impl<'a, 'de> Visitor<'de> for FromBytesVisitor<'a> {
             self.0.push(byte);
         }
         Ok(())
+    }
+}
+
+struct FromU8SizedBytesVisitor(String);
+
+impl<'de> Visitor<'de> for FromU8SizedBytesVisitor {
+    type Value = Vec<u8>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str(&format!("a valid {} ", self.0))
+    }
+
+    fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
+    where
+        V: SeqAccess<'de>,
+    {
+        // Read the size of the object.
+        let length: u8 = seq.next_element()?.ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+
+        // Initialize the vector with the correct length.
+        let mut bytes: Vec<u8> = Vec::with_capacity(length as usize);
+        // Push the length into the vector.
+        bytes.push(length);
+
+        // Read the bytes.
+        for i in 0..length {
+            // Read the next byte.
+            let byte = seq.next_element()?.ok_or_else(|| serde::de::Error::invalid_length((i + 1) as usize, &self))?;
+            // Push the byte into the vector.
+            bytes.push(byte);
+        }
+        // Return the vector.
+        Ok(bytes)
     }
 }
 

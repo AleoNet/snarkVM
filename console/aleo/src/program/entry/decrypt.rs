@@ -16,31 +16,30 @@
 
 use super::*;
 
-impl<N: Network> Entry<N, Plaintext<N>> {
-    /// Encrypts the entry using the given randomizers.
-    pub(crate) fn encrypt(&self, randomizers: &[N::Field]) -> Result<Entry<N, Ciphertext<N>>> {
+impl<N: Network> Entry<N, Ciphertext<N>> {
+    /// Decrypts the entry using the given randomizers.
+    pub(crate) fn decrypt(&self, randomizers: &[N::Field]) -> Result<Entry<N, Plaintext<N>>> {
         // Ensure that the number of randomizers is correct.
         if randomizers.len() != self.num_randomizers()? as usize {
             bail!(
-                "Failed to encrypt: expected {} randomizers, found {} randomizers",
+                "Failed to decrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),
                 self.num_randomizers()?
             )
         }
         match self {
-            // Constant entries do not need to be encrypted.
+            // Constant entries do not need to be decrypted.
             Self::Constant(plaintext) => Ok(Entry::Constant(plaintext.clone())),
-            // Public entries do not need to be encrypted.
+            // Public entries do not need to be decrypted.
             Self::Public(plaintext) => Ok(Entry::Public(plaintext.clone())),
-            // Private entries are encrypted with the given randomizers.
-            Self::Private(private) => Ok(Entry::Private(Ciphertext(
-                private
-                    .to_fields()?
+            // Private entries are decrypted with the given randomizers.
+            Self::Private(private) => Ok(Entry::Private(Plaintext::from_fields(
+                &*private
                     .iter()
                     .zip_eq(randomizers)
-                    .map(|(plaintext, randomizer)| *plaintext + randomizer)
-                    .collect(),
-            ))),
+                    .map(|(ciphertext, randomizer)| *ciphertext - randomizer)
+                    .collect::<Vec<_>>(),
+            )?)),
         }
     }
 }

@@ -92,7 +92,7 @@ impl<E: Environment> Parser for Address<E> {
             }
 
             let buffer = Vec::from_base32(&data).map_err(|e| error(format!("{e}")))?;
-            Ok(E::affine_from_x_coordinate(E::BaseField::read_le(&buffer[..])?))
+            Ok(E::affine_from_x_coordinate(E::BaseField::read_le(&*buffer)?))
         })(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
