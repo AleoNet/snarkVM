@@ -16,8 +16,7 @@
 
 use std::fmt::Debug;
 
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum LegendreSymbol {
     Zero = 0,
     QuadraticResidue = 1,
