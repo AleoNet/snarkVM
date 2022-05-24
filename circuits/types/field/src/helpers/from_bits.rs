@@ -19,13 +19,11 @@ use super::*;
 impl<E: Environment> FromBits for Field<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new base field element from a list of little-endian bits.
-    /// If the length of the list is greater than `E::BaseField::size_in_bits()`, the excess bits
-    /// are checked to ensure they are all zero.
-    /// If the length of the list is less than or equal to `E::BaseField::size_in_bits()`, `bits_le`
-    /// is padded with zeros to the right to match the size of the base field.
+    /// Initializes a new base field element from a list of **little-endian** bits.
+    ///   - If `bits_le` is longer than `E::BaseField::size_in_bits()`, the excess bits are enforced to be `0`s.
+    ///   - If `bits_le` is shorter than `E::BaseField::size_in_bits()`, it is padded with `0`s up to scalar field size.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        // Retrieve the data and field size.
+        // Retrieve the data and base field size.
         let size_in_data_bits = E::BaseField::size_in_data_bits();
         let size_in_bits = E::BaseField::size_in_bits();
 
@@ -35,43 +33,29 @@ impl<E: Environment> FromBits for Field<E> {
             // Check if all excess bits are zero.
             let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
             // Ensure `should_be_zero` is zero.
-            match (should_be_zero.is_constant(), should_be_zero.eject_value()) {
-                (true, true) => {
-                    E::halt("Detected nonzero excess bits while initializing a base field element from bits.")
-                }
-                (true, false) => (), // Constraint is satisfied.
-                (false, _) => E::assert(!should_be_zero),
-            }
+            E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // If the number of bits is greater than `size_in_data_bits`, then check that it is a valid field element.
+        // If `num_bits` is greater than `size_in_data_bits`, check it is less than `BaseField::MODULUS`.
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
             let modulus_minus_one = -E::BaseField::one();
 
-            // Pad `bits_le` with zeros to the size of the base field modulus, if necessary.
-            let boolean_false = Boolean::constant(false);
-            let padded_bits_le = bits_le.iter().chain(core::iter::repeat(&boolean_false)).take(size_in_bits);
+            // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
+            // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
+            let bits_le = &bits_le[..size_in_bits];
 
-            // Zip `modulus_minus_one` and `padded_bits_le` together and construct a check on the sequence of bit pairs.
-            // See `Field::is_less_than` for more details.
-            let modulus_minus_one_less_than_bits = modulus_minus_one.to_bits_le().iter().zip_eq(padded_bits_le).fold(
+            // Compute `!((BaseField::MODULUS - 1) < bits_le)`, which is equivalent to `bits_le < BaseField::MODULUS`.
+            let is_less_than_modulus = !modulus_minus_one.to_bits_le().iter().zip_eq(bits_le).fold(
                 Boolean::constant(false),
-                |rest_is_less, (self_bit, other_bit)| {
-                    if *self_bit { other_bit.bitand(&rest_is_less) } else { other_bit.bitor(&rest_is_less) }
+                |rest_is_less, (this, that)| {
+                    if *this { that.bitand(&rest_is_less) } else { that.bitor(&rest_is_less) }
                 },
             );
 
-            // Enforce that BaseField::MODULUS - 1 is not less than the field element given by `bits_le`.
-            // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
-            match (modulus_minus_one_less_than_bits.is_constant(), modulus_minus_one_less_than_bits.eject_value()) {
-                (true, true) => {
-                    E::halt("Attempted to instantiate a field element that is greater than BaseField::MODULUS - 1.")
-                }
-                (true, false) => (), // Constraint is satisfied.
-                (false, _) => E::assert(!modulus_minus_one_less_than_bits),
-            }
+            // Ensure the field element is less than `BaseField::MODULUS`.
+            E::assert(is_less_than_modulus);
         }
 
         // Reconstruct the bits as a linear combination representing the original field value.
