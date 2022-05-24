@@ -25,11 +25,33 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
         debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
 
-        // Constant case
+        // Case 1: Constant < Constant
         if self.is_constant() && other.is_constant() {
             Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
         }
-        // Public and private cases
+        // Case 2: Constant < Variable
+        else if self.is_constant() {
+            // Compute `self < other`.
+            self.to_bits_le().iter().zip_eq(&other.to_bits_le()).fold(
+                Boolean::constant(false),
+                |is_less_than, (this, that)| match this.eject_value() {
+                    true => that.bitand(&is_less_than),
+                    false => that.bitor(&is_less_than),
+                },
+            )
+        }
+        // Case 3: Variable < Constant
+        else if other.is_constant() {
+            // Compute `!(other < self)`, which is equivalent to `self < other`.
+            !other.to_bits_le().iter().zip_eq(&self.to_bits_le()).fold(
+                Boolean::constant(false),
+                |is_less_than, (this, that)| match this.eject_value() {
+                    true => that.bitand(&is_less_than),
+                    false => that.bitor(&is_less_than),
+                },
+            )
+        }
+        // Case 4: Variable < Variable
         else {
             // Check the parity of 2 * (`self` - `other`) mod MODULUS.
             //   - If `self` < `other`, then 2 * (`self` - `other`) mod MODULUS is odd.
@@ -87,7 +109,7 @@ mod tests {
             Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
                 let candidate = candidate_a.is_less_than(&candidate_b);
                 assert_eq!(expected_a < expected_b, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
             });
             Circuit::reset();
         }
@@ -100,17 +122,17 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 253, 254);
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 250, 250);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 253, 254);
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 250, 250);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 253, 254);
+        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 250, 250);
     }
 
     #[test]
@@ -125,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_private_is_less_than_constant() {
-        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 253, 254);
+        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 250, 250);
     }
 
     #[test]
