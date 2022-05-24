@@ -205,7 +205,14 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
+            assert!(
+                std::panic::catch_unwind(|| Circuit::enforce(|| (
+                    Circuit::one() - &candidate,
+                    candidate,
+                    Circuit::zero()
+                )))
+                .is_err()
+            );
             assert_eq!(0, Circuit::num_constraints());
 
             Circuit::reset();
