@@ -14,11 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::{Ciphertext, Data, Entry, Identifier, Literal, Plaintext, Visibility};
+use super::*;
 
-mod record;
-pub use record::Record;
+impl<A: Aleo> From<Vec<Field<A>>> for Ciphertext<A> {
+    /// Initializes a ciphertext from a list of base field elements.
+    fn from(fields: Vec<Field<A>>) -> Self {
+        Ciphertext(fields)
+    }
+}
 
-mod state;
-pub use state::State;
+impl<A: Aleo> From<&[Field<A>]> for Ciphertext<A> {
+    /// Initializes a ciphertext from a list of base field elements.
+    fn from(fields: &[Field<A>]) -> Self {
+        Self::from_fields(fields)
+    }
+}
+
+impl<A: Aleo> FromFields for Ciphertext<A> {
+    type Field = Field<A>;
+
+    /// Initializes a ciphertext from a list of base field elements.
+    fn from_fields(fields: &[Self::Field]) -> Self {
+        Ciphertext(fields.to_vec())
+    }
+}

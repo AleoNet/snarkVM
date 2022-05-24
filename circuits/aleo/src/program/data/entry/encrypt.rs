@@ -33,13 +33,13 @@ impl<A: Aleo> Entry<A, Plaintext<A>> {
             // Public entries do not need to be encrypted.
             Self::Public(plaintext) => Entry::Public(plaintext.clone()),
             // Private entries are encrypted with the given randomizers.
-            Self::Private(private) => Entry::Private(Ciphertext(
+            Self::Private(private) => Entry::Private(Ciphertext::from(
                 private
                     .to_fields()
                     .iter()
                     .zip_eq(randomizers)
                     .map(|(plaintext, randomizer)| plaintext + randomizer)
-                    .collect(),
+                    .collect::<Vec<_>>(),
             )),
         }
     }

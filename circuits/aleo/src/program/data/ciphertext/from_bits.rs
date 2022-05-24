@@ -14,11 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::{Ciphertext, Data, Entry, Identifier, Literal, Plaintext, Visibility};
+use super::*;
 
-mod record;
-pub use record::Record;
+impl<A: Aleo> FromBits for Ciphertext<A> {
+    type Boolean = Boolean<A>;
 
-mod state;
-pub use state::State;
+    /// Returns this entry as a list of **little-endian** bits.
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
+        Self(bits_le.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_le).collect())
+    }
+
+    /// Returns this entry as a list of **big-endian** bits.
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
+        Self(bits_be.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_be).collect())
+    }
+}

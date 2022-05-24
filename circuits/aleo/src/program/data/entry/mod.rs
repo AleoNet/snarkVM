@@ -14,21 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod helpers;
-pub use helpers::*;
-
 mod decrypt;
 mod encrypt;
 mod num_randomizers;
 mod to_bits;
 
-use crate::{Aleo, Identifier, Literal};
-use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U16, U8};
-
-pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> u16;
-}
+use crate::{Aleo, Ciphertext, Plaintext, Visibility};
+use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field};
 
 /// An entry stored in program data.
 #[derive(Clone)]

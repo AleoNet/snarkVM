@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::{Ciphertext, Data, Entry, Identifier, Literal, Plaintext, Visibility};
+use super::*;
 
-mod record;
-pub use record::Record;
+impl<A: Aleo> ToFields for Ciphertext<A> {
+    type Field = Field<A>;
 
-mod state;
-pub use state::State;
+    /// Returns this ciphertext as a list of field elements.
+    fn to_fields(&self) -> Vec<Self::Field> {
+        self.0.clone()
+    }
+}

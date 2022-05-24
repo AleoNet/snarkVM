@@ -14,11 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::{Ciphertext, Data, Entry, Identifier, Literal, Plaintext, Visibility};
+use super::*;
 
-mod record;
-pub use record::Record;
+impl<A: Aleo> ToFields for Plaintext<A> {
+    type Field = Field<A>;
 
-mod state;
-pub use state::State;
+    /// Returns this plaintext as a list of field elements.
+    fn to_fields(&self) -> Vec<Self::Field> {
+        // Encode the data as little-endian bits.
+        let mut bits_le = self.to_bits_le();
+        // Adds one final bit to the data, to serve as a terminus indicator.
+        // During decryption, this final bit ensures we've reached the end.
+        bits_le.push(Boolean::constant(true));
+        // Pack the bits into field elements.
+        bits_le.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
+    }
+}

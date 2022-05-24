@@ -14,11 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod data;
-pub use data::{Ciphertext, Data, Entry, Identifier, Literal, Plaintext, Visibility};
+mod from_bits;
+mod from_fields;
+mod size_in_fields;
+mod to_bits;
+mod to_fields;
 
-mod record;
-pub use record::Record;
+use crate::{Aleo, Visibility};
+use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field};
 
-mod state;
-pub use state::State;
+use core::ops::Deref;
+
+#[derive(Clone)]
+pub struct Ciphertext<A: Aleo>(Vec<Field<A>>);
+
+impl<A: Aleo> Deref for Ciphertext<A> {
+    type Target = [Field<A>];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

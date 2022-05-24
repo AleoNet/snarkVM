@@ -17,12 +17,32 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
+mod ciphertext;
+pub use ciphertext::Ciphertext;
+
+mod entry;
+pub use entry::Entry;
+
+mod identifier;
+pub use identifier::Identifier;
+
+mod literal;
+pub use literal::Literal;
+
+mod plaintext;
+pub use plaintext::Plaintext;
+
 mod decrypt;
 mod encrypt;
 // mod to_data_id;
 
-use crate::{Aleo, Ciphertext, Entry, Identifier, Plaintext, ViewKey, Visibility};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Group, Scalar};
+use crate::{Aleo, ViewKey};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Group, Scalar};
+
+pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> u16;
+}
 
 pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Entry<A, Private>)>);
 
