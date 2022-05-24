@@ -19,11 +19,9 @@ use super::*;
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new scalar field element from a list of little-endian bits.
-    /// If the length of the list is greater than `E::ScalarField::size_in_bits()`, the excess bits
-    /// are checked to ensure they are all zero.
-    /// If the length of the list is less than or equal to `E::ScalarField::size_in_bits()`, `bits_le`
-    /// is padded with zeros to the right to match the size of the scalar field.
+    /// Initializes a new scalar field element from a list of **little-endian** bits.
+    ///   - If `bits_le` is longer than `E::ScalarField::size_in_bits()`, the excess bits are enforced to be `0`s.
+    ///   - If `bits_le` is shorter than `E::ScalarField::size_in_bits()`, it is padded with `0`s up to scalar field size.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Retrieve the data and scalar field size.
         let size_in_data_bits = E::ScalarField::size_in_data_bits();
