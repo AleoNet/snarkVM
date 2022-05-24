@@ -102,10 +102,8 @@ impl<N: Network> FromBytes for Identifier<N> {
         let mut buffer = vec![0u8; size as usize];
         reader.read_exact(&mut buffer)?;
         // from_str the identifier.
-        Ok(Self::from_str(
-            &String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?,
-        )
-        .map_err(|e| error(format!("{e}")))?)
+        Self::from_str(&String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?)
+            .map_err(|e| error(format!("{e}")))
     }
 }
 

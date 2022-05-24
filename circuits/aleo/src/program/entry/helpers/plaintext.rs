@@ -92,7 +92,7 @@ impl<A: Aleo> ToFields for Plaintext<A> {
         // During decryption, this final bit ensures we've reached the end.
         bits_le.push(Boolean::constant(true));
         // Pack the bits into field elements.
-        bits_le.chunks(A::BaseField::size_in_data_bits()).map(|bits_le| Field::from_bits_le(bits_le)).collect()
+        bits_le.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
     }
 }
 
@@ -125,8 +125,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
         match self {
             Self::Literal(literal, bits_le) => bits_le
                 .get_or_init(|| {
-                    let mut bits_le = Vec::new();
-                    bits_le.push(Boolean::constant(false));
+                    let mut bits_le = vec![Boolean::constant(false)]; // Variant bit.
                     bits_le.extend(literal.variant().to_bits_le());
                     bits_le.extend(literal.size_in_bits().to_bits_le());
                     bits_le.extend(literal.to_bits_le());
@@ -135,8 +134,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 .clone(),
             Self::Composite(composite, bits_le) => bits_le
                 .get_or_init(|| {
-                    let mut bits_le = Vec::new();
-                    bits_le.push(Boolean::constant(true));
+                    let mut bits_le = vec![Boolean::constant(true)]; // Variant bit.
                     bits_le.extend(U8::constant(composite.len() as u8).to_bits_le());
                     for (identifier, value) in composite {
                         let value_bits = value.to_bits_le();
@@ -156,8 +154,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
         match self {
             Self::Literal(literal, bits_be) => bits_be
                 .get_or_init(|| {
-                    let mut bits_be = Vec::new();
-                    bits_be.push(Boolean::constant(false));
+                    let mut bits_be = vec![Boolean::constant(false)]; // Variant bit.
                     bits_be.extend(literal.variant().to_bits_be());
                     bits_be.extend(literal.size_in_bits().to_bits_be());
                     bits_be.extend(literal.to_bits_be());
@@ -166,8 +163,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                 .clone(),
             Self::Composite(composite, bits_be) => bits_be
                 .get_or_init(|| {
-                    let mut bits_be = Vec::new();
-                    bits_be.push(Boolean::constant(true));
+                    let mut bits_be = vec![Boolean::constant(true)]; // Variant bit.
                     bits_be.extend(U8::constant(composite.len() as u8).to_bits_be());
                     for (identifier, value) in composite {
                         let value_bits = value.to_bits_be();

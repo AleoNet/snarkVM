@@ -43,6 +43,7 @@ pub trait PoseidonDefaultField {
         Self: PrimeField,
     {
         /// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
+        #[allow(clippy::type_complexity)]
         fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
             full_rounds: u64,
             partial_rounds: u64,

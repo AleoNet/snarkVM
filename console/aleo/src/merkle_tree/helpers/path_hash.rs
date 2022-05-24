@@ -36,7 +36,7 @@ impl<N: Network, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PathHash<N>
         let mut input = vec![true];
         input.extend(left.to_bits_le());
         input.extend(right.to_bits_le());
-        // Hash the nodes.
+        // Hash the input.
         Hash::hash(self, &input)
     }
 }
@@ -48,7 +48,7 @@ impl<N: Network, const RATE: usize> PathHash<N> for Poseidon<N::Field, RATE> {
         let mut input = vec![N::Field::one()];
         input.push(*left);
         input.push(*right);
-        // Hash the nodes.
+        // Hash the input.
         Hash::hash(self, &input)
     }
 }

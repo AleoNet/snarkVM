@@ -34,7 +34,7 @@ impl<N: Network, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> LeafHash<N>
         // Prepend the leaf with a `false` bit.
         let mut input = vec![false];
         input.extend(leaf);
-        // Hash the leaf.
+        // Hash the input.
         Hash::hash(self, &input)
     }
 }
@@ -47,7 +47,7 @@ impl<N: Network, const RATE: usize> LeafHash<N> for Poseidon<N::Field, RATE> {
         // Prepend the leaf with a `0field` element.
         let mut input = vec![N::Field::zero(); 1];
         input.extend(leaf);
-        // Hash the leaf.
-        Hash::hash(self, &leaf)
+        // Hash the input.
+        Hash::hash(self, &input)
     }
 }

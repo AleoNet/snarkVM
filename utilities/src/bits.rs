@@ -183,14 +183,14 @@ impl FromBits for Vec<u8> {
     #[inline]
     fn from_bits_le(bits: &[bool]) -> Result<Self> {
         // The vector is order-preserving, meaning the first variable in is the first variable bits out.
-        bits.chunks(8).map(|chunk| u8::from_bits_le(chunk)).collect::<Result<Vec<_>>>()
+        bits.chunks(8).map(u8::from_bits_le).collect::<Result<Vec<_>>>()
     }
 
     /// A helper method to return `Self` from a concatenated list of big-endian bits.
     #[inline]
     fn from_bits_be(bits: &[bool]) -> Result<Self> {
         // The vector is order-preserving, meaning the first variable in is the first variable bits out.
-        bits.chunks(8).map(|chunk| u8::from_bits_be(chunk)).collect::<Result<Vec<_>>>()
+        bits.chunks(8).map(u8::from_bits_be).collect::<Result<Vec<_>>>()
     }
 }
 

@@ -81,7 +81,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
         // Compute each leaf hash and store it in the bottom row of the Merkle tree.
         if !leaves.is_empty() {
             tree[starting_leaf_index..starting_leaf_index + leaves.len()]
-                .copy_from_slice(&Self::hash_leaf_row(&leaf_hasher, leaves)?);
+                .copy_from_slice(&Self::hash_leaf_row(leaf_hasher, leaves)?);
         }
 
         // Iterate from the bottom row to the top row, computing and storing the hashes of each level.
@@ -94,7 +94,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
                     (start_index..end_index).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
                 // Compute the hashes of the current level.
                 tree[start_index..start_index + pairs.len()]
-                    .copy_from_slice(&Self::hash_internal_row(&path_hasher, &pairs[..])?);
+                    .copy_from_slice(&Self::hash_internal_row(path_hasher, &pairs[..])?);
             }
             // Update the end index for the next level.
             end_index = start_index;
@@ -285,7 +285,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
         match leaf_nodes.len() {
             0 => Ok(vec![]),
             1 => Ok(vec![leaf_hasher.hash(&leaf_nodes[0])?]),
-            _ => cfg_iter!(leaf_nodes).map(|leaf| leaf_hasher.hash(&leaf)).collect(),
+            _ => cfg_iter!(leaf_nodes).map(|leaf| leaf_hasher.hash(leaf)).collect(),
         }
     }
 

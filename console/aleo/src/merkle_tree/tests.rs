@@ -45,7 +45,7 @@ fn check_merkle_tree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: 
             // Compute a Merkle proof for the leaf.
             let proof = merkle_tree.prove(leaf_index, leaf)?;
             // Verify the Merkle proof succeeds.
-            assert!(proof.verify(leaf_hasher, path_hasher, &merkle_tree.root(), leaf));
+            assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
             assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
             assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
@@ -61,7 +61,7 @@ fn check_merkle_tree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: 
             // Compute a Merkle proof for the leaf.
             let proof = merkle_tree.prove(leaves.len() + leaf_index, leaf)?;
             // Verify the Merkle proof succeeds.
-            assert!(proof.verify(leaf_hasher, path_hasher, &merkle_tree.root(), leaf));
+            assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
             assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
             assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));

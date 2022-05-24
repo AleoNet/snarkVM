@@ -95,8 +95,7 @@ impl<N: Network> ToBits for Plaintext<N> {
         match self {
             Self::Literal(literal, bits_le) => bits_le
                 .get_or_init(|| {
-                    let mut bits_le = Vec::new();
-                    bits_le.push(false); // Variant bit.
+                    let mut bits_le = vec![false]; // Variant bit.
                     bits_le.extend(literal.variant().to_bits_le());
                     bits_le.extend(literal.size_in_bits().to_bits_le());
                     bits_le.extend(literal.to_bits_le());
@@ -105,8 +104,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                 .clone(),
             Self::Composite(composite, bits_le) => bits_le
                 .get_or_init(|| {
-                    let mut bits_le = Vec::new();
-                    bits_le.push(true); // Variant bit.
+                    let mut bits_le = vec![true]; // Variant bit.
                     bits_le.extend((composite.len() as u8).to_bits_le());
                     for (identifier, value) in composite {
                         let value_bits = value.to_bits_le();
@@ -126,8 +124,7 @@ impl<N: Network> ToBits for Plaintext<N> {
         match self {
             Self::Literal(literal, bits_be) => bits_be
                 .get_or_init(|| {
-                    let mut bits_be = Vec::new();
-                    bits_be.push(false); // Variant bit.
+                    let mut bits_be = vec![false]; // Variant bit.
                     bits_be.extend(literal.variant().to_bits_be());
                     bits_be.extend(literal.size_in_bits().to_bits_be());
                     bits_be.extend(literal.to_bits_be());
@@ -136,8 +133,7 @@ impl<N: Network> ToBits for Plaintext<N> {
                 .clone(),
             Self::Composite(composite, bits_be) => bits_be
                 .get_or_init(|| {
-                    let mut bits_be = Vec::new();
-                    bits_be.push(true); // Variant bit.
+                    let mut bits_be = vec![true]; // Variant bit.
                     bits_be.extend((composite.len() as u8).to_bits_be());
                     for (identifier, value) in composite {
                         let value_bits = value.to_bits_be();
@@ -158,7 +154,7 @@ impl<N: Network> FromBits for Plaintext<N> {
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         let mut counter = 0;
 
-        let is_literal = !bits_le[counter].clone();
+        let is_literal = !bits_le[counter];
         counter += 1;
 
         // Literal
@@ -215,7 +211,7 @@ impl<N: Network> FromBits for Plaintext<N> {
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
         let mut counter = 0;
 
-        let is_literal = !bits_be[counter].clone();
+        let is_literal = !bits_be[counter];
         counter += 1;
 
         // Literal

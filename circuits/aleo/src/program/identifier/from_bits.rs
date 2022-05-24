@@ -39,7 +39,7 @@ impl<A: Aleo> FromBits for Identifier<A> {
             // and an invalid character according to our rules for representing an identifier.
             match bytes.iter().position(|&byte| byte == 0) {
                 Some(index) => index,
-                None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
+                None => A::halt("Identifier exceeds the maximum capacity allowed"),
             }
         };
         // Ensure identifier fits within the data capacity of the base field.
@@ -47,7 +47,7 @@ impl<A: Aleo> FromBits for Identifier<A> {
         match num_bytes <= max_bytes {
             // Return the identifier.
             true => Self(field, num_bytes as u8),
-            false => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
+            false => A::halt("Identifier exceeds the maximum capacity allowed"),
         }
     }
 
@@ -71,7 +71,7 @@ impl<A: Aleo> FromBits for Identifier<A> {
             // and an invalid character according to our rules for representing an identifier.
             match bytes.iter().position(|&byte| byte == 0) {
                 Some(index) => index,
-                None => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
+                None => A::halt("Identifier exceeds the maximum capacity allowed"),
             }
         };
         // Ensure identifier fits within the data capacity of the base field.
@@ -79,7 +79,7 @@ impl<A: Aleo> FromBits for Identifier<A> {
         match num_bytes <= max_bytes {
             // Return the identifier.
             true => Self(field, num_bytes as u8),
-            false => A::halt(format!("Identifier exceeds the maximum capacity allowed")),
+            false => A::halt("Identifier exceeds the maximum capacity allowed"),
         }
     }
 }
