@@ -23,6 +23,7 @@ use core::marker::PhantomData;
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitInfo<F: Sync + Send> {
     /// The number of public inputs after padding.

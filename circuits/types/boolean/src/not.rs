@@ -31,19 +31,14 @@ impl<E: Environment> Not for &Boolean<E> {
 
     /// Returns `(NOT a)`.
     fn not(self) -> Self::Output {
-        // Constant case
-        if self.is_constant() {
-            match self.eject_value() {
-                true => Boolean(&self.0 - E::one()),
-                false => Boolean(&self.0 + E::one()),
-            }
-        }
-        // Public and private cases
-        else {
-            match self.eject_value() {
-                true => Boolean(&self.0 - Variable::Public(0, Rc::new(E::BaseField::one()))),
-                false => Boolean(&self.0 + Variable::Public(0, Rc::new(E::BaseField::one()))),
-            }
+        // The `NOT` operation behaves as follows:
+        //     Case 1: If `(self == 0)`, then `(1 - self) == 1`.
+        //     Case 2: If `(self == 1)`, then `(1 - self) == 0`.
+        match self.is_constant() {
+            // Constant case.
+            true => Boolean(E::one() - &self.0),
+            // Public and private cases.
+            false => Boolean(Variable::Public(0, Rc::new(E::BaseField::one())) - &self.0),
         }
     }
 }

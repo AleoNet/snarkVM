@@ -16,7 +16,7 @@
 
 use std::fmt::Debug;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum LegendreSymbol {
     Zero = 0,
     QuadraticResidue = 1,
