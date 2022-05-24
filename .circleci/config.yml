@@ -176,10 +176,10 @@ jobs:
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/core
+          workspace_member: circuits/core/aleo
           cache_key: snarkvm-circuits-core-aleo-cache
       - run_serial:
-          workspace_member: circuits/core
+          workspace_member: circuits/core/aleo
           flags: --no-default-features # This checks that no `console` structs are used in core circuit logic.
           cache_key: snarkvm-circuits-core-aleo-cache
 
@@ -189,7 +189,7 @@ jobs:
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/core
+          workspace_member: circuits/core/algorithms
           cache_key: snarkvm-circuits-core-algorithms-cache
 
   circuits-edge:
