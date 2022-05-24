@@ -135,7 +135,7 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 3)?;
+                let mut execution = serializer.serialize_struct("Execution", 1)?;
                 execution.serialize_field("program_execution", &self.program_execution)?;
                 execution.end()
             }
