@@ -36,6 +36,7 @@ impl<
     const MONTGOMERY_A: BaseField<G> = <P as MontgomeryParameters>::COEFF_A;
     const MONTGOMERY_B: BaseField<G> = <P as MontgomeryParameters>::COEFF_B;
 
+    /// Returns the encoded affine group element and sign, given a field element.
     pub fn encode(input: BaseField<G>) -> Result<(G, bool)> {
         ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
         ensure!(!input.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
@@ -107,6 +108,7 @@ impl<
         Ok((G::from_coordinates((x, y)), sign_high))
     }
 
+    /// Returns the decoded field element, given the encoded affine group element and sign.
     pub fn decode(group: G, sign_high: bool) -> Result<BaseField<G>> {
         ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
         ensure!(!group.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
