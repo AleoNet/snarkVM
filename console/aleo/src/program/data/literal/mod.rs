@@ -17,6 +17,7 @@
 mod from_bits;
 mod size_in_bits;
 mod to_bits;
+mod variant;
 
 use crate::{Address, Network};
 use snarkvm_fields::PrimeField;
@@ -67,30 +68,6 @@ pub enum Literal<N: Network> {
     Scalar(N::Scalar),
     /// The string type.
     String(String),
-}
-
-impl<N: Network> Literal<N> {
-    /// Returns the type name of the literal.
-    pub fn variant(&self) -> u8 {
-        match self {
-            Self::Address(..) => 0,
-            Self::Boolean(..) => 1,
-            Self::Field(..) => 2,
-            Self::Group(..) => 3,
-            Self::I8(..) => 4,
-            Self::I16(..) => 5,
-            Self::I32(..) => 6,
-            Self::I64(..) => 7,
-            Self::I128(..) => 8,
-            Self::U8(..) => 9,
-            Self::U16(..) => 10,
-            Self::U32(..) => 11,
-            Self::U64(..) => 12,
-            Self::U128(..) => 13,
-            Self::Scalar(..) => 14,
-            Self::String(..) => 15,
-        }
-    }
 }
 
 impl<N: Network> FromBytes for Literal<N> {
@@ -157,84 +134,6 @@ impl<N: Network> ToBytes for Literal<N> {
     }
 }
 
-// impl<N: Network> Inject for Literal<N> {
-//     type Primitive = Primitive<N>;
-//
-//     /// Initializes a new literal from a primitive.
-//     fn new(mode: Mode, value: Self::Primitive) -> Self {
-//         match value {
-//             Primitive::Address(address) => Self::Address(Address::new(mode, address)),
-//             Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, boolean)),
-//             Primitive::Field(field) => Self::Field(Field::new(mode, field)),
-//             Primitive::Group(group) => Self::Group(Group::new(mode, group)),
-//             Primitive::I8(i8) => Self::I8(I8::new(mode, i8)),
-//             Primitive::I16(i16) => Self::I16(I16::new(mode, i16)),
-//             Primitive::I32(i32) => Self::I32(I32::new(mode, i32)),
-//             Primitive::I64(i64) => Self::I64(I64::new(mode, i64)),
-//             Primitive::I128(i128) => Self::I128(I128::new(mode, i128)),
-//             Primitive::U8(u8) => Self::U8(U8::new(mode, u8)),
-//             Primitive::U16(u16) => Self::U16(U16::new(mode, u16)),
-//             Primitive::U32(u32) => Self::U32(U32::new(mode, u32)),
-//             Primitive::U64(u64) => Self::U64(U64::new(mode, u64)),
-//             Primitive::U128(u128) => Self::U128(U128::new(mode, u128)),
-//             Primitive::Scalar(scalar) => Self::Scalar(Scalar::new(mode, scalar)),
-//             Primitive::String(string) => Self::String(StringType::new(mode, string)),
-//         }
-//     }
-// }
-//
-// impl<N: Network> Eject for Literal<N> {
-//     type Primitive = Primitive<N>;
-//
-//     ///
-//     /// Ejects the mode of the object.
-//     ///
-//     fn eject_mode(&self) -> Mode {
-//         match self {
-//             Self::Address(literal) => literal.eject_mode(),
-//             Self::Boolean(literal) => literal.eject_mode(),
-//             Self::Field(literal) => literal.eject_mode(),
-//             Self::Group(literal) => literal.eject_mode(),
-//             Self::I8(literal) => literal.eject_mode(),
-//             Self::I16(literal) => literal.eject_mode(),
-//             Self::I32(literal) => literal.eject_mode(),
-//             Self::I64(literal) => literal.eject_mode(),
-//             Self::I128(literal) => literal.eject_mode(),
-//             Self::U8(literal) => literal.eject_mode(),
-//             Self::U16(literal) => literal.eject_mode(),
-//             Self::U32(literal) => literal.eject_mode(),
-//             Self::U64(literal) => literal.eject_mode(),
-//             Self::U128(literal) => literal.eject_mode(),
-//             Self::Scalar(literal) => literal.eject_mode(),
-//             Self::String(literal) => literal.eject_mode(),
-//         }
-//     }
-//
-//     ///
-//     /// Ejects the object into its primitives.
-//     ///
-//     fn eject_value(&self) -> Self::Primitive {
-//         match self {
-//             Self::Address(literal) => Primitive::Address(literal.eject_value()),
-//             Self::Boolean(literal) => Primitive::Boolean(literal.eject_value()),
-//             Self::Field(literal) => Primitive::Field(literal.eject_value()),
-//             Self::Group(literal) => Primitive::Group(literal.eject_value()),
-//             Self::I8(literal) => Primitive::I8(literal.eject_value()),
-//             Self::I16(literal) => Primitive::I16(literal.eject_value()),
-//             Self::I32(literal) => Primitive::I32(literal.eject_value()),
-//             Self::I64(literal) => Primitive::I64(literal.eject_value()),
-//             Self::I128(literal) => Primitive::I128(literal.eject_value()),
-//             Self::U8(literal) => Primitive::U8(literal.eject_value()),
-//             Self::U16(literal) => Primitive::U16(literal.eject_value()),
-//             Self::U32(literal) => Primitive::U32(literal.eject_value()),
-//             Self::U64(literal) => Primitive::U64(literal.eject_value()),
-//             Self::U128(literal) => Primitive::U128(literal.eject_value()),
-//             Self::Scalar(literal) => Primitive::Scalar(literal.eject_value()),
-//             Self::String(literal) => Primitive::String(literal.eject_value()),
-//         }
-//     }
-// }
-//
 // impl<N: Network> Debug for Literal<N> {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //         match self {
