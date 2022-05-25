@@ -34,6 +34,9 @@ pub use linear_combination::*;
 pub mod mode;
 pub use mode::*;
 
+pub mod updatable_count;
+pub use updatable_count::*;
+
 pub mod variable;
 pub use variable::*;
 
