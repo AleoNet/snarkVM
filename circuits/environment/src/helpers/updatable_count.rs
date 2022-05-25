@@ -45,15 +45,30 @@ macro_rules! count_is {
     };
 }
 
+#[macro_export]
+macro_rules! count_less_than {
+    ($num_constants:literal, $num_public:literal, $num_private:literal, $num_constraints:literal) => {
+        $crate::UpdatableCount {
+            constant: $crate::Measurement::UpperBound($num_constants),
+            public: $crate::Measurement::UpperBound($num_public),
+            private: $crate::Measurement::UpperBound($num_private),
+            constraints: $crate::Measurement::UpperBound($num_constraints),
+            file: file!(),
+            line: line!(),
+            column: column!(),
+        }
+    };
+}
+
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
 #[derive(Copy, Clone, Debug)]
 pub struct UpdatableCount {
-    constant: Constant,
-    public: Public,
-    private: Private,
-    constraints: Constraints,
+    pub constant: Constant,
+    pub public: Public,
+    pub private: Private,
+    pub constraints: Constraints,
     #[doc(hidden)]
-    file: &'static str,
+    pub file: &'static str,
     #[doc(hidden)]
     pub line: u32,
     #[doc(hidden)]
