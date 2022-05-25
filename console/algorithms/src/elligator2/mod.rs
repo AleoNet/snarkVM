@@ -17,7 +17,7 @@
 use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use core::{cmp, marker::PhantomData, ops::Neg};
 
 type BaseField<G> = <G as AffineCurve>::BaseField;
@@ -49,19 +49,18 @@ impl<
         // Compute the mapping from Fq to E(Fq) as a Montgomery element (u, v).
         let (u, v) = {
             // Compute the coefficients for the Weierstrass form: y^2 == x^3 + A * x^2 + B * x.
-            let montgomery_b_inverse = Self::MONTGOMERY_B.inverse().unwrap();
-            let a = Self::MONTGOMERY_A * montgomery_b_inverse;
-            let b = montgomery_b_inverse.square();
+            let (a, b) = match Self::MONTGOMERY_B.inverse() {
+                Some(b_inverse) => (Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
+                None => bail!("Montgomery B must be invertible in order to use Elligator2"),
+            };
 
             // Let ur2 = D * input^2;
             let ur2 = Self::D * input.square();
-            // Verify 1 + ur^2 != 0.
-            assert_ne!(one + ur2, BaseField::<G>::zero());
             // Verify A^2 * ur^2 != B(1 + ur^2)^2.
-            assert_ne!(a.square() * ur2, b * (one + ur2).square());
+            ensure!(a.square() * ur2 != b * (one + ur2).square(), "Elligator2 failed: A^2 * ur^2 == B(1 + ur^2)^2");
 
             // Let v = -A / (1 + ur^2).
-            let v = -a * (one + ur2).inverse().unwrap();
+            let v = -a * (one + ur2).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (1 + ur^2) == 0"))?;
 
             // Let e = legendre(v^3 + Av^2 + Bv).
             let v2 = v.square();
@@ -77,15 +76,15 @@ impl<
             // Let y = -e * sqrt(x^3 + Ax^2 + Bx).
             let x2 = x.square();
             let rhs = (x2 * x) + (a * x2) + (b * x);
-            let value = rhs.sqrt().unwrap();
+            let value = rhs.sqrt().ok_or_else(|| anyhow!("Elligator2 failed: sqrt(x^3 + Ax^2 + Bx) failed"))?;
             let y = match e {
                 LegendreSymbol::Zero => BaseField::<G>::zero(),
                 LegendreSymbol::QuadraticResidue => -value,
                 LegendreSymbol::QuadraticNonResidue => value,
             };
 
-            // Ensure (u, v) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x
-            assert_eq!(y.square(), rhs);
+            // Ensure (u, v) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
+            ensure!(y.square() == rhs, "Elligator2 failed: y^2 != x^3 + A * x^2 + B * x");
 
             // Convert the Weierstrass element (x, y) to Montgomery element (u, v).
             let u = x * Self::MONTGOMERY_B;
@@ -93,14 +92,17 @@ impl<
 
             // Ensure (u, v) is a valid Montgomery element on: B * v^2 == u^3 + A * u^2 + u
             let u2 = u.square();
-            assert_eq!(Self::MONTGOMERY_B * v.square(), (u2 * u) + (Self::MONTGOMERY_A * u2) + u);
+            ensure!(
+                Self::MONTGOMERY_B * v.square() == (u2 * u) + (Self::MONTGOMERY_A * u2) + u,
+                "Elligator2 failed: B * v^2 != u^3 + A * u^2 + u"
+            );
 
             (u, v)
         };
 
         // Convert the Montgomery element (u, v) to the twisted Edwards element (x, y).
-        let x = u * v.inverse().unwrap();
-        let y = (u - one) * (u + one).inverse().unwrap();
+        let x = u * v.inverse().ok_or_else(|| anyhow!("Elligator2 failed: v == 0"))?;
+        let y = (u - one) * (u + one).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (u + 1) == 0"))?;
 
         Ok((G::from_coordinates((x, y)), sign_high))
     }
@@ -110,59 +112,65 @@ impl<
         ensure!(!group.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
 
         // Compute the coefficients for the Weierstrass form: v^2 == u^3 + A * u^2 + B * u.
-        let montgomery_b_inverse = Self::MONTGOMERY_B.inverse().unwrap();
-        let a = Self::MONTGOMERY_A * montgomery_b_inverse;
-        let b = montgomery_b_inverse.square();
+        let (montgomery_b_inverse, a, b) = match Self::MONTGOMERY_B.inverse() {
+            Some(b_inverse) => (b_inverse, Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
+            None => bail!("Montgomery B must be invertible in order to use Elligator2"),
+        };
 
         let x = group.to_x_coordinate();
         let y = group.to_y_coordinate();
 
         // Verify that x != -A.
-        assert_ne!(x, -a);
+        ensure!(x != -a, "Elligator2 failed: x == -A");
         // Verify that if y is 0, then x is 0.
         if y.is_zero() {
-            assert!(x.is_zero());
+            ensure!(x.is_zero(), "Elligator2 failed: y == 0 but x != 0");
         }
 
         // Convert the twisted Edwards element (x, y) to the Weierstrass element (u, v)
-        let (u_reconstructed, v_reconstructed) = {
+        let (u, v) = {
             let one = BaseField::<G>::one();
 
             let numerator = one + y;
             let denominator = one - y;
 
-            let u = numerator * denominator.inverse().unwrap();
-            let v = numerator * (denominator * x).inverse().unwrap();
+            let u = numerator * denominator.inverse().ok_or_else(|| anyhow!("Elligator2 failed: (1 - y) == 0"))?;
+            let v = numerator
+                * (denominator * x).inverse().ok_or_else(|| anyhow!("Elligator2 failed: x * (1 - y) == 0"))?;
 
             // Ensure (u, v) is a valid Montgomery element on: B * v^2 == u^3 + A * u^2 + u
             let u2 = u.square();
-            assert_eq!(Self::MONTGOMERY_B * v.square(), (u2 * u) + (Self::MONTGOMERY_A * u2) + u);
+            ensure!(
+                Self::MONTGOMERY_B * v.square() == (u2 * u) + (Self::MONTGOMERY_A * u2) + u,
+                "Elligator2 failed: B * v^2 != u^3 + A * u^2 + u"
+            );
 
             let u = u * montgomery_b_inverse;
             let v = v * montgomery_b_inverse;
 
             // Ensure (u, v) is a valid Weierstrass element on: v^2 == u^3 + A * u^2 + B * u
             let u2 = u.square();
-            assert_eq!(v.square(), (u2 * u) + (a * u2) + (b * u));
+            ensure!(v.square() == (u2 * u) + (a * u2) + (b * u), "Elligator2 failed: v^2 != u^3 + A * u^2 + B * u");
 
             (u, v)
         };
 
-        let x = u_reconstructed;
+        // Verify -D * u * (u + A) is a residue.
+        let du = Self::D * u;
+        let u_plus_a = u + a;
+        ensure!((-du * u_plus_a).legendre().is_qr(), "Elligator2 failed: -D * u * (u + A) is not a quadratic residue");
 
-        // Let u = D.
-        let u = Self::D;
-        // Verify -ux(x + A) is a residue.
-        assert_eq!((-(u * x) * (x + a)).legendre(), LegendreSymbol::QuadraticResidue);
-
-        let exists_in_sqrt_fq2 = v_reconstructed.square().sqrt().unwrap() == v_reconstructed;
+        let v_reconstructed = v.square().sqrt().ok_or_else(|| anyhow!("Elligator2 failed: cannot square root v^2"))?;
+        let exists_in_sqrt_fq2 = v_reconstructed == v;
 
         let element = match exists_in_sqrt_fq2 {
-            // Let element = sqrt(-x / ((x + A) * u)).
-            true => (-x * ((x + a) * u).inverse().unwrap()).sqrt().unwrap(),
-            // Let element = sqrt(-(x + A) / ux)).
-            false => ((-x - a) * (u * x).inverse().unwrap()).sqrt().unwrap(),
-        };
+            // Let element = sqrt(-u / ((u + A) * D)).
+            true => -u * (u_plus_a * Self::D).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (u+A) * D == 0"))?,
+            // Let element = sqrt(-(u + A) / Du)).
+            false => -u_plus_a * du.inverse().ok_or_else(|| anyhow!("Elligator2 failed: D * u == 0"))?,
+        }
+        .sqrt()
+        .ok_or_else(|| anyhow!("Elligator2 failed: cannot compute the square root for the element"))?;
 
         match sign_high {
             true => Ok(cmp::max(element, -element)),
@@ -180,7 +188,7 @@ mod tests {
     pub(crate) const ITERATIONS: usize = 10000;
 
     #[test]
-    fn test_encode_and_decode() {
+    fn test_encode_and_decode() -> Result<()> {
         let rng = &mut test_rng();
 
         let mut high_ctr = 0usize;
@@ -189,8 +197,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             let expected = UniformRand::rand(rng);
 
-            let (encoded, sign_high) = Elligator2::<EdwardsAffine, EdwardsParameters>::encode(expected).unwrap();
-            let decoded = Elligator2::<EdwardsAffine, EdwardsParameters>::decode(encoded, sign_high).unwrap();
+            let (encoded, sign_high) = Elligator2::<EdwardsAffine, EdwardsParameters>::encode(expected)?;
+            let decoded = Elligator2::<EdwardsAffine, EdwardsParameters>::decode(encoded, sign_high)?;
             assert_eq!(expected, decoded);
 
             match sign_high {
@@ -199,7 +207,8 @@ mod tests {
             }
         }
 
-        println!("high: {}, low: {}", high_ctr, low_ctr);
+        println!("Sign high: {}, sign low: {}", high_ctr, low_ctr);
+        Ok(())
     }
 
     #[test]
