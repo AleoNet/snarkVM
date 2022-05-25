@@ -17,7 +17,6 @@
 use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
 use rand::thread_rng;
@@ -89,9 +88,10 @@ fn dpc_execute_circuits_test<N: Network>(
     let (input_proving_key, input_verifying_key) =
         <N as Network>::InputSNARK::setup(&InputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
+    let mut input_circuits = Vec::new();
+    let mut input_public_inputs = Vec::new();
+
     // Compute the input circuit proofs.
-    let mut input_proofs = Vec::with_capacity(N::NUM_INPUTS as usize);
-    let mut input_public_variables = Vec::with_capacity(N::NUM_INPUTS as usize);
     for (
         ((((record, serial_number), ledger_proof), signature), input_value_commitment),
         input_value_commitment_randomness,
@@ -150,17 +150,21 @@ fn dpc_execute_circuits_test<N: Network>(
 
         //////////////////////////////////////////////////////////////////////////
 
-        let input_proof = <N as Network>::InputSNARK::prove(&input_proving_key, &input_circuit, rng).unwrap();
-        assert_eq!(N::INPUT_PROOF_SIZE_IN_BYTES, input_proof.to_bytes_le().unwrap().len());
-
-        // Verify that the inner circuit proof passes.
-        assert!(<N as Network>::InputSNARK::verify(&input_verifying_key, &input_public, &input_proof).unwrap());
+        input_circuits.push(input_circuit);
+        input_public_inputs.push(input_public);
 
         //////////////////////////////////////////////////////////////////////////
-
-        input_proofs.push(input_proof.into());
-        input_public_variables.push(input_public);
     }
+    let proving_start = std::time::Instant::now();
+    let input_proof = <N as Network>::InputSNARK::prove_batch(&input_proving_key, &input_circuits, rng).unwrap();
+    println!("Proving time for {num_inputs} x {num_outputs}: {}", proving_start.elapsed().as_secs_f64());
+
+    let verifying_start = std::time::Instant::now();
+    // Verify that the inner circuit proof passes.
+    assert!(
+        <N as Network>::InputSNARK::verify_batch(&input_verifying_key, &input_public_inputs, &input_proof).unwrap()
+    );
+    println!("Verifying time: {}", verifying_start.elapsed().as_secs_f64());
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -168,9 +172,10 @@ fn dpc_execute_circuits_test<N: Network>(
     let (output_proving_key, output_verifying_key) =
         <N as Network>::OutputSNARK::setup(&OutputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
+    let mut output_circuits = Vec::new();
+    let mut output_public_inputs = Vec::new();
+
     // Compute the output circuit proofs.
-    let mut output_proofs = Vec::with_capacity(N::NUM_OUTPUTS as usize);
-    let mut output_public_variables = Vec::with_capacity(N::NUM_OUTPUTS as usize);
     for (
         (((record, commitment), encryption_randomness), output_value_commitment),
         output_value_commitment_randomness,
@@ -221,31 +226,27 @@ fn dpc_execute_circuits_test<N: Network>(
 
         //////////////////////////////////////////////////////////////////////////
 
-        let output_proof = <N as Network>::OutputSNARK::prove(&output_proving_key, &output_circuit, rng).unwrap();
-        assert_eq!(N::OUTPUT_PROOF_SIZE_IN_BYTES, output_proof.to_bytes_le().unwrap().len());
-
-        // Verify that the inner circuit proof passes.
-        assert!(<N as Network>::OutputSNARK::verify(&output_verifying_key, &output_public, &output_proof).unwrap());
-
-        //////////////////////////////////////////////////////////////////////////
-
-        output_proofs.push(output_proof.into());
-        output_public_variables.push(output_public);
+        output_circuits.push(output_circuit);
+        output_public_inputs.push(output_public);
     }
+    let proving_start = std::time::Instant::now();
+    let output_proof = <N as Network>::OutputSNARK::prove_batch(&output_proving_key, &output_circuits, rng).unwrap();
+    println!("Proving time for {num_inputs} x {num_outputs}: {}", proving_start.elapsed().as_secs_f64());
+
+    let verifying_start = std::time::Instant::now();
+    // Verify that the inner circuit proof passes.
+    assert!(
+        <N as Network>::OutputSNARK::verify_batch(&output_verifying_key, &output_public_inputs, &output_proof).unwrap()
+    );
+    println!("Verifying time: {}", verifying_start.elapsed().as_secs_f64());
 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the execution.
-    let execution = Execution::<N>::from(None, input_proofs, output_proofs).unwrap();
+    let execution = Execution::<N>::from(None).unwrap();
 
     // Verify that the program proof passes.
-    assert!(execution.verify(
-        &input_verifying_key,
-        &output_verifying_key,
-        &input_public_variables,
-        &output_public_variables,
-        transition_id
-    ));
+    assert!(execution.verify(transition_id));
 }
 
 mod testnet1 {
