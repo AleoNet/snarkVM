@@ -21,6 +21,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use std::{
     collections::HashMap,
     env,
+    fmt::Display,
     fs,
     ops::Range,
     path::{Path, PathBuf},
@@ -59,6 +60,16 @@ pub struct UpdatableCount {
     pub column: u32,
 }
 
+impl Display for UpdatableCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Constants: {}, Public: {}, Private: {}, Constraints: {}",
+            self.constant, self.public, self.private, self.constraints
+        )
+    }
+}
+
 impl UpdatableCount {
     /// If all constituent metrics match, do nothing.
     /// If all consituent metrics do not match:
@@ -82,25 +93,20 @@ impl UpdatableCount {
                     num_constraints,
                 );
             } else {
-                // TODO: Better panics.
                 println!(
                     "\n
-\x1b[1m\x1b[91merror\x1b[97m: expect test failed\x1b[0m
+\x1b[1m\x1b[91merror\x1b[97m: Count does not match\x1b[0m
    \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
 \x1b[1mExpected\x1b[0m:
 ----
-{:?}
+Constants: {}, Public: {}, Private: {}, Constraints: {}
 ----
 \x1b[1mActual\x1b[0m:
 ----
-{:?}
+{}
 ----
 ",
-                    self.file,
-                    self.line,
-                    self.column,
-                    (num_constants, num_public, num_private, num_constraints),
-                    self,
+                    self.file, self.line, self.column, num_constants, num_public, num_private, num_constraints, self,
                 );
                 // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
                 snarkvm_utilities::panic::resume_unwind(Box::new(()));
@@ -119,6 +125,7 @@ impl UpdatableCount {
     ///
     /// Note: This function must always invoked with the file contents of the same file as the macro invocation.
     fn locate(&self, file: &str) -> Range<usize> {
+        // `line_start` is the absolute byte offset from the beginning of the file to the beginning of the current line.
         let mut line_start = 0;
         let mut starting_byte_offset = None;
         let mut ending_byte_offset = None;
@@ -160,22 +167,32 @@ impl UpdatableCount {
     }
 }
 
+/// This struct is used to track updates to the `UpdatableCount`s in a file.
+/// It is used to ensure that the updates are written to the appropriate location in the file as the file is modified.
 struct FileUpdates {
     path: PathBuf,
     original_text: String,
     modified_text: String,
+    /// A vector of tuples, where:
+    /// - The first element of the tuple is the byte range in the original file that is being updated.
+    /// - The second element of the tuple is the length of the new text that is being inserted.
     updates: Vec<(Range<usize>, usize)>,
 }
 
 impl FileUpdates {
+    /// Initializes a new instance of `FileUpdates`.
+    /// This function will read the contents of the file at the specified path and store it in the `original_text` field.
+    /// This function will also initialize the `updates` field to an empty vector.
     fn new(count: &UpdatableCount) -> Self {
-        let path = to_abs_ws_path(Path::new(count.file));
+        let path = to_absolute_path(Path::new(count.file));
         let original_text = fs::read_to_string(&path).unwrap();
         let modified_text = original_text.clone();
         let updates = Vec::new();
         Self { path, original_text, modified_text, updates }
     }
 
+    /// This function will update the `modified_text` field with the new text that is being inserted.
+    /// The resulting `modified_text` is written to the file at the specified path.
     fn update_count(
         &mut self,
         count: &UpdatableCount,
@@ -194,6 +211,7 @@ impl FileUpdates {
         self.updates.push((range.clone(), argument_string.len()));
         self.updates.sort_by_key(|(delete, _insert)| delete.start);
 
+        // Given existing updates to the original file, determine the position of the update in the modified file.
         let (delete, insert) = self
             .updates
             .iter()
@@ -212,6 +230,8 @@ impl FileUpdates {
     }
 }
 
+/// A struct that provides an iterator over the lines in a string, while preserving the original line endings.
+// This is necessary as `str::lines` does not preserve the original line endings.
 struct LinesWithEnds<'a> {
     text: &'a str,
 }
@@ -223,6 +243,7 @@ impl<'a> Iterator for LinesWithEnds<'a> {
         match self.text.is_empty() {
             true => None,
             false => {
+                // TODO: Do we need to handle CRLF endings?
                 let idx = self.text.find('\n').map_or(self.text.len(), |it| it + 1);
                 let (res, next) = self.text.split_at(idx);
                 self.text = next;
@@ -239,11 +260,15 @@ impl<'a> From<&'a str> for LinesWithEnds<'a> {
 }
 
 // TODO: Enable filtering. Needs a better name.
+/// Determines if UpdatableCount should be updated.
 fn update_counts() -> bool {
     env::var("UPDATE_EXPECT").is_ok()
 }
 
-fn to_abs_ws_path(path: &Path) -> PathBuf {
+/// Returns the absolute path of the given path.
+/// If the given path is absolute, it is returned as is.
+/// If the given path is relative, then it is joined with the absolute path of the workspace root.
+fn to_absolute_path(path: &Path) -> PathBuf {
     if path.is_absolute() {
         return path.to_owned();
     }
@@ -282,7 +307,7 @@ mod test {
     fn check_position() {
         let count = count_is!(0, 0, 0, 0);
         assert_eq!(count.file, "circuits/environment/src/helpers/updatable_count.rs");
-        assert_eq!(count.line, 279);
+        assert_eq!(count.line, 311);
         assert_eq!(count.column, 21);
     }
 
