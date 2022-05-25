@@ -97,7 +97,6 @@ impl<P: Bls12Parameters> G2Prepared<P> {
     }
 
     pub fn from_affine(q: G2Affine<P>) -> Self {
-        let two_inv = P::Fp::one().double().inverse().unwrap();
         if q.is_zero() {
             return Self { ell_coeffs: vec![], infinity: true };
         }
@@ -107,8 +106,11 @@ impl<P: Bls12Parameters> G2Prepared<P> {
         let bit_iterator = BitIteratorBE::new(P::X);
         let mut ell_coeffs = Vec::with_capacity(bit_iterator.len());
 
+        // `one_half` = 1/2 in the field.
+        let one_half = P::Fp::half();
+
         for i in bit_iterator.skip(1) {
-            ell_coeffs.push(doubling_step::<P>(&mut r, &two_inv));
+            ell_coeffs.push(doubling_step::<P>(&mut r, &one_half));
 
             if i {
                 ell_coeffs.push(addition_step::<P>(&mut r, &q));

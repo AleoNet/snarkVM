@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
+use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{bail, Result};
@@ -38,49 +38,35 @@ impl<
     const D: BaseField<G> = <P as TwistedEdwardsParameters>::COEFF_D;
 
     pub fn encode(input: BaseField<G>) -> Result<(G, bool)> {
+        // Verify D is a quadratic nonresidue.
+        assert!(Self::D.legendre().is_qnr());
+
         // // The input base field must be nonzero, otherwise inverses will fail.
         // if input.is_zero() {
         //     return Err(EncodingError::InputMustBeNonzero);
         // }
 
+        let one = BaseField::<G>::one();
+
         // We define as convention for the input to be of high sign.
         let sign_high = input > input.neg();
         let input = if sign_high { input } else { input.neg() };
 
-        // Compute the parameters for the alternate Montgomery form: v^2 == u^3 + A * u^2 + B * u.
-        let (a, b) = {
-            let a = Self::A * &Self::B.inverse().unwrap();
-            let b = BaseField::<G>::one() * &Self::B.square().inverse().unwrap();
-            (a, b)
-        };
-
-        // Compute the mapping from Fq to E(Fq) as an alternate Montgomery element (u, v).
+        // Compute the mapping from Fq to E(Fq) as a Weierstrass element (u, v).
         let (u, v) = {
-            // Let r = element.
-            let r = input;
+            // Compute the coefficients for the Weierstrass form: y^2 == x^3 + A * x^2 + B * x.
+            let a = Self::A * &Self::B.inverse().unwrap();
+            let b = one * &Self::B.square().inverse().unwrap();
 
-            // Let u = D.
-            // TODO (howardwu): change to 11.
-            let u = Self::D;
-
-            // Let ur2 = u * r^2;
-            let ur2 = r.square() * u;
-
-            {
-                // Verify u is a quadratic nonresidue.
-                #[cfg(debug_assertions)]
-                assert!(u.legendre().is_qnr());
-
-                // Verify 1 + ur^2 != 0.
-                assert_ne!(BaseField::<G>::one() + &ur2, BaseField::<G>::zero());
-
-                // Verify A^2 * ur^2 != B(1 + ur^2)^2.
-                let a2 = a.square();
-                assert_ne!(a2 * &ur2, (BaseField::<G>::one() + &ur2).square() * &b);
-            }
+            // Let ur2 = D * input^2;
+            let ur2 = Self::D * input.square();
+            // Verify 1 + ur^2 != 0.
+            assert_ne!(one + &ur2, BaseField::<G>::zero());
+            // Verify A^2 * ur^2 != B(1 + ur^2)^2.
+            assert_ne!(a.square() * &ur2, (one + &ur2).square() * &b);
 
             // Let v = -A / (1 + ur^2).
-            let v = (BaseField::<G>::one() + &ur2).inverse().unwrap() * &(-a);
+            let v = (one + &ur2).inverse().unwrap() * &(-a);
 
             // Let e = legendre(v^3 + Av^2 + Bv).
             let v2 = v.square();
@@ -90,9 +76,8 @@ impl<
             let e = (v3 + &(av2 + &bv)).legendre();
 
             // Let x = ev - ((1 - e) * A/2).
-            let two = BaseField::<G>::one().double();
             let x = match e {
-                LegendreSymbol::Zero => -(a.clone() * &two.inverse().unwrap()),
+                LegendreSymbol::Zero => -a * BaseField::<G>::half(),
                 LegendreSymbol::QuadraticResidue => v,
                 LegendreSymbol::QuadraticNonResidue => (-v) - &a,
             };
@@ -109,88 +94,66 @@ impl<
                 LegendreSymbol::QuadraticNonResidue => value,
             };
 
+            // Ensure (u, v) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x
+            let x2 = x.square();
+            let x3 = x2 * &x;
+            assert_eq!(y.square(), x3 + &(a * &x2) + &(b * &x));
+
             (x, y)
         };
 
-        // Ensure (u, v) is a valid alternate Montgomery element.
-        {
-            // Enforce v^2 == u^3 + A * u^2 + B * u
-            let v2 = v.square();
-            let u2 = u.square();
-            let u3 = u2 * &u;
-            assert_eq!(v2, u3 + &(a * &u2) + &(b * &u));
-        }
-
-        // Convert the alternate Montgomery element (u, v) to Montgomery element (s, t).
+        // Convert the Weierstrass element (u, v) to Montgomery element (s, t).
         let (s, t) = {
             let s = u * Self::B;
             let t = v * Self::B;
 
-            // Ensure (s, t) is a valid Montgomery element
-            #[cfg(debug_assertions)]
-            {
-                // Enforce B * t^2 == s^3 + A * s^2 + s
-                let t2 = t.square();
-                let s2 = s.square();
-                let s3 = s2 * &s;
-                assert_eq!(Self::B * &t2, s3 + &(Self::A * &s2) + &s);
-            }
+            // Ensure (s, t) is a valid Montgomery element on: B * t^2 == s^3 + A * s^2 + s
+            let s2 = s.square();
+            let s3 = s2 * &s;
+            assert_eq!(Self::B * t.square(), s3 + &(Self::A * &s2) + &s);
 
             (s, t)
         };
 
         // Convert the Montgomery element (s, t) to the twisted Edwards element (x, y).
-        let (x, y) = {
-            let x = s * &t.inverse().unwrap();
-
-            let numerator = s - &BaseField::<G>::one();
-            let denominator = s + &BaseField::<G>::one();
-            let y = numerator * &denominator.inverse().unwrap();
-
-            (x, y)
-        };
+        let x = s * &t.inverse().unwrap();
+        let y = (s - &one) * (s + one).inverse().unwrap();
 
         Ok((G::read_le(&to_bytes_le![x, y]?[..])?, sign_high))
     }
 
-    pub fn decode(group_element: G, sign_high: bool) -> Result<BaseField<G>> {
+    pub fn decode(group: G, sign_high: bool) -> Result<BaseField<G>> {
         // // The input group element must be nonzero, otherwise inverses will fail.
         // if group_element.is_zero() {
         //     return Err(EncodingError::InputMustBeNonzero);
         // }
 
-        let x = BaseField::<G>::read_le(&to_bytes_le![group_element.to_x_coordinate()]?[..])?;
-        let y = BaseField::<G>::read_le(&to_bytes_le![group_element.to_y_coordinate()]?[..])?;
+        let x = group.to_x_coordinate();
+        let y = group.to_y_coordinate();
 
-        // Compute the parameters for the alternate Montgomery form: v^2 == u^3 + A * u^2 + B * u.
-        let (a, b) = {
-            let a = Self::A * &Self::B.inverse().unwrap();
-            let b = BaseField::<G>::one() * &Self::B.square().inverse().unwrap();
-            (a, b)
-        };
+        let one = BaseField::<G>::one();
 
-        // Convert the twisted Edwards element (x, y) to the alternate Montgomery element (u, v)
+        // Compute the parameters for the Weierstrass form: v^2 == u^3 + A * u^2 + B * u.
+        let a = Self::A * &Self::B.inverse().unwrap();
+        let b = one * &Self::B.square().inverse().unwrap();
+
+        // Convert the twisted Edwards element (x, y) to the Weierstrass element (u, v)
         let (u_reconstructed, v_reconstructed) = {
-            let numerator = BaseField::<G>::one() + &y;
-            let denominator = BaseField::<G>::one() - &y;
+            let numerator = one + &y;
+            let denominator = one - &y;
 
             let u = numerator.clone() * &(denominator.inverse().unwrap());
             let v = numerator * &((denominator * &x).inverse().unwrap());
 
-            // Ensure (u, v) is a valid Montgomery element
-            #[cfg(debug_assertions)]
-            {
-                // Enforce B * v^2 == u^3 + A * u^2 + u
-                let v2 = v.square();
-                let u2 = u.square();
-                let u3 = u2 * &u;
-                assert_eq!(Self::B * &v2, u3 + &(Self::A * &u2) + &u);
-            }
+            // Ensure (u, v) is a valid Montgomery element on: B * v^2 == u^3 + A * u^2 + u
+            let u2 = u.square();
+            let u3 = u2 * &u;
+            assert_eq!(Self::B * v.square(), u3 + &(Self::A * &u2) + &u);
 
             let u = u * &Self::B.inverse().unwrap();
             let v = v * &Self::B.inverse().unwrap();
 
-            // Ensure (u, v) is a valid alternate Montgomery element.
+            // Ensure (u, v) is a valid Weierstrass element.
             {
                 // Enforce v^2 == u^3 + A * u^2 + B * u
                 let v2 = v.square();
@@ -204,7 +167,6 @@ impl<
 
         let x = u_reconstructed;
 
-        // TODO (howardwu): change to 11.
         // Let u = D.
         let u = Self::D;
 
@@ -242,7 +204,7 @@ impl<
         let element = if sign_high { cmp::max(element, -element) } else { cmp::min(element, -element) };
 
         #[cfg(debug_assertions)]
-        assert!(Self::encode(element)?.0 == group_element);
+        assert!(Self::encode(element)?.0 == group);
 
         Ok(element)
     }
