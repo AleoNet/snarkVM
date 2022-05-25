@@ -125,6 +125,32 @@ impl<N: Network> Transition<N> {
         }
     }
 
+    pub fn input_public_variables(
+        &self,
+        ledger_root: N::LedgerRoot,
+        local_transitions_root: N::TransactionID,
+    ) -> impl Iterator<Item = InputPublicVariables<N>> + '_ {
+        let program_id = self.execution.program_execution.as_ref().map(|x| x.program_id);
+        self.serial_numbers().zip_eq(self.input_value_commitments()).map(
+            move |(serial_number, input_value_commitment)| {
+                InputPublicVariables::new(
+                    *serial_number,
+                    input_value_commitment.clone(),
+                    ledger_root,
+                    local_transitions_root,
+                    program_id,
+                )
+            },
+        )
+    }
+
+    pub fn output_public_variables(&self) -> impl Iterator<Item = OutputPublicVariables<N>> + '_ {
+        let program_id = self.execution.program_execution.as_ref().map(|x| x.program_id);
+        self.commitments().zip_eq(self.output_value_commitments()).map(move |(commitment, output_value_commitment)| {
+            OutputPublicVariables::new(*commitment, output_value_commitment.clone(), program_id)
+        })
+    }
+
     /// Returns `true` if the transition ID is well-formed and the transition proof is valid.
     #[inline]
     pub fn verify(
@@ -203,13 +229,7 @@ impl<N: Network> Transition<N> {
         }
 
         // Returns `false` if the execution is invalid.
-        self.execution.verify(
-            N::input_verifying_key(),
-            N::output_verifying_key(),
-            &input_public_variables,
-            &output_public_variables,
-            self.transition_id,
-        )
+        self.execution.verify(self.transition_id)
     }
 
     /// Returns `true` if the given serial number exists.
@@ -554,13 +574,13 @@ mod tests {
             let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(1389, transition_bytes.len());
+            assert_eq!(501, transition_bytes.len());
         }
         {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(1389, transition_bytes.len());
+            assert_eq!(501, transition_bytes.len());
         }
     }
 
@@ -572,7 +592,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(2650, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1185, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -588,7 +608,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(1389, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(501, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
