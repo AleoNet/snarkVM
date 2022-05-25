@@ -114,14 +114,14 @@ impl UpdatableCount {
    \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
 \x1b[1mExpected\x1b[0m:
 ----
-Constants: {}, Public: {}, Private: {}, Constraints: {}
+{}
 ----
 \x1b[1mActual\x1b[0m:
 ----
-{}
+Constants: {}, Public: {}, Private: {}, Constraints: {}
 ----
 ",
-                    self.file, self.line, self.column, num_constants, num_public, num_private, num_constraints, self,
+                    self.file, self.line, self.column, self, num_constants, num_public, num_private, num_constraints,
                 );
                 // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
                 snarkvm_utilities::panic::resume_unwind(Box::new(()));
