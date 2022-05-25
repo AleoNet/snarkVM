@@ -23,6 +23,9 @@ pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 mod blake2xs;
 pub use blake2xs::Blake2Xs;
 
+mod elligator2;
+pub use elligator2::Elligator2;
+
 mod pedersen;
 pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
 
