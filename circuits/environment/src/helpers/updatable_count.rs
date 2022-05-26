@@ -30,6 +30,7 @@ use std::{
 };
 
 static FILES: Lazy<Mutex<HashMap<&'static str, FileUpdates>>> = Lazy::new(Default::default);
+static WORKSPACE_ROOT: OnceCell<PathBuf> = OnceCell::new();
 
 #[macro_export]
 macro_rules! count_is {
@@ -101,19 +102,20 @@ impl UpdatableCount {
     pub fn assert_matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         if !self.matches(num_constants, num_public, num_private, num_constraints) {
             let mut files = FILES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-            // TODO: Currently, we always update the count. Fix to be selective.
-            if update_counts() {
-                // TODO: Provide metrics on update.
-                files.entry(self.file).or_insert_with(|| FileUpdates::new(self)).update_count(
-                    self,
-                    num_constants,
-                    num_public,
-                    num_private,
-                    num_constraints,
-                );
-            } else {
-                println!(
-                    "\n
+            match env::var("UPDATE_COUNT") {
+                Ok(query_string) if self.file.contains(&query_string) => {
+                    // TODO: Provide metrics on update.
+                    files.entry(self.file).or_insert_with(|| FileUpdates::new(self)).update_count(
+                        self,
+                        num_constants,
+                        num_public,
+                        num_private,
+                        num_constraints,
+                    );
+                }
+                _ => {
+                    println!(
+                        "\n
 \x1b[1m\x1b[91merror\x1b[97m: Count does not match\x1b[0m
    \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
 \x1b[1mExpected\x1b[0m:
@@ -125,10 +127,18 @@ impl UpdatableCount {
 Constants: {}, Public: {}, Private: {}, Constraints: {}
 ----
 ",
-                    self.file, self.line, self.column, self, num_constants, num_public, num_private, num_constraints,
-                );
-                // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
-                snarkvm_utilities::panic::resume_unwind(Box::new(()));
+                        self.file,
+                        self.line,
+                        self.column,
+                        self,
+                        num_constants,
+                        num_public,
+                        num_private,
+                        num_constraints,
+                    );
+                    // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
+                    snarkvm_utilities::panic::resume_unwind(Box::new(()));
+                }
             }
         }
     }
@@ -218,7 +228,7 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
 /// This struct is used to track updates to the `UpdatableCount`s in a file.
 /// It is used to ensure that the updates are written to the appropriate location in the file as the file is modified.
 struct FileUpdates {
-    path: PathBuf,
+    absolute_path: PathBuf,
     original_text: String,
     modified_text: String,
     /// An ordered set of `Update`s.
@@ -232,11 +242,32 @@ impl FileUpdates {
     /// This function will read the contents of the file at the specified path and store it in the `original_text` field.
     /// This function will also initialize the `updates` field to an empty vector.
     fn new(count: &UpdatableCount) -> Self {
-        let path = to_absolute_path(Path::new(count.file));
-        let original_text = fs::read_to_string(&path).unwrap();
+        let path = Path::new(count.file);
+        let absolute_path = match path.is_absolute() {
+            true => path.to_owned(),
+            false => {
+                WORKSPACE_ROOT
+                    .get_or_try_init(|| {
+                        // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
+                        let workspace_root = Path::new(&env!("CARGO_MANIFEST_DIR"))
+                            .ancestors()
+                            .filter(|it| it.join("Cargo.toml").exists())
+                            .last()
+                            .unwrap()
+                            .to_path_buf();
+
+                        Ok(workspace_root)
+                    })
+                    .unwrap_or_else(|_: env::VarError| {
+                        panic!("No CARGO_MANIFEST_DIR env var and the path is relative: {}", path.display())
+                    })
+                    .join(path)
+            }
+        };
+        let original_text = fs::read_to_string(&absolute_path).unwrap();
         let modified_text = original_text.clone();
         let updates = Default::default();
-        Self { path, original_text, modified_text, updates }
+        Self { absolute_path, original_text, modified_text, updates }
     }
 
     /// This function will update the `modified_text` field with the new text that is being inserted.
@@ -292,7 +323,7 @@ impl FileUpdates {
         self.updates.replace(new_update);
 
         // Update the original file with the modified text.
-        fs::write(&self.path, &self.modified_text).unwrap()
+        fs::write(&self.absolute_path, &self.modified_text).unwrap()
     }
 }
 
@@ -378,41 +409,6 @@ impl<'a> From<&'a str> for LinesWithEnds<'a> {
     }
 }
 
-// TODO: Enable filtering. Needs a better name.
-/// Determines if `UpdatableCount` should be updated.
-fn update_counts() -> bool {
-    env::var("UPDATE_COUNT").is_ok()
-}
-
-/// Returns the absolute path of the given path.
-/// If the given path is absolute, it is returned as is.
-/// If the given path is relative, then it is joined with the absolute path of the workspace root.
-fn to_absolute_path(path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        return path.to_owned();
-    }
-
-    static WORKSPACE_ROOT: OnceCell<PathBuf> = OnceCell::new();
-    WORKSPACE_ROOT
-        .get_or_try_init(|| {
-            let my_manifest = env::var("CARGO_MANIFEST_DIR")?;
-
-            // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
-            let workspace_root = Path::new(&my_manifest)
-                .ancestors()
-                .filter(|it| it.join("Cargo.toml").exists())
-                .last()
-                .unwrap()
-                .to_path_buf();
-
-            Ok(workspace_root)
-        })
-        .unwrap_or_else(|_: env::VarError| {
-            panic!("No CARGO_MANIFEST_DIR env var and the path is relative: {}", path.display())
-        })
-        .join(path)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -427,7 +423,7 @@ mod test {
     fn check_position() {
         let count = count_is!(0, 0, 0, 0);
         assert_eq!(count.file, "circuits/environment/src/helpers/updatable_count.rs");
-        assert_eq!(count.line, 324);
+        assert_eq!(count.line, 417);
         assert_eq!(count.column, 21);
     }
 
@@ -457,6 +453,24 @@ mod test {
 
     #[test]
     #[serial]
+    #[should_panic]
+    fn check_count_does_not_update_if_env_var_is_not_set_correctly() {
+        let original_count = count_is!(1, 2, 3, 4);
+        let num_constants = 5;
+        let num_public = 6;
+        let num_private = 7;
+        let num_inputs = 8;
+
+        // Set the environment variable to update the file.
+        env::set_var("UPDATE_COUNT", "1");
+
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        env::remove_var("UPDATE_COUNT");
+    }
+
+    #[test]
+    #[serial]
     fn check_count_updates_correctly() {
         // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
         let original_count = count_is!(11, 12, 13, 14);
@@ -466,7 +480,7 @@ mod test {
         let num_inputs = 14;
 
         // Set the environment variable to update the file.
-        env::set_var("UPDATE_COUNT", "1");
+        env::set_var("UPDATE_COUNT", "updatable_count.rs");
 
         original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
@@ -479,7 +493,7 @@ mod test {
         // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
         let original_count = count_is!(17, 18, 19, 20);
 
-        env::set_var("UPDATE_COUNT", "1");
+        env::set_var("UPDATE_COUNT", "updatable_count.rs");
 
         let (num_constants, num_public, num_private, num_inputs) = (5, 6, 7, 8);
         original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
@@ -505,7 +519,7 @@ mod test {
         let original_count = count_less_than!(17, 18, 19, 20);
 
         // Set the environment variable to update the file.
-        env::set_var("UPDATE_COUNT", "1");
+        env::set_var("UPDATE_COUNT", "updatable_count.rs");
 
         let (num_constants, num_public, num_private, num_inputs) = (5, 18, 7, 8);
         original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
