@@ -198,16 +198,21 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
     // TODO: Consider renaming.
     /// Computes the ratio of the number of constants, public, private, and constraints that `other` has compared to `self`.
     pub fn diff(&self, other: &Self) -> (f64, f64, f64, f64) {
-        let compute_diff = |self_measurement, other_measurement| {
-            match (self_measurement, other_measurement) {
-                (Measurement::Exact(self_value), Measurement::Exact(other_value))
-                | (Measurement::UpperBound(self_value), Measurement::UpperBound(other_value)) => {
-                    other_value as f64 / self_value as f64
-                }
-                _ => panic!("Cannot compute difference for `Measurement::Range` or if both measurements are of different types."),
+        let compute_diff = |self_measurement, other_measurement| match (self_measurement, other_measurement) {
+            (Measurement::Exact(self_value), Measurement::Exact(other_value))
+            | (Measurement::UpperBound(self_value), Measurement::UpperBound(other_value)) => {
+                other_value as f64 / self_value as f64
             }
+            _ => panic!(
+                "Cannot compute difference for `Measurement::Range` or if both measurements are of different types."
+            ),
         };
-        (compute_diff(self.constant, other.constant), compute_diff(self.public, other.public), compute_diff(self.private, other.private), compute_diff(self.constraints, other.constraints))
+        (
+            compute_diff(self.constant, other.constant),
+            compute_diff(self.public, other.public),
+            compute_diff(self.private, other.private),
+            compute_diff(self.constraints, other.constraints),
+        )
     }
 
     fn dummy(constant: Constant, public: Public, private: Private, constraints: Constraints) -> Self {

@@ -83,6 +83,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowWrapped<Int
 }
 
 #[cfg(test)]
+#[rustfmt::skip]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::{count_is, count_less_than, Circuit, UpdatableCount};
@@ -174,8 +175,6 @@ mod tests {
             }
         }
     }
-
-    #[rustfmt::skip::macros(test_integer_case)]
 
     // Tests for u8 ^ u8.
 
