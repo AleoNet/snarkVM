@@ -70,5 +70,8 @@ version = "0.7.5"
 [dev-dependencies.criterion]
 version = "0.3"
 
+[dev-dependencies.serial_test]
+version = "0.6.0"
+
 [features]
 default = ["snarkvm-curves/default", "snarkvm-r1cs/default"]

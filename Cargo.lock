@@ -2084,6 +2084,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "rayon",
+ "serial_test",
  "snarkvm-algorithms",
  "snarkvm-circuits",
  "snarkvm-circuits-environment-witness",

@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Constant, Constraints, Private, Public};
+use crate::{Constant, Constraints, Measurement, Private, Public};
 
 use core::fmt::Debug;
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
-    collections::HashMap,
+    cmp::Ordering,
+    collections::{BTreeSet, HashMap},
     env,
     fmt::Display,
     fs,
@@ -90,7 +91,7 @@ impl UpdatableCount {
     /// If all consituent metrics do not match:
     ///    - If the update condition is satisfied, then update the macro invocation that constructed this `UpdatableCount`.
     ///    - Otherwise, panic.
-    pub fn assert_matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+    pub fn assert_matches(&mut self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         if !(self.constant.matches(num_constants)
             && self.public.matches(num_public)
             && self.private.matches(num_private)
@@ -188,10 +189,10 @@ struct FileUpdates {
     path: PathBuf,
     original_text: String,
     modified_text: String,
-    /// A vector of tuples, where:
-    /// - The first element of the tuple is the byte range in the original file that is being updated.
-    /// - The second element of the tuple is the length of the new text that is being inserted.
-    updates: Vec<(Range<usize>, usize)>,
+    /// An ordered set of `Update`s.
+    /// We assume that all `Updates` are made to disjoint ranges in the original file.
+    /// This assumption is valid since invocations of `count_is` and `count_less_than` cannot be nested.
+    updates: BTreeSet<Update>,
 }
 
 impl FileUpdates {
@@ -202,7 +203,7 @@ impl FileUpdates {
         let path = to_absolute_path(Path::new(count.file));
         let original_text = fs::read_to_string(&path).unwrap();
         let modified_text = original_text.clone();
-        let updates = Vec::new();
+        let updates = Default::default();
         Self { path, original_text, modified_text, updates }
     }
 
@@ -210,7 +211,7 @@ impl FileUpdates {
     /// The resulting `modified_text` is written to the file at the specified path.
     fn update_count(
         &mut self,
-        count: &UpdatableCount,
+        count: &mut UpdatableCount,
         num_constants: u64,
         num_public: u64,
         num_private: u64,
@@ -219,29 +220,83 @@ impl FileUpdates {
         // Get the location of arguments in the macro invocation.
         let mut range = count.locate(&self.original_text);
 
+        // This is a helper function that generates a new `Measurement` and u64 to update the `UpdatableCount` with.
+        let generate_argument = |measurement: Measurement<u64>, num: u64| match measurement {
+            Measurement::Exact(..) => (Measurement::Exact(num), num),
+            Measurement::Range(..) => panic!("UpdatableCount does not support ranges."),
+            Measurement::UpperBound(bound) => {
+                (Measurement::UpperBound(std::cmp::max(num, bound)), std::cmp::max(num, bound))
+            }
+        };
+
+        let new_constants = generate_argument(count.constant, num_constants);
+        let new_public = generate_argument(count.public, num_public);
+        let new_private = generate_argument(count.private, num_private);
+        let new_constraints = generate_argument(count.constraints, num_constraints);
+
         // Format a string with the new counts.
-        let argument_string = format!("({}, {}, {}, {})", num_constants, num_public, num_private, num_constraints);
+        let argument_string =
+            format!("({}, {}, {}, {})", new_constants.1, new_public.1, new_private.1, new_constraints.1);
 
-        // Update the modified text with the desired modification.
-        self.updates.push((range.clone(), argument_string.len()));
-        self.updates.sort_by_key(|(delete, _insert)| delete.start);
+        // Update the counts stored in `UpdatableCount`.
+        count.constant = new_constants.0;
+        count.public = new_public.0;
+        count.private = new_private.0;
+        count.constraints = new_constraints.0;
 
-        // Given existing updates to the original file, determine the position of the update in the modified file.
-        let (delete, insert) = self
-            .updates
-            .iter()
-            .take_while(|(delete, _)| delete.start < range.start)
-            .map(|(delete, insert)| (delete.end - delete.start, insert))
-            .fold((0usize, 0usize), |(x1, y1), (x2, y2)| (x1 + x2, y1 + y2));
+        // Initialize a new update.
+        let update = Update { start: range.start, end: range.end, insert_length: argument_string.len() };
 
-        // Update the range to account for modifications made to the original text.
-        range.start = range.start - delete + insert;
-        range.end = range.end - delete + insert;
+        // Shift the range to account for changes made to the original file.
+        for previous_update in &self.updates {
+            let amount_deleted = previous_update.end - previous_update.start;
+            let amount_inserted = previous_update.insert_length;
 
+            if previous_update.start < update.start {
+                // If an update was made in a location preceding the range in the original file, we need to shift the range by the length of the text that was changed.
+                range.start = range.start - amount_deleted + amount_inserted;
+                range.end = range.end - amount_deleted + amount_inserted;
+            } else if previous_update.start == update.start {
+                // If an update was made at the same location as the range in the original file, we need to shift the end of the range by the amount of text that was changed.
+                range.end = range.end - amount_deleted + amount_inserted;
+            }
+        }
+
+        // Add the new update to the list of updates.
+        self.updates.replace(update);
+
+        // Apply the update.
         self.modified_text.replace_range(range, &argument_string);
 
         // Update the original file with the modified text.
         fs::write(&self.path, &self.modified_text).unwrap()
+    }
+}
+
+/// Helper struct to keep track of updates to the original file.
+#[derive(Debug, Eq)]
+struct Update {
+    /// Starting location in the original file.
+    start: usize,
+    /// Ending location in the original file.
+    end: usize,
+    /// The length of the text that is being inserted.
+    insert_length: usize,
+}
+
+impl PartialEq for Update {
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start
+    }
+}
+impl PartialOrd for Update {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Update {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.start.cmp(&other.start)
     }
 }
 
@@ -258,7 +313,6 @@ impl<'a> Iterator for LinesWithEnds<'a> {
         match self.text.is_empty() {
             true => None,
             false => {
-                // TODO: Do we need to handle CRLF endings?
                 let idx = self.text.find('\n').map_or(self.text.len(), |it| it + 1);
                 let (res, next) = self.text.split_at(idx);
                 self.text = next;
@@ -275,9 +329,9 @@ impl<'a> From<&'a str> for LinesWithEnds<'a> {
 }
 
 // TODO: Enable filtering. Needs a better name.
-/// Determines if UpdatableCount should be updated.
+/// Determines if `UpdatableCount` should be updated.
 fn update_counts() -> bool {
-    env::var("UPDATE_EXPECT").is_ok()
+    env::var("UPDATE_COUNT").is_ok()
 }
 
 /// Returns the absolute path of the given path.
@@ -314,6 +368,7 @@ mod test {
     use super::*;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    use serial_test::serial;
     use std::env;
 
     const ITERATIONS: u64 = 1024;
@@ -322,13 +377,14 @@ mod test {
     fn check_position() {
         let count = count_is!(0, 0, 0, 0);
         assert_eq!(count.file, "circuits/environment/src/helpers/updatable_count.rs");
-        assert_eq!(count.line, 311);
+        assert_eq!(count.line, 324);
         assert_eq!(count.column, 21);
     }
 
     #[test]
+    #[serial]
     fn check_count_passes() {
-        let original_count = count_is!(1, 2, 3, 4);
+        let mut original_count = count_is!(1, 2, 3, 4);
         let num_constants = 1;
         let num_public = 2;
         let num_private = 3;
@@ -337,30 +393,81 @@ mod test {
     }
 
     #[test]
+    #[serial]
     #[should_panic]
     fn check_count_fails() {
-        let original_count = count_is!(1, 2, 3, 4);
+        let mut original_count = count_is!(1, 2, 3, 4);
         let num_constants = 5;
         let num_public = 6;
         let num_private = 7;
         let num_inputs = 8;
+
         original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
     }
 
     #[test]
+    #[serial]
     fn check_count_updates_correctly() {
         // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
-        let original_count = count_is!(5, 6, 7, 8);
-        let num_constants = 5;
-        let num_public = 6;
-        let num_private = 7;
-        let num_inputs = 8;
+        let mut original_count = count_is!(11, 12, 13, 14);
+        let num_constants = 11;
+        let num_public = 12;
+        let num_private = 13;
+        let num_inputs = 14;
 
         // Set the environment variable to update the file.
-        env::set_var("UPDATE_EXPECT", "1");
+        env::set_var("UPDATE_COUNT", "1");
 
         original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
-        env::remove_var("UPDATE_EXPECT");
+        env::remove_var("UPDATE_COUNT");
+    }
+
+    #[test]
+    #[serial]
+    fn check_count_updates_correctly_multiple_times() {
+        // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
+        let mut original_count = count_is!(17, 18, 19, 20); // Set the environment variable to update the file.
+        env::set_var("UPDATE_COUNT", "1");
+
+        let (num_constants, num_public, num_private, num_inputs) = (5, 6, 7, 8);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        let (num_constants, num_public, num_private, num_inputs) = (9, 10, 11, 12);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        let (num_constants, num_public, num_private, num_inputs) = (13, 14, 15, 16);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        let (num_constants, num_public, num_private, num_inputs) = (17, 18, 19, 20);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        env::remove_var("UPDATE_COUNT");
+    }
+
+    #[test]
+    #[serial]
+    fn check_count_less_than_selects_maximum() {
+        // `original_count` is initially `count_less_than!(1, 2, 3, 4)`.
+        // After counts are updated, `original_count` is `count_less_than!(17, 18, 19, 20)`.
+        // In other words, original_count is updated to be the maximum of the original and updated counts.
+        let mut original_count = count_less_than!(17, 18, 19, 20);
+
+        // Set the environment variable to update the file.
+        env::set_var("UPDATE_COUNT", "1");
+
+        let (num_constants, num_public, num_private, num_inputs) = (5, 18, 7, 8);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        let (num_constants, num_public, num_private, num_inputs) = (17, 10, 11, 12);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        let (num_constants, num_public, num_private, num_inputs) = (13, 6, 19, 16);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        let (num_constants, num_public, num_private, num_inputs) = (9, 18, 15, 20);
+        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+
+        env::remove_var("UPDATE_COUNT");
     }
 }
