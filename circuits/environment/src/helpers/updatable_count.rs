@@ -434,7 +434,7 @@ mod test {
     #[test]
     #[serial]
     fn check_count_passes() {
-        let mut original_count = count_is!(1, 2, 3, 4);
+        let original_count = count_is!(1, 2, 3, 4);
         let num_constants = 1;
         let num_public = 2;
         let num_private = 3;
@@ -446,7 +446,7 @@ mod test {
     #[serial]
     #[should_panic]
     fn check_count_fails() {
-        let mut original_count = count_is!(1, 2, 3, 4);
+        let original_count = count_is!(1, 2, 3, 4);
         let num_constants = 5;
         let num_public = 6;
         let num_private = 7;
@@ -459,7 +459,7 @@ mod test {
     #[serial]
     fn check_count_updates_correctly() {
         // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
-        let mut original_count = count_is!(11, 12, 13, 14);
+        let original_count = count_is!(11, 12, 13, 14);
         let num_constants = 11;
         let num_public = 12;
         let num_private = 13;
@@ -477,7 +477,7 @@ mod test {
     #[serial]
     fn check_count_updates_correctly_multiple_times() {
         // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
-        let mut original_count = count_is!(17, 18, 19, 20);
+        let original_count = count_is!(17, 18, 19, 20);
 
         env::set_var("UPDATE_COUNT", "1");
 
@@ -502,7 +502,7 @@ mod test {
         // `original_count` is initially `count_less_than!(1, 2, 3, 4)`.
         // After counts are updated, `original_count` is `count_less_than!(17, 18, 19, 20)`.
         // In other words, original_count is updated to be the maximum of the original and updated counts.
-        let mut original_count = count_less_than!(17, 18, 19, 20);
+        let original_count = count_less_than!(17, 18, 19, 20);
 
         // Set the environment variable to update the file.
         env::set_var("UPDATE_COUNT", "1");
