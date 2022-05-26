@@ -115,6 +115,7 @@ mod tests {
                 Circuit::num_constraints_in_scope(),
             );
             // assert_output_mode!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
+            assert!(Circuit::is_satisfied());
         });
         Circuit::reset();
     }
