@@ -531,6 +531,15 @@ mod test_utilities {
                 }
             }
         };
+        // Typical test instantiation (binary), where a count is provided to the test_function
+        ($test_fn:ident, $primitive_a:ident, $primitive_b:ident, $mode_a:expr, $mode_b:expr, $description:ident, $count:expr) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive_a _ $description _ $primitive_b>]() {
+                    $test_fn::<$primitive_a, $primitive_b>($mode_a, $mode_b, $count);
+                }
+            }
+        };
         // Typical test instantiation (ternary).
         ($test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $mode_c:expr, $description:ident) => {
             paste::paste! {
@@ -567,6 +576,16 @@ mod test_utilities {
                 #[$meta]
                 fn [<test_ $primitive_a _ $description _ $primitive_b>]() {
                     $test_fn::<$primitive_a, $primitive_b>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default (binary), where a count is provided to the test function.
+        (#[$meta:meta], $test_fn:ident, $primitive_a:ident, $primitive_b:ident, $mode_a:expr, $mode_b:expr, $description:ident, $variant:ident, $count:expr) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive_a _ $description _ $primitive_b _ $variant>]() {
+                    $test_fn::<$primitive_a, $primitive_b>($mode_a, $mode_b, $count);
                 }
             }
         };
