@@ -63,6 +63,7 @@ macro_rules! count_less_than {
 }
 
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
+/// Warning: Do not construct this struct directly. Instead, use the `count_is!` and `count_less_than!` macros.
 #[derive(Copy, Clone, Debug)]
 pub struct UpdatableCount {
     pub constant: Constant,
@@ -88,6 +89,11 @@ impl Display for UpdatableCount {
 }
 
 impl UpdatableCount {
+    /// Returns `true` if the values matches the `Measurement`s in `UpdatableCount`.
+    ///
+    /// For an `Exact` metric, `value` must be equal to the exact value defined by the metric.
+    /// For a `Range` metric, `value` must be satisfy lower bound and the upper bound.
+    /// For an `UpperBound` metric, `value` must be satisfy the upper bound.
     pub fn matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> bool {
         self.constant.matches(num_constants)
             && self.public.matches(num_public)
@@ -95,8 +101,8 @@ impl UpdatableCount {
             && self.constraints.matches(num_constraints)
     }
 
-    /// If all constituent metrics match, do nothing.
-    /// If all consituent metrics do not match:
+    /// If all values match, do nothing.
+    /// If all values metrics do not match:
     ///    - If the update condition is satisfied, then update the macro invocation that constructed this `UpdatableCount`.
     ///    - Otherwise, panic.
     pub fn assert_matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
@@ -143,7 +149,7 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
         }
     }
 
-    /// Given a string containing the contents of a file, `locate` returns a range delimiting the arguments.
+    /// Given a string containing the contents of a file, `locate` returns a range delimiting the arguments
     /// to the macro invocation that constructed this `UpdatableCount`.
     /// The beginning of the range corresponds to the opening parenthesis of the macro invocation.
     /// The end of the range corresponds to the closing parenthesis of the macro invocation.
@@ -195,26 +201,28 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
         }
     }
 
-    // TODO: Consider renaming.
-    /// Computes the ratio of the number of constants, public, private, and constraints that `other` has compared to `self`.
-    pub fn diff(&self, other: &Self) -> (f64, f64, f64, f64) {
-        let compute_diff = |self_measurement, other_measurement| match (self_measurement, other_measurement) {
+    /// Computes the difference between the number of constants, public, private, and constraints of `other` and those of `self`.
+    pub fn differs_by(&self, other: &Self) -> (i64, i64, i64, i64) {
+        let difference = |self_measurement, other_measurement| match (self_measurement, other_measurement) {
             (Measurement::Exact(self_value), Measurement::Exact(other_value))
             | (Measurement::UpperBound(self_value), Measurement::UpperBound(other_value)) => {
-                other_value as f64 / self_value as f64
+                // Note: This assumes that the number of constants, public, private, and constraints do not exceed `i64::MAX`.
+                (other_value as i64) - (self_value as i64)
             }
             _ => panic!(
                 "Cannot compute difference for `Measurement::Range` or if both measurements are of different types."
             ),
         };
         (
-            compute_diff(self.constant, other.constant),
-            compute_diff(self.public, other.public),
-            compute_diff(self.private, other.private),
-            compute_diff(self.constraints, other.constraints),
+            difference(self.constant, other.constant),
+            difference(self.public, other.public),
+            difference(self.private, other.private),
+            difference(self.constraints, other.constraints),
         )
     }
 
+    /// Initializes an `UpdatableCount` without a specified location.
+    /// This is only used to store intermediate counts as the source file is updated.
     fn dummy(constant: Constant, public: Public, private: Private, constraints: Constraints) -> Self {
         Self {
             constant,
@@ -227,6 +235,7 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
         }
     }
 
+    /// Returns a string that is intended to replace the arguments to `count_is` or `count_less_than` in the source file.
     fn as_argument_string(&self) -> String {
         let generate_arg = |measurement| match measurement {
             Measurement::Exact(value) => value,
@@ -252,6 +261,7 @@ struct FileUpdates {
     original_text: String,
     modified_text: String,
     /// An ordered set of `Update`s.
+    /// `Update`s are ordered by their starting location.
     /// We assume that all `Updates` are made to disjoint ranges in the original file.
     /// This assumption is valid since invocations of `count_is` and `count_less_than` cannot be nested.
     updates: BTreeSet<Update>,
@@ -292,6 +302,8 @@ impl FileUpdates {
 
     /// This function will update the `modified_text` field with the new text that is being inserted.
     /// The resulting `modified_text` is written to the file at the specified path.
+    /// This implementation allows us to avoid re-reading the source file in the case where multiple updates
+    /// are being made to the same location in the source code.
     fn update_count(
         &mut self,
         count: &UpdatableCount,
@@ -311,14 +323,21 @@ impl FileUpdates {
             let amount_deleted = previous_update.end - previous_update.start;
             let amount_inserted = previous_update.argument_string.len();
 
-            if previous_update.start < range.start {
+            match previous_update.start.cmp(&range.start) {
                 // If an update was made in a location preceding the range in the original file, we need to shift the range by the length of the text that was changed.
-                new_range.start = new_range.start - amount_deleted + amount_inserted;
-                new_range.end = new_range.end - amount_deleted + amount_inserted;
-            } else if previous_update.start == range.start {
+                Ordering::Less => {
+                    new_range.start = new_range.start - amount_deleted + amount_inserted;
+                    new_range.end = new_range.end - amount_deleted + amount_inserted;
+                }
                 // If an update was made at the same location as the range in the original file, we need to shift the end of the range by the amount of text that was changed.
-                new_range.end = new_range.end - amount_deleted + amount_inserted;
-                update_with_same_start = Some(previous_update);
+                Ordering::Equal => {
+                    new_range.end = new_range.end - amount_deleted + amount_inserted;
+                    update_with_same_start = Some(previous_update);
+                }
+                // We do not need to shift the range if an update was made in a location following the range in the original file.
+                Ordering::Greater => {
+                    break;
+                }
             }
         }
 
@@ -336,7 +355,7 @@ impl FileUpdates {
             Some(update) => Update::new(&range, &update.count, num_constants, num_public, num_private, num_constraints),
         };
 
-        // Apply the update.
+        // Apply the update at the adjusted location.
         self.modified_text.replace_range(new_range, &new_update.argument_string);
 
         // Add the new update to the set of updates.
@@ -402,7 +421,7 @@ impl Ord for Update {
 }
 
 /// A struct that provides an iterator over the lines in a string, while preserving the original line endings.
-// This is necessary as `str::lines` does not preserve the original line endings.
+/// This is necessary as `str::lines` does not preserve the original line endings.
 struct LinesWithEnds<'a> {
     text: &'a str,
 }
@@ -431,51 +450,49 @@ impl<'a> From<&'a str> for LinesWithEnds<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use snarkvm_utilities::{test_rng, UniformRand};
-
     use serial_test::serial;
     use std::env;
-
-    const ITERATIONS: u64 = 1024;
 
     #[test]
     fn check_position() {
         let count = count_is!(0, 0, 0, 0);
         assert_eq!(count.file, "circuits/environment/src/helpers/updatable_count.rs");
-        assert_eq!(count.line, 417);
+        assert_eq!(count.line, 460);
         assert_eq!(count.column, 21);
     }
+
+    // Note: The below tests must be run serially since the behavior `assert_matches` depends on whether or not
+    // the environment variable `UPDATE_COUNT` is set.
 
     #[test]
     #[serial]
     fn check_count_passes() {
-        let original_count = count_is!(1, 2, 3, 4);
+        let count = count_is!(1, 2, 3, 4);
         let num_constants = 1;
         let num_public = 2;
         let num_private = 3;
         let num_inputs = 4;
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
     }
 
     #[test]
     #[serial]
     #[should_panic]
     fn check_count_fails() {
-        let original_count = count_is!(1, 2, 3, 4);
+        let count = count_is!(1, 2, 3, 4);
         let num_constants = 5;
         let num_public = 6;
         let num_private = 7;
         let num_inputs = 8;
 
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
     }
 
     #[test]
     #[serial]
     #[should_panic]
     fn check_count_does_not_update_if_env_var_is_not_set_correctly() {
-        let original_count = count_is!(1, 2, 3, 4);
+        let count = count_is!(1, 2, 3, 4);
         let num_constants = 5;
         let num_public = 6;
         let num_private = 7;
@@ -484,7 +501,7 @@ mod test {
         // Set the environment variable to update the file.
         env::set_var("UPDATE_COUNT", "1");
 
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         env::remove_var("UPDATE_COUNT");
     }
@@ -492,8 +509,8 @@ mod test {
     #[test]
     #[serial]
     fn check_count_updates_correctly() {
-        // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
-        let original_count = count_is!(11, 12, 13, 14);
+        // `count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
+        let count = count_is!(11, 12, 13, 14);
         let num_constants = 11;
         let num_public = 12;
         let num_private = 13;
@@ -502,7 +519,7 @@ mod test {
         // Set the environment variable to update the file.
         env::set_var("UPDATE_COUNT", "updatable_count.rs");
 
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         env::remove_var("UPDATE_COUNT");
     }
@@ -510,22 +527,22 @@ mod test {
     #[test]
     #[serial]
     fn check_count_updates_correctly_multiple_times() {
-        // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
-        let original_count = count_is!(17, 18, 19, 20);
+        // `count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
+        let count = count_is!(17, 18, 19, 20);
 
         env::set_var("UPDATE_COUNT", "updatable_count.rs");
 
         let (num_constants, num_public, num_private, num_inputs) = (5, 6, 7, 8);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         let (num_constants, num_public, num_private, num_inputs) = (9, 10, 11, 12);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         let (num_constants, num_public, num_private, num_inputs) = (13, 14, 15, 16);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         let (num_constants, num_public, num_private, num_inputs) = (17, 18, 19, 20);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         env::remove_var("UPDATE_COUNT");
     }
@@ -533,25 +550,25 @@ mod test {
     #[test]
     #[serial]
     fn check_count_less_than_selects_maximum() {
-        // `original_count` is initially `count_less_than!(1, 2, 3, 4)`.
+        // `count` is initially `count_less_than!(1, 2, 3, 4)`.
         // After counts are updated, `original_count` is `count_less_than!(17, 18, 19, 20)`.
-        // In other words, original_count is updated to be the maximum of the original and updated counts.
-        let original_count = count_less_than!(17, 18, 19, 20);
+        // In other words, count is updated to be the maximum of the original and updated counts.
+        let count = count_less_than!(17, 18, 19, 20);
 
         // Set the environment variable to update the file.
         env::set_var("UPDATE_COUNT", "updatable_count.rs");
 
         let (num_constants, num_public, num_private, num_inputs) = (5, 18, 7, 8);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         let (num_constants, num_public, num_private, num_inputs) = (17, 10, 11, 12);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         let (num_constants, num_public, num_private, num_inputs) = (13, 6, 19, 16);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         let (num_constants, num_public, num_private, num_inputs) = (9, 18, 15, 20);
-        original_count.assert_matches(num_constants, num_public, num_private, num_inputs);
+        count.assert_matches(num_constants, num_public, num_private, num_inputs);
 
         env::remove_var("UPDATE_COUNT");
     }
