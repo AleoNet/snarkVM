@@ -87,16 +87,19 @@ impl Display for UpdatableCount {
 }
 
 impl UpdatableCount {
+    pub fn matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> bool {
+        self.constant.matches(num_constants)
+            && self.public.matches(num_public)
+            && self.private.matches(num_private)
+            && self.constraints.matches(num_constraints)
+    }
+
     /// If all constituent metrics match, do nothing.
     /// If all consituent metrics do not match:
     ///    - If the update condition is satisfied, then update the macro invocation that constructed this `UpdatableCount`.
     ///    - Otherwise, panic.
-    pub fn assert_matches(&mut self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        if !(self.constant.matches(num_constants)
-            && self.public.matches(num_public)
-            && self.private.matches(num_private)
-            && self.constraints.matches(num_constraints))
-        {
+    pub fn assert_matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+        if !self.matches(num_constants, num_public, num_private, num_constraints) {
             let mut files = FILES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             // TODO: Currently, we always update the count. Fix to be selective.
             if update_counts() {
@@ -181,6 +184,35 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
             end: ending_byte_offset.expect("Could not find the ending of the macro invocation."),
         }
     }
+
+    fn dummy(constant: Constant, public: Public, private: Private, constraints: Constraints) -> Self {
+        Self {
+            constant,
+            public,
+            private,
+            constraints,
+            file: Default::default(),
+            line: Default::default(),
+            column: Default::default(),
+        }
+    }
+
+    fn as_argument_string(&self) -> String {
+        let generate_arg = |measurement| match measurement {
+            Measurement::Exact(value) => value,
+            Measurement::UpperBound(bound) => bound,
+            Measurement::Range(..) => panic!(
+                "Cannot create an argument string from an `UpdatableCount` that contains a `Measurement::Range`."
+            ),
+        };
+        format!(
+            "({}, {}, {}, {})",
+            generate_arg(self.constant),
+            generate_arg(self.public),
+            generate_arg(self.private),
+            generate_arg(self.constraints)
+        )
+    }
 }
 
 /// This struct is used to track updates to the `UpdatableCount`s in a file.
@@ -211,62 +243,53 @@ impl FileUpdates {
     /// The resulting `modified_text` is written to the file at the specified path.
     fn update_count(
         &mut self,
-        count: &mut UpdatableCount,
+        count: &UpdatableCount,
         num_constants: u64,
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
     ) {
         // Get the location of arguments in the macro invocation.
-        let mut range = count.locate(&self.original_text);
+        let range = count.locate(&self.original_text);
 
-        // This is a helper function that generates a new `Measurement` and u64 to update the `UpdatableCount` with.
-        let generate_argument = |measurement: Measurement<u64>, num: u64| match measurement {
-            Measurement::Exact(..) => (Measurement::Exact(num), num),
-            Measurement::Range(..) => panic!("UpdatableCount does not support ranges."),
-            Measurement::UpperBound(bound) => {
-                (Measurement::UpperBound(std::cmp::max(num, bound)), std::cmp::max(num, bound))
-            }
-        };
-
-        let new_constants = generate_argument(count.constant, num_constants);
-        let new_public = generate_argument(count.public, num_public);
-        let new_private = generate_argument(count.private, num_private);
-        let new_constraints = generate_argument(count.constraints, num_constraints);
-
-        // Format a string with the new counts.
-        let argument_string =
-            format!("({}, {}, {}, {})", new_constants.1, new_public.1, new_private.1, new_constraints.1);
-
-        // Update the counts stored in `UpdatableCount`.
-        count.constant = new_constants.0;
-        count.public = new_public.0;
-        count.private = new_private.0;
-        count.constraints = new_constraints.0;
-
-        // Initialize a new update.
-        let update = Update { start: range.start, end: range.end, insert_length: argument_string.len() };
+        let mut new_range = range.clone();
+        let mut update_with_same_start = None;
 
         // Shift the range to account for changes made to the original file.
         for previous_update in &self.updates {
             let amount_deleted = previous_update.end - previous_update.start;
-            let amount_inserted = previous_update.insert_length;
+            let amount_inserted = previous_update.argument_string.len();
 
-            if previous_update.start < update.start {
+            if previous_update.start < range.start {
                 // If an update was made in a location preceding the range in the original file, we need to shift the range by the length of the text that was changed.
-                range.start = range.start - amount_deleted + amount_inserted;
-                range.end = range.end - amount_deleted + amount_inserted;
-            } else if previous_update.start == update.start {
+                new_range.start = new_range.start - amount_deleted + amount_inserted;
+                new_range.end = new_range.end - amount_deleted + amount_inserted;
+            } else if previous_update.start == range.start {
                 // If an update was made at the same location as the range in the original file, we need to shift the end of the range by the amount of text that was changed.
-                range.end = range.end - amount_deleted + amount_inserted;
+                new_range.end = new_range.end - amount_deleted + amount_inserted;
+                update_with_same_start = Some(previous_update);
             }
         }
 
-        // Add the new update to the list of updates.
-        self.updates.replace(update);
+        // If there an update to the original text has been made, then check if the counts satisfies the updated `Count`.
+        // If so, then there is no need to write to update the file and we can return early.
+        if let Some(update) = update_with_same_start {
+            if update.count.matches(num_constants, num_public, num_private, num_constraints) {
+                return;
+            }
+        }
+
+        // Construct the new update.
+        let new_update = match update_with_same_start {
+            None => Update::new(&range, count, num_constants, num_public, num_private, num_constraints),
+            Some(update) => Update::new(&range, &update.count, num_constants, num_public, num_private, num_constraints),
+        };
 
         // Apply the update.
-        self.modified_text.replace_range(range, &argument_string);
+        self.modified_text.replace_range(new_range, &new_update.argument_string);
+
+        // Add the new update to the set of updates.
+        self.updates.replace(new_update);
 
         // Update the original file with the modified text.
         fs::write(&self.path, &self.modified_text).unwrap()
@@ -274,14 +297,40 @@ impl FileUpdates {
 }
 
 /// Helper struct to keep track of updates to the original file.
-#[derive(Debug, Eq)]
+#[derive(Debug)]
 struct Update {
     /// Starting location in the original file.
     start: usize,
     /// Ending location in the original file.
     end: usize,
-    /// The length of the text that is being inserted.
-    insert_length: usize,
+    /// A dummy count with the new `Measurement`s.
+    count: UpdatableCount,
+    /// A string representation of `count`.
+    argument_string: String,
+}
+
+impl Update {
+    fn new(
+        range: &Range<usize>,
+        old_count: &UpdatableCount,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Self {
+        let generate_new_measurement = |measurement: Measurement<u64>, num: u64| match measurement {
+            Measurement::Exact(..) => Measurement::Exact(num),
+            Measurement::Range(..) => panic!("UpdatableCount does not support ranges."),
+            Measurement::UpperBound(bound) => Measurement::UpperBound(std::cmp::max(num, bound)),
+        };
+        let count = UpdatableCount::dummy(
+            generate_new_measurement(old_count.constant, num_constants),
+            generate_new_measurement(old_count.public, num_public),
+            generate_new_measurement(old_count.private, num_private),
+            generate_new_measurement(old_count.constraints, num_constraints),
+        );
+        Self { start: range.start, end: range.end, count, argument_string: count.as_argument_string() }
+    }
 }
 
 impl PartialEq for Update {
@@ -289,6 +338,7 @@ impl PartialEq for Update {
         self.start == other.start
     }
 }
+impl Eq for Update {}
 impl PartialOrd for Update {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -427,7 +477,8 @@ mod test {
     #[serial]
     fn check_count_updates_correctly_multiple_times() {
         // `original_count` is originally `count_is!(1, 2, 3, 4)`. Replace `original_count` to demonstrate replacement.
-        let mut original_count = count_is!(17, 18, 19, 20); // Set the environment variable to update the file.
+        let mut original_count = count_is!(17, 18, 19, 20);
+
         env::set_var("UPDATE_COUNT", "1");
 
         let (num_constants, num_public, num_private, num_inputs) = (5, 6, 7, 8);
