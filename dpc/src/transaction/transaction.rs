@@ -19,6 +19,7 @@ use crate::{
     Address,
     AleoAmount,
     Event,
+    KernelProof,
     LedgerTree,
     LedgerTreeScheme,
     LocalProof,
@@ -60,6 +61,8 @@ pub struct Transaction<N: Network> {
     ledger_root: N::LedgerRoot,
     /// The state transition.
     transitions: Vec<Transition<N>>,
+    /// Input and output proofs for all the transitions.
+    kernel_proof: KernelProof<N>,
 }
 
 impl<N: Network> Transaction<N> {
@@ -67,7 +70,7 @@ impl<N: Network> Transaction<N> {
     #[inline]
     pub fn new<R: Rng + CryptoRng>(ledger: LedgerTree<N>, request: &Request<N>, rng: &mut R) -> Result<Self> {
         let (vm, _) = VirtualMachine::<N>::new(ledger.root())?.execute(request, rng)?;
-        vm.finalize()
+        vm.finalize(rng)
     }
 
     /// Initializes a new coinbase transaction.
@@ -80,7 +83,7 @@ impl<N: Network> Transaction<N> {
     ) -> Result<(Self, Record<N>)> {
         let request = Request::new_coinbase(recipient, amount, is_public, rng)?;
         let (vm, response) = VirtualMachine::<N>::new(LedgerTree::<N>::new()?.root())?.execute(&request, rng)?;
-        Ok((vm.finalize()?, response.records()[0].clone()))
+        Ok((vm.finalize(rng)?, response.records()[0].clone()))
     }
 
     /// Initializes an instance of `Transaction` from the given inputs.
@@ -90,10 +93,12 @@ impl<N: Network> Transaction<N> {
         output_circuit_id: N::OutputCircuitID,
         ledger_root: N::LedgerRoot,
         transitions: Vec<Transition<N>>,
+        kernel_proof: KernelProof<N>,
     ) -> Result<Self> {
         let transaction_id = Self::compute_transaction_id(&transitions)?;
 
-        let transaction = Self { transaction_id, input_circuit_id, output_circuit_id, ledger_root, transitions };
+        let transaction =
+            Self { transaction_id, input_circuit_id, output_circuit_id, ledger_root, transitions, kernel_proof };
 
         match transaction.is_valid() {
             true => Ok(transaction),
@@ -197,6 +202,27 @@ impl<N: Network> Transaction<N> {
         if transitions.root() != self.transaction_id {
             eprintln!("Transaction contains an invalid transaction ID");
             return false;
+        }
+
+        let input_public_variables: Vec<_> = self
+            .transitions
+            .iter()
+            .flat_map(|t| t.input_public_variables(self.ledger_root, transitions.root()))
+            .collect();
+
+        let output_public_variables: Vec<_> =
+            self.transitions.iter().flat_map(|t| t.output_public_variables()).collect();
+
+        match self.kernel_proof.verify(&input_public_variables, &output_public_variables) {
+            Ok(false) => {
+                eprintln!("Transaction contains an invalid kernel proof");
+                return false;
+            }
+            Err(error) => {
+                eprintln!("Transaction failed to verify kernel proof: {}", error);
+                return false;
+            }
+            _ => {}
         }
 
         true
@@ -348,8 +374,9 @@ impl<N: Network> FromBytes for Transaction<N> {
         for _ in 0..num_transitions {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
+        let kernel_proof = FromBytes::read_le(&mut reader)?;
 
-        Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
+        Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions, kernel_proof)
             .map_err(|e| error(format!("Failed to deserialize a transaction: {e}")))
     }
 }
@@ -367,7 +394,8 @@ impl<N: Network> ToBytes for Transaction<N> {
         }
 
         (self.transitions.len() as u16).write_le(&mut writer)?;
-        self.transitions.write_le(&mut writer)
+        self.transitions.write_le(&mut writer)?;
+        self.kernel_proof.write_le(&mut writer)
     }
 }
 
@@ -395,6 +423,7 @@ impl<N: Network> Serialize for Transaction<N> {
                 transaction.serialize_field("output_circuit_id", &self.output_circuit_id)?;
                 transaction.serialize_field("ledger_root", &self.ledger_root)?;
                 transaction.serialize_field("transitions", &self.transitions)?;
+                transaction.serialize_field("kernel_proof", &self.kernel_proof)?;
                 transaction.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -404,6 +433,7 @@ impl<N: Network> Serialize for Transaction<N> {
 
 impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use de::Error;
         match deserializer.is_human_readable() {
             true => {
                 let transaction = serde_json::Value::deserialize(deserializer)?;
@@ -412,12 +442,13 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
 
                 // Recover the transaction.
                 let transaction = Self::from(
-                    serde_json::from_value(transaction["input_circuit_id"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transaction["output_circuit_id"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transaction["ledger_root"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transaction["transitions"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transaction["input_circuit_id"].clone()).map_err(Error::custom)?,
+                    serde_json::from_value(transaction["output_circuit_id"].clone()).map_err(Error::custom)?,
+                    serde_json::from_value(transaction["ledger_root"].clone()).map_err(Error::custom)?,
+                    serde_json::from_value(transaction["transitions"].clone()).map_err(Error::custom)?,
+                    serde_json::from_value(transaction["kernel_proof"].clone()).map_err(Error::custom)?,
                 )
-                .map_err(de::Error::custom)?;
+                .map_err(Error::custom)?;
 
                 // Ensure the transaction ID matches.
                 match transaction_id == transaction.transaction_id() {
@@ -498,7 +529,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(3032, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3047, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -518,7 +549,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1519, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1517, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
