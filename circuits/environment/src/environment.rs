@@ -15,15 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Inject, LinearCombination, Mode, Variable};
-use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use core::{fmt, hash};
 
 pub trait Environment: Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq + hash::Hash {
     type Affine: AffineCurve<BaseField = Self::BaseField, Coordinates = (Self::BaseField, Self::BaseField)>;
-    type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
-    type BaseField: PrimeField + Copy;
+    type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>
+        + MontgomeryParameters<BaseField = Self::BaseField>;
+    type BaseField: PrimeField + SquareRootField + Copy;
     type ScalarField: PrimeField<BigInteger = <Self::BaseField as PrimeField>::BigInteger> + Copy;
 
     /// The maximum number of bytes allowed in a string.

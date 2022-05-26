@@ -20,7 +20,7 @@ impl<E: Environment> Inv for Field<E> {
     type Output = Self;
 
     fn inv(self) -> Self::Output {
-        (&self).inv()
+        (&self).inverse()
     }
 }
 
@@ -28,19 +28,35 @@ impl<E: Environment> Inv for &Field<E> {
     type Output = Field<E>;
 
     fn inv(self) -> Self::Output {
+        self.inverse()
+    }
+}
+
+impl<E: Environment> Inverse for Field<E> {
+    type Output = Field<E>;
+
+    fn inverse(self) -> Self::Output {
+        (&self).inverse()
+    }
+}
+
+impl<E: Environment> Inverse for &Field<E> {
+    type Output = Field<E>;
+
+    fn inverse(self) -> Self::Output {
         let inverse = witness!(|self| match self.inverse() {
             Some(inverse) => inverse,
-            None => E::halt("Failed to compute the inverse for a base field element"),
+            None => E::BaseField::zero(),
         });
 
-        // Ensure self * self^(-1) == 1.
+        // Ensure `self` * `self^(-1)` == 1.
         E::enforce(|| (self, &inverse, E::one()));
 
         inverse
     }
 }
 
-impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metrics<dyn Inverse<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
     fn count(case: &Self::Case) -> Count {
@@ -51,7 +67,7 @@ impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
     }
 }
 
-impl<E: Environment> OutputMode<dyn Inv<Output = Field<E>>> for Field<E> {
+impl<E: Environment> OutputMode<dyn Inverse<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
     fn output_mode(case: &Self::Case) -> Mode {
@@ -70,7 +86,7 @@ mod tests {
 
     const ITERATIONS: u64 = 1_000;
 
-    fn check_inv(name: &str, mode: Mode) {
+    fn check_inverse(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
             let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -79,10 +95,10 @@ mod tests {
                 let candidate = Field::<Circuit>::new(mode, given);
 
                 Circuit::scope(name, || {
-                    let result = candidate.inv();
+                    let result = candidate.inverse();
                     assert_eq!(expected, result.eject_value());
-                    assert_count!(Inv(Field) => Field, &mode);
-                    assert_output_mode!(Inv(Field) => Field, &mode, result);
+                    assert_count!(Inverse(Field) => Field, &mode);
+                    assert_output_mode!(Inverse(Field) => Field, &mode, result);
                 });
                 Circuit::reset();
             }
@@ -90,26 +106,26 @@ mod tests {
     }
 
     #[test]
-    fn test_inv() {
-        check_inv("Constant", Mode::Constant);
-        check_inv("Public", Mode::Public);
-        check_inv("Private", Mode::Private);
+    fn test_inverse() {
+        check_inverse("Constant", Mode::Constant);
+        check_inverse("Public", Mode::Public);
+        check_inverse("Private", Mode::Private);
     }
 
     #[test]
     fn test_zero_inv_fails() {
         let zero = <Circuit as Environment>::BaseField::zero();
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inv());
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inverse());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, zero).inv());
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, zero).inverse());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, zero).inv());
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, zero).inverse());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, zero).inv());
+        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, zero).inverse());
         assert!(result.is_err()); // Probe further for specific error type here, if desired
     }
 }

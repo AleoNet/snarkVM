@@ -55,7 +55,7 @@ pub mod prelude {
         OutputMode,
         Variable,
     };
-    pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
+    pub use snarkvm_fields::{Field as F, One as O, PrimeField, SquareRootField, Zero as Z};
 
     pub use core::{
         fmt::{self, Debug, Display},

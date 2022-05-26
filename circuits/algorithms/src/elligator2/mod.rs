@@ -14,23 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+mod encode;
 
-pub mod bhp;
-pub use bhp::*;
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
 
-pub mod elligator2;
-pub use elligator2::Elligator2;
+use snarkvm_circuits_types::prelude::*;
+use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
+use snarkvm_fields::SquareRootField;
 
-pub mod merkle_path;
-pub use merkle_path::*;
+use core::marker::PhantomData;
 
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod traits;
-pub use traits::*;
+pub struct Elligator2<E: Environment>(PhantomData<E>);

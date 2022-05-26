@@ -23,11 +23,12 @@ pub mod add;
 pub mod compare;
 pub mod div;
 pub mod equal;
-pub mod inv;
+pub mod inverse;
 pub mod mul;
 pub mod neg;
 pub mod pow;
 pub mod square;
+pub mod square_root;
 pub mod sub;
 pub mod ternary;
 

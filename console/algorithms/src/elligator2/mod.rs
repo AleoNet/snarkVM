@@ -43,9 +43,8 @@ impl<
 
         let one = BaseField::<G>::one();
 
-        // We define as convention for the input to be of high sign.
+        // Store the sign of the input, to be returned with the output.
         let sign_high = input > input.neg();
-        let input = if sign_high { input } else { input.neg() };
 
         // Compute the mapping from Fq to E(Fq) as a Montgomery element (u, v).
         let (u, v) = {
@@ -84,7 +83,7 @@ impl<
                 LegendreSymbol::QuadraticNonResidue => value,
             };
 
-            // Ensure (u, v) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
+            // Ensure (x, y) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
             ensure!(y.square() == rhs, "Elligator2 failed: y^2 != x^3 + A * x^2 + B * x");
 
             // Convert the Weierstrass element (x, y) to Montgomery element (u, v).
@@ -136,7 +135,10 @@ impl<
             let numerator = one + y;
             let denominator = one - y;
 
+            // Compute u = (1 + y) / (1 - y).
             let u = numerator * denominator.inverse().ok_or_else(|| anyhow!("Elligator2 failed: (1 - y) == 0"))?;
+
+            // Compute v = (1 + y) / ((1 - y) * x).
             let v = numerator
                 * (denominator * x).inverse().ok_or_else(|| anyhow!("Elligator2 failed: x * (1 - y) == 0"))?;
 

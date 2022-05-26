@@ -19,7 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Inv as InvCircuit, Literal, Parser, ParserResult};
+use snarkvm_circuits::{Inverse as InverseCircuit, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -63,7 +63,7 @@ impl<P: Program> Operation<P> for Inv<P> {
 
         // Perform the operation.
         let result = match first {
-            Literal::Field(a) => Literal::Field(a.inv()),
+            Literal::Field(a) => Literal::Field(a.inverse()),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 

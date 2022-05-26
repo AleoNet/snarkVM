@@ -61,7 +61,7 @@ impl<E: Environment> DivAssign<&Self> for Field<E> {
         // If `other` is a constant, we can perform the multiplication and inversion
         // without paying for any private variables or constraints.
         if other.is_constant() {
-            *self *= other.inv();
+            *self *= other.inverse();
         }
         // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
         // and ensuring that `quotient * other == self`.
