@@ -57,10 +57,19 @@ impl Count {
 
     /// Returns `true` if all constituent metrics match.
     pub fn matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> bool {
-        self.0.matches(num_constants)
+        let outcome = self.0.matches(num_constants)
             && self.1.matches(num_public)
             && self.2.matches(num_private)
-            && self.3.matches(num_constraints)
+            && self.3.matches(num_constraints);
+
+        if !outcome {
+            eprintln!(
+                "Count should be ({}) but fount (Constants: {}, Public: {}, Private: {}, Constraints: {}) during synthesis",
+                self, num_constants, num_public, num_private, num_constraints
+            );
+        }
+
+        outcome
     }
 }
 
@@ -113,17 +122,11 @@ impl<V: Copy + Debug + Display + Ord + Add<Output = V> + Sub<Output = V> + Mul<O
     /// For a `Range` metric, `value` must be satisfy lower bound and the upper bound.
     /// For an `UpperBound` metric, `value` must be satisfy the upper bound.
     pub fn matches(&self, candidate: V) -> bool {
-        let outcome = match self {
+        match self {
             Measurement::Exact(expected) => *expected == candidate,
             Measurement::Range(lower, upper) => candidate >= *lower && candidate <= *upper,
             Measurement::UpperBound(bound) => candidate <= *bound,
-        };
-
-        if !outcome {
-            eprintln!("Metrics claims the count should be {:?}, found {:?} during synthesis", self, candidate);
         }
-
-        outcome
     }
 }
 

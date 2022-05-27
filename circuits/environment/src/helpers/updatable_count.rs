@@ -109,8 +109,9 @@ impl UpdatableCount {
         if !self.matches(num_constants, num_public, num_private, num_constraints) {
             let mut files = FILES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             match env::var("UPDATE_COUNT") {
+                // If `UPDATE_COUNT` is set and the `query_string` matches the file containing the macro invocation
+                // that constructed this `UpdatableCount`, then update the macro invocation.
                 Ok(query_string) if self.file.contains(&query_string) => {
-                    // TODO: Provide metrics on update.
                     files.entry(self.file).or_insert_with(|| FileUpdates::new(self)).update_count(
                         self,
                         num_constants,
@@ -119,6 +120,7 @@ impl UpdatableCount {
                         num_constraints,
                     );
                 }
+                // Otherwise, error.
                 _ => {
                     println!(
                         "\n
@@ -156,14 +158,14 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
     /// ```ignore
     ///              count_is!(0, 1, 2, 3)
     /// ```                   ^          ^
-    ///    starting_byte_offset          ending_byte_offset
+    ///           starting_index     ending_index
     ///
     /// Note: This function must always invoked with the file contents of the same file as the macro invocation.
     fn locate(&self, file: &str) -> Range<usize> {
         // `line_start` is the absolute byte offset from the beginning of the file to the beginning of the current line.
         let mut line_start = 0;
-        let mut starting_byte_offset = None;
-        let mut ending_byte_offset = None;
+        let mut starting_index = None;
+        let mut ending_index = None;
         for (i, line) in LinesWithEnds::from(file).enumerate() {
             if i == self.line as usize - 1 {
                 // Seek past the exclamation point, then skip any whitespace and the macro delimiter to get to the opening parentheses.
@@ -172,7 +174,8 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
                     .skip(1) // Skip `!`.
                     .skip_while(|(_, c)| c.is_whitespace()); // Skip any whitespace.
 
-                starting_byte_offset = Some(
+                // Set `starting_index` to the absolute position of the opening parenthesis in `file`.
+                starting_index = Some(
                     line_start
                         + argument_character_indices
                             .next()
@@ -181,13 +184,13 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
                 );
             }
 
-            if starting_byte_offset.is_some() {
+            if starting_index.is_some() {
                 // At this point, we have found the opening parentheses, so we continue to skip all characters until the closing parentheses.
                 match line.char_indices().find(|&(_, c)| c == ')') {
                     None => (), // Do nothing. This means that the closing parentheses was not found on the same line as the opening parentheses.
                     Some((offset, _)) => {
                         // Note that the `+ 1` is to account for the fact that `std::ops::Range` is exclusive on the upper bound.
-                        ending_byte_offset = Some(line_start + offset + 1);
+                        ending_index = Some(line_start + offset + 1);
                         break;
                     }
                 }
@@ -196,18 +199,18 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
         }
 
         Range {
-            start: starting_byte_offset.expect("Could not find the beginning of the macro invocation."),
-            end: ending_byte_offset.expect("Could not find the ending of the macro invocation."),
+            start: starting_index.expect("Could not find the beginning of the macro invocation."),
+            end: ending_index.expect("Could not find the ending of the macro invocation."),
         }
     }
 
-    /// Computes the difference between the number of constants, public, private, and constraints of `other` and those of `self`.
-    pub fn differs_by(&self, other: &Self) -> (i64, i64, i64, i64) {
+    /// Computes the difference between the number of constants, public, private, and constraints of `self` and those of `other`.
+    pub fn difference_between(&self, other: &Self) -> (i64, i64, i64, i64) {
         let difference = |self_measurement, other_measurement| match (self_measurement, other_measurement) {
             (Measurement::Exact(self_value), Measurement::Exact(other_value))
             | (Measurement::UpperBound(self_value), Measurement::UpperBound(other_value)) => {
                 // Note: This assumes that the number of constants, public, private, and constraints do not exceed `i64::MAX`.
-                (other_value as i64) - (self_value as i64)
+                (self_value as i64) - (other_value as i64)
             }
             _ => panic!(
                 "Cannot compute difference for `Measurement::Range` or if both measurements are of different types."
@@ -256,6 +259,7 @@ Constants: {}, Public: {}, Private: {}, Constraints: {}
 
 /// This struct is used to track updates to the `UpdatableCount`s in a file.
 /// It is used to ensure that the updates are written to the appropriate location in the file as the file is modified.
+/// This design avoids having to re-read the source file in the event that it has been modified.
 struct FileUpdates {
     absolute_path: PathBuf,
     original_text: String,
@@ -276,6 +280,7 @@ impl FileUpdates {
         let absolute_path = match path.is_absolute() {
             true => path.to_owned(),
             false => {
+                // Append `path` to the workspace root.
                 WORKSPACE_ROOT
                     .get_or_try_init(|| {
                         // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
@@ -319,6 +324,7 @@ impl FileUpdates {
         let mut update_with_same_start = None;
 
         // Shift the range to account for changes made to the original file.
+        // Note that the `Update`s in self.updates are ordered by their starting location.
         for previous_update in &self.updates {
             let amount_deleted = previous_update.end - previous_update.start;
             let amount_inserted = previous_update.argument_string.len();
@@ -341,7 +347,7 @@ impl FileUpdates {
             }
         }
 
-        // If there an update to the original text has been made, then check if the counts satisfies the updated `Count`.
+        // If the original `UpdatableCount` has been modified, then check if the counts satisfy the most recent `UpdatableCount`.
         // If so, then there is no need to write to update the file and we can return early.
         if let Some(update) = update_with_same_start {
             if update.count.matches(num_constants, num_public, num_private, num_constraints) {
@@ -357,6 +363,36 @@ impl FileUpdates {
 
         // Apply the update at the adjusted location.
         self.modified_text.replace_range(new_range, &new_update.argument_string);
+
+        // Print the difference between the original and updated counts.
+        let difference = new_update.count.difference_between(count);
+        println!(
+            "\n
+\x1b[1m\x1b[33mwarning\x1b[97m: Updated count\x1b[0m
+   \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
+\x1b[1mOriginal count\x1b[0m:
+----
+{}
+----
+\x1b[1mUpdated count\x1b[0m:
+----
+{}
+----
+\x1b[1mDifference between updated and original\x1b[0m:
+----
+Constants: {}, Public: {}, Private: {}, Constraints: {}
+----
+",
+            count.file,
+            count.line,
+            count.column,
+            count,
+            new_update.count,
+            difference.0,
+            difference.1,
+            difference.2,
+            difference.3
+        );
 
         // Add the new update to the set of updates.
         self.updates.replace(new_update);
@@ -388,10 +424,11 @@ impl Update {
         num_private: u64,
         num_constraints: u64,
     ) -> Self {
-        let generate_new_measurement = |measurement: Measurement<u64>, num: u64| match measurement {
-            Measurement::Exact(..) => Measurement::Exact(num),
+        // Helper function to determine the new `Measurement` based on the expected value.
+        let generate_new_measurement = |measurement: Measurement<u64>, expected: u64| match measurement {
+            Measurement::Exact(..) => Measurement::Exact(expected),
             Measurement::Range(..) => panic!("UpdatableCount does not support ranges."),
-            Measurement::UpperBound(bound) => Measurement::UpperBound(std::cmp::max(num, bound)),
+            Measurement::UpperBound(bound) => Measurement::UpperBound(std::cmp::max(expected, bound)),
         };
         let count = UpdatableCount::dummy(
             generate_new_measurement(old_count.constant, num_constants),
@@ -457,7 +494,7 @@ mod test {
     fn check_position() {
         let count = count_is!(0, 0, 0, 0);
         assert_eq!(count.file, "circuits/environment/src/helpers/updatable_count.rs");
-        assert_eq!(count.line, 458);
+        assert_eq!(count.line, 495);
         assert_eq!(count.column, 21);
     }
 
