@@ -24,7 +24,6 @@ impl HashOpcode for Psd4 {
     const OPCODE: &'static str = "hash.psd4";
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,6 +38,7 @@ mod tests {
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("hash.psd4 r0 into r1;").unwrap();
@@ -142,6 +142,7 @@ mod tests {
         "4167190024968967735724650291761534994019909311594675614398942316879984619698field"
     );
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![

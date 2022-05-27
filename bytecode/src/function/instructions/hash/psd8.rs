@@ -24,7 +24,6 @@ impl HashOpcode for Psd8 {
     const OPCODE: &'static str = "hash.psd8";
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,6 +38,7 @@ mod tests {
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("hash.psd8 r0 into r1;").unwrap();
@@ -142,6 +142,7 @@ mod tests {
         "4020837770720319542691472472080405581209506316726251354702740114046129734437field"
     );
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![

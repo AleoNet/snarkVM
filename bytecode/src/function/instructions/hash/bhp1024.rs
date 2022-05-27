@@ -24,7 +24,6 @@ impl HashOpcode for BHP1024 {
     const OPCODE: &'static str = "hash.bhp1024";
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,6 +39,7 @@ mod tests {
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("hash.bhp1024 r0 into r1;").unwrap();
@@ -110,6 +110,7 @@ mod tests {
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
     );
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
@@ -131,6 +132,7 @@ mod tests {
         assert_eq!(expected, value);
     }
 
+    #[ignore]
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 1026 bits")]
     fn test_definition_halts() {

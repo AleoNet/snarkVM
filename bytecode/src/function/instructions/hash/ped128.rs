@@ -24,7 +24,6 @@ impl HashOpcode for Ped128 {
     const OPCODE: &'static str = "hash.ped128";
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,6 +39,7 @@ mod tests {
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("hash.ped128 r0 into r1;").unwrap();
@@ -135,6 +135,7 @@ mod tests {
         "\"aaaaaaaaaaaaaaaaaa\""
     );
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
@@ -156,6 +157,7 @@ mod tests {
         assert_eq!(expected, value);
     }
 
+    #[ignore]
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 128 bits.")]
     fn test_definition_halts() {

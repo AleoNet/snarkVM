@@ -24,7 +24,6 @@ impl PRFOpcode for Psd8 {
     const OPCODE: &'static str = "prf.psd8";
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,6 +39,7 @@ mod tests {
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("prf.psd8 r0 r1 into r2;").unwrap();
@@ -167,6 +167,7 @@ mod tests {
         "1u8"
     );
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::from_str("1field.private");

@@ -24,7 +24,6 @@ impl CommitOpcode for BHP512 {
     const OPCODE: &'static str = "commit.bhp512";
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -32,6 +31,7 @@ mod tests {
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("commit.bhp512 r0 r1 into r2;").unwrap();
@@ -159,6 +159,7 @@ mod tests {
         "1scalar"
     );
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
@@ -183,6 +184,7 @@ mod tests {
         assert_eq!(expected, value);
     }
 
+    #[ignore]
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 513 bits")]
     fn test_definition_halts() {
