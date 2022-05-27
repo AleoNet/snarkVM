@@ -29,6 +29,18 @@ pub trait Aleo: Environment {
     /// The maximum number of field elements in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32;
 
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Field<Self>;
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Field<Self>;
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Field<Self>;
+
+    /// Returns the scalar multiplication on the group bases.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
@@ -46,18 +58,6 @@ pub trait Aleo: Environment {
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
-
-    /// Returns the encryption domain as a constant field element.
-    fn encryption_domain() -> Field<Self>;
-
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self>;
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self>;
-
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns the BHP hash for a given (up to) 256-bit input.
     fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;

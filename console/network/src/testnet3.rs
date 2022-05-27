@@ -38,7 +38,7 @@ use itertools::Itertools;
 // lazy_static! {
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Vec<<Testnet3 as Network>::Projective> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+    static GENERATOR_G: Vec<<Testnet3 as Network>::Projective> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
     /// The MAC domain as a constant field element.
@@ -148,6 +148,40 @@ impl Network for Testnet3 {
         Self::scalar_from_bits_le(&bits)
     }
 
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Self::Field {
+        ENCRYPTION_DOMAIN.with(|domain| *domain)
+    }
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Self::Field {
+        MAC_DOMAIN.with(|domain| *domain)
+    }
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Self::Field {
+        RANDOMIZER_DOMAIN.with(|domain| *domain)
+    }
+
+    /// Returns the powers of G.
+    fn g_powers() -> Vec<Self::Projective> {
+        GENERATOR_G.with(|bases| (*bases).clone())
+    }
+
+    /// Returns the scalar multiplication on the group bases.
+    fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective {
+        GENERATOR_G.with(|bases| {
+            bases
+                .iter()
+                .zip_eq(&scalar.to_bits_le())
+                .filter_map(|(base, bit)| match bit {
+                    true => Some(base),
+                    false => None,
+                })
+                .sum()
+        })
+    }
+
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))
@@ -176,35 +210,6 @@ impl Network for Testnet3 {
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
-    }
-
-    /// Returns the encryption domain as a constant field element.
-    fn encryption_domain() -> Self::Field {
-        ENCRYPTION_DOMAIN.with(|domain| *domain)
-    }
-
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Self::Field {
-        MAC_DOMAIN.with(|domain| *domain)
-    }
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Self::Field {
-        RANDOMIZER_DOMAIN.with(|domain| *domain)
-    }
-
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective {
-        BASES.with(|bases| {
-            bases
-                .iter()
-                .zip_eq(&scalar.to_bits_le())
-                .filter_map(|(base, bit)| match bit {
-                    true => Some(base),
-                    false => None,
-                })
-                .sum()
-        })
     }
 
     /// Returns the BHP hash for a given (up to) 256-bit input.

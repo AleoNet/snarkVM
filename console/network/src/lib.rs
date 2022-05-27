@@ -70,6 +70,21 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// A helper method to recover a scalar from **big-endian** bits.
     fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar>;
 
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Self::Field;
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Self::Field;
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Self::Field;
+
+    /// Returns the powers of G.
+    fn g_powers() -> Vec<Self::Projective>;
+
+    /// Returns the scalar multiplication on the group bases.
+    fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective;
+
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
@@ -87,18 +102,6 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
-
-    /// Returns the encryption domain as a constant field element.
-    fn encryption_domain() -> Self::Field;
-
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Self::Field;
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Self::Field;
-
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective;
 
     /// Returns the BHP hash for a given (up to) 256-bit input.
     fn hash_bhp256(input: &[bool]) -> Result<Self::Field>;

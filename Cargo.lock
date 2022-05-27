@@ -2118,7 +2118,6 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-types",
- "snarkvm-console-algorithms",
  "snarkvm-console-network",
  "snarkvm-curves",
  "snarkvm-fields",

@@ -20,10 +20,6 @@ version = "0.7.5"
 path = "../types"
 version = "0.7.5"
 
-[dependencies.snarkvm-console-algorithms]
-path = "../../console/algorithms"
-version = "0.7.5"
-
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"

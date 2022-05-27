@@ -38,8 +38,7 @@ use snarkvm_circuit_types::{
     Group,
     Scalar,
 };
-use snarkvm_console_algorithms::Blake2Xs;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::FieldParameters;
 
 use core::fmt;
@@ -47,14 +46,18 @@ use core::fmt;
 type E = Circuit;
 
 thread_local! {
+    #[cfg(console)]
     /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Vec<Group<AleoV0>> = AleoV0::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().map(|g| g.to_affine()).collect());
+    #[cfg(console)]
     /// The encryption domain as a constant field element.
-    static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<AleoV0 as Environment>::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
+    static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
+    #[cfg(console)]
     /// The MAC domain as a constant field element.
-    static MAC_DOMAIN: Field<AleoV0> = Field::constant(<AleoV0 as Environment>::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"));
+    static MAC_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::mac_domain());
+    #[cfg(console)]
     /// The randomizer domain as a constant field element.
-    static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<AleoV0 as Environment>::BaseField::from_bytes_le_mod_order(b"AleoRandomizer0"));
+    static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
 
     /// The BHP gadget, which can take an input of up to 256 bits.
     static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::setup("AleoBHP256");
@@ -81,33 +84,38 @@ thread_local! {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct AleoV0;
 
-impl AleoV0 {
-    /// Initializes a new instance of group bases from a given input domain message.
-    #[inline]
-    fn new_bases(message: &str) -> Vec<Group<Self>> {
-        // Hash the given message to a point on the curve, to initialize the starting base.
-        let (base, _, _) = Blake2Xs::hash_to_curve::<<Self as Environment>::Affine>(message);
-
-        // Initialize the vector of bases.
-        let size_in_bits = <Self as Environment>::ScalarField::size_in_bits();
-        let mut bases = Vec::with_capacity(size_in_bits);
-
-        // Compute the bases up to the size of the scalar field (in bits).
-        let mut base = base.to_projective();
-        for _ in 0..size_in_bits {
-            bases.push(Group::constant(base.to_affine()));
-            base.double_in_place();
-        }
-        bases
-    }
-}
-
 impl Aleo for AleoV0 {
     #[cfg(console)]
     type Network = console::Testnet3;
 
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::BaseField as PrimeField>::Parameters::CAPACITY;
+
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Field<Self> {
+        ENCRYPTION_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Field<Self> {
+        MAC_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Field<Self> {
+        RANDOMIZER_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the scalar multiplication on the group bases.
+    #[inline]
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
+        GENERATOR_G.with(|bases| {
+            bases
+                .iter()
+                .zip_eq(&scalar.to_bits_le())
+                .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
+        })
+    }
 
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
@@ -137,32 +145,6 @@ impl Aleo for AleoV0 {
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
-    }
-
-    /// Returns the encryption domain as a constant field element.
-    fn encryption_domain() -> Field<Self> {
-        ENCRYPTION_DOMAIN.with(|domain| domain.clone())
-    }
-
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self> {
-        MAC_DOMAIN.with(|domain| domain.clone())
-    }
-
-    /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Field<Self> {
-        RANDOMIZER_DOMAIN.with(|domain| domain.clone())
-    }
-
-    /// Returns the scalar multiplication on the group bases.
-    #[inline]
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
-        BASES.with(|bases| {
-            bases
-                .iter()
-                .zip_eq(&scalar.to_bits_le())
-                .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
-        })
     }
 
     /// Returns the BHP hash for a given (up to) 256-bit input.
