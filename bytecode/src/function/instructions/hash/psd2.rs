@@ -29,7 +29,6 @@ mod tests {
     use super::*;
     use crate::{
         function::{Instruction, Operation, Register, Registers},
-        test_modes,
         Identifier,
         Process,
         Value,

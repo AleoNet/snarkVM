@@ -27,7 +27,7 @@ impl CommitOpcode for Ped64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{function::Register, Identifier, Process};
 
     type P = Process;
 
