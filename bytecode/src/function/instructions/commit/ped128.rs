@@ -24,6 +24,7 @@ impl CommitOpcode for Ped128 {
     const OPCODE: &'static str = "commit.ped128";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;

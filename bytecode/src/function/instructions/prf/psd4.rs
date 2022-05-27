@@ -24,6 +24,7 @@ impl PRFOpcode for Psd4 {
     const OPCODE: &'static str = "prf.psd4";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;

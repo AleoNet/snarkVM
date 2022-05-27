@@ -24,6 +24,7 @@ impl PRFOpcode for Psd8 {
     const OPCODE: &'static str = "prf.psd8";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -24,6 +24,7 @@ impl CommitOpcode for BHP256 {
     const OPCODE: &'static str = "commit.bhp256";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;

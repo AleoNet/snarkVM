@@ -24,6 +24,7 @@ impl HashOpcode for Psd2 {
     const OPCODE: &'static str = "hash.psd2";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -24,6 +24,7 @@ impl HashOpcode for BHP1024 {
     const OPCODE: &'static str = "hash.bhp1024";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;

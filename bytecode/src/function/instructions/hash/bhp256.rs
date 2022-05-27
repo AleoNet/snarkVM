@@ -24,6 +24,7 @@ impl HashOpcode for BHP256 {
     const OPCODE: &'static str = "hash.bhp256";
 }
 
+#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
