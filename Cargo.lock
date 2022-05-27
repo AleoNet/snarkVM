@@ -2041,7 +2041,7 @@ dependencies = [
  "paste",
  "snarkvm-algorithms",
  "snarkvm-circuit",
- "snarkvm-console-aleo",
+ "snarkvm-console-program",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
@@ -2050,26 +2050,23 @@ dependencies = [
 name = "snarkvm-circuit"
 version = "0.7.5"
 dependencies = [
- "snarkvm-circuit-aleo",
+ "snarkvm-circuit-account",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-network",
+ "snarkvm-circuit-program",
  "snarkvm-circuit-types",
 ]
 
 [[package]]
-name = "snarkvm-circuit-aleo"
+name = "snarkvm-circuit-account"
 version = "0.7.5"
 dependencies = [
  "anyhow",
- "nom",
  "snarkvm-circuit-algorithms",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
- "snarkvm-console-aleo",
- "snarkvm-console-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
+ "snarkvm-console-account",
  "snarkvm-utilities",
 ]
 
@@ -2121,6 +2118,21 @@ dependencies = [
  "snarkvm-console-network",
  "snarkvm-curves",
  "snarkvm-fields",
+]
+
+[[package]]
+name = "snarkvm-circuit-program"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "nom",
+ "snarkvm-circuit-account",
+ "snarkvm-circuit-algorithms",
+ "snarkvm-circuit-network",
+ "snarkvm-circuit-types",
+ "snarkvm-console-account",
+ "snarkvm-console-program",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2217,26 +2229,24 @@ dependencies = [
 name = "snarkvm-console"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-aleo",
+ "snarkvm-console-account",
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
+ "snarkvm-console-program",
  "snarkvm-console-types",
 ]
 
 [[package]]
-name = "snarkvm-console-aleo"
+name = "snarkvm-console-account"
 version = "0.7.5"
 dependencies = [
  "anyhow",
  "base58",
  "bech32",
  "bincode",
- "enum_index",
- "enum_index_derive",
  "itertools",
  "once_cell",
  "rand",
- "rayon",
  "serde",
  "serde_json",
  "snarkvm-console-algorithms",
@@ -2270,6 +2280,28 @@ dependencies = [
  "anyhow",
  "itertools",
  "snarkvm-console-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-program"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "enum_index",
+ "enum_index_derive",
+ "itertools",
+ "once_cell",
+ "rand",
+ "rayon",
+ "serde",
+ "serde_json",
+ "snarkvm-console-account",
+ "snarkvm-console-algorithms",
+ "snarkvm-console-network",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",

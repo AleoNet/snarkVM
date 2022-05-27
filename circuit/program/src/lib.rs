@@ -15,26 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
 
-pub use snarkvm_circuit_account as account;
-pub use snarkvm_circuit_account::*;
+#[cfg(test)]
+use snarkvm_circuit_network::AleoV0 as Circuit;
 
-pub use snarkvm_circuit_algorithms as algorithms;
-pub use snarkvm_circuit_algorithms::*;
+mod data;
+pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
 
-pub use snarkvm_circuit_environment as environment;
-pub use snarkvm_circuit_environment::*;
+mod record;
+pub use record::Record;
 
-pub use snarkvm_circuit_network as network;
-pub use snarkvm_circuit_network::*;
-
-pub use snarkvm_circuit_program as program;
-pub use snarkvm_circuit_program::*;
-
-pub use snarkvm_circuit_types as types;
-pub use snarkvm_circuit_types::*;
-
-pub mod prelude {
-    pub use super::*;
-    pub use snarkvm_circuit_environment::*;
-}
+mod state;
+pub use state::State;

@@ -161,25 +161,25 @@ jobs:
           workspace_member: circuit
           cache_key: snarkvm-circuit-cache
 
-  circuit-aleo:
+  circuit-account:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuit/aleo
-          cache_key: snarkvm-circuit-aleo-cache
+          workspace_member: circuit/account
+          cache_key: snarkvm-circuit-account-cache
 
   # This checks that no `console` structs are used in core circuit logic.
-  circuit-aleo-noconsole:
+  circuit-account-noconsole:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuit/aleo
+          workspace_member: circuit/account
           flags: --no-default-features
-          cache_key: snarkvm-circuit-aleo-noconsole-cache
+          cache_key: snarkvm-circuit-account-noconsole-cache
 
   circuit-algorithms:
     docker:
@@ -207,6 +207,26 @@ jobs:
       - run_serial:
           workspace_member: circuit/network
           cache_key: snarkvm-circuit-network-cache
+
+  circuit-program:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/program
+          cache_key: snarkvm-circuit-program-cache
+
+  # This checks that no `console` structs are used in core circuit logic.
+  circuit-program-noconsole:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/program
+          flags: --no-default-features
+          cache_key: snarkvm-circuit-program-noconsole-cache
 
   circuit-types:
     docker:
@@ -291,14 +311,14 @@ jobs:
           workspace_member: console
           cache_key: snarkvm-console-cache
 
-  console-aleo:
+  console-account:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: console/aleo
-          cache_key: snarkvm-console-aleo-cache
+          workspace_member: console/account
+          cache_key: snarkvm-console-account-cache
 
   console-algorithms:
     docker:
@@ -317,6 +337,15 @@ jobs:
       - run_serial:
           workspace_member: console/network
           cache_key: snarkvm-console-network-cache
+
+  console-program:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/program
+          cache_key: snarkvm-console-program-cache
 
   console-types:
     docker:
@@ -475,11 +504,13 @@ workflows:
       - algorithms
       - bytecode
       - circuit
-      - circuit-aleo
-      - circuit-aleo-noconsole
+      - circuit-account
+      - circuit-account-noconsole
       - circuit-algorithms
       - circuit-environment
       - circuit-network
+      - circuit-program
+      - circuit-program-noconsole
       - circuit-types
       - circuit-types-address
       - circuit-types-boolean
@@ -489,9 +520,10 @@ workflows:
       - circuit-types-scalar
       - circuit-types-string
       - console
-      - console-aleo
+      - console-account
       - console-algorithms
       - console-network
+      - console-program
       - console-types
       - curves
       - dpc

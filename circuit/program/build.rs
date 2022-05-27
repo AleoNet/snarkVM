@@ -14,27 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-
-pub use snarkvm_circuit_account as account;
-pub use snarkvm_circuit_account::*;
-
-pub use snarkvm_circuit_algorithms as algorithms;
-pub use snarkvm_circuit_algorithms::*;
-
-pub use snarkvm_circuit_environment as environment;
-pub use snarkvm_circuit_environment::*;
-
-pub use snarkvm_circuit_network as network;
-pub use snarkvm_circuit_network::*;
-
-pub use snarkvm_circuit_program as program;
-pub use snarkvm_circuit_program::*;
-
-pub use snarkvm_circuit_types as types;
-pub use snarkvm_circuit_types::*;
-
-pub mod prelude {
-    pub use super::*;
-    pub use snarkvm_circuit_environment::*;
+fn main() {
+    if cfg!(feature = "enable_console") {
+        println!("cargo:rustc-cfg=console");
+    }
 }

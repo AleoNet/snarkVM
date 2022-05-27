@@ -6,8 +6,8 @@ description = "Console environment for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-console-aleo]
-path = "./aleo"
+[dependencies.snarkvm-console-account]
+path = "./account"
 version = "0.7.5"
 optional = true
 
@@ -21,14 +21,20 @@ path = "./network"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-console-program]
+path = "./program"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-console-types]
 path = "./types"
 version = "0.7.5"
 optional = true
 
 [features]
-default = [ "aleo", "algorithms", "network", "types" ]
-aleo = [ "network", "snarkvm-console-aleo" ]
+default = [ "account", "algorithms", "network", "program", "types" ]
+account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
 network = [ "snarkvm-console-network" ]
+program = [ "network", "snarkvm-console-program" ]
 types = [ "snarkvm-console-types" ]

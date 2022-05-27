@@ -145,7 +145,7 @@ impl<P: Program> FromBytes for Value<P> {
         match variant {
             0 => {
                 let mode = Mode::read_le(&mut reader)?;
-                let primitive = snarkvm_console_aleo::Literal::read_le(&mut reader)?;
+                let primitive = snarkvm_console_program::Literal::read_le(&mut reader)?;
                 Ok(Self::Literal(Literal::new(mode, primitive)))
             }
             1 => {
