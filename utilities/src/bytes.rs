@@ -113,17 +113,17 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
 
     /// Deserializes a static-sized byte array, with a u8 length encoding at the start.
     pub fn deserialize_with_u8<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
-        deserializer.deserialize_tuple(1 << 8, FromBytesWithU8Visitor::<T>::new(name))
+        deserializer.deserialize_tuple(1usize << 8usize, FromBytesWithU8Visitor::<T>::new(name))
     }
 
     /// Deserializes a static-sized byte array, with a u16 length encoding at the start.
     pub fn deserialize_with_u16<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
-        deserializer.deserialize_tuple(1 << 16, FromBytesWithU16Visitor::<T>::new(name))
+        deserializer.deserialize_tuple(1usize << 16usize, FromBytesWithU16Visitor::<T>::new(name))
     }
 
     /// Deserializes a static-sized byte array, with a u32 length encoding at the start.
     pub fn deserialize_with_u32<D: Deserializer<'de>>(deserializer: D, name: &str) -> Result<T, D::Error> {
-        deserializer.deserialize_tuple(1 << 32, FromBytesWithU32Visitor::<T>::new(name))
+        deserializer.deserialize_tuple(1usize << 32usize, FromBytesWithU32Visitor::<T>::new(name))
     }
 
     /// Deserializes a dynamically-sized byte array.
