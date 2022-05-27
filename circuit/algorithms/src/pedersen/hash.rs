@@ -16,9 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
-    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<E: Environment, const NUM_BITS: u8> Hash for Pedersen<E, NUM_BITS> {
     type Input = Boolean<E>;
     type Output = Field<E>;
 
@@ -29,25 +27,25 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_BITS: u8> Metrics<dyn Hash<Input = Boolean<E>, Output = Field<E>>>
+    for Pedersen<E, NUM_BITS>
 {
     type Case = Vec<Mode>;
 
     #[inline]
     fn count(case: &Self::Case) -> Count {
-        count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, case)
+        count!(Pedersen<E, NUM_BITS>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, case)
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn Hash<Input = Boolean<E>, Output = Field<E>>>
+    for Pedersen<E, NUM_BITS>
 {
     type Case = Vec<Mode>;
 
     #[inline]
     fn output_mode(parameter: &Self::Case) -> Mode {
-        output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, parameter)
+        output_mode!(Pedersen<E, NUM_BITS>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, parameter)
     }
 }
 
@@ -60,18 +58,16 @@ mod tests {
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+    const NUM_BITS_MULTIPLIER: u8 = 8;
 
-    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
+    fn check_hash<const NUM_BITS: u8>(mode: Mode) {
         // Initialize the Pedersen hash.
-        let native = NativePedersen::<<Circuit as Environment>::Affine, WINDOW_SIZE>::setup(MESSAGE);
-        let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
-        // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
+        let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..NUM_BITS).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Compute the expected hash.
             let expected = native.hash(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
@@ -85,12 +81,12 @@ mod tests {
                 // Check constraint counts and output mode.
                 let modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
-                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    Pedersen<Circuit, NUM_BITS>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
                     &modes
                 );
                 assert_output_mode!(
-                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    Pedersen<Circuit, NUM_BITS>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
                     &modes,
                     candidate
@@ -102,30 +98,30 @@ mod tests {
     #[test]
     fn test_hash_constant() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Constant);
+        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
     }
 
     #[test]
     fn test_hash_public() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Public);
+        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public);
     }
 
     #[test]
     fn test_hash_private() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_hash::<NUM_BITS_MULTIPLIER>(Mode::Private);
+        check_hash::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_hash::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_hash::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_hash::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private);
     }
 }

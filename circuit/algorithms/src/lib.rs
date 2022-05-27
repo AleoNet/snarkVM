@@ -23,8 +23,8 @@ pub use bhp::*;
 pub mod elligator2;
 pub use elligator2::Elligator2;
 
-pub mod merkle_path;
-pub use merkle_path::*;
+// pub mod merkle_path;
+// pub use merkle_path::*;
 
 pub mod pedersen;
 pub use pedersen::*;

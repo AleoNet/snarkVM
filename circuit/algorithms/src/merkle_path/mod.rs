@@ -90,7 +90,7 @@ mod tests {
         NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
     type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
 
-    type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
+    type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
 
     fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let merkle_tree_parameters = Parameters::setup(MESSAGE);

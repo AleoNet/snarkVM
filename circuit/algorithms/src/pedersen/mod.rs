@@ -27,52 +27,45 @@ use snarkvm_circuit_types::prelude::*;
 use snarkvm_console_algorithms::Blake2Xs;
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
-pub type Pedersen64<E> = Pedersen<E, 1, 64>;
+pub type Pedersen64<E> = Pedersen<E, 64>;
 /// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes a 128-bit input.
-pub type Pedersen128<E> = Pedersen<E, 1, 128>;
+pub type Pedersen128<E> = Pedersen<E, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    /// The base windows for the Pedersen hash.
-    bases: Vec<Vec<Group<E>>>,
+pub struct Pedersen<E: Environment, const NUM_BITS: u8> {
+    /// The base window for the Pedersen hash.
+    base_window: Vec<Group<E>>,
     /// The random base window for the Pedersen commitment.
     random_base: Vec<Group<E>>,
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_BITS: u8> Pedersen<E, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
-        Self {
-            bases: (0..NUM_WINDOWS)
-                .map(|_| {
-                    // Construct an indexed message to attempt to sample a base.
-                    let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
-                    // Inject the new base.
-                    let mut base = Group::constant(generator);
-                    // Construct the window with the base.
-                    let mut powers = Vec::with_capacity(WINDOW_SIZE);
-                    for _ in 0..WINDOW_SIZE {
-                        powers.push(base.clone());
-                        base = base.double();
-                    }
-                    powers
-                })
-                .collect(),
-            random_base: {
-                // Compute the random base
-                let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
-                let mut base = Group::constant(generator);
-
-                let num_scalar_bits = E::ScalarField::size_in_bits();
-                let mut random_base = Vec::with_capacity(num_scalar_bits);
-                for _ in 0..num_scalar_bits {
-                    random_base.push(base.clone());
-                    base = base.double();
-                }
-                random_base
-            },
+        // Construct an indexed message to attempt to sample a base.
+        let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
+        // Inject the new base.
+        let mut base = Group::constant(generator);
+        // Construct the window with the base.
+        let mut base_window = Vec::with_capacity(NUM_BITS as usize);
+        for _ in 0..NUM_BITS {
+            base_window.push(base.clone());
+            base = base.double();
         }
+
+        // Compute the random base.
+        let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
+        let mut base = Group::constant(generator);
+
+        let num_scalar_bits = E::ScalarField::size_in_bits();
+        let mut random_base = Vec::with_capacity(num_scalar_bits);
+        for _ in 0..num_scalar_bits {
+            random_base.push(base.clone());
+            base = base.double();
+        }
+
+        Self { base_window, random_base }
     }
 }
 
@@ -85,25 +78,20 @@ mod tests {
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+    const NUM_BITS_MULTIPLIER: u8 = 8;
 
-    fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
+    fn check_setup<const NUM_BITS: u8>(num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.
-            let native = NativePedersen::<<Circuit as Environment>::Affine, WINDOW_SIZE>::setup(MESSAGE);
+            let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
 
             Circuit::scope("Pedersen::setup", || {
                 // Perform the setup operation.
-                let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+                let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Check for equivalency of the bases.
-                native.base_window().iter().zip_eq(circuit.bases.iter().flatten()).for_each(|(expected, candidate)| {
+                native.base_window().iter().zip_eq(circuit.base_window.iter()).for_each(|(expected, candidate)| {
                     assert_eq!(expected.to_affine(), candidate.eject_value());
                 });
 
@@ -120,10 +108,10 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         // Set the number of windows, and modulate the window size.
-        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(785, 0, 0, 0);
-        check_setup::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(809, 0, 0, 0);
-        check_setup::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(833, 0, 0, 0);
-        check_setup::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(857, 0, 0, 0);
-        check_setup::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(881, 0, 0, 0);
+        check_setup::<NUM_BITS_MULTIPLIER>(785, 0, 0, 0);
+        check_setup::<{ 2 * NUM_BITS_MULTIPLIER }>(809, 0, 0, 0);
+        check_setup::<{ 3 * NUM_BITS_MULTIPLIER }>(833, 0, 0, 0);
+        check_setup::<{ 4 * NUM_BITS_MULTIPLIER }>(857, 0, 0, 0);
+        check_setup::<{ 5 * NUM_BITS_MULTIPLIER }>(881, 0, 0, 0);
     }
 }

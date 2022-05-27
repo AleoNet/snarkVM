@@ -18,9 +18,7 @@ use super::*;
 
 use std::borrow::Cow;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
-    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<E: Environment, const NUM_BITS: u8> HashUncompressed for Pedersen<E, NUM_BITS> {
     type Input = Boolean<E>;
     type Output = Group<E>;
 
@@ -28,29 +26,24 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output {
         // Ensure the input is within the size bounds.
         let mut input = Cow::Borrowed(input);
-        match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
+        match input.len() <= NUM_BITS as usize {
             // Pad the input if it is under the required parameter size.
-            true => input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::constant(false)),
+            true => input.to_mut().resize(NUM_BITS as usize, Boolean::constant(false)),
             // Ensure the input size is within the parameter size.
-            false => E::halt(format!("The Pedersen hash input cannot exceed {} bits.", WINDOW_SIZE * NUM_WINDOWS)),
+            false => E::halt(format!("The Pedersen hash input cannot exceed {NUM_BITS} bits.")),
         }
 
         // Compute the sum of base_i^{input_i} for all i.
         input
-            .chunks(WINDOW_SIZE)
-            .zip_eq(&self.bases)
-            .map(|(bits, powers)| {
-                bits.iter()
-                    .zip_eq(powers)
-                    .map(|(bit, base)| Group::ternary(bit, base, &Group::zero()))
-                    .fold(Group::<E>::zero(), |acc, x| acc + x)
-            })
+            .iter()
+            .zip_eq(&self.base_window)
+            .map(|(bit, base)| Group::ternary(bit, base, &Group::zero()))
             .fold(Group::<E>::zero(), |acc, x| acc + x)
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_BITS: u8> Metrics<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>>
+    for Pedersen<E, NUM_BITS>
 {
     type Case = Vec<Mode>;
 
@@ -100,8 +93,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>>
+    for Pedersen<E, NUM_BITS>
 {
     type Case = Vec<Mode>;
 
@@ -123,18 +116,16 @@ mod tests {
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+    const NUM_BITS_MULTIPLIER: u8 = 8;
 
-    fn check_hash_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
+    fn check_hash_uncompressed<const NUM_BITS: u8>(mode: Mode) {
         // Initialize the Pedersen hash.
-        let native = NativePedersen::<<Circuit as Environment>::Affine, WINDOW_SIZE>::setup(MESSAGE);
-        let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
-        // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
+        let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..NUM_BITS).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Compute the expected hash.
             let expected = native.hash_uncompressed(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
@@ -148,12 +139,12 @@ mod tests {
                 // Check constraint counts and output mode.
                 let modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
-                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    Pedersen<Circuit, NUM_BITS>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
                     &modes
                 );
                 assert_output_mode!(
-                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    Pedersen<Circuit, NUM_BITS>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
                     &modes,
                     candidate
@@ -183,31 +174,31 @@ mod tests {
     #[test]
     fn test_hash_uncompressed_constant() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_hash_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Constant);
+        check_hash_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_hash_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_hash_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_hash_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
     }
 
     #[test]
     fn test_hash_uncompressed_public() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_hash_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Public);
+        check_hash_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_hash_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_hash_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_hash_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public);
     }
 
     #[test]
     fn test_hash_uncompressed_private() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_hash_uncompressed::<NUM_BITS_MULTIPLIER>(Mode::Private);
+        check_hash_uncompressed::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_hash_uncompressed::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_hash_uncompressed::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_hash_uncompressed::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private);
     }
 
     #[test]
