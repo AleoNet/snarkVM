@@ -10,8 +10,8 @@ edition = "2021"
 path = "../circuit"
 version = "0.7.5"
 
-[dependencies.snarkvm-console-aleo]
-path = "../console/aleo"
+[dependencies.snarkvm-console-program]
+path = "../console/program"
 version = "0.7.5"
 
 [dependencies.snarkvm-utilities]

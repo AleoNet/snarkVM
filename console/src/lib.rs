@@ -17,14 +17,17 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-#[cfg(feature = "aleo")]
-pub use snarkvm_console_aleo as aleo;
+#[cfg(feature = "account")]
+pub use snarkvm_console_account as account;
 
 #[cfg(feature = "algorithms")]
 pub use snarkvm_console_algorithms as algorithms;
 
 #[cfg(feature = "network")]
 pub use snarkvm_console_network as network;
+
+#[cfg(feature = "program")]
+pub use snarkvm_console_program as program;
 
 #[cfg(feature = "types")]
 pub use snarkvm_console_types as types;

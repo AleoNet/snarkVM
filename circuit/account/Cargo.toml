@@ -1,0 +1,37 @@
+[package]
+name = "snarkvm-circuit-account"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Account circuit library for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.console]
+package = "snarkvm-console-account"
+path = "../../console/account"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-circuit-algorithms]
+path = "../algorithms"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-network]
+path = "../network"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-types]
+path = "../types"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"
+
+[dev-dependencies.anyhow]
+version = "1.0.57"
+
+[features]
+default = ["enable_console"]
+# Use #[cfg(console)] instead.
+enable_console = ["console"]

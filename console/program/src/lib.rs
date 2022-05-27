@@ -15,26 +15,28 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
 
-pub use snarkvm_circuit_account as account;
-pub use snarkvm_circuit_account::*;
+#[macro_use]
+extern crate enum_index_derive;
 
-pub use snarkvm_circuit_algorithms as algorithms;
-pub use snarkvm_circuit_algorithms::*;
+mod merkle_tree;
+pub use merkle_tree::MerkleTree;
 
-pub use snarkvm_circuit_environment as environment;
-pub use snarkvm_circuit_environment::*;
+mod data;
+pub use data::*;
 
-pub use snarkvm_circuit_network as network;
-pub use snarkvm_circuit_network::*;
+mod record;
+pub use record::*;
 
-pub use snarkvm_circuit_program as program;
-pub use snarkvm_circuit_program::*;
+mod state;
+pub use state::*;
 
-pub use snarkvm_circuit_types as types;
-pub use snarkvm_circuit_types::*;
+pub mod traits;
+pub use traits::*;
 
-pub mod prelude {
-    pub use super::*;
-    pub use snarkvm_circuit_environment::*;
-}
+// pub mod transaction;
+// pub use transaction::*;
+
+// pub mod transition;
+// pub use transition::*;

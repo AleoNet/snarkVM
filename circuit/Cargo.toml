@@ -17,8 +17,8 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-circuit-aleo]
-path = "./aleo"
+[dependencies.snarkvm-circuit-account]
+path = "./account"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuit-algorithms]
@@ -31,6 +31,10 @@ version = "0.7.5"
 
 [dependencies.snarkvm-circuit-network]
 path = "./network"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-program]
+path = "./program"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuit-types]
