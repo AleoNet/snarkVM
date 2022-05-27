@@ -226,6 +226,22 @@ mod tests {
 
     type P = Process;
 
+
+    // Helper function to create a value definition of desired depth greater than zero.
+    fn create_random_value_definition(depth: usize) -> Value<P> {
+        match depth {
+            depth if depth == 0 => panic!("Cannot create a value definition with depth 0"),
+            depth if depth == 1 => {
+                Value::<P>::Definition(Identifier::from_str("child_1"), vec![Value::<P>::Literal(
+                    Literal::from_str("0field.private"),
+                )])
+            }
+            _ => Value::<P>::Definition(Identifier::from_str(format!("child_{}", depth).as_str()), vec![
+                create_random_value_definition(depth - 1),
+            ]),
+        }
+    }
+
     #[test]
     fn test_value_parse() {
         // Test parsing a value literal.
@@ -305,21 +321,6 @@ mod tests {
 
     #[test]
     fn test_parser_checks_num_depth() {
-        // Helper function to create a random value definition of desired depth greater than zero.
-        fn create_random_value_definition(depth: usize) -> Value<P> {
-            match depth {
-                depth if depth == 0 => panic!("Cannot create a value definition with depth 0"),
-                depth if depth == 1 => {
-                    Value::<P>::Definition(Identifier::from_str("child_1"), vec![Value::<P>::Literal(
-                        Literal::from_str("0field.private"),
-                    )])
-                }
-                _ => Value::<P>::Definition(Identifier::from_str(format!("child_{}", depth).as_str()), vec![
-                    create_random_value_definition(depth - 1),
-                ]),
-            }
-        }
-
         // Create a value definition of max depth.
         let value = create_random_value_definition(<P as Program>::NUM_DEPTH);
         let value_string = value.to_string();
@@ -329,5 +330,16 @@ mod tests {
         let value = create_random_value_definition(<P as Program>::NUM_DEPTH + 1);
         let value_string = value.to_string();
         assert!(Value::<P>::parse(&value_string).is_err());
+    }
+
+    #[test]
+    fn test_write_le_checks_num_depth() {
+        // Create a value definition of max depth.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH);
+        assert!(value.write_le(Vec::new()).is_ok());
+
+        // Create a value definition of max depth + 1.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH + 1);
+        assert!(value.write_le(Vec::new()).is_err());
     }
 }
