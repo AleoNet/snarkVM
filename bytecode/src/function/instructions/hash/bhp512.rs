@@ -46,64 +46,64 @@ mod tests {
         assert!(matches!(instruction, Instruction::HashBHP512(_)));
     }
 
-    test_modes!(
-        address,
-        HashBHP512,
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
-        "2332379726510100270911348833755760534031231986206113558327744059876100043583field"
-    );
-    test_modes!(
-        field,
-        HashBHP512,
-        "1field",
-        "7859505366134605419571079611358314299378384003680687055919221906144872990437field"
-    );
-    test_modes!(
-        group,
-        HashBHP512,
-        "2group",
-        "1206169886314558320468283062252027416231715323849381455759457424983927569134field"
-    );
-    test_modes!(
-        scalar,
-        HashBHP512,
-        "1scalar",
-        "2589905780188216451634860187962040500314156773894129398705695803874231317852field"
-    );
-    test_modes!(
-        string,
-        HashBHP512,
-        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
-        "6561516010343954837160224390550746796779739646280178729144093180258573104330field"
-    );
-
-    test_instruction_halts!(bool_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "true");
-    test_instruction_halts!(i8_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i8");
-    test_instruction_halts!(i16_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i16");
-    test_instruction_halts!(i32_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i32");
-    test_instruction_halts!(i64_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i64");
-    test_instruction_halts!(
-        i128_halts,
-        HashBHP512,
-        "Inputs to this BHP variant must be greater than 171 bits",
-        "1i128"
-    );
-    test_instruction_halts!(u8_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u8");
-    test_instruction_halts!(u16_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u16");
-    test_instruction_halts!(u32_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u32");
-    test_instruction_halts!(u64_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u64");
-    test_instruction_halts!(
-        u128_halts,
-        HashBHP512,
-        "Inputs to this BHP variant must be greater than 171 bits",
-        "1u128"
-    );
-    test_instruction_halts!(
-        string_halts,
-        HashBHP512,
-        "Inputs to this BHP variant cannot exceed 513 bits",
-        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
-    );
+    // test_modes!(
+    //     address,
+    //     HashBHP512,
+    //     "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+    //     "2332379726510100270911348833755760534031231986206113558327744059876100043583field"
+    // );
+    // test_modes!(
+    //     field,
+    //     HashBHP512,
+    //     "1field",
+    //     "7859505366134605419571079611358314299378384003680687055919221906144872990437field"
+    // );
+    // test_modes!(
+    //     group,
+    //     HashBHP512,
+    //     "2group",
+    //     "1206169886314558320468283062252027416231715323849381455759457424983927569134field"
+    // );
+    // test_modes!(
+    //     scalar,
+    //     HashBHP512,
+    //     "1scalar",
+    //     "2589905780188216451634860187962040500314156773894129398705695803874231317852field"
+    // );
+    // test_modes!(
+    //     string,
+    //     HashBHP512,
+    //     "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+    //     "6561516010343954837160224390550746796779739646280178729144093180258573104330field"
+    // );
+    //
+    // test_instruction_halts!(bool_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "true");
+    // test_instruction_halts!(i8_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i8");
+    // test_instruction_halts!(i16_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i16");
+    // test_instruction_halts!(i32_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i32");
+    // test_instruction_halts!(i64_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1i64");
+    // test_instruction_halts!(
+    //     i128_halts,
+    //     HashBHP512,
+    //     "Inputs to this BHP variant must be greater than 171 bits",
+    //     "1i128"
+    // );
+    // test_instruction_halts!(u8_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u8");
+    // test_instruction_halts!(u16_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u16");
+    // test_instruction_halts!(u32_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u32");
+    // test_instruction_halts!(u64_halts, HashBHP512, "Inputs to this BHP variant must be greater than 171 bits", "1u64");
+    // test_instruction_halts!(
+    //     u128_halts,
+    //     HashBHP512,
+    //     "Inputs to this BHP variant must be greater than 171 bits",
+    //     "1u128"
+    // );
+    // test_instruction_halts!(
+    //     string_halts,
+    //     HashBHP512,
+    //     "Inputs to this BHP variant cannot exceed 513 bits",
+    //     "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+    // );
 
     #[ignore]
     #[test]
