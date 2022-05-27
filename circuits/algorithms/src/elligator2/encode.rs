@@ -116,7 +116,7 @@ mod tests {
             let (expected, _sign) = snarkvm_console_algorithms::Elligator2::<
                 <Circuit as Environment>::Affine,
                 <Circuit as Environment>::AffineParameters,
-            >::encode(given)
+            >::encode(&given)
             .unwrap();
 
             // Initialize the input field element.

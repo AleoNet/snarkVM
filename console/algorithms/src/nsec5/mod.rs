@@ -14,18 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod decode;
-mod encode;
+mod prove;
+mod verify;
 
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
-use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
+use crate::{Elligator2, HashMany, HashToScalar, Poseidon4};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
+use snarkvm_fields::PrimeField;
 
-use anyhow::{anyhow, bail, ensure, Result};
-use core::{cmp, marker::PhantomData, ops::Neg};
+use anyhow::{bail, Result};
+use core::marker::PhantomData;
+use itertools::Itertools;
 
 type BaseField<G> = <G as AffineCurve>::BaseField;
+type ScalarField<G> = <G as AffineCurve>::ScalarField;
 
-pub struct Elligator2<
+pub struct NSEC5<
     G: AffineCurve<Coordinates = (BaseField<G>, BaseField<G>)>,
     P: MontgomeryParameters<BaseField = BaseField<G>> + TwistedEdwardsParameters<BaseField = BaseField<G>>,
->(PhantomData<(G, P)>);
+> where
+    <G as AffineCurve>::BaseField: PrimeField,
+{
+    /// The output of the VRF.
+    output: ScalarField<G>,
+    /// The proof for the VRF output: `(gamma, challenge, response)`.
+    proof: (G, ScalarField<G>, ScalarField<G>),
+    /// Phantom data.
+    _phantom: PhantomData<P>,
+}
