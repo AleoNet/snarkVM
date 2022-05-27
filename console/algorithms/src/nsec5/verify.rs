@@ -70,8 +70,6 @@ where
             };
 
         // Return whether the proof is valid.
-        println!("{}: {challenge} {candidate_challenge}", challenge == candidate_challenge);
-        println!("{}", self.output == candidate_output);
         challenge == candidate_challenge && self.output == candidate_output
     }
 }
