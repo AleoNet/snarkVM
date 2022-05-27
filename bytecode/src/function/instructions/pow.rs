@@ -19,7 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult, Pow as PowCircuit, PowChecked};
+use snarkvm_circuit::{Literal, Parser, ParserResult, Pow as PowCircuit, PowChecked};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

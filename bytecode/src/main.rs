@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_bytecode::{Identifier, Process, Program, Value};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 
 pub struct HelloWorld;
 

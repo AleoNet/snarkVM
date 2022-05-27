@@ -20,7 +20,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 
 use indexmap::IndexMap;
 use std::{cell::RefCell, rc::Rc};

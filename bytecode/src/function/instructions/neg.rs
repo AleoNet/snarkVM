@@ -20,7 +20,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{count, Count, Field, Group, Literal, Metrics, Parser, ParserResult, I128, I16, I32, I64, I8};
+use snarkvm_circuit::{count, Count, Field, Group, Literal, Metrics, Parser, ParserResult, I128, I16, I32, I64, I8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

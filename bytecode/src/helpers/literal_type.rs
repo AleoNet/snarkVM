@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Program;
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},

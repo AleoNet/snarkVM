@@ -20,7 +20,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{
+use snarkvm_circuit::{
     count,
     Boolean,
     Count,

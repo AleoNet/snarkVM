@@ -21,7 +21,7 @@ use crate::{
     Value,
 };
 
-use snarkvm_circuits::{
+use snarkvm_circuit::{
     count,
     Count,
     Field,

@@ -36,7 +36,7 @@ use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Program, Register, Registers},
     Value,
 };
-use snarkvm_circuits::{Aleo, Literal, Parser, ParserResult, ToBits};
+use snarkvm_circuit::{Aleo, Literal, Parser, ParserResult, ToBits};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};

@@ -1,0 +1,27 @@
+[package]
+name = "snarkvm-circuit-types-integers"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Integer circuit for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-circuit-environment]
+path = "../../environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-types-boolean]
+path = "../boolean"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-types-field]
+path = "../field"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-utilities]
+path = "../../../utilities"
+version = "0.7.5"
+default-features = false
+
+[dev-dependencies.paste]
+version = "1"

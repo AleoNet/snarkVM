@@ -19,7 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Inverse as InverseCircuit, Literal, Parser, ParserResult};
+use snarkvm_circuit::{Inverse as InverseCircuit, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

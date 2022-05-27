@@ -16,7 +16,7 @@
 
 use super::*;
 use crate::{function::Register, Program};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

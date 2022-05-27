@@ -21,20 +21,20 @@ edition = "2021"
 members = [
   "algorithms",
   "bytecode",
-  "circuits",
-  "circuits/aleo",
-  "circuits/algorithms",
-  "circuits/environment",
-  "circuits/environment/witness",
-  "circuits/network",
-  "circuits/types",
-  "circuits/types/address",
-  "circuits/types/boolean",
-  "circuits/types/field",
-  "circuits/types/integers",
-  "circuits/types/group",
-  "circuits/types/scalar",
-  "circuits/types/string",
+  "circuit",
+  "circuit/aleo",
+  "circuit/algorithms",
+  "circuit/environment",
+  "circuit/environment/witness",
+  "circuit/network",
+  "circuit/types",
+  "circuit/types/address",
+  "circuit/types/boolean",
+  "circuit/types/field",
+  "circuit/types/integers",
+  "circuit/types/group",
+  "circuit/types/scalar",
+  "circuit/types/string",
   "console",
   "console/aleo",
   "console/algorithms",
@@ -68,12 +68,12 @@ default = ["core"]
 # If you need more granular control of members and/or member features,
 # please import the requisite crates directly and enable features as needed.
 core = ["dpc", "utilities"]
-full = ["algorithms", "bytecode", "circuits", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+full = ["algorithms", "bytecode", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
 bytecode = ["snarkvm-bytecode"]
-circuits = ["snarkvm-circuits"]
+circuit = ["snarkvm-circuit"]
 console = ["snarkvm-console"]
 curves = ["snarkvm-curves"]
 dpc = ["snarkvm-dpc"]
@@ -103,8 +103,8 @@ path = "./bytecode"
 version = "0.7.5"
 optional = true
 
-[dependencies.snarkvm-circuits]
-path = "./circuits"
+[dependencies.snarkvm-circuit]
+path = "./circuit"
 version = "0.7.5"
 optional = true
 

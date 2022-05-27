@@ -19,7 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{
+use snarkvm_circuit::{
     Boolean,
     Field,
     Group,

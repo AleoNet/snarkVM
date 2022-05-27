@@ -28,7 +28,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Aleo, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits, ToField};
+use snarkvm_circuit::{Aleo, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits, ToField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};

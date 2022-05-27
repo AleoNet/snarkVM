@@ -1,0 +1,41 @@
+[package]
+name = "snarkvm-circuit-network"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Network circuit library for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.console]
+package = "snarkvm-console-network"
+path = "../../console/network"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-circuit-algorithms]
+path = "../algorithms"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-types]
+path = "../types"
+version = "0.7.5"
+
+[dependencies.snarkvm-console-algorithms]
+path = "../../console/algorithms"
+version = "0.7.5"
+
+[dependencies.snarkvm-curves]
+path = "../../curves"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-fields]
+path = "../../fields"
+version = "0.7.5"
+default-features = false
+
+[features]
+default = ["enable_console"]
+
+# Use #[cfg(console)] instead.
+enable_console = ["console"]

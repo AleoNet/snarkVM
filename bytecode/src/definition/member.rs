@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Annotation, Identifier, Program, Sanitizer};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

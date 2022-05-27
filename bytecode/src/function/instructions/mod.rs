@@ -127,7 +127,7 @@ use crate::{
     Program,
     Sanitizer,
 };
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuit::{Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;

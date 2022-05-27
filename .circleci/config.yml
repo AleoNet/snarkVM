@@ -152,135 +152,135 @@ jobs:
           workspace_member: bytecode
           cache_key: snarkvm-bytecode-cache
 
-  circuits:
+  circuit:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits
-          cache_key: snarkvm-circuits-cache
+          workspace_member: circuit
+          cache_key: snarkvm-circuit-cache
 
-  circuits-aleo:
+  circuit-aleo:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/aleo
-          cache_key: snarkvm-circuits-aleo-cache
+          workspace_member: circuit/aleo
+          cache_key: snarkvm-circuit-aleo-cache
 
   # This checks that no `console` structs are used in core circuit logic.
-  circuits-aleo-safety:
+  circuit-aleo-safety:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/aleo
+          workspace_member: circuit/aleo
           flags: --no-default-features
-          cache_key: snarkvm-circuits-aleo-safety-cache
+          cache_key: snarkvm-circuit-aleo-safety-cache
 
-  circuits-algorithms:
+  circuit-algorithms:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/algorithms
-          cache_key: snarkvm-circuits-algorithms-cache
+          workspace_member: circuit/algorithms
+          cache_key: snarkvm-circuit-algorithms-cache
 
-  circuits-environment:
+  circuit-environment:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/environment
-          cache_key: snarkvm-circuits-environment-cache
+          workspace_member: circuit/environment
+          cache_key: snarkvm-circuit-environment-cache
 
-  circuits-network:
+  circuit-network:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/network
-          cache_key: snarkvm-circuits-network-cache
+          workspace_member: circuit/network
+          cache_key: snarkvm-circuit-network-cache
 
-  circuits-types:
+  circuit-types:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types
-          cache_key: snarkvm-circuits-types-cache
+          workspace_member: circuit/types
+          cache_key: snarkvm-circuit-types-cache
 
-  circuits-types-address:
+  circuit-types-address:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types/address
-          cache_key: snarkvm-circuits-types-address-cache
+          workspace_member: circuit/types/address
+          cache_key: snarkvm-circuit-types-address-cache
 
-  circuits-types-boolean:
+  circuit-types-boolean:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types/boolean
-          cache_key: snarkvm-circuits-types-boolean-cache
+          workspace_member: circuit/types/boolean
+          cache_key: snarkvm-circuit-types-boolean-cache
 
-  circuits-types-field:
+  circuit-types-field:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types/field
-          cache_key: snarkvm-circuits-types-field-cache
+          workspace_member: circuit/types/field
+          cache_key: snarkvm-circuit-types-field-cache
 
-  circuits-types-group:
+  circuit-types-group:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types/group
-          cache_key: snarkvm-circuits-types-group-cache
+          workspace_member: circuit/types/group
+          cache_key: snarkvm-circuit-types-group-cache
 
-  circuits-types-integers:
+  circuit-types-integers:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     parallelism: 20 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
       - run_parallel:
-          workspace_member: circuits/types/integers
-          cache_key: snarkvm-circuits-types-integers-cache
+          workspace_member: circuit/types/integers
+          cache_key: snarkvm-circuit-types-integers-cache
           flags: -- --ignored
 
-  circuits-types-scalar:
+  circuit-types-scalar:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types/scalar
-          cache_key: snarkvm-circuits-types-scalar-cache
+          workspace_member: circuit/types/scalar
+          cache_key: snarkvm-circuit-types-scalar-cache
 
-  circuits-types-string:
+  circuit-types-string:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/types/string
-          cache_key: snarkvm-circuits-types-string-cache
+          workspace_member: circuit/types/string
+          cache_key: snarkvm-circuit-types-string-cache
 
   console:
     docker:
@@ -474,20 +474,20 @@ workflows:
       - integration
       - algorithms
       - bytecode
-      - circuits
-      - circuits-aleo
-      - circuits-aleo-safety
-      - circuits-algorithms
-      - circuits-environment
-      - circuits-network
-      - circuits-types
-      - circuits-types-address
-      - circuits-types-boolean
-      - circuits-types-field
-      - circuits-types-group
-      - circuits-types-integers
-      - circuits-types-scalar
-      - circuits-types-string
+      - circuit
+      - circuit-aleo
+      - circuit-aleo-safety
+      - circuit-algorithms
+      - circuit-environment
+      - circuit-network
+      - circuit-types
+      - circuit-types-address
+      - circuit-types-boolean
+      - circuit-types-field
+      - circuit-types-group
+      - circuit-types-integers
+      - circuit-types-scalar
+      - circuit-types-string
       - console
       - console-aleo
       - console-algorithms
@@ -514,7 +514,7 @@ workflows:
                 .integration,
                 algorithms,
                 bytecode,
-                circuits,
+                circuit,
                 console,
                 curves,
                 dpc,

@@ -33,7 +33,7 @@ mod tests {
         Process,
         Value,
     };
-    use snarkvm_circuits::Parser;
+    use snarkvm_circuit::Parser;
 
     type P = Process;
 

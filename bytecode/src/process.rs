@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Annotation, Definition, Function, Identifier, Program, Sanitizer};
-use snarkvm_circuits::{prelude::*, AleoV0};
+use snarkvm_circuit::{prelude::*, AleoV0};
 
 use indexmap::IndexMap;
 use std::cell::RefCell;

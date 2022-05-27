@@ -32,7 +32,7 @@ mod registers;
 use registers::*;
 
 use crate::{Annotation, Identifier, Program, Sanitizer, Value};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use indexmap::IndexSet;
