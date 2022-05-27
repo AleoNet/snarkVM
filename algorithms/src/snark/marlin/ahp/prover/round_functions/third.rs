@@ -204,7 +204,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .interpolate_with_pc(ifft_precomputation);
         end_timer!(f_poly_time);
         let g = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
-        let mut h = &a_poly
+        let h = &a_poly
             - &{
                 let mut multiplier = PolyMultiplier::new();
                 multiplier.add_polynomial_ref(&b_poly, "b");
@@ -214,17 +214,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             };
         // Let K_max = largest_non_zero_domain;
         // Let K = non_zero_domain;
-        // Let s := K_max.selector_polynomial(K);
+        // Let s := K_max.selector_polynomial(K) = (v_K_max / v_K) * (K.size() / K_max.size());
         // Let v_K_max := K_max.vanishing_polynomial();
         // Let v_K := K.vanishing_polynomial();
 
         // Later on, we multiply `h` by s, and divide by v_K_max.
-        // However, s := (v_K_max / v_K) * (v_K.size() / v_K_max.size());
-        // Therefore, h * s / v_K_max = h / v_K * (v_K.size() / v_K_max.size());
+        // Substituting in s, we get that h * s / v_K_max = h / v_K * (K.size() / K_max.size());
         // That's what we're computing here.
-        let result = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
-        assert!(result.1.is_zero());
-        h = result.0;
+        let (mut h, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
+        assert!(remainder.is_zero());
         let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
         cfg_iter_mut!(h.coeffs).for_each(|c| *c *= multiplier);
 
