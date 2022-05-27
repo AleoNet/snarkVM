@@ -40,7 +40,8 @@ impl<N: Network> ToBytes for Signature<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PrivateKey, Testnet3};
+    use crate::PrivateKey;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;

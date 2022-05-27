@@ -19,7 +19,8 @@ mod size_in_bits;
 mod to_bits;
 mod variant;
 
-use crate::{Address, Network};
+use crate::Address;
+use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,

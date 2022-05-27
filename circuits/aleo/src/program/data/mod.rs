@@ -36,7 +36,8 @@ mod decrypt;
 mod encrypt;
 // mod to_data_id;
 
-use crate::{Aleo, ViewKey};
+use crate::ViewKey;
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Group, Scalar};
 
 pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {

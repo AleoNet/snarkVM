@@ -40,7 +40,7 @@ impl<A: Aleo> ComputeKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{account::helpers::generate_account, AleoV0 as Circuit};
+    use crate::{account::helpers::generate_account, Circuit};
 
     use anyhow::Result;
 

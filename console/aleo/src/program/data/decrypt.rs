@@ -52,7 +52,8 @@ impl<N: Network> Data<N, Ciphertext<N>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Literal, PrivateKey, Testnet3};
+    use crate::{Literal, PrivateKey};
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use core::str::FromStr;

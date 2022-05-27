@@ -19,7 +19,8 @@ mod encrypt;
 mod num_randomizers;
 // mod to_bits;
 
-use crate::{Ciphertext, FromFields, Network, Plaintext, ToFields, Visibility};
+use crate::{Ciphertext, FromFields, Plaintext, ToFields, Visibility};
+use snarkvm_console_network::Network;
 use snarkvm_utilities::ToBits;
 
 use anyhow::{bail, Result};

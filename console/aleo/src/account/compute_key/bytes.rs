@@ -39,7 +39,7 @@ impl<N: Network> ToBytes for ComputeKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;

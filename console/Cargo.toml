@@ -16,13 +16,19 @@ path = "./algorithms"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-console-network]
+path = "./network"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-console-types]
 path = "./types"
 version = "0.7.5"
 optional = true
 
 [features]
-default = [ "aleo", "algorithms", "types" ]
-aleo = [ "snarkvm-console-aleo" ]
+default = [ "aleo", "algorithms", "network", "types" ]
+aleo = [ "network", "snarkvm-console-aleo" ]
 algorithms = [ "snarkvm-console-algorithms" ]
+network = [ "snarkvm-console-network" ]
 types = [ "snarkvm-console-types" ]

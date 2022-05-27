@@ -19,7 +19,8 @@ mod serialize;
 mod string;
 mod try_from;
 
-use crate::{ComputeKey, Network, PrivateKey};
+use crate::{ComputeKey, PrivateKey};
+use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
@@ -50,7 +51,7 @@ impl<N: Network> Deref for ViewKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;

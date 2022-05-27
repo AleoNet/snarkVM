@@ -19,7 +19,8 @@ mod serialize;
 mod string;
 mod try_from;
 
-use crate::{ComputeKey, Network, PrivateKey, ViewKey};
+use crate::{ComputeKey, PrivateKey, ViewKey};
+use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
@@ -58,7 +59,7 @@ impl<N: Network> Deref for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;

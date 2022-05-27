@@ -108,7 +108,7 @@ impl<N: Network> Signature<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;

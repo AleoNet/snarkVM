@@ -20,7 +20,8 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Aleo, Visibility};
+use crate::Visibility;
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field};
 
 use core::ops::Deref;

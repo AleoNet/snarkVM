@@ -19,7 +19,7 @@ mod to_address;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Aleo;
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Scalar};
 
 use core::ops::Deref;
@@ -67,7 +67,7 @@ impl<A: Aleo> Deref for ViewKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::AleoV0 as Circuit;
+    use crate::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1000;

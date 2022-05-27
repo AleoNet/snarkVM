@@ -20,7 +20,7 @@ mod to_bits;
 mod to_fields;
 mod variant;
 
-use crate::Aleo;
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::prelude::*;
 
 /// The literal enum represents all supported circuit types in snarkVM.

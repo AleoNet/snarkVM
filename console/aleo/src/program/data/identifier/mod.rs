@@ -19,7 +19,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::Network;
+use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,

@@ -39,7 +39,7 @@ impl<'de, N: Network> Deserialize<'de> for Identifier<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_rng, Rng};
 
     use anyhow::Result;

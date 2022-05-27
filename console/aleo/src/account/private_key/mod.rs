@@ -19,8 +19,8 @@ mod serialize;
 mod string;
 mod try_from;
 
-use crate::Network;
 use snarkvm_console_algorithms::{Poseidon2, PRF};
+use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,

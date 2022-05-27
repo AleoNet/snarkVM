@@ -19,7 +19,7 @@ mod size_in_bits;
 mod to_bits;
 mod to_field;
 
-use crate::Aleo;
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U8};
 use snarkvm_utilities::{error, FromBits as FB, ToBits as TB};
 
@@ -167,7 +167,7 @@ impl<A: Aleo> fmt::Display for Identifier<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::AleoV0 as Circuit;
+    use crate::Circuit;
 
     use anyhow::Result;
 

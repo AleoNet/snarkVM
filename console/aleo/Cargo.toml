@@ -10,14 +10,14 @@ edition = "2021"
 path = "../algorithms"
 version = "0.7.5"
 
+[dependencies.snarkvm-console-network]
+path = "../network"
+version = "0.7.5"
+
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"
 default-features = false
-
-[dependencies.snarkvm-circuits-environment]
-path = "../../circuits/environment"
-version = "0.7.5"
 
 [dependencies.snarkvm-fields]
 path = "../../fields"
@@ -45,9 +45,6 @@ version = "0.2"
 
 [dependencies.itertools]
 version = "0.10.1"
-
-#[dependencies.lazy_static]
-#version = "1.4"
 
 [dependencies.once_cell]
 version = "1.10.0"

@@ -43,7 +43,8 @@ impl<A: Aleo> Data<A, Plaintext<A>> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{account::helpers::generate_account, AleoV0 as Circuit, Field, Literal};
+    use crate::{account::helpers::generate_account, Circuit, Literal};
+    use snarkvm_circuits_types::Field;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;

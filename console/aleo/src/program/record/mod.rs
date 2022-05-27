@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{program::Ciphertext, Address, Data, Network, State, ViewKey};
+use crate::{program::Ciphertext, Address, Data, State, ViewKey};
+use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{ToBits, ToBytes};
 

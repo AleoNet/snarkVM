@@ -19,7 +19,8 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Aleo, ComputeKey};
+use crate::ComputeKey;
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Scalar};
 
 pub struct Signature<A: Aleo> {
@@ -63,7 +64,7 @@ impl<A: Aleo> Eject for Signature<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::{account::helpers::generate_account, AleoV0 as Circuit};
+    use crate::{account::helpers::generate_account, Circuit};
     use snarkvm_utilities::{test_crypto_rng, ToBits as T, UniformRand};
 
     use anyhow::Result;

@@ -17,7 +17,8 @@
 mod bytes;
 mod sign;
 
-use crate::{Address, ComputeKey, Network, PrivateKey};
+use crate::{Address, ComputeKey, PrivateKey};
+use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{

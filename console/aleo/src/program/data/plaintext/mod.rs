@@ -20,7 +20,8 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{FromFields, Identifier, Literal, Network, ToFields, Visibility};
+use crate::{FromFields, Identifier, Literal, ToFields, Visibility};
+use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBits, ToBits};
 
@@ -52,7 +53,7 @@ impl<N: Network> From<&Literal<N>> for Plaintext<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::str::FromStr;

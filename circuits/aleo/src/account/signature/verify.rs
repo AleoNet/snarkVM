@@ -60,7 +60,7 @@ impl<A: Aleo> Signature<A> {
 #[cfg(all(test, console))]
 pub(crate) mod tests {
     use super::*;
-    use crate::{account::helpers::generate_account, AleoV0 as Circuit};
+    use crate::{account::helpers::generate_account, Circuit};
     use snarkvm_circuits_types::Group;
     use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 

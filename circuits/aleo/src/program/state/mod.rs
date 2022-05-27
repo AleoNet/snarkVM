@@ -21,7 +21,8 @@ mod decrypt;
 mod encrypt;
 mod to_commitment;
 
-use crate::{Aleo, Record, ViewKey};
+use crate::{Record, ViewKey};
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Group, Scalar, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.

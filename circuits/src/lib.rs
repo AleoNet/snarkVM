@@ -22,11 +22,11 @@ pub use snarkvm_circuits_aleo::*;
 pub use snarkvm_circuits_algorithms as algorithms;
 pub use snarkvm_circuits_algorithms::*;
 
-pub use snarkvm_circuits_edge as edge;
-pub use snarkvm_circuits_edge::*;
-
 pub use snarkvm_circuits_environment as environment;
 pub use snarkvm_circuits_environment::*;
+
+pub use snarkvm_circuits_network as network;
+pub use snarkvm_circuits_network::*;
 
 pub use snarkvm_circuits_types as types;
 pub use snarkvm_circuits_types::*;

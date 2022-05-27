@@ -25,12 +25,12 @@ version = "0.7.5"
 path = "./algorithms"
 version = "0.7.5"
 
-[dependencies.snarkvm-circuits-edge]
-path = "./edge"
-version = "0.7.5"
-
 [dependencies.snarkvm-circuits-environment]
 path = "./environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-network]
+path = "./network"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuits-types]

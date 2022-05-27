@@ -22,3 +22,9 @@ pub use snarkvm_console_aleo as aleo;
 
 #[cfg(feature = "algorithms")]
 pub use snarkvm_console_algorithms as algorithms;
+
+#[cfg(feature = "network")]
+pub use snarkvm_console_network as network;
+
+#[cfg(feature = "types")]
+pub use snarkvm_console_types as types;

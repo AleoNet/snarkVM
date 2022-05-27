@@ -32,7 +32,8 @@ pub use plaintext::Plaintext;
 mod decrypt;
 mod encrypt;
 
-use crate::{Address, FromFields, Network, ToFields, ViewKey};
+use crate::{Address, FromFields, ToFields, ViewKey};
+use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{FromBits, ToBits};
 

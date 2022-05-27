@@ -28,7 +28,7 @@ pub use view_key::*;
 
 #[cfg(all(test, console))]
 pub(crate) mod helpers {
-    use crate::{Aleo, AleoV0};
+    use snarkvm_circuits_network::{Aleo, AleoV0};
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;

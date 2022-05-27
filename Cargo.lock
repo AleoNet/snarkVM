@@ -2052,8 +2052,8 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-circuits-aleo",
  "snarkvm-circuits-algorithms",
- "snarkvm-circuits-edge",
  "snarkvm-circuits-environment",
+ "snarkvm-circuits-network",
  "snarkvm-circuits-types",
 ]
 
@@ -2064,6 +2064,7 @@ dependencies = [
  "anyhow",
  "nom",
  "snarkvm-circuits-algorithms",
+ "snarkvm-circuits-network",
  "snarkvm-circuits-types",
  "snarkvm-console-aleo",
  "snarkvm-console-algorithms",
@@ -2084,14 +2085,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-circuits-edge"
-version = "0.7.5"
-dependencies = [
- "nom",
- "snarkvm-circuits-environment",
 ]
 
 [[package]]
@@ -2118,6 +2111,18 @@ dependencies = [
 [[package]]
 name = "snarkvm-circuits-environment-witness"
 version = "0.7.5"
+
+[[package]]
+name = "snarkvm-circuits-network"
+version = "0.7.5"
+dependencies = [
+ "snarkvm-circuits-algorithms",
+ "snarkvm-circuits-types",
+ "snarkvm-console-algorithms",
+ "snarkvm-console-network",
+ "snarkvm-curves",
+ "snarkvm-fields",
+]
 
 [[package]]
 name = "snarkvm-circuits-types"
@@ -2215,6 +2220,7 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-console-aleo",
  "snarkvm-console-algorithms",
+ "snarkvm-console-network",
  "snarkvm-console-types",
 ]
 
@@ -2234,8 +2240,8 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "snarkvm-circuits-environment",
  "snarkvm-console-algorithms",
+ "snarkvm-console-network",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
@@ -2253,6 +2259,18 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-network"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "snarkvm-console-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",

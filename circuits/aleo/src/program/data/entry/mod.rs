@@ -19,7 +19,8 @@ mod encrypt;
 mod num_randomizers;
 mod to_bits;
 
-use crate::{Aleo, Ciphertext, Plaintext, Visibility};
+use crate::{Ciphertext, Plaintext, Visibility};
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field};
 
 /// An entry stored in program data.

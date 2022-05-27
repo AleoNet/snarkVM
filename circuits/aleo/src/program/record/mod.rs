@@ -22,7 +22,8 @@ mod encrypt;
 mod is_owner;
 mod to_id;
 
-use crate::{Aleo, State, ViewKey};
+use crate::{State, ViewKey};
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.

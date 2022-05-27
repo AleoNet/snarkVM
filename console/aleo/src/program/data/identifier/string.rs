@@ -62,7 +62,7 @@ impl<N: Network> fmt::Display for Identifier<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Testnet3;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_rng, Rng};
 
     use rand::distributions::Alphanumeric;

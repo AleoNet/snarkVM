@@ -69,7 +69,7 @@ impl<A: Aleo> Literal<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::AleoV0 as Circuit;
+    use crate::Circuit;
     use snarkvm_utilities::{rand::Rng, test_rng, UniformRand};
 
     const ITERATIONS: u32 = 1000;

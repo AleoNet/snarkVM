@@ -190,15 +190,6 @@ jobs:
           workspace_member: circuits/algorithms
           cache_key: snarkvm-circuits-algorithms-cache
 
-  circuits-edge:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuits/edge
-          cache_key: snarkvm-circuits-edge-cache
-
   circuits-environment:
     docker:
       - image: cimg/rust:1.61
@@ -207,6 +198,15 @@ jobs:
       - run_serial:
           workspace_member: circuits/environment
           cache_key: snarkvm-circuits-environment-cache
+
+  circuits-network:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/network
+          cache_key: snarkvm-circuits-network-cache
 
   circuits-types:
     docker:
@@ -308,6 +308,15 @@ jobs:
       - run_serial:
           workspace_member: console/algorithms
           cache_key: snarkvm-console-algorithms-cache
+
+  console-network:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/network
+          cache_key: snarkvm-console-network-cache
 
   console-types:
     docker:
@@ -469,8 +478,8 @@ workflows:
       - circuits-aleo
       - circuits-aleo-safety
       - circuits-algorithms
-      - circuits-edge
       - circuits-environment
+      - circuits-network
       - circuits-types
       - circuits-types-address
       - circuits-types-boolean
@@ -482,6 +491,7 @@ workflows:
       - console
       - console-aleo
       - console-algorithms
+      - console-network
       - console-types
       - curves
       - dpc

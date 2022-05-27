@@ -1,0 +1,35 @@
+[package]
+name = "snarkvm-console-network"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Network console library for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-console-algorithms]
+path = "../algorithms"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-curves]
+path = "../../curves"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-fields]
+path = "../../fields"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"
+
+[dependencies.anyhow]
+version = "1.0.57"
+
+[dependencies.itertools]
+version = "0.10.1"
+
+#[dependencies.lazy_static]
+#version = "1.4"

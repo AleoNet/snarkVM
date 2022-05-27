@@ -50,7 +50,8 @@ impl<N: Network> fmt::Display for ViewKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{PrivateKey, Testnet3};
+    use crate::PrivateKey;
+    use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;

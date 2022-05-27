@@ -18,7 +18,8 @@ mod bytes;
 mod serialize;
 mod try_from;
 
-use crate::{Network, PrivateKey};
+use crate::PrivateKey;
+use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{

@@ -20,7 +20,8 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Aleo, Identifier, Literal, Visibility};
+use crate::{Identifier, Literal, Visibility};
+use snarkvm_circuits_network::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, U16, U8};
 
 #[derive(Clone)]
@@ -76,7 +77,7 @@ impl<A: Aleo> From<&Literal<A>> for Plaintext<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::AleoV0 as Circuit;
+    use crate::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use anyhow::Result;

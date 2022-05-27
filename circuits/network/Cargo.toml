@@ -1,23 +1,19 @@
 [package]
-name = "snarkvm-circuits-aleo"
+name = "snarkvm-circuits-network"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Core circuits library for a decentralized virtual machine"
+description = "Network circuits library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
 [dependencies.console]
-package = "snarkvm-console-aleo"
-path = "../../console/aleo"
+package = "snarkvm-console-network"
+path = "../../console/network"
 version = "0.7.5"
 optional = true
 
 [dependencies.snarkvm-circuits-algorithms]
 path = "../algorithms"
-version = "0.7.5"
-
-[dependencies.snarkvm-circuits-network]
-path = "../network"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuits-types]
@@ -37,16 +33,6 @@ default-features = false
 path = "../../fields"
 version = "0.7.5"
 default-features = false
-
-[dependencies.snarkvm-utilities]
-path = "../../utilities"
-version = "0.7.5"
-
-[dependencies.nom]
-version = "7.1"
-
-[dev-dependencies.anyhow]
-version = "1.0.57"
 
 [features]
 default = ["enable_console"]

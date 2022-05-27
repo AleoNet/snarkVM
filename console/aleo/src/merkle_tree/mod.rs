@@ -23,8 +23,8 @@ pub use path::*;
 #[cfg(test)]
 mod tests;
 
-use crate::Network;
 use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
+use snarkvm_console_network::Network;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ToBits};
 
