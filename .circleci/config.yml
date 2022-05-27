@@ -171,7 +171,7 @@ jobs:
           cache_key: snarkvm-circuit-aleo-cache
 
   # This checks that no `console` structs are used in core circuit logic.
-  circuit-aleo-safety:
+  circuit-aleo-noconsole:
     docker:
       - image: cimg/rust:1.61
     resource_class: xlarge
@@ -179,7 +179,7 @@ jobs:
       - run_serial:
           workspace_member: circuit/aleo
           flags: --no-default-features
-          cache_key: snarkvm-circuit-aleo-safety-cache
+          cache_key: snarkvm-circuit-aleo-noconsole-cache
 
   circuit-algorithms:
     docker:
@@ -476,7 +476,7 @@ workflows:
       - bytecode
       - circuit
       - circuit-aleo
-      - circuit-aleo-safety
+      - circuit-aleo-noconsole
       - circuit-algorithms
       - circuit-environment
       - circuit-network
