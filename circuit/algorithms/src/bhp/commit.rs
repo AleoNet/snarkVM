@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_commit_constant() {
-        check_commit::<32, 48>(Mode::Constant, 6879, 0, 0, 0);
+        check_commit::<32, 48>(Mode::Constant, 6887, 0, 0, 0);
     }
 
     #[test]
