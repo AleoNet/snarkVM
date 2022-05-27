@@ -19,7 +19,7 @@ use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
-use nom::multi::separated_list1;
+use nom::{combinator::fail, multi::separated_list1};
 use std::io::{Read, Result as IoResult, Write};
 
 /// A value contains the underlying literal(s) in memory.
@@ -75,45 +75,57 @@ impl<P: Program> Parser for Value<P> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        /// Parses a value definition as `name { member_0, member_1, ..., member_n }`.
-        fn parse_definition<P: Program>(string: &str) -> ParserResult<Value<P>> {
-            /// Parses a sanitized member.
-            fn parse_sanitized_member<P: Program>(string: &str) -> ParserResult<Value<P>> {
-                // Parse the whitespace and comments from the string.
-                let (string, _) = Sanitizer::parse(string)?;
-                // Parse the annotation from the string.
-                Value::parse(string)
-            }
+        /// Helper function to parse a value.
+        /// The parameter `depth` is used to track the current recursive depth of a value definition.
+        fn parse_value<'a, P: Program>(string: &'a str, depth: usize) -> ParserResult<Value<P>> {
+            match depth <= P::NUM_DEPTH {
+                false => fail(string),
+                true => {
+                    /// Parses a value definition as `name { member_0, member_1, ..., member_n }`.
+                    fn parse_definition<'a, P: Program>(string: &'a str, depth: usize) -> ParserResult<Value<P>> {
+                        /// Parses a sanitized member.
+                        fn parse_sanitized_member<P: Program>(string: &str, depth: usize) -> ParserResult<Value<P>> {
+                            // Parse the whitespace and comments from the string.
+                            let (string, _) = Sanitizer::parse(string)?;
+                            // Increment the depth and parse the annotation from the string.
+                            parse_value(string, depth + 1)
+                        }
 
-            // Parse the name from the string.
-            let (string, name) = Identifier::parse(string)?;
-            // Parse the " {" from the string.
-            let (string, _) = tag(" {")(string)?;
-            // Parse the members.
-            let (string, members) =
-                map_res(separated_list1(tag(","), parse_sanitized_member), |members: Vec<Value<P>>| {
-                    // Ensure the number of members is within `P::NUM_DEPTH`.
-                    if members.len() <= P::NUM_DEPTH {
-                        Ok(members)
-                    } else {
-                        Err(error(format!("Detected a value with too many members ({})", members.len())))
+                        // Parse the name from the string.
+                        let (string, name) = Identifier::parse(string)?;
+                        // Parse the " {" from the string.
+                        let (string, _) = tag(" {")(string)?;
+                        // Parse the members.
+                        let (string, members) = map_res(
+                            separated_list1(tag(","), |string: &'a str| parse_sanitized_member(string, depth)),
+                            |members: Vec<Value<P>>| {
+                                // Ensure the number of members is within `P::NUM_DEPTH`.
+                                if members.len() <= P::NUM_DEPTH {
+                                    Ok(members)
+                                } else {
+                                    Err(error(format!("Detected a value with too many members ({})", members.len())))
+                                }
+                            },
+                        )(string)?;
+                        // Parse the whitespace and comments from the string.
+                        let (string, _) = Sanitizer::parse(string)?;
+                        // Parse the '}' from the string.
+                        let (string, _) = tag("}")(string)?;
+                        // Output the value.
+                        Ok((string, Value::Definition(name, members)))
                     }
-                })(string)?;
-            // Parse the whitespace and comments from the string.
-            let (string, _) = Sanitizer::parse(string)?;
-            // Parse the '}' from the string.
-            let (string, _) = tag("}")(string)?;
-            // Output the value.
-            Ok((string, Value::Definition(name, members)))
-        }
 
-        // Parse to determine the value (order matters).
-        alt((
-            // Parse a value literal.
-            map(Literal::parse, |literal| Self::Literal(literal)),
-            // Parse a value definition.
-            parse_definition,
-        ))(string)
+                    // Parse to determine the value (order matters).
+                    alt((
+                        // Parse a value literal.
+                        map(Literal::parse, |literal| Value::Literal(literal)),
+                        // Parse a value definition.
+                        |string: &'a str| parse_definition(string, depth),
+                    ))(string)
+                }
+            }
+        }
+        parse_value(string, 0)
     }
 }
 
