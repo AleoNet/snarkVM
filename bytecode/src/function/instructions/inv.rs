@@ -130,7 +130,7 @@ mod tests {
     test_instruction_halts!(
         field_zero_inv_halts,
         Inv,
-        "Failed to compute the inverse for a base field element",
+        "assertion failed: `(left == right)`\n  left: `0`,\n right: `1`: Constant constraint failed: (0 * 0) =?= 1",
         "0field.constant"
     );
     test_instruction_halts!(i8_inv_halts, Inv, "Invalid 'inv' instruction", "1i8.constant");
