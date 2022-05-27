@@ -16,6 +16,8 @@
 
 use crate::{PoseidonGrainLFSR, PrimeField};
 
+use anyhow::{bail, Result};
+
 /// Parameters and RNG used
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoseidonParameters<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
@@ -36,38 +38,37 @@ pub struct PoseidonParameters<F: PrimeField, const RATE: usize, const CAPACITY: 
 pub trait PoseidonDefaultField {
     /// Obtain the default Poseidon parameters for this rate and for this prime field,
     /// with a specific optimization goal.
-    fn default_poseidon_parameters<const RATE: usize>(
-        optimized_for_weights: bool,
-    ) -> Option<PoseidonParameters<Self, RATE, 1>>
+    fn default_poseidon_parameters<const RATE: usize>() -> Result<PoseidonParameters<Self, RATE, 1>>
     where
         Self: PrimeField,
     {
         /// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
+        #[allow(clippy::type_complexity)]
         fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
             full_rounds: u64,
             partial_rounds: u64,
             skip_matrices: u64,
-        ) -> (Vec<Vec<F>>, Vec<Vec<F>>) {
+        ) -> Result<(Vec<Vec<F>>, Vec<Vec<F>>)> {
             let mut lfsr =
                 PoseidonGrainLFSR::new(false, F::size_in_bits() as u64, (RATE + 1) as u64, full_rounds, partial_rounds);
 
             let mut ark = Vec::<Vec<F>>::new();
             for _ in 0..(full_rounds + partial_rounds) {
-                ark.push(lfsr.get_field_elements_rejection_sampling(RATE + 1));
+                ark.push(lfsr.get_field_elements_rejection_sampling(RATE + 1)?);
             }
 
             let mut mds = vec![vec![F::zero(); RATE + 1]; RATE + 1];
             for _ in 0..skip_matrices {
-                let _ = lfsr.get_field_elements_mod_p::<F>(2 * (RATE + 1));
+                let _ = lfsr.get_field_elements_mod_p::<F>(2 * (RATE + 1))?;
             }
 
-            // a qualifying matrix must satisfy the following requirements
-            // - there is no duplication among the elements in x or y
-            // - there is no i and j such that x[i] + y[j] = p
-            // - the resultant MDS passes all the three tests
+            // A qualifying matrix must satisfy the following requirements:
+            // - There is no duplication among the elements in x or y.
+            // - There is no i and j such that x[i] + y[j] = p.
+            // - There resultant MDS passes all three tests.
 
-            let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
-            let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
+            let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1)?;
+            let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1)?;
 
             for (i, x) in xs.iter().enumerate().take(RATE + 1) {
                 for (j, y) in ys.iter().enumerate().take(RATE + 1) {
@@ -75,28 +76,26 @@ pub trait PoseidonDefaultField {
                 }
             }
 
-            (ark, mds)
+            Ok((ark, mds))
         }
 
-        let default_entries = match optimized_for_weights {
-            true => Self::Parameters::PARAMS_OPT_FOR_WEIGHTS,
-            false => Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS,
-        };
-
-        default_entries.iter().find(|entry| entry.rate == RATE).map(|entry| {
-            let (ark, mds) = find_poseidon_ark_and_mds::<Self, RATE>(
-                entry.full_rounds as u64,
-                entry.partial_rounds as u64,
-                entry.skip_matrices as u64,
-            );
-            PoseidonParameters {
-                full_rounds: entry.full_rounds,
-                partial_rounds: entry.partial_rounds,
-                alpha: entry.alpha as u64,
-                ark,
-                mds,
+        match Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS.iter().find(|entry| entry.rate == RATE) {
+            Some(entry) => {
+                let (ark, mds) = find_poseidon_ark_and_mds::<Self, RATE>(
+                    entry.full_rounds as u64,
+                    entry.partial_rounds as u64,
+                    entry.skip_matrices as u64,
+                )?;
+                Ok(PoseidonParameters {
+                    full_rounds: entry.full_rounds,
+                    partial_rounds: entry.partial_rounds,
+                    alpha: entry.alpha as u64,
+                    ark,
+                    mds,
+                })
             }
-        })
+            None => bail!("No Poseidon parameters were found for this rate"),
+        }
     }
 }
 
@@ -109,11 +108,6 @@ pub trait PoseidonDefaultParameters {
     /// Here, `skip_matrices` denote how many matrices to skip before
     /// finding one that satisfy all the requirements.
     const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7];
-
-    /// An array of the parameters optimized for weights
-    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
-    /// for rate = 2, 3, 4, 5, 6, 7, 8
-    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7];
 }
 
 /// An entry in the default Poseidon parameters

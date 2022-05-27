@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    biginteger::BigInteger,
     bititerator::{BitIteratorBE, BitIteratorLE},
     io::{Read, Result as IoResult, Write},
     FromBits,
@@ -23,13 +24,13 @@ use crate::{
     ToBytes,
 };
 
-use crate::biginteger::BigInteger;
+use anyhow::Result;
+use core::fmt::{Debug, Display};
 use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use std::fmt::{Debug, Display};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct BigInteger256(pub [u64; 4]);
@@ -238,7 +239,7 @@ impl ToBits for BigInteger256 {
 impl FromBits for BigInteger256 {
     #[doc = " Returns a `BigInteger` by parsing a slice of bits in little-endian format"]
     #[doc = " and transforms it into a slice of little-endian u64 elements."]
-    fn from_bits_le(bits: &[bool]) -> Self {
+    fn from_bits_le(bits: &[bool]) -> Result<Self> {
         let mut res = Self::default();
         for (i, bits64) in bits.chunks(64).enumerate() {
             let mut acc: u64 = 0;
@@ -248,12 +249,12 @@ impl FromBits for BigInteger256 {
             }
             res.0[i] = acc;
         }
-        res
+        Ok(res)
     }
 
     #[doc = " Returns a `BigInteger` by parsing a slice of bits in big-endian format"]
     #[doc = " and transforms it into a slice of little-endian u64 elements."]
-    fn from_bits_be(bits: &[bool]) -> Self {
+    fn from_bits_be(bits: &[bool]) -> Result<Self> {
         let mut bits_reversed = bits.to_vec();
         bits_reversed.reverse();
         Self::from_bits_le(&bits_reversed)
@@ -327,25 +328,5 @@ impl From<u64> for BigInteger256 {
         let mut repr = Self::default();
         repr.0[0] = val;
         repr
-    }
-}
-
-impl BigInteger256 {
-    pub fn from_u128(num: u128) -> Self {
-        // Takes a 256 bit buffer
-        let mut bytes = [0u8; 32];
-
-        num.write_le(bytes.as_mut()).unwrap();
-
-        Self::read_le(&bytes[..]).unwrap()
-    }
-
-    pub fn to_u128(&self) -> u128 {
-        let mut bytes = [0u8; 32];
-
-        self.write_le(bytes.as_mut()).unwrap();
-
-        // We cut off the last 128 bits here
-        u128::read_le(&bytes[..16]).unwrap()
     }
 }

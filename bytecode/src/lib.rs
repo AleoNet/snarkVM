@@ -16,6 +16,9 @@
 
 #![forbid(unsafe_code)]
 
+#[macro_use]
+extern crate enum_index_derive;
+
 pub mod definition;
 pub use definition::*;
 
@@ -28,7 +31,7 @@ pub use helpers::*;
 pub mod process;
 pub use process::*;
 
-use snarkvm_circuits::{Aleo, Environment, Parser};
+use snarkvm_circuit::{Aleo, Environment, Parser};
 
 use core::{fmt::Debug, hash::Hash};
 

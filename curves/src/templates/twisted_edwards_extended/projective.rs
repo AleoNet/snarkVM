@@ -96,7 +96,7 @@ impl<P: Parameters> Distribution<Projective<P>> for Standard {
             let greatest = rng.gen();
 
             if let Some(p) = Affine::from_x_coordinate(x, greatest) {
-                return p.scale_by_cofactor();
+                return p.mul_by_cofactor_to_projective();
             }
         }
     }

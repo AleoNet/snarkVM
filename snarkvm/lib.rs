@@ -27,6 +27,15 @@ pub mod cli;
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;
 
+#[cfg(feature = "bytecode")]
+pub use snarkvm_bytecode as bytecode;
+
+#[cfg(feature = "circuits")]
+pub use snarkvm_circuits as circuits;
+
+#[cfg(feature = "console")]
+pub use snarkvm_console as console;
+
 #[cfg(feature = "curves")]
 pub use snarkvm_curves as curves;
 
@@ -38,9 +47,6 @@ pub use snarkvm_fields as fields;
 
 #[cfg(feature = "gadgets")]
 pub use snarkvm_gadgets as gadgets;
-
-#[cfg(feature = "ledger")]
-pub use snarkvm_ledger as ledger;
 
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
@@ -67,9 +73,6 @@ pub mod errors {
     #[cfg(feature = "gadgets")]
     pub use crate::gadgets::errors::*;
 
-    #[cfg(feature = "ledger")]
-    pub use crate::ledger::errors::*;
-
     #[cfg(feature = "parameters")]
     pub use crate::parameters::errors::*;
 
@@ -93,9 +96,6 @@ pub mod traits {
     #[cfg(feature = "gadgets")]
     pub use crate::gadgets::traits::*;
 
-    #[cfg(feature = "ledger")]
-    pub use crate::ledger::traits::*;
-
     #[cfg(feature = "parameters")]
     pub use crate::parameters::traits::*;
 }
@@ -106,11 +106,11 @@ pub mod prelude {
     #[cfg(feature = "algorithms")]
     pub use crate::algorithms::prelude::*;
 
+    #[cfg(feature = "circuits")]
+    pub use crate::circuits::prelude::*;
+
     #[cfg(feature = "dpc")]
     pub use crate::dpc::prelude::*;
-
-    #[cfg(feature = "ledger")]
-    pub use crate::ledger::prelude::*;
 
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;

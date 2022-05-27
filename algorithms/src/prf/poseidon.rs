@@ -20,22 +20,20 @@ use snarkvm_fields::PrimeField;
 use std::marker::PhantomData;
 
 #[derive(Clone)]
-pub struct PoseidonPRF<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(PhantomData<F>);
+pub struct PoseidonPRF<F: PrimeField, const RATE: usize>(PhantomData<F>);
 
-impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
-    for PoseidonPRF<F, RATE, OPTIMIZED_FOR_WEIGHTS>
-{
+impl<F: PrimeField, const RATE: usize> PRF for PoseidonPRF<F, RATE> {
     type Input = Vec<F>;
     type Output = F;
     type Seed = F;
 
-    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Self::Output {
+    fn prf(seed: &Self::Seed, input: &Self::Input) -> Self::Output {
         // Construct the preimage.
         let mut preimage = vec![*seed];
         preimage.push(F::from(input.len() as u128)); // Input length
         preimage.extend_from_slice(input);
 
         // Evaluate the preimage.
-        Poseidon::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::setup().evaluate(&preimage)
+        Poseidon::<F, RATE>::setup().evaluate(&preimage)
     }
 }

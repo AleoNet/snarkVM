@@ -361,7 +361,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
         mut cs: CS,
         signature: &Self::SignatureGadget,
     ) -> Result<Self::ComputeKeyGadget, SynthesisError> {
-        let output = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
+        let output = PoseidonCryptoHashGadget::<F, 4>::check_evaluation_gadget(
             &mut cs.ns(|| "Hash root_public_key and root_randomizer"),
             &[signature.root_public_key.to_x_coordinate(), signature.root_randomizer.to_x_coordinate()],
         )?;
@@ -448,10 +448,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
             preimage.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
             // Compute the hash of the preimage on the base field.
-            let hash = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
-                cs.ns(|| "Poseidon of preimage"),
-                &preimage,
-            )?;
+            let hash =
+                PoseidonCryptoHashGadget::<F, 4>::check_evaluation_gadget(cs.ns(|| "Poseidon of preimage"), &preimage)?;
 
             // Truncate the output to fit the scalar field.
             let mut hash_bits = hash.to_bits_le(cs.ns(|| "convert the hash into bits"))?;
@@ -469,7 +467,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
             let sk_prf = {
                 // Compute the hash of (G^sk_sig || G^r_sig) on the base field.
-                let output = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
+                let output = PoseidonCryptoHashGadget::<F, 4>::check_evaluation_gadget(
                     cs.ns(|| "Poseidon(G^sk_sig || G^r_sig)"),
                     &[g_sk_sig.x.clone(), g_r_sig.x.clone()],
                 )?;

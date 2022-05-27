@@ -27,137 +27,139 @@ impl CommitOpcode for BHP256 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{function::Register, Identifier, Process};
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("commit.bhp256 r0 r1 into r2;").unwrap();
         assert!(matches!(instruction, Instruction::CommitBHP256(_)));
     }
 
-    test_modes!(
-        address,
-        CommitBHP256,
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
-        "1scalar",
-        "7115473038624331514996031744051806024254138485569634257977816499703872444569field"
-    );
-    test_modes!(
-        field,
-        CommitBHP256,
-        "1field",
-        "1scalar",
-        "6735841589287481182565103554915497076009759637769041328115551207221718855772field"
-    );
-    test_modes!(
-        group,
-        CommitBHP256,
-        "2group",
-        "1scalar",
-        "7617724828496146666541559434042213702391225573464917918454302407165937027497field"
-    );
-    test_modes!(
-        string,
-        CommitBHP256,
-        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
-        "1scalar",
-        "2694809639456905569799705473661530581681379938099220673322304992825952388274field"
-    );
-    test_modes!(
-        scalar,
-        CommitBHP256,
-        "1scalar",
-        "1scalar",
-        "6302764182214251270384692971932650766342423070217486222582849034895511665081field"
-    );
+    // test_modes!(
+    //     address,
+    //     CommitBHP256,
+    //     "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+    //     "1scalar",
+    //     "7115473038624331514996031744051806024254138485569634257977816499703872444569field"
+    // );
+    // test_modes!(
+    //     field,
+    //     CommitBHP256,
+    //     "1field",
+    //     "1scalar",
+    //     "6735841589287481182565103554915497076009759637769041328115551207221718855772field"
+    // );
+    // test_modes!(
+    //     group,
+    //     CommitBHP256,
+    //     "2group",
+    //     "1scalar",
+    //     "7617724828496146666541559434042213702391225573464917918454302407165937027497field"
+    // );
+    // test_modes!(
+    //     string,
+    //     CommitBHP256,
+    //     "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+    //     "1scalar",
+    //     "2694809639456905569799705473661530581681379938099220673322304992825952388274field"
+    // );
+    // test_modes!(
+    //     scalar,
+    //     CommitBHP256,
+    //     "1scalar",
+    //     "1scalar",
+    //     "6302764182214251270384692971932650766342423070217486222582849034895511665081field"
+    // );
+    //
+    // test_instruction_halts!(
+    //     bool_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "true",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     i8_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1i8",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     i16_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1i16",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     i32_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1i32",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     i64_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1i64",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     i128_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1i128",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     u8_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1u8",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     u16_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1u16",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     u32_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1u32",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     u64_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1u64",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     u128_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant must be greater than 129 bits",
+    //     "1u128",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     string_halts,
+    //     CommitBHP256,
+    //     "Inputs to this BHP variant cannot exceed 258 bits",
+    //     "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+    //     "1scalar"
+    // );
 
-    test_instruction_halts!(
-        bool_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "true",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        i8_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1i8",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        i16_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1i16",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        i32_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1i32",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        i64_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1i64",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        i128_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1i128",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        u8_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1u8",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        u16_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1u16",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        u32_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1u32",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        u64_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1u64",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        u128_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant must be greater than 129 bits",
-        "1u128",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        string_halts,
-        CommitBHP256,
-        "Inputs to this BHP variant cannot exceed 258 bits",
-        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
-        "1scalar"
-    );
-
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
@@ -182,6 +184,7 @@ mod tests {
         assert_eq!(expected, value);
     }
 
+    #[ignore]
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 258 bits")]
     fn test_definition_halts() {

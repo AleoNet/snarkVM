@@ -138,13 +138,4 @@ impl PoseidonDefaultParameters for FqParameters {
         PoseidonDefaultParametersEntry::new(7, 5, 8, 57, 0),
         PoseidonDefaultParametersEntry::new(8, 5, 8, 57, 0),
     ];
-    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7] = [
-        PoseidonDefaultParametersEntry::new(2, 257, 8, 13, 0),
-        PoseidonDefaultParametersEntry::new(3, 257, 8, 13, 0),
-        PoseidonDefaultParametersEntry::new(4, 257, 8, 13, 0),
-        PoseidonDefaultParametersEntry::new(5, 257, 8, 13, 0),
-        PoseidonDefaultParametersEntry::new(6, 257, 8, 13, 0),
-        PoseidonDefaultParametersEntry::new(7, 257, 8, 13, 0),
-        PoseidonDefaultParametersEntry::new(8, 257, 8, 13, 0),
-    ];
 }

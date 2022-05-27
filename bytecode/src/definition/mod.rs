@@ -17,13 +17,13 @@
 mod member;
 
 use crate::{definition::member::Member, Annotation, Identifier, Program, Sanitizer, Value};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{error, has_duplicates, FromBytes, ToBytes};
 
 use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
 
-/// A definition is a custom type or record type that represents a collection of circuits.
+/// A definition is a custom type or record type that represents a collection of circuit.
 /// A definition does not have a mode; rather its individual members are annotated with modes.
 /// A definition is defined by an identifier (such as `message`) and a list of members,
 /// such as `[(sender, address.public), (amount, i64.private)]`, where the left entry is an identifier,

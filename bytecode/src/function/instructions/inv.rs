@@ -19,7 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Inv as InvCircuit, Literal, Parser, ParserResult};
+use snarkvm_circuit::{Inverse as InverseCircuit, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -63,7 +63,7 @@ impl<P: Program> Operation<P> for Inv<P> {
 
         // Perform the operation.
         let result = match first {
-            Literal::Field(a) => Literal::Field(a.inv()),
+            Literal::Field(a) => Literal::Field(a.inverse()),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -130,7 +130,7 @@ mod tests {
     test_instruction_halts!(
         field_zero_inv_halts,
         Inv,
-        "Failed to compute the inverse for a base field element",
+        "assertion failed: `(left == right)`\n  left: `0`,\n right: `1`: Constant constraint failed: (0 * 0) =?= 1",
         "0field.constant"
     );
     test_instruction_halts!(i8_inv_halts, Inv, "Invalid 'inv' instruction", "1i8.constant");

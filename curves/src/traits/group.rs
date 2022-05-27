@@ -135,7 +135,7 @@ pub trait AffineCurve:
     + ToMinimalBits
 {
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
-    type BaseField: Field;
+    type BaseField: Field + SquareRootField;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
     type Coordinates;
 

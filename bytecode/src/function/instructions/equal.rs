@@ -16,17 +16,17 @@
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{
+use snarkvm_circuit::{
     count,
     Boolean,
     Count,
     Equal as CircuitEqual,
     Field,
     Literal,
-    LiteralType,
     Metrics,
     Parser,
     ParserResult,

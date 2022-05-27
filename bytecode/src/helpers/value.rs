@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{variable_length::*, Annotation, Identifier, Program, Sanitizer};
-use snarkvm_circuits::prelude::*;
+use crate::{variable_length::*, Annotation, Identifier, LiteralType, Program, Sanitizer};
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -143,7 +143,11 @@ impl<P: Program> FromBytes for Value<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
-            0 => Ok(Self::Literal(Literal::read_le(&mut reader)?)),
+            0 => {
+                let mode = Mode::read_le(&mut reader)?;
+                let primitive = snarkvm_console_aleo::Literal::read_le(&mut reader)?;
+                Ok(Self::Literal(Literal::new(mode, primitive)))
+            }
             1 => {
                 // Read the name.
                 let name = Identifier::read_le(&mut reader)?;
@@ -170,7 +174,8 @@ impl<P: Program> ToBytes for Value<P> {
         match self {
             Self::Literal(literal) => {
                 u8::write_le(&0u8, &mut writer)?;
-                literal.write_le(&mut writer)
+                literal.eject_mode().write_le(&mut writer)?;
+                literal.eject_value().write_le(&mut writer)
             }
             Self::Definition(name, members) => {
                 // Ensure the number of members is within `P::NUM_DEPTH`.
@@ -203,7 +208,7 @@ impl<P: Program> ToBytes for Value<P> {
 #[cfg(test)] // Do not remove the `#[cfg(test)]`. It is not a performant way to compare values.
 impl<P: Program> PartialEq for Value<P> {
     fn eq(&self, other: &Self) -> bool {
-        self.to_literals().eject() == other.to_literals().eject()
+        self.to_bytes_le().unwrap() == other.to_bytes_le().unwrap()
     }
 }
 

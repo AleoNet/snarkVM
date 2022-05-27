@@ -19,7 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{AbsWrapped as AbsWrappedCircuit, Literal, Parser, ParserResult};
+use snarkvm_circuit::{AbsWrapped as AbsWrappedCircuit, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;

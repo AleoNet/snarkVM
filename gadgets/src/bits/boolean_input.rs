@@ -100,7 +100,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean>::with_capacity(src_bits.len());
         for (i, chunk) in src_bits.chunks(capacity as usize).enumerate() {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
+            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk).unwrap()).unwrap();
 
             let elem_gadget = FpGadget::<CF>::alloc(cs.ns(|| format!("alloc_elem_{}", i)), || Ok(elem))?;
 
@@ -148,7 +148,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean>::with_capacity(src_bits.len());
         for (i, chunk) in src_bits.chunks(capacity as usize).enumerate() {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
+            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk).unwrap()).unwrap();
 
             let elem_gadget = FpGadget::<CF>::alloc_input(cs.ns(|| format!("alloc_elem_{}", i)), || Ok(elem))?;
 

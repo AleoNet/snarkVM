@@ -16,7 +16,6 @@
 
 use crate::{
     crypto_hash::{hash_to_curve, Poseidon},
-    EncryptionError,
     EncryptionScheme,
 };
 use snarkvm_curves::{
@@ -28,6 +27,7 @@ use snarkvm_curves::{
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_utilities::{ops::Mul, serialize::*, BitIteratorBE, FromBits, ToBits, UniformRand};
 
+use anyhow::{bail, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
@@ -37,7 +37,7 @@ where
     TE::BaseField: PrimeField,
 {
     generator: TEAffine<TE>,
-    poseidon: Poseidon<TE::BaseField, 4, false>,
+    poseidon: Poseidon<TE::BaseField, 4>,
     symmetric_key_commitment_domain: TE::BaseField,
     symmetric_encryption_domain: TE::BaseField,
 }
@@ -57,7 +57,7 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
+        let poseidon = Poseidon::<TE::BaseField, 4>::setup();
         let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
         let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
 
@@ -156,7 +156,7 @@ where
     ///
     /// Encode the message bytes into field elements.
     ///
-    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>, EncryptionError> {
+    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>> {
         // Convert the message into bits.
         let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
@@ -178,7 +178,8 @@ where
         Ok(plaintext_bits
             .chunks(capacity)
             .map(|chunk| {
-                TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap()
+                TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk).unwrap())
+                    .unwrap()
             })
             .collect())
     }
@@ -186,7 +187,7 @@ where
     ///
     /// Decode the field elements into bytes.
     ///
-    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>, EncryptionError> {
+    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>> {
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
 
         let mut bits = Vec::<bool>::with_capacity(encoded_message.len() * capacity);
@@ -204,9 +205,7 @@ where
         }
 
         if bits.len() % 8 != 0 {
-            return Err(EncryptionError::Message(
-                "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
-            ));
+            bail!("The number of bits in the packed field elements is not a multiple of 8.")
         }
 
         // Convert the bits into bytes.
@@ -253,9 +252,5 @@ where
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
         &self.generator
-    }
-
-    fn private_key_size_in_bits() -> usize {
-        Self::PrivateKey::size_in_bits()
     }
 }

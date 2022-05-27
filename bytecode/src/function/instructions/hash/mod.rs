@@ -14,55 +14,38 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(crate) mod bhp256;
-pub(crate) use bhp256::*;
+pub(super) mod bhp256;
+pub(super) use bhp256::*;
 
-pub(crate) mod bhp512;
-pub(crate) use bhp512::*;
+pub(super) mod bhp512;
+pub(super) use bhp512::*;
 
-pub(crate) mod bhp1024;
-pub(crate) use bhp1024::*;
+pub(super) mod bhp768;
+pub(super) use bhp768::*;
 
-pub(crate) mod ped64;
-pub(crate) use ped64::*;
+pub(super) mod bhp1024;
+pub(super) use bhp1024::*;
 
-pub(crate) mod ped128;
-pub(crate) use ped128::*;
+pub(super) mod ped64;
+pub(super) use ped64::*;
 
-pub(crate) mod ped256;
-pub(crate) use ped256::*;
+pub(super) mod ped128;
+pub(super) use ped128::*;
 
-pub(crate) mod ped512;
-pub(crate) use ped512::*;
+pub(super) mod psd2;
+pub(super) use psd2::*;
 
-pub(crate) mod ped1024;
-pub(crate) use ped1024::*;
+pub(super) mod psd4;
+pub(super) use psd4::*;
 
-pub(crate) mod psd2;
-pub(crate) use psd2::*;
-
-pub(crate) mod psd4;
-pub(crate) use psd4::*;
-
-pub(crate) mod psd8;
-pub(crate) use psd8::*;
+pub(super) mod psd8;
+pub(super) use psd8::*;
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
 };
-use snarkvm_circuits::{
-    Aleo,
-    Environment,
-    FromBits,
-    Literal,
-    Parser,
-    ParserResult,
-    PrimeField,
-    ToBits,
-    ToField,
-    ToGroup,
-};
+use snarkvm_circuit::{Aleo, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits, ToField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};
@@ -121,7 +104,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
                 true => input
                     .iter()
                     .map(|literal| match literal {
-                        Literal::Address(address) => address.to_group().to_x_coordinate(),
+                        Literal::Address(address) => address.to_field(),
                         Literal::Field(field) => field.clone(),
                         Literal::Group(group) => group.to_x_coordinate(),
                         Literal::Scalar(scalar) => scalar.to_field(),
@@ -141,12 +124,10 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
         let digest = match Self::opcode() {
             BHP256::OPCODE => P::Aleo::hash_bhp256(&input.to_bits_le()),
             BHP512::OPCODE => P::Aleo::hash_bhp512(&input.to_bits_le()),
+            BHP768::OPCODE => P::Aleo::hash_bhp768(&input.to_bits_le()),
             BHP1024::OPCODE => P::Aleo::hash_bhp1024(&input.to_bits_le()),
             Ped64::OPCODE => P::Aleo::hash_ped64(&input.to_bits_le()),
             Ped128::OPCODE => P::Aleo::hash_ped128(&input.to_bits_le()),
-            Ped256::OPCODE => P::Aleo::hash_ped256(&input.to_bits_le()),
-            Ped512::OPCODE => P::Aleo::hash_ped512(&input.to_bits_le()),
-            Ped1024::OPCODE => P::Aleo::hash_ped1024(&input.to_bits_le()),
             Psd2::OPCODE => P::Aleo::hash_psd2(&to_field_elements(&input)),
             Psd4::OPCODE => P::Aleo::hash_psd4(&to_field_elements(&input)),
             Psd8::OPCODE => P::Aleo::hash_psd8(&to_field_elements(&input)),
@@ -191,16 +172,12 @@ impl<P: Program, Op: HashOpcode> Into<Instruction<P>> for Hash<P, Op> {
         match Self::opcode() {
             BHP256::OPCODE => Instruction::HashBHP256(HashBHP256 { operation: self.operation, _phantom: PhantomData }),
             BHP512::OPCODE => Instruction::HashBHP512(HashBHP512 { operation: self.operation, _phantom: PhantomData }),
+            BHP768::OPCODE => Instruction::HashBHP768(HashBHP768 { operation: self.operation, _phantom: PhantomData }),
             BHP1024::OPCODE => {
                 Instruction::HashBHP1024(HashBHP1024 { operation: self.operation, _phantom: PhantomData })
             }
             Ped64::OPCODE => Instruction::HashPed64(HashPed64 { operation: self.operation, _phantom: PhantomData }),
             Ped128::OPCODE => Instruction::HashPed128(HashPed128 { operation: self.operation, _phantom: PhantomData }),
-            Ped256::OPCODE => Instruction::HashPed256(HashPed256 { operation: self.operation, _phantom: PhantomData }),
-            Ped512::OPCODE => Instruction::HashPed512(HashPed512 { operation: self.operation, _phantom: PhantomData }),
-            Ped1024::OPCODE => {
-                Instruction::HashPed1024(HashPed1024 { operation: self.operation, _phantom: PhantomData })
-            }
             Psd2::OPCODE => Instruction::HashPsd2(HashPsd2 { operation: self.operation, _phantom: PhantomData }),
             Psd4::OPCODE => Instruction::HashPsd4(HashPsd4 { operation: self.operation, _phantom: PhantomData }),
             Psd8::OPCODE => Instruction::HashPsd8(HashPsd8 { operation: self.operation, _phantom: PhantomData }),

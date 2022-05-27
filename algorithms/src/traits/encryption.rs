@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::EncryptionError;
 use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBits, ToBytes};
 
+use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
@@ -50,15 +50,13 @@ pub trait EncryptionScheme: Sized + Debug + Clone + PartialEq + Eq {
 
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment;
 
-    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>, EncryptionError>;
+    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>>;
 
-    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>, EncryptionError>;
+    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>>;
 
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[Self::MessageType]) -> Vec<Self::MessageType>;
 
     fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[Self::MessageType]) -> Vec<Self::MessageType>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
-
-    fn private_key_size_in_bits() -> usize;
 }

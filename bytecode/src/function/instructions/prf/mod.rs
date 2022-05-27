@@ -14,32 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(crate) mod psd2;
-pub(crate) use psd2::*;
+pub(super) mod psd2;
+pub(super) use psd2::*;
 
-pub(crate) mod psd4;
-pub(crate) use psd4::*;
+pub(super) mod psd4;
+pub(super) use psd4::*;
 
-pub(crate) mod psd8;
-pub(crate) use psd8::*;
+pub(super) mod psd8;
+pub(super) use psd8::*;
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
     Value,
 };
-use snarkvm_circuits::{
-    Aleo,
-    Environment,
-    FromBits,
-    Literal,
-    Parser,
-    ParserResult,
-    PrimeField,
-    ToBits,
-    ToField,
-    ToGroup,
-};
+use snarkvm_circuit::{Aleo, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits, ToField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};
@@ -110,7 +99,7 @@ impl<P: Program, Op: PRFOpcode> Operation<P> for PRF<P, Op> {
                 true => input
                     .iter()
                     .map(|literal| match literal {
-                        Literal::Address(address) => address.to_group().to_x_coordinate(),
+                        Literal::Address(address) => address.to_field(),
                         Literal::Field(field) => field.clone(),
                         Literal::Group(group) => group.to_x_coordinate(),
                         Literal::Scalar(scalar) => scalar.to_field(),

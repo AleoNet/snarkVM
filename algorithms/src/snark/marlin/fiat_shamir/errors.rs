@@ -14,46 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::fmt;
-
-use snarkvm_fields::ConstraintFieldError;
-
 /// A `enum` specifying the possible failure modes of `FiatShamir`.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FiatShamirError {
-    /// There was a synthesis error.
-    R1CSError(snarkvm_r1cs::SynthesisError),
-    /// The RNG has not been initialized.
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
+    #[error("Conversion to field elements failed.")]
+    CFError(#[from] snarkvm_fields::ConstraintFieldError),
+
+    #[error("There was a synthesis error.")]
+    R1CSError(#[from] snarkvm_r1cs::SynthesisError),
+
+    #[error("The RNG has not been initialized.")]
     UninitializedRNG,
-
-    /// Conversion to field elements failed.
-    CFError(ConstraintFieldError),
-}
-
-impl From<snarkvm_r1cs::SynthesisError> for FiatShamirError {
-    fn from(err: snarkvm_r1cs::SynthesisError) -> Self {
-        FiatShamirError::R1CSError(err)
-    }
-}
-
-impl From<ConstraintFieldError> for FiatShamirError {
-    fn from(err: ConstraintFieldError) -> Self {
-        FiatShamirError::CFError(err)
-    }
-}
-
-impl fmt::Display for FiatShamirError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            FiatShamirError::R1CSError(error) => {
-                write!(f, "{:?}", error.to_string())
-            }
-            FiatShamirError::UninitializedRNG => {
-                write!(f, "{:?}", "uninitialized rng")
-            }
-            FiatShamirError::CFError(error) => {
-                write!(f, "{:?}", error)
-            }
-        }
-    }
 }

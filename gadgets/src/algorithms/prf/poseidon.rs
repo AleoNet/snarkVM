@@ -21,11 +21,9 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::marker::PhantomData;
 
-pub struct PoseidonPRFGadget<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(PhantomData<F>);
+pub struct PoseidonPRFGadget<F: PrimeField, const RATE: usize>(PhantomData<F>);
 
-impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
-    PRFGadget<PoseidonPRF<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F> for PoseidonPRFGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
-{
+impl<F: PrimeField, const RATE: usize> PRFGadget<PoseidonPRF<F, RATE>, F> for PoseidonPRFGadget<F, RATE> {
     type Input = Vec<FpGadget<F>>;
     type Output = FpGadget<F>;
     type Seed = FpGadget<F>;
@@ -51,7 +49,7 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
         preimage.extend_from_slice(input.as_slice());
 
         // Evaluate the preimage.
-        PoseidonCryptoHashGadget::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::check_evaluation_gadget(
+        PoseidonCryptoHashGadget::<F, RATE>::check_evaluation_gadget(
             cs.ns(|| "Check Poseidon PRF evaluation"),
             &preimage,
         )
@@ -78,26 +76,19 @@ mod tests {
 
         let seed = rng.gen();
         let input = vec![rng.gen()];
-        let output = PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input);
+        let output = PoseidonPRF::<Fr, 4>::prf(&seed, &input);
 
         let seed_gadget =
-            <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Seed::alloc(&mut cs.ns(|| "seed"), || Ok(seed))
-                .unwrap();
+            <PoseidonPRFGadget<Fr, 4> as PRFGadget<_, Fr>>::Seed::alloc(&mut cs.ns(|| "seed"), || Ok(seed)).unwrap();
         let input_gadget =
-            <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Input::alloc(&mut cs.ns(|| "input"), || Ok(input))
-                .unwrap();
+            <PoseidonPRFGadget<Fr, 4> as PRFGadget<_, Fr>>::Input::alloc(&mut cs.ns(|| "input"), || Ok(input)).unwrap();
 
         let expected_output_gadget =
-            <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Output::alloc(&mut cs.ns(|| "output"), || {
-                Ok(output)
-            })
-            .unwrap();
-        let candidate_output_gadget = PoseidonPRFGadget::<Fr, 4, false>::check_evaluation_gadget(
-            &mut cs.ns(|| "evaluate"),
-            &seed_gadget,
-            &input_gadget,
-        )
-        .unwrap();
+            <PoseidonPRFGadget<Fr, 4> as PRFGadget<_, Fr>>::Output::alloc(&mut cs.ns(|| "output"), || Ok(output))
+                .unwrap();
+        let candidate_output_gadget =
+            PoseidonPRFGadget::<Fr, 4>::check_evaluation_gadget(&mut cs.ns(|| "evaluate"), &seed_gadget, &input_gadget)
+                .unwrap();
 
         candidate_output_gadget.enforce_equal(&mut cs, &expected_output_gadget).unwrap();
 

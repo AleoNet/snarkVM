@@ -27,137 +27,139 @@ impl CommitOpcode for Ped64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{function::Register, Identifier, Process};
 
     type P = Process;
 
+    #[ignore]
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("commit.ped64 r0 r1 into r2;").unwrap();
         assert!(matches!(instruction, Instruction::CommitPed64(_)));
     }
 
-    test_modes!(
-        bool,
-        CommitPed64,
-        "true",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        i8,
-        CommitPed64,
-        "1i8",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        i16,
-        CommitPed64,
-        "1i16",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        i32,
-        CommitPed64,
-        "1i32",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        i64,
-        CommitPed64,
-        "1i64",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        u8,
-        CommitPed64,
-        "1u8",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        u16,
-        CommitPed64,
-        "1u16",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        u32,
-        CommitPed64,
-        "1u32",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        u64,
-        CommitPed64,
-        "1u64",
-        "1scalar",
-        "451816983925465612310036142898649792841141971816913349341750601484549023437field"
-    );
-    test_modes!(
-        string,
-        CommitPed64,
-        "\"aaaaaaaa\"",
-        "1scalar",
-        "5622478747945370229693309401233561591542417534378600804836808353744293560079field"
-    );
+    // test_modes!(
+    //     bool,
+    //     CommitPed64,
+    //     "true",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     i8,
+    //     CommitPed64,
+    //     "1i8",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     i16,
+    //     CommitPed64,
+    //     "1i16",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     i32,
+    //     CommitPed64,
+    //     "1i32",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     i64,
+    //     CommitPed64,
+    //     "1i64",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     u8,
+    //     CommitPed64,
+    //     "1u8",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     u16,
+    //     CommitPed64,
+    //     "1u16",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     u32,
+    //     CommitPed64,
+    //     "1u32",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     u64,
+    //     CommitPed64,
+    //     "1u64",
+    //     "1scalar",
+    //     "451816983925465612310036142898649792841141971816913349341750601484549023437field"
+    // );
+    // test_modes!(
+    //     string,
+    //     CommitPed64,
+    //     "\"aaaaaaaa\"",
+    //     "1scalar",
+    //     "5622478747945370229693309401233561591542417534378600804836808353744293560079field"
+    // );
+    //
+    // test_instruction_halts!(
+    //     address_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     field_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "1field",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     group_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "2group",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     scalar_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "1scalar",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     i128_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "1i128",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     u128_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "1u128",
+    //     "1scalar"
+    // );
+    // test_instruction_halts!(
+    //     string_halts,
+    //     CommitPed64,
+    //     "The Pedersen hash input cannot exceed 64 bits.",
+    //     "\"aaaaaaaaa\"",
+    //     "1scalar"
+    // );
 
-    test_instruction_halts!(
-        address_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        field_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "1field",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        group_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "2group",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        scalar_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "1scalar",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        i128_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "1i128",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        u128_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "1u128",
-        "1scalar"
-    );
-    test_instruction_halts!(
-        string_halts,
-        CommitPed64,
-        "The Pedersen hash input cannot exceed 64 bits.",
-        "\"aaaaaaaaa\"",
-        "1scalar"
-    );
-
+    #[ignore]
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
@@ -182,6 +184,7 @@ mod tests {
         assert_eq!(expected, value);
     }
 
+    #[ignore]
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 64 bits.")]
     fn test_definition_halts() {

@@ -1971,6 +1971,9 @@ dependencies = [
  "rusty-hook",
  "self_update",
  "snarkvm-algorithms",
+ "snarkvm-bytecode",
+ "snarkvm-circuit",
+ "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-fields",
@@ -2030,50 +2033,62 @@ dependencies = [
 name = "snarkvm-bytecode"
 version = "0.7.5"
 dependencies = [
+ "enum_index",
+ "enum_index_derive",
  "indexmap",
  "nom",
  "once_cell",
  "paste",
  "snarkvm-algorithms",
- "snarkvm-circuits",
+ "snarkvm-circuit",
+ "snarkvm-console-aleo",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits"
+name = "snarkvm-circuit"
 version = "0.7.5"
 dependencies = [
- "snarkvm-circuits-core",
- "snarkvm-circuits-edge",
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types",
- "snarkvm-utilities",
+ "snarkvm-circuit-aleo",
+ "snarkvm-circuit-algorithms",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-network",
+ "snarkvm-circuit-types",
 ]
 
 [[package]]
-name = "snarkvm-circuits-core"
+name = "snarkvm-circuit-aleo"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "nom",
- "snarkvm-algorithms",
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types",
+ "snarkvm-circuit-algorithms",
+ "snarkvm-circuit-network",
+ "snarkvm-circuit-types",
+ "snarkvm-console-aleo",
+ "snarkvm-console-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-edge"
+name = "snarkvm-circuit-algorithms"
 version = "0.7.5"
 dependencies = [
- "nom",
- "snarkvm-circuits-environment",
+ "anyhow",
+ "snarkvm-algorithms",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types",
+ "snarkvm-console-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-environment"
+name = "snarkvm-circuit-environment"
 version = "0.7.5"
 dependencies = [
  "criterion",
@@ -2085,8 +2100,8 @@ dependencies = [
  "once_cell",
  "rayon",
  "snarkvm-algorithms",
- "snarkvm-circuits",
- "snarkvm-circuits-environment-witness",
+ "snarkvm-circuit",
+ "snarkvm-circuit-environment-witness",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-r1cs",
@@ -2094,100 +2109,175 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-circuits-environment-witness"
+name = "snarkvm-circuit-environment-witness"
 version = "0.7.5"
 
 [[package]]
-name = "snarkvm-circuits-types"
+name = "snarkvm-circuit-network"
 version = "0.7.5"
 dependencies = [
- "enum_index",
- "enum_index_derive",
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-address",
- "snarkvm-circuits-types-boolean",
- "snarkvm-circuits-types-field",
- "snarkvm-circuits-types-group",
- "snarkvm-circuits-types-integers",
- "snarkvm-circuits-types-scalar",
- "snarkvm-circuits-types-string",
- "snarkvm-utilities",
+ "snarkvm-circuit-algorithms",
+ "snarkvm-circuit-types",
+ "snarkvm-console-network",
+ "snarkvm-curves",
+ "snarkvm-fields",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-address"
+name = "snarkvm-circuit-types"
+version = "0.7.5"
+dependencies = [
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-address",
+ "snarkvm-circuit-types-boolean",
+ "snarkvm-circuit-types-field",
+ "snarkvm-circuit-types-group",
+ "snarkvm-circuit-types-integers",
+ "snarkvm-circuit-types-scalar",
+ "snarkvm-circuit-types-string",
+]
+
+[[package]]
+name = "snarkvm-circuit-types-address"
 version = "0.7.5"
 dependencies = [
  "bech32",
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-boolean",
- "snarkvm-circuits-types-group",
- "snarkvm-circuits-types-scalar",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-boolean",
+ "snarkvm-circuit-types-field",
+ "snarkvm-circuit-types-group",
+ "snarkvm-circuit-types-scalar",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-boolean"
+name = "snarkvm-circuit-types-boolean"
 version = "0.7.5"
 dependencies = [
  "criterion",
- "snarkvm-circuits-environment",
+ "snarkvm-circuit-environment",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-field"
+name = "snarkvm-circuit-types-field"
 version = "0.7.5"
 dependencies = [
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-boolean",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-boolean",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-group"
+name = "snarkvm-circuit-types-group"
 version = "0.7.5"
 dependencies = [
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-boolean",
- "snarkvm-circuits-types-field",
- "snarkvm-circuits-types-scalar",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-boolean",
+ "snarkvm-circuit-types-field",
+ "snarkvm-circuit-types-scalar",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-integers"
+name = "snarkvm-circuit-types-integers"
 version = "0.7.5"
 dependencies = [
  "paste",
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-boolean",
- "snarkvm-circuits-types-field",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-boolean",
+ "snarkvm-circuit-types-field",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-scalar"
+name = "snarkvm-circuit-types-scalar"
 version = "0.7.5"
 dependencies = [
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-boolean",
- "snarkvm-circuits-types-field",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-boolean",
+ "snarkvm-circuit-types-field",
  "snarkvm-utilities",
 ]
 
 [[package]]
-name = "snarkvm-circuits-types-string"
+name = "snarkvm-circuit-types-string"
 version = "0.7.5"
 dependencies = [
  "rand",
- "snarkvm-circuits-environment",
- "snarkvm-circuits-types-boolean",
- "snarkvm-circuits-types-field",
- "snarkvm-circuits-types-integers",
+ "snarkvm-circuit-environment",
+ "snarkvm-circuit-types-boolean",
+ "snarkvm-circuit-types-field",
+ "snarkvm-circuit-types-integers",
  "snarkvm-utilities",
 ]
+
+[[package]]
+name = "snarkvm-console"
+version = "0.7.5"
+dependencies = [
+ "snarkvm-console-aleo",
+ "snarkvm-console-algorithms",
+ "snarkvm-console-network",
+ "snarkvm-console-types",
+]
+
+[[package]]
+name = "snarkvm-console-aleo"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "base58",
+ "bech32",
+ "bincode",
+ "enum_index",
+ "enum_index_derive",
+ "itertools",
+ "once_cell",
+ "rand",
+ "rayon",
+ "serde",
+ "serde_json",
+ "snarkvm-console-algorithms",
+ "snarkvm-console-network",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-algorithms"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "blake2s_simd",
+ "expect-test",
+ "hex",
+ "itertools",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-network"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "snarkvm-console-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-types"
+version = "0.7.5"
 
 [[package]]
 name = "snarkvm-curves"

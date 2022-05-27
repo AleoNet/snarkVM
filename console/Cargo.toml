@@ -1,0 +1,34 @@
+[package]
+name = "snarkvm-console"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Console environment for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-console-aleo]
+path = "./aleo"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-console-algorithms]
+path = "./algorithms"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-console-network]
+path = "./network"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-console-types]
+path = "./types"
+version = "0.7.5"
+optional = true
+
+[features]
+default = [ "aleo", "algorithms", "network", "types" ]
+aleo = [ "network", "snarkvm-console-aleo" ]
+algorithms = [ "snarkvm-console-algorithms" ]
+network = [ "snarkvm-console-network" ]
+types = [ "snarkvm-console-types" ]

@@ -117,7 +117,7 @@ impl<
         }
 
         let buffer = Vec::from_base32(&data)?;
-        Ok(Self::read_le(&buffer[..])?)
+        Ok(Self::read_le(&*buffer)?)
     }
 }
 

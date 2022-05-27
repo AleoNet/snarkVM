@@ -172,7 +172,7 @@ impl Network for Testnet2 {
     type AccountEncryptionScheme = ECIESPoseidonEncryption<Self::ProgramCurveParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<Self::ProgramCurveParameters, Self::InnerScalarField>;
 
-    type AccountSeedPRF = PoseidonPRF<Self::ProgramScalarField, 4, false>;
+    type AccountSeedPRF = PoseidonPRF<Self::ProgramScalarField, 4>;
     type AccountSeed = <Self::AccountSeedPRF as PRF>::Seed;
     
     type AccountSignatureScheme = AleoSignatureScheme<Self::ProgramCurveParameters>;
@@ -216,8 +216,8 @@ impl Network for Testnet2 {
     type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, Self::LedgerRootTwoToOneCRH, { Self::LEDGER_TREE_DEPTH }>;
     type LedgerRoot = AleoLocator<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }>;
 
-    type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
-    type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4>;
+    type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4>;
     type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
     type ProgramIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 8, 16>;
@@ -230,8 +230,8 @@ impl Network for Testnet2 {
     type RecordViewKey = AleoObject<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKey, { Self::RECORD_VIEW_KEY_PREFIX }, { Self::RECORD_VIEW_KEY_SIZE_IN_BYTES }>;
     type RecordViewKeyCommitment = AleoLocator<<Self::AccountEncryptionScheme as EncryptionScheme>::SymmetricKeyCommitment, { Self::RECORD_VIEW_KEY_COMMITMENT_PREFIX }>;
 
-    type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
-    type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
+    type SerialNumberPRF = PoseidonPRF<Self::InnerScalarField, 4>;
+    type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4>;
     type SerialNumber = AleoLocator<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }>;
 
     type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 2, 43>;

@@ -1,0 +1,7 @@
+[package]
+name = "snarkvm-console-types"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Console types for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"

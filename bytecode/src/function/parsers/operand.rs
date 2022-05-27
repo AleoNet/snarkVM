@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{function::Register, Program, Value};
-use snarkvm_circuits::prelude::*;
+use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -111,7 +111,7 @@ impl<P: Program> Operand<P> {
 }
 
 impl<P: Program> Parser for Operand<P> {
-    type Environment = E;
+    type Environment = P::Environment;
 
     /// Parses a string into a operand.
     #[inline]
@@ -165,7 +165,7 @@ impl<P: Program> ToBytes for Operand<P> {
 mod tests {
     use super::*;
     use crate::{Process, Value};
-    use snarkvm_circuits::{environment::Parser, Literal};
+    use snarkvm_circuit::{environment::Parser, Literal};
 
     type P = Process;
 

@@ -16,7 +16,6 @@
 
 use crate::{
     crypto_hash::{hash_to_curve, Poseidon},
-    SignatureError,
     SignatureScheme,
     SignatureSchemeOperations,
 };
@@ -37,7 +36,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
@@ -64,7 +63,7 @@ impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
             }
         }
 
-        Err(SignatureError::Message("Failed to read the signature root public key".into()).into())
+        bail!("Failed to read the signature root public key")
     }
 
     #[inline]
@@ -81,7 +80,7 @@ impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
             }
         }
 
-        Err(SignatureError::Message("Failed to read the signature root randomizer".into()).into())
+        bail!("Failed to read the signature root randomizer")
     }
 }
 
@@ -113,7 +112,7 @@ where
     TE::BaseField: PrimeField,
 {
     g_bases: Vec<TEProjective<TE>>,
-    poseidon: Poseidon<TE::BaseField, 4, false>,
+    poseidon: Poseidon<TE::BaseField, 4>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
@@ -141,7 +140,7 @@ where
             g_bases
         };
 
-        let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
+        let crypto_hash = Poseidon::<TE::BaseField, 4>::setup();
 
         Self { g_bases, poseidon: crypto_hash }
     }
@@ -334,7 +333,7 @@ where
         bits.resize(TE::ScalarField::size_in_data_bits(), false);
 
         // Output the scalar field.
-        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
+        let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits).unwrap();
         match <TE::ScalarField as PrimeField>::from_repr(biginteger) {
             // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
             Some(scalar) => scalar,
@@ -364,7 +363,7 @@ where
             }
         }
 
-        Err(SignatureError::Message("Failed to recover from x coordinate".into()).into())
+        bail!("Failed to recover from x coordinate")
     }
 }
 
