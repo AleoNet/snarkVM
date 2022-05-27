@@ -113,19 +113,25 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_inv_fails() {
+    fn test_zero_inverse_fails() {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inverse());
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
+        assert!(result.is_err());
+        Circuit::reset();
 
         let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, zero).inverse());
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
+        assert!(result.is_err());
+        Circuit::reset();
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, zero).inverse());
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
+        let candidate = Field::<Circuit>::new(Mode::Public, zero).inverse();
+        assert_eq!(zero, candidate.eject_value());
+        assert!(!Circuit::is_satisfied());
+        Circuit::reset();
 
-        let result = std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, zero).inverse());
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
+        let candidate = Field::<Circuit>::new(Mode::Private, zero).inverse();
+        assert_eq!(zero, candidate.eject_value());
+        assert!(!Circuit::is_satisfied());
+        Circuit::reset();
     }
 }
