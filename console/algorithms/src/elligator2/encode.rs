@@ -27,6 +27,19 @@ impl<
 
     /// Returns the encoded affine group element and sign, given a field element.
     pub fn encode(input: &BaseField<G>) -> Result<(G, bool)> {
+        // Compute the encoding of the input field element.
+        let (encoding, sign_high) = Self::encode_without_cofactor_clear(input)?;
+
+        // Cofactor clear the twisted Edwards element (x, y).
+        let group = encoding.mul_by_cofactor();
+        ensure!(group.is_on_curve(), "Elligator2 failed: element is not on curve");
+        ensure!(group.is_in_correct_subgroup_assuming_on_curve(), "Elligator2 failed: element in incorrect subgroup");
+
+        Ok((group, sign_high))
+    }
+
+    /// Returns the encoded affine group element and sign, given a field element.
+    pub(crate) fn encode_without_cofactor_clear(input: &BaseField<G>) -> Result<(G, bool)> {
         ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
         ensure!(!input.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
 
@@ -43,17 +56,27 @@ impl<
                 None => bail!("Montgomery B must be invertible in order to use Elligator2"),
             };
 
-            // Let ur2 = D * input^2;
-            let ur2 = Self::D * input.square();
-            // Verify A^2 * ur^2 != B(1 + ur^2)^2.
+            // Let (u, r) = (D, input).
+            let (u, r) = (Self::D, input);
+
+            // Let ur2 = u * r^2;
+            let ur2 = u * r.square();
+
+            // Ensure A^2 * ur^2 != B(1 + ur^2)^2.
             ensure!(a.square() * ur2 != b * (one + ur2).square(), "Elligator2 failed: A^2 * ur^2 == B(1 + ur^2)^2");
 
             // Let v = -A / (1 + ur^2).
             let v = -a * (one + ur2).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (1 + ur^2) == 0"))?;
 
+            // Ensure v is nonzero.
+            ensure!(!v.is_zero(), "Elligator2 failed: v == 0");
+
             // Let e = legendre(v^3 + Av^2 + Bv).
             let v2 = v.square();
             let e = ((v2 * v) + (a * v2) + (b * v)).legendre();
+
+            // Ensure e is nonzero.
+            ensure!(!e.is_zero(), "Elligator2 failed: e == 0");
 
             // Let x = ev - ((1 - e) * A/2).
             let x = match e {
@@ -61,6 +84,9 @@ impl<
                 LegendreSymbol::QuadraticResidue => v,
                 LegendreSymbol::QuadraticNonResidue => -v - a,
             };
+
+            // Ensure x is nonzero.
+            ensure!(!x.is_zero(), "Elligator2 failed: x == 0");
 
             // Let y = -e * sqrt(x^3 + Ax^2 + Bx).
             let x2 = x.square();
@@ -71,6 +97,9 @@ impl<
                 LegendreSymbol::QuadraticResidue => -value,
                 LegendreSymbol::QuadraticNonResidue => value,
             };
+
+            // Ensure y is nonzero.
+            ensure!(!y.is_zero(), "Elligator2 failed: y == 0");
 
             // Ensure (x, y) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
             ensure!(y.square() == rhs, "Elligator2 failed: y^2 != x^3 + A * x^2 + B * x");
@@ -93,11 +122,6 @@ impl<
         let x = u * v.inverse().ok_or_else(|| anyhow!("Elligator2 failed: v == 0"))?;
         let y = (u - one) * (u + one).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (u + 1) == 0"))?;
 
-        // Cofactor clear the twisted Edwards element (x, y).
-        let group = G::from_coordinates((x, y)).mul_by_cofactor();
-        ensure!(group.is_on_curve(), "Elligator2 failed: element is not on curve");
-        ensure!(group.is_in_correct_subgroup_assuming_on_curve(), "Elligator2 failed: element in incorrect subgroup");
-
-        Ok((group, sign_high))
+        Ok((G::from_coordinates((x, y)), sign_high))
     }
 }

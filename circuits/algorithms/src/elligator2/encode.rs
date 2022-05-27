@@ -72,7 +72,10 @@ impl<E: Environment> Elligator2<E> {
             let x2 = x.square();
             let x3 = &x2 * &x;
             let rhs = &x3 + (&a * &x2) + (&b * &x);
-            let y = -e * rhs.square_root();
+            let y = -&e * rhs.square_root();
+
+            // Ensure v * e * x * y != 0.
+            E::assert((&v * &e * &x * &y).is_not_equal(&Field::zero()));
 
             // Ensure (x, y) is a valid Weierstrass element on: y^2 == x^3 + A * x^2 + B * x.
             let y2 = y.square();
@@ -94,8 +97,10 @@ impl<E: Environment> Elligator2<E> {
         // Convert the Montgomery element (u, v) to the twisted Edwards element (x, y).
         let x = &u / v;
         let y = (&u - &one) / (u + &one);
+        let encoding = Group::from_xy_coordinates(x, y);
 
-        Group::from_xy_coordinates(x, y)
+        // Cofactor clear the twisted Edwards element (x, y).
+        encoding.mul_by_cofactor()
     }
 }
 
@@ -133,7 +138,17 @@ mod tests {
     }
 
     #[test]
+    fn test_encode_constant() {
+        check_encode(Mode::Constant, 274, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_encode_public() {
+        check_encode(Mode::Public, 263, 0, 371, 380);
+    }
+
+    #[test]
     fn test_encode_private() {
-        check_encode(Mode::Private, 261, 0, 356, 363);
+        check_encode(Mode::Private, 263, 0, 371, 380);
     }
 }

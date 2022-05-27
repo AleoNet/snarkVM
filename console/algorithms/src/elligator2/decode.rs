@@ -26,7 +26,6 @@ impl<
         ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
         ensure!(!group.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
         ensure!(group.is_on_curve(), "Inputs to Elligator2 must be on the twisted Edwards curve");
-        ensure!(group.is_in_correct_subgroup_assuming_on_curve(), "Inputs to Elligator2 is not in correct subgroup");
 
         // Compute the coefficients for the Weierstrass form: v^2 == u^3 + A * u^2 + B * u.
         let (montgomery_b_inverse, a, b) = match Self::MONTGOMERY_B.inverse() {
@@ -37,9 +36,10 @@ impl<
         let x = group.to_x_coordinate();
         let y = group.to_y_coordinate();
 
-        // Verify that x != -A.
+        // Ensure that x != -A.
         ensure!(x != -a, "Elligator2 failed: x == -A");
-        // Verify that if y is 0, then x is 0.
+
+        // Ensure that if y is 0, then x is 0.
         if y.is_zero() {
             ensure!(x.is_zero(), "Elligator2 failed: y == 0 but x != 0");
         }
@@ -75,7 +75,7 @@ impl<
             (u, v)
         };
 
-        // Verify -D * u * (u + A) is a residue.
+        // Ensure -D * u * (u + A) is a residue.
         let du = Self::D * u;
         let u_plus_a = u + a;
         ensure!((-du * u_plus_a).legendre().is_qr(), "Elligator2 failed: -D * u * (u + A) is not a quadratic residue");
@@ -117,7 +117,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             let expected = UniformRand::rand(rng);
 
-            let (encoded, sign_high) = Elligator2::<EdwardsAffine, EdwardsParameters>::encode(&expected)?;
+            let (encoded, sign_high) =
+                Elligator2::<EdwardsAffine, EdwardsParameters>::encode_without_cofactor_clear(&expected)?;
             let decoded = Elligator2::<EdwardsAffine, EdwardsParameters>::decode(&encoded, sign_high)?;
             assert_eq!(expected, decoded);
 
