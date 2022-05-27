@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_BITS: usize> CommitUncompressed for Pedersen<G, NUM_BITS> {
+impl<G: AffineCurve, const NUM_BITS: u8> CommitUncompressed for Pedersen<G, NUM_BITS> {
     type Input = bool;
     type Output = G;
     type Randomizer = G::ScalarField;

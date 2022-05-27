@@ -16,9 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit
-    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<E: Environment, const NUM_BITS: u8> Commit for Pedersen<E, NUM_BITS> {
     type Input = Boolean<E>;
     type Output = Field<E>;
     type Randomizer = Scalar<E>;
@@ -29,16 +27,17 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomizer = Scalar<E>>>
-    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_BITS: u8>
+    Metrics<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomizer = Scalar<E>>> for Pedersen<E, NUM_BITS>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
 
     fn count(case: &Self::Case) -> Count {
         let (input_modes, randomizer_modes) = case;
-        let uncompressed_count = count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
-        let uncompressed_mode = output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
+        let uncompressed_count =
+            count!(Pedersen<E, NUM_BITS>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
+        let uncompressed_mode =
+            output_mode!(Pedersen<E, NUM_BITS>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
 
         // Compute the const of constructing the group elements.
         let group_initialize_count = randomizer_modes
@@ -75,9 +74,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomizer = Scalar<E>>>
-    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_BITS: u8>
+    OutputMode<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomizer = Scalar<E>>> for Pedersen<E, NUM_BITS>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
 
@@ -100,18 +98,16 @@ mod tests {
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+    const NUM_BITS_MULTIPLIER: u8 = 8;
 
-    fn check_commit<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
+    fn check_commit<const NUM_BITS: u8>(mode: Mode) {
         // Initialize Pedersen.
-        let native = NativePedersen::<<Circuit as Environment>::Affine, WINDOW_SIZE>::setup(MESSAGE);
-        let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
-        // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
+        let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {
             // Sample a random input.
-            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            let input = (0..NUM_BITS).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Sample a randomizer.
             let randomizer = UniformRand::rand(&mut test_rng());
             // Compute the expected commitment.
@@ -131,12 +127,12 @@ mod tests {
                 let randomizer_modes =
                     circuit_randomizer.to_bits_le().iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
-                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    Pedersen<Circuit, NUM_BITS>,
                     Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomizer = Scalar<Circuit>>,
                     &(input_modes.clone(), randomizer_modes.clone())
                 );
                 assert_output_mode!(
-                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    Pedersen<Circuit, NUM_BITS>,
                     Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomizer = Scalar<Circuit>>,
                     &(input_modes, randomizer_modes),
                     candidate
@@ -179,31 +175,31 @@ mod tests {
     #[test]
     fn test_commit_constant() {
         // Set the number of windows, and modulate the window size.
-        check_commit::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_commit::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_commit::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_commit::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_commit::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commit::<NUM_BITS_MULTIPLIER>(Mode::Constant);
+        check_commit::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_commit::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_commit::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
+        check_commit::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Constant);
     }
 
     #[test]
     fn test_commit_public() {
         // Set the number of windows, and modulate the window size.
-        check_commit::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_commit::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_commit::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_commit::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_commit::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commit::<NUM_BITS_MULTIPLIER>(Mode::Public);
+        check_commit::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_commit::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_commit::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Public);
+        check_commit::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Public);
     }
 
     #[test]
     fn test_commit_private() {
         // Set the number of windows, and modulate the window size.
-        check_commit::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_commit::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_commit::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_commit::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_commit::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commit::<NUM_BITS_MULTIPLIER>(Mode::Private);
+        check_commit::<{ 2 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_commit::<{ 3 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_commit::<{ 4 * NUM_BITS_MULTIPLIER }>(Mode::Private);
+        check_commit::<{ 5 * NUM_BITS_MULTIPLIER }>(Mode::Private);
     }
 
     #[test]

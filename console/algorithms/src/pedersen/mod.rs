@@ -35,21 +35,21 @@ pub type Pedersen128<G> = Pedersen<G, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct Pedersen<G: AffineCurve, const NUM_BITS: usize> {
+pub struct Pedersen<G: AffineCurve, const NUM_BITS: u8> {
     /// The base window for the Pedersen hash.
-    base_window: Arc<[G::Projective; NUM_BITS]>,
+    base_window: Arc<Vec<G::Projective>>,
     /// The random base window for the Pedersen commitment.
     random_base_window: Arc<Vec<G::Projective>>,
 }
 
-impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
+impl<G: AffineCurve, const NUM_BITS: u8> Pedersen<G, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
         let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.Base.{message}"));
         let mut base_power = generator.to_projective();
-        let mut base_window = [G::Projective::zero(); NUM_BITS];
-        for base in base_window.iter_mut().take(NUM_BITS) {
+        let mut base_window = vec![G::Projective::zero(); NUM_BITS as usize];
+        for base in base_window.iter_mut().take(NUM_BITS as usize) {
             *base = base_power;
             base_power.double_in_place();
         }
@@ -65,11 +65,11 @@ impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
         }
         assert_eq!(random_base_window.len(), num_scalar_bits);
 
-        Self { base_window: Arc::new(base_window), random_base_window: Arc::new(random_base_window) }
+        Self { base_window: Arc::new(base_window.to_vec()), random_base_window: Arc::new(random_base_window) }
     }
 
     /// Returns the base window.
-    pub fn base_window(&self) -> &Arc<[G::Projective; NUM_BITS]> {
+    pub fn base_window(&self) -> &Arc<Vec<G::Projective>> {
         &self.base_window
     }
 
