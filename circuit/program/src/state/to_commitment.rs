@@ -24,7 +24,7 @@ impl<A: Aleo> State<A> {
         // Convert the balance into a field element.
         let balance = self.balance.to_field();
         // Compute the BHP hash of the program state.
-        A::hash_bhp512(
+        A::hash_bhp1024(
             &[&self.program, &self.process, &owner, &balance, &self.data, &self.nonce.to_x_coordinate()].to_bits_le(),
         )
     }
