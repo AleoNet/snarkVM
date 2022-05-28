@@ -72,16 +72,16 @@ mod tests {
 
     #[test]
     fn test_hash_constant() -> Result<()> {
-        check_hash::<32, 48>(Mode::Constant, 7315, 0, 0, 0)
+        check_hash::<32, 48>(Mode::Constant, 7311, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_public() -> Result<()> {
-        check_hash::<32, 48>(Mode::Public, 542, 0, 8597, 8598)
+        check_hash::<32, 48>(Mode::Public, 542, 0, 8592, 8593)
     }
 
     #[test]
     fn test_hash_private() -> Result<()> {
-        check_hash::<32, 48>(Mode::Private, 542, 0, 8597, 8598)
+        check_hash::<32, 48>(Mode::Private, 542, 0, 8592, 8593)
     }
 }

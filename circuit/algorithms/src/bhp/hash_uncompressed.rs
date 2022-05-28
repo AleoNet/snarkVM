@@ -29,8 +29,10 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output {
         // The number of hasher bits to fit.
         let num_hasher_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+        // The number of data bits in the output.
+        let num_data_bits = E::BaseField::size_in_data_bits();
         // The maximum number of input bits per iteration.
-        let max_input_bits_per_iteration = num_hasher_bits - E::BaseField::size_in_data_bits();
+        let max_input_bits_per_iteration = num_hasher_bits - num_data_bits;
 
         // Initialize a variable to store the hash from the current iteration.
         let mut digest = Group::zero();
@@ -47,9 +49,9 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                     preimage.extend(U64::constant(input.len() as u64).to_bits_le());
                     preimage.extend_from_slice(input_bits);
                 }
-                // Construct the subsequent iterations as: [ PREVIOUS_HASH || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
+                // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
-                    preimage.extend(digest.to_x_coordinate().to_bits_le());
+                    preimage.extend(digest.to_x_coordinate().to_bits_le().into_iter().take(num_data_bits));
                     preimage.extend_from_slice(input_bits);
                 }
             }
@@ -133,17 +135,17 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_constant() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Constant, 7315, 0, 0, 0)
+        check_hash_uncompressed::<32, 48>(Mode::Constant, 7311, 0, 0, 0)
     }
 
     #[test]
     fn test_hash_uncompressed_public() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 542, 0, 8596, 8597)
+        check_hash_uncompressed::<32, 48>(Mode::Public, 542, 0, 8592, 8593)
     }
 
     #[test]
     fn test_hash_uncompressed_private() -> Result<()> {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 542, 0, 8596, 8597)
+        check_hash_uncompressed::<32, 48>(Mode::Private, 542, 0, 8592, 8593)
     }
 
     #[test]

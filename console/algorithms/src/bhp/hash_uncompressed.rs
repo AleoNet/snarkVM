@@ -30,8 +30,10 @@ where
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output> {
         // The number of hasher bits to fit.
         let num_hasher_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+        // The number of data bits in the output.
+        let num_data_bits = G::BaseField::size_in_data_bits();
         // The maximum number of input bits per iteration.
-        let max_input_bits_per_iteration = num_hasher_bits - G::BaseField::size_in_data_bits();
+        let max_input_bits_per_iteration = num_hasher_bits - num_data_bits;
 
         // Initialize a variable to store the hash from the current iteration.
         let mut digest = G::zero();
@@ -48,9 +50,9 @@ where
                     preimage.extend((input.len() as u64).to_bits_le());
                     preimage.extend(input_bits);
                 }
-                // Construct the subsequent iterations as: [ PREVIOUS_HASH || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
+                // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
                 false => {
-                    preimage.extend(&digest.to_x_coordinate().to_bits_le());
+                    preimage.extend(digest.to_x_coordinate().to_bits_le().iter().take(num_data_bits));
                     preimage.extend(input_bits);
                 }
             }
