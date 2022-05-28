@@ -24,7 +24,7 @@ pub trait LeafHash<N: Network>: Clone + Send + Sync {
     fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field>;
 }
 
-impl<N: Network, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> LeafHash<N>
+impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<N>
     for BHP<N::Affine, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Leaf = Vec<bool>;

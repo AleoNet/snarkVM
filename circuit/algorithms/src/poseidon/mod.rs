@@ -19,7 +19,7 @@ mod hash_many;
 mod hash_to_scalar;
 mod prf;
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::{Hash, HashMany, HashToScalar, PRF};

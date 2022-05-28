@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Commit for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = Boolean<E>;
     type Output = Field<E>;
     type Randomizer = Scalar<E>;
@@ -27,28 +27,31 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit 
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::Circuit;
-    use snarkvm_console_algorithms::{Commit as C, BHP as NativeBHP};
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    use anyhow::Result;
+
+    const ITERATIONS: u64 = 100;
     const MESSAGE: &str = "BHPCircuit0";
 
-    fn check_commit<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+    fn check_commit<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
+        use console::Commit as C;
+
         // Initialize BHP.
-        let native = NativeBHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
-        let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
+        let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -68,21 +71,23 @@ mod tests {
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
                 assert_eq!(expected, candidate.eject_value());
             });
+            Circuit::reset();
         }
+        Ok(())
     }
 
     #[test]
-    fn test_commit_constant() {
-        check_commit::<32, 48>(Mode::Constant, 6887, 0, 0, 0);
+    fn test_commit_constant() -> Result<()> {
+        check_commit::<32, 48>(Mode::Constant, 7943, 0, 0, 0)
     }
 
     #[test]
-    fn test_commit_public() {
-        check_commit::<32, 48>(Mode::Public, 631, 0, 9404, 9404);
+    fn test_commit_public() -> Result<()> {
+        check_commit::<32, 48>(Mode::Public, 1044, 0, 10098, 10099)
     }
 
     #[test]
-    fn test_commit_private() {
-        check_commit::<32, 48>(Mode::Private, 631, 0, 9404, 9404);
+    fn test_commit_private() -> Result<()> {
+        check_commit::<32, 48>(Mode::Private, 1044, 0, 10098, 10099)
     }
 }

@@ -104,10 +104,10 @@ impl<E: Environment> Elligator2<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::Circuit;
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1_000;
@@ -118,7 +118,7 @@ mod tests {
             let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
             // Compute the expected native result.
-            let (expected, _sign) = snarkvm_console_algorithms::Elligator2::<
+            let (expected, _sign) = console::Elligator2::<
                 <Circuit as Environment>::Affine,
                 <Circuit as Environment>::AffineParameters,
             >::encode(&given)

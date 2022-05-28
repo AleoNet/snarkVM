@@ -2075,8 +2075,6 @@ name = "snarkvm-circuit-algorithms"
 version = "0.7.5"
 dependencies = [
  "anyhow",
- "snarkvm-algorithms",
- "snarkvm-circuit-environment",
  "snarkvm-circuit-types",
  "snarkvm-console-algorithms",
  "snarkvm-curves",
@@ -2244,8 +2242,6 @@ dependencies = [
  "base58",
  "bech32",
  "bincode",
- "itertools",
- "once_cell",
  "rand",
  "serde",
  "serde_json",

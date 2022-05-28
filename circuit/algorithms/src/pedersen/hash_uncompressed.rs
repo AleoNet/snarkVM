@@ -107,11 +107,10 @@ impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn HashUncompressed<Input =
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::Circuit;
-    use snarkvm_console_algorithms::{HashUncompressed as H, Pedersen as NativePedersen};
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
@@ -119,9 +118,11 @@ mod tests {
     const NUM_BITS_MULTIPLIER: u8 = 8;
 
     fn check_hash_uncompressed<const NUM_BITS: u8>(mode: Mode) {
+        use console::HashUncompressed as H;
+
         // Initialize the Pedersen hash.
-        let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
-        let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
+        let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let circuit = Pedersen::<Circuit, NUM_BITS>::constant(native.clone());
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -204,7 +205,7 @@ mod tests {
     #[test]
     fn test_pedersen64_homomorphism_private() {
         // Initialize Pedersen64.
-        let pedersen = Pedersen64::setup("Pedersen64HomomorphismTest");
+        let pedersen = Pedersen64::constant(console::Pedersen64::setup("Pedersen64HomomorphismTest"));
 
         for _ in 0..ITERATIONS {
             // Sample two random unsigned integers, with the MSB set to 0.
@@ -263,7 +264,7 @@ mod tests {
         }
 
         // Check Pedersen128.
-        let pedersen128 = Pedersen128::setup("Pedersen128HomomorphismTest");
+        let pedersen128 = Pedersen128::constant(console::Pedersen128::setup("Pedersen128HomomorphismTest"));
         check_pedersen_homomorphism(&pedersen128);
     }
 }

@@ -68,7 +68,7 @@ mod tests {
         traits::MerkleParameters,
     };
 
-    use snarkvm_circuit_environment::{assert_scope, Circuit, Mode};
+    use snarkvm_circuit_types::environment::{assert_scope, Circuit, Mode};
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
     use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 

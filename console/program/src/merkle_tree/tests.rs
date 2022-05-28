@@ -365,11 +365,11 @@ fn test_merkle_tree_bhp() -> Result<()> {
         type LH = BHP1024<<CurrentNetwork as Network>::Affine>;
         type PH = BHP512<<CurrentNetwork as Network>::Affine>;
 
-        let leaf_hasher = LH::setup("AleoMerkleTreeTest0");
-        let path_hasher = PH::setup("AleoMerkleTreeTest1");
+        let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+        let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
 
         // TODO (howardwu): Switch to this when BHP has been extended.
-        // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| rand::random::<bool>()).collect()).collect::<Vec<Vec<bool>>>();
+        // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect()).collect::<Vec<Vec<bool>>>();
         let create_leaves = |num_leaves| {
             (0..num_leaves)
                 .map(|_| <CurrentNetwork as Network>::Field::rand(&mut test_rng()).to_bits_le())
@@ -473,10 +473,10 @@ fn test_merkle_tree_depth_2_bhp() -> Result<()> {
     type LH = BHP1024<<CurrentNetwork as Network>::Affine>;
     type PH = BHP512<<CurrentNetwork as Network>::Affine>;
 
-    let leaf_hasher = LH::setup("AleoMerkleTreeTest0");
-    let path_hasher = PH::setup("AleoMerkleTreeTest1");
+    let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+    let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
     // TODO (howardwu): Switch to this when BHP has been extended.
-    // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| rand::random::<bool>()).collect()).collect::<Vec<Vec<bool>>>();
+    // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect()).collect::<Vec<Vec<bool>>>();
     let create_leaves = |num_leaves| {
         (0..num_leaves)
             .map(|_| <CurrentNetwork as Network>::Field::rand(&mut test_rng()).to_bits_le())
@@ -506,10 +506,10 @@ fn test_merkle_tree_depth_3_bhp() -> Result<()> {
     type LH = BHP1024<<CurrentNetwork as Network>::Affine>;
     type PH = BHP512<<CurrentNetwork as Network>::Affine>;
 
-    let leaf_hasher = LH::setup("AleoMerkleTreeTest0");
-    let path_hasher = PH::setup("AleoMerkleTreeTest1");
+    let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+    let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
     // TODO (howardwu): Switch to this when BHP has been extended.
-    // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| rand::random::<bool>()).collect()).collect::<Vec<Vec<bool>>>();
+    // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect()).collect::<Vec<Vec<bool>>>();
     let create_leaves = |num_leaves| {
         (0..num_leaves)
             .map(|_| <CurrentNetwork as Network>::Field::rand(&mut test_rng()).to_bits_le())
@@ -549,10 +549,10 @@ fn test_merkle_tree_depth_4_bhp() -> Result<()> {
     type LH = BHP1024<<CurrentNetwork as Network>::Affine>;
     type PH = BHP512<<CurrentNetwork as Network>::Affine>;
 
-    let leaf_hasher = LH::setup("AleoMerkleTreeTest0");
-    let path_hasher = PH::setup("AleoMerkleTreeTest1");
+    let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+    let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
     // TODO (howardwu): Switch to this when BHP has been extended.
-    // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| rand::random::<bool>()).collect()).collect::<Vec<Vec<bool>>>();
+    // (0..num_leaves).map(|_| (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect()).collect::<Vec<Vec<bool>>>();
     let create_leaves = |num_leaves| {
         (0..num_leaves)
             .map(|_| <CurrentNetwork as Network>::Field::rand(&mut test_rng()).to_bits_le())

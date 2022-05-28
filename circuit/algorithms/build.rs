@@ -14,17 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-where
-    <G as AffineCurve>::BaseField: PrimeField,
-{
-    type Input = bool;
-    type Output = G::BaseField;
-
-    /// Returns the BHP hash of the given input as a field element.
-    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {
-        Ok(self.hash_uncompressed(input)?.to_x_coordinate())
+fn main() {
+    if cfg!(feature = "enable_console") {
+        println!("cargo:rustc-cfg=console");
     }
 }

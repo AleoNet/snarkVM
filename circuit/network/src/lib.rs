@@ -23,7 +23,6 @@ pub use v0::*;
 use snarkvm_circuit_types::{environment::Environment, Boolean, Field, Group, Scalar};
 
 pub trait Aleo: Environment {
-    #[cfg(console)]
     type Network: console::Network<Affine = Self::Affine, Field = Self::BaseField, Scalar = Self::ScalarField>;
 
     /// The maximum number of field elements in data (must not exceed u16::MAX).

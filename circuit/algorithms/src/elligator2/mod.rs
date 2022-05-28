@@ -16,8 +16,8 @@
 
 mod encode;
 
-#[cfg(test)]
-use snarkvm_circuit_environment::assert_scope;
+#[cfg(all(test, console))]
+use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::prelude::*;
 use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};

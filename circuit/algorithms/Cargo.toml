@@ -6,16 +6,14 @@ description = "Algorithm circuit library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-circuit-environment]
-path = "../environment"
+[dependencies.console]
+package = "snarkvm-console-algorithms"
+path = "../../console/algorithms"
 version = "0.7.5"
+optional = true
 
 [dependencies.snarkvm-circuit-types]
 path = "../types"
-version = "0.7.5"
-
-[dependencies.snarkvm-console-algorithms]
-path = "../../console/algorithms"
 version = "0.7.5"
 
 [dependencies.snarkvm-curves]
@@ -26,16 +24,16 @@ default-features = false
 [dependencies.snarkvm-fields]
 path = "../../fields"
 version = "0.7.5"
+default-features = false
 
-[dependencies.snarkvm-utilities]
+[dev-dependencies.snarkvm-utilities]
 path = "../../utilities"
 version = "0.7.5"
 
-[dev-dependencies.snarkvm-algorithms]
-path = "../../algorithms"
-version = "0.7.5"
-default-features = false
-features = ["crh", "merkle_tree"]
-
 [dev-dependencies.anyhow]
 version = "1.0.57"
+
+[features]
+default = ["enable_console"]
+# Use #[cfg(console)] instead.
+enable_console = ["console"]
