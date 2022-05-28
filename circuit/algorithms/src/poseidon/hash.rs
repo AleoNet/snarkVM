@@ -32,24 +32,6 @@ impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
     }
 }
 
-impl<E: Environment, const RATE: usize> Metrics<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E, RATE> {
-    type Case = ();
-
-    fn count(_parameter: &Self::Case) -> Count {
-        todo!()
-    }
-}
-
-impl<E: Environment, const RATE: usize> OutputMode<dyn Hash<Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E, RATE>
-{
-    type Case = ();
-
-    fn output_mode(_parameter: &Self::Case) -> Mode {
-        todo!()
-    }
-}
-
 impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Absorbs the input elements into state.
     #[inline]

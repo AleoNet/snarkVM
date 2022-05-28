@@ -32,26 +32,6 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
     }
 }
 
-impl<E: Environment, const RATE: usize> Metrics<dyn HashMany<Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E, RATE>
-{
-    type Case = ();
-
-    fn count(_parameter: &Self::Case) -> Count {
-        todo!()
-    }
-}
-
-impl<E: Environment, const RATE: usize> OutputMode<dyn HashMany<Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E, RATE>
-{
-    type Case = ();
-
-    fn output_mode(_parameter: &Self::Case) -> Mode {
-        todo!()
-    }
-}
-
 #[cfg(all(test, console))]
 mod tests {
     use super::*;

@@ -34,26 +34,6 @@ impl<E: Environment, const RATE: usize> PRF for Poseidon<E, RATE> {
     }
 }
 
-impl<E: Environment, const RATE: usize> Metrics<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E, RATE>
-{
-    type Case = ();
-
-    fn count(_parameter: &Self::Case) -> Count {
-        todo!()
-    }
-}
-
-impl<E: Environment, const RATE: usize> OutputMode<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E, RATE>
-{
-    type Case = ();
-
-    fn output_mode(_case: &Self::Case) -> Mode {
-        todo!()
-    }
-}
-
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
