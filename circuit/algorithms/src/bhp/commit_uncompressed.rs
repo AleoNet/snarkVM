@@ -45,7 +45,7 @@ mod tests {
 
     use anyhow::Result;
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: u64 = 100;
     const MESSAGE: &str = "BHPCircuit0";
 
     fn check_commit_uncompressed<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_commit_uncompressed_constant() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Constant, 7899, 0, 0, 0)
+        check_commit_uncompressed::<32, 48>(Mode::Constant, 7943, 0, 0, 0)
     }
 
     #[test]

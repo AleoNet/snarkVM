@@ -34,7 +34,7 @@ mod tests {
 
     use anyhow::Result;
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: u64 = 100;
     const MESSAGE: &str = "BHPCircuit0";
 
     fn check_hash<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
