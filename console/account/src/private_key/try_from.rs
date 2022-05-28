@@ -37,7 +37,7 @@ impl<N: Network> PrivateKey<N> {
         let sk_vrf_domain = N::Scalar::from_bytes_le_mod_order(sk_vrf_input.as_bytes());
 
         // Initialize Poseidon2 on the **scalar** field.
-        let poseidon2 = Poseidon2::<N::Scalar>::setup();
+        let poseidon2 = Poseidon2::<N::Scalar>::setup()?;
 
         Ok(Self {
             seed,

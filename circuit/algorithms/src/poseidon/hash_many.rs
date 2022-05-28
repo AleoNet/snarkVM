@@ -38,6 +38,8 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    use anyhow::Result;
+
     const ITERATIONS: usize = 10;
     const RATE: u16 = 4;
 
@@ -49,11 +51,11 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
         use console::HashMany as H;
 
         let rng = &mut test_rng();
-        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, { RATE as usize }>::setup();
+        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, { RATE as usize }>::setup()?;
         let poseidon = Poseidon::<Circuit, { RATE as usize }>::new();
 
         for i in 0..ITERATIONS {
@@ -73,61 +75,66 @@ mod tests {
                 let case = format!("(mode = {mode}, num_inputs = {num_inputs}, num_outputs = {num_outputs})");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_many_constant() {
+    fn test_hash_many_constant() -> Result<()> {
         for num_inputs in 0..=RATE {
             for num_outputs in 0..=RATE {
-                check_hash_many(Mode::Constant, num_inputs as usize, num_outputs, 0, 0, 0, 0);
+                check_hash_many(Mode::Constant, num_inputs as usize, num_outputs, 0, 0, 0, 0)?;
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_many_public() {
+    fn test_hash_many_public() -> Result<()> {
         for num_outputs in 0..=RATE {
-            check_hash_many(Mode::Public, 0, num_outputs, 0, 0, 0, 0);
+            check_hash_many(Mode::Public, 0, num_outputs, 0, 0, 0, 0)?;
         }
         for num_outputs in 1..=RATE {
-            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 335, 335);
-            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 340, 340);
-            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 345, 345);
-            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 350, 350);
-            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 705, 705);
+            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 335, 335)?;
+            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 340, 340)?;
+            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 345, 345)?;
+            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 350, 350)?;
+            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 705, 705)?;
+            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 705, 705)?;
         }
         for num_outputs in (RATE + 1)..=(RATE * 2) {
-            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 690, 690);
-            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 695, 695);
-            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 700, 700);
-            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 1060, 1060);
-            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 1060, 1060);
+            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 690, 690)?;
+            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 695, 695)?;
+            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 700, 700)?;
+            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 705, 705)?;
+            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 1060, 1060)?;
+            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 1060, 1060)?;
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_many_private() {
+    fn test_hash_many_private() -> Result<()> {
         for num_outputs in 0..=RATE {
-            check_hash_many(Mode::Private, 0, num_outputs, 0, 0, 0, 0);
+            check_hash_many(Mode::Private, 0, num_outputs, 0, 0, 0, 0)?;
         }
         for num_outputs in 1..=RATE {
-            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 335, 335);
-            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 340, 340);
-            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 345, 345);
-            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 350, 350);
-            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 705, 705);
+            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 335, 335)?;
+            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 340, 340)?;
+            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 345, 345)?;
+            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 350, 350)?;
+            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 705, 705)?;
+            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 705, 705)?;
         }
         for num_outputs in (RATE + 1)..=(RATE * 2) {
-            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 690, 690);
-            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 695, 695);
-            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 700, 700);
-            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 1060, 1060);
-            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 1060, 1060);
+            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 690, 690)?;
+            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 695, 695)?;
+            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 700, 700)?;
+            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 705, 705)?;
+            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 1060, 1060)?;
+            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 1060, 1060)?;
         }
+        Ok(())
     }
 }

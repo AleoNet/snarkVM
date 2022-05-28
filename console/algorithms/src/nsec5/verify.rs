@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn test_prove_and_verify() -> Result<()> {
         let rng = &mut test_rng();
-        let poseidon4 = Poseidon4::<Fq>::setup();
+        let poseidon4 = Poseidon4::<Fq>::setup()?;
 
         for _ in 0..ITERATIONS {
             let generator_g: EdwardsAffine = UniformRand::rand(rng);

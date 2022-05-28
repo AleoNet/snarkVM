@@ -200,6 +200,8 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    use anyhow::Result;
+
     const ITERATIONS: usize = 10;
     const RATE: usize = 4;
 
@@ -210,11 +212,11 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
         use console::Hash as H;
 
         let rng = &mut test_rng();
-        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
+        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup()?;
         let poseidon = Poseidon::<Circuit, RATE>::new();
 
         for i in 0..ITERATIONS {
@@ -232,43 +234,46 @@ mod tests {
                 let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_constant() {
+    fn test_hash_constant() -> Result<()> {
         for num_inputs in 0..=RATE {
-            check_hash(Mode::Constant, num_inputs, 0, 0, 0, 0);
+            check_hash(Mode::Constant, num_inputs, 0, 0, 0, 0)?;
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_public() {
-        check_hash(Mode::Public, 0, 0, 0, 0, 0);
-        check_hash(Mode::Public, 1, 0, 0, 335, 335);
-        check_hash(Mode::Public, 2, 0, 0, 340, 340);
-        check_hash(Mode::Public, 3, 0, 0, 345, 345);
-        check_hash(Mode::Public, 4, 0, 0, 350, 350);
-        check_hash(Mode::Public, 5, 0, 0, 705, 705);
-        check_hash(Mode::Public, 6, 0, 0, 705, 705);
-        check_hash(Mode::Public, 7, 0, 0, 705, 705);
-        check_hash(Mode::Public, 8, 0, 0, 705, 705);
-        check_hash(Mode::Public, 9, 0, 0, 1060, 1060);
-        check_hash(Mode::Public, 10, 0, 0, 1060, 1060);
+    fn test_hash_public() -> Result<()> {
+        check_hash(Mode::Public, 0, 0, 0, 0, 0)?;
+        check_hash(Mode::Public, 1, 0, 0, 335, 335)?;
+        check_hash(Mode::Public, 2, 0, 0, 340, 340)?;
+        check_hash(Mode::Public, 3, 0, 0, 345, 345)?;
+        check_hash(Mode::Public, 4, 0, 0, 350, 350)?;
+        check_hash(Mode::Public, 5, 0, 0, 705, 705)?;
+        check_hash(Mode::Public, 6, 0, 0, 705, 705)?;
+        check_hash(Mode::Public, 7, 0, 0, 705, 705)?;
+        check_hash(Mode::Public, 8, 0, 0, 705, 705)?;
+        check_hash(Mode::Public, 9, 0, 0, 1060, 1060)?;
+        check_hash(Mode::Public, 10, 0, 0, 1060, 1060)
     }
 
     #[test]
-    fn test_hash_private() {
-        check_hash(Mode::Private, 0, 0, 0, 0, 0);
-        check_hash(Mode::Private, 1, 0, 0, 335, 335);
-        check_hash(Mode::Private, 2, 0, 0, 340, 340);
-        check_hash(Mode::Private, 3, 0, 0, 345, 345);
-        check_hash(Mode::Private, 4, 0, 0, 350, 350);
-        check_hash(Mode::Private, 5, 0, 0, 705, 705);
-        check_hash(Mode::Private, 6, 0, 0, 705, 705);
-        check_hash(Mode::Private, 7, 0, 0, 705, 705);
-        check_hash(Mode::Private, 8, 0, 0, 705, 705);
-        check_hash(Mode::Private, 9, 0, 0, 1060, 1060);
-        check_hash(Mode::Private, 10, 0, 0, 1060, 1060);
+    fn test_hash_private() -> Result<()> {
+        check_hash(Mode::Private, 0, 0, 0, 0, 0)?;
+        check_hash(Mode::Private, 1, 0, 0, 335, 335)?;
+        check_hash(Mode::Private, 2, 0, 0, 340, 340)?;
+        check_hash(Mode::Private, 3, 0, 0, 345, 345)?;
+        check_hash(Mode::Private, 4, 0, 0, 350, 350)?;
+        check_hash(Mode::Private, 5, 0, 0, 705, 705)?;
+        check_hash(Mode::Private, 6, 0, 0, 705, 705)?;
+        check_hash(Mode::Private, 7, 0, 0, 705, 705)?;
+        check_hash(Mode::Private, 8, 0, 0, 705, 705)?;
+        check_hash(Mode::Private, 9, 0, 0, 1060, 1060)?;
+        check_hash(Mode::Private, 10, 0, 0, 1060, 1060)
     }
 }

@@ -44,8 +44,8 @@ pub struct Poseidon<F: PrimeField, const RATE: usize> {
 
 impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
     /// Initializes a new instance of Poseidon.
-    pub fn setup() -> Self {
-        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>().unwrap()) }
+    pub fn setup() -> Result<Self> {
+        Ok(Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>()?) })
     }
 }
 

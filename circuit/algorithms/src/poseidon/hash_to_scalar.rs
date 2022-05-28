@@ -39,6 +39,8 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, FromBits, ToBits, UniformRand};
 
+    use anyhow::Result;
+
     const ITERATIONS: usize = 10;
     const RATE: usize = 4;
 
@@ -49,11 +51,11 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
         use console::HashToScalar as H;
 
         let rng = &mut test_rng();
-        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
+        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup()?;
         let poseidon = Poseidon::<Circuit, RATE>::new();
 
         for i in 0..ITERATIONS {
@@ -90,43 +92,46 @@ mod tests {
                 let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_to_scalar_constant() {
+    fn test_hash_to_scalar_constant() -> Result<()> {
         for num_inputs in 0..=RATE {
-            check_hash_to_scalar(Mode::Constant, num_inputs, 253, 0, 0, 0);
+            check_hash_to_scalar(Mode::Constant, num_inputs, 253, 0, 0, 0)?;
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_to_scalar_public() {
-        check_hash_to_scalar(Mode::Public, 0, 253, 0, 0, 0);
-        check_hash_to_scalar(Mode::Public, 1, 0, 0, 588, 589);
-        check_hash_to_scalar(Mode::Public, 2, 0, 0, 593, 594);
-        check_hash_to_scalar(Mode::Public, 3, 0, 0, 598, 599);
-        check_hash_to_scalar(Mode::Public, 4, 0, 0, 603, 604);
-        check_hash_to_scalar(Mode::Public, 5, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Public, 6, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Public, 7, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Public, 8, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Public, 9, 0, 0, 1313, 1314);
-        check_hash_to_scalar(Mode::Public, 10, 0, 0, 1313, 1314);
+    fn test_hash_to_scalar_public() -> Result<()> {
+        check_hash_to_scalar(Mode::Public, 0, 253, 0, 0, 0)?;
+        check_hash_to_scalar(Mode::Public, 1, 0, 0, 588, 589)?;
+        check_hash_to_scalar(Mode::Public, 2, 0, 0, 593, 594)?;
+        check_hash_to_scalar(Mode::Public, 3, 0, 0, 598, 599)?;
+        check_hash_to_scalar(Mode::Public, 4, 0, 0, 603, 604)?;
+        check_hash_to_scalar(Mode::Public, 5, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Public, 6, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Public, 7, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Public, 8, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Public, 9, 0, 0, 1313, 1314)?;
+        check_hash_to_scalar(Mode::Public, 10, 0, 0, 1313, 1314)
     }
 
     #[test]
-    fn test_hash_to_scalar_private() {
-        check_hash_to_scalar(Mode::Private, 0, 253, 0, 0, 0);
-        check_hash_to_scalar(Mode::Private, 1, 0, 0, 588, 589);
-        check_hash_to_scalar(Mode::Private, 2, 0, 0, 593, 594);
-        check_hash_to_scalar(Mode::Private, 3, 0, 0, 598, 599);
-        check_hash_to_scalar(Mode::Private, 4, 0, 0, 603, 604);
-        check_hash_to_scalar(Mode::Private, 5, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Private, 6, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Private, 7, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Private, 8, 0, 0, 958, 959);
-        check_hash_to_scalar(Mode::Private, 9, 0, 0, 1313, 1314);
-        check_hash_to_scalar(Mode::Private, 10, 0, 0, 1313, 1314);
+    fn test_hash_to_scalar_private() -> Result<()> {
+        check_hash_to_scalar(Mode::Private, 0, 253, 0, 0, 0)?;
+        check_hash_to_scalar(Mode::Private, 1, 0, 0, 588, 589)?;
+        check_hash_to_scalar(Mode::Private, 2, 0, 0, 593, 594)?;
+        check_hash_to_scalar(Mode::Private, 3, 0, 0, 598, 599)?;
+        check_hash_to_scalar(Mode::Private, 4, 0, 0, 603, 604)?;
+        check_hash_to_scalar(Mode::Private, 5, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Private, 6, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Private, 7, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Private, 8, 0, 0, 958, 959)?;
+        check_hash_to_scalar(Mode::Private, 9, 0, 0, 1313, 1314)?;
+        check_hash_to_scalar(Mode::Private, 10, 0, 0, 1313, 1314)
     }
 }
