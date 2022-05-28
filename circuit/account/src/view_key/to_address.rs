@@ -49,7 +49,6 @@ mod tests {
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_address();
                 assert_eq!(*address, candidate.to_group().eject_value());
-
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
                     assert_scope!(<=num_constants, num_public, num_private, num_constraints);
