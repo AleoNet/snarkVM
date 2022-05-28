@@ -62,7 +62,7 @@ mod tests {
             let address = snarkvm_console_account::Address::try_from(private_key)?;
 
             // Initialize a view key and address.
-            let view_key = ViewKey::<Circuit>::new(Mode::Private, *view_key);
+            let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
             let address = Address::<Circuit>::new(Mode::Private, *address);
 
             let data = Data(vec![(

@@ -53,7 +53,7 @@ impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
         ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
 
         Ok(Self {
-            domain: F::from_bytes_be_mod_order(domain.as_bytes()),
+            domain: F::from_bytes_le_mod_order(domain.as_bytes()),
             parameters: Arc::new(F::default_poseidon_parameters::<RATE>()?),
         })
     }

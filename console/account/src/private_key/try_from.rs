@@ -19,15 +19,13 @@ use super::*;
 static ACCOUNT_SK_SIG_DOMAIN: &str = "AleoAccountSignatureSecretKey0";
 static ACCOUNT_R_SIG_DOMAIN: &str = "AleoAccountSignatureRandomizer0";
 static ACCOUNT_SK_VRF_DOMAIN: &str = "AleoAccountVRFSecretKey0";
-static ACCOUNT_PRF_DOMAIN: &str = "AleoAccountPRF0";
 
 impl<N: Network> PrivateKey<N> {
     /// Returns the account private key from an account seed.
     #[inline]
     pub fn try_from(seed: N::Scalar) -> Result<Self> {
         // Construct the sk_sig domain separator.
-        let sk_sig_input = ACCOUNT_SK_SIG_DOMAIN;
-        let sk_sig_domain = N::Scalar::from_bytes_le_mod_order(sk_sig_input.as_bytes());
+        let sk_sig_domain = N::Scalar::from_bytes_le_mod_order(ACCOUNT_SK_SIG_DOMAIN.as_bytes());
 
         // Construct the r_sig domain separator.
         let r_sig_input = format!("{}.{}", ACCOUNT_R_SIG_DOMAIN, 0);
@@ -37,14 +35,11 @@ impl<N: Network> PrivateKey<N> {
         let sk_vrf_input = format!("{}.{}", ACCOUNT_SK_VRF_DOMAIN, 0);
         let sk_vrf_domain = N::Scalar::from_bytes_le_mod_order(sk_vrf_input.as_bytes());
 
-        // Initialize Poseidon2 on the **scalar** field.
-        let poseidon2 = Poseidon2::<N::Scalar>::setup(ACCOUNT_PRF_DOMAIN)?;
-
         Ok(Self {
             seed,
-            sk_sig: poseidon2.prf(&seed, &[sk_sig_domain])?,
-            r_sig: poseidon2.prf(&seed, &[r_sig_domain])?,
-            sk_vrf: poseidon2.prf(&seed, &[sk_vrf_domain])?,
+            sk_sig: N::prf_psd2s(&seed, &[sk_sig_domain])?,
+            r_sig: N::prf_psd2s(&seed, &[r_sig_domain])?,
+            sk_vrf: N::prf_psd2s(&seed, &[sk_vrf_domain])?,
         })
     }
 }

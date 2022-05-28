@@ -156,4 +156,7 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns the Poseidon PRF with an input rate of 8.
     fn prf_psd8(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;
+
+    /// Returns the Poseidon PRF on the **scalar** field with an input rate of 2.
+    fn prf_psd2s(seed: &Self::Scalar, input: &[Self::Scalar]) -> Result<Self::Scalar>;
 }

@@ -113,7 +113,7 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 1000;
+    const ITERATIONS: u64 = 100;
 
     fn check_sign_and_verify(message: &[bool]) -> Result<()> {
         // Sample an address and a private key.

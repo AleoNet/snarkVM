@@ -19,7 +19,6 @@ mod serialize;
 mod string;
 mod try_from;
 
-use snarkvm_console_algorithms::{Poseidon2, PRF};
 use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
@@ -41,7 +40,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PrivateKey<N: Network> {
-    /// The starting private key.
+    /// The account seed that derives the full private key.
     seed: N::Scalar,
     /// The derived signature secret key.
     sk_sig: N::Scalar,
@@ -57,6 +56,11 @@ impl<N: Network> PrivateKey<N> {
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Sample a random account seed.
         Self::try_from(UniformRand::rand(rng))
+    }
+
+    /// Returns the account seed.
+    pub const fn seed(&self) -> N::Scalar {
+        self.seed
     }
 
     /// Returns the signature secret key.

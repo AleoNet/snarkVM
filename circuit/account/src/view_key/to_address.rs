@@ -44,7 +44,7 @@ mod tests {
             let (_private_key, _compute_key, view_key, address) = generate_account()?;
 
             // Initialize the view key.
-            let candidate = ViewKey::<Circuit>::new(mode, *view_key);
+            let candidate = ViewKey::<Circuit>::new(mode, view_key);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_address();

@@ -29,30 +29,26 @@ pub struct ViewKey<A: Aleo>(Scalar<A>);
 
 #[cfg(console)]
 impl<A: Aleo> Inject for ViewKey<A> {
-    type Primitive = A::ScalarField;
+    type Primitive = console::ViewKey<A::Network>;
 
     /// Initializes an account view key from the given mode and scalar field element.
-    fn new(mode: Mode, value: Self::Primitive) -> ViewKey<A> {
-        Self(Scalar::new(mode, value))
+    fn new(mode: Mode, view_key: Self::Primitive) -> ViewKey<A> {
+        Self(Scalar::new(mode, *view_key))
     }
 }
 
 #[cfg(console)]
 impl<A: Aleo> Eject for ViewKey<A> {
-    type Primitive = A::ScalarField;
+    type Primitive = console::ViewKey<A::Network>;
 
-    ///
     /// Ejects the mode of the view key.
-    ///
     fn eject_mode(&self) -> Mode {
         self.0.eject_mode()
     }
 
-    ///
     /// Ejects the view key as a scalar field element.
-    ///
     fn eject_value(&self) -> Self::Primitive {
-        self.0.eject_value()
+        Self::Primitive::from_scalar(self.0.eject_value())
     }
 }
 
@@ -67,16 +63,22 @@ impl<A: Aleo> Deref for ViewKey<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use crate::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use crate::{helpers::generate_account, Circuit};
+
+    use anyhow::Result;
 
     const ITERATIONS: u64 = 1000;
 
-    fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        let rng = &mut test_rng();
-
+    fn check_new(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
         for _ in 0..ITERATIONS {
-            let view_key = UniformRand::rand(rng);
+            // Generate a private key, compute key, view key, and address.
+            let (_private_key, _compute_key, view_key, _address) = generate_account()?;
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = ViewKey::<Circuit>::new(mode, view_key);
@@ -86,12 +88,21 @@ mod tests {
             });
             Circuit::reset();
         }
+        Ok(())
     }
 
     #[test]
-    fn test_view_key_new() {
-        check_new(Mode::Constant, 251, 0, 0, 0);
-        check_new(Mode::Public, 0, 251, 0, 251);
-        check_new(Mode::Private, 0, 0, 251, 251);
+    fn test_view_key_new_constant() -> Result<()> {
+        check_new(Mode::Constant, 251, 0, 0, 0)
+    }
+
+    #[test]
+    fn test_view_key_new_public() -> Result<()> {
+        check_new(Mode::Public, 0, 251, 0, 251)
+    }
+
+    #[test]
+    fn test_view_key_new_private() -> Result<()> {
+        check_new(Mode::Private, 0, 0, 251, 251)
     }
 }

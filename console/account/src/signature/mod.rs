@@ -39,6 +39,20 @@ pub struct Signature<N: Network> {
     compute_key: ComputeKey<N>,
 }
 
+impl<N: Network> From<(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+    /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
+    fn from((challenge, response, compute_key): (N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+        Self { challenge, response, compute_key }
+    }
+}
+
+impl<N: Network> From<&(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+    /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
+    fn from((challenge, response, compute_key): &(N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+        Self { challenge: *challenge, response: *response, compute_key: *compute_key }
+    }
+}
+
 impl<N: Network> Signature<N> {
     /// Returns the verifier challenge.
     pub const fn challenge(&self) -> N::Scalar {
@@ -53,5 +67,38 @@ impl<N: Network> Signature<N> {
     /// Returns the compute key.
     pub const fn compute_key(&self) -> ComputeKey<N> {
         self.compute_key
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+    use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
+
+    use anyhow::Result;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 100;
+
+    #[test]
+    fn test_from() -> Result<()> {
+        for i in 0..ITERATIONS {
+            // Sample an address and a private key.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let address = Address::try_from(&private_key)?;
+
+            // Generate a signature.
+            let message: Vec<bool> = (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect();
+            let randomizer = UniformRand::rand(&mut test_crypto_rng());
+            let signature = Signature::sign(&private_key, &message, randomizer)?;
+            assert!(signature.verify(&address, &message));
+
+            // Check that the signature can be reconstructed from its parts.
+            let candidate = Signature::from((signature.challenge(), signature.response(), signature.compute_key()));
+            assert_eq!(signature, candidate);
+        }
+        Ok(())
     }
 }

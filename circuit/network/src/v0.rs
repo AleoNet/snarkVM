@@ -55,18 +55,18 @@ thread_local! {
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
 
-    /// The BHP gadget, which can take an input of up to 256 bits.
+    /// The BHP hash function, which can take an input of up to 256 bits.
     static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::constant(console::BHP_256.with(|bhp| bhp.clone()));
-    /// The BHP gadget, which can take an input of up to 512 bits.
+    /// The BHP hash function, which can take an input of up to 512 bits.
     static BHP_512: BHP512<AleoV0> = BHP512::<AleoV0>::constant(console::BHP_512.with(|bhp| bhp.clone()));
-    /// The BHP gadget, which can take an input of up to 768 bits.
+    /// The BHP hash function, which can take an input of up to 768 bits.
     static BHP_768: BHP768<AleoV0> = BHP768::<AleoV0>::constant(console::BHP_768.with(|bhp| bhp.clone()));
-    /// The BHP gadget, which can take an input of up to 1024 bits.
+    /// The BHP hash function, which can take an input of up to 1024 bits.
     static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::constant(console::BHP_1024.with(|bhp| bhp.clone()));
 
-    /// The Pedersen gadget, which can take an input of up to 64 bits.
+    /// The Pedersen hash function, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::constant(console::PEDERSEN_64.with(|pedersen| pedersen.clone()));
-    /// The Pedersen gadget, which can take an input of up to 128 bits.
+    /// The Pedersen hash function, which can take an input of up to 128 bits.
     static PEDERSEN_128: Pedersen128<AleoV0> = Pedersen128::<AleoV0>::constant(console::PEDERSEN_128.with(|pedersen| pedersen.clone()));
 
     /// The Poseidon hash function, using a rate of 2.
