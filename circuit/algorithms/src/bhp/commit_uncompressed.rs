@@ -31,7 +31,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompr
         randomizer
             .to_bits_le()
             .iter()
-            .zip_eq(&self.random_base)
+            .zip_eq(self.hasher.random_base())
             .map(|(bit, power)| Group::ternary(bit, power, &Group::zero()))
             .fold(hash, |acc, x| acc + x)
     }
@@ -43,7 +43,9 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    use anyhow::Result;
+
+    const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "BHPCircuit0";
 
     fn check_commit_uncompressed<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
@@ -52,11 +54,11 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
         use console::CommitUncompressed as C;
 
         // Initialize BHP.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
@@ -80,20 +82,21 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
             });
         }
+        Ok(())
     }
 
     #[test]
-    fn test_commit_uncompressed_constant() {
-        check_commit_uncompressed::<32, 48>(Mode::Constant, 6879, 0, 0, 0);
+    fn test_commit_uncompressed_constant() -> Result<()> {
+        check_commit_uncompressed::<32, 48>(Mode::Constant, 7891, 0, 0, 0)
     }
 
     #[test]
-    fn test_commit_uncompressed_public() {
-        check_commit_uncompressed::<32, 48>(Mode::Public, 631, 0, 9404, 9404);
+    fn test_commit_uncompressed_public() -> Result<()> {
+        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10103, 10104)
     }
 
     #[test]
-    fn test_commit_uncompressed_private() {
-        check_commit_uncompressed::<32, 48>(Mode::Private, 631, 0, 9404, 9404);
+    fn test_commit_uncompressed_private() -> Result<()> {
+        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10103, 10104)
     }
 }

@@ -27,141 +27,37 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
     /// This uncompressed variant of the BHP hash function is provided to support
     /// the BHP commitment scheme, as it is typically not used by applications.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output {
-        // Ensure the input size is at least the window size.
-        if input.len() <= Self::MIN_BITS {
-            E::halt(format!("Inputs to this BHP must be greater than {} bits", Self::MIN_BITS))
-        }
+        // The number of hasher bits to fit.
+        let num_hasher_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+        // The maximum number of input bits per iteration.
+        let max_input_bits_per_iteration = num_hasher_bits - E::BaseField::size_in_data_bits();
 
-        // Ensure the input size is within the parameter size.
-        let mut input = input.to_vec();
-        match input.len() <= Self::MAX_BITS {
-            true => {
-                // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
-                if input.len() % BHP_CHUNK_SIZE != 0 {
-                    let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-                    input.resize(input.len() + padding, Boolean::constant(false));
-                    assert_eq!(input.len() % BHP_CHUNK_SIZE, 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
+        // Initialize a variable to store the hash from the current iteration.
+        let mut digest = Group::zero();
+
+        // Compute the hash of the input.
+        for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
+            // Initialize a vector for the hash preimage.
+            let mut preimage = Vec::with_capacity(num_hasher_bits);
+            // Determine if this is the first iteration.
+            match i == 0 {
+                // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
+                true => {
+                    preimage.extend(self.domain.clone());
+                    preimage.extend(U64::constant(input.len() as u64).to_bits_le());
+                    preimage.extend_from_slice(input_bits);
+                }
+                // Construct the subsequent iterations as: [ PREVIOUS_HASH || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
+                false => {
+                    preimage.extend(digest.to_x_coordinate().to_bits_le());
+                    preimage.extend_from_slice(input_bits);
                 }
             }
-            false => E::halt(format!("Inputs to this BHP cannot exceed {} bits", Self::MAX_BITS)),
+            // Hash the preimage for this iteration.
+            digest = self.hasher.hash_uncompressed(&preimage);
         }
 
-        // Declare the 1/2 constant field element.
-        let one_half = Field::constant(E::BaseField::half());
-
-        // Declare the constant coefficients A and B for the Montgomery curve.
-        let coeff_a = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_A);
-        let coeff_b = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_B);
-
-        // Implements the incomplete addition formulae of two Montgomery curve points.
-        let montgomery_add = |(this_x, this_y): (&Field<E>, &Field<E>), (that_x, that_y): (&Field<E>, &Field<E>)| {
-            // Construct `lambda` as a witness defined as:
-            // `lambda := (that_y - this_y) / (that_x - this_x)`
-            let lambda: Field<E> = witness!(|this_x, this_y, that_x, that_y| (that_y - this_y) / (that_x - this_x));
-
-            // Ensure `lambda` is correct by enforcing:
-            // `lambda * (that_x - this_x) == (that_y - this_y)`
-            E::enforce(|| (&lambda, that_x - this_x, that_y - this_y));
-
-            // Construct `sum_x` as a witness defined as:
-            // `sum_x := (B * lambda^2) - A - this_x - that_x`
-            let sum_x: Field<E> = witness!(|lambda, that_x, this_x, coeff_a, coeff_b| {
-                coeff_b * lambda.square() - coeff_a - this_x - that_x
-            });
-
-            // Ensure `sum_x` is correct by enforcing:
-            // `(B * lambda) * lambda == (A + this_x + that_x + sum_x)`
-            E::enforce(|| (&coeff_b * &lambda, &lambda, &coeff_a + this_x + that_x + &sum_x));
-
-            // Construct `sum_y` as a witness defined as:
-            // `sum_y := -(this_y + (lambda * (this_x - sum_x)))`
-            let sum_y: Field<E> = witness!(|lambda, sum_x, this_x, this_y| -(this_y + (lambda * (sum_x - this_x))));
-
-            // Ensure `sum_y` is correct by enforcing:
-            // `(lambda * (this_x - sum_x)) == (this_y + sum_y)`
-            E::enforce(|| (&lambda, this_x - &sum_x, this_y + &sum_y));
-
-            (sum_x, sum_y)
-        };
-
-        // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
-        // for all i. Described in section 5.4.1.7 in the Zcash protocol specification.
-        //
-        // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
-        // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
-        input
-            .chunks(WINDOW_SIZE as usize * BHP_CHUNK_SIZE)
-            .zip(self.bases.iter())
-            .map(|(bits, bases)| {
-                // Initialize accumulating sum variables for the x- and y-coordinates.
-                let mut sum = None;
-
-                // One iteration costs 5 constraints.
-                bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base_lookups)| {
-                    // Unzip the base lookups into `x_bases` and `y_bases`.
-                    let (x_bases, y_bases) = base_lookups;
-
-                    // Cast each input chunk bit as a field element.
-                    let bit_0 = Field::from_boolean(&chunk_bits[0]);
-                    let bit_1 = Field::from_boolean(&chunk_bits[1]);
-                    let bit_2 = Field::from_boolean(&chunk_bits[2]);
-                    let bit_0_and_1 = Field::from_boolean(&(&chunk_bits[0] & &chunk_bits[1])); // 1 constraint
-
-                    // Compute the x-coordinate of the Montgomery curve point.
-                    let montgomery_x: Field<E> = &x_bases[0]
-                        + &bit_0 * (&x_bases[1] - &x_bases[0])
-                        + &bit_1 * (&x_bases[2] - &x_bases[0])
-                        + &bit_0_and_1 * (&x_bases[3] - &x_bases[2] - &x_bases[1] + &x_bases[0]);
-
-                    // Compute the y-coordinate of the Montgomery curve point.
-                    let montgomery_y = {
-                        // Compute the y-coordinate of the Montgomery curve point, without any negation.
-                        let y: Field<E> = &y_bases[0]
-                            + bit_0 * (&y_bases[1] - &y_bases[0])
-                            + bit_1 * (&y_bases[2] - &y_bases[0])
-                            + bit_0_and_1 * (&y_bases[3] - &y_bases[2] - &y_bases[1] + &y_bases[0]);
-
-                        // Determine the correct sign of the y-coordinate, as a witness.
-                        //
-                        // Instead of using `Field::ternary`, we create a witness & custom constraint to reduce
-                        // the number of nonzero entries in the circuit, improving setup & proving time for Marlin.
-                        let montgomery_y: Field<E> = witness!(|chunk_bits, y| if chunk_bits[2] { -y } else { y });
-
-                        // Ensure the conditional negation of `witness_y` is correct as follows (1 constraint):
-                        //     `(bit_2 - 1/2) * (-2 * y) == montgomery_y`
-                        // which is equivalent to:
-                        //     if `bit_2 == 0`, then `montgomery_y = -1/2 * -2 * y = y`
-                        //     if `bit_2 == 1`, then `montgomery_y = 1/2 * -2 * y = -y`
-                        E::enforce(|| (bit_2 - &one_half, -y.double(), &montgomery_y)); // 1 constraint
-
-                        montgomery_y
-                    };
-
-                    // Update the accumulating sum, with a constraint-saving technique as follows:
-                    match &sum {
-                        // If `(sum_x, sum_y)` is `None`, then this is the first iteration,
-                        // and we can save constraints by initializing `(sum_x, sum_y)` as
-                        // `(montgomery_x, montgomery_y)` (instead of calling `montgomery_add`).
-                        None => sum = Some((montgomery_x, montgomery_y)),
-                        // Otherwise, call `montgomery_add` to add  to the accumulating sum.
-                        Some((sum_x, sum_y)) => {
-                            // Sum the new Montgomery point into the accumulating sum.
-                            sum = Some(montgomery_add((sum_x, sum_y), (&montgomery_x, &montgomery_y))); // 3 constraints
-                        }
-                    }
-                });
-
-                // Convert the accumulating sum into the twisted Edwards point.
-                match &sum {
-                    Some((sum_x, sum_y)) => {
-                        // Convert the accumulated sum into a point on the twisted Edwards curve.
-                        let edwards_x = sum_x / sum_y; // 1 constraint
-                        Group::from_x_coordinate(edwards_x) // 3 constraints
-                    }
-                    None => E::halt("Invalid iteration of BHP detected, a window was not evaluated"),
-                }
-            })
-            .fold(Group::zero(), |acc, group| acc + group) // 6 constraints
+        digest
     }
 }
 
@@ -171,8 +67,36 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    use anyhow::Result;
+
+    const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "BHPCircuit0";
+
+    macro_rules! check_hash_uncompressed {
+        ($bhp:ident, $mode:ident, $num_bits:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+            // Initialize BHP.
+            let native = console::$bhp::<<Circuit as Environment>::Affine>::setup(MESSAGE)?;
+            let circuit = $bhp::<Circuit>::constant(native.clone());
+
+            for i in 0..ITERATIONS {
+                // Sample a random input.
+                let input = (0..$num_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+                // Compute the expected hash.
+                let expected =
+                    console::HashUncompressed::hash_uncompressed(&native, &input).expect("Failed to hash native input");
+                // Prepare the circuit input.
+                let circuit_input: Vec<Boolean<_>> = Inject::new(Mode::$mode, input);
+
+                Circuit::scope(format!("BHP {i}"), || {
+                    // Perform the hash operation.
+                    let candidate = circuit.hash_uncompressed(&circuit_input);
+                    assert_scope!($num_constants, $num_public, $num_private, $num_constraints);
+                    assert_eq!(expected, candidate.eject_value());
+                });
+            }
+            Ok::<_, anyhow::Error>(())
+        }};
+    }
 
     fn check_hash_uncompressed<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
         mode: Mode,
@@ -180,11 +104,11 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
         use console::HashUncompressed as H;
 
-        // Initialize the BHP hash.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        // Initialize BHP.
+        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
@@ -204,20 +128,96 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
             });
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_uncompressed_constant() {
-        check_hash_uncompressed::<32, 48>(Mode::Constant, 6303, 0, 0, 0);
+    fn test_hash_uncompressed_constant() -> Result<()> {
+        check_hash_uncompressed::<32, 48>(Mode::Constant, 7315, 0, 0, 0)
     }
 
     #[test]
-    fn test_hash_uncompressed_public() {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 129, 0, 7898, 7898);
+    fn test_hash_uncompressed_public() -> Result<()> {
+        check_hash_uncompressed::<32, 48>(Mode::Public, 542, 0, 8596, 8597)
     }
 
     #[test]
-    fn test_hash_uncompressed_private() {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7898, 7898);
+    fn test_hash_uncompressed_private() -> Result<()> {
+        check_hash_uncompressed::<32, 48>(Mode::Private, 542, 0, 8596, 8597)
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp256_constant() -> Result<()> {
+        check_hash_uncompressed!(BHP256, Constant, 261, (762, 0, 0, 0))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp256_public() -> Result<()> {
+        check_hash_uncompressed!(BHP256, Public, 261, (409, 0, 449, 449))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp256_private() -> Result<()> {
+        check_hash_uncompressed!(BHP256, Private, 261, (409, 0, 449, 449))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp512_constant() -> Result<()> {
+        check_hash_uncompressed!(BHP512, Constant, 522, (1125, 0, 0, 0))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp512_public() -> Result<()> {
+        check_hash_uncompressed!(BHP512, Public, 522, (421, 0, 905, 905))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp512_private() -> Result<()> {
+        check_hash_uncompressed!(BHP512, Private, 522, (421, 0, 905, 905))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp768_constant() -> Result<()> {
+        check_hash_uncompressed!(BHP768, Constant, 783, (1518, 0, 0, 0))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp768_public() -> Result<()> {
+        check_hash_uncompressed!(BHP768, Public, 783, (459, 0, 1389, 1389))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp768_private() -> Result<()> {
+        check_hash_uncompressed!(BHP768, Private, 783, (459, 0, 1389, 1389))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp1024_constant() -> Result<()> {
+        check_hash_uncompressed!(BHP1024, Constant, 1043, (1831, 0, 0, 0))?;
+        check_hash_uncompressed!(BHP1024, Constant, 1044, (1831, 0, 0, 0))?;
+        check_hash_uncompressed!(BHP1024, Constant, 1046, (2433, 0, 0, 0))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp1024_public() -> Result<()> {
+        check_hash_uncompressed!(BHP1024, Public, 1043, (429, 0, 1789, 1789))?;
+        check_hash_uncompressed!(BHP1024, Public, 1044, (429, 0, 1789, 1789))?;
+        check_hash_uncompressed!(BHP1024, Public, 1046, (438, 0, 2475, 2476))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_bhp1024_private() -> Result<()> {
+        check_hash_uncompressed!(BHP1024, Private, 1043, (429, 0, 1789, 1789))?;
+        check_hash_uncompressed!(BHP1024, Private, 1044, (429, 0, 1789, 1789))?;
+        check_hash_uncompressed!(BHP1024, Private, 1046, (438, 0, 2475, 2476))
+    }
+
+    #[test]
+    fn test_hash_uncompressed_cost_comparison() -> Result<()> {
+        // The cost to hash 512 bits for each BHP variant is:
+        check_hash_uncompressed!(BHP256, Private, 512, (422, 0, 1557, 1558))?;
+        check_hash_uncompressed!(BHP512, Private, 512, (421, 0, 890, 890))?;
+        check_hash_uncompressed!(BHP768, Private, 512, (447, 0, 918, 918))?;
+        check_hash_uncompressed!(BHP1024, Private, 512, (417, 0, 883, 883))
     }
 }

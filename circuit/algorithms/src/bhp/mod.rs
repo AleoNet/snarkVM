@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod hasher;
+use hasher::BHPHasher;
+
 mod commit;
 mod commit_uncompressed;
 mod hash;
@@ -24,37 +27,38 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
-use snarkvm_curves::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-
-pub const BHP_CHUNK_SIZE: usize = 3;
-pub const BHP_LOOKUP_SIZE: usize = 4;
-
-/// The x-coordinate and y-coordinate of each base on the Montgomery curve.
-type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<E> = BHP<E, 2, 43>;
+pub type BHP256<G> = BHP<G, 3, 57>; // Supports inputs up to 261 bits (1 u8 + 1 Fq).
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<E> = BHP<E, 3, 57>;
+pub type BHP512<G> = BHP<G, 6, 43>; // Supports inputs up to 522 bits (2 u8 + 2 Fq).
 /// BHP768 is a collision-resistant hash function that takes a 768-bit input.
-pub type BHP768<E> = BHP<E, 6, 43>;
+pub type BHP768<G> = BHP<G, 15, 23>; // Supports inputs up to 783 bits (3 u8 + 3 Fq).
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<E> = BHP<E, 6, 57>;
+pub type BHP1024<G> = BHP<G, 8, 54>; // Supports inputs up to 1044 bits (4 u8 + 4 Fq).
+
+/// The BHP chunk size (this implementation is for a 3-bit BHP).
+const BHP_CHUNK_SIZE: usize = 3;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
+///
+/// ## Design
+/// The BHP hash function splits the given input into blocks, and processes them iteratively.
+///
+/// The first iteration is initialized as follows:
+/// ```text
+/// DIGEST_0 = BHP([ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ]);
+/// ```
+/// Each subsequent iteration is initialized as follows:
+/// ```text
+/// DIGEST_N+1 = \[ DIGEST_N || INPUT\[BLOCK_SIZE..2\*BLOCK_SIZE\] \]
+/// ```
 pub struct BHP<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
-    /// The bases for the BHP hash.
-    bases: Vec<Vec<BaseLookups<E>>>,
-    /// The random base for the BHP commitment.
-    random_base: Vec<Group<E>>,
-}
-
-impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
-    /// The maximum number of input bits.
-    const MAX_BITS: usize = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
-    /// The minimum number of input bits (at least one window).
-    const MIN_BITS: usize = WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+    /// The domain separator for the BHP hash function.
+    domain: Vec<Boolean<E>>,
+    /// The internal BHP hasher used to process one iteration.
+    hasher: BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 #[cfg(console)]
@@ -63,41 +67,22 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
 
     /// Initializes a new instance of a BHP circuit with the given BHP variant.
     fn new(_mode: Mode, bhp: Self::Primitive) -> Self {
-        // Compute the bases.
-        let bases = bhp
-            .bases()
-            .iter()
-            .take(NUM_WINDOWS as usize)
-            .map(|window| {
-                // Construct the window with the base.
-                let mut powers = Vec::with_capacity(WINDOW_SIZE as usize);
-                for base in window.iter().take(WINDOW_SIZE as usize).map(|base| Group::constant(base.to_affine())) {
-                    let mut x_bases = Vec::with_capacity(BHP_LOOKUP_SIZE);
-                    let mut y_bases = Vec::with_capacity(BHP_LOOKUP_SIZE);
-                    let mut accumulator = base.clone();
-                    for _ in 0..BHP_LOOKUP_SIZE {
-                        // Convert each base from twisted Edwards point into a Montgomery point.
-                        let x = (Field::one() + accumulator.to_y_coordinate())
-                            / (Field::one() - accumulator.to_y_coordinate());
-                        let y = &x / accumulator.to_x_coordinate();
+        // Ensure the given domain is within the allowed size in bits.
+        let num_bits = bhp.domain().len();
+        let max_bits = E::BaseField::size_in_data_bits() - 64; // 64 bits encode the length.
+        if num_bits > max_bits {
+            E::halt(format!("Domain cannot exceed {max_bits} bits, found {num_bits} bits"))
+        } else if num_bits != max_bits {
+            E::halt(format!("Domain was not padded to {max_bits} bits, found {num_bits} bits"))
+        }
 
-                        x_bases.push(x);
-                        y_bases.push(y);
-                        accumulator += &base;
-                    }
-                    powers.push((x_bases, y_bases));
-                }
-                powers
-            })
-            .collect::<Vec<Vec<BaseLookups<E>>>>();
-        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of windows ({}) for BHP", bases.len());
-        bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
+        // Initialize the domain.
+        let domain = Vec::constant(bhp.domain().to_vec());
 
-        // Initialize the random base.
-        let random_base = Vec::constant(bhp.random_base().iter().map(|base| base.to_affine()).collect());
-        assert_eq!(random_base.len(), E::ScalarField::size_in_bits());
+        // Initialize the BHP hasher.
+        let hasher = BHPHasher::<E, NUM_WINDOWS, WINDOW_SIZE>::constant(bhp);
 
-        Self { bases, random_base }
+        Self { domain, hasher }
     }
 }
 
@@ -107,16 +92,18 @@ mod tests {
     use snarkvm_circuit_types::{environment::Circuit, Eject};
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
+    use anyhow::Result;
+
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
 
     #[test]
-    fn test_setup_constant() {
+    fn test_setup_constant() -> Result<()> {
         for _ in 0..ITERATIONS {
-            let native = console::BHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE);
+            let native = console::BHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE)?;
             let circuit = BHP::<Circuit, 8, 32>::new(Mode::Constant, native.clone());
 
-            native.bases().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
+            native.bases().iter().zip(circuit.hasher.bases().iter()).for_each(|(native_bases, circuit_bases)| {
                 native_bases.iter().zip(circuit_bases).for_each(|(native_base, circuit_base_lookups)| {
                     // Check the first circuit base (when converted back to twisted Edwards) matches the native one.
                     let (circuit_x, circuit_y) = {
@@ -131,5 +118,6 @@ mod tests {
                 })
             });
         }
+        Ok(())
     }
 }

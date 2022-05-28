@@ -14,130 +14,103 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod hasher;
+use hasher::BHPHasher;
+
 mod commit;
 mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
+use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::{cfg_iter, BigInteger, ToBits};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::ToBits;
 
 use anyhow::{ensure, Result};
-use core::ops::Neg;
 use itertools::Itertools;
 use std::sync::Arc;
 
-pub const BHP_CHUNK_SIZE: usize = 3;
-pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
+const BHP_CHUNK_SIZE: usize = 3;
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<G> = BHP<G, 2, 43>;
+pub type BHP256<G> = BHP<G, 3, 57>; // Supports inputs up to 261 bits (1 u8 + 1 Fq).
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<G> = BHP<G, 3, 57>;
+pub type BHP512<G> = BHP<G, 6, 43>; // Supports inputs up to 522 bits (2 u8 + 2 Fq).
 /// BHP768 is a collision-resistant hash function that takes a 768-bit input.
-pub type BHP768<G> = BHP<G, 6, 43>;
+pub type BHP768<G> = BHP<G, 15, 23>; // Supports inputs up to 783 bits (3 u8 + 3 Fq).
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<G> = BHP<G, 6, 57>;
+pub type BHP1024<G> = BHP<G, 8, 54>; // Supports inputs up to 1044 bits (4 u8 + 4 Fq).
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
+///
+/// ## Design
+/// The BHP hash function splits the given input into blocks, and processes them iteratively.
+///
+/// The first iteration is initialized as follows:
+/// ```text
+/// DIGEST_0 = BHP([ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ]);
+/// ```
+/// Each subsequent iteration is initialized as follows:
+/// ```text
+/// DIGEST_N+1 = \[ DIGEST_N || INPUT\[BLOCK_SIZE..2\*BLOCK_SIZE\] \]
+/// ```
 #[derive(Clone)]
 pub struct BHP<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
-    /// The bases for the BHP hash.
-    bases: Arc<Vec<Vec<G::Projective>>>,
-    /// The bases lookup table for the BHP hash.
-    bases_lookup: Arc<Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>>,
-    /// The random base for the BHP commitment.
-    random_base: Arc<Vec<G::Projective>>,
+    /// The domain separator for the BHP hash function.
+    domain: Vec<bool>,
+    /// The internal BHP hasher used to process one iteration.
+    hasher: BHPHasher<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
-    /// The maximum number of input bits.
-    const MAX_BITS: usize = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
-    /// The minimum number of input bits (at least one window).
-    const MIN_BITS: usize = WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+where
+    <G as AffineCurve>::BaseField: PrimeField,
+{
+    /// Initializes a new instance of BHP with the given domain.
+    pub fn setup(domain: &str) -> Result<Self> {
+        // Ensure the given domain is within the allowed size in bits.
+        let num_bits = domain.len().saturating_mul(8);
+        let max_bits = G::BaseField::size_in_data_bits() - 64; // 64 bits encode the length.
+        ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
 
-    /// Initializes a new instance of BHP with the given setup message.
-    pub fn setup(message: &str) -> Self {
-        // Calculate the maximum window size.
-        let mut maximum_window_size = 0;
-        let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
-        while range < G::ScalarField::modulus_minus_one_div_two() {
-            // range < (p-1)/2
-            range.muln(4); // range * 2^4
-            maximum_window_size += 1;
-        }
-        assert!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
+        // Initialize the BHP hasher.
+        let hasher = BHPHasher::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(domain);
 
-        // Compute the bases.
-        let bases = (0..NUM_WINDOWS)
-            .map(|index| {
-                // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.BHP.Base.{message}.{index}"));
-                let mut base = generator.to_projective();
-                // Compute the generators for the sampled base.
-                let mut powers = Vec::with_capacity(WINDOW_SIZE as usize);
-                for _ in 0..WINDOW_SIZE {
-                    powers.push(base);
-                    for _ in 0..4 {
-                        base.double_in_place();
-                    }
-                }
-                powers
-            })
-            .collect::<Vec<Vec<G::Projective>>>();
-        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of windows ({:?}) for BHP", bases.len());
-        bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
+        // Convert the domain into a boolean vector.
+        let mut domain = domain.as_bytes().to_bits_le();
+        // Pad the domain with zeros up to the maximum size in bits.
+        domain.resize(max_bits, false);
+        // Reverse the domain so that it is: [ 0...0 || DOMAIN ].
+        // (For advanced users): This optimizes the initial costs during hashing.
+        domain.reverse();
 
-        // Compute the bases lookup.
-        let bases_lookup = cfg_iter!(bases)
-            .map(|x| {
-                x.iter()
-                    .map(|g| {
-                        let mut lookup = [G::Projective::zero(); BHP_LOOKUP_SIZE];
-                        for (i, element) in lookup.iter_mut().enumerate().take(BHP_LOOKUP_SIZE) {
-                            *element = *g;
-                            if (i & 0x01) != 0 {
-                                *element += g;
-                            }
-                            if (i & 0x02) != 0 {
-                                *element += g.double();
-                            }
-                            if (i & 0x04) != 0 {
-                                *element = element.neg();
-                            }
-                        }
-                        lookup
-                    })
-                    .collect()
-            })
-            .collect::<Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>>();
-        assert_eq!(bases_lookup.len(), NUM_WINDOWS as usize);
-        bases_lookup.iter().for_each(|bases| assert_eq!(bases.len(), WINDOW_SIZE as usize));
+        Ok(Self { domain, hasher })
+    }
 
-        // Next, compute the random base.
-        let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.BHP.RandomBase.{message}"));
-        let mut base_power = generator.to_projective();
-        let num_scalar_bits = G::ScalarField::size_in_bits();
-        let mut random_base = Vec::with_capacity(num_scalar_bits);
-        for _ in 0..num_scalar_bits {
-            random_base.push(base_power);
-            base_power.double_in_place();
-        }
-        assert_eq!(random_base.len(), num_scalar_bits);
-
-        Self { bases: Arc::new(bases), bases_lookup: Arc::new(bases_lookup), random_base: Arc::new(random_base) }
+    /// Returns the domain separator for the BHP hash function.
+    pub fn domain(&self) -> &[bool] {
+        &self.domain
     }
 
     /// Returns the bases.
     pub fn bases(&self) -> &Arc<Vec<Vec<G::Projective>>> {
-        &self.bases
+        self.hasher.bases()
     }
 
     /// Returns the random base window.
     pub fn random_base(&self) -> &Arc<Vec<G::Projective>> {
-        &self.random_base
+        self.hasher.random_base()
+    }
+
+    /// Returns the number of windows.
+    pub fn num_windows(&self) -> u8 {
+        NUM_WINDOWS
+    }
+
+    /// Returns the window size.
+    pub fn window_size(&self) -> u8 {
+        WINDOW_SIZE
     }
 }

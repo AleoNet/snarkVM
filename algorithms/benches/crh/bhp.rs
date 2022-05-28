@@ -19,6 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::{crh::BHPCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
+use snarkvm_utilities::{test_rng, UniformRand};
 
 use criterion::Criterion;
 
@@ -43,14 +44,15 @@ fn setup(c: &mut Criterion) {
 fn hash(c: &mut Criterion) {
     c.bench_function("BHP hash", move |b| {
         let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
-        let input = (0..(NUM_WINDOWS * WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+        let input = (0..(NUM_WINDOWS * WINDOW_SIZE)).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
 
         b.iter(|| crh.hash(&input).unwrap())
     });
 
     c.bench_function("BHP hash (large)", move |b| {
         let crh = <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
-        let input = (0..(BIG_NUM_WINDOWS * BIG_WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+        let input =
+            (0..(BIG_NUM_WINDOWS * BIG_WINDOW_SIZE)).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
 
         b.iter(|| crh.hash(&input).unwrap())
     });

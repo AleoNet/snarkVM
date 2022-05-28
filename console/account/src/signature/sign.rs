@@ -109,7 +109,7 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;
 
@@ -143,11 +143,11 @@ mod tests {
     fn test_sign_and_verify() -> Result<()> {
         for i in 0..ITERATIONS {
             // Check that the signature is valid for the message.
-            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect();
             check_sign_and_verify(&message)?;
 
             // Check that the signature is invalid for an incorrect message.
-            let failure_message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
+            let failure_message: Vec<bool> = (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect();
             if message != failure_message {
                 check_sign_and_verify_fails(&message, &failure_message)?;
             }

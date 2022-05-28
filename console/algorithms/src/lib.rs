@@ -17,7 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-mod bhp;
+pub mod bhp;
 pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 
 mod blake2xs;

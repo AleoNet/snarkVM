@@ -32,7 +32,9 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    use anyhow::Result;
+
+    const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "BHPCircuit0";
 
     fn check_hash<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
@@ -41,11 +43,11 @@ mod tests {
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
-    ) {
+    ) -> Result<()> {
         use console::Hash as H;
 
         // Initialize BHP.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
@@ -65,20 +67,21 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
             });
         }
+        Ok(())
     }
 
     #[test]
-    fn test_hash_constant() {
-        check_hash::<32, 48>(Mode::Constant, 6303, 0, 0, 0);
+    fn test_hash_constant() -> Result<()> {
+        check_hash::<32, 48>(Mode::Constant, 7315, 0, 0, 0)
     }
 
     #[test]
-    fn test_hash_public() {
-        check_hash::<32, 48>(Mode::Public, 129, 0, 7898, 7898);
+    fn test_hash_public() -> Result<()> {
+        check_hash::<32, 48>(Mode::Public, 542, 0, 8597, 8598)
     }
 
     #[test]
-    fn test_hash_private() {
-        check_hash::<32, 48>(Mode::Private, 129, 0, 7898, 7898);
+    fn test_hash_private() -> Result<()> {
+        check_hash::<32, 48>(Mode::Private, 542, 0, 8597, 8598)
     }
 }

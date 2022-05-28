@@ -16,8 +16,9 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
-    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+where
+    <G as AffineCurve>::BaseField: PrimeField,
 {
     type Input = bool;
     type Output = G;
@@ -27,38 +28,85 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
     /// This uncompressed variant of the BHP hash function is provided to support
     /// the BHP commitment scheme, as it is typically not used by applications.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output> {
-        // Ensure the input size is at least the window size.
-        ensure!(input.len() > Self::MIN_BITS, "Inputs to this BHP must be greater than {} bits", Self::MIN_BITS);
-        // Ensure the input size is within the parameter size,
-        ensure!(
-            input.len() <= Self::MAX_BITS,
-            "Inputs to this BHP cannot exceed {} bits, found {}",
-            Self::MAX_BITS,
-            input.len()
-        );
+        // The number of hasher bits to fit.
+        let num_hasher_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+        // The maximum number of input bits per iteration.
+        let max_input_bits_per_iteration = num_hasher_bits - G::BaseField::size_in_data_bits();
 
-        // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
-        let mut input = input.to_vec();
-        if input.len() % BHP_CHUNK_SIZE != 0 {
-            let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-            input.resize(input.len() + padding, false);
-            ensure!((input.len() % BHP_CHUNK_SIZE) == 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
+        // Initialize a variable to store the hash from the current iteration.
+        let mut digest = G::zero();
+
+        // Compute the hash of the input.
+        for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
+            // Initialize a vector for the hash preimage.
+            let mut preimage = Vec::with_capacity(num_hasher_bits);
+            // Determine if this is the first iteration.
+            match i == 0 {
+                // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
+                true => {
+                    preimage.extend(&self.domain);
+                    preimage.extend((input.len() as u64).to_bits_le());
+                    preimage.extend(input_bits);
+                }
+                // Construct the subsequent iterations as: [ PREVIOUS_HASH || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
+                false => {
+                    preimage.extend(&digest.to_x_coordinate().to_bits_le());
+                    preimage.extend(input_bits);
+                }
+            }
+            // Hash the preimage for this iteration.
+            digest = self.hasher.hash_uncompressed(&preimage)?;
         }
 
-        // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
-        // for all i. Described in section 5.4.1.7 in the Zcash protocol specification.
-        //
-        // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
-        // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
-        Ok(input
-            .chunks(WINDOW_SIZE as usize * BHP_CHUNK_SIZE)
-            .zip(&*self.bases_lookup)
-            .flat_map(|(bits, bases)| {
-                bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
-                    base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
-                })
-            })
-            .sum::<G::Projective>()
-            .to_affine())
+        Ok(digest)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::edwards_bls12::EdwardsAffine;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: u64 = 1000;
+
+    #[test]
+    fn test_bhp256_input_size() -> Result<()> {
+        let bhp = BHP256::<EdwardsAffine>::setup("BHPTest")?;
+        for i in 0..ITERATIONS {
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            bhp.hash_uncompressed(&input)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_bhp512_input_size() -> Result<()> {
+        let bhp = BHP512::<EdwardsAffine>::setup("BHPTest")?;
+        for i in 0..ITERATIONS {
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            bhp.hash_uncompressed(&input)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_bhp768_input_size() -> Result<()> {
+        let bhp = BHP768::<EdwardsAffine>::setup("BHPTest")?;
+        for i in 0..ITERATIONS {
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            bhp.hash_uncompressed(&input)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_bhp1024_input_size() -> Result<()> {
+        let bhp = BHP1024::<EdwardsAffine>::setup("BHPTest")?;
+        for i in 0..ITERATIONS {
+            let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
+            bhp.hash_uncompressed(&input)?;
+        }
+        Ok(())
     }
 }

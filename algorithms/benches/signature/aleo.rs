@@ -19,6 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme as SS};
 use snarkvm_curves::edwards_bls12::EdwardsParameters;
+use snarkvm_utilities::{test_rng, UniformRand};
 
 use criterion::Criterion;
 use rand::{self, thread_rng};
@@ -52,7 +53,7 @@ fn aleo_signature_sign(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let parameters = SignatureScheme::setup("aleo_signature_sign");
     let private_key = SignatureScheme::generate_private_key(&parameters, rng);
-    let message = (0..128).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+    let message = (0..128).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
 
     c.bench_function("Aleo Signature Sign", move |b| {
         b.iter(|| SignatureScheme::sign(&parameters, &private_key, &message, rng).unwrap())
@@ -64,7 +65,7 @@ fn aleo_signature_verify(c: &mut Criterion) {
     let parameters = SignatureScheme::setup("aleo_signature_verify");
     let private_key = SignatureScheme::generate_private_key(&parameters, rng);
     let public_key = SignatureScheme::generate_public_key(&parameters, &private_key);
-    let message = (0..128).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+    let message = (0..128).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
     let signature = SignatureScheme::sign(&parameters, &private_key, &message, rng).unwrap();
 
     c.bench_function("Aleo Signature Verify", move |b| {

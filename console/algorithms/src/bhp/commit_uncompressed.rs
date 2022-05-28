@@ -18,6 +18,8 @@ use super::*;
 
 impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompressed
     for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+where
+    <G as AffineCurve>::BaseField: PrimeField,
 {
     type Input = bool;
     type Output = G;
@@ -28,7 +30,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompr
         let mut output = self.hash_uncompressed(input)?.to_projective();
 
         // Compute h^r.
-        randomizer.to_bits_le().iter().zip_eq(&*self.random_base).filter(|(bit, _)| **bit).for_each(|(_, base)| {
+        randomizer.to_bits_le().iter().zip_eq(&**self.random_base()).filter(|(bit, _)| **bit).for_each(|(_, base)| {
             output += base;
         });
 
