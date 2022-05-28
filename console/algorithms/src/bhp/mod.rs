@@ -76,7 +76,7 @@ where
         ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
 
         // Initialize the BHP hasher.
-        let hasher = BHPHasher::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(domain);
+        let hasher = BHPHasher::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(domain)?;
 
         // Convert the domain into a boolean vector.
         let mut domain = domain.as_bytes().to_bits_le();

@@ -91,7 +91,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
                 powers
             })
             .collect::<Vec<Vec<BaseLookups<E>>>>();
-        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of windows ({}) for BHP", bases.len());
+        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of BHP windows ({})", bases.len());
         bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
 
         // Initialize the random base.

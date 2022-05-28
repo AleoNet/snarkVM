@@ -189,7 +189,7 @@ mod tests {
         let native =
             console::bhp::hasher::BHPHasher::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(
                 MESSAGE,
-            );
+            )?;
 
         // Initialize the circuit BHP hasher.
         let primitive = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;

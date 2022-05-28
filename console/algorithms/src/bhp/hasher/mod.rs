@@ -48,7 +48,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<G, 
     const MIN_BITS: usize = WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
     /// Initializes a new instance of BHP with the given domain.
-    pub fn setup(domain: &str) -> Self {
+    pub fn setup(domain: &str) -> Result<Self> {
         // Calculate the maximum window size.
         let mut maximum_window_size = 0;
         let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
@@ -57,7 +57,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<G, 
             range.muln(4); // range * 2^4
             maximum_window_size += 1;
         }
-        assert!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
+        ensure!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
 
         // Compute the bases.
         let bases = (0..NUM_WINDOWS)
@@ -77,8 +77,10 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<G, 
                 powers
             })
             .collect::<Vec<Vec<G::Projective>>>();
-        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of windows ({:?}) for BHP", bases.len());
-        bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
+        ensure!(bases.len() == NUM_WINDOWS as usize, "Incorrect number of BHP windows ({})", bases.len());
+        for window in &bases {
+            ensure!(window.len() == WINDOW_SIZE as usize, "Incorrect BHP window size ({})", window.len());
+        }
 
         // Compute the bases lookup.
         let bases_lookup = cfg_iter!(bases)
@@ -103,8 +105,10 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<G, 
                     .collect()
             })
             .collect::<Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>>();
-        assert_eq!(bases_lookup.len(), NUM_WINDOWS as usize);
-        bases_lookup.iter().for_each(|bases| assert_eq!(bases.len(), WINDOW_SIZE as usize));
+        ensure!(bases_lookup.len() == NUM_WINDOWS as usize, "Incorrect number of BHP lookups ({})", bases_lookup.len());
+        for window in &bases_lookup {
+            ensure!(window.len() == WINDOW_SIZE as usize, "Incorrect BHP lookup window size ({})", window.len());
+        }
 
         // Next, compute the random base.
         let (generator, _, _) =
@@ -116,9 +120,13 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<G, 
             random_base.push(base_power);
             base_power.double_in_place();
         }
-        assert_eq!(random_base.len(), num_scalar_bits);
+        ensure!(
+            random_base.len() == num_scalar_bits,
+            "Incorrect number of BHP random base powers ({})",
+            random_base.len()
+        );
 
-        Self { bases: Arc::new(bases), bases_lookup: Arc::new(bases_lookup), random_base: Arc::new(random_base) }
+        Ok(Self { bases: Arc::new(bases), bases_lookup: Arc::new(bases_lookup), random_base: Arc::new(random_base) })
     }
 
     /// Returns the bases.
