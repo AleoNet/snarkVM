@@ -71,6 +71,7 @@ mod tests {
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
                 assert_eq!(expected, candidate.eject_value());
             });
+            Circuit::reset();
         }
         Ok(())
     }
