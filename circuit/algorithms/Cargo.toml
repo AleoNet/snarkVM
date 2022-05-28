@@ -12,10 +12,6 @@ path = "../../console/algorithms"
 version = "0.7.5"
 optional = true
 
-[dependencies.snarkvm-circuit-environment]
-path = "../environment"
-version = "0.7.5"
-
 [dependencies.snarkvm-circuit-types]
 path = "../types"
 version = "0.7.5"
@@ -28,6 +24,7 @@ default-features = false
 [dependencies.snarkvm-fields]
 path = "../../fields"
 version = "0.7.5"
+default-features = false
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../utilities"

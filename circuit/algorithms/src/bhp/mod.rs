@@ -20,7 +20,7 @@ mod hash;
 mod hash_uncompressed;
 
 #[cfg(all(test, console))]
-use snarkvm_circuit_environment::assert_scope;
+use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
@@ -104,8 +104,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::Circuit;
-    use snarkvm_circuit_types::Eject;
+    use snarkvm_circuit_types::{environment::Circuit, Eject};
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;

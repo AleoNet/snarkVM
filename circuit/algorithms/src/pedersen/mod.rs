@@ -20,7 +20,7 @@ mod hash;
 mod hash_uncompressed;
 
 #[cfg(all(test, console))]
-use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope};
+use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
@@ -61,7 +61,7 @@ impl<E: Environment, const NUM_BITS: u8> Inject for Pedersen<E, NUM_BITS> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::Circuit;
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_curves::ProjectiveCurve;
 
     const ITERATIONS: u64 = 10;
