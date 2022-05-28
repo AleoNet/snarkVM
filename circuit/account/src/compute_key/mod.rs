@@ -136,16 +136,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_compute_key_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 265, 0, 0, 0)
+        check_new(Mode::Constant, 266, 0, 0, 0)
     }
 
     #[test]
     fn test_compute_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 6, 6, 604, 608)
+        check_new(Mode::Public, 7, 6, 604, 608)
     }
 
     #[test]
     fn test_compute_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 6, 0, 610, 608)
+        check_new(Mode::Private, 7, 0, 610, 608)
     }
 }

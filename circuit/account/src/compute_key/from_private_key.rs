@@ -90,16 +90,16 @@ mod tests {
 
     #[test]
     fn test_from_private_key_constant() -> Result<()> {
-        check_from_private_key(Mode::Constant, 3253, 0, 0, 0)
+        check_from_private_key(Mode::Constant, 3254, 0, 0, 0)
     }
 
     #[test]
     fn test_from_private_key_public() -> Result<()> {
-        check_from_private_key(Mode::Public, 1500, 0, 4348, 4349)
+        check_from_private_key(Mode::Public, 1501, 0, 4348, 4349)
     }
 
     #[test]
     fn test_from_private_key_private() -> Result<()> {
-        check_from_private_key(Mode::Private, 1500, 0, 4348, 4349)
+        check_from_private_key(Mode::Private, 1501, 0, 4348, 4349)
     }
 }
