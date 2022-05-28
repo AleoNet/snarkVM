@@ -61,11 +61,11 @@ thread_local! {
     pub static PEDERSEN_128: Pedersen128<<Testnet3 as Network>::Affine> = Pedersen128::<<Testnet3 as Network>::Affine>::setup("AleoPedersen128");
 
     /// The Poseidon hash function, using a rate of 2.
-    pub static POSEIDON_2: Poseidon2<<Testnet3 as Network>::Field> = Poseidon2::<<Testnet3 as Network>::Field>::setup();
+    pub static POSEIDON_2: Poseidon2<<Testnet3 as Network>::Field> = Poseidon2::<<Testnet3 as Network>::Field>::setup("AleoPoseidon2").expect("Failed to setup Poseidon2");
     /// The Poseidon hash function, using a rate of 4.
-    pub static POSEIDON_4: Poseidon4<<Testnet3 as Network>::Field> = Poseidon4::<<Testnet3 as Network>::Field>::setup();
+    pub static POSEIDON_4: Poseidon4<<Testnet3 as Network>::Field> = Poseidon4::<<Testnet3 as Network>::Field>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
-    pub static POSEIDON_8: Poseidon8<<Testnet3 as Network>::Field> = Poseidon8::<<Testnet3 as Network>::Field>::setup();
+    pub static POSEIDON_8: Poseidon8<<Testnet3 as Network>::Field> = Poseidon8::<<Testnet3 as Network>::Field>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

@@ -36,7 +36,7 @@ mod tests {
     use anyhow::Result;
 
     const ITERATIONS: u64 = 100;
-    const MESSAGE: &str = "BHPCircuit0";
+    const DOMAIN: &str = "BHPCircuit0";
 
     fn check_commit<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
         mode: Mode,
@@ -48,7 +48,7 @@ mod tests {
         use console::Commit as C;
 
         // Initialize BHP.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
+        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;

@@ -422,8 +422,8 @@ fn test_merkle_tree_poseidon() -> Result<()> {
         type LH = Poseidon<<CurrentNetwork as Network>::Field, 4>;
         type PH = Poseidon<<CurrentNetwork as Network>::Field, 2>;
 
-        let leaf_hasher = LH::setup();
-        let path_hasher = PH::setup();
+        let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+        let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
 
         let create_leaves =
             |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
@@ -492,8 +492,8 @@ fn test_merkle_tree_depth_2_poseidon() -> Result<()> {
     type LH = Poseidon<<CurrentNetwork as Network>::Field, 4>;
     type PH = Poseidon<<CurrentNetwork as Network>::Field, 2>;
 
-    let leaf_hasher = LH::setup();
-    let path_hasher = PH::setup();
+    let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+    let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
     let create_leaves =
         |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
 
@@ -530,8 +530,8 @@ fn test_merkle_tree_depth_3_poseidon() -> Result<()> {
     type LH = Poseidon<<CurrentNetwork as Network>::Field, 4>;
     type PH = Poseidon<<CurrentNetwork as Network>::Field, 2>;
 
-    let leaf_hasher = LH::setup();
-    let path_hasher = PH::setup();
+    let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+    let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
     let create_leaves =
         |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
 
@@ -573,8 +573,8 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
     type LH = Poseidon<<CurrentNetwork as Network>::Field, 4>;
     type PH = Poseidon<<CurrentNetwork as Network>::Field, 2>;
 
-    let leaf_hasher = LH::setup();
-    let path_hasher = PH::setup();
+    let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
+    let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
     let create_leaves =
         |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
 

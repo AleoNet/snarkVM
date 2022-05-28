@@ -76,16 +76,16 @@ mod tests {
 
     #[test]
     fn test_to_compute_key_constant() -> Result<()> {
-        check_to_compute_key(Mode::Constant, 3253, 0, 0, 0)
+        check_to_compute_key(Mode::Constant, 3254, 0, 0, 0)
     }
 
     #[test]
     fn test_to_compute_key_public() -> Result<()> {
-        check_to_compute_key(Mode::Public, 1500, 0, 4348, 4349)
+        check_to_compute_key(Mode::Public, 1501, 0, 4348, 4349)
     }
 
     #[test]
     fn test_to_compute_key_private() -> Result<()> {
-        check_to_compute_key(Mode::Private, 1500, 0, 4348, 4349)
+        check_to_compute_key(Mode::Private, 1501, 0, 4348, 4349)
     }
 }

@@ -124,16 +124,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 4325, 0, 0, 0)
+        check_verify(Mode::Constant, 4326, 0, 0, 0)
     }
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 1757, 0, 6534, 6538)
+        check_verify(Mode::Public, 1758, 0, 6534, 6538)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 1757, 0, 6534, 6538)
+        check_verify(Mode::Private, 1758, 0, 6534, 6538)
     }
 }

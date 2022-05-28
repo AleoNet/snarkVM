@@ -24,7 +24,7 @@ mod prf;
 use crate::{poseidon::helpers::*, Hash, HashMany, HashToScalar, PRF};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use std::sync::Arc;
 
 const CAPACITY: usize = 1;
@@ -38,14 +38,34 @@ pub type Poseidon8<F> = Poseidon<F, 8>;
 
 #[derive(Clone)]
 pub struct Poseidon<F: PrimeField, const RATE: usize> {
+    /// The domain separator for the Poseidon hash function.
+    domain: F,
     /// The Poseidon parameters for hashing.
     parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
 }
 
 impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
     /// Initializes a new instance of Poseidon.
-    pub fn setup() -> Self {
-        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>().unwrap()) }
+    pub fn setup(domain: &str) -> Result<Self> {
+        // Ensure the given domain is within the allowed size in bits.
+        let num_bits = domain.len().saturating_mul(8);
+        let max_bits = F::size_in_data_bits();
+        ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
+
+        Ok(Self {
+            domain: F::from_bytes_be_mod_order(domain.as_bytes()),
+            parameters: Arc::new(F::default_poseidon_parameters::<RATE>()?),
+        })
+    }
+
+    /// Returns the domain separator for the hash function.
+    pub fn domain(&self) -> F {
+        self.domain
+    }
+
+    /// Returns the Poseidon parameters for hashing.
+    pub fn parameters(&self) -> &Arc<PoseidonParameters<F, RATE, CAPACITY>> {
+        &self.parameters
     }
 }
 

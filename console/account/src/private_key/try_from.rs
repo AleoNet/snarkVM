@@ -19,6 +19,7 @@ use super::*;
 static ACCOUNT_SK_SIG_DOMAIN: &str = "AleoAccountSignatureSecretKey0";
 static ACCOUNT_R_SIG_DOMAIN: &str = "AleoAccountSignatureRandomizer0";
 static ACCOUNT_SK_VRF_DOMAIN: &str = "AleoAccountVRFSecretKey0";
+static ACCOUNT_PRF_DOMAIN: &str = "AleoAccountPRF0";
 
 impl<N: Network> PrivateKey<N> {
     /// Returns the account private key from an account seed.
@@ -37,7 +38,7 @@ impl<N: Network> PrivateKey<N> {
         let sk_vrf_domain = N::Scalar::from_bytes_le_mod_order(sk_vrf_input.as_bytes());
 
         // Initialize Poseidon2 on the **scalar** field.
-        let poseidon2 = Poseidon2::<N::Scalar>::setup();
+        let poseidon2 = Poseidon2::<N::Scalar>::setup(ACCOUNT_PRF_DOMAIN)?;
 
         Ok(Self {
             seed,

@@ -70,11 +70,11 @@ thread_local! {
     static PEDERSEN_128: Pedersen128<AleoV0> = Pedersen128::<AleoV0>::constant(console::PEDERSEN_128.with(|pedersen| pedersen.clone()));
 
     /// The Poseidon hash function, using a rate of 2.
-    static POSEIDON_2: Poseidon2<AleoV0> = Poseidon2::<AleoV0>::new();
+    static POSEIDON_2: Poseidon2<AleoV0> = Poseidon2::<AleoV0>::constant(console::POSEIDON_2.with(|poseidon| poseidon.clone()));
     /// The Poseidon hash function, using a rate of 4.
-    static POSEIDON_4: Poseidon4<AleoV0> = Poseidon4::<AleoV0>::new();
+    static POSEIDON_4: Poseidon4<AleoV0> = Poseidon4::<AleoV0>::constant(console::POSEIDON_4.with(|poseidon| poseidon.clone()));
     /// The Poseidon hash function, using a rate of 8.
-    static POSEIDON_8: Poseidon8<AleoV0> = Poseidon8::<AleoV0>::new();
+    static POSEIDON_8: Poseidon8<AleoV0> = Poseidon8::<AleoV0>::constant(console::POSEIDON_8.with(|poseidon| poseidon.clone()));
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
