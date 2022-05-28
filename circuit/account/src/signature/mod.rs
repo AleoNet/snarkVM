@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod verify;
+mod verify;
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;

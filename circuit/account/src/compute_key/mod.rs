@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod from_private_key;
+mod from_private_key;
+mod to_address;
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Group, Scalar};
 
 pub struct ComputeKey<A: Aleo> {
     /// The signature public key `pk_sig` := G^sk_sig.
