@@ -229,7 +229,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
 
     /// Returns the Merkle path for the given leaf index and leaf.
     #[inline]
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<N, DEPTH>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<N, LH, PH, DEPTH>> {
         // Compute the leaf hash.
         let leaf_hash = self.leaf_hasher.hash(leaf)?;
         // Compute the absolute index of the leaf in the tree.

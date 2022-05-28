@@ -25,17 +25,21 @@ use snarkvm_utilities::{
 };
 
 use anyhow::Result;
+use core::marker::PhantomData;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MerklePath<N: Network, const DEPTH: u8> {
+pub struct MerklePath<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> {
     path: Vec<N::Field>,
     leaf_index: u64,
+    _phantom: PhantomData<(LH, PH)>,
 }
 
-impl<N: Network, const DEPTH: u8> TryFrom<(Vec<N::Field>, u64)> for MerklePath<N, DEPTH> {
+impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> TryFrom<(Vec<N::Field>, u64)>
+    for MerklePath<N, LH, PH, DEPTH>
+{
     type Error = Error;
 
     /// Returns a new instance of a Merkle path.
@@ -43,21 +47,15 @@ impl<N: Network, const DEPTH: u8> TryFrom<(Vec<N::Field>, u64)> for MerklePath<N
         // Ensure the Merkle path is the correct length.
         match path.len() == DEPTH as usize {
             // Return the Merkle path.
-            true => Ok(Self { path, leaf_index }),
+            true => Ok(Self { path, leaf_index, _phantom: PhantomData }),
             false => bail!("Expected a Merkle path of length {DEPTH}, found length {}", path.len()),
         }
     }
 }
 
-impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
+impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerklePath<N, LH, PH, DEPTH> {
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify<LH: LeafHash<N>, PH: PathHash<N>>(
-        &self,
-        leaf_hasher: &LH,
-        path_hasher: &PH,
-        root_hash: &N::Field,
-        leaf: &LH::Leaf,
-    ) -> bool {
+    pub fn verify(&self, leaf_hasher: &LH, path_hasher: &PH, root_hash: &N::Field, leaf: &LH::Leaf) -> bool {
         // Ensure the path length matches the expected depth.
         if self.path.len() != DEPTH as usize {
             return false;
@@ -120,7 +118,7 @@ impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
     }
 }
 
-impl<N: Network, const DEPTH: u8> FromBytes for MerklePath<N, DEPTH> {
+impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> FromBytes for MerklePath<N, LH, PH, DEPTH> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the Merkle path.
@@ -129,11 +127,11 @@ impl<N: Network, const DEPTH: u8> FromBytes for MerklePath<N, DEPTH> {
         // Read the leaf index.
         let leaf_index: u64 = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self { path, leaf_index })
+        Self::try_from((path, leaf_index)).map_err(|err| error(err.to_string()))
     }
 }
 
-impl<N: Network, const DEPTH: u8> ToBytes for MerklePath<N, DEPTH> {
+impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> ToBytes for MerklePath<N, LH, PH, DEPTH> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the Merkle path length is within bounds.
@@ -149,13 +147,15 @@ impl<N: Network, const DEPTH: u8> ToBytes for MerklePath<N, DEPTH> {
     }
 }
 
-impl<N: Network, const DEPTH: u8> Serialize for MerklePath<N, DEPTH> {
+impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> Serialize for MerklePath<N, LH, PH, DEPTH> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         ToBytesSerializer::serialize_with_size_encoding(self, serializer)
     }
 }
 
-impl<'de, N: Network, const DEPTH: u8> Deserialize<'de> for MerklePath<N, DEPTH> {
+impl<'de, N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> Deserialize<'de>
+    for MerklePath<N, LH, PH, DEPTH>
+{
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "Merkle path")
     }
