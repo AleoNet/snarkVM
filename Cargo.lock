@@ -2052,6 +2052,7 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-circuit-account",
  "snarkvm-circuit-algorithms",
+ "snarkvm-circuit-collections",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-network",
  "snarkvm-circuit-program",
@@ -2077,6 +2078,19 @@ dependencies = [
  "anyhow",
  "snarkvm-circuit-types",
  "snarkvm-console-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-circuit-collections"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "snarkvm-circuit-network",
+ "snarkvm-circuit-types",
+ "snarkvm-console-collections",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
@@ -2265,6 +2279,23 @@ dependencies = [
  "serde_json",
  "smallvec",
  "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-collections"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "itertools",
+ "once_cell",
+ "rand",
+ "rayon",
+ "serde",
+ "snarkvm-console-algorithms",
+ "snarkvm-console-network",
  "snarkvm-fields",
  "snarkvm-utilities",
 ]

@@ -20,9 +20,6 @@
 #[macro_use]
 extern crate enum_index_derive;
 
-mod merkle_tree;
-pub use merkle_tree::MerkleTree;
-
 mod data;
 pub use data::*;
 

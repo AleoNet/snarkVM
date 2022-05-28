@@ -17,17 +17,5 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod bhp;
-pub use bhp::*;
-
-pub mod elligator2;
-pub use elligator2::Elligator2;
-
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod traits;
-pub use traits::*;
+// mod merkle_tree;
+// pub use merkle_tree::*;

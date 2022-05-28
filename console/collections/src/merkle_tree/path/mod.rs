@@ -15,11 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{
+    error,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
+};
 
 use anyhow::Result;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::io::{Read, Result as IoResult, Write};
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
