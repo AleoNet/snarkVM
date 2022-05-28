@@ -16,13 +16,10 @@
 
 use super::*;
 
-impl<A: Aleo> ComputeKey<A> {
-    /// Returns the account address for this account compute key.
-    pub fn to_address(&self) -> Address<A> {
-        // Compute pk_prf := G^sk_prf.
-        let pk_prf = A::g_scalar_multiply(&self.sk_prf);
-        // Compute the address := pk_sig + pr_sig + pk_prf.
-        Address::from_group(&self.pk_sig + &self.pr_sig + pk_prf)
+impl<A: Aleo> PrivateKey<A> {
+    /// Returns the account view key for this account private key.
+    pub fn to_view_key(&self) -> ViewKey<A> {
+        ViewKey::from_private_key(self)
     }
 }
 
@@ -35,7 +32,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_to_address(
+    fn check_to_view_key(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -44,14 +41,14 @@ mod tests {
     ) -> Result<()> {
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
-            let (_private_key, compute_key, _view_key, address) = generate_account()?;
+            let (private_key, _compute_key, view_key, _address) = generate_account()?;
 
-            // Initialize the compute key.
-            let candidate = ComputeKey::<Circuit>::new(mode, compute_key);
+            // Initialize the private key.
+            let candidate = PrivateKey::<Circuit>::new(mode, private_key);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = candidate.to_address();
-                assert_eq!(*address, candidate.to_group().eject_value());
+                let candidate = candidate.to_view_key();
+                assert_eq!(view_key, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
                     assert_scope!(<=num_constants, num_public, num_private, num_constraints);
@@ -63,17 +60,17 @@ mod tests {
     }
 
     #[test]
-    fn test_to_address_constant() -> Result<()> {
-        check_to_address(Mode::Constant, 1008, 0, 0, 0)
+    fn test_to_view_key_constant() -> Result<()> {
+        check_to_view_key(Mode::Constant, 3756, 0, 0, 0)
     }
 
     #[test]
-    fn test_to_address_public() -> Result<()> {
-        check_to_address(Mode::Public, 504, 0, 1260, 1260)
+    fn test_to_view_key_public() -> Result<()> {
+        check_to_view_key(Mode::Public, 2009, 0, 5862, 5867)
     }
 
     #[test]
-    fn test_to_address_private() -> Result<()> {
-        check_to_address(Mode::Private, 504, 0, 1260, 1260)
+    fn test_to_view_key_private() -> Result<()> {
+        check_to_view_key(Mode::Private, 2009, 0, 5862, 5867)
     }
 }

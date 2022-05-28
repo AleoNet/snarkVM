@@ -15,11 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod to_compute_key;
+mod to_view_key;
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use crate::ComputeKey;
+use crate::{ComputeKey, ViewKey};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Scalar};
 
