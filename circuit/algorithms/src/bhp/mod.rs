@@ -52,7 +52,7 @@ const BHP_CHUNK_SIZE: usize = 3;
 /// ```
 /// Each subsequent iteration is initialized as follows:
 /// ```text
-/// DIGEST_N+1 = \[ DIGEST_N || INPUT\[BLOCK_SIZE..2\*BLOCK_SIZE\] \]
+/// DIGEST_N+1 = BHP([ DIGEST_N || INPUT[(N+1)*BLOCK_SIZE..(N+2)*BLOCK_SIZE] ]);
 /// ```
 pub struct BHP<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
     /// The domain separator for the BHP hash function.

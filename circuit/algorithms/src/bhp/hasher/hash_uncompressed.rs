@@ -193,7 +193,7 @@ mod tests {
 
         // Initialize the circuit BHP hasher.
         let primitive = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
-        let circuit = BHPHasher::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, primitive.clone());
+        let circuit = BHPHasher::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, primitive);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 

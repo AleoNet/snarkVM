@@ -46,6 +46,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<E, 
     /// The minimum number of input bits (at least one window).
     const MIN_BITS: usize = WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
+    #[cfg(test)]
     /// Returns the bases.
     pub(crate) fn bases(&self) -> &Vec<Vec<BaseLookups<E>>> {
         &self.bases
