@@ -2243,8 +2243,6 @@ dependencies = [
  "base58",
  "bech32",
  "bincode",
- "itertools",
- "once_cell",
  "rand",
  "serde",
  "serde_json",
