@@ -54,6 +54,6 @@ impl<A: Aleo> Record<A> {
         A::assert_eq(&self.bcm, &candidate_bcm);
 
         // Output the state.
-        State::from((self.program.clone(), owner, balance, self.data.clone(), self.nonce.clone()))
+        State::from((self.program.clone(), self.process.clone(), owner, balance, self.data.clone(), self.nonce.clone()))
     }
 }

@@ -50,6 +50,7 @@ impl<A: Aleo> Record<A> {
 
         Self {
             program: state.program().clone(),
+            process: state.process().clone(),
             owner,
             balance,
             data: state.data().clone(),

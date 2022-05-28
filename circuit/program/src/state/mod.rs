@@ -32,6 +32,8 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Field, Group, Scal
 pub struct State<A: Aleo> {
     /// The program this state belongs to.
     program: Field<A>,
+    /// The process this state corresponds to.
+    process: Field<A>,
     /// The Aleo address this state belongs to.
     owner: Address<A>,
     /// The account balance in this program state.
@@ -42,10 +44,12 @@ pub struct State<A: Aleo> {
     nonce: Group<A>,
 }
 
-impl<A: Aleo> From<(Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)> for State<A> {
+impl<A: Aleo> From<(Field<A>, Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)> for State<A> {
     /// Initializes a new `State` from the given parameters.
-    fn from((program, owner, balance, data, nonce): (Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)) -> Self {
-        Self { program, owner, balance, data, nonce }
+    fn from(
+        (program, process, owner, balance, data, nonce): (Field<A>, Field<A>, Address<A>, U64<A>, Field<A>, Group<A>),
+    ) -> Self {
+        Self { program, process, owner, balance, data, nonce }
     }
 }
 
@@ -53,6 +57,11 @@ impl<A: Aleo> State<A> {
     /// Returns the program ID.
     pub fn program(&self) -> &Field<A> {
         &self.program
+    }
+
+    /// Returns the process ID.
+    pub fn process(&self) -> &Field<A> {
+        &self.process
     }
 
     /// Returns the account owner.
