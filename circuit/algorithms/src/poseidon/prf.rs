@@ -54,11 +54,10 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn PRF<Seed = Field<E>, Inpu
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_console_algorithms::{Poseidon as NativePoseidon, PRF as P};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -72,8 +71,10 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        use console::PRF as P;
+
         let rng = &mut test_rng();
-        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
+        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
         let poseidon = Poseidon::<Circuit, RATE>::new();
 
         for i in 0..ITERATIONS {

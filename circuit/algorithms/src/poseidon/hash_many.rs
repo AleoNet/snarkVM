@@ -52,11 +52,10 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn HashMany<Input = Field<E>
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_console_algorithms::{HashMany as H, Poseidon as NativePoseidon};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -71,8 +70,10 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
+        use console::HashMany as H;
+
         let rng = &mut test_rng();
-        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, { RATE as usize }>::setup();
+        let native_poseidon = console::Poseidon::<<Circuit as Environment>::BaseField, { RATE as usize }>::setup();
         let poseidon = Poseidon::<Circuit, { RATE as usize }>::new();
 
         for i in 0..ITERATIONS {

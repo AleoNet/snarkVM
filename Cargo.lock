@@ -2075,7 +2075,6 @@ name = "snarkvm-circuit-algorithms"
 version = "0.7.5"
 dependencies = [
  "anyhow",
- "snarkvm-algorithms",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types",
  "snarkvm-console-algorithms",

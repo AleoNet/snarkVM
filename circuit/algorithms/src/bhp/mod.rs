@@ -24,9 +24,7 @@ use snarkvm_circuit_environment::assert_scope;
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
-use snarkvm_console_algorithms::Blake2Xs;
-use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
-use snarkvm_utilities::BigInteger;
+use snarkvm_curves::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 
 pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 4;
@@ -52,29 +50,21 @@ pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usiz
     random_base: Vec<Group<E>>,
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
-    /// Initializes a new instance of BHP with the given setup message.
-    pub fn setup(message: &str) -> Self {
-        // Calculate the maximum window size.
-        let mut maximum_window_size = 0;
-        let mut range = <E::ScalarField as PrimeField>::BigInteger::from(2_u64);
-        while range < E::ScalarField::modulus_minus_one_div_two() {
-            // range < (p-1)/2
-            range.muln(4); // range * 2^4
-            maximum_window_size += 1;
-        }
-        assert!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
+#[cfg(console)]
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Inject for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    type Primitive = console::BHP<E::Affine, NUM_WINDOWS, WINDOW_SIZE>;
 
+    /// Initializes a new instance of a BHP circuit with the given BHP parameters.
+    fn new(_mode: Mode, bhp: Self::Primitive) -> Self {
         // Compute the bases.
-        let bases = (0..NUM_WINDOWS)
-            .map(|index| {
-                // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.BHP.Base.{message}.{index}"));
-                // Inject the new base.
-                let mut base = Group::constant(generator);
+        let bases = bhp
+            .bases()
+            .iter()
+            .take(NUM_WINDOWS)
+            .map(|window| {
                 // Construct the window with the base.
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
-                for _ in 0..WINDOW_SIZE {
+                for base in window.iter().take(WINDOW_SIZE).map(|base| Group::constant(base.to_affine())) {
                     let mut x_bases = Vec::with_capacity(BHP_LOOKUP_SIZE);
                     let mut y_bases = Vec::with_capacity(BHP_LOOKUP_SIZE);
                     let mut accumulator = base.clone();
@@ -88,9 +78,6 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
                         y_bases.push(y);
                         accumulator += &base;
                     }
-                    for _ in 0..BHP_LOOKUP_SIZE {
-                        base = base.double();
-                    }
                     powers.push((x_bases, y_bases));
                 }
                 powers
@@ -99,30 +86,18 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
         debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({}) for BHP", bases.len());
         bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 
-        // Compute the random base.
-        let random_base = {
-            let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.BHP.RandomBase.{message}"));
-            let mut base = Group::constant(generator);
-
-            let num_scalar_bits = E::ScalarField::size_in_bits();
-            let mut random_base = Vec::with_capacity(num_scalar_bits);
-            for _ in 0..num_scalar_bits {
-                random_base.push(base.clone());
-                base = base.double();
-            }
-            random_base
-        };
+        // Initialize the random base.
+        let random_base = Vec::constant(bhp.random_base().iter().map(|base| base.to_affine()).collect());
 
         Self { bases, random_base }
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
     use snarkvm_circuit_types::Eject;
-    use snarkvm_console_algorithms::BHP as NativeBHP;
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;
@@ -131,8 +106,8 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         for _ in 0..ITERATIONS {
-            let native = NativeBHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE);
-            let circuit = BHP::<Circuit, 8, 32>::setup(MESSAGE);
+            let native = console::BHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE);
+            let circuit = BHP::<Circuit, 8, 32>::new(Mode::Constant, native.clone());
 
             native.bases().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
                 native_bases.iter().zip(circuit_bases).for_each(|(native_base, circuit_base_lookups)| {

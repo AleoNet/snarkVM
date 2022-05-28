@@ -107,11 +107,10 @@ impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn HashUncompressed<Input =
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_console_algorithms::{HashUncompressed as H, Pedersen as NativePedersen};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
@@ -119,8 +118,10 @@ mod tests {
     const NUM_BITS_MULTIPLIER: u8 = 8;
 
     fn check_hash_uncompressed<const NUM_BITS: u8>(mode: Mode) {
+        use console::HashUncompressed as H;
+
         // Initialize the Pedersen hash.
-        let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {

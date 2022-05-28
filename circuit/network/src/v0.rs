@@ -46,27 +46,23 @@ use core::fmt;
 type E = Circuit;
 
 thread_local! {
-    #[cfg(console)]
     /// The group bases for the Aleo signature and encryption schemes.
     static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().map(|g| g.to_affine()).collect());
-    #[cfg(console)]
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
-    #[cfg(console)]
     /// The MAC domain as a constant field element.
     static MAC_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::mac_domain());
-    #[cfg(console)]
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
 
     /// The BHP gadget, which can take an input of up to 256 bits.
-    static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::setup("AleoBHP256");
+    static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::constant(console::BHP_256.with(|bhp| bhp.clone()));
     /// The BHP gadget, which can take an input of up to 512 bits.
-    static BHP_512: BHP512<AleoV0> = BHP512::<AleoV0>::setup("AleoBHP512");
+    static BHP_512: BHP512<AleoV0> = BHP512::<AleoV0>::constant(console::BHP_512.with(|bhp| bhp.clone()));
     /// The BHP gadget, which can take an input of up to 768 bits.
-    static BHP_768: BHP768<AleoV0> = BHP768::<AleoV0>::setup("AleoBHP768");
+    static BHP_768: BHP768<AleoV0> = BHP768::<AleoV0>::constant(console::BHP_768.with(|bhp| bhp.clone()));
     /// The BHP gadget, which can take an input of up to 1024 bits.
-    static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::setup("AleoBHP1024");
+    static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::constant(console::BHP_1024.with(|bhp| bhp.clone()));
 
     /// The Pedersen gadget, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::setup("AleoPedersen64");
@@ -85,7 +81,6 @@ thread_local! {
 pub struct AleoV0;
 
 impl Aleo for AleoV0 {
-    #[cfg(console)]
     type Network = console::Testnet3;
 
     /// The maximum number of bits in data (must not exceed u16::MAX).

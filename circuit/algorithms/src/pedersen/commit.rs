@@ -89,11 +89,10 @@ impl<E: Environment, const NUM_BITS: u8>
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_console_algorithms::{Commit as C, Pedersen as NativePedersen};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
@@ -101,8 +100,10 @@ mod tests {
     const NUM_BITS_MULTIPLIER: u8 = 8;
 
     fn check_commit<const NUM_BITS: u8>(mode: Mode) {
+        use console::Commit as C;
+
         // Initialize Pedersen.
-        let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {

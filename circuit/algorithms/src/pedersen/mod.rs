@@ -23,8 +23,8 @@ mod hash_uncompressed;
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
+use console::Blake2Xs;
 use snarkvm_circuit_types::prelude::*;
-use snarkvm_console_algorithms::Blake2Xs;
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
 pub type Pedersen64<E> = Pedersen<E, 64>;
@@ -69,11 +69,10 @@ impl<E: Environment, const NUM_BITS: u8> Pedersen<E, NUM_BITS> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_console_algorithms::Pedersen as NativePedersen;
     use snarkvm_curves::ProjectiveCurve;
 
     const ITERATIONS: u64 = 10;
@@ -83,7 +82,7 @@ mod tests {
     fn check_setup<const NUM_BITS: u8>(num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.
-            let native = NativePedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+            let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
 
             Circuit::scope("Pedersen::setup", || {
                 // Perform the setup operation.
