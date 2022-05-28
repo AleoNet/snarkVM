@@ -19,11 +19,10 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
-use console::Blake2Xs;
 use snarkvm_circuit_types::prelude::*;
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
@@ -40,11 +39,12 @@ pub struct Pedersen<E: Environment, const NUM_BITS: u8> {
     random_base: Vec<Group<E>>,
 }
 
+#[cfg(console)]
 impl<E: Environment, const NUM_BITS: u8> Pedersen<E, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
-        let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
+        let (generator, _, _) = console::Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
         // Inject the new base.
         let mut base = Group::constant(generator);
         // Construct the window with the base.
@@ -55,7 +55,7 @@ impl<E: Environment, const NUM_BITS: u8> Pedersen<E, NUM_BITS> {
         }
 
         // Compute the random base.
-        let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
+        let (generator, _, _) = console::Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
         let mut base = Group::constant(generator);
 
         let num_scalar_bits = E::ScalarField::size_in_bits();

@@ -48,24 +48,27 @@ impl<G: AffineCurve, const NUM_BITS: u8> Pedersen<G, NUM_BITS> {
         // Construct an indexed message to attempt to sample a base.
         let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.Base.{message}"));
         let mut base_power = generator.to_projective();
+        // Construct the window with the base.
         let mut base_window = vec![G::Projective::zero(); NUM_BITS as usize];
         for base in base_window.iter_mut().take(NUM_BITS as usize) {
             *base = base_power;
             base_power.double_in_place();
         }
+        assert_eq!(base_window.len(), NUM_BITS as usize);
 
-        // Next, compute the random base.
+        // Compute the random base.
         let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.RandomBase.{message}"));
-        let mut base_power = generator.to_projective();
+        let mut base = generator.to_projective();
+        // Construct the window with the random base.
         let num_scalar_bits = G::ScalarField::size_in_bits();
-        let mut random_base_window = Vec::with_capacity(num_scalar_bits);
+        let mut random_base = Vec::with_capacity(num_scalar_bits);
         for _ in 0..num_scalar_bits {
-            random_base_window.push(base_power);
-            base_power.double_in_place();
+            random_base.push(base);
+            base.double_in_place();
         }
-        assert_eq!(random_base_window.len(), num_scalar_bits);
+        assert_eq!(random_base.len(), num_scalar_bits);
 
-        Self { base_window: Arc::new(base_window.to_vec()), random_base_window: Arc::new(random_base_window) }
+        Self { base_window: Arc::new(base_window.to_vec()), random_base_window: Arc::new(random_base) }
     }
 
     /// Returns the base window.
