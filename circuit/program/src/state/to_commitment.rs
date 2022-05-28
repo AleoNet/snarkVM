@@ -23,10 +23,9 @@ impl<A: Aleo> State<A> {
         let owner = self.owner.to_field();
         // Convert the balance into a field element.
         let balance = self.balance.to_field();
-        // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
-        let left = A::hash_bhp1024(&[&self.program, &owner, &balance, &self.data].to_bits_le());
-        let right = A::hash_bhp1024(&[&self.nonce].to_bits_le());
-        A::hash_bhp512(&[&left, &right].to_bits_le())
+        A::hash_bhp512(
+            &[&self.program, &self.process, &owner, &balance, &self.data, &self.nonce.to_x_coordinate()].to_bits_le(),
+        )
     }
 }

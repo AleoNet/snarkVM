@@ -33,6 +33,8 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Gr
 pub struct Record<A: Aleo> {
     /// The program this record belongs to.
     program: Field<A>,
+    /// The process this record corresponds to.
+    process: Field<A>,
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: Field<A>,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).

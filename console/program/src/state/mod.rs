@@ -61,11 +61,8 @@ impl<N: Network> State<N> {
         let balance = N::Field::from(self.balance as u128);
         // Retrieve the x-coordinate of the nonce.
         let nonce = self.nonce.to_x_coordinate();
-        // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
-        let left = N::hash_bhp1024(&[program, process, owner, balance].to_bits_le())?;
-        let right = N::hash_bhp1024(&[data, nonce].to_bits_le())?;
-        N::hash_bhp512(&[left, right].to_bits_le())
+        N::hash_bhp1024(&[program, process, owner, balance, data, nonce].to_bits_le())
     }
 
     /// Returns the account owner.

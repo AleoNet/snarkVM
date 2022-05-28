@@ -62,9 +62,9 @@ impl<N: Network> Record<N> {
         let nonce = self.nonce.to_x_coordinate();
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
-        let left = N::hash_bhp1024(&[*program, *process, self.owner, self.balance].to_bits_le())?;
-        let right = N::hash_bhp1024(&[self.data.to_id()?, nonce, self.mac, self.bcm].to_bits_le())?;
-        N::hash_bhp512(&[left, right].to_bits_le())
+        N::hash_bhp512(
+            &[*program, *process, self.owner, self.balance, self.data.to_id()?, nonce, self.mac, self.bcm].to_bits_le(),
+        )
     }
 
     /// Initializes a new record by encrypting the given state with a given randomizer.
