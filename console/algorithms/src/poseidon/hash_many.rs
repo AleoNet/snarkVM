@@ -24,8 +24,15 @@ impl<F: PrimeField, const RATE: usize> HashMany for Poseidon<F, RATE> {
     /// and returns the specified number of field elements as output.
     #[inline]
     fn hash_many(&self, input: &[Self::Input], num_outputs: u16) -> Vec<Self::Output> {
+        // Construct the preimage: [ DOMAIN || LENGTH(INPUT) || [0; RATE-2] || INPUT ].
+        let mut preimage = Vec::with_capacity(RATE + input.len());
+        preimage.push(self.domain);
+        preimage.push(F::from(input.len() as u128));
+        preimage.extend(&vec![F::zero(); RATE - 2]); // Pad up to RATE.
+        preimage.extend_from_slice(input);
+
         let mut sponge = PoseidonSponge::<F, RATE, CAPACITY>::new(&self.parameters);
-        sponge.absorb(input);
+        sponge.absorb(&preimage);
         sponge.squeeze(num_outputs).to_vec()
     }
 }

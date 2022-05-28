@@ -23,10 +23,9 @@ impl<F: PrimeField, const RATE: usize> PRF for Poseidon<F, RATE> {
 
     #[inline]
     fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Result<Self::Output> {
-        // Construct the preimage: seed || length(input) || input.
-        let mut preimage = Vec::with_capacity(2 + input.len());
+        // Construct the preimage: seed || input.
+        let mut preimage = Vec::with_capacity(1 + input.len());
         preimage.push(*seed);
-        preimage.push(F::from(input.len() as u128)); // Input length.
         preimage.extend_from_slice(input);
 
         // Hash the preimage to derive the PRF output.

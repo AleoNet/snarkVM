@@ -24,7 +24,6 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::{Hash, HashMany, HashToScalar, PRF};
 use snarkvm_circuit_types::{environment::prelude::*, Field, Scalar};
-use snarkvm_fields::PoseidonDefaultField;
 
 /// Poseidon2 is a cryptographic hash function of input rate 2.
 pub type Poseidon2<E> = Poseidon<E, 2>;
@@ -52,6 +51,8 @@ pub enum DuplexSpongeMode {
 
 #[derive(Clone)]
 pub struct Poseidon<E: Environment, const RATE: usize> {
+    /// The domain separator for the Poseidon hash function.
+    domain: Field<E>,
     /// The number of rounds in a full-round operation.
     full_rounds: usize,
     /// The number of rounds in a partial-round operation.
@@ -65,32 +66,34 @@ pub struct Poseidon<E: Environment, const RATE: usize> {
     mds: Vec<Vec<Field<E>>>,
 }
 
-impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        match E::BaseField::default_poseidon_parameters::<RATE>() {
-            Ok(parameters) => {
-                let full_rounds = parameters.full_rounds;
-                let partial_rounds = parameters.partial_rounds;
-                let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
-                // Cache the bits for the field element.
-                alpha.to_bits_le();
-                let ark = parameters
-                    .ark
-                    .into_iter()
-                    .take(full_rounds + partial_rounds)
-                    .map(|round| round.into_iter().take(RATE + 1).map(Field::constant).collect())
-                    .collect();
-                let mds = parameters
-                    .mds
-                    .into_iter()
-                    .take(RATE + 1)
-                    .map(|round| round.into_iter().take(RATE + 1).map(Field::constant).collect())
-                    .collect();
+#[cfg(console)]
+impl<E: Environment, const RATE: usize> Inject for Poseidon<E, RATE> {
+    type Primitive = console::Poseidon<E::BaseField, RATE>;
 
-                Self { full_rounds, partial_rounds, alpha, ark, mds }
-            }
-            Err(error) => E::halt(format!("Failed to initialize the Poseidon hash function: {error}")),
-        }
+    fn new(_mode: Mode, poseidon: Self::Primitive) -> Self {
+        // Initialize the domain separator.
+        let domain = Field::constant(poseidon.domain());
+
+        // Initialize the Poseidon parameters.
+        let parameters = poseidon.parameters();
+        let full_rounds = parameters.full_rounds;
+        let partial_rounds = parameters.partial_rounds;
+        let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
+        // Cache the bits for the field element.
+        alpha.to_bits_le();
+        let ark = parameters
+            .ark
+            .iter()
+            .take(full_rounds + partial_rounds)
+            .map(|round| round.iter().take(RATE + 1).cloned().map(Field::constant).collect())
+            .collect();
+        let mds = parameters
+            .mds
+            .iter()
+            .take(RATE + 1)
+            .map(|round| round.iter().take(RATE + 1).cloned().map(Field::constant).collect())
+            .collect();
+
+        Self { domain, full_rounds, partial_rounds, alpha, ark, mds }
     }
 }

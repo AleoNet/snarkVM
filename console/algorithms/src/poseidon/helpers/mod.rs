@@ -22,7 +22,6 @@ pub(super) use state::*;
 
 use snarkvm_fields::PrimeField;
 
-use anyhow::Result;
 use core::fmt::Debug;
 use smallvec::SmallVec;
 
@@ -41,10 +40,6 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
 
     /// Squeeze `num_elements` field elements from the sponge.
     fn squeeze(&mut self, num_elements: u16) -> SmallVec<[F; 10]>;
-}
-
-pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: AlgebraicSponge<F, RATE, 1> {
-    fn sample_parameters() -> Result<Self::Parameters>;
 }
 
 /// The mode structure for duplex sponges.

@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::poseidon::{
-    helpers::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode},
+    helpers::{AlgebraicSponge, DuplexSpongeMode},
     State,
 };
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
-use anyhow::Result;
 use smallvec::SmallVec;
 use std::sync::Arc;
 
@@ -38,12 +37,6 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     state: State<F, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
     pub(in crate::poseidon) mode: DuplexSpongeMode,
-}
-
-impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
-    fn sample_parameters() -> Result<Arc<PoseidonParameters<F, RATE, 1>>> {
-        Ok(Arc::new(F::default_poseidon_parameters::<RATE>()?))
-    }
 }
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
@@ -216,10 +209,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
                 debug_assert_eq!(
                     chunk.len(),
                     self.state.rate_state(range.clone()).len(),
-                    "failed with squeeze {} at rate {} and rate_start {}",
-                    output_size,
-                    RATE,
-                    rate_start
+                    "Failed to squeeze {output_size} at rate {RATE} & rate_start {rate_start}"
                 );
                 chunk.copy_from_slice(self.state.rate_state(range));
                 // Are we in the last chunk?
