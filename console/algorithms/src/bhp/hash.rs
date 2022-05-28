@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
+impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = bool;
     type Output = G::BaseField;
 

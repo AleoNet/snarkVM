@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = Boolean<E>;
     type Output = Field<E>;
 
@@ -35,7 +35,7 @@ mod tests {
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
 
-    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+    fn check_hash<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -48,7 +48,7 @@ mod tests {
         let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
         for i in 0..ITERATIONS {
             // Sample a random input.

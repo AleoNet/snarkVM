@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
+impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
     for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = bool;
@@ -28,25 +28,21 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
     /// the BHP commitment scheme, as it is typically not used by applications.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output> {
         // Ensure the input size is at least the window size.
-        if input.len() <= WINDOW_SIZE * BHP_CHUNK_SIZE {
-            bail!("Inputs to this BHP variant must be greater than {} bits", WINDOW_SIZE * BHP_CHUNK_SIZE)
-        }
-
+        ensure!(input.len() > Self::MIN_BITS, "Inputs to this BHP must be greater than {} bits", Self::MIN_BITS);
         // Ensure the input size is within the parameter size,
-        if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
-            bail!(
-                "Invalid input size for BHP: expected <= {}, found {}",
-                NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE,
-                input.len()
-            )
-        }
+        ensure!(
+            input.len() <= Self::MAX_BITS,
+            "Inputs to this BHP cannot exceed {} bits, found {}",
+            Self::MAX_BITS,
+            input.len()
+        );
 
         // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
         let mut input = input.to_vec();
         if input.len() % BHP_CHUNK_SIZE != 0 {
             let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
             input.resize(input.len() + padding, false);
-            assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
+            ensure!((input.len() % BHP_CHUNK_SIZE) == 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
         }
 
         // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
@@ -55,7 +51,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
         // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
         // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
         Ok(input
-            .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
+            .chunks(WINDOW_SIZE as usize * BHP_CHUNK_SIZE)
             .zip(&*self.bases_lookup)
             .flat_map(|(bits, bases)| {
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
     for BHP<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = Boolean<E>;
@@ -28,25 +28,22 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
     /// the BHP commitment scheme, as it is typically not used by applications.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output {
         // Ensure the input size is at least the window size.
-        if input.len() <= WINDOW_SIZE * BHP_CHUNK_SIZE {
-            E::halt(format!("Inputs to this BHP variant must be greater than {} bits", WINDOW_SIZE * BHP_CHUNK_SIZE))
+        if input.len() <= Self::MIN_BITS {
+            E::halt(format!("Inputs to this BHP must be greater than {} bits", Self::MIN_BITS))
         }
 
         // Ensure the input size is within the parameter size.
         let mut input = input.to_vec();
-        match input.len() <= NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
+        match input.len() <= Self::MAX_BITS {
             true => {
                 // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
                 if input.len() % BHP_CHUNK_SIZE != 0 {
                     let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
                     input.resize(input.len() + padding, Boolean::constant(false));
-                    assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
+                    assert_eq!(input.len() % BHP_CHUNK_SIZE, 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
                 }
             }
-            false => E::halt(format!(
-                "Inputs to this BHP variant cannot exceed {} bits",
-                NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE
-            )),
+            false => E::halt(format!("Inputs to this BHP cannot exceed {} bits", Self::MAX_BITS)),
         }
 
         // Declare the 1/2 constant field element.
@@ -93,7 +90,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
         // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
         // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
         input
-            .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
+            .chunks(WINDOW_SIZE as usize * BHP_CHUNK_SIZE)
             .zip(self.bases.iter())
             .map(|(bits, bases)| {
                 // Initialize accumulating sum variables for the x- and y-coordinates.
@@ -177,7 +174,7 @@ mod tests {
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
 
-    fn check_hash_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+    fn check_hash_uncompressed<const NUM_WINDOWS: u8, const WINDOW_SIZE: u8>(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -190,7 +187,7 @@ mod tests {
         let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
 
         for i in 0..ITERATIONS {
             // Sample a random input.

@@ -43,15 +43,22 @@ pub type BHP1024<E> = BHP<E, 6, 57>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHP<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
     /// The bases for the BHP hash.
     bases: Vec<Vec<BaseLookups<E>>>,
     /// The random base for the BHP commitment.
     random_base: Vec<Group<E>>,
 }
 
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    /// The maximum number of input bits.
+    const MAX_BITS: usize = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+    /// The minimum number of input bits (at least one window).
+    const MIN_BITS: usize = WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+}
+
 #[cfg(console)]
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Inject for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Primitive = console::BHP<E::Affine, NUM_WINDOWS, WINDOW_SIZE>;
 
     /// Initializes a new instance of a BHP circuit with the given BHP parameters.
@@ -60,11 +67,11 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Inject 
         let bases = bhp
             .bases()
             .iter()
-            .take(NUM_WINDOWS)
+            .take(NUM_WINDOWS as usize)
             .map(|window| {
                 // Construct the window with the base.
-                let mut powers = Vec::with_capacity(WINDOW_SIZE);
-                for base in window.iter().take(WINDOW_SIZE).map(|base| Group::constant(base.to_affine())) {
+                let mut powers = Vec::with_capacity(WINDOW_SIZE as usize);
+                for base in window.iter().take(WINDOW_SIZE as usize).map(|base| Group::constant(base.to_affine())) {
                     let mut x_bases = Vec::with_capacity(BHP_LOOKUP_SIZE);
                     let mut y_bases = Vec::with_capacity(BHP_LOOKUP_SIZE);
                     let mut accumulator = base.clone();
@@ -83,11 +90,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Inject 
                 powers
             })
             .collect::<Vec<Vec<BaseLookups<E>>>>();
-        debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({}) for BHP", bases.len());
-        bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
+        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of windows ({}) for BHP", bases.len());
+        bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
 
         // Initialize the random base.
         let random_base = Vec::constant(bhp.random_base().iter().map(|base| base.to_affine()).collect());
+        assert_eq!(random_base.len(), E::ScalarField::size_in_bits());
 
         Self { bases, random_base }
     }

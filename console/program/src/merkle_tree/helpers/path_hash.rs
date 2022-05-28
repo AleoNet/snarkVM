@@ -27,7 +27,7 @@ pub trait PathHash<N: Network>: Clone + Send + Sync {
     }
 }
 
-impl<N: Network, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PathHash<N>
+impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<N>
     for BHP<N::Affine, NUM_WINDOWS, WINDOW_SIZE>
 {
     /// Returns the hash of the given path nodes.

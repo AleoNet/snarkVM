@@ -24,7 +24,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, BigInteger, ToBits};
 
-use anyhow::{bail, Result};
+use anyhow::{ensure, Result};
 use core::ops::Neg;
 use itertools::Itertools;
 use std::sync::Arc;
@@ -44,7 +44,7 @@ pub type BHP1024<G> = BHP<G, 6, 57>;
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
 #[derive(Clone)]
-pub struct BHP<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHP<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
     /// The bases for the BHP hash.
     bases: Arc<Vec<Vec<G::Projective>>>,
     /// The bases lookup table for the BHP hash.
@@ -53,7 +53,12 @@ pub struct BHP<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usiz
     random_base: Arc<Vec<G::Projective>>,
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
+impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
+    /// The maximum number of input bits.
+    const MAX_BITS: usize = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+    /// The minimum number of input bits (at least one window).
+    const MIN_BITS: usize = WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
+
     /// Initializes a new instance of BHP with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Calculate the maximum window size.
@@ -73,7 +78,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, 
                 let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.BHP.Base.{message}.{index}"));
                 let mut base = generator.to_projective();
                 // Compute the generators for the sampled base.
-                let mut powers = Vec::with_capacity(WINDOW_SIZE);
+                let mut powers = Vec::with_capacity(WINDOW_SIZE as usize);
                 for _ in 0..WINDOW_SIZE {
                     powers.push(base);
                     for _ in 0..4 {
@@ -83,8 +88,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, 
                 powers
             })
             .collect::<Vec<Vec<G::Projective>>>();
-        debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
-        bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
+        assert_eq!(bases.len(), NUM_WINDOWS as usize, "Incorrect number of windows ({:?}) for BHP", bases.len());
+        bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
 
         // Compute the bases lookup.
         let bases_lookup = cfg_iter!(bases)
@@ -109,8 +114,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, 
                     .collect()
             })
             .collect::<Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>>();
-        debug_assert_eq!(bases_lookup.len(), NUM_WINDOWS);
-        bases_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
+        assert_eq!(bases_lookup.len(), NUM_WINDOWS as usize);
+        bases_lookup.iter().for_each(|bases| assert_eq!(bases.len(), WINDOW_SIZE as usize));
 
         // Next, compute the random base.
         let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.BHP.RandomBase.{message}"));
