@@ -24,6 +24,7 @@ use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
+use snarkvm_curves::ProjectiveCurve;
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
 pub type Pedersen64<E> = Pedersen<E, 64>;
@@ -40,30 +41,18 @@ pub struct Pedersen<E: Environment, const NUM_BITS: u8> {
 }
 
 #[cfg(console)]
-impl<E: Environment, const NUM_BITS: u8> Pedersen<E, NUM_BITS> {
-    /// Initializes a new instance of Pedersen with the given setup message.
-    pub fn setup(message: &str) -> Self {
-        // Construct an indexed message to attempt to sample a base.
-        let (generator, _, _) = console::Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
-        // Inject the new base.
-        let mut base = Group::constant(generator);
-        // Construct the window with the base.
-        let mut base_window = Vec::with_capacity(NUM_BITS as usize);
-        for _ in 0..NUM_BITS {
-            base_window.push(base.clone());
-            base = base.double();
-        }
+impl<E: Environment, const NUM_BITS: u8> Inject for Pedersen<E, NUM_BITS> {
+    type Primitive = console::Pedersen<E::Affine, NUM_BITS>;
 
-        // Compute the random base.
-        let (generator, _, _) = console::Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
-        let mut base = Group::constant(generator);
+    /// Initializes a new instance of Pedersen with the given Pedersen variant.
+    fn new(_mode: Mode, pedersen: Self::Primitive) -> Self {
+        // Initialize the base window.
+        let base_window = Vec::constant(pedersen.base_window().iter().map(|base| base.to_affine()).collect());
+        assert_eq!(base_window.len(), NUM_BITS as usize);
 
-        let num_scalar_bits = E::ScalarField::size_in_bits();
-        let mut random_base = Vec::with_capacity(num_scalar_bits);
-        for _ in 0..num_scalar_bits {
-            random_base.push(base.clone());
-            base = base.double();
-        }
+        // Initialize the random base.
+        let random_base = Vec::constant(pedersen.random_base_window().iter().map(|base| base.to_affine()).collect());
+        assert_eq!(random_base.len(), E::ScalarField::size_in_bits());
 
         Self { base_window, random_base }
     }
@@ -86,7 +75,7 @@ mod tests {
 
             Circuit::scope("Pedersen::setup", || {
                 // Perform the setup operation.
-                let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
+                let circuit = Pedersen::<Circuit, NUM_BITS>::constant(native.clone());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Check for equivalency of the bases.
@@ -107,10 +96,10 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         // Set the number of windows, and modulate the window size.
-        check_setup::<NUM_BITS_MULTIPLIER>(785, 0, 0, 0);
-        check_setup::<{ 2 * NUM_BITS_MULTIPLIER }>(809, 0, 0, 0);
-        check_setup::<{ 3 * NUM_BITS_MULTIPLIER }>(833, 0, 0, 0);
-        check_setup::<{ 4 * NUM_BITS_MULTIPLIER }>(857, 0, 0, 0);
-        check_setup::<{ 5 * NUM_BITS_MULTIPLIER }>(881, 0, 0, 0);
+        check_setup::<NUM_BITS_MULTIPLIER>(1036, 0, 0, 0);
+        check_setup::<{ 2 * NUM_BITS_MULTIPLIER }>(1068, 0, 0, 0);
+        check_setup::<{ 3 * NUM_BITS_MULTIPLIER }>(1100, 0, 0, 0);
+        check_setup::<{ 4 * NUM_BITS_MULTIPLIER }>(1132, 0, 0, 0);
+        check_setup::<{ 5 * NUM_BITS_MULTIPLIER }>(1164, 0, 0, 0);
     }
 }

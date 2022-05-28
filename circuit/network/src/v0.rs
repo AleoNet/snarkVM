@@ -65,9 +65,9 @@ thread_local! {
     static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::constant(console::BHP_1024.with(|bhp| bhp.clone()));
 
     /// The Pedersen gadget, which can take an input of up to 64 bits.
-    static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::setup("AleoPedersen64");
+    static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::constant(console::PEDERSEN_64.with(|pedersen| pedersen.clone()));
     /// The Pedersen gadget, which can take an input of up to 128 bits.
-    static PEDERSEN_128: Pedersen128<AleoV0> = Pedersen128::<AleoV0>::setup("AleoPedersen128");
+    static PEDERSEN_128: Pedersen128<AleoV0> = Pedersen128::<AleoV0>::constant(console::PEDERSEN_128.with(|pedersen| pedersen.clone()));
 
     /// The Poseidon hash function, using a rate of 2.
     static POSEIDON_2: Poseidon2<AleoV0> = Poseidon2::<AleoV0>::new();

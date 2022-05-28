@@ -104,7 +104,7 @@ mod tests {
 
         // Initialize Pedersen.
         let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
-        let circuit = Pedersen::<Circuit, NUM_BITS>::setup(MESSAGE);
+        let circuit = Pedersen::<Circuit, NUM_BITS>::constant(native.clone());
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn test_pedersen64_homomorphism_private() {
         // Initialize Pedersen64.
-        let pedersen = Pedersen64::setup("Pedersen64HomomorphismTest");
+        let pedersen = Pedersen64::constant(console::Pedersen64::setup("Pedersen64HomomorphismTest"));
 
         for _ in 0..ITERATIONS {
             // Sample two random unsigned integers, with the MSB set to 0.
@@ -268,7 +268,7 @@ mod tests {
         }
 
         // Check Pedersen128.
-        let pedersen128 = Pedersen128::setup("Pedersen128HomomorphismTest");
+        let pedersen128 = Pedersen128::constant(console::Pedersen128::setup("Pedersen128HomomorphismTest"));
         check_pedersen_homomorphism(&pedersen128);
     }
 }

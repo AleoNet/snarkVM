@@ -35,6 +35,7 @@ pub type Pedersen128<G> = Pedersen<G, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
+#[derive(Clone)]
 pub struct Pedersen<G: AffineCurve, const NUM_BITS: u8> {
     /// The base window for the Pedersen hash.
     base_window: Arc<Vec<G::Projective>>,
