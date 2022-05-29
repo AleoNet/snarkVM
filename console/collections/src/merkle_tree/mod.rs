@@ -23,6 +23,7 @@ pub use path::*;
 #[cfg(test)]
 mod tests;
 
+use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_network::Network;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ToBits};
@@ -31,6 +32,13 @@ use anyhow::{bail, ensure, Error, Result};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
+/// A Merkle tree with a leaf node hash of BHP1024 and a path node hash of BHP512.
+pub type MerkleTreeBHP<N, const DEPTH: u8> =
+    MerkleTree<N, BHP1024<<N as Network>::Affine>, BHP512<<N as Network>::Affine>, DEPTH>;
+/// A Merkle tree with a leaf node hash of Poseidon4 and a path node hash of Poseidon2.
+pub type MerkleTreePoseidon<N, const DEPTH: u8> =
+    MerkleTree<N, Poseidon4<<N as Network>::Field>, Poseidon2<<N as Network>::Field>, DEPTH>;
 
 #[derive(Default)]
 pub struct MerkleTree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> {
@@ -80,7 +88,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
         // Compute each leaf hash and store it in the bottom row of the Merkle tree.
         if !leaves.is_empty() {
             tree[starting_leaf_index..starting_leaf_index + leaves.len()]
-                .copy_from_slice(&Self::hash_leaf_row(leaf_hasher, leaves)?);
+                .copy_from_slice(&leaf_hasher.hash_leaves(leaves)?);
         }
 
         // Iterate from the bottom row to the top row, computing and storing the hashes of each level.
@@ -92,8 +100,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
                 let pairs =
                     (start_index..end_index).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
                 // Compute the hashes of the current level.
-                tree[start_index..start_index + pairs.len()]
-                    .copy_from_slice(&Self::hash_internal_row(path_hasher, &pairs[..])?);
+                tree[start_index..start_index + pairs.len()].copy_from_slice(&path_hasher.hash_all_children(&pairs)?);
             }
             // Update the end index for the next level.
             end_index = start_index;
@@ -105,7 +112,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
         let mut padding_tree = Vec::with_capacity(DEPTH.saturating_sub(current_depth + 1) as usize);
         let mut current_hash = tree[0];
         while current_depth < DEPTH {
-            current_hash = path_hasher.hash(&current_hash, &empty_hash)?;
+            current_hash = path_hasher.hash_children(&current_hash, &empty_hash)?;
 
             // do not pad at the top-level of the tree
             if current_depth < DEPTH - 1 {
@@ -153,7 +160,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
         if !new_leaves.is_empty() {
             tree[starting_leaf_index + self.number_of_leaves
                 ..starting_leaf_index + self.number_of_leaves + new_leaves.len()]
-                .copy_from_slice(&Self::hash_leaf_row(&self.leaf_hasher, new_leaves)?);
+                .copy_from_slice(&self.leaf_hasher.hash_leaves(new_leaves)?);
         }
 
         // Track the indices of newly added leaves.
@@ -180,7 +187,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
                         // Compute Hash(left || right).
                         *parent = self
                             .path_hasher
-                            .hash(&children[left_index - upper_bound], &children[right_index - upper_bound])?;
+                            .hash_children(&children[left_index - upper_bound], &children[right_index - upper_bound])?;
                     } else {
                         *parent = self.tree[current_index];
                     }
@@ -198,12 +205,12 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
 
         // The whole padding tree can be reused if the current hash matches the previous one.
         let padding_tree = if current_hash == self.tree[0] {
-            current_hash = self.path_hasher.hash(&self.padding_tree.last().unwrap().0, &empty_hash)?;
+            current_hash = self.path_hasher.hash_children(&self.padding_tree.last().unwrap().0, &empty_hash)?;
             self.padding_tree.clone()
         } else {
             let mut padding_tree = Vec::with_capacity(DEPTH.saturating_sub(current_depth + 1) as usize);
             while current_depth < DEPTH {
-                current_hash = self.path_hasher.hash(&current_hash, &empty_hash)?;
+                current_hash = self.path_hasher.hash_children(&current_hash, &empty_hash)?;
 
                 // do not pad at the top-level of the tree
                 if current_depth < DEPTH - 1 {
@@ -230,7 +237,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
     #[inline]
     pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<N, DEPTH>> {
         // Compute the leaf hash.
-        let leaf_hash = self.leaf_hasher.hash(leaf)?;
+        let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
         // Compute the absolute index of the leaf in the tree.
         let tree_index = self.starting_leaf_index.saturating_add(leaf_index);
         // Ensure the computed tree index contains the given leaf.
@@ -277,24 +284,6 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
     #[inline]
     pub fn hashed_leaves(&self) -> &[N::Field] {
         &self.tree[self.starting_leaf_index..]
-    }
-
-    #[inline]
-    fn hash_leaf_row(leaf_hasher: &LH, leaf_nodes: &[LH::Leaf]) -> Result<Vec<N::Field>> {
-        match leaf_nodes.len() {
-            0 => Ok(vec![]),
-            1 => Ok(vec![leaf_hasher.hash(&leaf_nodes[0])?]),
-            _ => cfg_iter!(leaf_nodes).map(|leaf| leaf_hasher.hash(leaf)).collect(),
-        }
-    }
-
-    #[inline]
-    fn hash_internal_row(path_hasher: &PH, internal_nodes: &[(N::Field, N::Field)]) -> Result<Vec<N::Field>> {
-        match internal_nodes.len() {
-            0 => Ok(vec![]),
-            1 => Ok(vec![path_hasher.hash(&internal_nodes[0].0, &internal_nodes[0].1)?]),
-            _ => cfg_iter!(internal_nodes).map(|(left, right)| path_hasher.hash(left, right)).collect(),
-        }
     }
 }
 

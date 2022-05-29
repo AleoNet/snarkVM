@@ -23,6 +23,7 @@
 pub mod testnet3;
 pub use testnet3::*;
 
+use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::traits::*;
 
@@ -85,16 +86,16 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective;
 
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 512-bits.
     fn commit_bhp512(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 768-bits.
     fn commit_bhp768(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 1024-bits.
     fn commit_bhp1024(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
@@ -103,16 +104,16 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
-    /// Returns the BHP hash for a given (up to) 256-bit input.
+    /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Self::Field>;
 
-    /// Returns the BHP hash for a given (up to) 512-bit input.
+    /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_bhp512(input: &[bool]) -> Result<Self::Field>;
 
-    /// Returns the BHP hash for a given (up to) 768-bit input.
+    /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_bhp768(input: &[bool]) -> Result<Self::Field>;
 
-    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Self::Field>;
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
@@ -147,6 +148,12 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
     fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar>;
+
+    /// Returns a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
+    fn merkle_tree_bhp() -> (BHP1024<Self::Affine>, BHP512<Self::Affine>);
+
+    /// Returns a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
+    fn merkle_tree_psd() -> (Poseidon4<Self::Field>, Poseidon2<Self::Field>);
 
     /// Returns the Poseidon PRF with an input rate of 2.
     fn prf_psd2(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;

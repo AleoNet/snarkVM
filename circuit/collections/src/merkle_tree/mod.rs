@@ -73,67 +73,92 @@ impl<A: Aleo, LH: LeafHash<A>, PH: PathHash<A>, const DEPTH: u8> Eject for Merkl
     }
 }
 
-// #[cfg(test)]
-// mod tests {
+// #[cfg(all(test, console))]
+// pub(crate) mod tests {
 //     use super::*;
-//     use crate::Pedersen;
+//     use crate::{helpers::generate_account};
+//     use snarkvm_circuit_network::AleoV0 as Circuit;
 //
-//     use snarkvm_algorithms::{
-//         crh::PedersenCompressedCRH as NativePedersenCompressed,
-//         merkle_tree::{MaskedMerkleTreeParameters, MerkleTree},
-//         traits::MerkleParameters,
-//     };
-//     use snarkvm_circuit_types::environment::{assert_scope, Circuit, Mode};
-//     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
-//     use snarkvm_utilities::{test_rng, UniformRand};
+//     use anyhow::Result;
 //
-//     use std::sync::Arc;
+//     const ITERATIONS: u64 = 100;
 //
-//     const PEDERSEN_NUM_WINDOWS: usize = 128;
-//     const PEDERSEN_LEAF_WINDOW_SIZE: usize = 2;
-//     const PEDERSEN_TWO_TO_ONE_WINDOW_SIZE: usize = 4;
-//     const TREE_DEPTH: usize = 4;
-//     const MESSAGE: &str = "Pedersen merkle path test";
+//     fn check_new(
+//         mode: Mode,
+//         num_constants: u64,
+//         num_public: u64,
+//         num_private: u64,
+//         num_constraints: u64,
+//     ) -> Result<()> {
 //
-//     type NativeLeafCRH = NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
-//     type NativeTwoToOneCRH =
-//         NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
-//     type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
+//         // Construct the Merkle tree for the given leaves.
+//         type LH =
+//         let merkle_tree = console::merkle_tree::MerkleTree::<N, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
+//         assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
 //
-//     type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
-//
-//     fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-//         let merkle_tree_parameters = Parameters::setup(MESSAGE);
-//
-//         let mut rng = test_rng();
-//         let mut leaves = Vec::new();
-//         for _ in 0..1 << Parameters::DEPTH {
-//             leaves.push(Fr::rand(&mut rng));
+//         // Check each leaf in the Merkle tree.
+//         if !leaves.is_empty() {
+//             for (leaf_index, leaf) in leaves.iter().enumerate() {
+//                 // Compute a Merkle proof for the leaf.
+//                 let proof = merkle_tree.prove(leaf_index, leaf)?;
+//                 // Verify the Merkle proof succeeds.
+//                 assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
+//                 // Verify the Merkle proof **fails** on an invalid root.
+//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
+//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
+//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::rand(&mut test_rng()), leaf));
+//             }
 //         }
+//         // If additional leaves are provided, check that the Merkle tree is consistent with them.
+//         if !additional_leaves.is_empty() {
+//             // Append additional leaves to the Merkle tree.
+//             let merkle_tree = merkle_tree.append(additional_leaves)?;
+//             // Check each additional leaf in the Merkle tree.
+//             for (leaf_index, leaf) in additional_leaves.iter().enumerate() {
+//                 // Compute a Merkle proof for the leaf.
+//                 let proof = merkle_tree.prove(leaves.len() + leaf_index, leaf)?;
+//                 // Verify the Merkle proof succeeds.
+//                 assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
+//                 // Verify the Merkle proof **fails** on an invalid root.
+//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
+//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
+//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::rand(&mut test_rng()), leaf));
+//             }
+//         }
+//         Ok(())
 //
-//         let merkle_tree = MerkleTree::new(Arc::new(merkle_tree_parameters), &leaves).unwrap();
 //
-//         for (i, leaf) in leaves.iter().enumerate() {
-//             let proof = merkle_tree.generate_proof(i, &leaf).unwrap();
+//         for i in 0..ITERATIONS {
 //
-//             Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
-//                 let traversal = proof.position_list().collect::<Vec<_>>();
-//                 let path = proof.path.clone();
-//                 let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal.clone(), path.clone()));
-//
-//                 assert_eq!((traversal, path), merkle_path.eject_value());
-//                 assert_eq!(mode, merkle_path.eject_mode());
-//
-//                 let case = format!("mode = {mode}");
-//                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+//             Circuit::scope(format!("New {mode}"), || {
+//                 let candidate = ComputeKey::<Circuit>::new(mode, compute_key);
+//                 match mode.is_constant() {
+//                     true => assert_eq!(Mode::Constant, candidate.eject_mode()),
+//                     false => assert_eq!(Mode::Private, candidate.eject_mode()),
+//                 };
+//                 assert_eq!(compute_key, candidate.eject_value());
+//                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
+//                 if i > 0 {
+//                     assert_scope!(num_constants, num_public, num_private, num_constraints);
+//                 }
 //             });
+//             Circuit::reset();
 //         }
+//         Ok(())
 //     }
 //
 //     #[test]
-//     fn test_merkle_path_new() {
-//         check_new(Mode::Constant, 8, 0, 0, 0);
-//         check_new(Mode::Private, 0, 0, 8, 4);
-//         check_new(Mode::Public, 0, 8, 0, 4);
+//     fn test_new_constant() -> Result<()> {
+//         check_new(Mode::Constant, 266, 0, 0, 0)
+//     }
+//
+//     #[test]
+//     fn test_new_public() -> Result<()> {
+//         check_new(Mode::Public, 7, 6, 604, 608)
+//     }
+//
+//     #[test]
+//     fn test_new_private() -> Result<()> {
+//         check_new(Mode::Private, 7, 0, 610, 608)
 //     }
 // }

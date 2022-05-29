@@ -185,22 +185,22 @@ impl Network for Testnet3 {
         })
     }
 
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 512-bits.
     fn commit_bhp512(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
         BHP_512.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 768-bits.
     fn commit_bhp768(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
         BHP_768.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 1024-bits.
     fn commit_bhp1024(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
         BHP_1024.with(|bhp| bhp.commit(input, randomizer))
     }
@@ -215,22 +215,22 @@ impl Network for Testnet3 {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
-    /// Returns the BHP hash for a given (up to) 256-bit input.
+    /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Self::Field> {
         BHP_256.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 512-bit input.
+    /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_bhp512(input: &[bool]) -> Result<Self::Field> {
         BHP_512.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 768-bit input.
+    /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_bhp768(input: &[bool]) -> Result<Self::Field> {
         BHP_768.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[bool]) -> Result<Self::Field> {
         BHP_1024.with(|bhp| bhp.hash(input))
     }
@@ -288,6 +288,16 @@ impl Network for Testnet3 {
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
     fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar> {
         POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar::<Self::Scalar>(input))
+    }
+
+    /// Returns a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
+    fn merkle_tree_bhp() -> (BHP1024<Self::Affine>, BHP512<Self::Affine>) {
+        (BHP_1024.with(|bhp| bhp.clone()), BHP_512.with(|bhp| bhp.clone()))
+    }
+
+    /// Returns a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
+    fn merkle_tree_psd() -> (Poseidon4<Self::Field>, Poseidon2<Self::Field>) {
+        (POSEIDON_4.with(|poseidon| poseidon.clone()), POSEIDON_2.with(|poseidon| poseidon.clone()))
     }
 
     /// Returns the Poseidon PRF with an input rate of 2.

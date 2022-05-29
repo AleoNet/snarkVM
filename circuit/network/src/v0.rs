@@ -112,22 +112,22 @@ impl Aleo for AleoV0 {
         })
     }
 
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 512-bits.
     fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_512.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 768-bits.
     fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_768.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 1024-bits.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.commit(input, randomizer))
     }
@@ -142,22 +142,22 @@ impl Aleo for AleoV0 {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
-    /// Returns the BHP hash for a given (up to) 256-bit input.
+    /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_256.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 512-bit input.
+    /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_512.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 768-bit input.
+    /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_bhp768(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_768.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.hash(input))
     }

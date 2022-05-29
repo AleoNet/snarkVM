@@ -40,16 +40,16 @@ pub trait Aleo: Environment {
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 512-bits.
     fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 768-bits.
     fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 1024-bits.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
@@ -58,16 +58,16 @@ pub trait Aleo: Environment {
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns the BHP hash for a given (up to) 256-bit input.
+    /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns the BHP hash for a given (up to) 512-bit input.
+    /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns the BHP hash for a given (up to) 768-bit input.
+    /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_bhp768(input: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self>;
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.

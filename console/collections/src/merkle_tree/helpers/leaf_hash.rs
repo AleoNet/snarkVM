@@ -23,7 +23,16 @@ pub trait LeafHash<N: Network>: Clone + Send + Sync {
     type Leaf: Clone + Send + Sync;
 
     /// Returns the hash of the given leaf node.
-    fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field>;
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<N::Field>;
+
+    /// Returns the hash for each leaf node.
+    fn hash_leaves(&self, leaves: &[Self::Leaf]) -> Result<Vec<N::Field>> {
+        match leaves.len() {
+            0 => Ok(vec![]),
+            1..=100 => leaves.iter().map(|leaf| self.hash_leaf(leaf)).collect(),
+            _ => cfg_iter!(leaves).map(|leaf| self.hash_leaf(leaf)).collect(),
+        }
+    }
 }
 
 impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<N>
@@ -32,7 +41,7 @@ impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<N>
     type Leaf = Vec<bool>;
 
     /// Returns the hash of the given leaf node.
-    fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<N::Field> {
         // Prepend the leaf with a `false` bit.
         let mut input = vec![false];
         input.extend(leaf);
@@ -45,7 +54,7 @@ impl<N: Network, const RATE: usize> LeafHash<N> for Poseidon<N::Field, RATE> {
     type Leaf = Vec<N::Field>;
 
     /// Returns the hash of the given leaf node.
-    fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<N::Field> {
         // Prepend the leaf with a `0field` element.
         let mut input = vec![N::Field::zero(); 1];
         input.extend(leaf);

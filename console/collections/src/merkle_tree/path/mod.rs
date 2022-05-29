@@ -86,7 +86,7 @@ impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
         }
 
         // Initialize a tracker for the current hash, by computing the leaf hash to start.
-        let mut current_hash = match leaf_hasher.hash(leaf) {
+        let mut current_hash = match leaf_hasher.hash_leaf(leaf) {
             Ok(candidate_leaf_hash) => candidate_leaf_hash,
             Err(error) => {
                 eprintln!("Failed to hash the Merkle leaf during verification: {error}");
@@ -107,7 +107,7 @@ impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
                 false => (*sibling_hash, current_hash),
             };
             // Update the current hash for the next level.
-            match path_hasher.hash(&left, &right) {
+            match path_hasher.hash_children(&left, &right) {
                 Ok(hash) => current_hash = hash,
                 Err(error) => {
                     eprintln!("Failed to hash the Merkle path during verification: {error}");
