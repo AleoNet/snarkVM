@@ -24,6 +24,7 @@ pub mod testnet3;
 pub use testnet3::*;
 
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
+use snarkvm_console_collections::merkle_tree::MerkleTree;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::traits::*;
 
@@ -149,11 +150,15 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
     fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar>;
 
-    /// Returns a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp() -> (BHP1024<Self::Affine>, BHP512<Self::Affine>);
+    /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
+    fn merkle_tree_bhp<const DEPTH: u8>(
+        leaves: &[Vec<bool>],
+    ) -> Result<MerkleTree<Self::Field, BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>>;
 
-    /// Returns a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd() -> (Poseidon4<Self::Field>, Poseidon2<Self::Field>);
+    /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
+    fn merkle_tree_psd<const DEPTH: u8>(
+        leaves: &[Vec<Self::Field>],
+    ) -> Result<MerkleTree<Self::Field, Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>>;
 
     /// Returns the Poseidon PRF with an input rate of 2.
     fn prf_psd2(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;

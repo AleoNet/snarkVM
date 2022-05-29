@@ -9,7 +9,10 @@ edition = "2021"
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
 version = "0.7.5"
-default-features = false
+
+[dependencies.snarkvm-console-collections]
+path = "../collections"
+version = "0.7.5"
 
 [dependencies.snarkvm-curves]
 path = "../../curves"

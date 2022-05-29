@@ -290,14 +290,22 @@ impl Network for Testnet3 {
         POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar::<Self::Scalar>(input))
     }
 
-    /// Returns a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp() -> (BHP1024<Self::Affine>, BHP512<Self::Affine>) {
-        (BHP_1024.with(|bhp| bhp.clone()), BHP_512.with(|bhp| bhp.clone()))
+    /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
+    fn merkle_tree_bhp<const DEPTH: u8>(
+        leaves: &[Vec<bool>],
+    ) -> Result<MerkleTree<Self::Field, BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>> {
+        MerkleTree::new(BHP_1024.with(|bhp| bhp.clone()), BHP_512.with(|bhp| bhp.clone()), leaves)
     }
 
-    /// Returns a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd() -> (Poseidon4<Self::Field>, Poseidon2<Self::Field>) {
-        (POSEIDON_4.with(|poseidon| poseidon.clone()), POSEIDON_2.with(|poseidon| poseidon.clone()))
+    /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
+    fn merkle_tree_psd<const DEPTH: u8>(
+        leaves: &[Vec<Self::Field>],
+    ) -> Result<MerkleTree<Self::Field, Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>> {
+        MerkleTree::new(
+            POSEIDON_4.with(|poseidon| poseidon.clone()),
+            POSEIDON_2.with(|poseidon| poseidon.clone()),
+            leaves,
+        )
     }
 
     /// Returns the Poseidon PRF with an input rate of 2.

@@ -2296,6 +2296,7 @@ dependencies = [
  "serde",
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
+ "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
 ]
@@ -2307,6 +2308,7 @@ dependencies = [
  "anyhow",
  "itertools",
  "snarkvm-console-algorithms",
+ "snarkvm-console-collections",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",

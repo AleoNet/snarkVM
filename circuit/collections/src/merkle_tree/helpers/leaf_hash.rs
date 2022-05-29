@@ -16,21 +16,20 @@
 
 use super::*;
 use snarkvm_circuit_algorithms::{Hash, Poseidon, BHP};
-use snarkvm_circuit_network::Aleo;
 
 /// A trait for a Merkle leaf hash function.
-pub trait LeafHash<A: Aleo> {
+pub trait LeafHash<E: Environment> {
     type Leaf;
 
     /// Returns the hash of the given leaf node.
-    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<A>;
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<E>;
 }
 
-impl<A: Aleo, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<A> for BHP<A, NUM_WINDOWS, WINDOW_SIZE> {
-    type Leaf = Vec<Boolean<A>>;
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<E> for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    type Leaf = Vec<Boolean<E>>;
 
     /// Returns the hash of the given leaf node.
-    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<A> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<E> {
         // Prepend the leaf with a `false` bit.
         let mut input = vec![Boolean::constant(false)];
         input.extend_from_slice(leaf);
@@ -39,11 +38,11 @@ impl<A: Aleo, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<A> for BHP<
     }
 }
 
-impl<A: Aleo, const RATE: usize> LeafHash<A> for Poseidon<A, RATE> {
-    type Leaf = Vec<Field<A>>;
+impl<E: Environment, const RATE: usize> LeafHash<E> for Poseidon<E, RATE> {
+    type Leaf = Vec<Field<E>>;
 
     /// Returns the hash of the given leaf node.
-    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<A> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<E> {
         // Prepend the leaf with a `0field` element.
         let mut input = vec![Field::zero()];
         input.extend_from_slice(leaf);
@@ -56,7 +55,7 @@ impl<A: Aleo, const RATE: usize> LeafHash<A> for Poseidon<A, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon4, BHP1024};
-    use snarkvm_circuit_network::{Aleo, AleoV0 as Circuit};
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use anyhow::Result;
@@ -76,7 +75,7 @@ mod tests {
 
                 // Compute the expected hash.
                 let expected: <Circuit as Environment>::BaseField =
-                    console::merkle_tree::LeafHash::<<Circuit as Aleo>::Network>::hash_leaf(&native, &input)
+                    console::merkle_tree::LeafHash::<<Circuit as Environment>::BaseField>::hash_leaf(&native, &input)
                         .expect("Failed to hash native input");
 
                 // Prepare the circuit input.

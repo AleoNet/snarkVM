@@ -23,45 +23,36 @@ pub use path::*;
 #[cfg(test)]
 mod tests;
 
-use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
-use snarkvm_console_network::Network;
-use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ToBits};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
 use anyhow::{bail, ensure, Error, Result};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// A Merkle tree with a leaf node hash of BHP1024 and a path node hash of BHP512.
-pub type MerkleTreeBHP<N, const DEPTH: u8> =
-    MerkleTree<N, BHP1024<<N as Network>::Affine>, BHP512<<N as Network>::Affine>, DEPTH>;
-/// A Merkle tree with a leaf node hash of Poseidon4 and a path node hash of Poseidon2.
-pub type MerkleTreePoseidon<N, const DEPTH: u8> =
-    MerkleTree<N, Poseidon4<<N as Network>::Field>, Poseidon2<<N as Network>::Field>, DEPTH>;
-
 #[derive(Default)]
-pub struct MerkleTree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> {
+pub struct MerkleTree<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> {
     /// The hash function for the leaf nodes.
     leaf_hasher: LH,
     /// The hash function for the path nodes.
     path_hasher: PH,
     /// The computed root of the full Merkle tree.
-    root: N::Field,
+    root: F,
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
-    tree: Vec<N::Field>,
+    tree: Vec<F>,
     /// For each level after a full tree has been built from the leaves,
     /// keeps both the roots the siblings that are used to get to the desired depth.
-    padding_tree: Vec<(N::Field, N::Field)>,
+    padding_tree: Vec<(F, F)>,
     /// The (inclusive) starting index of the hashed leaves.
     starting_leaf_index: usize,
     /// The number of hashed leaves in the tree.
     number_of_leaves: usize,
 }
 
-impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N, LH, PH, DEPTH> {
+impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTree<F, LH, PH, DEPTH> {
     #[inline]
-    pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
+    pub fn new(leaf_hasher: LH, path_hasher: PH, leaves: &[LH::Leaf]) -> Result<Self> {
         // Ensure the Merkle tree depth is greater than 0.
         ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
         // Ensure the Merkle tree depth is less than or equal to 64.
@@ -122,8 +113,8 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
         }
 
         Ok(Self {
-            leaf_hasher: leaf_hasher.clone(),
-            path_hasher: path_hasher.clone(),
+            leaf_hasher,
+            path_hasher,
             root: current_hash,
             tree,
             padding_tree,
@@ -235,7 +226,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
 
     /// Returns the Merkle path for the given leaf index and leaf.
     #[inline]
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<N, DEPTH>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<F, DEPTH>> {
         // Compute the leaf hash.
         let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
         // Compute the absolute index of the leaf in the tree.
@@ -272,17 +263,17 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
     }
 
     #[inline]
-    pub const fn root(&self) -> &N::Field {
+    pub const fn root(&self) -> &F {
         &self.root
     }
 
     #[inline]
-    pub fn tree(&self) -> &[N::Field] {
+    pub fn tree(&self) -> &[F] {
         &self.tree
     }
 
     #[inline]
-    pub fn hashed_leaves(&self) -> &[N::Field] {
+    pub fn hashed_leaves(&self) -> &[F] {
         &self.tree[self.starting_leaf_index..]
     }
 }

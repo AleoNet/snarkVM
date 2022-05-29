@@ -16,9 +16,8 @@
 
 use super::*;
 use snarkvm_console_algorithms::{Poseidon, BHP1024, BHP512};
-use snarkvm_console_network::Testnet3;
-
-use snarkvm_utilities::{test_rng, UniformRand};
+use snarkvm_console_network::{Network, Testnet3};
+use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 
 type CurrentNetwork = Testnet3;
 
@@ -29,14 +28,14 @@ const ITERATIONS: u128 = 10;
 /// 2. Check that the Merkle proof for every leaf is valid.
 /// 3. Add the additional leaves to the Merkle tree.
 /// 4. Check that the Merkle proof for every additional leaf is valid.
-fn check_merkle_tree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8>(
+fn check_merkle_tree<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8>(
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
     additional_leaves: &[LH::Leaf],
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MerkleTree::<N, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
+    let merkle_tree = MerkleTree::<F, LH, PH, DEPTH>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
     assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
 
     // Check each leaf in the Merkle tree.
@@ -47,9 +46,9 @@ fn check_merkle_tree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: 
             // Verify the Merkle proof succeeds.
             assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
-            assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::rand(&mut test_rng()), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &F::zero(), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &F::one(), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &F::rand(&mut test_rng()), leaf));
         }
     }
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
@@ -63,9 +62,9 @@ fn check_merkle_tree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: 
             // Verify the Merkle proof succeeds.
             assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
-            assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
-            assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::rand(&mut test_rng()), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &F::zero(), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &F::one(), leaf));
+            assert!(!proof.verify(leaf_hasher, path_hasher, &F::rand(&mut test_rng()), leaf));
         }
     }
     Ok(())
@@ -74,7 +73,7 @@ fn check_merkle_tree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: 
 /// Runs the following test:
 /// 1. Construct a depth-2 Merkle tree with 4 leaves.
 /// 2. Checks that every node hash and the Merkle root is correct.
-fn check_merkle_tree_depth_2<N: Network, LH: LeafHash<N>, PH: PathHash<N>>(
+fn check_merkle_tree_depth_2<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
@@ -82,27 +81,27 @@ fn check_merkle_tree_depth_2<N: Network, LH: LeafHash<N>, PH: PathHash<N>>(
     assert_eq!(4, leaves.len(), "Depth-2 test requires 4 leaves");
 
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MerkleTree::<N, LH, PH, 2>::new(leaf_hasher, path_hasher, leaves)?;
+    let merkle_tree = MerkleTree::<F, LH, PH, 2>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
 
     // Depth 2.
-    let expected_leaf0 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[0])?;
-    let expected_leaf1 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[1])?;
-    let expected_leaf2 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[2])?;
-    let expected_leaf3 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[3])?;
+    let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
+    let expected_leaf1 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[1])?;
+    let expected_leaf2 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[2])?;
+    let expected_leaf3 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[3])?;
     assert_eq!(expected_leaf0, merkle_tree.tree[3]);
     assert_eq!(expected_leaf1, merkle_tree.tree[4]);
     assert_eq!(expected_leaf2, merkle_tree.tree[5]);
     assert_eq!(expected_leaf3, merkle_tree.tree[6]);
 
     // Depth 1.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
-    let expected_right = PathHash::<N>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
+    let expected_right = PathHash::<F>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
     assert_eq!(expected_left, merkle_tree.tree[1]);
     assert_eq!(expected_right, merkle_tree.tree[2]);
 
     // Depth 0.
-    let expected_root = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     assert_eq!(expected_root, merkle_tree.tree[0]);
     assert_eq!(expected_root, *merkle_tree.root());
     Ok(())
@@ -114,7 +113,7 @@ fn check_merkle_tree_depth_2<N: Network, LH: LeafHash<N>, PH: PathHash<N>>(
 /// 3. Add an additional leaf to the Merkle tree.
 /// 4. Checks that every node hash and the Merkle root is correct.
 /// 5. Repeat steps 3 & 4, four more times.
-fn check_merkle_tree_depth_3_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>>(
+fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
@@ -124,33 +123,33 @@ fn check_merkle_tree_depth_3_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(1, additional_leaves.len(), "Padded depth-3 test requires 1 additional leaf");
 
     // Construct the Merkle tree for the given leaves.
-    let mut merkle_tree = MerkleTree::<N, LH, PH, 3>::new(leaf_hasher, path_hasher, leaves)?;
+    let mut merkle_tree = MerkleTree::<F, LH, PH, 3>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
     assert_eq!(0, merkle_tree.padding_tree.len());
 
     // Depth 3.
-    let expected_leaf0 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[0])?;
-    let expected_leaf1 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[1])?;
-    let expected_leaf2 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[2])?;
-    let expected_leaf3 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[3])?;
+    let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
+    let expected_leaf1 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[1])?;
+    let expected_leaf2 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[2])?;
+    let expected_leaf3 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[3])?;
     assert_eq!(expected_leaf0, merkle_tree.tree[3]);
     assert_eq!(expected_leaf1, merkle_tree.tree[4]);
     assert_eq!(expected_leaf2, merkle_tree.tree[5]);
     assert_eq!(expected_leaf3, merkle_tree.tree[6]);
 
     // Depth 2.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
-    let expected_right = PathHash::<N>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
+    let expected_right = PathHash::<F>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
     assert_eq!(expected_left, merkle_tree.tree[1]);
     assert_eq!(expected_right, merkle_tree.tree[2]);
 
     // Depth 1.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     let expected_right = path_hasher.hash_empty()?;
     assert_eq!(expected_left, merkle_tree.tree[0]);
 
     // Depth 0.
-    let expected_root = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     assert_eq!(expected_root, *merkle_tree.root());
 
     // ------------------------------------------------------------------------------------------ //
@@ -164,11 +163,11 @@ fn check_merkle_tree_depth_3_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Depth 3.
-    let expected_leaf0 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[0])?;
-    let expected_leaf1 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[1])?;
-    let expected_leaf2 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[2])?;
-    let expected_leaf3 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[3])?;
-    let expected_leaf4 = LeafHash::<N>::hash_leaf(leaf_hasher, &additional_leaves[0])?;
+    let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
+    let expected_leaf1 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[1])?;
+    let expected_leaf2 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[2])?;
+    let expected_leaf3 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[3])?;
+    let expected_leaf4 = LeafHash::<F>::hash_leaf(leaf_hasher, &additional_leaves[0])?;
     assert_eq!(expected_leaf0, merkle_tree.tree[7]);
     assert_eq!(expected_leaf1, merkle_tree.tree[8]);
     assert_eq!(expected_leaf2, merkle_tree.tree[9]);
@@ -179,24 +178,24 @@ fn check_merkle_tree_depth_3_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[14]);
 
     // Depth 2.
-    let expected_left0 = PathHash::<N>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
-    let expected_right0 = PathHash::<N>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
-    let expected_left1 = PathHash::<N>::hash_children(path_hasher, &expected_leaf4, &path_hasher.hash_empty()?)?;
+    let expected_left0 = PathHash::<F>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
+    let expected_right0 = PathHash::<F>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
+    let expected_left1 = PathHash::<F>::hash_children(path_hasher, &expected_leaf4, &path_hasher.hash_empty()?)?;
     let expected_right1 =
-        PathHash::<N>::hash_children(path_hasher, &path_hasher.hash_empty()?, &path_hasher.hash_empty()?)?;
+        PathHash::<F>::hash_children(path_hasher, &path_hasher.hash_empty()?, &path_hasher.hash_empty()?)?;
     assert_eq!(expected_left0, merkle_tree.tree[3]);
     assert_eq!(expected_right0, merkle_tree.tree[4]);
     assert_eq!(expected_left1, merkle_tree.tree[5]);
     assert_eq!(expected_right1, merkle_tree.tree[6]);
 
     // Depth 1.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left0, &expected_right0)?;
-    let expected_right = PathHash::<N>::hash_children(path_hasher, &expected_left1, &expected_right1)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left0, &expected_right0)?;
+    let expected_right = PathHash::<F>::hash_children(path_hasher, &expected_left1, &expected_right1)?;
     assert_eq!(expected_left, merkle_tree.tree[1]);
     assert_eq!(expected_right, merkle_tree.tree[2]);
 
     // Depth 0.
-    let expected_root = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     // assert_eq!(expected_left, merkle_tree.tree[0]);
     assert_eq!(expected_root, *merkle_tree.root());
     Ok(())
@@ -205,7 +204,7 @@ fn check_merkle_tree_depth_3_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
 /// Runs the following test:
 /// 1. Construct a depth-4 Merkle tree with 4 leaves (leaving 12 leaves empty).
 /// 2. Checks that every node hash and the Merkle root is correct.
-fn check_merkle_tree_depth_4_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>>(
+fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     leaf_hasher: &LH,
     path_hasher: &PH,
     leaves: &[LH::Leaf],
@@ -215,39 +214,39 @@ fn check_merkle_tree_depth_4_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(2, additional_leaves.len(), "Padded depth-4 test requires 2 additional leaves");
 
     // Construct the Merkle tree for the given leaves.
-    let mut merkle_tree = MerkleTree::<N, LH, PH, 4>::new(leaf_hasher, path_hasher, leaves)?;
+    let mut merkle_tree = MerkleTree::<F, LH, PH, 4>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
     assert_eq!(1, merkle_tree.padding_tree.len());
 
     // Depth 4.
-    let expected_leaf0 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[0])?;
-    let expected_leaf1 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[1])?;
-    let expected_leaf2 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[2])?;
-    let expected_leaf3 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[3])?;
+    let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
+    let expected_leaf1 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[1])?;
+    let expected_leaf2 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[2])?;
+    let expected_leaf3 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[3])?;
     assert_eq!(expected_leaf0, merkle_tree.tree[3]);
     assert_eq!(expected_leaf1, merkle_tree.tree[4]);
     assert_eq!(expected_leaf2, merkle_tree.tree[5]);
     assert_eq!(expected_leaf3, merkle_tree.tree[6]);
 
     // Depth 3.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
-    let expected_right = PathHash::<N>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
+    let expected_right = PathHash::<F>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
     assert_eq!(expected_left, merkle_tree.tree[1]);
     assert_eq!(expected_right, merkle_tree.tree[2]);
 
     // Depth 2.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     let expected_right = path_hasher.hash_empty()?;
     assert_eq!(expected_left, merkle_tree.tree[0]);
 
     // Depth 1.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     let expected_right = path_hasher.hash_empty()?;
     assert_eq!(expected_left, merkle_tree.padding_tree[0].0);
     assert_eq!(path_hasher.hash_empty()?, merkle_tree.padding_tree[0].1); // Note: I don't know why the 2nd tuple element is necessary, isn't it always hash_empty?
 
     // Depth 0.
-    let expected_root = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     assert_eq!(expected_root, *merkle_tree.root());
 
     // ------------------------------------------------------------------------------------------ //
@@ -261,11 +260,11 @@ fn check_merkle_tree_depth_4_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Depth 4.
-    let expected_leaf0 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[0])?;
-    let expected_leaf1 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[1])?;
-    let expected_leaf2 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[2])?;
-    let expected_leaf3 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[3])?;
-    let expected_leaf4 = LeafHash::<N>::hash_leaf(leaf_hasher, &additional_leaves[0])?;
+    let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
+    let expected_leaf1 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[1])?;
+    let expected_leaf2 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[2])?;
+    let expected_leaf3 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[3])?;
+    let expected_leaf4 = LeafHash::<F>::hash_leaf(leaf_hasher, &additional_leaves[0])?;
     assert_eq!(expected_leaf0, merkle_tree.tree[7]);
     assert_eq!(expected_leaf1, merkle_tree.tree[8]);
     assert_eq!(expected_leaf2, merkle_tree.tree[9]);
@@ -276,30 +275,30 @@ fn check_merkle_tree_depth_4_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[14]);
 
     // Depth 3.
-    let expected_left0 = PathHash::<N>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
-    let expected_right0 = PathHash::<N>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
-    let expected_left1 = PathHash::<N>::hash_children(path_hasher, &expected_leaf4, &path_hasher.hash_empty()?)?;
+    let expected_left0 = PathHash::<F>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
+    let expected_right0 = PathHash::<F>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
+    let expected_left1 = PathHash::<F>::hash_children(path_hasher, &expected_leaf4, &path_hasher.hash_empty()?)?;
     let expected_right1 =
-        PathHash::<N>::hash_children(path_hasher, &path_hasher.hash_empty()?, &path_hasher.hash_empty()?)?;
+        PathHash::<F>::hash_children(path_hasher, &path_hasher.hash_empty()?, &path_hasher.hash_empty()?)?;
     assert_eq!(expected_left0, merkle_tree.tree[3]);
     assert_eq!(expected_right0, merkle_tree.tree[4]);
     assert_eq!(expected_left1, merkle_tree.tree[5]);
     assert_eq!(expected_right1, merkle_tree.tree[6]);
 
     // Depth 2.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left0, &expected_right0)?;
-    let expected_right = PathHash::<N>::hash_children(path_hasher, &expected_left1, &expected_right1)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left0, &expected_right0)?;
+    let expected_right = PathHash::<F>::hash_children(path_hasher, &expected_left1, &expected_right1)?;
     assert_eq!(expected_left, merkle_tree.tree[1]);
     assert_eq!(expected_right, merkle_tree.tree[2]);
 
     // Depth 1.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     let expected_right = path_hasher.hash_empty()?;
     assert_eq!(expected_left, merkle_tree.tree[0]);
     assert_eq!(expected_right, path_hasher.hash_empty()?);
 
     // Depth 0.
-    let expected_root = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     assert_eq!(expected_root, *merkle_tree.root());
 
     // ------------------------------------------------------------------------------------------ //
@@ -318,12 +317,12 @@ fn check_merkle_tree_depth_4_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(6, merkle_tree.number_of_leaves);
 
     // Depth 4.
-    let expected_leaf0 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[0])?;
-    let expected_leaf1 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[1])?;
-    let expected_leaf2 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[2])?;
-    let expected_leaf3 = LeafHash::<N>::hash_leaf(leaf_hasher, &leaves[3])?;
-    let expected_leaf4 = LeafHash::<N>::hash_leaf(leaf_hasher, &additional_leaves[0])?;
-    let expected_leaf5 = LeafHash::<N>::hash_leaf(leaf_hasher, &additional_leaves[1])?;
+    let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
+    let expected_leaf1 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[1])?;
+    let expected_leaf2 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[2])?;
+    let expected_leaf3 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[3])?;
+    let expected_leaf4 = LeafHash::<F>::hash_leaf(leaf_hasher, &additional_leaves[0])?;
+    let expected_leaf5 = LeafHash::<F>::hash_leaf(leaf_hasher, &additional_leaves[1])?;
     assert_eq!(expected_leaf0, merkle_tree.tree[7]);
     assert_eq!(expected_leaf1, merkle_tree.tree[8]);
     assert_eq!(expected_leaf2, merkle_tree.tree[9]);
@@ -334,30 +333,30 @@ fn check_merkle_tree_depth_4_padded<N: Network, LH: LeafHash<N>, PH: PathHash<N>
     assert_eq!(path_hasher.hash_empty()?, merkle_tree.tree[14]);
 
     // Depth 3.
-    let expected_left0 = PathHash::<N>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
-    let expected_right0 = PathHash::<N>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
-    let expected_left1 = PathHash::<N>::hash_children(path_hasher, &expected_leaf4, &expected_leaf5)?;
+    let expected_left0 = PathHash::<F>::hash_children(path_hasher, &expected_leaf0, &expected_leaf1)?;
+    let expected_right0 = PathHash::<F>::hash_children(path_hasher, &expected_leaf2, &expected_leaf3)?;
+    let expected_left1 = PathHash::<F>::hash_children(path_hasher, &expected_leaf4, &expected_leaf5)?;
     let expected_right1 =
-        PathHash::<N>::hash_children(path_hasher, &path_hasher.hash_empty()?, &path_hasher.hash_empty()?)?;
+        PathHash::<F>::hash_children(path_hasher, &path_hasher.hash_empty()?, &path_hasher.hash_empty()?)?;
     assert_eq!(expected_left0, merkle_tree.tree[3]);
     assert_eq!(expected_right0, merkle_tree.tree[4]);
     assert_eq!(expected_left1, merkle_tree.tree[5]);
     assert_eq!(expected_right1, merkle_tree.tree[6]);
 
     // Depth 2.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left0, &expected_right0)?;
-    let expected_right = PathHash::<N>::hash_children(path_hasher, &expected_left1, &expected_right1)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left0, &expected_right0)?;
+    let expected_right = PathHash::<F>::hash_children(path_hasher, &expected_left1, &expected_right1)?;
     assert_eq!(expected_left, merkle_tree.tree[1]);
     assert_eq!(expected_right, merkle_tree.tree[2]);
 
     // Depth 1.
-    let expected_left = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     let expected_right = path_hasher.hash_empty()?;
     assert_eq!(expected_left, merkle_tree.tree[0]);
     assert_eq!(expected_right, path_hasher.hash_empty()?);
 
     // Depth 0.
-    let expected_root = PathHash::<N>::hash_children(path_hasher, &expected_left, &expected_right)?;
+    let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     assert_eq!(expected_root, *merkle_tree.root());
     Ok(())
 }
@@ -384,7 +383,7 @@ fn test_merkle_tree_bhp() -> Result<()> {
                 let num_additional_leaves = core::cmp::min(2u128.pow(DEPTH as u32) - num_leaves, j);
 
                 // Check the Merkle tree.
-                check_merkle_tree::<CurrentNetwork, LH, PH, DEPTH>(
+                check_merkle_tree::<<CurrentNetwork as Network>::Field, LH, PH, DEPTH>(
                     &leaf_hasher,
                     &path_hasher,
                     &create_leaves(num_leaves),
@@ -436,7 +435,7 @@ fn test_merkle_tree_poseidon() -> Result<()> {
                 let num_additional_leaves = core::cmp::min(2u128.pow(DEPTH as u32) - num_leaves, j);
 
                 // Check the Merkle tree.
-                check_merkle_tree::<CurrentNetwork, LH, PH, DEPTH>(
+                check_merkle_tree::<<CurrentNetwork as Network>::Field, LH, PH, DEPTH>(
                     &leaf_hasher,
                     &path_hasher,
                     &create_leaves(num_leaves),
@@ -483,7 +482,11 @@ fn test_merkle_tree_depth_2_bhp() -> Result<()> {
     };
 
     // Check the depth-2 Merkle tree.
-    check_merkle_tree_depth_2::<CurrentNetwork, LH, PH>(&leaf_hasher, &path_hasher, &create_leaves(4))
+    check_merkle_tree_depth_2::<<CurrentNetwork as Network>::Field, LH, PH>(
+        &leaf_hasher,
+        &path_hasher,
+        &create_leaves(4),
+    )
 }
 
 #[test]
@@ -497,7 +500,11 @@ fn test_merkle_tree_depth_2_poseidon() -> Result<()> {
         |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
 
     // Check the depth-2 Merkle tree.
-    check_merkle_tree_depth_2::<CurrentNetwork, LH, PH>(&leaf_hasher, &path_hasher, &create_leaves(4))
+    check_merkle_tree_depth_2::<<CurrentNetwork as Network>::Field, LH, PH>(
+        &leaf_hasher,
+        &path_hasher,
+        &create_leaves(4),
+    )
 }
 
 #[test]
@@ -514,7 +521,7 @@ fn test_merkle_tree_depth_3_bhp() -> Result<()> {
     };
 
     // Check the depth-3 Merkle tree.
-    check_merkle_tree_depth_3_padded::<CurrentNetwork, LH, PH>(
+    check_merkle_tree_depth_3_padded::<<CurrentNetwork as Network>::Field, LH, PH>(
         &leaf_hasher,
         &path_hasher,
         &create_leaves(4),
@@ -533,7 +540,7 @@ fn test_merkle_tree_depth_3_poseidon() -> Result<()> {
         |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
 
     // Check the depth-3 Merkle tree.
-    check_merkle_tree_depth_3_padded::<CurrentNetwork, LH, PH>(
+    check_merkle_tree_depth_3_padded::<<CurrentNetwork as Network>::Field, LH, PH>(
         &leaf_hasher,
         &path_hasher,
         &create_leaves(4),
@@ -555,7 +562,7 @@ fn test_merkle_tree_depth_4_bhp() -> Result<()> {
     };
 
     // Check the depth-4 Merkle tree.
-    check_merkle_tree_depth_4_padded::<CurrentNetwork, LH, PH>(
+    check_merkle_tree_depth_4_padded::<<CurrentNetwork as Network>::Field, LH, PH>(
         &leaf_hasher,
         &path_hasher,
         &create_leaves(4),
@@ -574,7 +581,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
         |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
 
     // Check the depth-4 Merkle tree.
-    check_merkle_tree_depth_4_padded::<CurrentNetwork, LH, PH>(
+    check_merkle_tree_depth_4_padded::<<CurrentNetwork as Network>::Field, LH, PH>(
         &leaf_hasher,
         &path_hasher,
         &create_leaves(4),

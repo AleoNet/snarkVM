@@ -16,22 +16,21 @@
 
 use super::*;
 use snarkvm_circuit_algorithms::{Hash, Poseidon, BHP};
-use snarkvm_circuit_network::Aleo;
 
 /// A trait for a Merkle path hash function.
-pub trait PathHash<A: Aleo> {
+pub trait PathHash<E: Environment> {
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &Field<A>, right: &Field<A>) -> Field<A>;
+    fn hash_children(&self, left: &Field<E>, right: &Field<E>) -> Field<E>;
 
     /// Returns the empty hash.
-    fn hash_empty(&self) -> Field<A> {
+    fn hash_empty(&self) -> Field<E> {
         self.hash_children(&Field::zero(), &Field::zero())
     }
 }
 
-impl<A: Aleo, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<A> for BHP<A, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<E> for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &Field<A>, right: &Field<A>) -> Field<A> {
+    fn hash_children(&self, left: &Field<E>, right: &Field<E>) -> Field<E> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![Boolean::constant(true)];
         input.extend(left.to_bits_le());
@@ -41,9 +40,9 @@ impl<A: Aleo, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<A> for BHP<
     }
 }
 
-impl<A: Aleo, const RATE: usize> PathHash<A> for Poseidon<A, RATE> {
+impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &Field<A>, right: &Field<A>) -> Field<A> {
+    fn hash_children(&self, left: &Field<E>, right: &Field<E>) -> Field<E> {
         // Prepend the nodes with a `1field` byte.
         let mut input = vec![Field::one()];
         input.push(left.clone());
@@ -57,7 +56,7 @@ impl<A: Aleo, const RATE: usize> PathHash<A> for Poseidon<A, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon2, BHP512};
-    use snarkvm_circuit_network::{Aleo, AleoV0 as Circuit};
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use anyhow::Result;
@@ -77,9 +76,10 @@ mod tests {
                 let right = <Circuit as Environment>::BaseField::rand(&mut test_rng());
 
                 // Compute the expected hash.
-                let expected: <Circuit as Environment>::BaseField =
-                    console::merkle_tree::PathHash::<<Circuit as Aleo>::Network>::hash_children(&native, &left, &right)
-                        .expect("Failed to hash native input");
+                let expected: <Circuit as Environment>::BaseField = console::merkle_tree::PathHash::<
+                    <Circuit as Environment>::BaseField,
+                >::hash_children(&native, &left, &right)
+                .expect("Failed to hash native input");
 
                 // Prepare the circuit input.
                 let left = Field::new(Mode::$mode, left);

@@ -22,23 +22,22 @@ use helpers::{LeafHash, PathHash};
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U64};
 
 use core::marker::PhantomData;
 
-pub struct MerklePath<A: Aleo, LH: LeafHash<A>, PH: PathHash<A>, const DEPTH: u8> {
+pub struct MerklePath<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> {
     /// The leaf index for the path.
-    leaf_index: U64<A>,
+    leaf_index: U64<E>,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
-    siblings: Vec<Field<A>>,
+    siblings: Vec<Field<E>>,
     /// PhantomData.
     _phantom: PhantomData<(LH, PH)>,
 }
 
 #[cfg(console)]
-impl<A: Aleo, LH: LeafHash<A>, PH: PathHash<A>, const DEPTH: u8> Inject for MerklePath<A, LH, PH, DEPTH> {
-    type Primitive = console::merkle_tree::MerklePath<A::Network, DEPTH>;
+impl<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> Inject for MerklePath<E, LH, PH, DEPTH> {
+    type Primitive = console::merkle_tree::MerklePath<E::BaseField, DEPTH>;
 
     /// Initializes a Merkle path from the given mode and native Merkle path.
     fn new(mode: Mode, merkle_path: Self::Primitive) -> Self {
@@ -50,14 +49,14 @@ impl<A: Aleo, LH: LeafHash<A>, PH: PathHash<A>, const DEPTH: u8> Inject for Merk
         match siblings.len() == DEPTH as usize {
             // Return the Merkle path.
             true => Self { leaf_index, siblings, _phantom: PhantomData },
-            false => A::halt("Merkle path is not the correct depth"),
+            false => E::halt("Merkle path is not the correct depth"),
         }
     }
 }
 
 #[cfg(console)]
-impl<A: Aleo, LH: LeafHash<A>, PH: PathHash<A>, const DEPTH: u8> Eject for MerklePath<A, LH, PH, DEPTH> {
-    type Primitive = console::merkle_tree::MerklePath<A::Network, DEPTH>;
+impl<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> Eject for MerklePath<E, LH, PH, DEPTH> {
+    type Primitive = console::merkle_tree::MerklePath<E::BaseField, DEPTH>;
 
     /// Ejects the mode of the Merkle path.
     fn eject_mode(&self) -> Mode {
@@ -68,7 +67,7 @@ impl<A: Aleo, LH: LeafHash<A>, PH: PathHash<A>, const DEPTH: u8> Eject for Merkl
     fn eject_value(&self) -> Self::Primitive {
         match Self::Primitive::try_from((&self.leaf_index, &self.siblings).eject_value()) {
             Ok(merkle_path) => merkle_path,
-            Err(error) => A::halt(format!("Failed to eject the Merkle path: {error}")),
+            Err(error) => E::halt(format!("Failed to eject the Merkle path: {error}")),
         }
     }
 }

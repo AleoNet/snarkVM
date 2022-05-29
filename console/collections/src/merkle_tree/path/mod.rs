@@ -30,18 +30,18 @@ use itertools::Itertools;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct MerklePath<N: Network, const DEPTH: u8> {
+pub struct MerklePath<F: PrimeField, const DEPTH: u8> {
     /// The leaf index for the path.
     leaf_index: u64,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
-    siblings: Vec<N::Field>,
+    siblings: Vec<F>,
 }
 
-impl<N: Network, const DEPTH: u8> TryFrom<(u64, Vec<N::Field>)> for MerklePath<N, DEPTH> {
+impl<F: PrimeField, const DEPTH: u8> TryFrom<(u64, Vec<F>)> for MerklePath<F, DEPTH> {
     type Error = Error;
 
     /// Returns a new instance of a Merkle path.
-    fn try_from((leaf_index, siblings): (u64, Vec<N::Field>)) -> Result<Self> {
+    fn try_from((leaf_index, siblings): (u64, Vec<F>)) -> Result<Self> {
         // Ensure the Merkle tree depth is greater than 0.
         ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
         // Ensure the Merkle tree depth is less than or equal to 64.
@@ -55,23 +55,23 @@ impl<N: Network, const DEPTH: u8> TryFrom<(u64, Vec<N::Field>)> for MerklePath<N
     }
 }
 
-impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
+impl<F: PrimeField, const DEPTH: u8> MerklePath<F, DEPTH> {
     /// Returns the leaf index for the path.
     pub fn leaf_index(&self) -> u64 {
         self.leaf_index
     }
 
     /// Returns the siblings for the path.
-    pub fn siblings(&self) -> &[N::Field] {
+    pub fn siblings(&self) -> &[F] {
         &self.siblings
     }
 
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify<LH: LeafHash<N>, PH: PathHash<N>>(
+    pub fn verify<LH: LeafHash<F>, PH: PathHash<F>>(
         &self,
         leaf_hasher: &LH,
         path_hasher: &PH,
-        root: &N::Field,
+        root: &F,
         leaf: &LH::Leaf,
     ) -> bool {
         // Ensure the leaf index is within the tree depth.
@@ -121,20 +121,20 @@ impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
     }
 }
 
-impl<N: Network, const DEPTH: u8> FromBytes for MerklePath<N, DEPTH> {
+impl<F: PrimeField, const DEPTH: u8> FromBytes for MerklePath<F, DEPTH> {
     /// Reads in a Merkle path from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the leaf index.
         let leaf_index = u64::read_le(&mut reader)?;
         // Read the Merkle path siblings.
-        let siblings = (0..DEPTH).map(|_| N::Field::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
+        let siblings = (0..DEPTH).map(|_| F::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
         // Return the Merkle path.
         Self::try_from((leaf_index, siblings)).map_err(|err| error(err.to_string()))
     }
 }
 
-impl<N: Network, const DEPTH: u8> ToBytes for MerklePath<N, DEPTH> {
+impl<F: PrimeField, const DEPTH: u8> ToBytes for MerklePath<F, DEPTH> {
     /// Writes the Merkle path to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -145,16 +145,16 @@ impl<N: Network, const DEPTH: u8> ToBytes for MerklePath<N, DEPTH> {
     }
 }
 
-impl<N: Network, const DEPTH: u8> Serialize for MerklePath<N, DEPTH> {
+impl<F: PrimeField, const DEPTH: u8> Serialize for MerklePath<F, DEPTH> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         ToBytesSerializer::serialize(self, serializer)
     }
 }
 
-impl<'de, N: Network, const DEPTH: u8> Deserialize<'de> for MerklePath<N, DEPTH> {
+impl<'de, F: PrimeField, const DEPTH: u8> Deserialize<'de> for MerklePath<F, DEPTH> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        // Compute the size for: u64 + (N::Field::BYTES * DEPTH).
-        let size = 8 + DEPTH as usize * (N::Field::size_in_bits() + 7) / 8;
+        // Compute the size for: u64 + (F::BYTES * DEPTH).
+        let size = 8 + DEPTH as usize * (F::size_in_bits() + 7) / 8;
         FromBytesDeserializer::<Self>::deserialize(deserializer, "Merkle path", size)
     }
 }
