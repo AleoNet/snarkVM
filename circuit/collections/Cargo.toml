@@ -16,10 +16,6 @@ optional = true
 path = "../algorithms"
 version = "0.7.5"
 
-[dependencies.snarkvm-circuit-network]
-path = "../network"
-version = "0.7.5"
-
 [dependencies.snarkvm-circuit-types]
 path = "../types"
 version = "0.7.5"
