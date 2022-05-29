@@ -77,12 +77,7 @@ pub(crate) mod tests {
     ) -> Result<()> {
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
-            let (private_key, compute_key, _view_key, address) = generate_account()?;
-
-            // Retrieve the native compute key components.
-            let pk_sig = compute_key.pk_sig();
-            let pr_sig = compute_key.pr_sig();
-            let pk_vrf = compute_key.pk_vrf();
+            let (private_key, _compute_key, _view_key, address) = generate_account()?;
 
             // Sample a random message.
             let rng = &mut test_rng();
@@ -101,12 +96,8 @@ pub(crate) mod tests {
             let randomizer = UniformRand::rand(&mut test_crypto_rng());
             let signature = console::Signature::sign(&private_key, &message.eject_value(), randomizer)?;
 
-            // Retrieve the challenge and response.
-            let challenge = signature.challenge();
-            let response = signature.response();
-
             // Initialize the signature and address.
-            let signature = Signature::<Circuit>::new(mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)));
+            let signature = Signature::<Circuit>::new(mode, signature);
             let address = Address::new(mode, *address);
 
             Circuit::scope(&format!("{} {}", mode, i), || {

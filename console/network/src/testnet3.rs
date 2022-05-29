@@ -46,18 +46,18 @@ thread_local! {
     /// The randomizer domain as a constant field element.
     pub static RANDOMIZER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoRandomizer0");
 
-    /// The BHP gadget, which can take an input of up to 256 bits.
+    /// The BHP hash function, which can take an input of up to 256 bits.
     pub static BHP_256: BHP256<<Testnet3 as Network>::Affine> = BHP256::<<Testnet3 as Network>::Affine>::setup("AleoBHP256").expect("Failed to setup BHP256");
-    /// The BHP gadget, which can take an input of up to 512 bits.
+    /// The BHP hash function, which can take an input of up to 512 bits.
     pub static BHP_512: BHP512<<Testnet3 as Network>::Affine> = BHP512::<<Testnet3 as Network>::Affine>::setup("AleoBHP512").expect("Failed to setup BHP512");
-    /// The BHP gadget, which can take an input of up to 768 bits.
+    /// The BHP hash function, which can take an input of up to 768 bits.
     pub static BHP_768: BHP768<<Testnet3 as Network>::Affine> = BHP768::<<Testnet3 as Network>::Affine>::setup("AleoBHP768").expect("Failed to setup BHP768");
-    /// The BHP gadget, which can take an input of up to 1024 bits.
+    /// The BHP hash function, which can take an input of up to 1024 bits.
     pub static BHP_1024: BHP1024<<Testnet3 as Network>::Affine> = BHP1024::<<Testnet3 as Network>::Affine>::setup("AleoBHP1024").expect("Failed to setup BHP1024");
 
-    /// The Pedersen gadget, which can take an input of up to 64 bits.
+    /// The Pedersen hash function, which can take an input of up to 64 bits.
     pub static PEDERSEN_64: Pedersen64<<Testnet3 as Network>::Affine> = Pedersen64::<<Testnet3 as Network>::Affine>::setup("AleoPedersen64");
-    /// The Pedersen gadget, which can take an input of up to 128 bits.
+    /// The Pedersen hash function, which can take an input of up to 128 bits.
     pub static PEDERSEN_128: Pedersen128<<Testnet3 as Network>::Affine> = Pedersen128::<<Testnet3 as Network>::Affine>::setup("AleoPedersen128");
 
     /// The Poseidon hash function, using a rate of 2.
@@ -66,6 +66,9 @@ thread_local! {
     pub static POSEIDON_4: Poseidon4<<Testnet3 as Network>::Field> = Poseidon4::<<Testnet3 as Network>::Field>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
     pub static POSEIDON_8: Poseidon8<<Testnet3 as Network>::Field> = Poseidon8::<<Testnet3 as Network>::Field>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+
+    /// The Poseidon hash function on the **scalar** field, using a rate of 2.
+    pub static POSEIDON_2S: Poseidon2<<Testnet3 as Network>::Scalar> = Poseidon2::<<Testnet3 as Network>::Scalar>::setup("AleoPoseidon2S").expect("Failed to setup Poseidon2S");
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -300,5 +303,10 @@ impl Network for Testnet3 {
     /// Returns the Poseidon PRF with an input rate of 8.
     fn prf_psd8(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field> {
         POSEIDON_8.with(|poseidon| poseidon.prf(seed, input))
+    }
+
+    /// Returns the Poseidon PRF on the **scalar** field with an input rate of 2.
+    fn prf_psd2s(seed: &Self::Scalar, input: &[Self::Scalar]) -> Result<Self::Scalar> {
+        POSEIDON_2S.with(|poseidon| poseidon.prf(seed, input))
     }
 }

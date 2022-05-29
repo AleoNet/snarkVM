@@ -16,10 +16,13 @@
 
 use super::*;
 
-impl<A: Aleo> ViewKey<A> {
-    /// Returns the account address for this account view key.
+impl<A: Aleo> ComputeKey<A> {
+    /// Returns the account address for this account compute key.
     pub fn to_address(&self) -> Address<A> {
-        Address::from_group(A::g_scalar_multiply(&self.0))
+        // Compute pk_prf := G^sk_prf.
+        let pk_prf = A::g_scalar_multiply(&self.sk_prf);
+        // Compute the address := pk_sig + pr_sig + pk_prf.
+        Address::from_group(&self.pk_sig + &self.pr_sig + pk_prf)
     }
 }
 
@@ -41,10 +44,10 @@ mod tests {
     ) -> Result<()> {
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
-            let (_private_key, _compute_key, view_key, address) = generate_account()?;
+            let (_private_key, compute_key, _view_key, address) = generate_account()?;
 
-            // Initialize the view key.
-            let candidate = ViewKey::<Circuit>::new(mode, view_key);
+            // Initialize the compute key.
+            let candidate = ComputeKey::<Circuit>::new(mode, compute_key);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_address();
@@ -61,16 +64,16 @@ mod tests {
 
     #[test]
     fn test_to_address_constant() -> Result<()> {
-        check_to_address(Mode::Constant, 1000, 0, 0, 0)
+        check_to_address(Mode::Constant, 1008, 0, 0, 0)
     }
 
     #[test]
     fn test_to_address_public() -> Result<()> {
-        check_to_address(Mode::Public, 500, 0, 1250, 1250)
+        check_to_address(Mode::Public, 504, 0, 1260, 1260)
     }
 
     #[test]
     fn test_to_address_private() -> Result<()> {
-        check_to_address(Mode::Private, 500, 0, 1250, 1250)
+        check_to_address(Mode::Private, 504, 0, 1260, 1260)
     }
 }

@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod from_private_key;
+mod from_private_key;
+mod to_address;
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Group, Scalar};
 
 pub struct ComputeKey<A: Aleo> {
     /// The signature public key `pk_sig` := G^sk_sig.
@@ -36,16 +37,16 @@ pub struct ComputeKey<A: Aleo> {
 
 #[cfg(console)]
 impl<A: Aleo> Inject for ComputeKey<A> {
-    type Primitive = (A::Affine, A::Affine, A::Affine);
+    type Primitive = console::ComputeKey<A::Network>;
 
-    /// Initializes an account compute key from the given mode and `(pk_sig, pr_sig, pk_vrf)`.
-    fn new(mode: Mode, (pk_sig, pr_sig, pk_vrf): Self::Primitive) -> Self {
+    /// Initializes an account compute key from the given mode and native compute key.
+    fn new(mode: Mode, compute_key: Self::Primitive) -> Self {
         // Inject `pk_sig`.
-        let pk_sig = Group::new(mode, pk_sig);
+        let pk_sig = Group::new(mode, compute_key.pk_sig());
         // Inject `pr_sig`.
-        let pr_sig = Group::new(mode, pr_sig);
+        let pr_sig = Group::new(mode, compute_key.pr_sig());
         // Inject `pk_vrf`.
-        let pk_vrf = Group::new(mode, pk_vrf);
+        let pk_vrf = Group::new(mode, compute_key.pk_vrf());
         // Compute `sk_prf` := HashToScalar(G^sk_sig || G^r_sig || G^sk_vrf).
         let sk_prf =
             A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate(), pk_vrf.to_x_coordinate()]);
@@ -56,38 +57,41 @@ impl<A: Aleo> Inject for ComputeKey<A> {
 
 impl<A: Aleo> ComputeKey<A> {
     /// Returns the signature public key.
-    pub fn pk_sig(&self) -> &Group<A> {
+    pub const fn pk_sig(&self) -> &Group<A> {
         &self.pk_sig
     }
 
     /// Returns the signature public randomizer.
-    pub fn pr_sig(&self) -> &Group<A> {
+    pub const fn pr_sig(&self) -> &Group<A> {
         &self.pr_sig
     }
 
     /// Returns the VRF public key.
-    pub fn pk_vrf(&self) -> &Group<A> {
+    pub const fn pk_vrf(&self) -> &Group<A> {
         &self.pk_vrf
     }
 
     /// Returns the PRF secret key.
-    pub fn sk_prf(&self) -> &Scalar<A> {
+    pub const fn sk_prf(&self) -> &Scalar<A> {
         &self.sk_prf
     }
 }
 
 #[cfg(console)]
 impl<A: Aleo> Eject for ComputeKey<A> {
-    type Primitive = (A::Affine, A::Affine, A::Affine, A::ScalarField);
+    type Primitive = console::ComputeKey<A::Network>;
 
     /// Ejects the mode of the compute key.
     fn eject_mode(&self) -> Mode {
         (&self.pk_sig, &self.pr_sig, &self.pk_vrf, &self.sk_prf).eject_mode()
     }
 
-    /// Ejects the compute key as `(pk_sig, pr_sig, pk_vrf, sk_prf)`.
+    /// Ejects the compute key.
     fn eject_value(&self) -> Self::Primitive {
-        (&self.pk_sig, &self.pr_sig, &self.pk_vrf, &self.sk_prf).eject_value()
+        match Self::Primitive::try_from((&self.pk_sig, &self.pr_sig, &self.pk_vrf).eject_value()) {
+            Ok(compute_key) => compute_key,
+            Err(error) => A::halt(format!("Failed to eject the compute key: {error}")),
+        }
     }
 }
 
@@ -111,19 +115,13 @@ pub(crate) mod tests {
             // Generate a private key, compute key, view key, and address.
             let (_private_key, compute_key, _view_key, _address) = generate_account()?;
 
-            // Retrieve the native compute key components.
-            let pk_sig = compute_key.pk_sig();
-            let pr_sig = compute_key.pr_sig();
-            let pk_vrf = compute_key.pk_vrf();
-            let sk_prf = compute_key.sk_prf();
-
             Circuit::scope(format!("New {mode}"), || {
-                let candidate = ComputeKey::<Circuit>::new(mode, (pk_sig, pr_sig, pk_vrf));
+                let candidate = ComputeKey::<Circuit>::new(mode, compute_key);
                 match mode.is_constant() {
                     true => assert_eq!(Mode::Constant, candidate.eject_mode()),
                     false => assert_eq!(Mode::Private, candidate.eject_mode()),
                 };
-                assert_eq!((pk_sig, pr_sig, pk_vrf, sk_prf), candidate.eject_value());
+                assert_eq!(compute_key, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
                     assert_scope!(num_constants, num_public, num_private, num_constraints);
