@@ -83,6 +83,7 @@ fn check_merkle_tree_depth_2<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     // Construct the Merkle tree for the given leaves.
     let merkle_tree = MerkleTree::<F, 2>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
+    assert_eq!(4, merkle_tree.number_of_leaves);
 
     // Depth 2.
     let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
@@ -112,7 +113,6 @@ fn check_merkle_tree_depth_2<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
 /// 2. Checks that every node hash and the Merkle root is correct.
 /// 3. Add an additional leaf to the Merkle tree.
 /// 4. Checks that every node hash and the Merkle root is correct.
-/// 5. Repeat steps 3 & 4, four more times.
 fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     leaf_hasher: &LH,
     path_hasher: &PH,
@@ -125,7 +125,8 @@ fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // Construct the Merkle tree for the given leaves.
     let mut merkle_tree = MerkleTree::<F, 3>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
-    assert_eq!(0, merkle_tree.padding_tree.len());
+    // assert_eq!(0, merkle_tree.padding_tree.len());
+    assert_eq!(4, merkle_tree.number_of_leaves);
 
     // Depth 3.
     let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
@@ -159,7 +160,7 @@ fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // Rebuild the Merkle tree with the additional leaf.
     merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, additional_leaves)?;
     assert_eq!(15, merkle_tree.tree.len());
-    assert_eq!(0, merkle_tree.padding_tree.len());
+    // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Depth 3.
@@ -196,7 +197,7 @@ fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
 
     // Depth 0.
     let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
-    // assert_eq!(expected_left, merkle_tree.tree[0]);
+    assert_eq!(expected_root, merkle_tree.tree[0]);
     assert_eq!(expected_root, *merkle_tree.root());
     Ok(())
 }
@@ -204,6 +205,10 @@ fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
 /// Runs the following test:
 /// 1. Construct a depth-4 Merkle tree with 4 leaves (leaving 12 leaves empty).
 /// 2. Checks that every node hash and the Merkle root is correct.
+/// 3. Add an additional leaf to the Merkle tree.
+/// 4. Checks that every node hash and the Merkle root is correct.
+/// 5. Add another additional leaf to the Merkle tree.
+/// 6. Checks that every node hash and the Merkle root is correct.
 fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     leaf_hasher: &LH,
     path_hasher: &PH,
@@ -216,7 +221,8 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // Construct the Merkle tree for the given leaves.
     let mut merkle_tree = MerkleTree::<F, 4>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
-    assert_eq!(1, merkle_tree.padding_tree.len());
+    // assert_eq!(1, merkle_tree.padding_tree.len());
+    assert_eq!(4, merkle_tree.number_of_leaves);
 
     // Depth 4.
     let expected_leaf0 = LeafHash::<F>::hash_leaf(leaf_hasher, &leaves[0])?;
@@ -242,8 +248,8 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // Depth 1.
     let expected_left = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
     let expected_right = path_hasher.hash_empty()?;
-    assert_eq!(expected_left, merkle_tree.padding_tree[0].0);
-    assert_eq!(path_hasher.hash_empty()?, merkle_tree.padding_tree[0].1); // Note: I don't know why the 2nd tuple element is necessary, isn't it always hash_empty?
+    // assert_eq!(expected_left, merkle_tree.padding_tree[0].0);
+    // assert_eq!(path_hasher.hash_empty()?, merkle_tree.padding_tree[0].1); // Note: I don't know why the 2nd tuple element is necessary, isn't it always hash_empty?
 
     // Depth 0.
     let expected_root = PathHash::<F>::hash_children(path_hasher, &expected_left, &expected_right)?;
@@ -256,7 +262,7 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // Rebuild the Merkle tree with the additional leaf.
     merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, &[additional_leaves[0].clone()])?;
     assert_eq!(15, merkle_tree.tree.len());
-    assert_eq!(0, merkle_tree.padding_tree.len());
+    // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Depth 4.
@@ -307,13 +313,13 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
 
     // Ensure we're starting where we left off from the previous rebuild.
     assert_eq!(15, merkle_tree.tree.len());
-    assert_eq!(0, merkle_tree.padding_tree.len());
+    // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Rebuild the Merkle tree with the additional leaf.
     merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, &[additional_leaves[1].clone()])?;
     assert_eq!(15, merkle_tree.tree.len());
-    assert_eq!(0, merkle_tree.padding_tree.len());
+    // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(6, merkle_tree.number_of_leaves);
 
     // Depth 4.
@@ -587,6 +593,38 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
         &create_leaves(4),
         &create_leaves(2),
     )
+}
+
+/// Use `cargo test profiler --features timer` to run this test.
+#[ignore]
+#[test]
+fn test_profiler() -> Result<()> {
+    use snarkvm_console_network::{Network, Testnet3};
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const DEPTH: u8 = 32;
+    const NUM_LEAVES: &[usize] = &[1000, 10000];
+
+    /// Generates the specified number of random Merkle tree leaves.
+    macro_rules! generate_leaves {
+        ($num_leaves:expr, $leaf_size:expr) => {{
+            (0..$num_leaves)
+                .map(|_| (0..$leaf_size).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+        }};
+    }
+
+    for num_leaves in NUM_LEAVES {
+        println!("Generating Merkle tree with {} leaves, and appending 1 leaf...", num_leaves);
+
+        let leaves = generate_leaves!(*num_leaves, 253);
+        let merkle_tree = Testnet3::merkle_tree_bhp::<DEPTH>(&leaves)?;
+
+        let new_leaf = generate_leaves!(1, 253);
+        let _tree = Testnet3::merkle_tree_append_bhp::<DEPTH>(&merkle_tree, &new_leaf)?;
+    }
+
+    bail!("\n\nRemember to #[ignore] this test!\n\n")
 }
 
 // fn merkle_path_serialization_test<P: MerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(

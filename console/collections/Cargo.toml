@@ -6,6 +6,11 @@ description = "Collections for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[[bench]]
+name = "merkle_tree"
+path = "benches/merkle_tree.rs"
+harness = false
+
 [dependencies.snarkvm-console-algorithms]
 path = "../algorithms"
 version = "0.7.5"
@@ -23,6 +28,10 @@ default-features = false
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
 version = "0.7.5"
+
+[dependencies.aleo-std]
+version = "0.1.13"
+default-features = false
 
 [dependencies.anyhow]
 version = "1.0.57"
@@ -48,9 +57,13 @@ version = "0.7.5"
 [dev-dependencies.bincode]
 version = "1.3"
 
+[dev-dependencies.criterion]
+version = "0.3.5"
+
 [dev-dependencies.rand]
 version = "0.8"
 
 [features]
 default = ["parallel"]
 parallel = ["rayon"]
+timer = ["aleo-std/timer", "aleo-std/timed"]

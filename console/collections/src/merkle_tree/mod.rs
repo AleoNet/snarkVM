@@ -26,7 +26,9 @@ mod tests;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
+use aleo_std::prelude::*;
 use anyhow::{bail, ensure, Error, Result};
+use itertools::Itertools;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -37,19 +39,16 @@ pub struct MerkleTree<F: PrimeField, const DEPTH: u8> {
     root: F,
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
     tree: Vec<F>,
-    /// For each level after a full tree has been built from the leaves,
-    /// keeps both the roots the siblings that are used to get to the desired depth.
-    padding_tree: Vec<(F, F)>,
-    /// The (inclusive) starting index of the hashed leaves.
-    starting_leaf_index: usize,
-    /// The number of hashed leaves in the tree.
-    number_of_leaves: usize,
     /// The canonical empty hash.
     empty_hash: F,
+    /// The number of hashed leaves in the tree.
+    number_of_leaves: usize,
 }
 
 impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
+    #[timed]
     #[inline]
+    /// Initializes a new Merkle tree with the given leaves.
     pub fn new<LH: LeafHash<F>, PH: PathHash<F>>(
         leaf_hasher: &LH,
         path_hasher: &PH,
@@ -60,230 +59,216 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
         // Ensure the Merkle tree depth is less than or equal to 64.
         ensure!(DEPTH <= 64u8, "Merkle tree depth must be less than or equal to 64");
 
-        // Compute the tree size and tree depth := log2(tree_size).
-        let last_level_size = leaves.len().next_power_of_two();
-        let tree_size = 2 * last_level_size - 1;
+        // Compute the maximum number of leaves.
+        let max_leaves = leaves.len().next_power_of_two();
+        // Compute the number of nodes.
+        let num_nodes = max_leaves - 1;
+        // Compute the tree size as the maximum number of leaves plus the number of nodes.
+        let tree_size = max_leaves + num_nodes;
+        // Compute the number of levels in the Merkle tree (i.e. log2(tree_size)).
         let tree_depth = tree_depth::<DEPTH>(tree_size)?;
+        // Compute the number of padded levels.
+        let padding_depth = DEPTH - tree_depth;
+
+        // Compute the empty hash.
+        let empty_hash = path_hasher.hash_empty()?;
 
         // Initialize the Merkle tree.
-        let empty_hash = path_hasher.hash_empty()?;
         let mut tree = vec![empty_hash; tree_size];
 
-        // Compute the starting index (on the left) for each level of the tree.
-        let mut index = 0;
-        let mut level_indices = Vec::with_capacity(tree_depth as usize);
-        for _ in 0..tree_depth {
-            level_indices.push(index);
-            index = left_child(index);
-        }
-        let starting_leaf_index = index;
+        // Compute and store each leaf hash.
+        tree[num_nodes..num_nodes + leaves.len()].copy_from_slice(&leaf_hasher.hash_leaves(leaves)?);
 
-        // Compute each leaf hash and store it in the bottom row of the Merkle tree.
-        if !leaves.is_empty() {
-            tree[starting_leaf_index..starting_leaf_index + leaves.len()]
-                .copy_from_slice(&leaf_hasher.hash_leaves(leaves)?);
-        }
-
-        // Iterate from the bottom row to the top row, computing and storing the hashes of each level.
-        let mut end_index = starting_leaf_index;
-        for start_index in level_indices.into_iter().rev() {
-            // Iterate over the current level.
-            if start_index != end_index {
-                // Retrieve the children for each node in the current level.
-                let pairs =
-                    (start_index..end_index).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
-                // Compute the hashes of the current level.
-                tree[start_index..start_index + pairs.len()].copy_from_slice(&path_hasher.hash_all_children(&pairs)?);
-            }
-            // Update the end index for the next level.
-            end_index = start_index;
+        // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
+        let mut start_index = num_nodes;
+        // Compute the start index of the current level.
+        while let Some(start) = parent(start_index) {
+            // Compute the end index of the current level.
+            let end = left_child(start);
+            // Construct the children for each node in the current level.
+            let tuples = (start..end).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
+            // Compute and store the hashes for each node in the current level.
+            tree[start..end].copy_from_slice(&path_hasher.hash_all_children(&tuples)?);
+            // Update the start index for the next level.
+            start_index = start;
         }
 
-        // Finished computing actual tree.
-        // Now, we compute the dummy nodes until we hit our DEPTH goal.
-        let mut current_depth = tree_depth;
-        let mut padding_tree = Vec::with_capacity(DEPTH.saturating_sub(current_depth + 1) as usize);
-        let mut current_hash = tree[0];
-        while current_depth < DEPTH {
-            current_hash = path_hasher.hash_children(&current_hash, &empty_hash)?;
-
-            // do not pad at the top-level of the tree
-            if current_depth < DEPTH - 1 {
-                padding_tree.push((current_hash, empty_hash));
-            }
-            current_depth += 1;
+        // Compute the root hash, by iterating from the root level up to `DEPTH`.
+        let mut root_hash = tree[0];
+        for _ in 0..padding_depth {
+            // Update the root hash, by hashing the current root hash with the empty hash.
+            root_hash = path_hasher.hash_children(&root_hash, &empty_hash)?;
         }
 
-        Ok(Self {
-            root: current_hash,
-            tree,
-            padding_tree,
-            starting_leaf_index,
-            number_of_leaves: leaves.len(),
-            empty_hash,
-        })
+        Ok(Self { root: root_hash, tree, empty_hash, number_of_leaves: leaves.len() })
     }
 
+    #[timed]
     #[inline]
+    /// Returns a new Merkle tree with the given new leaves appended to it.
     pub fn append<LH: LeafHash<F>, PH: PathHash<F>>(
         &self,
         leaf_hasher: &LH,
         path_hasher: &PH,
         new_leaves: &[LH::Leaf],
     ) -> Result<Self> {
-        // Compute the tree size and tree depth := log2(tree_size).
-        let last_level_size = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
-        let tree_size = 2 * last_level_size - 1;
+        // Compute the maximum number of leaves.
+        let max_leaves = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
+        // Compute the number of nodes.
+        let num_nodes = max_leaves - 1;
+        // Compute the tree size as the maximum number of leaves plus the number of nodes.
+        let tree_size = max_leaves + num_nodes;
+        // Compute the number of levels in the Merkle tree (i.e. log2(tree_size)).
         let tree_depth = tree_depth::<DEPTH>(tree_size)?;
+        // Compute the number of padded levels.
+        let padding_depth = DEPTH - tree_depth;
 
         // Initialize the Merkle tree.
-        let empty_hash = path_hasher.hash_empty()?;
-        let mut tree = vec![empty_hash; tree_size];
+        let mut tree = vec![self.empty_hash; num_nodes];
+        // Extend the new Merkle tree with the existing leaf hashes.
+        tree.extend(self.leaf_hashes());
+        // Extend the new Merkle tree with the new leaf hashes.
+        tree.extend(&leaf_hasher.hash_leaves(new_leaves)?);
+        // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
+        tree.resize(tree_size, self.empty_hash);
 
-        // Compute the starting index (on the left) for each level of the tree.
-        let mut index = 0;
-        let mut level_indices = Vec::with_capacity(tree_depth as usize);
-        for _ in 0..tree_depth {
-            level_indices.push(index);
-            index = left_child(index);
-        }
-        let starting_leaf_index = index;
+        // Initialize a timer for the while loop.
+        let timer = timer!("while");
 
-        // The beginning of the tree can be reconstructed from pre-existing hashed leaves.
-        tree[starting_leaf_index..starting_leaf_index + self.number_of_leaves]
-            .copy_from_slice(&self.hashed_leaves()[..self.number_of_leaves]);
+        // Initialize a precompute index to track the starting index of each precomputed level.
+        let mut precompute_index = self.number_of_leaves.next_power_of_two() - 1;
+        // Initialize a start index to track the starting index of the current level.
+        let mut start_index = num_nodes;
+        // Initialize a middle index to separate the precomputed indices from the new indices that need to be computed.
+        let mut middle_index = num_nodes + self.number_of_leaves;
 
-        // Compute and store the hash values for each leaf.
-        if !new_leaves.is_empty() {
-            tree[starting_leaf_index + self.number_of_leaves
-                ..starting_leaf_index + self.number_of_leaves + new_leaves.len()]
-                .copy_from_slice(&leaf_hasher.hash_leaves(new_leaves)?);
-        }
+        // Compute and store the hashes for each level, iterating from the penultimate level to the root level.
+        while let (Some(start), Some(middle)) = (parent(start_index), parent(middle_index)) {
+            // Compute the end index of the current level.
+            let end = left_child(start);
 
-        // Track the indices of newly added leaves.
-        let start_index = self.number_of_leaves;
-        let new_indices = || start_index..start_index + new_leaves.len();
-
-        // Compute the hash values for every node in the tree.
-        let mut upper_bound = starting_leaf_index;
-        for start_index in level_indices.into_iter().rev() {
-            let (parents, children) = tree.split_at_mut(upper_bound);
-
-            // Iterate over the current level.
-            cfg_iter_mut!(parents[start_index..upper_bound]).zip(start_index..upper_bound).try_for_each(
-                |(parent, current_index)| {
-                    let left_index = left_child(current_index);
-                    let right_index = right_child(current_index);
-
-                    // Hash only the tree paths that are altered by the addition of new leaves or are brand new.
-                    if new_indices().contains(&current_index)
-                        || self.tree.get(left_index) != children.get(left_index - upper_bound)
-                        || self.tree.get(right_index) != children.get(right_index - upper_bound)
-                        || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
-                    {
-                        // Compute Hash(left || right).
-                        *parent = path_hasher
-                            .hash_children(&children[left_index - upper_bound], &children[right_index - upper_bound])?;
-                    } else {
-                        *parent = self.tree[current_index];
-                    }
-
-                    Ok::<(), Error>(())
-                },
-            )?;
-            upper_bound = start_index;
-        }
-
-        // Finished computing actual tree.
-        // Now, we compute the dummy nodes until we hit our DEPTH goal.
-        let mut current_depth = tree_depth;
-        let mut current_hash = tree[0];
-
-        // The whole padding tree can be reused if the current hash matches the previous one.
-        let padding_tree = if current_hash == self.tree[0] {
-            current_hash = path_hasher.hash_children(&self.padding_tree.last().unwrap().0, &empty_hash)?;
-            self.padding_tree.clone()
-        } else {
-            let mut padding_tree = Vec::with_capacity(DEPTH.saturating_sub(current_depth + 1) as usize);
-            while current_depth < DEPTH {
-                current_hash = path_hasher.hash_children(&current_hash, &empty_hash)?;
-
-                // do not pad at the top-level of the tree
-                if current_depth < DEPTH - 1 {
-                    padding_tree.push((current_hash, empty_hash));
-                }
-                current_depth += 1;
+            // If the current level has precomputed indices, copy them instead of recomputing them.
+            if let Some(precompute_start) = parent(precompute_index) {
+                // Compute the end index of the precomputed level.
+                let precompute_end = precompute_start + (middle - start);
+                // Copy the hashes for each node in the current level.
+                tree[start..middle].copy_from_slice(&self.tree[precompute_start..precompute_end]);
+                // Update the precompute index for the next level.
+                precompute_index = precompute_start;
+            } else {
+                // Ensure the start index is equal to the middle index, as all precomputed indices have been processed.
+                ensure!(start == middle, "Failed to process all precomputed indices in the Merkle tree");
             }
-            padding_tree
-        };
+            lap!(timer, "Precompute: {start} -> {middle}");
+
+            // Construct the children for the new indices in the current level.
+            let tuples = (middle..end).map(|i| (tree[left_child(i)], tree[right_child(i)])).collect::<Vec<_>>();
+            // Process the indices that need to be computed for the current level.
+            // If any level requires computing more than 100 nodes, borrow the tree for performance.
+            match tuples.len() >= 100 {
+                // Option 1: Borrow the tree to compute and store the hashes for the new indices in the current level.
+                true => cfg_iter_mut!(tree[middle..end]).zip_eq(cfg_iter!(tuples)).try_for_each(
+                    |(node, (left, right))| Ok::<_, Error>(*node = path_hasher.hash_children(left, right)?),
+                )?,
+                // Option 2: Compute and store the hashes for the new indices in the current level.
+                false => tree[middle..end].iter_mut().zip_eq(&tuples).try_for_each(|(node, (left, right))| {
+                    Ok::<_, Error>(*node = path_hasher.hash_children(left, right)?)
+                })?,
+            }
+            lap!(timer, "Compute: {middle} -> {end}");
+
+            // Update the start index for the next level.
+            start_index = start;
+            // Update the middle index for the next level.
+            middle_index = middle;
+        }
+
+        // End the timer for the while loop.
+        finish!(timer);
+
+        // Compute the root hash, by iterating from the root level up to `DEPTH`.
+        let mut root_hash = tree[0];
+        for _ in 0..padding_depth {
+            // Update the root hash, by hashing the current root hash with the empty hash.
+            root_hash = path_hasher.hash_children(&root_hash, &self.empty_hash)?;
+        }
 
         // update the values at the very end so the original tree is not altered in case of failure
         Ok(Self {
-            root: current_hash,
+            root: root_hash,
             tree,
-            padding_tree,
-            starting_leaf_index,
-            number_of_leaves: self.number_of_leaves + new_leaves.len(),
             empty_hash: self.empty_hash,
+            number_of_leaves: self.number_of_leaves + new_leaves.len(),
         })
     }
 
-    /// Returns the Merkle path for the given leaf index and leaf.
     #[inline]
+    /// Returns the Merkle path for the given leaf index and leaf.
     pub fn prove<LH: LeafHash<F>>(
         &self,
         leaf_hasher: &LH,
         leaf_index: usize,
         leaf: &LH::Leaf,
     ) -> Result<MerklePath<F, DEPTH>> {
+        // Ensure the leaf index is valid.
+        ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
+
         // Compute the leaf hash.
         let leaf_hash = leaf_hasher.hash_leaf(leaf)?;
-        // Compute the absolute index of the leaf in the tree.
-        let tree_index = self.starting_leaf_index.saturating_add(leaf_index);
-        // Ensure the computed tree index contains the given leaf.
-        if tree_index >= self.tree.len() || leaf_hash != self.tree[tree_index] {
-            bail!("Invalid index detected in the Merkle tree at index {tree_index}");
-        }
 
-        // Iterate from the leaf's parent up to the root, storing all intermediate hash values.
-        let mut current_node = tree_index;
-        let mut path = vec![];
+        // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
+        let start = self.number_of_leaves.next_power_of_two() - 1;
+        // Compute the absolute index of the leaf in the Merkle tree.
+        let mut index = start + leaf_index;
+        // Ensure the leaf index is valid.
+        ensure!(index < self.tree.len(), "The given Merkle leaf index is out of bounds");
+        // Ensure the leaf hash matches the one in the tree.
+        ensure!(self.tree[index] == leaf_hash, "The given Merkle leaf does not match the one in the Merkle tree");
 
-        while !is_root(current_node) {
-            let sibling_node = sibling(current_node).unwrap();
-            path.push(self.tree[sibling_node]);
-            current_node = parent(current_node).unwrap();
+        // Initialize a vector for the Merkle path.
+        let mut path = Vec::with_capacity(DEPTH as usize);
 
-            // Ensure the Merkle path is within the depth bound.
-            if path.len() > DEPTH as usize {
-                bail!("Merkle path cannot exceed depth {DEPTH}: attempted to reach depth {}", path.len())
+        // Iterate from the leaf hash to the root level, storing the sibling hashes along the path.
+        for _ in 0..DEPTH {
+            // Compute the index of the sibling hash, if it exists.
+            if let Some(sibling) = sibling(index) {
+                // Append the sibling hash to the path.
+                path.push(self.tree[sibling]);
+                // Compute the index of the parent hash, if it exists.
+                match parent(index) {
+                    // Update the index to the parent index.
+                    Some(parent) => index = parent,
+                    // If the parent does not exist, the path is complete.
+                    None => break,
+                }
             }
         }
 
-        if path.len() != DEPTH as usize {
-            path.push(self.empty_hash);
+        // If the Merkle path length is not equal to `DEPTH`, pad the path with the empty hash.
+        path.resize(DEPTH as usize, self.empty_hash);
 
-            for &(ref _hash, ref sibling_hash) in &self.padding_tree {
-                path.push(*sibling_hash);
-            }
-        }
-
+        // Return the Merkle path.
         MerklePath::try_from((leaf_index as u64, path))
     }
 
-    #[inline]
+    /// Returns the Merkle root of the tree.
     pub const fn root(&self) -> &F {
         &self.root
     }
 
-    #[inline]
+    /// Returns the Merkle tree (excluding the hashes of the leaves).
     pub fn tree(&self) -> &[F] {
         &self.tree
     }
 
-    #[inline]
-    pub fn hashed_leaves(&self) -> &[F] {
-        &self.tree[self.starting_leaf_index..]
+    /// Returns the leaf hashes from the Merkle tree.
+    pub fn leaf_hashes(&self) -> &[F] {
+        // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
+        let start = self.number_of_leaves.next_power_of_two() - 1;
+        // Compute the end index (on the right) for the leaf hashes level in the Merkle tree.
+        let end = start + self.number_of_leaves;
+        // Return the leaf hashes.
+        &self.tree[start..end]
     }
 }
 
@@ -306,12 +291,6 @@ fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
         },
         false => bail!("Merkle tree depth exceeds maximum size: {}", tree_depth),
     }
-}
-
-/// Returns true iff the index represents the root.
-#[inline]
-const fn is_root(index: usize) -> bool {
-    index == 0
 }
 
 /// Returns the index of the left child, given an index.
@@ -338,29 +317,20 @@ const fn sibling(index: usize) -> Option<usize> {
     }
 }
 
+/// Returns true iff the index represents the root.
+#[inline]
+const fn is_root(index: usize) -> bool {
+    index == 0
+}
+
 /// Returns true iff the given index represents a left child.
 #[inline]
 const fn is_left_child(index: usize) -> bool {
     index % 2 == 1
 }
 
-/// Returns the index of the parent, given an index.
+/// Returns the index of the parent, given the index of a child.
 #[inline]
 const fn parent(index: usize) -> Option<usize> {
     if index > 0 { Some((index - 1) >> 1) } else { None }
-}
-
-pub struct Ancestors(usize);
-
-impl Iterator for Ancestors {
-    type Item = usize;
-
-    fn next(&mut self) -> Option<usize> {
-        if let Some(parent) = parent(self.0) {
-            self.0 = parent;
-            Some(parent)
-        } else {
-            None
-        }
-    }
 }
