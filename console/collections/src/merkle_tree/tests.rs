@@ -35,14 +35,14 @@ fn check_merkle_tree<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPT
     additional_leaves: &[LH::Leaf],
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MerkleTree::<F, LH, PH, DEPTH>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
+    let merkle_tree = MerkleTree::<F, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
 
     // Check each leaf in the Merkle tree.
     if !leaves.is_empty() {
         for (leaf_index, leaf) in leaves.iter().enumerate() {
             // Compute a Merkle proof for the leaf.
-            let proof = merkle_tree.prove(leaf_index, leaf)?;
+            let proof = merkle_tree.prove(leaf_hasher, leaf_index, leaf)?;
             // Verify the Merkle proof succeeds.
             assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
@@ -54,11 +54,11 @@ fn check_merkle_tree<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPT
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
     if !additional_leaves.is_empty() {
         // Append additional leaves to the Merkle tree.
-        let merkle_tree = merkle_tree.append(additional_leaves)?;
+        let merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, additional_leaves)?;
         // Check each additional leaf in the Merkle tree.
         for (leaf_index, leaf) in additional_leaves.iter().enumerate() {
             // Compute a Merkle proof for the leaf.
-            let proof = merkle_tree.prove(leaves.len() + leaf_index, leaf)?;
+            let proof = merkle_tree.prove(leaf_hasher, leaves.len() + leaf_index, leaf)?;
             // Verify the Merkle proof succeeds.
             assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
             // Verify the Merkle proof **fails** on an invalid root.
@@ -81,7 +81,7 @@ fn check_merkle_tree_depth_2<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>>(
     assert_eq!(4, leaves.len(), "Depth-2 test requires 4 leaves");
 
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MerkleTree::<F, LH, PH, 2>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
+    let merkle_tree = MerkleTree::<F, 2>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
 
     // Depth 2.
@@ -123,7 +123,7 @@ fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     assert_eq!(1, additional_leaves.len(), "Padded depth-3 test requires 1 additional leaf");
 
     // Construct the Merkle tree for the given leaves.
-    let mut merkle_tree = MerkleTree::<F, LH, PH, 3>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
+    let mut merkle_tree = MerkleTree::<F, 3>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
     assert_eq!(0, merkle_tree.padding_tree.len());
 
@@ -157,7 +157,7 @@ fn check_merkle_tree_depth_3_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // ------------------------------------------------------------------------------------------ //
 
     // Rebuild the Merkle tree with the additional leaf.
-    merkle_tree = merkle_tree.append(additional_leaves)?;
+    merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, additional_leaves)?;
     assert_eq!(15, merkle_tree.tree.len());
     assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
@@ -214,7 +214,7 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     assert_eq!(2, additional_leaves.len(), "Padded depth-4 test requires 2 additional leaves");
 
     // Construct the Merkle tree for the given leaves.
-    let mut merkle_tree = MerkleTree::<F, LH, PH, 4>::new(leaf_hasher.clone(), path_hasher.clone(), leaves)?;
+    let mut merkle_tree = MerkleTree::<F, 4>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(7, merkle_tree.tree.len());
     assert_eq!(1, merkle_tree.padding_tree.len());
 
@@ -254,7 +254,7 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     // ------------------------------------------------------------------------------------------ //
 
     // Rebuild the Merkle tree with the additional leaf.
-    merkle_tree = merkle_tree.append(&[additional_leaves[0].clone()])?;
+    merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, &[additional_leaves[0].clone()])?;
     assert_eq!(15, merkle_tree.tree.len());
     assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
@@ -311,7 +311,7 @@ fn check_merkle_tree_depth_4_padded<F: PrimeField, LH: LeafHash<F>, PH: PathHash
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Rebuild the Merkle tree with the additional leaf.
-    merkle_tree = merkle_tree.append(&[additional_leaves[1].clone()])?;
+    merkle_tree = merkle_tree.append(leaf_hasher, path_hasher, &[additional_leaves[1].clone()])?;
     assert_eq!(15, merkle_tree.tree.len());
     assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(6, merkle_tree.number_of_leaves);
@@ -595,7 +595,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 // ) {
 //     let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves).unwrap();
 //     for (i, leaf) in leaves.iter().enumerate() {
-//         let proof = tree.prove(i, &leaf).unwrap();
+//         let proof = tree.prove(leaf_hasher, i, &leaf).unwrap();
 //
 //         // Serialize
 //         let serialized = proof.to_bytes_le().unwrap();
@@ -611,7 +611,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 // fn merkle_path_bincode_test<P: MerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(leaves: &[L], parameters: &P) {
 //     let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves).unwrap();
 //     for (i, leaf) in leaves.iter().enumerate() {
-//         let proof = tree.prove(i, &leaf).unwrap();
+//         let proof = tree.prove(leaf_hasher, i, &leaf).unwrap();
 //
 //         // Serialize
 //         let expected_bytes = proof.to_bytes_le().unwrap();
@@ -703,7 +703,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 //         let parameters = &MTParameters::setup("merkle_tree_test");
 //         let tree = MerkleTree::<MTParameters>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
 //
-//         let _proof = tree.prove(0, &leaves[0]).unwrap();
+//         let _proof = tree.prove(leaf_hasher, 0, &leaves[0]).unwrap();
 //         _proof.verify(tree.root(), &leaves[0]).unwrap();
 //
 //         let leaf1 = parameters.leaf_crh().hash_bytes(&leaves[0]).unwrap();
@@ -711,7 +711,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 //
 //         // proof for non-leaf node
 //         let raw_nodes = to_bytes_le![leaf1, leaf2].unwrap();
-//         let _proof = tree.prove(18446744073709551614, &raw_nodes).unwrap();
+//         let _proof = tree.prove(leaf_hasher, 18446744073709551614, &raw_nodes).unwrap();
 //     }
 //
 //     #[test]
@@ -727,7 +727,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 //         let merkle_tree = generate_merkle_tree(&leaves, parameters);
 //         let merkle_tree_root = merkle_tree.root();
 //         // real proof
-//         let proof = merkle_tree.prove(0, &leaves[0]).unwrap();
+//         let proof = merkle_tree.prove(leaf_hasher, 0, &leaves[0]).unwrap();
 //         assert!(proof.verify(merkle_tree_root, &leaves[0].to_vec()).unwrap());
 //
 //         // Manually construct the merkle tree.

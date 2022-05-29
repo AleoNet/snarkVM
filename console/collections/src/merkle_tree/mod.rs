@@ -32,11 +32,7 @@ use anyhow::{bail, ensure, Error, Result};
 use rayon::prelude::*;
 
 #[derive(Default)]
-pub struct MerkleTree<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> {
-    /// The hash function for the leaf nodes.
-    leaf_hasher: LH,
-    /// The hash function for the path nodes.
-    path_hasher: PH,
+pub struct MerkleTree<F: PrimeField, const DEPTH: u8> {
     /// The computed root of the full Merkle tree.
     root: F,
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
@@ -48,11 +44,17 @@ pub struct MerkleTree<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEP
     starting_leaf_index: usize,
     /// The number of hashed leaves in the tree.
     number_of_leaves: usize,
+    /// The canonical empty hash.
+    empty_hash: F,
 }
 
-impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTree<F, LH, PH, DEPTH> {
+impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
     #[inline]
-    pub fn new(leaf_hasher: LH, path_hasher: PH, leaves: &[LH::Leaf]) -> Result<Self> {
+    pub fn new<LH: LeafHash<F>, PH: PathHash<F>>(
+        leaf_hasher: &LH,
+        path_hasher: &PH,
+        leaves: &[LH::Leaf],
+    ) -> Result<Self> {
         // Ensure the Merkle tree depth is greater than 0.
         ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
         // Ensure the Merkle tree depth is less than or equal to 64.
@@ -113,25 +115,29 @@ impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTre
         }
 
         Ok(Self {
-            leaf_hasher,
-            path_hasher,
             root: current_hash,
             tree,
             padding_tree,
             starting_leaf_index,
             number_of_leaves: leaves.len(),
+            empty_hash,
         })
     }
 
     #[inline]
-    pub fn append(&self, new_leaves: &[LH::Leaf]) -> Result<Self> {
+    pub fn append<LH: LeafHash<F>, PH: PathHash<F>>(
+        &self,
+        leaf_hasher: &LH,
+        path_hasher: &PH,
+        new_leaves: &[LH::Leaf],
+    ) -> Result<Self> {
         // Compute the tree size and tree depth := log2(tree_size).
         let last_level_size = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
         let tree_size = 2 * last_level_size - 1;
         let tree_depth = tree_depth::<DEPTH>(tree_size)?;
 
         // Initialize the Merkle tree.
-        let empty_hash = self.path_hasher.hash_empty()?;
+        let empty_hash = path_hasher.hash_empty()?;
         let mut tree = vec![empty_hash; tree_size];
 
         // Compute the starting index (on the left) for each level of the tree.
@@ -151,7 +157,7 @@ impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTre
         if !new_leaves.is_empty() {
             tree[starting_leaf_index + self.number_of_leaves
                 ..starting_leaf_index + self.number_of_leaves + new_leaves.len()]
-                .copy_from_slice(&self.leaf_hasher.hash_leaves(new_leaves)?);
+                .copy_from_slice(&leaf_hasher.hash_leaves(new_leaves)?);
         }
 
         // Track the indices of newly added leaves.
@@ -176,8 +182,7 @@ impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTre
                         || new_indices().any(|idx| Ancestors(idx).into_iter().any(|i| i == current_index))
                     {
                         // Compute Hash(left || right).
-                        *parent = self
-                            .path_hasher
+                        *parent = path_hasher
                             .hash_children(&children[left_index - upper_bound], &children[right_index - upper_bound])?;
                     } else {
                         *parent = self.tree[current_index];
@@ -196,12 +201,12 @@ impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTre
 
         // The whole padding tree can be reused if the current hash matches the previous one.
         let padding_tree = if current_hash == self.tree[0] {
-            current_hash = self.path_hasher.hash_children(&self.padding_tree.last().unwrap().0, &empty_hash)?;
+            current_hash = path_hasher.hash_children(&self.padding_tree.last().unwrap().0, &empty_hash)?;
             self.padding_tree.clone()
         } else {
             let mut padding_tree = Vec::with_capacity(DEPTH.saturating_sub(current_depth + 1) as usize);
             while current_depth < DEPTH {
-                current_hash = self.path_hasher.hash_children(&current_hash, &empty_hash)?;
+                current_hash = path_hasher.hash_children(&current_hash, &empty_hash)?;
 
                 // do not pad at the top-level of the tree
                 if current_depth < DEPTH - 1 {
@@ -214,21 +219,25 @@ impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTre
 
         // update the values at the very end so the original tree is not altered in case of failure
         Ok(Self {
-            leaf_hasher: self.leaf_hasher.clone(),
-            path_hasher: self.path_hasher.clone(),
             root: current_hash,
             tree,
             padding_tree,
             starting_leaf_index,
             number_of_leaves: self.number_of_leaves + new_leaves.len(),
+            empty_hash: self.empty_hash,
         })
     }
 
     /// Returns the Merkle path for the given leaf index and leaf.
     #[inline]
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<F, DEPTH>> {
+    pub fn prove<LH: LeafHash<F>>(
+        &self,
+        leaf_hasher: &LH,
+        leaf_index: usize,
+        leaf: &LH::Leaf,
+    ) -> Result<MerklePath<F, DEPTH>> {
         // Compute the leaf hash.
-        let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
+        let leaf_hash = leaf_hasher.hash_leaf(leaf)?;
         // Compute the absolute index of the leaf in the tree.
         let tree_index = self.starting_leaf_index.saturating_add(leaf_index);
         // Ensure the computed tree index contains the given leaf.
@@ -252,7 +261,7 @@ impl<F: PrimeField, LH: LeafHash<F>, PH: PathHash<F>, const DEPTH: u8> MerkleTre
         }
 
         if path.len() != DEPTH as usize {
-            path.push(self.path_hasher.hash_empty()?);
+            path.push(self.empty_hash);
 
             for &(ref _hash, ref sibling_hash) in &self.padding_tree {
                 path.push(*sibling_hash);

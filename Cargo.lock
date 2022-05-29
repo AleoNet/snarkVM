@@ -2306,6 +2306,7 @@ version = "0.7.5"
 dependencies = [
  "anyhow",
  "itertools",
+ "lazy_static",
  "snarkvm-console-algorithms",
  "snarkvm-console-collections",
  "snarkvm-curves",
