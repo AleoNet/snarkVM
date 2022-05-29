@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -24,139 +25,136 @@ use snarkvm_utilities::{
     ToBytesSerializer,
 };
 
-use anyhow::Result;
-use core::marker::PhantomData;
+use anyhow::{ensure, Result};
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Stores the hashes of a particular path (in order) from leaf to root.
-/// Our path `is_left_child()` if the boolean in `path` is true.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MerklePath<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> {
-    path: Vec<N::Field>,
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct MerklePath<N: Network, const DEPTH: u8> {
+    /// The leaf index for the path.
     leaf_index: u64,
-    _phantom: PhantomData<(LH, PH)>,
+    /// The `siblings` contains a list of sibling hashes from the leaf to the root.
+    siblings: Vec<N::Field>,
 }
 
-impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> TryFrom<(Vec<N::Field>, u64)>
-    for MerklePath<N, LH, PH, DEPTH>
-{
+impl<N: Network, const DEPTH: u8> TryFrom<(u64, Vec<N::Field>)> for MerklePath<N, DEPTH> {
     type Error = Error;
 
     /// Returns a new instance of a Merkle path.
-    fn try_from((path, leaf_index): (Vec<N::Field>, u64)) -> Result<Self> {
+    fn try_from((leaf_index, siblings): (u64, Vec<N::Field>)) -> Result<Self> {
+        // Ensure the Merkle tree depth is greater than 0.
+        ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
+        // Ensure the Merkle tree depth is less than or equal to 64.
+        ensure!(DEPTH <= 64u8, "Merkle tree depth must be less than or equal to 64");
+        // Ensure the leaf index is within the tree depth.
+        ensure!((leaf_index as u128) < (1u128 << DEPTH), "Found an out of bounds Merkle leaf index");
         // Ensure the Merkle path is the correct length.
-        match path.len() == DEPTH as usize {
-            // Return the Merkle path.
-            true => Ok(Self { path, leaf_index, _phantom: PhantomData }),
-            false => bail!("Expected a Merkle path of length {DEPTH}, found length {}", path.len()),
-        }
+        ensure!(siblings.len() == DEPTH as usize, "Found an incorrect Merkle path length");
+        // Return the Merkle path.
+        Ok(Self { leaf_index, siblings })
     }
 }
 
-impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerklePath<N, LH, PH, DEPTH> {
+impl<N: Network, const DEPTH: u8> MerklePath<N, DEPTH> {
+    /// Returns the leaf index for the path.
+    pub fn leaf_index(&self) -> u64 {
+        self.leaf_index
+    }
+
+    /// Returns the siblings for the path.
+    pub fn siblings(&self) -> &[N::Field] {
+        &self.siblings
+    }
+
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify(&self, leaf_hasher: &LH, path_hasher: &PH, root_hash: &N::Field, leaf: &LH::Leaf) -> bool {
+    pub fn verify<LH: LeafHash<N>, PH: PathHash<N>>(
+        &self,
+        leaf_hasher: &LH,
+        path_hasher: &PH,
+        root: &N::Field,
+        leaf: &LH::Leaf,
+    ) -> bool {
+        // Ensure the leaf index is within the tree depth.
+        if (self.leaf_index as u128) >= (1u128 << DEPTH) {
+            eprintln!("Found an out of bounds Merkle leaf index");
+            return false;
+        }
         // Ensure the path length matches the expected depth.
-        if self.path.len() != DEPTH as usize {
+        else if self.siblings.len() != DEPTH as usize {
+            eprintln!("Found an incorrect Merkle path length");
             return false;
         }
 
-        // Compute the leaf hash, and return `false` on failure.
-        let claimed_leaf_hash = match leaf_hasher.hash(leaf) {
-            Ok(hash) => hash,
+        // Initialize a tracker for the current hash, by computing the leaf hash to start.
+        let mut current_hash = match leaf_hasher.hash(leaf) {
+            Ok(candidate_leaf_hash) => candidate_leaf_hash,
             Err(error) => {
-                eprintln!("Failed to hash leaf during Merkle path verification: {error}");
+                eprintln!("Failed to hash the Merkle leaf during verification: {error}");
                 return false;
             }
         };
 
-        let mut index = self.leaf_index;
-        let mut current_hash = claimed_leaf_hash;
+        // Compute the ordering of the current hash and sibling hash on each level.
+        // If the indicator bit is `true`, then the ordering is (current_hash, sibling_hash).
+        // If the indicator bit is `false`, then the ordering is (sibling_hash, current_hash).
+        let indicators = (0..DEPTH).map(|i| ((self.leaf_index >> i) & 1) == 0);
 
         // Check levels between leaf level and root.
-        for level in 0..self.path.len() {
-            // Check if path node at this level is left or right.
-            let (left, right) = Self::select_left_right(index, &current_hash, &self.path[level]);
-            // Update the current path node.
+        for (indicator, sibling_hash) in indicators.zip_eq(&self.siblings) {
+            // Construct the ordering of the left & right child hash for this level.
+            let (left, right) = match indicator {
+                true => (current_hash, *sibling_hash),
+                false => (*sibling_hash, current_hash),
+            };
+            // Update the current hash for the next level.
             match path_hasher.hash(&left, &right) {
                 Ok(hash) => current_hash = hash,
                 Err(error) => {
-                    eprintln!("Failed to hash path node during Merkle path verification: {error}");
+                    eprintln!("Failed to hash the Merkle path during verification: {error}");
                     return false;
                 }
             }
-            index >>= 1;
         }
 
-        // Check if final hash is root.
-        current_hash == *root_hash
-    }
-
-    /// Convert `computed_hash` and `sibling_hash` to bytes. `index` is the first `path.len()` bits of
-    /// the position of tree.
-    ///
-    /// If the least significant bit of `index` is 0, then `input_1` will be left and `input_2` will be right.
-    /// Otherwise, `input_1` will be right and `input_2` will be left.
-    ///
-    /// Returns: (left, right)
-    fn select_left_right(index: u64, computed_hash: &N::Field, sibling_hash: &N::Field) -> (N::Field, N::Field) {
-        let is_left = index & 1 == 0;
-        let mut left = computed_hash;
-        let mut right = sibling_hash;
-        if !is_left {
-            core::mem::swap(&mut left, &mut right);
-        }
-        (*left, *right)
-    }
-
-    /// The position of on_path node in `leaf_and_sibling_hash` and `non_leaf_and_sibling_hash_path`.
-    /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
-    ///
-    /// This function simply converts `self.leaf_index` to boolean array in big endian form.
-    pub fn position_list(&self) -> impl Iterator<Item = bool> + '_ {
-        (0..self.path.len()).map(move |i| ((self.leaf_index >> i) & 1) != 0)
+        // Ensure the final hash matches the given root.
+        current_hash == *root
     }
 }
 
-impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> FromBytes for MerklePath<N, LH, PH, DEPTH> {
+impl<N: Network, const DEPTH: u8> FromBytes for MerklePath<N, DEPTH> {
+    /// Reads in a Merkle path from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the Merkle path.
-        let path_length: u8 = FromBytes::read_le(&mut reader)?;
-        let path = (0..path_length).map(|_| N::Field::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
         // Read the leaf index.
-        let leaf_index: u64 = FromBytes::read_le(&mut reader)?;
-
-        Self::try_from((path, leaf_index)).map_err(|err| error(err.to_string()))
+        let leaf_index = u64::read_le(&mut reader)?;
+        // Read the Merkle path siblings.
+        let siblings = (0..DEPTH).map(|_| N::Field::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
+        // Return the Merkle path.
+        Self::try_from((leaf_index, siblings)).map_err(|err| error(err.to_string()))
     }
 }
 
-impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> ToBytes for MerklePath<N, LH, PH, DEPTH> {
+impl<N: Network, const DEPTH: u8> ToBytes for MerklePath<N, DEPTH> {
+    /// Writes the Merkle path to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the Merkle path length is within bounds.
-        if self.path.len() > (u8::MAX as usize) {
-            return Err(error(format!("Merkle path depth cannot exceed {}", u8::MAX)));
-        }
-
-        // Write the Merkle path.
-        (self.path.len() as u8).write_le(&mut writer)?;
-        self.path.write_le(&mut writer)?;
         // Write the leaf index.
-        self.leaf_index.write_le(&mut writer)
+        self.leaf_index.write_le(&mut writer)?;
+        // Write the Merkle path siblings.
+        self.siblings.write_le(&mut writer)
     }
 }
 
-impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> Serialize for MerklePath<N, LH, PH, DEPTH> {
+impl<N: Network, const DEPTH: u8> Serialize for MerklePath<N, DEPTH> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        ToBytesSerializer::serialize_with_size_encoding(self, serializer)
+        ToBytesSerializer::serialize(self, serializer)
     }
 }
 
-impl<'de, N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> Deserialize<'de>
-    for MerklePath<N, LH, PH, DEPTH>
-{
+impl<'de, N: Network, const DEPTH: u8> Deserialize<'de> for MerklePath<N, DEPTH> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "Merkle path")
+        // Compute the size for: u64 + (N::Field::BYTES * DEPTH).
+        let size = 8 + DEPTH as usize * (N::Field::size_in_bits() + 7) / 8;
+        FromBytesDeserializer::<Self>::deserialize(deserializer, "Merkle path", size)
     }
 }

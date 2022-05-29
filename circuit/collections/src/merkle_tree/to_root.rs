@@ -16,18 +16,14 @@
 
 use super::*;
 
-impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
-    pub fn to_root<LeafCRH: Hash<Output = TwoToOneCRH::Output>>(
+impl<A: Aleo, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> MerklePath<A, LH, PH, DEPTH> {
+    pub fn to_root(
         &self,
-        leaf_crh: &LeafCRH,
-        two_to_one_crh: &TwoToOneCRH,
+        leaf_hasher: &LH,
+        path_hasher: &PH,
         leaf: &[LeafCRH::Input],
-    ) -> TwoToOneCRH::Output
-    where
-        <<TwoToOneCRH as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
-        Vec<<TwoToOneCRH as Hash>::Input>: From<Vec<<<TwoToOneCRH as Hash>::Output as ToBits>::Boolean>>,
-    {
-        let mut curr_hash = leaf_crh.hash(leaf);
+    ) -> Field<E> {
+        let mut curr_hash = leaf_hasher.hash(leaf);
 
         // Padding used to match the native merkle tree.
         let padding = TwoToOneCRH::Input::constant(Default::default());
@@ -50,7 +46,7 @@ impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
             left_input.resize(num_bytes, padding.clone());
             right_input.resize(num_bytes, padding.clone());
 
-            curr_hash = two_to_one_crh.hash(&[left_input, right_input].concat());
+            curr_hash = path_hasher.hash(&[left_input, right_input].concat());
         }
 
         curr_hash

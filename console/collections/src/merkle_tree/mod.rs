@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod helpers;
-use helpers::*;
+pub use helpers::*;
 
 mod path;
 pub use path::*;
@@ -23,12 +23,11 @@ pub use path::*;
 #[cfg(test)]
 mod tests;
 
-use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
 use snarkvm_console_network::Network;
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ToBits};
 
-use anyhow::{bail, Error, Result};
+use anyhow::{bail, ensure, Error, Result};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -55,10 +54,10 @@ pub struct MerkleTree<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH:
 impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N, LH, PH, DEPTH> {
     #[inline]
     pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
-        // Ensure the DEPTH is non-zero.
-        if DEPTH == 0 {
-            bail!("The depth of the Merkle tree must be non-zero.");
-        }
+        // Ensure the Merkle tree depth is greater than 0.
+        ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
+        // Ensure the Merkle tree depth is less than or equal to 64.
+        ensure!(DEPTH <= 64u8, "Merkle tree depth must be less than or equal to 64");
 
         // Compute the tree size and tree depth := log2(tree_size).
         let last_level_size = leaves.len().next_power_of_two();
@@ -229,7 +228,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
 
     /// Returns the Merkle path for the given leaf index and leaf.
     #[inline]
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<N, LH, PH, DEPTH>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<N, DEPTH>> {
         // Compute the leaf hash.
         let leaf_hash = self.leaf_hasher.hash(leaf)?;
         // Compute the absolute index of the leaf in the tree.
@@ -262,7 +261,7 @@ impl<N: Network, LH: LeafHash<N>, PH: PathHash<N>, const DEPTH: u8> MerkleTree<N
             }
         }
 
-        MerklePath::try_from((path, leaf_index as u64))
+        MerklePath::try_from((leaf_index as u64, path))
     }
 
     #[inline]

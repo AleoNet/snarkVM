@@ -12,6 +12,10 @@ path = "../../console/collections"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-circuit-algorithms]
+path = "../algorithms"
+version = "0.7.5"
+
 [dependencies.snarkvm-circuit-network]
 path = "../network"
 version = "0.7.5"
@@ -20,15 +24,9 @@ version = "0.7.5"
 path = "../types"
 version = "0.7.5"
 
-[dependencies.snarkvm-curves]
-path = "../../curves"
+[dev-dependencies.snarkvm-console-algorithms]
+path = "../../console/algorithms"
 version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-fields]
-path = "../../fields"
-version = "0.7.5"
-default-features = false
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../utilities"

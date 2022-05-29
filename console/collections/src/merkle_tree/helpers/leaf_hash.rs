@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
+
 /// A trait for a Merkle leaf hash function.
 pub trait LeafHash<N: Network>: Clone + Send + Sync {
     type Leaf: Clone + Send + Sync;

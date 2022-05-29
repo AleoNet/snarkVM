@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
+
 /// A trait for a Merkle path hash function.
 pub trait PathHash<N: Network>: Clone + Send + Sync {
     /// Returns the hash of the given path nodes.

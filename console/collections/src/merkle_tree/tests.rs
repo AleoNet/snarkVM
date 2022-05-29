@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_console_algorithms::{BHP1024, BHP512};
+use snarkvm_console_algorithms::{Poseidon, BHP1024, BHP512};
 use snarkvm_console_network::Testnet3;
 
 use snarkvm_utilities::{test_rng, UniformRand};
