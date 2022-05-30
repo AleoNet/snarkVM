@@ -28,7 +28,10 @@ use snarkvm_console_algorithms::{
     BHP512,
     BHP768,
 };
-use snarkvm_curves::{edwards_bls12::EdwardsAffine, AffineCurve};
+use snarkvm_curves::{
+    edwards_bls12::{EdwardsAffine, EdwardsParameters},
+    AffineCurve,
+};
 use snarkvm_utilities::ToBits;
 
 use anyhow::{anyhow, bail, Result};
@@ -92,6 +95,7 @@ impl Testnet3 {
 
 impl Network for Testnet3 {
     type Affine = EdwardsAffine;
+    type AffineParameters = EdwardsParameters;
     type Field = <Self::Affine as AffineCurve>::BaseField;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
@@ -269,6 +273,21 @@ impl Network for Testnet3 {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field> {
         POSEIDON_8.hash_many(input, num_outputs)
+    }
+
+    /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
+    fn hash_to_group_psd2(input: &[Self::Field]) -> Result<Self::Affine> {
+        POSEIDON_2.hash_to_group::<Self::Affine, Self::AffineParameters>(input)
+    }
+
+    /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
+    fn hash_to_group_psd4(input: &[Self::Field]) -> Result<Self::Affine> {
+        POSEIDON_4.hash_to_group::<Self::Affine, Self::AffineParameters>(input)
+    }
+
+    /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
+    fn hash_to_group_psd8(input: &[Self::Field]) -> Result<Self::Affine> {
+        POSEIDON_8.hash_to_group::<Self::Affine, Self::AffineParameters>(input)
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.

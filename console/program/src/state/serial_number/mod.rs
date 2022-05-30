@@ -17,7 +17,8 @@
 mod prove;
 mod verify;
 
-use crate::{Elligator2, HashMany, HashToScalar, Poseidon4};
+use snarkvm_console_algorithms::{Elligator2, HashMany, HashToScalar, Poseidon4};
+use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::PrimeField;
 
@@ -25,19 +26,9 @@ use anyhow::{bail, Result};
 use core::marker::PhantomData;
 use itertools::Itertools;
 
-type BaseField<G> = <G as AffineCurve>::BaseField;
-type ScalarField<G> = <G as AffineCurve>::ScalarField;
-
-pub struct NSEC5<
-    G: AffineCurve<Coordinates = (BaseField<G>, BaseField<G>)>,
-    P: MontgomeryParameters<BaseField = BaseField<G>> + TwistedEdwardsParameters<BaseField = BaseField<G>>,
-> where
-    <G as AffineCurve>::BaseField: PrimeField,
-{
+pub struct SerialNumber<N: Network> {
     /// The output of the VRF.
-    output: ScalarField<G>,
+    output: N::Scalar,
     /// The proof for the VRF output: `(gamma, challenge, response)`.
-    proof: (G, ScalarField<G>, ScalarField<G>),
-    /// Phantom data.
-    _phantom: PhantomData<P>,
+    proof: (N::Affine, N::Scalar, N::Scalar),
 }

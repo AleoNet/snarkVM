@@ -24,7 +24,7 @@ pub mod testnet3;
 pub use testnet3::*;
 
 use snarkvm_console_collections::merkle_tree::MerkleTree;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use anyhow::Result;
@@ -37,6 +37,8 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
         ScalarField = Self::Scalar,
         Coordinates = (Self::Field, Self::Field),
     >;
+    type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
+        + TwistedEdwardsParameters<BaseField = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
     type Field: PrimeField + Copy;
     type Scalar: PrimeField + Copy;
@@ -139,6 +141,15 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
+
+    /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
+    fn hash_to_group_psd2(input: &[Self::Field]) -> Result<Self::Affine>;
+
+    /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
+    fn hash_to_group_psd4(input: &[Self::Field]) -> Result<Self::Affine>;
+
+    /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
+    fn hash_to_group_psd8(input: &[Self::Field]) -> Result<Self::Affine>;
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Self::Field]) -> Result<Self::Scalar>;

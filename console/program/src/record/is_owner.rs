@@ -14,34 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod decrypt;
-mod encrypt;
-mod is_owner;
-mod to_id;
+use super::*;
 
-use crate::{Ciphertext, Data, State};
-use snarkvm_console_account::{Address, ViewKey};
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{ToBits, ToBytes};
-
-use anyhow::{bail, Result};
-
-/// A program's record is a set of **ciphertext** variables used by a program.
-/// Note: `Record` is the **encrypted** form of `State`.
-pub struct Record<N: Network> {
-    /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
-    owner: N::Field,
-    /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
-    balance: N::Field,
-    /// The program data.
-    data: Data<N, Ciphertext<N>>,
-    /// The nonce for this record (i.e. `G^r`).
-    nonce: N::Affine,
-    /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
-    mac: N::Field,
-    /// The balance commitment for this record (i.e. `G^balance H^HashToScalar(G^r^view_key)`).
-    bcm: N::Field,
+impl<N: Network> Record<N> {
+    /// Returns `true` if this record belongs to the account of the given view key.
+    pub fn is_owner(&self, view_key: &ViewKey<N>) -> bool {
+        // Compute the record view key := G^r^view_key.
+        let record_view_key = (self.nonce * **view_key).to_affine().to_x_coordinate();
+        // Compute the candidate MAC := Hash(G^r^view_key).
+        match N::hash_psd2(&[N::mac_domain(), record_view_key]) {
+            // Check if the MACs match.
+            Ok(candidate_mac) => self.mac == candidate_mac,
+            // If the computation fails, return false.
+            Err(error) => {
+                eprintln!("{error}");
+                false
+            }
+        }
+    }
 }
 
 // #[cfg(test)]

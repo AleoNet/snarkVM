@@ -14,26 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[macro_use]
-extern crate enum_index_derive;
-
-mod data;
-pub use data::*;
-
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
-pub mod traits;
-pub use traits::*;
-
-// pub mod transaction;
-// pub use transaction::*;
-
-pub mod transition;
-pub use transition::*;
+impl<N: Network> Record<N> {
+    /// Returns the record ID.
+    pub fn to_id(&self, program: &N::Field, process: &N::Field) -> Result<N::Field> {
+        // Retrieve the x-coordinate of the nonce.
+        let nonce = self.nonce.to_x_coordinate();
+        // Compute the BHP hash of the program state.
+        N::hash_bhp1024(
+            &[*program, *process, self.owner, self.balance, self.data.to_id()?, nonce, self.mac, self.bcm].to_bits_le(),
+        )
+    }
+}

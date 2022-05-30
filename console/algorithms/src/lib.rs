@@ -26,9 +26,6 @@ pub use blake2xs::Blake2Xs;
 mod elligator2;
 pub use elligator2::Elligator2;
 
-mod nsec5;
-pub use nsec5::NSEC5;
-
 mod pedersen;
 pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
 

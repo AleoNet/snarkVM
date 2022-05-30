@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Record};
+use crate::Record;
+use snarkvm_console_account::PrivateKey;
 use snarkvm_console_network::Network;
+
+use anyhow::Result;
 
 pub struct Execution;
 
@@ -54,3 +57,13 @@ pub struct Transition<N: Network> {
     /// The net difference between the input and output balances.
     fee: u64,
 }
+
+// impl<N: Network> Transition<N> {
+//     pub fn new(
+//         private_key: PrivateKey<N>,
+//         root: N::Field,
+//         inputs: &[Record<N>],
+//         outputs: &[Record<N>],
+//     ) -> Result<Self> {
+//     }
+// }

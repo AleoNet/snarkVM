@@ -14,26 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[macro_use]
-extern crate enum_index_derive;
-
-mod data;
-pub use data::*;
-
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
-pub mod traits;
-pub use traits::*;
-
-// pub mod transaction;
-// pub use transaction::*;
-
-pub mod transition;
-pub use transition::*;
+impl<N: Network> State<N> {
+    /// Returns the serial number of the record.
+    pub fn to_serial_number(
+        &self,
+        private_key: &PrivateKey<N>,
+        program: N::Field,
+        process: N::Field,
+        data: N::Field,
+        randomizer: N::Scalar,
+    ) -> Result<SerialNumber<N>> {
+        // Compute the commitment for the program state.
+        let commitment = self.to_commitment(program, process, data)?;
+        // Compute the serial number.
+        SerialNumber::<N>::prove(&private_key.sk_vrf(), commitment, randomizer)
+    }
+}
