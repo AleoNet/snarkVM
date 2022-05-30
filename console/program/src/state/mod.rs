@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod encryption_randomizer;
+pub use encryption_randomizer::EncryptionRandomizer;
+
+mod serial_number;
+pub use serial_number::SerialNumber;
+
 mod decrypt;
 mod encrypt;
 mod to_commitment;
 mod to_serial_number;
-
-mod serial_number;
-pub use serial_number::SerialNumber;
 
 use crate::{Ciphertext, Data, Record};
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
