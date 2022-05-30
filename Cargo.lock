@@ -24,9 +24,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c61da63d0dc52d8539cce59ca6524aebe2d54563c56e4da7bf2266b0c87ae763"
+checksum = "6613c3c045767658f6cc0f5356414ca7814fb936df9197367914e5809e24622a"
 dependencies = [
  "aleo-std-cpu",
  "aleo-std-profiler",
@@ -44,9 +44,9 @@ checksum = "d1dcc739555d14733cbe4756f144b81d64f01843df359189b4d71bd5e521e2ee"
 
 [[package]]
 name = "aleo-std-profiler"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "360a97d2f318af317382164debf2acb0aef276117ad06616f2768909aff01afe"
+checksum = "3d72acece2832bc2aceeebcbb58f5ea7526c2524ccbbf13229ff1be8bc9ccc15"
 dependencies = [
  "colored",
 ]
@@ -73,9 +73,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std-timed"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11181d862c3f3ad1e8e1cf0152b6cd15077224cb2a16d58116f7f3884016f384"
+checksum = "6118baab6285accf088b31d5ea5029c37bbf9d98e62b4d8720a0a5a66bc2e427"
 dependencies = [
  "proc-macro2 1.0.39",
  "quote 1.0.18",

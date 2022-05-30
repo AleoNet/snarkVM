@@ -30,7 +30,7 @@ path = "../../utilities"
 version = "0.7.5"
 
 [dependencies.aleo-std]
-version = "0.1.13"
+version = "0.1.14"
 default-features = false
 
 [dependencies.anyhow]
