@@ -97,6 +97,15 @@ pub trait Aleo: Environment {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
+    /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
+    fn hash_to_group_psd2(input: &[Field<Self>]) -> Group<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
+    fn hash_to_group_psd4(input: &[Field<Self>]) -> Group<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
+    fn hash_to_group_psd8(input: &[Field<Self>]) -> Group<Self>;
+
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Field<Self>]) -> Scalar<Self>;
 

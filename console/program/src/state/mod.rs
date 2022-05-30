@@ -22,7 +22,7 @@ pub use serial_number::SerialNumber;
 
 mod decrypt;
 mod encrypt;
-mod to_commitment;
+mod to_id;
 mod to_serial_number;
 
 use crate::{Ciphertext, Data, Record};
@@ -58,8 +58,22 @@ impl<N: Network> State<N> {
         owner: Address<N>,
         balance: u64,
         data: Data<N, Ciphertext<N>>,
+        randomizer: &Randomizer<N>,
+    ) -> Self {
+        // Return the new program state.
+        Self::from(program, process, owner, balance, data, randomizer.to_nonce())
+    }
+
+    /// Initializes a new instance of `State`.
+    pub fn from(
+        program: N::Field,
+        process: N::Field,
+        owner: Address<N>,
+        balance: u64,
+        data: Data<N, Ciphertext<N>>,
         nonce: N::Affine,
     ) -> Self {
+        // Return the new program state.
         Self { program, process, owner, balance, data, nonce }
     }
 

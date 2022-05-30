@@ -16,16 +16,22 @@
 
 use super::*;
 
-impl<A: Aleo> State<A> {
-    /// Returns the program state commitment.
+impl<A: Aleo> Record<A> {
+    /// Returns the record commitment.
     pub fn to_commitment(&self) -> Field<A> {
-        // Retrieve the x-coordinate of the owner.
-        let owner = self.owner.to_field();
-        // Convert the balance into a field element.
-        let balance = self.balance.to_field();
-        // Compute the BHP hash of the program state.
+        // Compute the BHP hash of the program record.
         A::hash_bhp1024(
-            &[&self.program, &self.process, &owner, &balance, &self.data, &self.nonce.to_x_coordinate()].to_bits_le(),
+            &[
+                &self.program,
+                &self.process,
+                &self.owner,
+                &self.balance,
+                &self.data,
+                &self.nonce.to_x_coordinate(),
+                &self.mac,
+                &self.bcm,
+            ]
+            .to_bits_le(),
         )
     }
 }

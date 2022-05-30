@@ -27,18 +27,15 @@ impl<N: Network> Randomizer<N> {
         // Sample a random nonce from the scalar field.
         let nonce = N::Scalar::rand(rng);
 
-        // Construct the input as: [ serial_numbers || output_index ].
-        let mut input = Vec::with_capacity(serial_numbers.len() + 1);
-        input.extend_from_slice(serial_numbers);
-        input.push(N::Field::from(output_index as u128));
+        // Hash the input as `Hash(serial_numbers)`.
+        let serial_numbers_digest = N::hash_bhp1024(&serial_numbers.to_bits_le())?;
 
-        // Hash the input as `Hash(serial_numbers || output_index)`.
-        // (For advanced users): The input hash is injected as a public input
-        // to the output circuit, which ensures the VRF input is of fixed size.
-        let input_hash = N::hash_psd4(&input)?;
-
-        // Compute the generator `H` as `HashToGroup(input_hash)`.
-        let generator_h = N::hash_to_group_psd2(&[N::randomizer_domain(), input_hash])?;
+        // Compute the generator `H` as `HashToGroup([ Hash(serial_numbers) || output_index ])`.
+        let generator_h = N::hash_to_group_psd4(&[
+            N::randomizer_domain(),
+            serial_numbers_digest,
+            N::Field::from(output_index as u128),
+        ])?;
 
         // Compute `address` as `view_key * G`.
         let address = Address::try_from(view_key)?;
@@ -60,7 +57,7 @@ impl<N: Network> Randomizer<N> {
         let response = nonce - challenge * **view_key;
 
         // Compute `randomizer` as `HashToScalar(COFACTOR * gamma)`.
-        let randomizer = N::hash_to_scalar_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
+        let randomizer = N::hash_to_scalar_psd2(&[N::randomizer_domain(), gamma.mul_by_cofactor().to_x_coordinate()])?;
 
         // Return the randomizer and proof.
         Ok(Self { randomizer, proof: (gamma, challenge, response) })

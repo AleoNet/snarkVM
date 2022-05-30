@@ -50,7 +50,7 @@ impl<N: Network> Record<N> {
         // Decrypt the balance.
         let balance = (self.balance - randomizers[1]).to_bytes_le()?;
         // Ensure the balance is less than or equal to 2^52.
-        if balance.to_bits_le()[52..].iter().all(|bit| !bit) {
+        if balance.to_bits_le()[52..].iter().any(|bit| *bit) {
             bail!("Failed to decrypt an invalid balance into state")
         }
         // Recover the balance.
@@ -69,6 +69,6 @@ impl<N: Network> Record<N> {
         }
 
         // Output the state.
-        Ok(State::new(self.program, self.process, owner, balance, self.data.clone(), self.nonce))
+        Ok(State::from(self.program, self.process, owner, balance, self.data.clone(), self.nonce))
     }
 }

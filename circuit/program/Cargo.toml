@@ -37,6 +37,10 @@ optional = true
 path = "../../utilities"
 version = "0.7.5"
 
+[dev-dependencies.snarkvm-console-network]
+path = "../../console/network"
+version = "0.7.5"
+
 [dependencies.nom]
 version = "7.1"
 

@@ -17,9 +17,12 @@
 // #[cfg(test)]
 // use snarkvm_circuit_types::environment::assert_scope;
 
+mod randomizer;
+use randomizer::Randomizer;
+
 mod decrypt;
 mod encrypt;
-mod to_commitment;
+mod to_id;
 
 use crate::Record;
 use snarkvm_circuit_account::ViewKey;

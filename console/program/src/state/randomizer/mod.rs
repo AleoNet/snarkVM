@@ -20,7 +20,7 @@ mod verify;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{CryptoRng, Rng, UniformRand};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
 use anyhow::Result;
 
@@ -31,7 +31,20 @@ pub struct Randomizer<N: Network> {
     proof: (N::Affine, N::Scalar, N::Scalar),
 }
 
+impl<N: Network> From<(N::Scalar, (N::Affine, N::Scalar, N::Scalar))> for Randomizer<N> {
+    /// Note: See `Randomizer::prove` to create a randomizer. This method is used to eject from a circuit.
+    fn from((randomizer, (gamma, challenge, response)): (N::Scalar, (N::Affine, N::Scalar, N::Scalar))) -> Self {
+        Self { randomizer, proof: (gamma, challenge, response) }
+    }
+}
+
 impl<N: Network> Randomizer<N> {
+    /// Returns the nonce, computed as `randomizer * G`.
+    pub fn to_nonce(&self) -> N::Affine {
+        // Compute the program state nonce.
+        N::g_scalar_multiply(&self.randomizer).to_affine()
+    }
+
     /// Returns the randomizer from the VRF.
     pub const fn value(&self) -> &N::Scalar {
         &self.randomizer

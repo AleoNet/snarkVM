@@ -17,7 +17,7 @@
 mod decrypt;
 mod encrypt;
 mod is_owner;
-mod to_id;
+mod to_commitment;
 
 use crate::{Ciphertext, Data, State};
 use snarkvm_console_account::{Address, ViewKey};

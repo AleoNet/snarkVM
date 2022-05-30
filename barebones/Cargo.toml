@@ -27,6 +27,10 @@ package = "snarkvm-console"
 path = "../console"
 version = "0.7.5"
 
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.7.5"
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.5"

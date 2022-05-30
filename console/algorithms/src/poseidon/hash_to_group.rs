@@ -31,7 +31,7 @@ impl<F: PrimeField, const RATE: usize> HashToGroup for Poseidon<F, RATE> {
     ) -> Result<G> {
         // Ensure that the input is not empty.
         ensure!(!input.is_empty(), "Input to hash to group cannot be empty");
-        // Compute the group element as `MapToCurve(HashMany(input)[0]) + MapToCurve(HashMany(input)[1])`.
+        // Compute the group element as `MapToGroup(HashMany(input)[0]) + MapToGroup(HashMany(input)[1])`.
         match self.hash_many(input, 2).iter().map(Elligator2::<G, P>::encode).collect_tuple() {
             Some((Ok((h0, _)), Ok((h1, _)))) => Ok((h0.to_projective() + h1.to_projective()).to_affine()),
             _ => bail!("Poseidon failed to compute hash to group on the given input"),

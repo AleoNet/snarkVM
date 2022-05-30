@@ -17,8 +17,8 @@
 use super::*;
 
 impl<N: Network> Record<N> {
-    /// Returns the record ID.
-    pub fn to_id(&self) -> Result<N::Field> {
+    /// Returns the record commitment.
+    pub fn to_commitment(&self) -> Result<N::Field> {
         // Compute the BHP hash of the program record.
         N::hash_bhp1024(
             &[

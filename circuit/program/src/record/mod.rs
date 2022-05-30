@@ -20,7 +20,7 @@
 mod decrypt;
 mod encrypt;
 mod is_owner;
-mod to_id;
+mod to_commitment;
 
 use crate::State;
 use snarkvm_circuit_account::ViewKey;

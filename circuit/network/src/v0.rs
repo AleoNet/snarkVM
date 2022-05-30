@@ -19,6 +19,7 @@ use snarkvm_circuit_algorithms::{
     Commit,
     Hash,
     HashMany,
+    HashToGroup,
     HashToScalar,
     Pedersen128,
     Pedersen64,
@@ -208,6 +209,21 @@ impl Aleo for AleoV0 {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>> {
         POSEIDON_8.with(|poseidon| poseidon.hash_many(input, num_outputs))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
+    fn hash_to_group_psd2(input: &[Field<Self>]) -> Group<Self> {
+        POSEIDON_2.with(|poseidon| poseidon.hash_to_group(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
+    fn hash_to_group_psd4(input: &[Field<Self>]) -> Group<Self> {
+        POSEIDON_4.with(|poseidon| poseidon.hash_to_group(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
+    fn hash_to_group_psd8(input: &[Field<Self>]) -> Group<Self> {
+        POSEIDON_8.with(|poseidon| poseidon.hash_to_group(input))
     }
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.

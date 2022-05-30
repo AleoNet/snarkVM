@@ -2037,6 +2037,7 @@ dependencies = [
  "rand",
  "snarkvm-circuit",
  "snarkvm-console",
+ "snarkvm-fields",
  "snarkvm-utilities",
 ]
 
@@ -2152,6 +2153,7 @@ dependencies = [
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
  "snarkvm-console-account",
+ "snarkvm-console-network",
  "snarkvm-console-program",
  "snarkvm-utilities",
 ]

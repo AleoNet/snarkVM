@@ -16,20 +16,18 @@
 
 use super::*;
 
-impl<A: Aleo> Record<A> {
-    /// Returns the record ID.
-    pub fn to_id(&self) -> Field<A> {
+impl<N: Network> State<N> {
+    /// Returns the program state ID.
+    pub fn to_id(&self) -> Result<N::Field> {
         // Compute the BHP hash of the program state.
-        A::hash_bhp1024(
+        N::hash_bhp1024(
             &[
-                &self.program,
-                &self.process,
-                &self.owner,
-                &self.balance,
-                &self.data,
-                &self.nonce.to_x_coordinate(),
-                &self.mac,
-                &self.bcm,
+                self.program,
+                self.process,
+                self.owner.to_x_coordinate(),
+                N::Field::from(self.balance as u128),
+                self.data.to_id()?,
+                self.nonce.to_x_coordinate(),
             ]
             .to_bits_le(),
         )
