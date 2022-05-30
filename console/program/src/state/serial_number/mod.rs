@@ -19,12 +19,25 @@ mod verify;
 
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
 use anyhow::Result;
 
 pub struct SerialNumber<N: Network> {
-    /// The output of the VRF.
-    output: N::Scalar,
-    /// The proof for the VRF output: `(gamma, challenge, response)`.
+    /// The serial number from the VRF.
+    serial_number: N::Field,
+    /// The proof for the serial number: `(gamma, challenge, response)`.
     proof: (N::Affine, N::Scalar, N::Scalar),
+}
+
+impl<N: Network> SerialNumber<N> {
+    /// Returns the serial number from the VRF.
+    pub const fn value(&self) -> &N::Field {
+        &self.serial_number
+    }
+
+    /// Returns the proof for the serial number.
+    pub const fn proof(&self) -> &(N::Affine, N::Scalar, N::Scalar) {
+        &self.proof
+    }
 }

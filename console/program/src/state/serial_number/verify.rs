@@ -22,11 +22,11 @@ impl<N: Network> SerialNumber<N> {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
-        // Compute the generator `H` as `HashToCurve(commitment)`.
+        // Compute the generator `H` as `HashToGroup(commitment)`.
         let generator_h = match N::hash_to_group_psd2(&[commitment]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
-                eprintln!("Failed to compute the generator H: {}", err);
+                eprintln!("Failed to compute the generator H: {err}");
                 return false;
             }
         };
@@ -41,22 +41,31 @@ impl<N: Network> SerialNumber<N> {
         let candidate_challenge = match N::hash_to_scalar_psd4(&[pk_vrf, &gamma, &u, &v].map(|c| c.to_x_coordinate())) {
             Ok(candidate_challenge) => candidate_challenge,
             Err(err) => {
-                eprintln!("Failed to compute the challenge: {}", err);
+                eprintln!("Failed to compute the challenge: {err}");
                 return false;
             }
         };
 
-        // Compute `candidate_output` as `HashToScalar(COFACTOR * gamma)`.
-        let candidate_output = match N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
-            Ok(candidate_output) => candidate_output,
+        // Compute `serial_number_nonce` as `Hash(COFACTOR * gamma)`.
+        let serial_number_nonce = match N::hash_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
+            Ok(serial_number_nonce) => serial_number_nonce,
             Err(err) => {
-                eprintln!("Failed to compute the output: {}", err);
+                eprintln!("Failed to compute the serial number nonce: {err}");
                 return false;
             }
         };
 
-        // Return whether the proof is valid.
-        challenge == candidate_challenge && self.output == candidate_output
+        // Compute `candidate_serial_number` as `Hash(commitment || serial_number_nonce)`.
+        let candidate_serial_number = match N::hash_bhp512(&[commitment, serial_number_nonce].to_bits_le()) {
+            Ok(candidate_serial_number) => candidate_serial_number,
+            Err(err) => {
+                eprintln!("Failed to compute the serial number: {err}");
+                return false;
+            }
+        };
+
+        // Return `true` the serial number is valid.
+        challenge == candidate_challenge && self.serial_number == candidate_serial_number
     }
 }
 

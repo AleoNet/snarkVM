@@ -37,7 +37,7 @@ impl<N: Network> Randomizer<N> {
         &self.randomizer
     }
 
-    /// Returns the proof of the VRF.
+    /// Returns the proof for the randomizer.
     pub const fn proof(&self) -> &(N::Affine, N::Scalar, N::Scalar) {
         &self.proof
     }

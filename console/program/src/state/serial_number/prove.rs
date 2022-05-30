@@ -17,9 +17,9 @@
 use super::*;
 
 impl<N: Network> SerialNumber<N> {
-    /// Returns a new NSEC5 proof, given a VRF secret key, an input, and a randomizer.
+    /// Returns a new serial number and proof, given a VRF secret key, an input, and a randomizer.
     pub fn prove(sk_vrf: &N::Scalar, commitment: N::Field, randomizer: N::Scalar) -> Result<Self> {
-        // Compute the generator `H` as `HashToCurve(commitment)`.
+        // Compute the generator `H` as `HashToGroup(commitment)`.
         let generator_h = N::hash_to_group_psd2(&[commitment])?;
 
         // Compute `pk_vrf` as `sk_vrf * G`.
@@ -41,10 +41,13 @@ impl<N: Network> SerialNumber<N> {
         // Compute `response` as `randomizer - challenge * sk_vrf`.
         let response = randomizer - challenge * sk_vrf;
 
-        // Compute `output` as `HashToScalar(COFACTOR * gamma)`.
-        let output = N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
+        // Compute `serial_number_nonce` as `Hash(COFACTOR * gamma)`.
+        let serial_number_nonce = N::hash_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
 
-        // Return the proof.
-        Ok(Self { output, proof: (gamma, challenge, response) })
+        // Compute `serial_number` as `Hash(commitment || serial_number_nonce)`.
+        let serial_number = N::hash_bhp512(&[commitment, serial_number_nonce].to_bits_le())?;
+
+        // Return the serial number and proof.
+        Ok(Self { serial_number, proof: (gamma, challenge, response) })
     }
 }

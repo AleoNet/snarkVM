@@ -33,7 +33,7 @@ impl<N: Network> Randomizer<N> {
         let input_hash = match N::hash_psd4(&input) {
             Ok(input_hash) => input_hash,
             Err(err) => {
-                eprintln!("Failed to compute the input hash: {}", err);
+                eprintln!("Failed to compute the input hash: {err}");
                 return false;
             }
         };
@@ -42,7 +42,7 @@ impl<N: Network> Randomizer<N> {
         let generator_h = match N::hash_to_group_psd2(&[input_hash]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
-                eprintln!("Failed to compute the generator H: {}", err);
+                eprintln!("Failed to compute the generator H: {err}");
                 return false;
             }
         };
@@ -57,21 +57,21 @@ impl<N: Network> Randomizer<N> {
         let candidate_challenge = match N::hash_to_scalar_psd4(&[**address, gamma, u, v].map(|c| c.to_x_coordinate())) {
             Ok(candidate_challenge) => candidate_challenge,
             Err(err) => {
-                eprintln!("Failed to compute the challenge: {}", err);
+                eprintln!("Failed to compute the challenge: {err}");
                 return false;
             }
         };
 
         // Compute `candidate_randomizer` as `HashToScalar(COFACTOR * gamma)`.
-        let candidate_randomizer = match N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
+        let candidate_randomizer = match N::hash_to_scalar_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
             Ok(candidate_randomizer) => candidate_randomizer,
             Err(err) => {
-                eprintln!("Failed to compute the randomizer: {}", err);
+                eprintln!("Failed to compute the randomizer: {err}");
                 return false;
             }
         };
 
-        // Return whether the proof is valid.
+        // Return `true` the randomizer is valid.
         challenge == candidate_challenge && self.randomizer == candidate_randomizer
     }
 }

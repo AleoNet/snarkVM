@@ -60,9 +60,9 @@ impl<N: Network> Randomizer<N> {
         let response = nonce - challenge * **view_key;
 
         // Compute `randomizer` as `HashToScalar(COFACTOR * gamma)`.
-        let randomizer = N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
+        let randomizer = N::hash_to_scalar_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
 
-        // Return the proof.
+        // Return the randomizer and proof.
         Ok(Self { randomizer, proof: (gamma, challenge, response) })
     }
 }
