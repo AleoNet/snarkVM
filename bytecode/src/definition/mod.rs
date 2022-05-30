@@ -156,7 +156,7 @@ impl<P: Program> fmt::Display for Definition<P> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (type_name, name, members) = match self {
-            Self::Interface(name, members) => ("struct", name, members),
+            Self::Interface(name, members) => ("interface", name, members),
             Self::Record(name, members) => ("record", name, members),
         };
 
