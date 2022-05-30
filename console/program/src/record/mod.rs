@@ -30,6 +30,10 @@ use anyhow::{bail, Result};
 /// A program's record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 pub struct Record<N: Network> {
+    /// The program ID of the record.
+    program: N::Field,
+    /// The process ID of the record.
+    process: N::Field,
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: N::Field,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).

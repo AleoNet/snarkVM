@@ -69,6 +69,6 @@ impl<N: Network> Record<N> {
         }
 
         // Output the state.
-        Ok(State::from((owner, balance, data, self.nonce)))
+        Ok(State::new(self.program, self.process, owner, balance, data, self.nonce))
     }
 }

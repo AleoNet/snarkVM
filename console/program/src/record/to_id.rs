@@ -18,12 +18,20 @@ use super::*;
 
 impl<N: Network> Record<N> {
     /// Returns the record ID.
-    pub fn to_id(&self, program: &N::Field, process: &N::Field) -> Result<N::Field> {
-        // Retrieve the x-coordinate of the nonce.
-        let nonce = self.nonce.to_x_coordinate();
-        // Compute the BHP hash of the program state.
+    pub fn to_id(&self) -> Result<N::Field> {
+        // Compute the BHP hash of the program record.
         N::hash_bhp1024(
-            &[*program, *process, self.owner, self.balance, self.data.to_id()?, nonce, self.mac, self.bcm].to_bits_le(),
+            &[
+                self.program,
+                self.process,
+                self.owner,
+                self.balance,
+                self.data.to_id()?,
+                self.nonce.to_x_coordinate(),
+                self.mac,
+                self.bcm,
+            ]
+            .to_bits_le(),
         )
     }
 }

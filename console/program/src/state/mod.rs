@@ -30,6 +30,10 @@ use anyhow::Result;
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.
 pub struct State<N: Network> {
+    /// The program ID of the record.
+    program: N::Field,
+    /// The process ID of the record.
+    process: N::Field,
     /// The Aleo address this state belongs to.
     owner: Address<N>,
     /// The account balance in this program state.
@@ -40,14 +44,19 @@ pub struct State<N: Network> {
     nonce: N::Affine,
 }
 
-impl<N: Network> From<(Address<N>, u64, Data<N, Plaintext<N>>, N::Affine)> for State<N> {
-    #[inline]
-    fn from((owner, balance, data, nonce): (Address<N>, u64, Data<N, Plaintext<N>>, N::Affine)) -> Self {
-        Self { owner, balance, data, nonce }
-    }
-}
-
 impl<N: Network> State<N> {
+    /// Initializes a new instance of `State`.
+    pub fn new(
+        program: N::Field,
+        process: N::Field,
+        owner: Address<N>,
+        balance: u64,
+        data: Data<N, Plaintext<N>>,
+        nonce: N::Affine,
+    ) -> Self {
+        Self { program, process, owner, balance, data, nonce }
+    }
+
     /// Returns the record corresponding to the state.
     pub fn encrypt(&self, randomizer: &N::Scalar) -> Result<Record<N>> {
         Record::encrypt(self, randomizer)
@@ -58,16 +67,30 @@ impl<N: Network> State<N> {
         record.decrypt(view_key)
     }
 
-    /// Returns the program state commitment, given the program ID, process ID, and data ID.
-    pub fn to_commitment(&self, program: N::Field, process: N::Field, data: N::Field) -> Result<N::Field> {
-        // Retrieve the x-coordinate of the owner.
-        let owner = self.owner.to_x_coordinate();
-        // Convert the balance into a field element.
-        let balance = N::Field::from(self.balance as u128);
-        // Retrieve the x-coordinate of the nonce.
-        let nonce = self.nonce.to_x_coordinate();
+    /// Returns the program state commitment, given the data ID.
+    pub fn to_commitment(&self, data: N::Field) -> Result<N::Field> {
         // Compute the BHP hash of the program state.
-        N::hash_bhp1024(&[program, process, owner, balance, data, nonce].to_bits_le())
+        N::hash_bhp1024(
+            &[
+                self.program,
+                self.process,
+                self.owner.to_x_coordinate(),
+                N::Field::from(self.balance as u128),
+                data,
+                self.nonce.to_x_coordinate(),
+            ]
+            .to_bits_le(),
+        )
+    }
+
+    /// Returns the program ID.
+    pub const fn program(&self) -> N::Field {
+        self.program
+    }
+
+    /// Returns the process ID.
+    pub const fn process(&self) -> N::Field {
+        self.process
     }
 
     /// Returns the account owner.

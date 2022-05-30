@@ -21,13 +21,11 @@ impl<N: Network> State<N> {
     pub fn to_serial_number(
         &self,
         private_key: &PrivateKey<N>,
-        program: N::Field,
-        process: N::Field,
         data: N::Field,
         randomizer: N::Scalar,
     ) -> Result<SerialNumber<N>> {
         // Compute the commitment for the program state.
-        let commitment = self.to_commitment(program, process, data)?;
+        let commitment = self.to_commitment(data)?;
         // Compute the serial number.
         SerialNumber::<N>::prove(&private_key.sk_vrf(), commitment, randomizer)
     }

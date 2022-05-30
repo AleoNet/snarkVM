@@ -50,6 +50,26 @@ impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
 }
 
 /********************/
+/****** Tuples ******/
+/********************/
+
+impl<C0: ToBits, C1: ToBits> ToBits for (C0, C1) {
+    /// A helper method to return a concatenated list of little-endian bits from the circuits.
+    #[inline]
+    fn to_bits_le(&self) -> Vec<bool> {
+        // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
+        self.0.to_bits_le().into_iter().chain(self.1.to_bits_le().into_iter()).collect()
+    }
+
+    /// A helper method to return a concatenated list of big-endian bits from the circuits.
+    #[inline]
+    fn to_bits_be(&self) -> Vec<bool> {
+        // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
+        self.0.to_bits_be().into_iter().chain(self.1.to_bits_be().into_iter()).collect()
+    }
+}
+
+/********************/
 /***** Integers *****/
 /********************/
 

@@ -59,21 +59,8 @@ impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Entry<N, Priva
 impl<N: Network> Data<N, Ciphertext<N>> {
     /// Returns the data ID, as a hash over the **`Data<N, Ciphertext<N>>` variant**.
     pub fn to_id(&self) -> Result<N::Field> {
-        // for entry in &self.data {
-        //     match entry {
-        //         Entry::Constant(plaintext) => match plaintext {
-        //             Plaintext::Literal(literal) => literal.to_bytes_le(),
-        //             Plaintext::Composite(composite) =>
-        //         },
-        //         Entry::Public(plaintext) => ,
-        //         Entry::Private(ciphertext) => ,
-        //     }
-        //
-        // }
-
-        // N::hash_psd8([self.data])
-        use snarkvm_fields::Zero;
-        Ok(N::Field::zero())
+        // Compute the BHP hash of the flattened data.
+        N::hash_bhp1024(&self.0.to_bits_le())
     }
 }
 
