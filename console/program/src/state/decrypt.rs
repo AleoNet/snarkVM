@@ -17,11 +17,8 @@
 use super::*;
 
 impl<N: Network> State<N> {
-    /// Returns the serial number of the record.
-    pub fn to_serial_number(&self, private_key: &PrivateKey<N>, randomizer: N::Scalar) -> Result<SerialNumber<N>> {
-        // Compute the commitment for the program state.
-        let commitment = self.to_commitment()?;
-        // Compute the serial number.
-        SerialNumber::<N>::prove(&private_key.sk_vrf(), commitment, randomizer)
+    /// Initializes a new instance of `State` given a record and view key.
+    pub fn decrypt(record: &Record<N>, view_key: &ViewKey<N>) -> Result<Self> {
+        record.decrypt(view_key)
     }
 }

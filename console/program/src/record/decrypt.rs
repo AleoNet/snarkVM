@@ -56,8 +56,8 @@ impl<N: Network> Record<N> {
         // Recover the balance.
         let balance = u64::from_le_bytes(balance[0..8].try_into()?);
 
-        // Decrypt the data.
-        let data = self.data.decrypt_symmetric(&(*record_view_key * randomizers[2]))?;
+        // // Decrypt the data.
+        // let data = self.data.decrypt_symmetric(&(*record_view_key * randomizers[2]))?;
 
         // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
         let r_bcm = N::hash_to_scalar_psd2(&[N::randomizer_domain(), *record_view_key])?;
@@ -69,6 +69,6 @@ impl<N: Network> Record<N> {
         }
 
         // Output the state.
-        Ok(State::new(self.program, self.process, owner, balance, data, self.nonce))
+        Ok(State::new(self.program, self.process, owner, balance, self.data.clone(), self.nonce))
     }
 }

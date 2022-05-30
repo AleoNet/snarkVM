@@ -31,6 +31,7 @@ pub use plaintext::Plaintext;
 
 mod decrypt;
 mod encrypt;
+mod to_bits;
 
 use crate::{FromFields, ToFields};
 use snarkvm_console_account::{Address, ViewKey};
@@ -60,7 +61,7 @@ impl<N: Network> Data<N, Ciphertext<N>> {
     /// Returns the data ID, as a hash over the **`Data<N, Ciphertext<N>>` variant**.
     pub fn to_id(&self) -> Result<N::Field> {
         // Compute the BHP hash of the flattened data.
-        N::hash_bhp1024(&self.0.to_bits_le())
+        N::hash_bhp1024(&self.to_bits_le())
     }
 }
 

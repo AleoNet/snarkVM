@@ -42,8 +42,8 @@ impl<N: Network> Record<N> {
         // Encrypt the balance.
         let balance = N::Field::from(*state.balance() as u128) + randomizers[1];
 
-        // Encrypt the data.
-        let data = state.data().encrypt_symmetric(&(*record_view_key * randomizers[2]))?;
+        // // Encrypt the data.
+        // let data = state.data().encrypt_symmetric(&(*record_view_key * randomizers[2]))?;
 
         // Compute the MAC := Hash(G^r^view_key).
         let mac = N::hash_psd2(&[N::mac_domain(), *record_view_key])?;
@@ -58,7 +58,7 @@ impl<N: Network> Record<N> {
             process: state.process(),
             owner,
             balance,
-            data,
+            data: state.data().clone(),
             nonce: *state.nonce(),
             mac,
             bcm,

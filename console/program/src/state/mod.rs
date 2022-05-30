@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod decrypt;
+mod encrypt;
+mod to_commitment;
 mod to_serial_number;
 
 mod serial_number;
 pub use serial_number::SerialNumber;
 
-use crate::{Data, Plaintext, Record};
+use crate::{Ciphertext, Data, Record};
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::AffineCurve;
@@ -39,7 +42,7 @@ pub struct State<N: Network> {
     /// The account balance in this program state.
     balance: u64,
     /// The data for this program state.
-    data: Data<N, Plaintext<N>>,
+    data: Data<N, Ciphertext<N>>,
     /// The nonce for this program state (i.e. `G^r`).
     nonce: N::Affine,
 }
@@ -51,36 +54,10 @@ impl<N: Network> State<N> {
         process: N::Field,
         owner: Address<N>,
         balance: u64,
-        data: Data<N, Plaintext<N>>,
+        data: Data<N, Ciphertext<N>>,
         nonce: N::Affine,
     ) -> Self {
         Self { program, process, owner, balance, data, nonce }
-    }
-
-    /// Returns the record corresponding to the state.
-    pub fn encrypt(&self, randomizer: &N::Scalar) -> Result<Record<N>> {
-        Record::encrypt(self, randomizer)
-    }
-
-    /// Initializes a new instance of `State` given a record and view key.
-    pub fn decrypt(record: &Record<N>, view_key: &ViewKey<N>) -> Result<Self> {
-        record.decrypt(view_key)
-    }
-
-    /// Returns the program state commitment, given the data ID.
-    pub fn to_commitment(&self, data: N::Field) -> Result<N::Field> {
-        // Compute the BHP hash of the program state.
-        N::hash_bhp1024(
-            &[
-                self.program,
-                self.process,
-                self.owner.to_x_coordinate(),
-                N::Field::from(self.balance as u128),
-                data,
-                self.nonce.to_x_coordinate(),
-            ]
-            .to_bits_le(),
-        )
     }
 
     /// Returns the program ID.
@@ -103,8 +80,8 @@ impl<N: Network> State<N> {
         &self.balance
     }
 
-    /// Returns the program data ID.
-    pub const fn data(&self) -> &Data<N, Plaintext<N>> {
+    /// Returns the program data.
+    pub const fn data(&self) -> &Data<N, Ciphertext<N>> {
         &self.data
     }
 

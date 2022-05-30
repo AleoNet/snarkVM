@@ -17,11 +17,19 @@
 use super::*;
 
 impl<N: Network> State<N> {
-    /// Returns the serial number of the record.
-    pub fn to_serial_number(&self, private_key: &PrivateKey<N>, randomizer: N::Scalar) -> Result<SerialNumber<N>> {
-        // Compute the commitment for the program state.
-        let commitment = self.to_commitment()?;
-        // Compute the serial number.
-        SerialNumber::<N>::prove(&private_key.sk_vrf(), commitment, randomizer)
+    /// Returns the program state commitment, given the data ID.
+    pub fn to_commitment(&self) -> Result<N::Field> {
+        // Compute the BHP hash of the program state.
+        N::hash_bhp1024(
+            &[
+                self.program,
+                self.process,
+                self.owner.to_x_coordinate(),
+                N::Field::from(self.balance as u128),
+                self.data.to_id()?,
+                self.nonce.to_x_coordinate(),
+            ]
+            .to_bits_le(),
+        )
     }
 }
