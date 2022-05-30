@@ -168,11 +168,15 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
             match tuples.len() >= 100 {
                 // Option 1: Borrow the tree to compute and store the hashes for the new indices in the current level.
                 true => cfg_iter_mut!(tree[middle..end]).zip_eq(cfg_iter!(tuples)).try_for_each(
-                    |(node, (left, right))| Ok::<_, Error>(*node = path_hasher.hash_children(left, right)?),
+                    |(node, (left, right))| {
+                        *node = path_hasher.hash_children(left, right)?;
+                        Ok::<_, Error>(())
+                    },
                 )?,
                 // Option 2: Compute and store the hashes for the new indices in the current level.
                 false => tree[middle..end].iter_mut().zip_eq(&tuples).try_for_each(|(node, (left, right))| {
-                    Ok::<_, Error>(*node = path_hasher.hash_children(left, right)?)
+                    *node = path_hasher.hash_children(left, right)?;
+                    Ok::<_, Error>(())
                 })?,
             }
             lap!(timer, "Compute: {middle} -> {end}");
