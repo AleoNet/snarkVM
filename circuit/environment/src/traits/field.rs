@@ -21,7 +21,6 @@ pub trait FieldTrait:
     Add<Output = Self>
     + AddAssign
     + Clone
-    + Debug
     + Div<Output = Self>
     + DivAssign
     + Double<Output = Self>

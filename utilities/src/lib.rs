@@ -30,13 +30,11 @@ pub use core::*;
 #[doc(hidden)]
 pub use std::*;
 
-#[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)]
 #[doc(hidden)]
 pub use alloc::{boxed::Box, vec::Vec};
 
-#[rustfmt::skip]
 #[cfg(feature = "std")]
 #[allow(unused_imports)]
 #[doc(hidden)]

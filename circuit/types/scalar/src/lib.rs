@@ -52,16 +52,12 @@ impl<E: Environment> Inject for Scalar<E> {
 impl<E: Environment> Eject for Scalar<E> {
     type Primitive = E::ScalarField;
 
-    ///
     /// Ejects the mode of the scalar field.
-    ///
     fn eject_mode(&self) -> Mode {
         self.bits_le.eject_mode()
     }
 
-    ///
     /// Ejects the scalar field as a constant scalar field value.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         let bits = self.bits_le.eject_value();
         let biginteger = match <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits) {
@@ -111,12 +107,6 @@ impl<E: Environment> TypeName for Scalar<E> {
     }
 }
 
-impl<E: Environment> Debug for Scalar<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.eject_value())
-    }
-}
-
 impl<E: Environment> Display for Scalar<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
@@ -162,12 +152,12 @@ mod tests {
     }
 
     /// Attempts to construct a field from the given element and mode,
-    /// format it in debug mode, and recover a field from it.
-    fn check_debug(mode: Mode, element: <Circuit as Environment>::ScalarField) {
+    /// format it in display mode, and recover a field from it.
+    fn check_display(mode: Mode, element: <Circuit as Environment>::ScalarField) {
         let candidate = Scalar::<Circuit>::new(mode, element);
-        assert_eq!(element.to_string(), format!("{:?}", candidate));
+        assert_eq!(format!("{element}{}.{mode}", Scalar::<Circuit>::type_name()), format!("{candidate}"));
 
-        let candidate_element = <Circuit as Environment>::ScalarField::from_str(&format!("{:?}", candidate)).unwrap();
+        let candidate_element = <Circuit as Environment>::ScalarField::from_str(&candidate.to_string()).unwrap();
         let candidate_recovered = Scalar::<Circuit>::new(mode, candidate_element);
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
@@ -191,69 +181,69 @@ mod tests {
     }
 
     #[test]
-    fn test_debug() {
+    fn test_display() {
         for _ in 0..ITERATIONS {
             let element: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
             // Constant
-            check_debug(Mode::Constant, element);
+            check_display(Mode::Constant, element);
             // Public
-            check_debug(Mode::Public, element);
+            check_display(Mode::Public, element);
             // Private
-            check_debug(Mode::Private, element);
+            check_display(Mode::Private, element);
         }
     }
 
     #[test]
-    fn test_debug_zero() {
+    fn test_display_zero() {
         let zero = <Circuit as Environment>::ScalarField::zero();
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, zero);
-        assert_eq!("0", &format!("{:?}", candidate));
+        assert_eq!("0", &format!("{}", candidate));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, zero);
-        assert_eq!("0", &format!("{:?}", candidate));
+        assert_eq!("0", &format!("{}", candidate));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, zero);
-        assert_eq!("0", &format!("{:?}", candidate));
+        assert_eq!("0", &format!("{}", candidate));
     }
 
     #[test]
-    fn test_debug_one() {
+    fn test_display_one() {
         let one = <Circuit as Environment>::ScalarField::one();
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, one);
-        assert_eq!("1", &format!("{:?}", candidate));
+        assert_eq!("1", &format!("{}", candidate));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, one);
-        assert_eq!("1", &format!("{:?}", candidate));
+        assert_eq!("1", &format!("{}", candidate));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, one);
-        assert_eq!("1", &format!("{:?}", candidate));
+        assert_eq!("1", &format!("{}", candidate));
     }
 
     #[test]
-    fn test_debug_two() {
+    fn test_display_two() {
         let one = <Circuit as Environment>::ScalarField::one();
         let two = one + one;
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2", &format!("{:?}", candidate));
+        assert_eq!("2", &format!("{}", candidate));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2", &format!("{:?}", candidate));
+        assert_eq!("2", &format!("{}", candidate));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2", &format!("{:?}", candidate));
+        assert_eq!("2", &format!("{}", candidate));
     }
 
     #[test]
@@ -326,23 +316,5 @@ mod tests {
                 assert_eq!(mode, candidate.eject_mode());
             }
         }
-    }
-
-    #[test]
-    fn test_display() {
-        let one = <Circuit as Environment>::ScalarField::one();
-        let two = one + one;
-
-        // Constant
-        let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2scalar.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Scalar::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2scalar.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Scalar::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2scalar.private", &format!("{}", candidate));
     }
 }

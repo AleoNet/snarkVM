@@ -53,9 +53,7 @@ impl<E: Environment> FieldTrait for Field<E> {}
 impl<E: Environment> Inject for Field<E> {
     type Primitive = E::BaseField;
 
-    ///
     /// Initializes a new instance of a base field from a primitive base field value.
-    ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
     }
@@ -64,16 +62,12 @@ impl<E: Environment> Inject for Field<E> {
 impl<E: Environment> Eject for Field<E> {
     type Primitive = E::BaseField;
 
-    ///
     /// Ejects the mode of the base field.
-    ///
     fn eject_mode(&self) -> Mode {
         self.linear_combination.mode()
     }
 
-    ///
     /// Ejects the base field as a constant base field value.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         self.linear_combination.value()
     }
@@ -112,12 +106,6 @@ impl<E: Environment> TypeName for Field<E> {
     #[inline]
     fn type_name() -> &'static str {
         "field"
-    }
-}
-
-impl<E: Environment> Debug for Field<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.eject_value())
     }
 }
 
@@ -162,80 +150,80 @@ mod tests {
     const ITERATIONS: u64 = 10_000;
 
     /// Attempts to construct a field from the given element and mode,
-    /// format it in debug mode, and recover a field from it.
-    fn check_debug(mode: Mode, element: <Circuit as Environment>::BaseField) {
+    /// format it in display mode, and recover a field from it.
+    fn check_display(mode: Mode, element: <Circuit as Environment>::BaseField) {
         let candidate = Field::<Circuit>::new(mode, element);
-        assert_eq!(element.to_string(), format!("{:?}", candidate));
+        assert_eq!(format!("{element}{}.{mode}", Field::<Circuit>::type_name()), format!("{candidate}"));
 
-        let candidate_element = <Circuit as Environment>::BaseField::from_str(&format!("{:?}", candidate)).unwrap();
+        let candidate_element = <Circuit as Environment>::BaseField::from_str(&candidate.to_string()).unwrap();
         let candidate_recovered = Field::<Circuit>::new(mode, candidate_element);
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
 
     #[test]
-    fn test_debug() {
+    fn test_display() {
         for _ in 0..ITERATIONS {
             let element = UniformRand::rand(&mut test_rng());
 
             // Constant
-            check_debug(Mode::Constant, element);
+            check_display(Mode::Constant, element);
             // Public
-            check_debug(Mode::Public, element);
+            check_display(Mode::Public, element);
             // Private
-            check_debug(Mode::Private, element);
+            check_display(Mode::Private, element);
         }
     }
 
     #[test]
-    fn test_debug_zero() {
+    fn test_display_zero() {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, zero);
-        assert_eq!("0", &format!("{:?}", candidate));
+        assert_eq!("0.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, zero);
-        assert_eq!("0", &format!("{:?}", candidate));
+        assert_eq!("0.public", &format!("{}", candidate));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, zero);
-        assert_eq!("0", &format!("{:?}", candidate));
+        assert_eq!("0.private", &format!("{}", candidate));
     }
 
     #[test]
-    fn test_debug_one() {
+    fn test_display_one() {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, one);
-        assert_eq!("1", &format!("{:?}", candidate));
+        assert_eq!("1.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, one);
-        assert_eq!("1", &format!("{:?}", candidate));
+        assert_eq!("1.public", &format!("{}", candidate));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, one);
-        assert_eq!("1", &format!("{:?}", candidate));
+        assert_eq!("1.private", &format!("{}", candidate));
     }
 
     #[test]
-    fn test_debug_two() {
+    fn test_display_two() {
         let one = <Circuit as Environment>::BaseField::one();
         let two = one + one;
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2", &format!("{:?}", candidate));
+        assert_eq!("2.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2", &format!("{:?}", candidate));
+        assert_eq!("2.public", &format!("{}", candidate));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2", &format!("{:?}", candidate));
+        assert_eq!("2.private", &format!("{}", candidate));
     }
 
     #[test]
@@ -308,23 +296,5 @@ mod tests {
                 assert_eq!(mode, candidate.eject_mode());
             }
         }
-    }
-
-    #[test]
-    fn test_display() {
-        let one = <Circuit as Environment>::BaseField::one();
-        let two = one + one;
-
-        // Constant
-        let candidate = Field::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2field.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Field::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2field.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Field::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2field.private", &format!("{}", candidate));
     }
 }

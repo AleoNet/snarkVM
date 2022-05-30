@@ -23,7 +23,7 @@ use nom::multi::separated_list1;
 use std::io::{Read, Result as IoResult, Write};
 
 /// A value contains the underlying literal(s) in memory.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Value<P: Program> {
     /// A literal contains its declared literal value.
     Literal(Literal<P::Environment>),
@@ -114,6 +114,28 @@ impl<P: Program> Parser for Value<P> {
             // Parse a value definition.
             parse_definition,
         ))(string)
+    }
+}
+
+#[allow(clippy::format_push_string)]
+impl<P: Program> fmt::Debug for Value<P> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            // Prints the literal, i.e. 10field.private
+            Self::Literal(literal) => fmt::Display::fmt(literal, f),
+            // Prints the definition, i.e. message { aleo1xxx.public, 10i64.private }
+            Self::Definition(name, members) => {
+                let mut output = format!("{name} {{ ");
+                for value in members.iter() {
+                    output += &format!("{value}, ");
+                }
+                output.pop(); // trailing space
+                output.pop(); // trailing comma
+                output += " }";
+                write!(f, "{output}")
+            }
+        }
     }
 }
 

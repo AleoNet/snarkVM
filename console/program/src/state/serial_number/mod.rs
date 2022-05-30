@@ -17,14 +17,10 @@
 mod prove;
 mod verify;
 
-use snarkvm_console_algorithms::{Elligator2, HashMany, HashToScalar, Poseidon4};
 use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::PrimeField;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
-use anyhow::{bail, Result};
-use core::marker::PhantomData;
-use itertools::Itertools;
+use anyhow::Result;
 
 pub struct SerialNumber<N: Network> {
     /// The output of the VRF.

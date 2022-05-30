@@ -112,12 +112,6 @@ impl<E: Environment> TypeName for Address<E> {
     }
 }
 
-impl<E: Environment> Debug for Address<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.eject_value())
-    }
-}
-
 impl<E: Environment> Display for Address<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Convert the x-coordinate to bytes.

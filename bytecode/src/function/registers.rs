@@ -20,13 +20,12 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuit::prelude::*;
 
 use indexmap::IndexMap;
 use std::{cell::RefCell, rc::Rc};
 
 /// The registers contains a mapping of the registers to their corresponding values in a function.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct Registers<P: Program> {
     /// The mapping of registers to their values.
     registers: Rc<RefCell<IndexMap<Locator, Option<Value<P>>>>>,

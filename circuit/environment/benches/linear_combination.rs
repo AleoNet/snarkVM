@@ -77,7 +77,7 @@ fn debug(c: &mut Criterion) {
 
     c.bench_function("debug", move |b| {
         b.iter(|| {
-            let _value = format!("{:?}", candidate);
+            let _value = format!("{:?}", LinearCombination::from(&candidate));
         })
     });
 }

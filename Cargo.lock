@@ -2041,7 +2041,6 @@ dependencies = [
  "paste",
  "snarkvm-algorithms",
  "snarkvm-circuit",
- "snarkvm-console-program",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
@@ -2341,6 +2340,9 @@ dependencies = [
 [[package]]
 name = "snarkvm-console-types"
 version = "0.7.5"
+dependencies = [
+ "snarkvm-console-network",
+]
 
 [[package]]
 name = "snarkvm-curves"

@@ -14,17 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use snarkvm_console_network::Network;
 
-mod field;
-pub use field::*;
-
-mod group;
-pub use group::*;
-
-mod integers;
-pub use integers::*;
-
-mod scalar;
-pub use scalar::*;
+pub struct Scalar<N: Network>(N::Scalar);

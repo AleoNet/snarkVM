@@ -111,16 +111,12 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     type Primitive = I;
 
-    ///
     /// Ejects the mode of the integer.
-    ///
     fn eject_mode(&self) -> Mode {
         self.bits_le.eject_mode()
     }
 
-    ///
     /// Ejects the integer as a constant integer value.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         self.bits_le.iter().rev().fold(I::zero(), |value, bit| match bit.eject_value() {
             true => (value.wrapping_shl(1)) ^ I::one(),
@@ -158,12 +154,6 @@ impl<E: Environment, I: IntegerType> TypeName for Integer<E, I> {
     #[inline]
     fn type_name() -> &'static str {
         I::type_name()
-    }
-}
-
-impl<E: Environment, I: IntegerType> Debug for Integer<E, I> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.eject_value())
     }
 }
 
@@ -243,20 +233,6 @@ mod tests {
         }
     }
 
-    fn check_debug<I: IntegerType>() {
-        // Constant
-        let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
-        assert_eq!("2", format!("{:?}", candidate));
-
-        // Public
-        let candidate = Integer::<Circuit, I>::new(Mode::Public, I::one() + I::one());
-        assert_eq!("2", format!("{:?}", candidate));
-
-        // Private
-        let candidate = Integer::<Circuit, I>::new(Mode::Private, I::one() + I::one());
-        assert_eq!("2", format!("{:?}", candidate));
-    }
-
     fn check_display<I: IntegerType>() {
         // Constant
         let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
@@ -288,8 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u8_debug_and_display() {
-        check_debug::<u8>();
+    fn test_u8_display() {
         check_display::<u8>();
     }
 
@@ -310,8 +285,7 @@ mod tests {
     }
 
     #[test]
-    fn test_i8_debug_and_display() {
-        check_debug::<i8>();
+    fn test_i8_display() {
         check_display::<i8>();
     }
 
@@ -332,8 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u16_debug_and_display() {
-        check_debug::<u16>();
+    fn test_u16_display() {
         check_display::<u16>();
     }
 
@@ -354,8 +327,7 @@ mod tests {
     }
 
     #[test]
-    fn test_i16_debug_and_display() {
-        check_debug::<i16>();
+    fn test_i16_display() {
         check_display::<i16>();
     }
 
@@ -376,8 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u32_debug_and_display() {
-        check_debug::<u32>();
+    fn test_u32_display() {
         check_display::<u32>();
     }
 
@@ -398,8 +369,7 @@ mod tests {
     }
 
     #[test]
-    fn test_i32_debug_and_display() {
-        check_debug::<i32>();
+    fn test_i32_display() {
         check_display::<i32>();
     }
 
@@ -420,8 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u64_debug_and_display() {
-        check_debug::<u64>();
+    fn test_u64_display() {
         check_display::<u64>();
     }
 
@@ -442,8 +411,7 @@ mod tests {
     }
 
     #[test]
-    fn test_i64_debug_and_display() {
-        check_debug::<i64>();
+    fn test_i64_display() {
         check_display::<i64>();
     }
 
@@ -464,8 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn test_u128_debug_and_display() {
-        check_debug::<u128>();
+    fn test_u128_display() {
         check_display::<u128>();
     }
 
@@ -486,8 +453,7 @@ mod tests {
     }
 
     #[test]
-    fn test_i128_debug_and_display() {
-        check_debug::<i128>();
+    fn test_i128_display() {
         check_display::<i128>();
     }
 }

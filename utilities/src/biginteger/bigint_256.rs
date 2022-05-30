@@ -40,6 +40,7 @@ impl BigInteger256 {
         BigInteger256(value)
     }
 }
+
 impl crate::biginteger::BigInteger for BigInteger256 {
     const NUM_LIMBS: usize = 4;
 
@@ -225,6 +226,7 @@ impl crate::biginteger::BigInteger for BigInteger256 {
         res
     }
 }
+
 impl ToBits for BigInteger256 {
     #[doc = " Returns `self` as a boolean array in little-endian order, with trailing zeros."]
     fn to_bits_le(&self) -> Vec<bool> {
@@ -236,6 +238,7 @@ impl ToBits for BigInteger256 {
         BitIteratorBE::new(self).collect::<Vec<_>>()
     }
 }
+
 impl FromBits for BigInteger256 {
     #[doc = " Returns a `BigInteger` by parsing a slice of bits in little-endian format"]
     #[doc = " and transforms it into a slice of little-endian u64 elements."]
@@ -260,18 +263,21 @@ impl FromBits for BigInteger256 {
         Self::from_bits_le(&bits_reversed)
     }
 }
+
 impl ToBytes for BigInteger256 {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         self.0.write_le(writer)
     }
 }
+
 impl FromBytes for BigInteger256 {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
         <[u64; 4]>::read_le(reader).map(Self::new)
     }
 }
+
 impl Debug for BigInteger256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for i in self.0.iter().rev() {
@@ -280,11 +286,13 @@ impl Debug for BigInteger256 {
         Ok(())
     }
 }
+
 impl Display for BigInteger256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_biguint())
     }
 }
+
 impl Ord for BigInteger256 {
     #[inline]
     #[allow(clippy::comparison_chain)]
@@ -299,29 +307,34 @@ impl Ord for BigInteger256 {
         std::cmp::Ordering::Equal
     }
 }
+
 impl PartialOrd for BigInteger256 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
+
 impl Distribution<BigInteger256> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> BigInteger256 {
         BigInteger256(rng.gen())
     }
 }
+
 impl AsMut<[u64]> for BigInteger256 {
     #[inline]
     fn as_mut(&mut self) -> &mut [u64] {
         &mut self.0
     }
 }
+
 impl AsRef<[u64]> for BigInteger256 {
     #[inline]
     fn as_ref(&self) -> &[u64] {
         &self.0
     }
 }
+
 impl From<u64> for BigInteger256 {
     #[inline]
     fn from(val: u64) -> BigInteger256 {

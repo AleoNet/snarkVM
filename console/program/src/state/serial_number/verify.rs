@@ -64,7 +64,6 @@ impl<N: Network> SerialNumber<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;
