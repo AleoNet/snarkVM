@@ -16,22 +16,34 @@
 
 use super::*;
 
+use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
+use snarkvm_curves::AffineCurve;
+
 /// A trait for a Merkle path hash function.
-pub trait PathHash<N: Network>: Clone + Send + Sync {
-    /// Returns the hash of the given path nodes.
-    fn hash(&self, left: &N::Field, right: &N::Field) -> Result<N::Field>;
+pub trait PathHash<F: PrimeField>: Clone + Send + Sync {
+    /// Returns the hash of the given child nodes.
+    fn hash_children(&self, left: &F, right: &F) -> Result<F>;
 
     /// Returns the empty hash.
-    fn hash_empty(&self) -> Result<N::Field> {
-        self.hash(&N::Field::zero(), &N::Field::zero())
+    fn hash_empty(&self) -> Result<F> {
+        self.hash_children(&F::zero(), &F::zero())
+    }
+
+    /// Returns the hash for each tuple of child nodes.
+    fn hash_all_children(&self, child_nodes: &[(F, F)]) -> Result<Vec<F>> {
+        match child_nodes.len() {
+            0 => Ok(vec![]),
+            1..=100 => child_nodes.iter().map(|(left, right)| self.hash_children(left, right)).collect(),
+            _ => cfg_iter!(child_nodes).map(|(left, right)| self.hash_children(left, right)).collect(),
+        }
     }
 }
 
-impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<N>
-    for BHP<N::Affine, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: AffineCurve<BaseField = F>, F: PrimeField, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<F>
+    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    /// Returns the hash of the given path nodes.
-    fn hash(&self, left: &N::Field, right: &N::Field) -> Result<N::Field> {
+    /// Returns the hash of the given child nodes.
+    fn hash_children(&self, left: &F, right: &F) -> Result<F> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![true];
         input.extend(left.to_bits_le());
@@ -41,11 +53,11 @@ impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<N>
     }
 }
 
-impl<N: Network, const RATE: usize> PathHash<N> for Poseidon<N::Field, RATE> {
-    /// Returns the hash of the given path nodes.
-    fn hash(&self, left: &N::Field, right: &N::Field) -> Result<N::Field> {
+impl<F: PrimeField, const RATE: usize> PathHash<F> for Poseidon<F, RATE> {
+    /// Returns the hash of the given child nodes.
+    fn hash_children(&self, left: &F, right: &F) -> Result<F> {
         // Prepend the nodes with a `1field` byte.
-        let mut input = vec![N::Field::one()];
+        let mut input = vec![F::one()];
         input.push(*left);
         input.push(*right);
         // Hash the input.

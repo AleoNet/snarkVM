@@ -190,6 +190,15 @@ jobs:
           workspace_member: circuit/algorithms
           cache_key: snarkvm-circuit-algorithms-cache
 
+  circuit-collections:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/collections
+          cache_key: snarkvm-circuit-collections-cache
+
   circuit-environment:
     docker:
       - image: cimg/rust:1.61
@@ -328,6 +337,15 @@ jobs:
       - run_serial:
           workspace_member: console/algorithms
           cache_key: snarkvm-console-algorithms-cache
+
+  console-collections:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/collections
+          cache_key: snarkvm-console-collections-cache
 
   console-network:
     docker:
@@ -507,6 +525,7 @@ workflows:
       - circuit-account
       - circuit-account-noconsole
       - circuit-algorithms
+      - circuit-collections
       - circuit-environment
       - circuit-network
       - circuit-program
@@ -522,6 +541,7 @@ workflows:
       - console
       - console-account
       - console-algorithms
+      - console-collections
       - console-network
       - console-program
       - console-types

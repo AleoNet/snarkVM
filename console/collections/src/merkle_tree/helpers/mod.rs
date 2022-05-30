@@ -14,20 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-pub mod bhp;
-pub use bhp::*;
+mod leaf_hash;
+pub use leaf_hash::*;
 
-pub mod elligator2;
-pub use elligator2::Elligator2;
-
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod traits;
-pub use traits::*;
+mod path_hash;
+pub use path_hash::*;

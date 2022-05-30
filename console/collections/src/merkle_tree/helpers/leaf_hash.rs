@@ -16,21 +16,33 @@
 
 use super::*;
 
+use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
+use snarkvm_curves::AffineCurve;
+
 /// A trait for a Merkle leaf hash function.
-pub trait LeafHash<N: Network>: Clone + Send + Sync {
+pub trait LeafHash<F: PrimeField>: Clone + Send + Sync {
     type Leaf: Clone + Send + Sync;
 
     /// Returns the hash of the given leaf node.
-    fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field>;
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<F>;
+
+    /// Returns the hash for each leaf node.
+    fn hash_leaves(&self, leaves: &[Self::Leaf]) -> Result<Vec<F>> {
+        match leaves.len() {
+            0 => Ok(vec![]),
+            1..=100 => leaves.iter().map(|leaf| self.hash_leaf(leaf)).collect(),
+            _ => cfg_iter!(leaves).map(|leaf| self.hash_leaf(leaf)).collect(),
+        }
+    }
 }
 
-impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<N>
-    for BHP<N::Affine, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: AffineCurve<BaseField = F>, F: PrimeField, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<F>
+    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Leaf = Vec<bool>;
 
     /// Returns the hash of the given leaf node.
-    fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<F> {
         // Prepend the leaf with a `false` bit.
         let mut input = vec![false];
         input.extend(leaf);
@@ -39,13 +51,13 @@ impl<N: Network, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<N>
     }
 }
 
-impl<N: Network, const RATE: usize> LeafHash<N> for Poseidon<N::Field, RATE> {
-    type Leaf = Vec<N::Field>;
+impl<F: PrimeField, const RATE: usize> LeafHash<F> for Poseidon<F, RATE> {
+    type Leaf = Vec<F>;
 
     /// Returns the hash of the given leaf node.
-    fn hash(&self, leaf: &Self::Leaf) -> Result<N::Field> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Result<F> {
         // Prepend the leaf with a `0field` element.
-        let mut input = vec![N::Field::zero(); 1];
+        let mut input = vec![F::zero(); 1];
         input.extend(leaf);
         // Hash the input.
         Hash::hash(self, &input)

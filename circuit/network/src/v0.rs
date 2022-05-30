@@ -56,25 +56,25 @@ thread_local! {
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
 
     /// The BHP hash function, which can take an input of up to 256 bits.
-    static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::constant(console::BHP_256.with(|bhp| bhp.clone()));
+    static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::constant(console::BHP_256.clone());
     /// The BHP hash function, which can take an input of up to 512 bits.
-    static BHP_512: BHP512<AleoV0> = BHP512::<AleoV0>::constant(console::BHP_512.with(|bhp| bhp.clone()));
+    static BHP_512: BHP512<AleoV0> = BHP512::<AleoV0>::constant(console::BHP_512.clone());
     /// The BHP hash function, which can take an input of up to 768 bits.
-    static BHP_768: BHP768<AleoV0> = BHP768::<AleoV0>::constant(console::BHP_768.with(|bhp| bhp.clone()));
+    static BHP_768: BHP768<AleoV0> = BHP768::<AleoV0>::constant(console::BHP_768.clone());
     /// The BHP hash function, which can take an input of up to 1024 bits.
-    static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::constant(console::BHP_1024.with(|bhp| bhp.clone()));
+    static BHP_1024: BHP1024<AleoV0> = BHP1024::<AleoV0>::constant(console::BHP_1024.clone());
 
     /// The Pedersen hash function, which can take an input of up to 64 bits.
-    static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::constant(console::PEDERSEN_64.with(|pedersen| pedersen.clone()));
+    static PEDERSEN_64: Pedersen64<AleoV0> = Pedersen64::<AleoV0>::constant(console::PEDERSEN_64.clone());
     /// The Pedersen hash function, which can take an input of up to 128 bits.
-    static PEDERSEN_128: Pedersen128<AleoV0> = Pedersen128::<AleoV0>::constant(console::PEDERSEN_128.with(|pedersen| pedersen.clone()));
+    static PEDERSEN_128: Pedersen128<AleoV0> = Pedersen128::<AleoV0>::constant(console::PEDERSEN_128.clone());
 
     /// The Poseidon hash function, using a rate of 2.
-    static POSEIDON_2: Poseidon2<AleoV0> = Poseidon2::<AleoV0>::constant(console::POSEIDON_2.with(|poseidon| poseidon.clone()));
+    static POSEIDON_2: Poseidon2<AleoV0> = Poseidon2::<AleoV0>::constant(console::POSEIDON_2.clone());
     /// The Poseidon hash function, using a rate of 4.
-    static POSEIDON_4: Poseidon4<AleoV0> = Poseidon4::<AleoV0>::constant(console::POSEIDON_4.with(|poseidon| poseidon.clone()));
+    static POSEIDON_4: Poseidon4<AleoV0> = Poseidon4::<AleoV0>::constant(console::POSEIDON_4.clone());
     /// The Poseidon hash function, using a rate of 8.
-    static POSEIDON_8: Poseidon8<AleoV0> = Poseidon8::<AleoV0>::constant(console::POSEIDON_8.with(|poseidon| poseidon.clone()));
+    static POSEIDON_8: Poseidon8<AleoV0> = Poseidon8::<AleoV0>::constant(console::POSEIDON_8.clone());
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -112,22 +112,22 @@ impl Aleo for AleoV0 {
         })
     }
 
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 512-bits.
     fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_512.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 768-bits.
     fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_768.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
+    /// Returns a BHP commitment with an input hasher of 1024-bits.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.commit(input, randomizer))
     }
@@ -142,22 +142,22 @@ impl Aleo for AleoV0 {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
-    /// Returns the BHP hash for a given (up to) 256-bit input.
+    /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_256.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 512-bit input.
+    /// Returns the BHP hash with an input hasher of 512-bits.
     fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_512.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 768-bit input.
+    /// Returns the BHP hash with an input hasher of 768-bits.
     fn hash_bhp768(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_768.with(|bhp| bhp.hash(input))
     }
 
-    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    /// Returns the BHP hash with an input hasher of 1024-bits.
     fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.hash(input))
     }
