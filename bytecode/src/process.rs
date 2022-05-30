@@ -178,7 +178,7 @@ mod tests {
         // Create a new definition.
         let definition = Definition::<Process>::from_str(
             r"
-struct message:
+interface message:
     first as field.public;
     second as field.private;",
         );
@@ -217,7 +217,7 @@ function compute:
         // Create a new program.
         Process::parse(
             r"
-struct message:
+interface message:
     first as field.public;
     second as field.private;
 
@@ -252,7 +252,7 @@ function compute:
     #[test]
     fn test_process_display() {
         // Create a new program.
-        let expected = r"struct message:
+        let expected = r"interface message:
     first as field.public;
     second as field.private;
 

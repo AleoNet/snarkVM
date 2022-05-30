@@ -34,8 +34,8 @@ use std::io::{Read, Result as IoResult, Write};
 /// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Definition<P: Program> {
-    /// A custom struct consists of its name and a list of members.
-    Struct(Identifier<P>, Vec<Member<P>>),
+    /// An interface type consists of its name and a list of members.
+    Interface(Identifier<P>, Vec<Member<P>>),
     /// A record type consists of its name and a list of members.
     Record(Identifier<P>, Vec<Member<P>>),
 }
@@ -45,7 +45,7 @@ impl<P: Program> Definition<P> {
     #[inline]
     pub fn name(&self) -> &Identifier<P> {
         match self {
-            Self::Struct(name, _) => name,
+            Self::Interface(name, _) => name,
             Self::Record(name, _) => name,
         }
     }
@@ -54,7 +54,7 @@ impl<P: Program> Definition<P> {
     #[inline]
     pub fn members(&self) -> &[Member<P>] {
         match self {
-            Self::Struct(_, members) => members,
+            Self::Interface(_, members) => members,
             Self::Record(_, members) => members,
         }
     }
@@ -105,8 +105,8 @@ impl<P: Program> Parser for Definition<P> {
         alt((
             |string| {
                 // Parse the keyword and space from the string.
-                let (string, _) = tag("struct ")(string)?;
-                // Parse the struct name from the string.
+                let (string, _) = tag("interface ")(string)?;
+                // Parse the interface name from the string.
                 let (string, name) = Identifier::parse(string)?;
                 // Parse the colon ':' keyword from the string.
                 let (string, _) = tag(":")(string)?;
@@ -114,7 +114,7 @@ impl<P: Program> Parser for Definition<P> {
                 let (string, members) = map_res(many1(Member::parse), |members| {
                     // Ensure the members has no duplicate names.
                     if has_duplicates(members.iter().map(|member| member.name())) {
-                        return Err(error(format!("Duplicate member names in struct '{}'", name)));
+                        return Err(error(format!("Duplicate member names in interface '{}'", name)));
                     }
                     // Ensure the number of members is within `P::NUM_DEPTH`.
                     if members.len() > P::NUM_DEPTH {
@@ -122,8 +122,8 @@ impl<P: Program> Parser for Definition<P> {
                     }
                     Ok(members)
                 })(string)?;
-                // Return the struct definition.
-                Ok((string, Self::Struct(name, members)))
+                // Return the interface definition.
+                Ok((string, Self::Interface(name, members)))
             },
             |string| {
                 // Parse the keyword and space from the string.
@@ -156,7 +156,7 @@ impl<P: Program> fmt::Display for Definition<P> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (type_name, name, members) = match self {
-            Self::Struct(name, members) => ("struct", name, members),
+            Self::Interface(name, members) => ("struct", name, members),
             Self::Record(name, members) => ("record", name, members),
         };
 
@@ -186,7 +186,7 @@ impl<P: Program> FromBytes for Definition<P> {
             return Err(error(format!("Duplicate member names in definition '{}'", name)));
         }
         match variant {
-            0 => Ok(Self::Struct(name, members)),
+            0 => Ok(Self::Interface(name, members)),
             1 => Ok(Self::Record(name, members)),
             2.. => Err(error(format!("Failed to deserialize definition variant {variant}"))),
         }
@@ -196,7 +196,7 @@ impl<P: Program> FromBytes for Definition<P> {
 impl<P: Program> ToBytes for Definition<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
-            Self::Struct(name, members) => {
+            Self::Interface(name, members) => {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|member| member.name())) {
                     return Err(error(format!("Duplicate member names in definition '{}'", name)));
@@ -242,7 +242,7 @@ mod tests {
         // Test a struct.
         let message = Definition::<P>::parse(
             r"
-struct message:
+interface message:
     sender as address.public;
     amount as i64.private;
 ",
@@ -277,7 +277,7 @@ record token:
     #[test]
     fn test_definition_display() {
         // Test a struct.
-        let expected = "struct message:\n    first as field.public;\n    second as field.private;";
+        let expected = "interface message:\n    first as field.public;\n    second as field.private;";
         let message = Definition::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
 
@@ -291,7 +291,7 @@ record token:
     fn test_definition_display_fails() {
         // Test a struct.
         let candidate =
-            Definition::<P>::parse("struct message:\n    first as field.public;\n    first as field.private;");
+            Definition::<P>::parse("interface message:\n    first as field.public;\n    first as field.private;");
         assert!(candidate.is_err());
 
         // Test a record.
@@ -304,7 +304,7 @@ record token:
     fn test_definition_serialization() {
         // Test a struct.
         let expected =
-            Definition::<P>::from_str("struct message:\n    first as field.public;\n    second as field.private;");
+            Definition::<P>::from_str("interface message:\n    first as field.public;\n    second as field.private;");
         let candidate = Definition::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
 
@@ -318,7 +318,7 @@ record token:
     #[test]
     fn test_definition_serialization_fails() {
         // Test a struct.
-        let expected = Definition::<P>::Struct(Identifier::from_str("message"), vec![
+        let expected = Definition::<P>::Interface(Identifier::from_str("message"), vec![
             Member::from_str("first as field.public;"),
             Member::from_str("first as boolean.private;"),
         ]);
@@ -336,7 +336,7 @@ record token:
     fn test_definition_matches() {
         // Test a struct.
         let message =
-            Definition::<P>::from_str("struct message:\n    first as field.public;\n    second as field.private;");
+            Definition::<P>::from_str("interface message:\n    first as field.public;\n    second as field.private;");
         let message_value = Value::from_str("message { 2field.public, 3field.private }");
         let message_value_fails_1 = Value::from_str("message { 2field.public }");
         let message_value_fails_2 = Value::from_str("message { 2field.private, 3field.private }");

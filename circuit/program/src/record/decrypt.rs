@@ -21,7 +21,6 @@ impl<A: Aleo> Record<A> {
     pub fn decrypt(&self, view_key: &ViewKey<A>) -> State<A> {
         // Compute the record view key := G^r^view_key.
         let record_view_key = (&self.nonce * &**view_key).to_x_coordinate();
-
         // Decrypt the record.
         let state = self.decrypt_symmetric(&record_view_key);
         // Ensure the owner matches the account of the given view key.
