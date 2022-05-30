@@ -42,7 +42,7 @@ mod tests {
     use super::*;
     use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 
@@ -52,14 +52,16 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
         for i in 0..ITERATIONS {
             // Sample an address and a private key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let address = Address::try_from(&private_key)?;
 
             // Generate a signature.
-            let message: Vec<bool> = (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect();
-            let randomizer = UniformRand::rand(&mut test_crypto_rng());
+            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let randomizer = UniformRand::rand(rng);
             let signature = Signature::sign(&private_key, &message, randomizer)?;
             assert!(signature.verify(&address, &message));
 

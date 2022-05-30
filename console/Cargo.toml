@@ -16,6 +16,11 @@ path = "./algorithms"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-console-collections]
+path = "./collections"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-console-network]
 path = "./network"
 version = "0.7.5"
@@ -32,9 +37,10 @@ version = "0.7.5"
 optional = true
 
 [features]
-default = [ "account", "algorithms", "network", "program", "types" ]
+default = [ "account", "algorithms", "collections", "network", "program", "types" ]
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
+collections = [ "snarkvm-console-collections" ]
 network = [ "snarkvm-console-network" ]
 program = [ "network", "snarkvm-console-program" ]
 types = [ "snarkvm-console-types" ]

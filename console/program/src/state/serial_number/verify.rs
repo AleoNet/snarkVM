@@ -23,7 +23,7 @@ impl<N: Network> SerialNumber<N> {
         let (gamma, challenge, response) = self.proof;
 
         // Compute the generator `H` as `HashToGroup(commitment)`.
-        let generator_h = match N::hash_to_group_psd2(&[commitment]) {
+        let generator_h = match N::hash_to_group_psd2(&[N::serial_number_domain(), commitment]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
                 eprintln!("Failed to compute the generator H: {err}");
@@ -31,13 +31,13 @@ impl<N: Network> SerialNumber<N> {
             }
         };
 
-        // Compute `u` as `(challenge * pk_vrf) + (response * G)`, equivalent to `randomizer * G`.
+        // Compute `u` as `(challenge * pk_vrf) + (response * G)`, equivalent to `nonce * G`.
         let u = ((pk_vrf.to_projective() * challenge) + N::g_scalar_multiply(&response)).to_affine();
 
-        // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `randomizer * H`.
+        // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `nonce * H`.
         let v = ((gamma.to_projective() * challenge) + (generator_h * response)).to_affine();
 
-        // Compute `candidate_challenge` as `HashToScalar(pk_vrf, gamma, randomizer * G, randomizer * H)`.
+        // Compute `candidate_challenge` as `HashToScalar(pk_vrf, gamma, nonce * G, nonce * H)`.
         let candidate_challenge = match N::hash_to_scalar_psd4(&[pk_vrf, &gamma, &u, &v].map(|c| c.to_x_coordinate())) {
             Ok(candidate_challenge) => candidate_challenge,
             Err(err) => {
@@ -73,7 +73,7 @@ impl<N: Network> SerialNumber<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;
 
@@ -81,16 +81,15 @@ mod tests {
 
     #[test]
     fn test_prove_and_verify() -> Result<()> {
-        let rng = &mut test_rng();
+        let rng = &mut test_crypto_rng();
 
         for _ in 0..ITERATIONS {
             let sk_vrf = UniformRand::rand(rng);
             let commitment = UniformRand::rand(rng);
-            let randomizer = UniformRand::rand(rng);
 
             let pk_vrf = CurrentNetwork::g_scalar_multiply(&sk_vrf).to_affine();
 
-            let proof = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, commitment, randomizer)?;
+            let proof = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, commitment, rng)?;
             assert!(proof.verify(&pk_vrf, commitment));
         }
         Ok(())

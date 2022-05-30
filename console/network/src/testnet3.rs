@@ -40,12 +40,16 @@ use itertools::Itertools;
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<<Testnet3 as Network>::Projective> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+    /// The balance commitment domain as a constant field element.
+    pub static ref BCM_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
     /// The MAC domain as a constant field element.
     pub static ref MAC_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
     /// The randomizer domain as a constant field element.
     pub static ref RANDOMIZER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoRandomizer0");
+    /// The serial number domain as a constant field element.
+    pub static ref SERIAL_NUMBER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSerialNumber0");
 
     /// The BHP hash function, which can take an input of up to 256 bits.
     pub static ref BHP_256: BHP256<<Testnet3 as Network>::Affine> = BHP256::<<Testnet3 as Network>::Affine>::setup("AleoBHP256").expect("Failed to setup BHP256");
@@ -153,6 +157,11 @@ impl Network for Testnet3 {
         Self::scalar_from_bits_le(&bits)
     }
 
+    /// Returns the balance commitment domain as a constant field element.
+    fn bcm_domain() -> Self::Field {
+        *BCM_DOMAIN
+    }
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Self::Field {
         *ENCRYPTION_DOMAIN
@@ -166,6 +175,11 @@ impl Network for Testnet3 {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Self::Field {
         *RANDOMIZER_DOMAIN
+    }
+
+    /// Returns the serial number domain as a constant field element.
+    fn serial_number_domain() -> Self::Field {
+        *SERIAL_NUMBER_DOMAIN
     }
 
     /// Returns the powers of G.

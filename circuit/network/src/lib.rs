@@ -28,6 +28,9 @@ pub trait Aleo: Environment {
     /// The maximum number of field elements in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32;
 
+    /// Returns the balance commitment domain as a constant field element.
+    fn bcm_domain() -> Field<Self>;
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 

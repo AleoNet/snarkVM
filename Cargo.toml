@@ -20,6 +20,7 @@ edition = "2021"
 [workspace]
 members = [
   "algorithms",
+  "barebones", # <- This is just a hacky experiment. Remind Howard to delete this!
   "bytecode",
   "circuit",
   "circuit/account",

@@ -17,28 +17,28 @@
 use super::*;
 
 impl<N: Network> Randomizer<N> {
-    /// Returns a new randomizer and proof, given a view key, input, and RNG.
+    /// Returns a new randomizer and proof, given a view key, a list of serial numbers, an output index, and an RNG.
     pub fn prove<R: Rng + CryptoRng>(
         view_key: &ViewKey<N>,
-        commitments: &[N::Field],
+        serial_numbers: &[N::Field],
         output_index: u16,
         rng: &mut R,
     ) -> Result<Self> {
         // Sample a random nonce from the scalar field.
         let nonce = N::Scalar::rand(rng);
 
-        // Construct the input as: [ commitments || output_index ].
-        let mut input = Vec::with_capacity(commitments.len() + 1);
-        input.extend_from_slice(commitments);
+        // Construct the input as: [ serial_numbers || output_index ].
+        let mut input = Vec::with_capacity(serial_numbers.len() + 1);
+        input.extend_from_slice(serial_numbers);
         input.push(N::Field::from(output_index as u128));
 
-        // Hash the input as `Hash(commitments || output_index)`.
+        // Hash the input as `Hash(serial_numbers || output_index)`.
         // (For advanced users): The input hash is injected as a public input
         // to the output circuit, which ensures the VRF input is of fixed size.
         let input_hash = N::hash_psd4(&input)?;
 
         // Compute the generator `H` as `HashToGroup(input_hash)`.
-        let generator_h = N::hash_to_group_psd2(&[input_hash])?;
+        let generator_h = N::hash_to_group_psd2(&[N::randomizer_domain(), input_hash])?;
 
         // Compute `address` as `view_key * G`.
         let address = Address::try_from(view_key)?;

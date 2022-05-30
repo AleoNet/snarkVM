@@ -65,7 +65,7 @@ impl<A: Aleo> Eject for Signature<A> {
 mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
-    use snarkvm_utilities::{test_crypto_rng, ToBits as T, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 
@@ -78,14 +78,16 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
         // Generate a private key, compute key, view key, and address.
         let (private_key, _compute_key, _view_key, _address) = generate_account()?;
 
         for i in 0..ITERATIONS {
             // Generate a signature.
-            let message = "Hi, I am an Aleo signature!";
-            let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = console::Signature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
+            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let randomizer = UniformRand::rand(rng);
+            let signature = console::Signature::sign(&private_key, &message, randomizer)?;
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Signature::<Circuit>::new(mode, signature);

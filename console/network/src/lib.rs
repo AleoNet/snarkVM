@@ -73,6 +73,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// A helper method to recover a scalar from **big-endian** bits.
     fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar>;
 
+    /// Returns the balance commitment domain as a constant field element.
+    fn bcm_domain() -> Self::Field;
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Self::Field;
 
@@ -81,6 +84,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Self::Field;
+
+    /// Returns the serial number domain as a constant field element.
+    fn serial_number_domain() -> Self::Field;
 
     /// Returns the powers of G.
     fn g_powers() -> &'static Vec<Self::Projective>;

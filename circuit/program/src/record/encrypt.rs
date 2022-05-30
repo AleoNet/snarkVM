@@ -44,7 +44,7 @@ impl<A: Aleo> Record<A> {
         let mac = A::hash_psd2(&[A::mac_domain(), record_view_key.clone()]);
 
         // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-        let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key.clone()]);
+        let r_bcm = A::hash_to_scalar_psd2(&[A::bcm_domain(), record_view_key.clone()]);
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = A::commit_ped64(&state.balance().to_bits_le(), &r_bcm);
 

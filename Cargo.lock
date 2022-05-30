@@ -2030,6 +2030,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-barebones"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "rand",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm-bytecode"
 version = "0.7.5"
 dependencies = [
@@ -2241,6 +2252,7 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-algorithms",
+ "snarkvm-console-collections",
  "snarkvm-console-network",
  "snarkvm-console-program",
  "snarkvm-console-types",

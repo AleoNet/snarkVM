@@ -23,6 +23,9 @@ pub use snarkvm_console_account as account;
 #[cfg(feature = "algorithms")]
 pub use snarkvm_console_algorithms as algorithms;
 
+#[cfg(feature = "collections")]
+pub use snarkvm_console_collections as collections;
+
 #[cfg(feature = "network")]
 pub use snarkvm_console_network as network;
 

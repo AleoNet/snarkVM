@@ -60,7 +60,7 @@ impl<N: Network> Record<N> {
         // let data = self.data.decrypt_symmetric(&(*record_view_key * randomizers[2]))?;
 
         // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-        let r_bcm = N::hash_to_scalar_psd2(&[N::randomizer_domain(), *record_view_key])?;
+        let r_bcm = N::hash_to_scalar_psd2(&[N::bcm_domain(), *record_view_key])?;
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let candidate_bcm = N::commit_ped64(&balance.to_bits_le(), &r_bcm)?;
         // Ensure the balance commitment matches.

@@ -18,16 +18,16 @@ use super::*;
 
 impl<N: Network> Randomizer<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, address: &Address<N>, commitments: &[N::Field], output_index: u16) -> bool {
+    pub fn verify(&self, address: &Address<N>, serial_numbers: &[N::Field], output_index: u16) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
-        // Construct the input as: [ commitments || output_index ].
-        let mut input = Vec::with_capacity(commitments.len() + 1);
-        input.extend_from_slice(commitments);
+        // Construct the input as: [ serial_numbers || output_index ].
+        let mut input = Vec::with_capacity(serial_numbers.len() + 1);
+        input.extend_from_slice(serial_numbers);
         input.push(N::Field::from(output_index as u128));
 
-        // Hash the input as `Hash(commitments || output_index)`.
+        // Hash the input as `Hash(serial_numbers || output_index)`.
         // (For advanced users): The input hash is injected as a public input
         // to the output circuit, which ensures the VRF input is of fixed size.
         let input_hash = match N::hash_psd4(&input) {
@@ -39,7 +39,7 @@ impl<N: Network> Randomizer<N> {
         };
 
         // Compute the generator `H` as `HashToGroup(input_hash)`.
-        let generator_h = match N::hash_to_group_psd2(&[input_hash]) {
+        let generator_h = match N::hash_to_group_psd2(&[N::randomizer_domain(), input_hash]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
                 eprintln!("Failed to compute the generator H: {err}");
@@ -96,11 +96,11 @@ mod tests {
             let view_key = ViewKey::<CurrentNetwork>::try_from(&private_key)?;
             let address = Address::<CurrentNetwork>::try_from(&view_key)?;
 
-            let commitments = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
+            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
             let output_index = UniformRand::rand(rng);
 
-            let randomizer = Randomizer::<CurrentNetwork>::prove(&view_key, &commitments, output_index, rng)?;
-            assert!(randomizer.verify(&address, &commitments, output_index));
+            let randomizer = Randomizer::<CurrentNetwork>::prove(&view_key, &serial_numbers, output_index, rng)?;
+            assert!(randomizer.verify(&address, &serial_numbers, output_index));
         }
         Ok(())
     }

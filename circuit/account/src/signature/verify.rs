@@ -18,42 +18,26 @@ use super::*;
 
 impl<A: Aleo> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
-    pub fn verify(&self, address: &Address<A>, message: &[Boolean<A>]) -> Boolean<A> {
-        // Compute G^sk_sig^challenge.
+    pub fn verify(&self, address: &Address<A>, message: &[Field<A>]) -> Boolean<A> {
+        // Compute pk_sig_challenge := G^sk_sig^challenge.
         let pk_sig_challenge = self.compute_key.pk_sig() * &self.challenge;
 
-        // Compute G^randomizer := G^s G^sk_sig^challenge.
+        // Compute G^randomizer := G^response pk_sig_challenge.
         let g_randomizer = A::g_scalar_multiply(&self.response) + pk_sig_challenge;
 
+        // Construct the hash input as (address, G^randomizer, message).
+        let mut preimage = Vec::with_capacity(2 + message.len());
+        preimage.push(address.to_field());
+        preimage.push(g_randomizer.to_x_coordinate());
+        preimage.extend_from_slice(&message);
+
         // Compute the candidate verifier challenge.
-        let candidate_challenge = {
-            // Convert the message into field elements.
-            let message_elements =
-                message.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect::<Vec<_>>();
+        let candidate_challenge = A::hash_to_scalar_psd4(&preimage);
 
-            // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^randomizer, message).
-            let mut preimage = Vec::with_capacity(3 + message_elements.len());
-            preimage.push(address.to_field());
-            preimage.push(g_randomizer.to_x_coordinate());
-            preimage.push(Field::constant((message.len() as u128).into())); // <- Message length *must* be constant.
-            preimage.extend_from_slice(&message_elements);
+        // Compute the candidate address.
+        let candidate_address = self.compute_key.to_address();
 
-            // Hash to derive the verifier challenge.
-            A::hash_to_scalar_psd8(&preimage)
-        };
-
-        // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
-        let candidate_address = {
-            // Compute G^sk_prf.
-            let pk_prf = A::g_scalar_multiply(self.compute_key.sk_prf());
-            // Compute G^sk_sig G^r_sig G^sk_prf.
-            self.compute_key.pk_sig() + self.compute_key.pr_sig() + pk_prf
-        };
-
-        let is_challenge_valid = self.challenge.is_equal(&candidate_challenge);
-        let is_address_valid = address.to_group().is_equal(&candidate_address);
-
-        is_challenge_valid & is_address_valid
+        self.challenge.is_equal(&candidate_challenge) & address.is_equal(&candidate_address)
     }
 }
 
@@ -62,7 +46,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
     use snarkvm_circuit_types::Group;
-    use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 
@@ -75,25 +59,56 @@ pub(crate) mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
         for i in 0..ITERATIONS {
             // Generate a private key, compute key, view key, and address.
             let (private_key, _compute_key, _view_key, address) = generate_account()?;
 
-            // Sample a random message.
-            let rng = &mut test_rng();
-            let message = [
-                Address::new(mode, UniformRand::rand(rng)).to_bits_le(),
-                Boolean::new(mode, UniformRand::rand(rng)).to_bits_le(),
-                Field::new(mode, UniformRand::rand(rng)).to_bits_le(),
-                Group::new(mode, UniformRand::rand(rng)).to_bits_le(),
-                Scalar::new(mode, UniformRand::rand(rng)).to_bits_le(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+            // Generate a signature.
+            let message = [Field::new(mode, UniformRand::rand(rng)), Field::new(mode, UniformRand::rand(rng))];
+            let randomizer = UniformRand::rand(rng);
+            let signature = console::Signature::sign(&private_key, &message.eject_value(), randomizer)?;
+
+            // Initialize the signature and address.
+            let signature = Signature::<Circuit>::new(mode, signature);
+            let address = Address::new(mode, *address);
+
+            Circuit::scope(&format!("{} {}", mode, i), || {
+                let candidate = signature.verify(&address, &message);
+                assert!(candidate.eject_value());
+                // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
+                if i > 0 {
+                    assert_scope!(<=num_constants, num_public, num_private, num_constraints);
+                }
+            });
+            Circuit::reset();
+        }
+        Ok(())
+    }
+
+    fn check_verify_large(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
+        for i in 0..ITERATIONS {
+            // Generate a private key, compute key, view key, and address.
+            let (private_key, _compute_key, _view_key, address) = generate_account()?;
 
             // Generate a signature.
-            let randomizer = UniformRand::rand(&mut test_crypto_rng());
+            let message = [
+                Address::new(mode, UniformRand::rand(rng)).to_field(),
+                Field::from_boolean(&Boolean::new(mode, UniformRand::rand(rng))),
+                Field::new(mode, UniformRand::rand(rng)),
+                Group::new(mode, UniformRand::rand(rng)).to_x_coordinate(),
+                Scalar::new(mode, UniformRand::rand(rng)).to_field(),
+            ];
+            let randomizer = UniformRand::rand(rng);
             let signature = console::Signature::sign(&private_key, &message.eject_value(), randomizer)?;
 
             // Initialize the signature and address.
@@ -120,11 +135,26 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 1758, 0, 6534, 6538)
+        check_verify(Mode::Public, 1757, 0, 6379, 6383)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 1758, 0, 6534, 6538)
+        check_verify(Mode::Private, 1757, 0, 6379, 6383)
+    }
+
+    #[test]
+    fn test_verify_large_constant() -> Result<()> {
+        check_verify_large(Mode::Constant, 4326, 0, 0, 0)
+    }
+
+    #[test]
+    fn test_verify_large_public() -> Result<()> {
+        check_verify_large(Mode::Public, 1757, 0, 6734, 6738)
+    }
+
+    #[test]
+    fn test_verify_large_private() -> Result<()> {
+        check_verify_large(Mode::Private, 1757, 0, 6734, 6738)
     }
 }

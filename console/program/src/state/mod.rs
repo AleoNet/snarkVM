@@ -31,7 +31,7 @@ use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.

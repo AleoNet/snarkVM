@@ -17,29 +17,32 @@
 use super::*;
 
 impl<N: Network> SerialNumber<N> {
-    /// Returns a new serial number and proof, given a VRF secret key, an input, and a randomizer.
-    pub fn prove(sk_vrf: &N::Scalar, commitment: N::Field, randomizer: N::Scalar) -> Result<Self> {
+    /// Returns a new serial number and proof, given a VRF secret key, a commitment, and an RNG.
+    pub fn prove<R: Rng + CryptoRng>(sk_vrf: &N::Scalar, commitment: N::Field, rng: &mut R) -> Result<Self> {
+        // Sample a random nonce from the scalar field.
+        let nonce = N::Scalar::rand(rng);
+
         // Compute the generator `H` as `HashToGroup(commitment)`.
-        let generator_h = N::hash_to_group_psd2(&[commitment])?;
+        let generator_h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
 
         // Compute `pk_vrf` as `sk_vrf * G`.
         let pk_vrf = N::g_scalar_multiply(sk_vrf);
         // Compute `gamma` as `sk_vrf * H`.
         let gamma = generator_h * *sk_vrf;
-        // Compute `u` as `randomizer * G`.
-        let u = N::g_scalar_multiply(&randomizer);
-        // Compute `v` as `randomizer * H`.
-        let v = generator_h * randomizer;
+        // Compute `u` as `nonce * G`.
+        let u = N::g_scalar_multiply(&nonce);
+        // Compute `v` as `nonce * H`.
+        let v = generator_h * nonce;
 
         // Prepare the preimage as `(pk_vrf, gamma, u, v)`, and use the x-coordinate of each affine point.
         let mut preimage = [pk_vrf, gamma, u, v];
         N::Projective::batch_normalization(&mut preimage);
         let [pk_vrf, gamma, u, v] = preimage.map(|c| c.to_affine());
 
-        // Compute `challenge` as `HashToScalar(sk_vrf * G, gamma, randomizer * G, randomizer * H)`.
+        // Compute `challenge` as `HashToScalar(sk_vrf * G, gamma, nonce * G, nonce * H)`.
         let challenge = N::hash_to_scalar_psd4(&[pk_vrf, gamma, u, v].map(|c| c.to_x_coordinate()))?;
-        // Compute `response` as `randomizer - challenge * sk_vrf`.
-        let response = randomizer - challenge * sk_vrf;
+        // Compute `response` as `nonce - challenge * sk_vrf`.
+        let response = nonce - challenge * sk_vrf;
 
         // Compute `serial_number_nonce` as `Hash(COFACTOR * gamma)`.
         let serial_number_nonce = N::hash_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()])?;

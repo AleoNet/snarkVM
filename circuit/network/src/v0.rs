@@ -48,6 +48,9 @@ type E = Circuit;
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().map(|g| g.to_affine()).collect());
+
+    /// The balance commitment domain as a constant field element.
+    static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
     /// The MAC domain as a constant field element.
@@ -85,6 +88,11 @@ impl Aleo for AleoV0 {
 
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::BaseField as PrimeField>::Parameters::CAPACITY;
+
+    /// Returns the balance commitment domain as a constant field element.
+    fn bcm_domain() -> Field<Self> {
+        BCM_DOMAIN.with(|domain| domain.clone())
+    }
 
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {

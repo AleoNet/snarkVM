@@ -1,5 +1,5 @@
 [package]
-name = "snarkvm-algorithms"
+name = "snarkvm-barebones"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
@@ -17,269 +17,23 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[[bench]]
-name = "variable_base"
-path = "benches/msm/variable_base.rs"
-harness = false
-
-[[bench]]
-name = "commitment_bhp"
-path = "benches/commitment/bhp.rs"
-harness = false
-
-[[bench]]
-name = "pedersen_crh"
-path = "benches/crh/pedersen.rs"
-harness = false
-
-[[bench]]
-name = "bhp_crh"
-path = "benches/crh/bhp.rs"
-harness = false
-
-[[bench]]
-name = "hash_to_curve"
-path = "benches/crypto_hash/hash_to_curve.rs"
-harness = false
-
-[[bench]]
-name = "merkle_tree"
-path = "benches/merkle_tree/merkle_tree.rs"
-harness = false
-
-[[bench]]
-name = "poseidon_sponge"
-path = "benches/crypto_hash/poseidon.rs"
-harness = false
-
-[[bench]]
-name = "encryption-aleo"
-path = "benches/encryption/aleo.rs"
-harness = false
-
-[[bench]]
-name = "fft"
-path = "benches/fft/fft.rs"
-harness = false
-
-[[bench]]
-name = "prf"
-path = "benches/prf/poseidon.rs"
-harness = false
-
-[[bench]]
-name = "signature-aleo"
-path = "benches/signature/aleo.rs"
-harness = false
-
-[[bench]]
-name = "marlin"
-path = "benches/snark/marlin.rs"
-harness = false
-
-[dependencies.snarkvm-curves]
-path = "../curves"
+[dependencies.circuit]
+package = "snarkvm-circuit"
+path = "../circuit"
 version = "0.7.5"
-default-features = false
 
-[dependencies.snarkvm-fields]
-path = "../fields"
+[dependencies.console]
+package = "snarkvm-console"
+path = "../console"
 version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-parameters]
-path = "../parameters"
-version = "0.7.5"
-optional = true
-default-features = false
-
-[dependencies.snarkvm-r1cs]
-path = "../r1cs"
-version = "0.7.5"
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.5"
 default-features = false
 
-[dependencies.aleo-std]
-version = "0.1.14"
-
 [dependencies.anyhow]
-version = "1.0"
-
-[dependencies.bincode]
-version = "1"
-
-[dependencies.blake2s_simd]
-version = "1.0"
-optional = true
-
-[dependencies.crossbeam-channel]
-version = "0.5"
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
-version = "0.4.43"
-
-[dependencies.derivative]
-version = "2"
-features = [ "use_core" ]
-
-[dependencies.digest]
-version = "0.10"
-
-[dependencies.getrandom]
-version = "0.2"
-optional = true
-features = [ "js" ]
-default-features = false
-
-[dependencies.hashbrown]
-version = "0.12.1"
-
-[dependencies.hex]
-version = "0.4"
-
-[dependencies.itertools]
-version = "0.10.3"
-
-[dependencies.lazy_static]
-version = "1.4"
-
-[dependencies.num_cpus]
-version = "1"
-optional = true
-
-[dependencies.once_cell]
-version = "1.12"
-
-[dependencies.parking_lot]
-version = "0.12"
+version = "1.0.57"
 
 [dependencies.rand]
 version = "0.8"
-
-[dependencies.rand_core]
-version = "0.6"
-default-features = false
-optional = true
-
-[dependencies.rand_chacha]
-version = "0.3"
-default-features = false
-
-[dependencies.rayon]
-version = "1"
-optional = true
-
-[dependencies.reqwest]
-version = "0.11"
-optional = true
-
-[dependencies.rust-gpu-tools]
-version = "0.6.0"
-optional = true
-
-[dependencies.serde]
-version = "1.0"
-default-features = false
-features = ["derive"]
-
-[dependencies.sha2]
-version = "0.10"
-default-features = false
-
-[dependencies.smallvec]
-version = "1.8"
-default-features = false
-features = [ "const_generics", "const_new" ]
-
-[dependencies.thiserror]
-version = "1.0"
-
-[dependencies.wasm-bindgen-futures]
-version = "0.4"
-optional = true
-
-[dev-dependencies.expect-test ]
-version = "1.1.0"
-
-[dev-dependencies.blake2]
-version = "0.10"
-default-features = false
-
-[dev-dependencies.criterion]
-version = "0.3.5"
-
-[dev-dependencies.csv]
-version = "1"
-
-[dev-dependencies.rand_xorshift]
-version = "0.3"
-
-[dev-dependencies.serde]
-version = "1"
-features = ["derive"]
-
-[dev-dependencies.serde_json]
-version = "1"
-
-[dev-dependencies.serial_test]
-version = "*"
-
-[features]
-default = [
-  "full",
-  "parallel",
-  "snarkvm-curves/default",
-  "snarkvm-fields/default",
-  "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
-]
-full = [
-  "commitment",
-  "crh",
-  "encryption",
-  "fft",
-  "merkle_tree",
-  "msm",
-  "polycommit_full",
-  "prf",
-  "signature",
-  "snark"
-]
-wasm = [
-  "commitment",
-  "crh",
-  "crypto_hash",
-  "encryption",
-  "fft",
-  "merkle_tree",
-  "msm",
-  "polycommit_wasm",
-  "prf",
-  "signature",
-  "snark",
-  "getrandom",
-  "wasm-bindgen-futures",
-  "reqwest"
-]
-
-cuda = [ "rust-gpu-tools" ]
-parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
-profiler = [ "aleo-std/profiler" ]
-
-commitment = [ "crh" ]
-crh = [ "crypto_hash" ]
-crypto_hash = [ "blake2s_simd" ]
-encryption = [ "signature" ]
-fft = [ ]
-merkle_tree = [ ]
-msm = [ ]
-polycommit = [ "rand_core", "fft", "crh", "msm" ]
-polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
-polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
-prf = [ "crypto_hash" ]
-signature = [ "encryption", "crypto_hash" ]
-snark = [ "fft", "msm", "polycommit" ]
