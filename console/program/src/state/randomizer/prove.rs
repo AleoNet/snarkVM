@@ -16,40 +16,53 @@
 
 use super::*;
 
-impl<N: Network> EncryptionRandomizer<N> {
-    /// Returns a new NSEC5 proof, given a VRF secret key, an input, and a randomizer.
-    pub fn prove(view_key: &ViewKey<N>, commitments: &[N::Field], output_index: u16, randomizer: N::Scalar) -> Result<Self> {
+impl<N: Network> Randomizer<N> {
+    /// Returns a new randomizer and proof, given a view key, input, and RNG.
+    pub fn prove<R: Rng + CryptoRng>(
+        view_key: &ViewKey<N>,
+        commitments: &[N::Field],
+        output_index: u16,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Sample a random nonce from the scalar field.
+        let nonce = N::Scalar::rand(rng);
+
         // Construct the input as: [ commitments || output_index ].
         let mut input = Vec::with_capacity(commitments.len() + 1);
         input.extend_from_slice(commitments);
         input.push(N::Field::from(output_index as u128));
 
-        // Compute the generator `H` as `HashToCurve(commitments || output_index)`.
-        let generator_h = N::hash_to_group_psd4(&input)?;
+        // Hash the input as `Hash(commitments || output_index)`.
+        // (For advanced users): The input hash is injected as a public input
+        // to the output circuit, which ensures the VRF input is of fixed size.
+        let input_hash = N::hash_psd4(&input)?;
+
+        // Compute the generator `H` as `HashToGroup(input_hash)`.
+        let generator_h = N::hash_to_group_psd2(&[input_hash])?;
 
         // Compute `address` as `view_key * G`.
         let address = Address::try_from(view_key)?;
         // Compute `gamma` as `view_key * H`.
         let gamma = generator_h * **view_key;
-        // Compute `u` as `randomizer * G`.
-        let u = N::g_scalar_multiply(&randomizer);
-        // Compute `v` as `randomizer * H`.
-        let v = generator_h * randomizer;
+        // Compute `u` as `nonce * G`.
+        let u = N::g_scalar_multiply(&nonce);
+        // Compute `v` as `nonce * H`.
+        let v = generator_h * nonce;
 
         // Convert `(gamma, u, v)` into affine form.
         let mut preimage = [gamma, u, v];
         N::Projective::batch_normalization(&mut preimage);
         let [gamma, u, v] = preimage.map(|c| c.to_affine());
 
-        // Compute `challenge` as `HashToScalar(address, gamma, randomizer * G, randomizer * H)`.
+        // Compute `challenge` as `HashToScalar(address, gamma, nonce * G, nonce * H)`.
         let challenge = N::hash_to_scalar_psd4(&[*address, gamma, u, v].map(|c| c.to_x_coordinate()))?;
-        // Compute `response` as `randomizer - challenge * view_key`.
-        let response = randomizer - challenge * **view_key;
+        // Compute `response` as `nonce - challenge * view_key`.
+        let response = nonce - challenge * **view_key;
 
-        // Compute `output` as `HashToScalar(COFACTOR * gamma)`.
-        let output = N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
+        // Compute `randomizer` as `HashToScalar(COFACTOR * gamma)`.
+        let randomizer = N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()])?;
 
         // Return the proof.
-        Ok(Self { output, proof: (gamma, challenge, response) })
+        Ok(Self { randomizer, proof: (gamma, challenge, response) })
     }
 }

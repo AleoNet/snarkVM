@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> EncryptionRandomizer<N> {
+impl<N: Network> Randomizer<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
     pub fn verify(&self, address: &Address<N>, commitments: &[N::Field], output_index: u16) -> bool {
         // Retrieve the proof components.
@@ -27,8 +27,19 @@ impl<N: Network> EncryptionRandomizer<N> {
         input.extend_from_slice(commitments);
         input.push(N::Field::from(output_index as u128));
 
-        // Compute the generator `H` as `HashToCurve(commitments || output_index)`.
-        let generator_h = match N::hash_to_group_psd4(&input) {
+        // Hash the input as `Hash(commitments || output_index)`.
+        // (For advanced users): The input hash is injected as a public input
+        // to the output circuit, which ensures the VRF input is of fixed size.
+        let input_hash = match N::hash_psd4(&input) {
+            Ok(input_hash) => input_hash,
+            Err(err) => {
+                eprintln!("Failed to compute the input hash: {}", err);
+                return false;
+            }
+        };
+
+        // Compute the generator `H` as `HashToGroup(input_hash)`.
+        let generator_h = match N::hash_to_group_psd2(&[input_hash]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
                 eprintln!("Failed to compute the generator H: {}", err);
@@ -36,13 +47,13 @@ impl<N: Network> EncryptionRandomizer<N> {
             }
         };
 
-        // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `randomizer * G`.
+        // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
         let u = (((*address).to_projective() * challenge) + N::g_scalar_multiply(&response)).to_affine();
 
-        // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `randomizer * H`.
+        // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `nonce * H`.
         let v = ((gamma.to_projective() * challenge) + (generator_h * response)).to_affine();
 
-        // Compute `candidate_challenge` as `HashToScalar(address, gamma, randomizer * G, randomizer * H)`.
+        // Compute `candidate_challenge` as `HashToScalar(address, gamma, nonce * G, nonce * H)`.
         let candidate_challenge = match N::hash_to_scalar_psd4(&[**address, gamma, u, v].map(|c| c.to_x_coordinate())) {
             Ok(candidate_challenge) => candidate_challenge,
             Err(err) => {
@@ -51,30 +62,30 @@ impl<N: Network> EncryptionRandomizer<N> {
             }
         };
 
-        // Compute `candidate_output` as `HashToScalar(COFACTOR * gamma)`.
-        let candidate_output = match N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
-            Ok(candidate_output) => candidate_output,
+        // Compute `candidate_randomizer` as `HashToScalar(COFACTOR * gamma)`.
+        let candidate_randomizer = match N::hash_to_scalar_psd4(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
+            Ok(candidate_randomizer) => candidate_randomizer,
             Err(err) => {
-                eprintln!("Failed to compute the output: {}", err);
+                eprintln!("Failed to compute the randomizer: {}", err);
                 return false;
             }
         };
 
         // Return whether the proof is valid.
-        challenge == candidate_challenge && self.output == candidate_output
+        challenge == candidate_challenge && self.randomizer == candidate_randomizer
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_console_account::{Address, PrivateKey, ViewKey};
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
-    use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 
     type CurrentNetwork = Testnet3;
 
-    pub(crate) const ITERATIONS: usize = 10000;
+    pub(crate) const ITERATIONS: usize = 1000;
 
     #[test]
     fn test_prove_and_verify() -> Result<()> {
@@ -85,11 +96,11 @@ mod tests {
             let view_key = ViewKey::<CurrentNetwork>::try_from(&private_key)?;
             let address = Address::<CurrentNetwork>::try_from(&view_key)?;
 
-            let commitment = UniformRand::rand(rng);
-            let randomizer = UniformRand::rand(rng);
+            let commitments = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
+            let output_index = UniformRand::rand(rng);
 
-            let proof = EncryptionRandomizer::<CurrentNetwork>::prove(&view_key, &[commitment], 11, randomizer)?;
-            assert!(proof.verify(&address, &[commitment], 11));
+            let randomizer = Randomizer::<CurrentNetwork>::prove(&view_key, &commitments, output_index, rng)?;
+            assert!(randomizer.verify(&address, &commitments, output_index));
         }
         Ok(())
     }

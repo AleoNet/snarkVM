@@ -17,20 +17,8 @@
 use super::*;
 
 impl<N: Network> Record<N> {
-    /// Initializes a new record by encrypting the given state with a given randomizer.
-    pub fn encrypt(state: &State<N>, randomizer: &N::Scalar) -> Result<Self> {
-        // Ensure the nonce matches the given randomizer.
-        if state.nonce().to_projective() != N::g_scalar_multiply(randomizer) {
-            bail!("Invalid randomizer given to encrypt state into a record")
-        }
-        // Compute the record view key.
-        let record_view_key = (**state.owner() * *randomizer).to_affine().to_x_coordinate();
-        // Encrypt the record and output the state.
-        Self::encrypt_symmetric(state, &record_view_key)
-    }
-
-    /// Initializes a new record by encrypting the given state with a given randomizer.
-    pub fn encrypt_symmetric(state: &State<N>, record_view_key: &N::Field) -> Result<Self> {
+    /// Initializes a new record by encrypting the given state with a given record view key.
+    pub fn encrypt(state: &State<N>, record_view_key: &N::Field) -> Result<Self> {
         // Ensure the balance is less than or equal to 2^52.
         if state.balance().to_bits_le()[52..].iter().all(|bit| !bit) {
             bail!("Failed to encrypt an invalid balance into a record")

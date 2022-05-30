@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod encryption_randomizer;
-pub use encryption_randomizer::EncryptionRandomizer;
+mod randomizer;
+pub use randomizer::Randomizer;
 
 mod serial_number;
 pub use serial_number::SerialNumber;
@@ -28,10 +28,10 @@ mod to_serial_number;
 use crate::{Ciphertext, Data, Record};
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::Network;
-use snarkvm_curves::AffineCurve;
-use snarkvm_utilities::ToBits;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.

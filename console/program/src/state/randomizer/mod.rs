@@ -20,12 +20,25 @@ mod verify;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_utilities::{CryptoRng, Rng, UniformRand};
 
 use anyhow::Result;
 
-pub struct EncryptionRandomizer<N: Network> {
-    /// The output of the VRF.
-    output: N::Scalar,
-    /// The proof for the VRF output: `(gamma, challenge, response)`.
+pub struct Randomizer<N: Network> {
+    /// The randomizer from the VRF.
+    randomizer: N::Scalar,
+    /// The proof for the randomizer: `(gamma, challenge, response)`.
     proof: (N::Affine, N::Scalar, N::Scalar),
+}
+
+impl<N: Network> Randomizer<N> {
+    /// Returns the randomizer from the VRF.
+    pub const fn value(&self) -> &N::Scalar {
+        &self.randomizer
+    }
+
+    /// Returns the proof of the VRF.
+    pub const fn proof(&self) -> &(N::Affine, N::Scalar, N::Scalar) {
+        &self.proof
+    }
 }
