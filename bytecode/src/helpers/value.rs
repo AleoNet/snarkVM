@@ -19,7 +19,7 @@ use snarkvm_circuit::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
-use nom::multi::separated_list1;
+use nom::{combinator::fail, multi::separated_list1};
 use std::io::{Read, Result as IoResult, Write};
 
 /// A value contains the underlying literal(s) in memory.
@@ -75,45 +75,57 @@ impl<P: Program> Parser for Value<P> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        /// Parses a value definition as `name { member_0, member_1, ..., member_n }`.
-        fn parse_definition<P: Program>(string: &str) -> ParserResult<Value<P>> {
-            /// Parses a sanitized member.
-            fn parse_sanitized_member<P: Program>(string: &str) -> ParserResult<Value<P>> {
-                // Parse the whitespace and comments from the string.
-                let (string, _) = Sanitizer::parse(string)?;
-                // Parse the annotation from the string.
-                Value::parse(string)
-            }
+        /// Helper function to parse a value.
+        /// The parameter `depth` is used to track the current recursive depth of a value definition.
+        fn parse_value<'a, P: Program>(string: &'a str, depth: usize) -> ParserResult<Value<P>> {
+            match depth <= P::NUM_DEPTH {
+                false => fail(string),
+                true => {
+                    /// Parses a value definition as `name { member_0, member_1, ..., member_n }`.
+                    fn parse_definition<'a, P: Program>(string: &'a str, depth: usize) -> ParserResult<Value<P>> {
+                        /// Parses a sanitized member.
+                        fn parse_sanitized_member<P: Program>(string: &str, depth: usize) -> ParserResult<Value<P>> {
+                            // Parse the whitespace and comments from the string.
+                            let (string, _) = Sanitizer::parse(string)?;
+                            // Increment the depth and parse the annotation from the string.
+                            parse_value(string, depth + 1)
+                        }
 
-            // Parse the name from the string.
-            let (string, name) = Identifier::parse(string)?;
-            // Parse the " {" from the string.
-            let (string, _) = tag(" {")(string)?;
-            // Parse the members.
-            let (string, members) =
-                map_res(separated_list1(tag(","), parse_sanitized_member), |members: Vec<Value<P>>| {
-                    // Ensure the number of members is within `P::NUM_DEPTH`.
-                    if members.len() <= P::NUM_DEPTH {
-                        Ok(members)
-                    } else {
-                        Err(error(format!("Detected a value with too many members ({})", members.len())))
+                        // Parse the name from the string.
+                        let (string, name) = Identifier::parse(string)?;
+                        // Parse the " {" from the string.
+                        let (string, _) = tag(" {")(string)?;
+                        // Parse the members.
+                        let (string, members) = map_res(
+                            separated_list1(tag(","), |string: &'a str| parse_sanitized_member(string, depth)),
+                            |members: Vec<Value<P>>| {
+                                // Ensure the number of members is within `P::NUM_DEPTH`.
+                                if members.len() <= P::NUM_DEPTH {
+                                    Ok(members)
+                                } else {
+                                    Err(error(format!("Detected a value with too many members ({})", members.len())))
+                                }
+                            },
+                        )(string)?;
+                        // Parse the whitespace and comments from the string.
+                        let (string, _) = Sanitizer::parse(string)?;
+                        // Parse the '}' from the string.
+                        let (string, _) = tag("}")(string)?;
+                        // Output the value.
+                        Ok((string, Value::Definition(name, members)))
                     }
-                })(string)?;
-            // Parse the whitespace and comments from the string.
-            let (string, _) = Sanitizer::parse(string)?;
-            // Parse the '}' from the string.
-            let (string, _) = tag("}")(string)?;
-            // Output the value.
-            Ok((string, Value::Definition(name, members)))
-        }
 
-        // Parse to determine the value (order matters).
-        alt((
-            // Parse a value literal.
-            map(Literal::parse, |literal| Self::Literal(literal)),
-            // Parse a value definition.
-            parse_definition,
-        ))(string)
+                    // Parse to determine the value (order matters).
+                    alt((
+                        // Parse a value literal.
+                        map(Literal::parse, |literal| Value::Literal(literal)),
+                        // Parse a value definition.
+                        |string: &'a str| parse_definition(string, depth),
+                    ))(string)
+                }
+            }
+        }
+        parse_value(string, 0)
     }
 }
 
@@ -219,6 +231,19 @@ mod tests {
 
     type P = Process;
 
+    // Helper function to create a value definition of desired depth greater than zero.
+    fn create_random_value_definition(depth: usize) -> Value<P> {
+        match depth {
+            depth if depth == 0 => panic!("Cannot create a value definition with depth 0"),
+            depth if depth == 1 => Value::<P>::Definition(Identifier::from_str("child_1"), vec![Value::<P>::Literal(
+                Literal::from_str("0field.private"),
+            )]),
+            _ => Value::<P>::Definition(Identifier::from_str(format!("child_{}", depth).as_str()), vec![
+                create_random_value_definition(depth - 1),
+            ]),
+        }
+    }
+
     #[test]
     fn test_value_parse() {
         // Test parsing a value literal.
@@ -294,5 +319,29 @@ mod tests {
         .1;
         let candidate = Value::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
+    }
+
+    #[test]
+    fn test_parser_checks_num_depth() {
+        // Create a value definition of max depth.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH);
+        let value_string = value.to_string();
+        assert!(Value::<P>::parse(&value_string).is_ok());
+
+        // Create a value definition of max depth + 1.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH + 1);
+        let value_string = value.to_string();
+        assert!(Value::<P>::parse(&value_string).is_err());
+    }
+
+    #[test]
+    fn test_write_le_checks_num_depth() {
+        // Create a value definition of max depth.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH);
+        assert!(value.write_le(Vec::new()).is_ok());
+
+        // Create a value definition of max depth + 1.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH + 1);
+        assert!(value.write_le(Vec::new()).is_err());
     }
 }
