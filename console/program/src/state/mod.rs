@@ -22,7 +22,7 @@ pub use serial_number::SerialNumber;
 
 mod decrypt;
 mod encrypt;
-mod to_id;
+mod to_digest;
 mod to_serial_number;
 
 use crate::{Ciphertext, Data, Record};

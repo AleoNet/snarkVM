@@ -25,9 +25,9 @@ impl<N: Network> State<N> {
     ) -> Result<SerialNumber<N>> {
         // Ensure the private key belongs to the owner of the program state.
         ensure!(self.owner == private_key.try_into()?, "The private key does not match this program state");
-        // Compute the program state ID.
-        let state_id = self.to_id()?;
+        // Compute the program state digest.
+        let state_digest = self.to_digest()?;
         // Compute the serial number.
-        SerialNumber::<N>::prove(&private_key.sk_vrf(), state_id, rng)
+        SerialNumber::<N>::prove(&private_key.sk_vrf(), state_digest, rng)
     }
 }

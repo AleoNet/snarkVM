@@ -18,12 +18,12 @@ use super::*;
 
 impl<N: Network> SerialNumber<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &N::Affine, commitment: N::Field) -> bool {
+    pub fn verify(&self, pk_vrf: &N::Affine, state_digest: N::Field) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
-        // Compute the generator `H` as `HashToGroup(commitment)`.
-        let generator_h = match N::hash_to_group_psd2(&[N::serial_number_domain(), commitment]) {
+        // Compute the generator `H` as `HashToGroup(state_digest)`.
+        let generator_h = match N::hash_to_group_psd2(&[N::serial_number_domain(), state_digest]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
                 eprintln!("Failed to compute the generator H: {err}");
@@ -55,8 +55,8 @@ impl<N: Network> SerialNumber<N> {
             }
         };
 
-        // Compute `candidate_serial_number` as `Hash(commitment || serial_number_nonce)`.
-        let candidate_serial_number = match N::hash_bhp512(&[commitment, serial_number_nonce].to_bits_le()) {
+        // Compute `candidate_serial_number` as `Hash(state_digest || serial_number_nonce)`.
+        let candidate_serial_number = match N::hash_bhp512(&[state_digest, serial_number_nonce].to_bits_le()) {
             Ok(candidate_serial_number) => candidate_serial_number,
             Err(err) => {
                 eprintln!("Failed to compute the serial number: {err}");
@@ -85,12 +85,12 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             let sk_vrf = UniformRand::rand(rng);
-            let commitment = UniformRand::rand(rng);
+            let state_digest = UniformRand::rand(rng);
 
             let pk_vrf = CurrentNetwork::g_scalar_multiply(&sk_vrf).to_affine();
 
-            let proof = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, commitment, rng)?;
-            assert!(proof.verify(&pk_vrf, commitment));
+            let proof = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, state_digest, rng)?;
+            assert!(proof.verify(&pk_vrf, state_digest));
         }
         Ok(())
     }
