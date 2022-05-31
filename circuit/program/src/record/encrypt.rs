@@ -20,7 +20,7 @@ impl<A: Aleo> Record<A> {
     /// Initializes a new record by encrypting the given state with a given randomizer.
     pub fn encrypt(state: &State<A>, record_view_key: &Field<A>) -> Self {
         // Ensure the balance is less than or equal to 2^52.
-        A::assert(state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
+        A::assert(!state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
 
         // Compute the randomizers.
         let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);

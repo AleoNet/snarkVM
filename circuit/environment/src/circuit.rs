@@ -20,20 +20,31 @@ use snarkvm_curves::AffineCurve;
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
 
+type Field = <console::Testnet3 as console::Network>::Field;
+
 thread_local! {
-    pub(super) static CIRCUIT: Rc<RefCell<R1CS<<console::Testnet3 as console::Network>::Field>>> = Rc::new(RefCell::new(R1CS::new()));
+    pub(super) static CIRCUIT: Rc<RefCell<R1CS<Field>>> = Rc::new(RefCell::new(R1CS::new()));
     pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
-    pub(super) static ZERO: LinearCombination<<console::Testnet3 as console::Network>::Field> = LinearCombination::zero();
-    pub(super) static ONE: LinearCombination<<console::Testnet3 as console::Network>::Field> = LinearCombination::one();
+    pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
+    pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
+impl Circuit {
+    /// TODO (howardwu): Refactor this into an appropriate design.
+    ///  Circuits should not have easy access to this during synthesis.
+    /// Returns the public input variables of the circuit.
+    pub fn public_inputs() -> Vec<Field> {
+        CIRCUIT.with(|circuit| (**circuit).borrow().to_public_variables().iter().map(Variable::value).collect())
+    }
+}
+
 impl Environment for Circuit {
     type Affine = <console::Testnet3 as console::Network>::Affine;
     type AffineParameters = <console::Testnet3 as console::Network>::AffineParameters;
-    type BaseField = <console::Testnet3 as console::Network>::Field;
+    type BaseField = Field;
     type Network = console::Testnet3;
     type ScalarField = <console::Testnet3 as console::Network>::Scalar;
 

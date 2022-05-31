@@ -2035,8 +2035,10 @@ version = "0.7.5"
 dependencies = [
  "anyhow",
  "rand",
+ "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
+ "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
 ]

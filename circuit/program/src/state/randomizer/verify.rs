@@ -27,7 +27,7 @@ impl<A: Aleo> Randomizer<A> {
             A::hash_to_group_psd4(&[A::randomizer_domain(), serial_numbers_digest.clone(), output_index.to_field()]);
 
         // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
-        let u = (address.to_group() * challenge) + A::g_scalar_multiply(&response);
+        let u = (address.to_group() * challenge) + A::g_scalar_multiply(response);
 
         // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `nonce * H`.
         let v = (gamma * challenge) + (generator_h * response);

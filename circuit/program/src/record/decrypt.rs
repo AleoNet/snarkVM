@@ -38,7 +38,7 @@ impl<A: Aleo> Record<A> {
         // Decrypt and recover the balance.
         let balance = U64::from_field(&self.balance - &randomizers[1]);
         // Ensure the balance is less than or equal to 2^52.
-        A::assert(balance.to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
+        A::assert(!balance.to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
 
         // Compute the candidate MAC := Hash(G^r^view_key).
         let candidate_mac = A::hash_psd2(&[A::mac_domain(), record_view_key.clone()]);

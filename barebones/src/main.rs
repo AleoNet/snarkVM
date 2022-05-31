@@ -20,15 +20,17 @@ use console::{
     network::{Network, Testnet3},
     program::{Ciphertext, Data, Randomizer, Record, State},
 };
-use snarkvm_fields::Zero;
+use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::UniformRand;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Error, Result};
+use core::panic::UnwindSafe;
 use std::thread;
 
 mod output {
-    use anyhow::{ensure, Result};
     use circuit::{Aleo, Eject, Equal, Field, Randomizer, Record, State, U16};
+
+    use anyhow::{ensure, Result};
 
     struct Public<A: Aleo> {
         /// The output index.
@@ -70,8 +72,8 @@ mod output {
         /// Initializes the private inputs for the output circuit.
         pub fn new(state: State<A>, randomizer: Randomizer<A>) -> Result<Self> {
             // Ensure all members are private inputs.
-            ensure!(state.eject_mode().is_public(), "Output state must be private");
-            ensure!(randomizer.eject_mode().is_public(), "Output randomizer must be private");
+            ensure!(state.eject_mode().is_private(), "Output state must be private");
+            ensure!(randomizer.eject_mode().is_private(), "Output randomizer must be private");
 
             Ok(Self { state, randomizer })
         }
@@ -99,18 +101,83 @@ mod output {
 
             // Ensure the randomizer is valid.
             A::assert(private.randomizer.verify(private.state.owner(), &public.serial_numbers_digest, &public.index));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Encrypt the program state into a new record.
             let record = private.state.encrypt(&private.randomizer);
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the record matches the declared record.
             A::assert(record.is_equal(&public.record));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the record commitment matches the declared commitment.
             A::assert_eq(record.to_commitment(), &public.commitment);
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
+            println!(
+                "Counts: {} {} {} {}",
+                A::num_constants(),
+                A::num_public(),
+                A::num_private(),
+                A::num_constraints()
+            );
             Ok(())
         }
+    }
+}
+
+mod snark {
+    use snarkvm_algorithms::{
+        crypto_hash::PoseidonSponge,
+        snark::marlin::{
+            ahp::AHPForR1CS,
+            fiat_shamir::FiatShamirAlgebraicSpongeRng,
+            MarlinHidingMode,
+            MarlinSNARK,
+            Proof,
+        },
+        SNARK,
+    };
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_fields::One;
+
+    use anyhow::{ensure, Result};
+    use std::time::Instant;
+
+    // Runs Marlin setup, prove, and verify.
+    pub fn execute() -> Result<Proof<Bls12_377>> {
+        type EC = snarkvm_curves::bls12_377::Bls12_377;
+        type Fq = <EC as snarkvm_curves::PairingEngine>::Fq;
+        type Fr = <EC as snarkvm_curves::PairingEngine>::Fr;
+        type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+        type Marlin = MarlinSNARK<EC, FS, MarlinHidingMode, [Fr]>;
+
+        let mut rng = rand::thread_rng();
+
+        let timer = Instant::now();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
+        let universal_srs = Marlin::universal_setup(&max_degree, &mut rng).unwrap();
+        println!("Called universal setup: {} ms", timer.elapsed().as_millis());
+
+        ensure!(<circuit::Circuit as circuit::Environment>::is_satisfied(), "Circuit is not satisfied");
+
+        let timer = Instant::now();
+        let (index_pk, index_vk) = Marlin::circuit_setup(&universal_srs, &circuit::Circuit).unwrap();
+        println!("Called circuit setup: {} ms", timer.elapsed().as_millis());
+
+        let timer = Instant::now();
+        let proof = Marlin::prove(&index_pk, &circuit::Circuit, &mut rng).unwrap();
+        println!("Called prover: {} ms", timer.elapsed().as_millis());
+
+        let inputs = circuit::Circuit::public_inputs();
+        println!("{} inputs: {:?}", inputs.len(), inputs);
+
+        let timer = Instant::now();
+        assert!(Marlin::verify(&index_vk, inputs, &proof).unwrap());
+        println!("Called verifier: {} ms", timer.elapsed().as_millis());
+
+        Ok(proof)
     }
 }
 
@@ -131,7 +198,12 @@ impl<N: Network> Transition<N> {
 }
 
 /// Transition: 0 -> 1
-fn mint<A: circuit::Aleo>() -> Result<()> {
+fn mint<A: circuit::Aleo>() -> Result<()>
+where
+    A::BaseField: UnwindSafe,
+    A::ScalarField: UnwindSafe,
+    A::Affine: UnwindSafe,
+{
     let mut rng = rand::thread_rng();
 
     // Initialize a new sender account.
@@ -155,8 +227,7 @@ fn mint<A: circuit::Aleo>() -> Result<()> {
         (state, record)
     };
 
-    // let process = std::panic::catch_unwind(|| {
-    {
+    let process = std::panic::catch_unwind(|| {
         use circuit::{Field, Inject, Mode, Randomizer, Record, State, U16};
 
         // Set the output index to 0.
@@ -173,16 +244,18 @@ fn mint<A: circuit::Aleo>() -> Result<()> {
         let state = State::<A>::new(Mode::Private, state);
         let randomizer = Randomizer::<A>::new(Mode::Private, randomizer);
 
-        output::OutputCircuit::new(index, commitment, record, serial_numbers_digest, state, randomizer)?;
-    }
+        let output_circuit =
+            output::OutputCircuit::new(index, commitment, record, serial_numbers_digest, state, randomizer)?;
+        output_circuit.execute()?;
 
-    //     Ok(0)
-    // });
-    //
-    // match process {
-    //     Ok(Ok(result)) => println!("{}", result),
-    //     Err(_) => println!("Error"),
-    // }
+        snark::execute()
+    });
+
+    let proof = match process {
+        Ok(Ok(proof)) => proof,
+        Ok(Err(error)) => bail!("{:?}", error),
+        Err(_) => bail!("Thread failed"),
+    };
 
     // let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
 
