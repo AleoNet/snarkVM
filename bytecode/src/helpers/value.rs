@@ -179,36 +179,46 @@ impl<P: Program> FromBytes for Value<P> {
 
 impl<P: Program> ToBytes for Value<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Literal(literal) => {
-                u8::write_le(&0u8, &mut writer)?;
-                literal.write_le(&mut writer)
-            }
-            Self::Definition(name, members) => {
-                // Ensure the number of members is within `P::NUM_DEPTH`.
-                if members.len() > P::NUM_DEPTH {
-                    return Err(error("Failed to serialize value: too many members"));
-                }
-
-                // Write the variant.
-                u8::write_le(&1u8, &mut writer)?;
-                // Write the name.
-                name.write_le(&mut writer)?;
-                // Write the number of members.
-                (members.len() as u16).write_le(&mut writer)?;
-                // Write the members as bytes.
-                for member in members {
-                    match member.to_bytes_le() {
-                        Ok(bytes) => {
-                            variable_length_integer(&(bytes.len() as u64)).write_le(&mut writer)?;
-                            bytes.write_le(&mut writer)?;
+        // Helper function to write either a `Value::Literals` or a `Value::Definition`.
+        fn write_value<P: Program, W: Write>(value: &Value<P>, mut writer: W, depth: usize) -> IoResult<()> {
+            match depth <= P::NUM_DEPTH {
+                false => Err(error("Failed to serailize value: depth exceeded")),
+                true => {
+                    match value {
+                        Value::Literal(literal) => {
+                            u8::write_le(&0u8, &mut writer)?;
+                            literal.write_le(&mut writer)
                         }
-                        Err(err) => return Err(error(format!("{err}"))),
+                        Value::Definition(name, members) => {
+                            // Ensure the number of members is within `P::NUM_DEPTH`.
+                            if members.len() > P::NUM_DEPTH {
+                                return Err(error("Failed to serialize value: too many members"));
+                            }
+
+                            // Write the variant.
+                            u8::write_le(&1u8, &mut writer)?;
+                            // Write the name.
+                            name.write_le(&mut writer)?;
+                            // Write the number of members.
+                            (members.len() as u16).write_le(&mut writer)?;
+                            // Write the members as bytes.
+                            for member in members {
+                                let mut bytes = Vec::new();
+                                write_value(member, &mut bytes, depth + 1)?;
+
+                                // Write the number of bytes for the member.
+                                variable_length_integer(&(bytes.len() as u64)).write_le(&mut writer)?;
+
+                                // Write the bytes for the member.
+                                bytes.write_le(&mut writer)?;
+                            }
+                            Ok(())
+                        }
                     }
                 }
-                Ok(())
             }
         }
+        write_value(self, &mut writer, 0)
     }
 }
 
