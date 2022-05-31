@@ -153,27 +153,42 @@ impl<P: Program> fmt::Display for Value<P> {
 
 impl<P: Program> FromBytes for Value<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let variant = u8::read_le(&mut reader)?;
-        match variant {
-            0 => Ok(Self::Literal(Literal::read_le(&mut reader)?)),
-            1 => {
-                // Read the name.
-                let name = Identifier::read_le(&mut reader)?;
-                // Read the members.
-                let num_members = u16::read_le(&mut reader)?;
-                let mut members = Vec::with_capacity(num_members as usize);
-                for _ in 0..num_members {
-                    // Read the number of bytes for the member.
-                    let num_bytes = read_variable_length_integer(&mut reader)?;
-                    // Read the member.
-                    let mut bytes = vec![0; num_bytes as usize];
-                    reader.read_exact(&mut bytes)?;
-                    members.push(Value::read_le(&mut bytes.as_slice())?);
+        // Helper function to read a `Value` from little endian bytes.
+        fn read_value<P: Program, R: Read>(mut reader: R, depth: usize) -> IoResult<Value<P>> {
+            match depth <= P::NUM_DEPTH {
+                false => Err(error("Failed to deserialize value: depth exceeded")),
+                true => {
+                    let variant = u8::read_le(&mut reader)?;
+                    match variant {
+                        0 => Ok(Value::Literal(Literal::read_le(&mut reader)?)),
+                        1 => {
+                            // Read the name.
+                            let name = Identifier::read_le(&mut reader)?;
+                            // Read the members.
+                            let num_members = u16::read_le(&mut reader)? as usize;
+
+                            match num_members <= P::NUM_DEPTH {
+                                false => Err(error("Failed to deserialize value: too many members")),
+                                true => {
+                                    let mut members = Vec::with_capacity(num_members);
+                                    for _ in 0..num_members {
+                                        // Read the number of bytes for the member.
+                                        let num_bytes = read_variable_length_integer(&mut reader)?;
+                                        // Read the member.
+                                        let mut bytes = vec![0; num_bytes as usize];
+                                        reader.read_exact(&mut bytes)?;
+                                        members.push(read_value(&mut bytes.as_slice(), depth + 1)?);
+                                    }
+                                    Ok(Value::Definition(name, members))
+                                }
+                            }
+                        }
+                        2.. => Err(error(format!("Failed to deserialize value variant {variant}"))),
+                    }
                 }
-                Ok(Self::Definition(name, members))
             }
-            2.. => Err(error(format!("Failed to deserialize value variant {variant}"))),
         }
+        read_value(&mut reader, 0)
     }
 }
 
@@ -182,7 +197,7 @@ impl<P: Program> ToBytes for Value<P> {
         // Helper function to write either a `Value::Literals` or a `Value::Definition`.
         fn write_value<P: Program, W: Write>(value: &Value<P>, mut writer: W, depth: usize) -> IoResult<()> {
             match depth <= P::NUM_DEPTH {
-                false => Err(error("Failed to serailize value: depth exceeded")),
+                false => Err(error("Failed to serialize value: depth exceeded")),
                 true => {
                     match value {
                         Value::Literal(literal) => {
