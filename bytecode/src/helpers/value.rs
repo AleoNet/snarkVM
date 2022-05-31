@@ -249,6 +249,37 @@ mod tests {
         }
     }
 
+    // Helper function to write a `Value` as little-endian bytes.
+    // This function does not check that `value` does not exceed the maximum depth.
+    fn write_value_unchecked<W: Write>(value: &Value<P>, mut writer: W) -> IoResult<()> {
+        match value {
+            Value::Literal(literal) => {
+                u8::write_le(&0u8, &mut writer)?;
+                literal.write_le(&mut writer)
+            }
+            Value::Definition(name, members) => {
+                // Write the variant.
+                u8::write_le(&1u8, &mut writer)?;
+                // Write the name.
+                name.write_le(&mut writer)?;
+                // Write the number of members.
+                (members.len() as u16).write_le(&mut writer)?;
+                // Write the members as bytes.
+                for member in members {
+                    let mut bytes = Vec::new();
+                    write_value_unchecked(member, &mut bytes)?;
+
+                    // Write the number of bytes for the member.
+                    variable_length_integer(&(bytes.len() as u64)).write_le(&mut writer)?;
+
+                    // Write the bytes for the member.
+                    bytes.write_le(&mut writer)?;
+                }
+                Ok(())
+            }
+        }
+    }
+
     #[test]
     fn test_value_parse() {
         // Test parsing a value literal.
@@ -348,5 +379,20 @@ mod tests {
         // Create a value definition of max depth + 1.
         let value = create_random_value_definition(<P as Program>::NUM_DEPTH + 1);
         assert!(value.write_le(Vec::new()).is_err());
+    }
+
+    #[test]
+    fn test_read_le_checks_num_depth() {
+        // Create a value definition of max depth.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH);
+        let mut value_bytes = Vec::new();
+        write_value_unchecked(&value, &mut value_bytes).unwrap();
+        assert!(Value::<P>::from_bytes_le(&value_bytes).is_ok());
+
+        // Create a value definition of max depth + 1.
+        let value = create_random_value_definition(<P as Program>::NUM_DEPTH + 1);
+        let mut value_bytes = Vec::new();
+        write_value_unchecked(&value, &mut value_bytes).unwrap();
+        assert!(Value::<P>::from_bytes_le(&value_bytes).is_err());
     }
 }
