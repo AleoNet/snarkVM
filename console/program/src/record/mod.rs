@@ -29,6 +29,7 @@ use anyhow::{bail, Result};
 
 /// A program's record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
+#[derive(Clone)]
 pub struct Record<N: Network> {
     /// The program ID of this record.
     program: N::Field,

@@ -25,14 +25,15 @@ use snarkvm_utilities::UniformRand;
 
 use anyhow::{bail, Error, Result};
 use core::panic::UnwindSafe;
+use snarkvm_algorithms::snark::marlin::Proof;
 use std::{thread, time::Instant};
 
 mod output {
-    use circuit::{Aleo, Eject, Equal, Field, Randomizer, Record, State, U16};
+    use circuit::{Aleo, Eject, Equal, Field, Inject, Mode, Randomizer, Record, State, U16};
 
     use anyhow::{ensure, Result};
 
-    struct Public<A: Aleo> {
+    pub struct Public<A: Aleo> {
         /// The output index.
         index: U16<A>,
         /// The output commitment.
@@ -45,23 +46,22 @@ mod output {
 
     impl<A: Aleo> Public<A> {
         /// Initializes the public inputs for the output circuit.
-        pub fn new(
-            index: U16<A>,
-            commitment: Field<A>,
-            record: Record<A>,
-            serial_numbers_digest: Field<A>,
-        ) -> Result<Self> {
-            // Ensure all members are public inputs.
-            ensure!(index.eject_mode().is_public(), "Output index must be public");
-            ensure!(commitment.eject_mode().is_public(), "Output commitment must be public");
-            ensure!(record.eject_mode().is_public(), "Output record must be public");
-            ensure!(serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
+        pub fn from(
+            index: u16,
+            commitment: A::BaseField,
+            record: console::program::Record<A::Network>,
+            serial_numbers_digest: A::BaseField,
+        ) -> Self {
+            let index = U16::<A>::new(Mode::Public, index);
+            let commitment = Field::<A>::new(Mode::Public, commitment);
+            let record = Record::<A>::new(Mode::Public, record);
+            let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
 
-            Ok(Self { index, commitment, record, serial_numbers_digest })
+            Self { index, commitment, record, serial_numbers_digest }
         }
     }
 
-    struct Private<A: Aleo> {
+    pub struct Private<A: Aleo> {
         /// The output state.
         state: State<A>,
         /// The output randomizer.
@@ -70,12 +70,14 @@ mod output {
 
     impl<A: Aleo> Private<A> {
         /// Initializes the private inputs for the output circuit.
-        pub fn new(state: State<A>, randomizer: Randomizer<A>) -> Result<Self> {
-            // Ensure all members are private inputs.
-            ensure!(state.eject_mode().is_private(), "Output state must be private");
-            ensure!(randomizer.eject_mode().is_private(), "Output randomizer must be private");
+        pub fn from(
+            state: console::program::State<A::Network>,
+            randomizer: console::program::Randomizer<A::Network>,
+        ) -> Self {
+            let state = State::<A>::new(Mode::Private, state);
+            let randomizer = Randomizer::<A>::new(Mode::Private, randomizer);
 
-            Ok(Self { state, randomizer })
+            Self { state, randomizer }
         }
     }
 
@@ -83,21 +85,23 @@ mod output {
 
     impl<A: Aleo> OutputCircuit<A> {
         /// Initializes the output circuit.
-        pub fn new(
-            index: U16<A>,
-            commitment: Field<A>,
-            record: Record<A>,
-            serial_numbers_digest: Field<A>,
-            state: State<A>,
-            randomizer: Randomizer<A>,
-        ) -> Result<Self> {
-            Ok(Self(Public::new(index, commitment, record, serial_numbers_digest)?, Private::new(state, randomizer)?))
+        pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
+            // Ensure all members are public inputs.
+            ensure!(public.index.eject_mode().is_public(), "Output index must be public");
+            ensure!(public.commitment.eject_mode().is_public(), "Output commitment must be public");
+            ensure!(public.record.eject_mode().is_public(), "Output record must be public");
+            ensure!(public.serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
+
+            // Ensure all members are private inputs.
+            ensure!(private.state.eject_mode().is_private(), "Output state must be private");
+            ensure!(private.randomizer.eject_mode().is_private(), "Output randomizer must be private");
+
+            Ok(Self(public, private))
         }
 
         /// Executes the output circuit.
-        pub fn execute(&self) -> Result<()> {
-            let public = &self.0;
-            let private = &self.1;
+        pub fn execute(&self) {
+            let (public, private) = (&self.0, &self.1);
 
             // Ensure the randomizer is valid.
             A::assert(private.randomizer.verify(private.state.owner(), &public.serial_numbers_digest, &public.index));
@@ -117,9 +121,8 @@ mod output {
 
             let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
             println!(
-                "Count(constant: {num_constant}, public: {num_public}, private: {num_private}, constraints: {num_constraints}, gates: {num_gates})"
+                "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
             );
-            Ok(())
         }
     }
 }
@@ -181,6 +184,7 @@ mod snark {
 
 pub struct Transition<N: Network> {
     outputs: Vec<Record<N>>,
+    output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
 }
 
 pub struct Transaction<N: Network> {
@@ -229,32 +233,30 @@ where
         use circuit::{Field, Inject, Mode, Randomizer, Record, State, U16};
 
         // Set the output index to 0.
-        let output_index = 0;
+        let output_index = 0u16;
         // Compute the commitment.
         let commitment = record.to_commitment()?;
         // Compute the serial numbers digest.
         let serial_numbers_digest = A::Network::hash_bhp1024(&[])?;
 
-        let index = U16::<A>::new(Mode::Public, output_index);
-        let commitment = Field::<A>::new(Mode::Public, commitment);
-        let record = Record::<A>::new(Mode::Public, record);
-        let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
-        let state = State::<A>::new(Mode::Private, state);
-        let randomizer = Randomizer::<A>::new(Mode::Private, randomizer);
-
-        let output_circuit =
-            output::OutputCircuit::new(index, commitment, record, serial_numbers_digest, state, randomizer)?;
-        output_circuit.execute()?;
+        let public = output::Public::<A>::from(output_index, commitment, record.clone(), serial_numbers_digest);
+        let private = output::Private::<A>::from(state, randomizer);
+        let output_circuit = output::OutputCircuit::from(public, private)?;
+        output_circuit.execute();
 
         let timer = Instant::now();
         let assignment = circuit::Circuit::eject();
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
-        snark::execute(assignment)
+        let proof = snark::execute(assignment)?;
+
+        let transition = Transition { outputs: vec![record], output_proofs: vec![proof] };
+
+        Ok::<_, Error>(transition)
     });
 
-    let proof = match process {
-        Ok(Ok(proof)) => proof,
+    let transition = match process {
+        Ok(Ok(transition)) => transition,
         Ok(Err(error)) => bail!("{:?}", error),
         Err(_) => bail!("Thread failed"),
     };
@@ -263,8 +265,6 @@ where
 
     // Signature::sign(&sender_private_key, &[]);
 
-    // let transition = Transition { outputs: vec![record] };
-    //
     // let transaction = Transaction { network: 0, transitions: vec![transition] };
 
     println!("Success");
