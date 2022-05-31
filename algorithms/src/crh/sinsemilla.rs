@@ -26,8 +26,8 @@ use rayon::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SinsemillaParameters<G: ProjectiveCurve> {
-    q: G,
-    p_lookups: Vec<G>,
+    pub q: G,
+    pub p_lookups: Vec<G>,
 }
 
 /// SinsemillaCRH is a collision-resistant hash function that takes a fixed-length input.
@@ -93,12 +93,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         }
 
         Ok(input.chunks(WINDOW_SIZE).fold(self.0.q.clone(), |acc, bits| {
-            let mut i = 0u16;
-            bits.iter().for_each(|bit| {
-                i <<= 1;
+            let i = bits.iter().fold(0, |mut acc, bit| {
+                acc >>= 1;
                 if *bit {
-                    i |= 1u16;
+                    acc += 1u16;
                 }
+                acc
             });
             acc.double() + self.0.p_lookups[i as usize]
         }))
