@@ -14,22 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
-impl<N: Network> Record<N> {
-    /// Returns `true` if this record belongs to the account of the given view key.
-    pub fn is_owner(&self, view_key: &ViewKey<N>) -> bool {
-        // Compute the record view key := G^r^view_key.
-        let record_view_key = (self.nonce * **view_key).to_affine().to_x_coordinate();
-        // Compute the candidate MAC := Hash(G^r^view_key).
-        match N::hash_psd2(&[N::mac_domain(), record_view_key]) {
-            // Check if the MACs match.
-            Ok(candidate_mac) => self.mac == candidate_mac,
-            // If the computation fails, return false.
-            Err(error) => {
-                eprintln!("{error}");
-                false
-            }
-        }
+fn main() {
+    if cfg!(feature = "enable_console") {
+        println!("cargo:rustc-cfg=console");
     }
 }

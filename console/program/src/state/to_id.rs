@@ -26,7 +26,7 @@ impl<N: Network> State<N> {
                 self.process,
                 self.owner.to_x_coordinate(),
                 N::Field::from(self.balance as u128),
-                self.data.to_id()?,
+                self.data,
                 self.nonce.to_x_coordinate(),
             ]
             .to_bits_le(),

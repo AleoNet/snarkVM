@@ -39,7 +39,7 @@ impl<E: Environment> FromField for Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -51,7 +51,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Address::<Circuit>::new(mode, expected).to_field();
+            let candidate = Group::<Circuit>::new(mode, expected).to_x_coordinate();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = Address::from_field(candidate);

@@ -26,7 +26,7 @@ impl<N: Network> Record<N> {
                 self.process,
                 self.owner,
                 self.balance,
-                self.data.to_id()?,
+                self.data,
                 self.nonce.to_x_coordinate(),
                 self.mac,
                 self.bcm,

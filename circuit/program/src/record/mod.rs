@@ -14,18 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// #[cfg(test)]
-// use snarkvm_circuit_types::environment::assert_scope;
+#[cfg(test)]
+use snarkvm_circuit_types::environment::assert_scope;
 
 mod decrypt;
 mod encrypt;
+mod equal;
 mod is_owner;
 mod to_commitment;
 
 use crate::State;
 use snarkvm_circuit_account::ViewKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U64};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's record is a set of **ciphertext** variables used by a program.
@@ -50,28 +51,53 @@ pub struct Record<A: Aleo> {
 }
 
 #[cfg(console)]
+impl<A: Aleo> Inject for Record<A> {
+    type Primitive = console::Record<A::Network>;
+
+    /// Initializes a record from the given mode and native record.
+    fn new(mode: Mode, record: Self::Primitive) -> Record<A> {
+        // Return the record.
+        Self {
+            program: Field::new(mode, record.program()),
+            process: Field::new(mode, record.process()),
+            owner: Field::new(mode, record.owner()),
+            balance: Field::new(mode, record.balance()),
+            data: Field::new(mode, record.data()),
+            nonce: Group::new(mode, record.nonce()),
+            mac: Field::new(mode, record.mac()),
+            bcm: Field::new(mode, record.bcm()),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Eject for Record<A> {
+    type Primitive = console::Record<A::Network>;
+
+    /// Ejects the mode of the record.
+    fn eject_mode(&self) -> Mode {
+        (&self.program, &self.process, &self.owner, &self.balance, &self.data, &self.nonce, &self.mac, &self.bcm)
+            .eject_mode()
+    }
+
+    /// Ejects the record.
+    fn eject_value(&self) -> Self::Primitive {
+        Self::Primitive::new(
+            self.program.eject_value(),
+            self.process.eject_value(),
+            self.owner.eject_value(),
+            self.balance.eject_value(),
+            self.data.eject_value(),
+            self.nonce.eject_value(),
+            self.mac.eject_value(),
+            self.bcm.eject_value(),
+        )
+    }
+}
+
+#[cfg(console)]
 impl<A: Aleo> TypeName for Record<A> {
     fn type_name() -> &'static str {
         "record"
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::Devnet as Circuit;
-//     use snarkvm_circuit_types::Group;
-//
-//     #[test]
-//     fn test_record() {
-//         let first = Literal::<Circuit>::from_str("10field.public");
-//         let second = Literal::from_str("true.private");
-//         let third = Literal::from_str("99i64.public");
-//
-//         let _candidate = Record::<Circuit> {
-//             owner: Address::from(Group::from_str("2group.private")),
-//             value: I64::from_str("1i64.private"),
-//             data: vec![first, second, third],
-//         };
-//     }
-// }

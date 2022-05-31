@@ -171,98 +171,150 @@ impl<C: Eject<Primitive = P>, P> Eject for &[C] {
 /****** Tuples ******/
 /********************/
 
-impl<'a, C0: Eject, C1: Eject> Eject for &'a (C0, C1) {
-    type Primitive = (C0::Primitive, C1::Primitive);
+/// A helper macro to implement `Eject` for a tuple of `Eject` circuits.
+macro_rules! eject_tuple {
+    (($t0:ident, $i0:expr), $(($ty:ident, $idx:tt)),*) => {
+        impl<'a, $t0: Eject, $($ty: Eject),*> Eject for (&'a $t0, $(&'a $ty),*) {
+            type Primitive = ($t0::Primitive, $( $ty::Primitive ),*);
 
-    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
-    #[inline]
-    fn eject_mode(&self) -> Mode {
-        eject_mode(self.0.eject_mode(), &[self.1.eject_mode()])
-    }
+            /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+            #[inline]
+            fn eject_mode(&self) -> Mode {
+                eject_mode(self.0.eject_mode(), &[ $(self.$idx.eject_mode()),* ])
+            }
 
-    /// Ejects the value from each circuit.
-    #[inline]
-    fn eject_value(&self) -> Self::Primitive {
-        (self.0.eject_value(), self.1.eject_value())
-    }
-}
+            /// Ejects the value from each circuit.
+            #[inline]
+            fn eject_value(&self) -> Self::Primitive {
+                (self.0.eject_value(), $(self.$idx.eject_value()),*)
+            }
+        }
 
-impl<'a, C0: Eject, C1: Eject> Eject for (&'a C0, &'a C1) {
-    type Primitive = (C0::Primitive, C1::Primitive);
+        impl<'a, $t0: Eject, $($ty: Eject),*> Eject for &'a ($t0, $($ty),*) {
+            type Primitive = ($t0::Primitive, $( $ty::Primitive ),*);
 
-    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
-    #[inline]
-    fn eject_mode(&self) -> Mode {
-        eject_mode(self.0.eject_mode(), &[self.1.eject_mode()])
-    }
+            /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+            #[inline]
+            fn eject_mode(&self) -> Mode {
+                eject_mode(self.0.eject_mode(), &[ $(self.$idx.eject_mode()),* ])
+            }
 
-    /// Ejects the value from each circuit.
-    #[inline]
-    fn eject_value(&self) -> Self::Primitive {
-        (self.0.eject_value(), self.1.eject_value())
-    }
-}
-
-impl<'a, C0: Eject, C1: Eject, C2: Eject> Eject for &'a (C0, C1, C2) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive);
-
-    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
-    #[inline]
-    fn eject_mode(&self) -> Mode {
-        eject_mode(self.0.eject_mode(), &[self.1.eject_mode(), self.2.eject_mode()])
-    }
-
-    /// Ejects the value from each circuit.
-    #[inline]
-    fn eject_value(&self) -> Self::Primitive {
-        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value())
+            /// Ejects the value from each circuit.
+            #[inline]
+            fn eject_value(&self) -> Self::Primitive {
+                (self.0.eject_value(), $(self.$idx.eject_value()),*)
+            }
+        }
     }
 }
 
-impl<'a, C0: Eject, C1: Eject, C2: Eject> Eject for (&'a C0, &'a C1, &'a C2) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive);
-
-    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
-    #[inline]
-    fn eject_mode(&self) -> Mode {
-        eject_mode(self.0.eject_mode(), &[self.1.eject_mode(), self.2.eject_mode()])
-    }
-
-    /// Ejects the value from each circuit.
-    #[inline]
-    fn eject_value(&self) -> Self::Primitive {
-        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value())
-    }
-}
-
-impl<'a, C0: Eject, C1: Eject, C2: Eject, C3: Eject> Eject for &'a (C0, C1, C2, C3) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive);
-
-    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
-    #[inline]
-    fn eject_mode(&self) -> Mode {
-        eject_mode(self.0.eject_mode(), &[self.1.eject_mode(), self.2.eject_mode(), self.3.eject_mode()])
-    }
-
-    /// Ejects the value from each circuit.
-    #[inline]
-    fn eject_value(&self) -> Self::Primitive {
-        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value(), self.3.eject_value())
-    }
-}
-
-impl<'a, C0: Eject, C1: Eject, C2: Eject, C3: Eject> Eject for (&'a C0, &'a C1, &'a C2, &'a C3) {
-    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive);
-
-    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
-    #[inline]
-    fn eject_mode(&self) -> Mode {
-        eject_mode(self.0.eject_mode(), &[self.1.eject_mode(), self.2.eject_mode(), self.3.eject_mode()])
-    }
-
-    /// Ejects the value from each circuit.
-    #[inline]
-    fn eject_value(&self) -> Self::Primitive {
-        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value(), self.3.eject_value())
-    }
-}
+eject_tuple!((C0, 0),);
+eject_tuple!((C0, 0), (C1, 1));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C7, 7));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C7, 7), (C8, 8));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C7, 7), (C8, 8), (C9, 9));
+eject_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C7, 7), (C8, 8), (C9, 9), (C10, 10));
+eject_tuple!(
+    (C0, 0),
+    (C1, 1),
+    (C2, 2),
+    (C3, 3),
+    (C4, 4),
+    (C5, 5),
+    (C6, 6),
+    (C7, 7),
+    (C8, 8),
+    (C9, 9),
+    (C10, 10),
+    (C11, 11)
+);
+eject_tuple!(
+    (C0, 0),
+    (C1, 1),
+    (C2, 2),
+    (C3, 3),
+    (C4, 4),
+    (C5, 5),
+    (C6, 6),
+    (C7, 7),
+    (C8, 8),
+    (C9, 9),
+    (C10, 10),
+    (C11, 11),
+    (C12, 12)
+);
+eject_tuple!(
+    (C0, 0),
+    (C1, 1),
+    (C2, 2),
+    (C3, 3),
+    (C4, 4),
+    (C5, 5),
+    (C6, 6),
+    (C7, 7),
+    (C8, 8),
+    (C9, 9),
+    (C10, 10),
+    (C11, 11),
+    (C12, 12),
+    (C13, 13)
+);
+eject_tuple!(
+    (C0, 0),
+    (C1, 1),
+    (C2, 2),
+    (C3, 3),
+    (C4, 4),
+    (C5, 5),
+    (C6, 6),
+    (C7, 7),
+    (C8, 8),
+    (C9, 9),
+    (C10, 10),
+    (C11, 11),
+    (C12, 12),
+    (C13, 13),
+    (C14, 14)
+);
+eject_tuple!(
+    (C0, 0),
+    (C1, 1),
+    (C2, 2),
+    (C3, 3),
+    (C4, 4),
+    (C5, 5),
+    (C6, 6),
+    (C7, 7),
+    (C8, 8),
+    (C9, 9),
+    (C10, 10),
+    (C11, 11),
+    (C12, 12),
+    (C13, 13),
+    (C14, 14),
+    (C15, 15)
+);
+eject_tuple!(
+    (C0, 0),
+    (C1, 1),
+    (C2, 2),
+    (C3, 3),
+    (C4, 4),
+    (C5, 5),
+    (C6, 6),
+    (C7, 7),
+    (C8, 8),
+    (C9, 9),
+    (C10, 10),
+    (C11, 11),
+    (C12, 12),
+    (C13, 13),
+    (C14, 14),
+    (C15, 15),
+    (C16, 16)
+);

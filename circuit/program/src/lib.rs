@@ -27,4 +27,4 @@ mod record;
 pub use record::Record;
 
 mod state;
-pub use state::State;
+pub use state::{Randomizer, State};

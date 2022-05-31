@@ -18,18 +18,7 @@ use super::*;
 
 impl<A: Aleo> Record<A> {
     /// Initializes a new record by encrypting the given state with a given randomizer.
-    pub fn encrypt(state: &State<A>, randomizer: &Scalar<A>) -> Self {
-        // Ensure the nonce matches the given randomizer.
-        A::assert_eq(state.nonce(), A::g_scalar_multiply(randomizer));
-
-        // Compute the record view key.
-        let record_view_key = (state.owner().to_group() * randomizer).to_x_coordinate();
-        // Encrypt the record and output the state.
-        Self::encrypt_symmetric(state, &record_view_key)
-    }
-
-    /// Initializes a new record by encrypting the given state with a given randomizer.
-    pub fn encrypt_symmetric(state: &State<A>, record_view_key: &Field<A>) -> Self {
+    pub fn encrypt(state: &State<A>, record_view_key: &Field<A>) -> Self {
         // Ensure the balance is less than or equal to 2^52.
         A::assert(state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
 

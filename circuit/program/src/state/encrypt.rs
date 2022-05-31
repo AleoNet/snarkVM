@@ -17,8 +17,14 @@
 use super::*;
 
 impl<A: Aleo> State<A> {
-    /// Returns the record corresponding to the state.
-    pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A> {
-        Record::encrypt(self, randomizer)
+    /// Returns a new record by encrypting this state with the given randomizer.
+    pub fn encrypt(&self, randomizer: &Randomizer<A>) -> Record<A> {
+        // Ensure the nonce matches the given randomizer.
+        A::assert_eq(&self.nonce, randomizer.to_nonce());
+
+        // Compute the record view key.
+        let record_view_key = (self.owner.to_group() * randomizer.value()).to_x_coordinate();
+        // Encrypt the state and output the record.
+        Record::encrypt(self, &record_view_key)
     }
 }

@@ -15,29 +15,27 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{helpers::Constraint, *};
-use snarkvm_curves::{
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq, Fr},
-    AffineCurve,
-};
+use snarkvm_curves::AffineCurve;
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
 
 thread_local! {
-    pub(super) static CIRCUIT: Rc<RefCell<R1CS<Fq>>> = Rc::new(RefCell::new(R1CS::<Fq>::new()));
+    pub(super) static CIRCUIT: Rc<RefCell<R1CS<<console::Testnet3 as console::Network>::Field>>> = Rc::new(RefCell::new(R1CS::new()));
     pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
-    pub(super) static ZERO: LinearCombination<Fq> = LinearCombination::zero();
-    pub(super) static ONE: LinearCombination<Fq> = LinearCombination::one();
+    pub(super) static ZERO: LinearCombination<<console::Testnet3 as console::Network>::Field> = LinearCombination::zero();
+    pub(super) static ONE: LinearCombination<<console::Testnet3 as console::Network>::Field> = LinearCombination::one();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
 impl Environment for Circuit {
-    type Affine = EdwardsAffine;
-    type AffineParameters = EdwardsParameters;
-    type BaseField = Fq;
-    type ScalarField = Fr;
+    type Affine = <console::Testnet3 as console::Network>::Affine;
+    type AffineParameters = <console::Testnet3 as console::Network>::AffineParameters;
+    type BaseField = <console::Testnet3 as console::Network>::Field;
+    type Network = console::Testnet3;
+    type ScalarField = <console::Testnet3 as console::Network>::Scalar;
 
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;

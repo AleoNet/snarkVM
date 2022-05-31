@@ -22,9 +22,7 @@ impl<N: Network> State<N> {
     /// along with the serial numbers and output index in the transition.
     pub fn encrypt(&self, randomizer: &Randomizer<N>) -> Result<Record<N>> {
         // Ensure the nonce corresponds to the given randomizer: `nonce == randomizer * G`.
-        if self.nonce.to_projective() != N::g_scalar_multiply(randomizer.value()) {
-            bail!("Found an invalid encryption randomizer for encrypting program state")
-        }
+        ensure!(self.nonce == randomizer.to_nonce(), "Attempted to encrypt using an invalid randomizer");
 
         // Compute the record view key.
         let record_view_key = ((*self.owner).to_projective() * *randomizer.value()).to_affine().to_x_coordinate();

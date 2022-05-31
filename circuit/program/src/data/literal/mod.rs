@@ -67,7 +67,7 @@ impl<A: Aleo> Inject for Literal<A> {
     /// Initializes a new literal from a primitive.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
-            Self::Primitive::Address(address) => Self::Address(Address::new(mode, *address)),
+            Self::Primitive::Address(address) => Self::Address(Address::new(mode, address)),
             Self::Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, boolean)),
             Self::Primitive::Field(field) => Self::Field(Field::new(mode, field)),
             Self::Primitive::Group(group) => Self::Group(Group::new(mode, group)),
@@ -116,9 +116,7 @@ impl<A: Aleo> Eject for Literal<A> {
     /// Ejects the literal into its primitive.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Self::Address(literal) => {
-                Self::Primitive::Address(snarkvm_console_account::Address::from_group(literal.eject_value()))
-            }
+            Self::Address(literal) => Self::Primitive::Address(literal.eject_value()),
             Self::Boolean(literal) => Self::Primitive::Boolean(literal.eject_value()),
             Self::Field(literal) => Self::Primitive::Field(literal.eject_value()),
             Self::Group(literal) => Self::Primitive::Group(literal.eject_value()),

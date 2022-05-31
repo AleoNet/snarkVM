@@ -18,13 +18,13 @@ use super::*;
 
 impl<A: Aleo> Randomizer<A> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, address: &Address<A>, serial_numbers_digest: Field<A>, output_index: U16<A>) -> Boolean<A> {
+    pub fn verify(&self, address: &Address<A>, serial_numbers_digest: &Field<A>, output_index: &U16<A>) -> Boolean<A> {
         // Retrieve the proof components.
         let (gamma, challenge, response) = &self.proof;
 
         // Compute the generator `H` as `HashToGroup([ Hash(serial_numbers) || output_index ])`.
         let generator_h =
-            A::hash_to_group_psd4(&[A::randomizer_domain(), serial_numbers_digest, output_index.to_field()]);
+            A::hash_to_group_psd4(&[A::randomizer_domain(), serial_numbers_digest.clone(), output_index.to_field()]);
 
         // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
         let u = (address.to_group() * challenge) + A::g_scalar_multiply(&response);
@@ -67,32 +67,34 @@ mod tests {
         let rng = &mut test_crypto_rng();
 
         for i in 0..ITERATIONS {
-            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Aleo>::Network>::new(rng)?;
-            let view_key = snarkvm_console_account::ViewKey::<<Circuit as Aleo>::Network>::try_from(&private_key)?;
-            let address = snarkvm_console_account::Address::<<Circuit as Aleo>::Network>::try_from(&view_key)?;
+            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
+            let view_key =
+                snarkvm_console_account::ViewKey::<<Circuit as Environment>::Network>::try_from(&private_key)?;
+            let address = snarkvm_console_account::Address::<<Circuit as Environment>::Network>::try_from(&view_key)?;
 
             // Compute the native randomizer.
             let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
             let output_index = UniformRand::rand(rng);
-            let randomizer = console::Randomizer::<<Circuit as Aleo>::Network>::prove(
+            let randomizer = console::Randomizer::<<Circuit as Environment>::Network>::prove(
                 &view_key,
                 &serial_numbers,
                 output_index,
                 rng,
             )?;
-            let serial_numbers_digest = <<Circuit as Aleo>::Network as snarkvm_console_network::Network>::hash_bhp1024(
-                &serial_numbers.to_bits_le(),
-            )?;
+            let serial_numbers_digest =
+                <<Circuit as Environment>::Network as snarkvm_console_network::Network>::hash_bhp1024(
+                    &serial_numbers.to_bits_le(),
+                )?;
             assert!(randomizer.verify(&address, serial_numbers_digest, output_index));
 
             // Inject the randomizer and its arguments into circuits.
-            let address = Address::<Circuit>::new(mode, *address);
+            let address = Address::<Circuit>::new(mode, address);
             let serial_numbers_digest = Field::new(mode, serial_numbers_digest);
             let output_index = U16::new(mode, output_index);
             let randomizer = Randomizer::new(mode, randomizer);
 
             Circuit::scope(format!("Randomizer {i}"), || {
-                let candidate = randomizer.verify(&address, serial_numbers_digest, output_index);
+                let candidate = randomizer.verify(&address, &serial_numbers_digest, &output_index);
                 assert!(candidate.eject_value());
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
             })
@@ -102,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_prove_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 9163, 0, 0, 0)
+        check_verify(Mode::Constant, 9174, 0, 0, 0)
     }
 
     #[test]

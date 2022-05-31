@@ -30,22 +30,80 @@ use anyhow::{bail, Result};
 /// A program's record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 pub struct Record<N: Network> {
-    /// The program ID of the record.
+    /// The program ID of this record.
     program: N::Field,
-    /// The process ID of the record.
+    /// The process ID of this record.
     process: N::Field,
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: N::Field,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
     balance: N::Field,
-    /// The program data.
-    data: Data<N, Ciphertext<N>>,
+    /// The data ID of this record.
+    data: N::Field,
     /// The nonce for this record (i.e. `G^r`).
     nonce: N::Affine,
     /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
     mac: N::Field,
     /// The balance commitment for this record (i.e. `G^balance H^HashToScalar(G^r^view_key)`).
     bcm: N::Field,
+}
+
+impl<N: Network> Record<N> {
+    /// Initializes a new record.
+    pub fn new(
+        program: N::Field,
+        process: N::Field,
+        owner: N::Field,
+        balance: N::Field,
+        data: N::Field,
+        nonce: N::Affine,
+        mac: N::Field,
+        bcm: N::Field,
+    ) -> Self {
+        Self { program, process, owner, balance, data, nonce, mac, bcm }
+    }
+
+    /// Returns the program ID of the record.
+    pub const fn program(&self) -> N::Field {
+        self.program
+    }
+
+    /// Returns the process ID of the record.
+    pub const fn process(&self) -> N::Field {
+        self.process
+    }
+
+    /// Returns the **encrypted** address this record belongs to.
+    /// Note: `owner` is the **encrypted** form of `State::owner`.
+    pub const fn owner(&self) -> N::Field {
+        self.owner
+    }
+
+    /// Returns the **encrypted** balance in this record.
+    /// Note: `balance` is the **encrypted** form of `State::balance`.
+    pub const fn balance(&self) -> N::Field {
+        self.balance
+    }
+
+    /// Returns the program data.
+    pub const fn data(&self) -> N::Field {
+        self.data
+    }
+
+    /// Returns the nonce for this record.
+    pub const fn nonce(&self) -> N::Affine {
+        self.nonce
+    }
+
+    /// Returns the MAC for this record.
+    pub const fn mac(&self) -> N::Field {
+        self.mac
+    }
+
+    /// Returns the balance commitment for this record.
+    pub const fn bcm(&self) -> N::Field {
+        self.bcm
+    }
 }
 
 // #[cfg(test)]

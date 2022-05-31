@@ -72,7 +72,7 @@ pub(crate) mod tests {
 
             // Initialize the signature and address.
             let signature = Signature::<Circuit>::new(mode, signature);
-            let address = Address::new(mode, *address);
+            let address = Address::new(mode, address);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = signature.verify(&address, &message);
@@ -102,7 +102,7 @@ pub(crate) mod tests {
 
             // Generate a signature.
             let message = [
-                Address::new(mode, UniformRand::rand(rng)).to_field(),
+                Address::from_group(Group::new(mode, UniformRand::rand(rng))).to_field(),
                 Field::from_boolean(&Boolean::new(mode, UniformRand::rand(rng))),
                 Field::new(mode, UniformRand::rand(rng)),
                 Group::new(mode, UniformRand::rand(rng)).to_x_coordinate(),
@@ -113,7 +113,7 @@ pub(crate) mod tests {
 
             // Initialize the signature and address.
             let signature = Signature::<Circuit>::new(mode, signature);
-            let address = Address::new(mode, *address);
+            let address = Address::new(mode, address);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = signature.verify(&address, &message);

@@ -40,13 +40,17 @@ impl<E: Environment> FromGroup for Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    fn check_from_group(name: &str, expected: <Circuit as Environment>::Affine, candidate: &Group<Circuit>) {
+    fn check_from_group(
+        name: &str,
+        expected: console::Address<<Circuit as Environment>::Network>,
+        candidate: &Group<Circuit>,
+    ) {
         Circuit::scope(name, || {
             // Perform the operation.
             let candidate = Address::from_group(candidate.clone());
@@ -57,22 +61,22 @@ mod tests {
 
     #[test]
     fn test_from_group_constant() {
-        let expected = UniformRand::rand(&mut test_rng());
-        let candidate = Group::<Circuit>::new(Mode::Constant, expected);
+        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
+        let candidate = Group::<Circuit>::new(Mode::Constant, *expected);
         check_from_group("Constant", expected, &candidate);
     }
 
     #[test]
     fn test_from_group_public() {
-        let expected = UniformRand::rand(&mut test_rng());
-        let candidate = Group::<Circuit>::new(Mode::Public, expected);
+        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
+        let candidate = Group::<Circuit>::new(Mode::Public, *expected);
         check_from_group("Public", expected, &candidate);
     }
 
     #[test]
     fn test_from_group_private() {
-        let expected = UniformRand::rand(&mut test_rng());
-        let candidate = Group::<Circuit>::new(Mode::Private, expected);
+        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
+        let candidate = Group::<Circuit>::new(Mode::Private, *expected);
         check_from_group("Private", expected, &candidate);
     }
 }

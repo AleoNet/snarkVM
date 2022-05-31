@@ -28,13 +28,12 @@ version = "0.7.5"
 path = "../types"
 version = "0.7.5"
 
-[dependencies.snarkvm-console-account]
-path = "../../console/account"
-version = "0.7.5"
-optional = true
-
 [dependencies.snarkvm-utilities]
 path = "../../utilities"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-console-account]
+path = "../../console/account"
 version = "0.7.5"
 
 [dev-dependencies.snarkvm-console-network]
@@ -50,4 +49,4 @@ version = "1.0.57"
 [features]
 default = ["enable_console"]
 # Use #[cfg(console)] instead.
-enable_console = ["console", "snarkvm-console-account"]
+enable_console = ["console"]

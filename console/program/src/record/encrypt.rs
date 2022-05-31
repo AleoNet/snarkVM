@@ -28,7 +28,7 @@ impl<N: Network> Record<N> {
         // Encrypt the owner.
         let owner = state.owner().to_x_coordinate() + randomizers[0];
         // Encrypt the balance.
-        let balance = N::Field::from(*state.balance() as u128) + randomizers[1];
+        let balance = N::Field::from(state.balance() as u128) + randomizers[1];
 
         // // Encrypt the data.
         // let data = state.data().encrypt_symmetric(&(*record_view_key * randomizers[2]))?;
@@ -46,8 +46,8 @@ impl<N: Network> Record<N> {
             process: state.process(),
             owner,
             balance,
-            data: state.data().clone(),
-            nonce: *state.nonce(),
+            data: state.data(),
+            nonce: state.nonce(),
             mac,
             bcm,
         })

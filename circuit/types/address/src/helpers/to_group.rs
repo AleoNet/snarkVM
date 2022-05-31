@@ -40,7 +40,7 @@ impl<E: Environment> ToGroup for Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -57,22 +57,22 @@ mod tests {
 
     #[test]
     fn test_to_group_constant() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
         let candidate = Address::<Circuit>::new(Mode::Constant, expected);
-        check_to_group("Constant", expected, &candidate);
+        check_to_group("Constant", *expected, &candidate);
     }
 
     #[test]
     fn test_to_group_public() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
         let candidate = Address::<Circuit>::new(Mode::Public, expected);
-        check_to_group("Public", expected, &candidate);
+        check_to_group("Public", *expected, &candidate);
     }
 
     #[test]
     fn test_to_group_private() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
         let candidate = Address::<Circuit>::new(Mode::Private, expected);
-        check_to_group("Private", expected, &candidate);
+        check_to_group("Private", *expected, &candidate);
     }
 }

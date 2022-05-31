@@ -36,16 +36,16 @@ use anyhow::{bail, ensure, Result};
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.
 pub struct State<N: Network> {
-    /// The program ID of the record.
+    /// The program ID of this state.
     program: N::Field,
-    /// The process ID of the record.
+    /// The process ID of this state.
     process: N::Field,
     /// The Aleo address this state belongs to.
     owner: Address<N>,
     /// The account balance in this program state.
     balance: u64,
     /// The data for this program state.
-    data: Data<N, Ciphertext<N>>,
+    data: N::Field,
     /// The nonce for this program state (i.e. `G^r`).
     nonce: N::Affine,
 }
@@ -57,7 +57,7 @@ impl<N: Network> State<N> {
         process: N::Field,
         owner: Address<N>,
         balance: u64,
-        data: Data<N, Ciphertext<N>>,
+        data: N::Field,
         randomizer: &Randomizer<N>,
     ) -> Self {
         // Return the new program state.
@@ -70,7 +70,7 @@ impl<N: Network> State<N> {
         process: N::Field,
         owner: Address<N>,
         balance: u64,
-        data: Data<N, Ciphertext<N>>,
+        data: N::Field,
         nonce: N::Affine,
     ) -> Self {
         // Return the new program state.
@@ -88,42 +88,22 @@ impl<N: Network> State<N> {
     }
 
     /// Returns the account owner.
-    pub const fn owner(&self) -> &Address<N> {
-        &self.owner
+    pub const fn owner(&self) -> Address<N> {
+        self.owner
     }
 
     /// Returns the account balance.
-    pub const fn balance(&self) -> &u64 {
-        &self.balance
+    pub const fn balance(&self) -> u64 {
+        self.balance
     }
 
-    /// Returns the program data.
-    pub const fn data(&self) -> &Data<N, Ciphertext<N>> {
-        &self.data
+    /// Returns the data ID.
+    pub const fn data(&self) -> N::Field {
+        self.data
     }
 
     /// Returns the nonce for this program state.
-    pub const fn nonce(&self) -> &N::Affine {
-        &self.nonce
+    pub const fn nonce(&self) -> N::Affine {
+        self.nonce
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::aleo::Devnet as Circuit;
-//     use snarkvm_circuits_types::Group;
-//
-//     #[test]
-//     fn test_state() {
-//         let first = Literal::<Circuit>::from_str("10field.public");
-//         let second = Literal::from_str("true.private");
-//         let third = Literal::from_str("99i64.public");
-//
-//         let _candidate = State::<Circuit> {
-//             owner: Address::from(Group::from_str("2group.private")),
-//             balance: U64::from_str("1u64.private"),
-//             data: vec![first, second, third],
-//         };
-//     }
-// }

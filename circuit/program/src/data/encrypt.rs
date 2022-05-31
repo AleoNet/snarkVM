@@ -57,13 +57,13 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Generate a private key, view key, and address.
-            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Aleo>::Network>::new(rng)?;
+            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
             let view_key = snarkvm_console_account::ViewKey::try_from(private_key)?;
             let address = snarkvm_console_account::Address::try_from(private_key)?;
 
             // Initialize a view key and address.
             let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
-            let address = Address::<Circuit>::new(Mode::Private, *address);
+            let address = Address::<Circuit>::new(Mode::Private, address);
 
             let data = Data(vec![(
                 Identifier::from_str("a"),

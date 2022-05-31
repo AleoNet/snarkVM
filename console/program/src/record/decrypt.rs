@@ -24,7 +24,7 @@ impl<N: Network> Record<N> {
         // Decrypt the record.
         let state = self.decrypt_symmetric(&record_view_key)?;
         // Ensure the owner matches the account of the given view key.
-        match *state.owner() == Address::try_from(view_key)? {
+        match state.owner() == Address::try_from(view_key)? {
             // Output the state.
             true => Ok(state),
             // Abort the decryption.
@@ -69,6 +69,6 @@ impl<N: Network> Record<N> {
         }
 
         // Output the state.
-        Ok(State::from(self.program, self.process, owner, balance, self.data.clone(), self.nonce))
+        Ok(State::from(self.program, self.process, owner, balance, self.data, self.nonce))
     }
 }

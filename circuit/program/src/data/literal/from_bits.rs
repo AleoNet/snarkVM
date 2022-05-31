@@ -97,7 +97,10 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Address
-            check_serialization(Literal::<Circuit>::Address(Address::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::Address(Address::new(
+                mode,
+                snarkvm_console_account::Address::from_group(UniformRand::rand(rng)),
+            )));
             // Boolean
             check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, UniformRand::rand(rng))));
             // Field
