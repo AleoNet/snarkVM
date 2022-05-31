@@ -96,13 +96,6 @@ mod tests {
     }
 
     #[test]
-    fn test_scalar_sum_constants() {
-        let options = [Mode::Constant];
-
-        run_test(&options, 4267, 0, 0, 0);
-    }
-
-    #[test]
     fn test_scalar_sum_constant_and_public() {
         let options = [Mode::Constant, Mode::Public];
 
