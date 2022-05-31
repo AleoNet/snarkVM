@@ -2030,20 +2030,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-barebones"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "rand",
- "snarkvm-algorithms",
- "snarkvm-circuit",
- "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-utilities",
-]
-
-[[package]]
 name = "snarkvm-bytecode"
 version = "0.7.5"
 dependencies = [
@@ -2407,6 +2393,20 @@ dependencies = [
  "snarkvm-utilities",
  "thiserror",
  "time",
+]
+
+[[package]]
+name = "snarkvm-experimental"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "rand",
+ "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
 ]
 
 [[package]]
