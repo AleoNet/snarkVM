@@ -182,19 +182,26 @@ mod snark {
     }
 }
 
-pub struct Transition<N: Network> {
-    outputs: Vec<Record<N>>,
-    output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
-}
-
 pub struct Transaction<N: Network> {
     network: u16,
     transitions: Vec<Transition<N>>,
 }
 
+impl<N: Network> Transaction<N> {
+    /// Returns the transitions in the transaction.
+    pub fn transitions(&self) -> &Vec<Transition<N>> {
+        &self.transitions
+    }
+}
+
+pub struct Transition<N: Network> {
+    outputs: Vec<Record<N>>,
+    output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
+}
+
 impl<N: Network> Transition<N> {
     /// Returns the commitments in the transition.
-    pub fn commitments(&self) -> Result<Vec<N::Field>> {
+    pub fn to_commitments(&self) -> Result<Vec<N::Field>> {
         self.outputs.iter().map(|record| record.to_commitment()).collect::<Result<Vec<_>>>()
     }
 }
@@ -249,14 +256,17 @@ where
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
         let proof = snark::execute(assignment)?;
-
         let transition = Transition { outputs: vec![record], output_proofs: vec![proof] };
 
-        Ok::<_, Error>(transition)
+        // Set the network ID to 0.
+        let network = 0u16;
+        let transaction = Transaction { network, transitions: vec![transition] };
+
+        Ok::<_, Error>(transaction)
     });
 
-    let transition = match process {
-        Ok(Ok(transition)) => transition,
+    let transaction = match process {
+        Ok(Ok(transaction)) => transaction,
         Ok(Err(error)) => bail!("{:?}", error),
         Err(_) => bail!("Thread failed"),
     };
@@ -264,8 +274,6 @@ where
     // let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
 
     // Signature::sign(&sender_private_key, &[]);
-
-    // let transaction = Transaction { network: 0, transitions: vec![transition] };
 
     println!("Success");
     Ok(())
