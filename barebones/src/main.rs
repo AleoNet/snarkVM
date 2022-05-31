@@ -25,7 +25,7 @@ use snarkvm_utilities::UniformRand;
 
 use anyhow::{bail, Error, Result};
 use core::panic::UnwindSafe;
-use std::thread;
+use std::{thread, time::Instant};
 
 mod output {
     use circuit::{Aleo, Eject, Equal, Field, Randomizer, Record, State, U16};
@@ -115,12 +115,9 @@ mod output {
             A::assert_eq(record.to_commitment(), &public.commitment);
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
+            let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
             println!(
-                "Counts: {} {} {} {}",
-                A::num_constants(),
-                A::num_public(),
-                A::num_private(),
-                A::num_constraints()
+                "Count(constant: {num_constant}, public: {num_public}, private: {num_private}, constraints: {num_constraints}, gates: {num_gates})"
             );
             Ok(())
         }
@@ -145,14 +142,14 @@ mod snark {
     use anyhow::{ensure, Result};
     use std::time::Instant;
 
-    // Runs Marlin setup, prove, and verify.
-    pub fn execute() -> Result<Proof<Bls12_377>> {
-        type EC = snarkvm_curves::bls12_377::Bls12_377;
-        type Fq = <EC as snarkvm_curves::PairingEngine>::Fq;
-        type Fr = <EC as snarkvm_curves::PairingEngine>::Fr;
-        type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-        type Marlin = MarlinSNARK<EC, FS, MarlinHidingMode, [Fr]>;
+    type EC = snarkvm_curves::bls12_377::Bls12_377;
+    type Fq = <EC as snarkvm_curves::PairingEngine>::Fq;
+    type Fr = <EC as snarkvm_curves::PairingEngine>::Fr;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type Marlin = MarlinSNARK<EC, FS, MarlinHidingMode, [Fr]>;
 
+    // Runs Marlin setup, prove, and verify.
+    pub fn execute(assignment: circuit::Assignment<Fr>) -> Result<Proof<Bls12_377>> {
         let mut rng = rand::thread_rng();
 
         let timer = Instant::now();
@@ -163,20 +160,21 @@ mod snark {
         ensure!(<circuit::Circuit as circuit::Environment>::is_satisfied(), "Circuit is not satisfied");
 
         let timer = Instant::now();
-        let (index_pk, index_vk) = Marlin::circuit_setup(&universal_srs, &circuit::Circuit).unwrap();
-        println!("Called circuit setup: {} ms", timer.elapsed().as_millis());
+        let (index_pk, index_vk) = Marlin::circuit_setup(&universal_srs, &assignment).unwrap();
+        println!("Called setup: {} ms", timer.elapsed().as_millis());
 
         let timer = Instant::now();
-        let proof = Marlin::prove(&index_pk, &circuit::Circuit, &mut rng).unwrap();
+        let proof = Marlin::prove_batch(&index_pk, std::slice::from_ref(&assignment), &mut rng).unwrap();
         println!("Called prover: {} ms", timer.elapsed().as_millis());
 
-        let inputs = circuit::Circuit::public_inputs();
+        let inputs = assignment.public_inputs();
         println!("{} inputs: {:?}", inputs.len(), inputs);
 
         let timer = Instant::now();
         assert!(Marlin::verify(&index_vk, inputs, &proof).unwrap());
         println!("Called verifier: {} ms", timer.elapsed().as_millis());
 
+        // Ok((inputs, proof))
         Ok(proof)
     }
 }
@@ -248,7 +246,11 @@ where
             output::OutputCircuit::new(index, commitment, record, serial_numbers_digest, state, randomizer)?;
         output_circuit.execute()?;
 
-        snark::execute()
+        let timer = Instant::now();
+        let assignment = circuit::Circuit::eject();
+        println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
+
+        snark::execute(assignment)
     });
 
     let proof = match process {

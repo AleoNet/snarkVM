@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod assignment;
+pub use assignment::Assignment;
+
 pub mod circuit_type;
 pub use circuit_type::*;
 
@@ -38,4 +41,4 @@ pub mod variable;
 pub use variable::*;
 
 pub(super) mod r1cs;
-pub(super) use r1cs::*;
+pub use r1cs::*;
