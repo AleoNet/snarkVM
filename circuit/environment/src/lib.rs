@@ -59,6 +59,7 @@ pub mod prelude {
 
     pub use core::{
         fmt::{self, Debug, Display},
+        iter::Sum,
         ops::{
             Add,
             AddAssign,

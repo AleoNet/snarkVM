@@ -22,6 +22,7 @@ mod helpers;
 pub mod add;
 pub mod compare;
 pub mod equal;
+pub mod sum;
 pub mod ternary;
 
 #[cfg(test)]
