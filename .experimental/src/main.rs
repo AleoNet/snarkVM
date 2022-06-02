@@ -21,10 +21,11 @@ use console::{
     program::{Ciphertext, Data, Randomizer, Record, State},
 };
 use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::UniformRand;
+use snarkvm_utilities::{CryptoRng, Rng, UniformRand};
 
 use anyhow::{bail, Error, Result};
 use core::panic::UnwindSafe;
+use rand::prelude::ThreadRng;
 use snarkvm_algorithms::snark::marlin::Proof;
 use std::{thread, time::Instant};
 
@@ -207,21 +208,19 @@ impl<N: Network> Transition<N> {
 }
 
 /// Transition: 0 -> 1
-fn mint<A: circuit::Aleo>() -> Result<()>
+fn mint<A: circuit::Aleo, R: Rng + CryptoRng>(rng: &mut R) -> Result<Transaction<A::Network>>
 where
     A::BaseField: UnwindSafe,
     A::ScalarField: UnwindSafe,
     A::Affine: UnwindSafe,
 {
-    let mut rng = rand::thread_rng();
-
     // Initialize a new sender account.
-    let sender_private_key = PrivateKey::<A::Network>::new(&mut rng)?;
+    let sender_private_key = PrivateKey::<A::Network>::new(rng)?;
     let sender_view_key = ViewKey::try_from(&sender_private_key)?;
     let sender_address = Address::try_from(&sender_private_key)?;
 
     // Initialize the randomizer, which is bound to the account of the **sender**.
-    let randomizer = Randomizer::prove(&sender_view_key, &[], 0, &mut rng)?;
+    let randomizer = Randomizer::prove(&sender_view_key, &[], 0, rng)?;
 
     // Initialize a coinbase.
     let (state, record) = {
@@ -237,8 +236,6 @@ where
     };
 
     let process = std::panic::catch_unwind(|| {
-        use circuit::{Field, Inject, Mode, Randomizer, Record, State, U16};
-
         // Set the output index to 0.
         let output_index = 0u16;
         // Compute the commitment.
@@ -265,90 +262,93 @@ where
         Ok::<_, Error>(transaction)
     });
 
-    let transaction = match process {
-        Ok(Ok(transaction)) => transaction,
+    match process {
+        Ok(Ok(transaction)) => Ok(transaction),
         Ok(Err(error)) => bail!("{:?}", error),
         Err(_) => bail!("Thread failed"),
-    };
-
-    // let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
-
-    // Signature::sign(&sender_private_key, &[]);
-
-    println!("Success");
-    Ok(())
+    }
 }
 
-// /// Transition: 1 -> 1
-// fn run<N: Network>() -> Result<()> {
-//     let mut rng = rand::thread_rng();
-//
-//     // Initialize a prior account.
-//     let prior_private_key = PrivateKey::new(&mut rng)?;
-//     let prior_view_key = ViewKey::try_from(&prior_private_key)?;
-//
-//     // Initialize a new sender account.
-//     let sender_private_key = PrivateKey::new(&mut rng)?;
-//     let sender_view_key = ViewKey::try_from(&sender_private_key)?;
-//     let sender_address = Address::try_from(&sender_private_key)?;
-//
-//     // Initialize a coinbase.
-//     let (state, record) = {
-//         let program = N::Field::rand(&mut rng);
-//         let process = N::Field::rand(&mut rng);
-//         let owner = sender_address;
-//         let balance = 100u64;
-//         let data = Data::<N, Ciphertext<N>>::from(vec![]);
-//         let nonce = N::Affine::rand(&mut rng);
-//
-//         let state = State::new(program, process, owner, balance, data, nonce);
-//
-//
-//         // Compute the encryption randomizer, which is bound to the account of the **sender**.
-//         let randomizer = Randomizer::prove(prior_view_key, serial_numbers, output_index, rng)?;
-//
-//         let record = state.encrypt(&prior_view_key, &[], 0, &mut rng)?;
-//
-//         (state, record)
-//     };
-//
-//     // Initialize a program tree with the coinbase record.
-//     // let program = N::merkle_tree_bhp(&[record.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
-//
-//     let commitment = state.to_commitment()?;
-//     let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
-//
-//     // Signature::sign(&sender_private_key, &[*serial_number.value()], )
-//
-//     // Initialize a new receiver address.
-//     let receiver_private_key = PrivateKey::new(&mut rng)?;
-//     let receiver_view_key = ViewKey::try_from(&receiver_private_key)?;
-//     let receiver_address = Address::try_from(&receiver_private_key)?;
-//
-//     // Initialize an instance of program state.
-//     let (state, commitment) = {
-//         let program = N::Field::rand(&mut rng);
-//         let process = N::Field::rand(&mut rng);
-//         let owner = receiver_address;
-//         let balance = 100u64;
-//         let data = Data::<N, Ciphertext<N>>::from(vec![]);
-//         let nonce = N::Affine::rand(&mut rng);
-//
-//         let state = State::new(program, process, owner, balance, data, nonce);
-//         let commitment = state.to_commitment()?;
-//
-//         (state, commitment)
-//     };
-//
-//     // Derive the record corresponding to the program state.
-//     let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
-//     let record = state.encrypt(&sender_view_key, &[*serial_number.value()], 0, &mut rng)?;
-//
-//     Ok(())
-// }
+/// Transition: 1 -> 1
+fn transfer<A: circuit::Aleo, R: Rng + CryptoRng>(rng: &mut R) -> Result<Transaction<A::Network>>
+where
+    A::BaseField: UnwindSafe,
+    A::ScalarField: UnwindSafe,
+    A::Affine: UnwindSafe,
+{
+    // Generate a prior coinbase transaction.
+    let transaction = mint::<A, R>(rng)?;
+
+    // // Initialize a program tree with the coinbase record.
+    // let program = A::merkle_tree_bhp(&[record.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
+
+    //     // Initialize a prior account.
+    //     let prior_private_key = PrivateKey::new(&mut rng)?;
+    //     let prior_view_key = ViewKey::try_from(&prior_private_key)?;
+    //
+    //     // Initialize a new sender account.
+    //     let sender_private_key = PrivateKey::new(&mut rng)?;
+    //     let sender_view_key = ViewKey::try_from(&sender_private_key)?;
+    //     let sender_address = Address::try_from(&sender_private_key)?;
+    //
+    //     // Initialize a coinbase.
+    //     let (state, record) = {
+    //         let program = N::Field::rand(&mut rng);
+    //         let process = N::Field::rand(&mut rng);
+    //         let owner = sender_address;
+    //         let balance = 100u64;
+    //         let data = Data::<N, Ciphertext<N>>::from(vec![]);
+    //         let nonce = N::Affine::rand(&mut rng);
+    //
+    //         let state = State::new(program, process, owner, balance, data, nonce);
+    //
+    //
+    //         // Compute the encryption randomizer, which is bound to the account of the **sender**.
+    //         let randomizer = Randomizer::prove(prior_view_key, serial_numbers, output_index, rng)?;
+    //
+    //         let record = state.encrypt(&prior_view_key, &[], 0, &mut rng)?;
+    //
+    //         (state, record)
+    //     };
+    //
+    //     // let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
+    //     // Signature::sign(&sender_private_key, &[]);
+
+    //     let commitment = state.to_commitment()?;
+    //     let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
+    //
+    //     // Signature::sign(&sender_private_key, &[*serial_number.value()], )
+    //
+    //     // Initialize a new receiver address.
+    //     let receiver_private_key = PrivateKey::new(&mut rng)?;
+    //     let receiver_view_key = ViewKey::try_from(&receiver_private_key)?;
+    //     let receiver_address = Address::try_from(&receiver_private_key)?;
+    //
+    //     // Initialize an instance of program state.
+    //     let (state, commitment) = {
+    //         let program = N::Field::rand(&mut rng);
+    //         let process = N::Field::rand(&mut rng);
+    //         let owner = receiver_address;
+    //         let balance = 100u64;
+    //         let data = Data::<N, Ciphertext<N>>::from(vec![]);
+    //         let nonce = N::Affine::rand(&mut rng);
+    //
+    //         let state = State::new(program, process, owner, balance, data, nonce);
+    //         let commitment = state.to_commitment()?;
+    //
+    //         (state, commitment)
+    //     };
+    //
+    //     // Derive the record corresponding to the program state.
+    //     let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
+    //     let record = state.encrypt(&sender_view_key, &[*serial_number.value()], 0, &mut rng)?;
+    //
+    Ok(transaction)
+}
 
 fn main() -> Result<()> {
-    mint::<circuit::AleoV0>()?;
+    let mut rng = rand::thread_rng();
+    mint::<circuit::AleoV0, ThreadRng>(&mut rng)?;
 
     Ok(())
 }

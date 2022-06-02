@@ -76,10 +76,7 @@ mod tests {
                 let right = <Circuit as Environment>::BaseField::rand(&mut test_rng());
 
                 // Compute the expected hash.
-                let expected: <Circuit as Environment>::BaseField = console::merkle_tree::PathHash::<
-                    <Circuit as Environment>::BaseField,
-                >::hash_children(&native, &left, &right)
-                .expect("Failed to hash native input");
+                let expected = console::merkle_tree::PathHash::hash_children(&native, &left, &right)?;
 
                 // Prepare the circuit input.
                 let left = Field::new(Mode::$mode, left);

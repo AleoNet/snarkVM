@@ -18,19 +18,23 @@ use super::*;
 
 use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
 use snarkvm_curves::AffineCurve;
+use snarkvm_fields::Zero;
+use snarkvm_utilities::ToBits;
 
 /// A trait for a Merkle path hash function.
-pub trait PathHash<F: PrimeField>: Clone + Send + Sync {
-    /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &F, right: &F) -> Result<F>;
+pub trait PathHash: Clone + Send + Sync {
+    type Hash: PrimeField;
 
     /// Returns the empty hash.
-    fn hash_empty(&self) -> Result<F> {
-        self.hash_children(&F::zero(), &F::zero())
+    fn hash_empty(&self) -> Result<Self::Hash> {
+        self.hash_children(&Self::Hash::zero(), &Self::Hash::zero())
     }
 
+    /// Returns the hash of the given child nodes.
+    fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash>;
+
     /// Returns the hash for each tuple of child nodes.
-    fn hash_all_children(&self, child_nodes: &[(F, F)]) -> Result<Vec<F>> {
+    fn hash_all_children(&self, child_nodes: &[(Self::Hash, Self::Hash)]) -> Result<Vec<Self::Hash>> {
         match child_nodes.len() {
             0 => Ok(vec![]),
             1..=100 => child_nodes.iter().map(|(left, right)| self.hash_children(left, right)).collect(),
@@ -39,11 +43,14 @@ pub trait PathHash<F: PrimeField>: Clone + Send + Sync {
     }
 }
 
-impl<G: AffineCurve<BaseField = F>, F: PrimeField, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<F>
-    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+where
+    G::BaseField: PrimeField,
 {
+    type Hash = G::BaseField;
+
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &F, right: &F) -> Result<F> {
+    fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![true];
         input.extend(left.to_bits_le());
@@ -53,11 +60,13 @@ impl<G: AffineCurve<BaseField = F>, F: PrimeField, const NUM_WINDOWS: u8, const 
     }
 }
 
-impl<F: PrimeField, const RATE: usize> PathHash<F> for Poseidon<F, RATE> {
+impl<F: PrimeField, const RATE: usize> PathHash for Poseidon<F, RATE> {
+    type Hash = F;
+
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &F, right: &F) -> Result<F> {
+    fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
         // Prepend the nodes with a `1field` byte.
-        let mut input = vec![F::one()];
+        let mut input = vec![Self::Hash::one()];
         input.push(*left);
         input.push(*right);
         // Hash the input.

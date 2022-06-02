@@ -320,29 +320,17 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<MerkleTree<Self::Field, DEPTH>> {
+    fn merkle_tree_bhp<const DEPTH: u8>(
+        leaves: &[Vec<bool>],
+    ) -> Result<MerkleTree<BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>> {
         MerkleTree::new(&*BHP_1024, &*BHP_512, leaves)
     }
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Self::Field>]) -> Result<MerkleTree<Self::Field, DEPTH>> {
-        MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
-    }
-
-    /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_append_bhp<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
-        leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>> {
-        merkle_tree.append(&*BHP_1024, &*BHP_512, leaves)
-    }
-
-    /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_append_psd<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
+    fn merkle_tree_psd<const DEPTH: u8>(
         leaves: &[Vec<Self::Field>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>> {
-        merkle_tree.append(&*POSEIDON_4, &*POSEIDON_2, leaves)
+    ) -> Result<MerkleTree<Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>> {
+        MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
     }
 
     /// Returns the Poseidon PRF with an input rate of 2.

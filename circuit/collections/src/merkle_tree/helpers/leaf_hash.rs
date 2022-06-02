@@ -64,19 +64,17 @@ mod tests {
     const DOMAIN: &str = "MerkleTreeCircuit0";
 
     macro_rules! check_hash_leaf {
-        ($hash:ident, $form:ident, $mode:ident, $input_type:ty, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+        ($hash:ident, $form:ident, $mode:ident, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
             // Initialize the hash.
             let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::$form>::setup(DOMAIN)?;
             let circuit = $hash::<Circuit>::constant(native.clone());
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_inputs).map(|_| <$input_type>::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_inputs).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>();
 
                 // Compute the expected hash.
-                let expected: <Circuit as Environment>::BaseField =
-                    console::merkle_tree::LeafHash::<<Circuit as Environment>::BaseField>::hash_leaf(&native, &input)
-                        .expect("Failed to hash native input");
+                let expected = console::merkle_tree::LeafHash::hash_leaf(&native, &input)?;
 
                 // Prepare the circuit input.
                 let circuit_input: Vec<_> = Inject::new(Mode::$mode, input);
@@ -95,31 +93,31 @@ mod tests {
 
     #[test]
     fn test_hash_leaf_bhp1024_constant() -> Result<()> {
-        check_hash_leaf!(BHP1024, Affine, Constant, bool, 1024, (1807, 0, 0, 0))
+        check_hash_leaf!(BHP1024, Affine, Constant, 1024, (1807, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_public() -> Result<()> {
-        check_hash_leaf!(BHP1024, Affine, Public, bool, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Affine, Public, 1024, (429, 0, 1758, 1758))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_private() -> Result<()> {
-        check_hash_leaf!(BHP1024, Affine, Private, bool, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Affine, Private, 1024, (429, 0, 1758, 1758))
     }
 
     #[test]
     fn test_hash_leaf_poseidon4_constant() -> Result<()> {
-        check_hash_leaf!(Poseidon4, BaseField, Constant, <Circuit as Environment>::BaseField, 4, (1, 0, 0, 0))
+        check_hash_leaf!(Poseidon4, BaseField, Constant, 4, (1, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_leaf_poseidon4_public() -> Result<()> {
-        check_hash_leaf!(Poseidon4, BaseField, Public, <Circuit as Environment>::BaseField, 4, (1, 0, 700, 700))
+        check_hash_leaf!(Poseidon4, BaseField, Public, 4, (1, 0, 700, 700))
     }
 
     #[test]
     fn test_hash_leaf_poseidon4_private() -> Result<()> {
-        check_hash_leaf!(Poseidon4, BaseField, Private, <Circuit as Environment>::BaseField, 4, (1, 0, 700, 700))
+        check_hash_leaf!(Poseidon4, BaseField, Private, 4, (1, 0, 700, 700))
     }
 }

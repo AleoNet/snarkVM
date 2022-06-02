@@ -23,6 +23,7 @@ extern crate lazy_static;
 pub mod testnet3;
 pub use testnet3::*;
 
+use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::MerkleTree;
 use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
@@ -167,22 +168,14 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar>;
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<MerkleTree<Self::Field, DEPTH>>;
-
-    /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Self::Field>]) -> Result<MerkleTree<Self::Field, DEPTH>>;
-
-    /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_append_bhp<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
+    fn merkle_tree_bhp<const DEPTH: u8>(
         leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>>;
+    ) -> Result<MerkleTree<BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>>;
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_append_psd<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
+    fn merkle_tree_psd<const DEPTH: u8>(
         leaves: &[Vec<Self::Field>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>>;
+    ) -> Result<MerkleTree<Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>>;
 
     /// Returns the Poseidon PRF with an input rate of 2.
     fn prf_psd2(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;

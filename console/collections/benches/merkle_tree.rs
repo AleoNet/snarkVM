@@ -60,7 +60,7 @@ fn append_single_leaf(c: &mut Criterion) {
             &format!("MerkleTree::append (add single leaf to a tree with {} leaves)", num_leaves),
             move |b| {
                 b.iter(|| {
-                    let _tree = Testnet3::merkle_tree_append_bhp::<DEPTH>(&merkle_tree, &new_leaf).unwrap();
+                    let _tree = merkle_tree.append(&new_leaf).unwrap();
                 })
             },
         );
@@ -79,7 +79,7 @@ fn append_multiple_leaves(c: &mut Criterion) {
                 &format!("MerkleTree::append (add {} new leaves to a tree with {} leaves)", num_new_leaves, num_leaves),
                 move |b| {
                     b.iter(|| {
-                        let _tree = Testnet3::merkle_tree_append_bhp::<DEPTH>(&merkle_tree, &new_leaves).unwrap();
+                        let _tree = merkle_tree.append(&new_leaves).unwrap();
                     })
                 },
             );

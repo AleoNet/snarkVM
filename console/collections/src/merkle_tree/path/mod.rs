@@ -67,11 +67,11 @@ impl<F: PrimeField, const DEPTH: u8> MerklePath<F, DEPTH> {
     }
 
     /// Returns `true` if the Merkle path is valid for the given root and leaf.
-    pub fn verify<LH: LeafHash<F>, PH: PathHash<F>>(
+    pub fn verify<LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = F>>(
         &self,
         leaf_hasher: &LH,
         path_hasher: &PH,
-        root: &F,
+        root: &PH::Hash,
         leaf: &LH::Leaf,
     ) -> bool {
         // Ensure the leaf index is within the tree depth.
