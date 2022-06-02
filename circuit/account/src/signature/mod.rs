@@ -46,6 +46,13 @@ impl<A: Aleo> Inject for Signature<A> {
     }
 }
 
+impl<A: Aleo> Signature<A> {
+    /// Returns the account compute key.
+    pub const fn compute_key(&self) -> &ComputeKey<A> {
+        &self.compute_key
+    }
+}
+
 #[cfg(console)]
 impl<A: Aleo> Eject for Signature<A> {
     type Primitive = console::Signature<A::Network>;

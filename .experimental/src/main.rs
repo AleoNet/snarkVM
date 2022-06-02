@@ -31,13 +31,25 @@ use snarkvm_algorithms::snark::marlin::Proof;
 use std::{thread, time::Instant};
 
 mod input {
-    use circuit::{Aleo, Eject, Equal, Field, Inject, Mode, Randomizer, Record, SerialNumber, Signature, State, U16};
+    use circuit::{
+        Aleo,
+        Eject,
+        Equal,
+        Field,
+        Group,
+        Inject,
+        Mode,
+        Randomizer,
+        Record,
+        SerialNumber,
+        Signature,
+        State,
+        U16,
+    };
 
     use anyhow::{ensure, Result};
 
     pub struct Public<A: Aleo> {
-        /// The input index.
-        index: U16<A>,
         /// The input program root.
         root: Field<A>,
         /// The input serial number.
@@ -46,12 +58,11 @@ mod input {
 
     impl<A: Aleo> Public<A> {
         /// Initializes the public inputs for the input circuit.
-        pub fn from(index: u16, root: A::BaseField, serial_number: A::BaseField) -> Self {
-            let index = U16::<A>::new(Mode::Public, index);
+        pub fn from(root: A::BaseField, serial_number: A::BaseField) -> Self {
             let root = Field::<A>::new(Mode::Public, root);
             let serial_number = Field::<A>::new(Mode::Public, serial_number);
 
-            Self { index, root, serial_number }
+            Self { root, serial_number }
         }
     }
 
@@ -89,15 +100,16 @@ mod input {
         /// Initializes the input circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            ensure!(public.index.eject_mode().is_public(), "Input index must be public");
-            ensure!(public.root.eject_mode().is_public(), "Input program root must be public");
-            ensure!(public.serial_number.eject_mode().is_public(), "Input serial number must be public");
+            let Public { root, serial_number } = &public;
+            ensure!(root.eject_mode().is_public(), "Input root must be public");
+            ensure!(serial_number.eject_mode().is_public(), "Input serial number must be public");
 
             // Ensure all private members are private inputs.
-            ensure!(private.record_view_key.eject_mode().is_private(), "Input record view key must be private");
-            ensure!(private.record.eject_mode().is_private(), "Input record must be private");
-            ensure!(private.serial_number.eject_mode().is_private(), "Input serial number proof must be private");
-            ensure!(private.signature.eject_mode().is_private(), "Input signature must be private");
+            let Private { record_view_key, record, serial_number, signature } = &private;
+            ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
+            ensure!(record.eject_mode().is_private(), "Input record must be private");
+            ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
+            ensure!(signature.eject_mode().is_private(), "Input signature must be private");
 
             Ok(Self(public, private))
         }
@@ -106,12 +118,23 @@ mod input {
         pub fn execute(&self) {
             let (public, private) = (&self.0, &self.1);
 
+            // Decrypt the record into program state.
+            let state = private.record.decrypt_symmetric(&private.record_view_key);
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
             // Compute the record commitment.
             let commitment = private.record.to_commitment();
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Decrypt the record into program state.
-            let state = private.record.decrypt_symmetric(&private.record_view_key);
+            // Retrieve the VRF public key from the signature.
+            let pk_vrf = private.signature.compute_key().pk_vrf();
+
+            // Ensure the serial number is valid.
+            A::assert(private.serial_number.verify(pk_vrf, &commitment));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the signature is valid.
+            A::assert(private.signature.verify(state.owner(), &[private.serial_number.value().clone()]));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // // Ensure the program state matches the declared state.
@@ -143,6 +166,8 @@ pub struct Transition<N: Network> {
     outputs: Vec<Record<N>>,
     input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
+    // caller_commitment: N::Field,
+    // fee: u64,
 }
 
 impl<N: Network> Transition<N> {
@@ -253,10 +278,7 @@ where
     let signature = Signature::sign(&caller_private_key, &[*serial_number.value()], rng)?;
 
     let process = std::panic::catch_unwind(|| {
-        // Set the input index to 0.
-        let input_index = 0u16;
-
-        let public = input::Public::<A>::from(input_index, *root, *serial_number.value());
+        let public = input::Public::<A>::from(*root, *serial_number.value());
         let private = input::Private::<A>::from(record_view_key, record, serial_number.clone(), signature);
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();

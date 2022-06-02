@@ -71,13 +71,15 @@ pub mod output {
         /// Initializes the output circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            ensure!(public.index.eject_mode().is_public(), "Output index must be public");
-            ensure!(public.record.eject_mode().is_public(), "Output record must be public");
-            ensure!(public.serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
+            let Public { index, record, serial_numbers_digest } = &public;
+            ensure!(index.eject_mode().is_public(), "Output index must be public");
+            ensure!(record.eject_mode().is_public(), "Output record must be public");
+            ensure!(serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
 
             // Ensure all private members are private inputs.
-            ensure!(private.state.eject_mode().is_private(), "Output state must be private");
-            ensure!(private.randomizer.eject_mode().is_private(), "Output randomizer must be private");
+            let Private { state, randomizer } = &private;
+            ensure!(state.eject_mode().is_private(), "Output state must be private");
+            ensure!(randomizer.eject_mode().is_private(), "Output randomizer must be private");
 
             Ok(Self(public, private))
         }
