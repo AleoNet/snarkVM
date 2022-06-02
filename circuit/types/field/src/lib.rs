@@ -180,15 +180,15 @@ mod tests {
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, zero);
-        assert_eq!("0.constant", &format!("{}", candidate));
+        assert_eq!("0field.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, zero);
-        assert_eq!("0.public", &format!("{}", candidate));
+        assert_eq!("0field.public", &format!("{}", candidate));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, zero);
-        assert_eq!("0.private", &format!("{}", candidate));
+        assert_eq!("0field.private", &format!("{}", candidate));
     }
 
     #[test]
@@ -197,15 +197,15 @@ mod tests {
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, one);
-        assert_eq!("1.constant", &format!("{}", candidate));
+        assert_eq!("1field.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, one);
-        assert_eq!("1.public", &format!("{}", candidate));
+        assert_eq!("1field.public", &format!("{}", candidate));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, one);
-        assert_eq!("1.private", &format!("{}", candidate));
+        assert_eq!("1field.private", &format!("{}", candidate));
     }
 
     #[test]
@@ -215,15 +215,15 @@ mod tests {
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("2.constant", &format!("{}", candidate));
+        assert_eq!("2field.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Field::<Circuit>::new(Mode::Public, two);
-        assert_eq!("2.public", &format!("{}", candidate));
+        assert_eq!("2field.public", &format!("{}", candidate));
 
         // Private
         let candidate = Field::<Circuit>::new(Mode::Private, two);
-        assert_eq!("2.private", &format!("{}", candidate));
+        assert_eq!("2field.private", &format!("{}", candidate));
     }
 
     #[test]

@@ -168,11 +168,13 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar>;
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
+    #[allow(clippy::type_complexity)]
     fn merkle_tree_bhp<const DEPTH: u8>(
         leaves: &[Vec<bool>],
     ) -> Result<MerkleTree<BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>>;
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
+    #[allow(clippy::type_complexity)]
     fn merkle_tree_psd<const DEPTH: u8>(
         leaves: &[Vec<Self::Field>],
     ) -> Result<MerkleTree<Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>>;

@@ -68,12 +68,12 @@ impl<F: PrimeField> From<crate::R1CS<F>> for Assignment<F> {
     fn from(r1cs: crate::R1CS<F>) -> Self {
         Self {
             public: FromIterator::from_iter(
-                r1cs.to_public_variables().into_iter().map(|variable| (variable.index(), variable.value())),
+                r1cs.to_public_variables().iter().map(|variable| (variable.index(), variable.value())),
             ),
             private: FromIterator::from_iter(
-                r1cs.to_private_variables().into_iter().map(|variable| (variable.index(), variable.value())),
+                r1cs.to_private_variables().iter().map(|variable| (variable.index(), variable.value())),
             ),
-            constraints: FromIterator::from_iter(r1cs.to_constraints().into_iter().map(|constraint| {
+            constraints: FromIterator::from_iter(r1cs.to_constraints().iter().map(|constraint| {
                 let (a, b, c) = constraint.to_terms();
                 (a.into(), b.into(), c.into())
             })),

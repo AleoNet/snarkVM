@@ -31,7 +31,7 @@ impl<E: Environment, const RATE: usize> HashToGroup for Poseidon<E, RATE> {
         // Compute `HashMany(input, 2)`.
         match self.hash_many(input, 2).iter().collect_tuple() {
             // Compute the group element as `MapToGroup(h0) + MapToGroup(h1)`.
-            Some((h0, h1)) => Elligator2::encode(&h1) + Elligator2::encode(&h0),
+            Some((h0, h1)) => Elligator2::encode(h1) + Elligator2::encode(h0),
             None => E::halt("Failed to compute the hash to group"),
         }
     }

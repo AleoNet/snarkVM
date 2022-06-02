@@ -29,7 +29,7 @@ impl<A: Aleo> Signature<A> {
         let mut preimage = Vec::with_capacity(2 + message.len());
         preimage.push(address.to_field());
         preimage.push(g_randomizer.to_x_coordinate());
-        preimage.extend_from_slice(&message);
+        preimage.extend_from_slice(message);
 
         // Compute the candidate verifier challenge.
         let candidate_challenge = A::hash_to_scalar_psd4(&preimage);
