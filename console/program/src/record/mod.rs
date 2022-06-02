@@ -25,7 +25,7 @@ mod to_commitment;
 mod to_record_view_key;
 mod to_serial_number;
 
-use crate::{Ciphertext, Data, State};
+use crate::State;
 use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};

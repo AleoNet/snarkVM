@@ -20,6 +20,7 @@ use console::{
     network::{Network, Testnet3},
     program::{Ciphertext, Data, Randomizer, Record, State},
 };
+use snarkvm_experimental::{output, snark};
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
@@ -29,143 +30,99 @@ use rand::prelude::ThreadRng;
 use snarkvm_algorithms::snark::marlin::Proof;
 use std::{thread, time::Instant};
 
-mod output {
-    use circuit::{Aleo, Eject, Equal, Field, Inject, Mode, Randomizer, Record, State, U16};
+mod input {
+    use circuit::{Aleo, Eject, Equal, Field, Inject, Mode, Randomizer, Record, SerialNumber, Signature, State, U16};
 
     use anyhow::{ensure, Result};
 
     pub struct Public<A: Aleo> {
-        /// The output index.
+        /// The input index.
         index: U16<A>,
-        /// The output record.
-        record: Record<A>,
-        /// The serial numbers digest.
-        serial_numbers_digest: Field<A>,
+        /// The input program root.
+        root: Field<A>,
+        /// The input serial number.
+        serial_number: Field<A>,
     }
 
     impl<A: Aleo> Public<A> {
-        /// Initializes the public inputs for the output circuit.
-        pub fn from(
-            index: u16,
-            record: console::program::Record<A::Network>,
-            serial_numbers_digest: A::BaseField,
-        ) -> Self {
+        /// Initializes the public inputs for the input circuit.
+        pub fn from(index: u16, root: A::BaseField, serial_number: A::BaseField) -> Self {
             let index = U16::<A>::new(Mode::Public, index);
-            let record = Record::<A>::new(Mode::Public, record);
-            let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
+            let root = Field::<A>::new(Mode::Public, root);
+            let serial_number = Field::<A>::new(Mode::Public, serial_number);
 
-            Self { index, record, serial_numbers_digest }
+            Self { index, root, serial_number }
         }
     }
 
     pub struct Private<A: Aleo> {
-        /// The output state.
-        state: State<A>,
-        /// The output randomizer.
-        randomizer: Randomizer<A>,
+        /// The input record view key.
+        record_view_key: Field<A>,
+        /// The input record.
+        record: Record<A>,
+        /// The input serial number proof.
+        serial_number: SerialNumber<A>,
+        /// The input signature.
+        signature: Signature<A>,
     }
 
     impl<A: Aleo> Private<A> {
-        /// Initializes the private inputs for the output circuit.
+        /// Initializes the private inputs for the input circuit.
         pub fn from(
-            state: console::program::State<A::Network>,
-            randomizer: console::program::Randomizer<A::Network>,
+            record_view_key: A::BaseField,
+            record: console::program::Record<A::Network>,
+            serial_number: console::program::SerialNumber<A::Network>,
+            signature: console::account::Signature<A::Network>,
         ) -> Self {
-            let state = State::<A>::new(Mode::Private, state);
-            let randomizer = Randomizer::<A>::new(Mode::Private, randomizer);
+            let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
+            let record = Record::<A>::new(Mode::Private, record);
+            let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
+            let signature = Signature::<A>::new(Mode::Private, signature);
 
-            Self { state, randomizer }
+            Self { record_view_key, record, serial_number, signature }
         }
     }
 
-    pub struct OutputCircuit<A: Aleo>(Public<A>, Private<A>);
+    pub struct InputCircuit<A: Aleo>(Public<A>, Private<A>);
 
-    impl<A: Aleo> OutputCircuit<A> {
-        /// Initializes the output circuit.
+    impl<A: Aleo> InputCircuit<A> {
+        /// Initializes the input circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            ensure!(public.index.eject_mode().is_public(), "Output index must be public");
-            ensure!(public.record.eject_mode().is_public(), "Output record must be public");
-            ensure!(public.serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
+            ensure!(public.index.eject_mode().is_public(), "Input index must be public");
+            ensure!(public.root.eject_mode().is_public(), "Input program root must be public");
+            ensure!(public.serial_number.eject_mode().is_public(), "Input serial number must be public");
 
             // Ensure all private members are private inputs.
-            ensure!(private.state.eject_mode().is_private(), "Output state must be private");
-            ensure!(private.randomizer.eject_mode().is_private(), "Output randomizer must be private");
+            ensure!(private.record_view_key.eject_mode().is_private(), "Input record view key must be private");
+            ensure!(private.record.eject_mode().is_private(), "Input record must be private");
+            ensure!(private.serial_number.eject_mode().is_private(), "Input serial number proof must be private");
+            ensure!(private.signature.eject_mode().is_private(), "Input signature must be private");
 
             Ok(Self(public, private))
         }
 
-        /// Executes the output circuit.
+        /// Executes the input circuit.
         pub fn execute(&self) {
             let (public, private) = (&self.0, &self.1);
 
-            // Ensure the randomizer is valid.
-            A::assert(private.randomizer.verify(private.state.owner(), &public.serial_numbers_digest, &public.index));
+            // Compute the record commitment.
+            let commitment = private.record.to_commitment();
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Encrypt the program state into a new record.
-            let record = private.state.encrypt(&private.randomizer);
+            // Decrypt the record into program state.
+            let state = private.record.decrypt_symmetric(&private.record_view_key);
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Ensure the record matches the declared record.
-            A::assert(record.is_equal(&public.record));
-            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+            // // Ensure the program state matches the declared state.
+            // A::assert(state.is_equal(&private.state));
+            // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+            println!(
+                "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
+            );
         }
-    }
-}
-
-mod snark {
-    use snarkvm_algorithms::{
-        crypto_hash::PoseidonSponge,
-        snark::marlin::{
-            ahp::AHPForR1CS,
-            fiat_shamir::FiatShamirAlgebraicSpongeRng,
-            MarlinHidingMode,
-            MarlinSNARK,
-            Proof,
-        },
-        SNARK,
-    };
-    use snarkvm_curves::bls12_377::Bls12_377;
-    use snarkvm_fields::One;
-
-    use anyhow::{ensure, Result};
-    use std::time::Instant;
-
-    type EC = snarkvm_curves::bls12_377::Bls12_377;
-    type Fq = <EC as snarkvm_curves::PairingEngine>::Fq;
-    type Fr = <EC as snarkvm_curves::PairingEngine>::Fr;
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    type Marlin = MarlinSNARK<EC, FS, MarlinHidingMode, [Fr]>;
-
-    // Runs Marlin setup, prove, and verify.
-    pub fn execute(assignment: circuit::Assignment<Fr>) -> Result<Proof<Bls12_377>> {
-        let mut rng = rand::thread_rng();
-
-        let timer = Instant::now();
-        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-        let universal_srs = Marlin::universal_setup(&max_degree, &mut rng).unwrap();
-        println!("Called universal setup: {} ms", timer.elapsed().as_millis());
-
-        ensure!(<circuit::Circuit as circuit::Environment>::is_satisfied(), "Circuit is not satisfied");
-
-        let timer = Instant::now();
-        let (index_pk, index_vk) = Marlin::circuit_setup(&universal_srs, &assignment).unwrap();
-        println!("Called setup: {} ms", timer.elapsed().as_millis());
-
-        let timer = Instant::now();
-        let proof = Marlin::prove_batch(&index_pk, std::slice::from_ref(&assignment), &mut rng).unwrap();
-        println!("Called prover: {} ms", timer.elapsed().as_millis());
-
-        let inputs = assignment.public_inputs();
-        println!("{} inputs: {:?}", inputs.len(), inputs);
-
-        let timer = Instant::now();
-        assert!(Marlin::verify(&index_vk, inputs, &proof).unwrap());
-        println!("Called verifier: {} ms", timer.elapsed().as_millis());
-
-        // Ok((inputs, proof))
-        Ok(proof)
     }
 }
 
@@ -232,8 +189,8 @@ where
 
         let public = output::Public::<A>::from(output_index, record.clone(), serial_numbers_digest);
         let private = output::Private::<A>::from(state, randomizer);
-        let output_circuit = output::OutputCircuit::from(public, private)?;
-        output_circuit.execute();
+        output::OutputCircuit::from(public, private)?.execute();
+        println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
         let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
         println!(
@@ -287,24 +244,20 @@ where
     // Retrieve the Merkle root.
     let root = program.root();
 
-    // Compute the serial number.
-    let serial_number = record.to_serial_number(&caller_private_key, rng)?;
-
-    // Compute the signature for the serial number.
-    let signature = Signature::sign(&caller_private_key, &[*serial_number.value()], rng)?;
-
-    // Decrypt the record into state.
-    let state = record.decrypt(&caller_view_key)?;
-
     // Compute the record view key.
     let record_view_key = record.to_record_view_key(&caller_view_key);
+
+    // Compute the serial number.
+    let serial_number = record.to_serial_number(&caller_private_key, rng)?;
+    // Compute the signature for the serial number.
+    let signature = Signature::sign(&caller_private_key, &[*serial_number.value()], rng)?;
 
     let process = std::panic::catch_unwind(|| {
         // Set the input index to 0.
         let input_index = 0u16;
 
         let public = input::Public::<A>::from(input_index, *root, *serial_number.value());
-        let private = input::Private::<A>::from(record_view_key, record, state, serial_number.clone(), signature);
+        let private = input::Private::<A>::from(record_view_key, record, serial_number.clone(), signature);
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();
 
@@ -326,120 +279,6 @@ where
 
         Ok::<_, Error>(transaction)
     });
-
-    mod input {
-        use circuit::{
-            Aleo,
-            Eject,
-            Equal,
-            Field,
-            Inject,
-            Mode,
-            Randomizer,
-            Record,
-            SerialNumber,
-            Signature,
-            State,
-            U16,
-        };
-
-        use anyhow::{ensure, Result};
-
-        pub struct Public<A: Aleo> {
-            /// The input index.
-            index: U16<A>,
-            /// The input program root.
-            root: Field<A>,
-            /// The input serial number.
-            serial_number: Field<A>,
-        }
-
-        impl<A: Aleo> Public<A> {
-            /// Initializes the public inputs for the input circuit.
-            pub fn from(index: u16, root: A::BaseField, serial_number: A::BaseField) -> Self {
-                let index = U16::<A>::new(Mode::Public, index);
-                let root = Field::<A>::new(Mode::Public, root);
-                let serial_number = Field::<A>::new(Mode::Public, serial_number);
-
-                Self { index, root, serial_number }
-            }
-        }
-
-        pub struct Private<A: Aleo> {
-            /// The input record view key.
-            record_view_key: Field<A>,
-            /// The input record.
-            record: Record<A>,
-            /// The input state.
-            state: State<A>,
-            /// The input serial number proof.
-            serial_number: SerialNumber<A>,
-            /// The input signature.
-            signature: Signature<A>,
-        }
-
-        impl<A: Aleo> Private<A> {
-            /// Initializes the private inputs for the input circuit.
-            pub fn from(
-                record_view_key: A::BaseField,
-                record: console::program::Record<A::Network>,
-                state: console::program::State<A::Network>,
-                serial_number: console::program::SerialNumber<A::Network>,
-                signature: console::account::Signature<A::Network>,
-            ) -> Self {
-                let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
-                let record = Record::<A>::new(Mode::Private, record);
-                let state = State::<A>::new(Mode::Private, state);
-                let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
-                let signature = Signature::<A>::new(Mode::Private, signature);
-
-                Self { record_view_key, record, state, serial_number, signature }
-            }
-        }
-
-        pub struct InputCircuit<A: Aleo>(Public<A>, Private<A>);
-
-        impl<A: Aleo> InputCircuit<A> {
-            /// Initializes the input circuit.
-            pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
-                // Ensure all public members are public inputs.
-                ensure!(public.index.eject_mode().is_public(), "Input index must be public");
-                ensure!(public.root.eject_mode().is_public(), "Input program root must be public");
-                ensure!(public.serial_number.eject_mode().is_public(), "Input serial number must be public");
-
-                // Ensure all private members are private inputs.
-                ensure!(private.record_view_key.eject_mode().is_private(), "Input record view key must be private");
-                ensure!(private.record.eject_mode().is_private(), "Input record must be private");
-                ensure!(private.state.eject_mode().is_private(), "Input state must be private");
-                ensure!(private.serial_number.eject_mode().is_private(), "Input serial number proof must be private");
-                ensure!(private.signature.eject_mode().is_private(), "Input signature must be private");
-
-                Ok(Self(public, private))
-            }
-
-            /// Executes the input circuit.
-            pub fn execute(&self) {
-                let (public, private) = (&self.0, &self.1);
-
-                // Compute the record commitment.
-                let commitment = private.record.to_commitment();
-                println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-                // Decrypt the record into program state.
-                let state = private.record.decrypt_symmetric(&private.record_view_key);
-                println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-                // // Ensure the program state matches the declared state.
-                // A::assert(state.is_equal(&private.state));
-                // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-                let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
-                println!(
-                    "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
-                );
-            }
-        }
-    }
 
     match process {
         Ok(Ok(transaction)) => Ok(transaction),

@@ -20,18 +20,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod verify;
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{
-    environment::prelude::*,
-    Address,
-    Boolean,
-    Equal,
-    Field,
-    Group,
-    Scalar,
-    ToField,
-    ToGroup,
-    U16,
-};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar, U16};
 
 pub struct Randomizer<A: Aleo> {
     /// The randomizer from the VRF.

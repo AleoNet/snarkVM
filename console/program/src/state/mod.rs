@@ -21,13 +21,13 @@ mod decrypt;
 mod encrypt;
 mod to_digest;
 
-use crate::{Ciphertext, Data, Record};
+use crate::Record;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::ToBits;
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{ensure, Result};
 
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.

@@ -20,7 +20,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod verify;
 
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field, Group, Scalar, ToField, U16};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field, Group, Scalar};
 
 pub struct SerialNumber<A: Aleo> {
     /// The serial number from the VRF.
