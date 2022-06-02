@@ -37,8 +37,6 @@ mod output {
     pub struct Public<A: Aleo> {
         /// The output index.
         index: U16<A>,
-        /// The output commitment.
-        commitment: Field<A>,
         /// The output record.
         record: Record<A>,
         /// The serial numbers digest.
@@ -49,16 +47,14 @@ mod output {
         /// Initializes the public inputs for the output circuit.
         pub fn from(
             index: u16,
-            commitment: A::BaseField,
             record: console::program::Record<A::Network>,
             serial_numbers_digest: A::BaseField,
         ) -> Self {
             let index = U16::<A>::new(Mode::Public, index);
-            let commitment = Field::<A>::new(Mode::Public, commitment);
             let record = Record::<A>::new(Mode::Public, record);
             let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
 
-            Self { index, commitment, record, serial_numbers_digest }
+            Self { index, record, serial_numbers_digest }
         }
     }
 
@@ -89,7 +85,6 @@ mod output {
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
             ensure!(public.index.eject_mode().is_public(), "Output index must be public");
-            ensure!(public.commitment.eject_mode().is_public(), "Output commitment must be public");
             ensure!(public.record.eject_mode().is_public(), "Output record must be public");
             ensure!(public.serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
 
@@ -115,15 +110,6 @@ mod output {
             // Ensure the record matches the declared record.
             A::assert(record.is_equal(&public.record));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            // Ensure the record commitment matches the declared commitment.
-            A::assert_eq(record.to_commitment(), &public.commitment);
-            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
-            println!(
-                "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
-            );
         }
     }
 }
@@ -241,15 +227,18 @@ where
     let process = std::panic::catch_unwind(|| {
         // Set the output index to 0.
         let output_index = 0u16;
-        // Compute the commitment.
-        let commitment = record.to_commitment()?;
         // Compute the serial numbers digest.
         let serial_numbers_digest = A::Network::hash_bhp1024(&[])?;
 
-        let public = output::Public::<A>::from(output_index, commitment, record.clone(), serial_numbers_digest);
+        let public = output::Public::<A>::from(output_index, record.clone(), serial_numbers_digest);
         let private = output::Private::<A>::from(state, randomizer);
         let output_circuit = output::OutputCircuit::from(public, private)?;
         output_circuit.execute();
+
+        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+        println!(
+            "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
+        );
 
         let timer = Instant::now();
         let assignment = circuit::Circuit::eject();
