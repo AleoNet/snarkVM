@@ -58,6 +58,8 @@ thread_local! {
     static MAC_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::mac_domain());
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
+    /// The serial number domain as a constant field element.
+    static SERIAL_NUMBER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::serial_number_domain());
 
     /// The BHP hash function, which can take an input of up to 256 bits.
     static BHP_256: BHP256<AleoV0> = BHP256::<AleoV0>::constant(console::BHP_256.clone());
@@ -106,6 +108,11 @@ impl Aleo for AleoV0 {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Field<Self> {
         RANDOMIZER_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the serial number domain as a constant field element.
+    fn serial_number_domain() -> Field<Self> {
+        SERIAL_NUMBER_DOMAIN.with(|domain| domain.clone())
     }
 
     /// Returns the scalar multiplication on the group bases.

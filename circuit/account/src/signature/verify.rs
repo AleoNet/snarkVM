@@ -22,13 +22,13 @@ impl<A: Aleo> Signature<A> {
         // Compute pk_sig_challenge := G^sk_sig^challenge.
         let pk_sig_challenge = self.compute_key.pk_sig() * &self.challenge;
 
-        // Compute G^randomizer := G^response pk_sig_challenge.
-        let g_randomizer = A::g_scalar_multiply(&self.response) + pk_sig_challenge;
+        // Compute G^nonce := G^response pk_sig_challenge.
+        let g_nonce = A::g_scalar_multiply(&self.response) + pk_sig_challenge;
 
-        // Construct the hash input as (address, G^randomizer, message).
+        // Construct the hash input as (address, G^nonce, message).
         let mut preimage = Vec::with_capacity(2 + message.len());
         preimage.push(address.to_field());
-        preimage.push(g_randomizer.to_x_coordinate());
+        preimage.push(g_nonce.to_x_coordinate());
         preimage.extend_from_slice(message);
 
         // Compute the candidate verifier challenge.
@@ -67,8 +67,7 @@ pub(crate) mod tests {
 
             // Generate a signature.
             let message = [Field::new(mode, UniformRand::rand(rng)), Field::new(mode, UniformRand::rand(rng))];
-            let randomizer = UniformRand::rand(rng);
-            let signature = console::Signature::sign(&private_key, &message.eject_value(), randomizer)?;
+            let signature = console::Signature::sign(&private_key, &message.eject_value(), rng)?;
 
             // Initialize the signature and address.
             let signature = Signature::<Circuit>::new(mode, signature);
@@ -108,8 +107,7 @@ pub(crate) mod tests {
                 Group::new(mode, UniformRand::rand(rng)).to_x_coordinate(),
                 Scalar::new(mode, UniformRand::rand(rng)).to_field(),
             ];
-            let randomizer = UniformRand::rand(rng);
-            let signature = console::Signature::sign(&private_key, &message.eject_value(), randomizer)?;
+            let signature = console::Signature::sign(&private_key, &message.eject_value(), rng)?;
 
             // Initialize the signature and address.
             let signature = Signature::<Circuit>::new(mode, signature);

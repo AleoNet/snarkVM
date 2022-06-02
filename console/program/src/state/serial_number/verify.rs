@@ -18,15 +18,28 @@ use super::*;
 
 impl<N: Network> SerialNumber<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &N::Affine, state_digest: N::Field) -> bool {
+    pub fn verify(&self, pk_vrf: &N::Affine, state: &State<N>, input_index: u16) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
-        // Compute the generator `H` as `HashToGroup(state_digest)`.
-        let generator_h = match N::hash_to_group_psd2(&[N::serial_number_domain(), state_digest]) {
+        // Compute the state digest.
+        let state_digest = match state.to_digest() {
+            Ok(state_digest) => state_digest,
+            Err(error) => {
+                eprintln!("Failed to compute the state digest: {error}");
+                return false;
+            }
+        };
+
+        // Compute the generator `H` as `HashToGroup(state_digest || input_index)`.
+        let generator_h = match N::hash_to_group_psd4(&[
+            N::serial_number_domain(),
+            state_digest,
+            N::Field::from(input_index as u128),
+        ]) {
             Ok(generator_h) => generator_h,
-            Err(err) => {
-                eprintln!("Failed to compute the generator H: {err}");
+            Err(error) => {
+                eprintln!("Failed to compute the generator H: {error}");
                 return false;
             }
         };
@@ -40,31 +53,35 @@ impl<N: Network> SerialNumber<N> {
         // Compute `candidate_challenge` as `HashToScalar(pk_vrf, gamma, nonce * G, nonce * H)`.
         let candidate_challenge = match N::hash_to_scalar_psd4(&[pk_vrf, &gamma, &u, &v].map(|c| c.to_x_coordinate())) {
             Ok(candidate_challenge) => candidate_challenge,
-            Err(err) => {
-                eprintln!("Failed to compute the challenge: {err}");
+            Err(error) => {
+                eprintln!("Failed to compute the challenge: {error}");
                 return false;
             }
         };
 
-        // Compute `serial_number_nonce` as `Hash(COFACTOR * gamma)`.
-        let serial_number_nonce = match N::hash_psd2(&[gamma.mul_by_cofactor().to_x_coordinate()]) {
-            Ok(serial_number_nonce) => serial_number_nonce,
-            Err(err) => {
-                eprintln!("Failed to compute the serial number nonce: {err}");
-                return false;
-            }
-        };
+        // Compute `serial_number_nonce` as `HashToScalar(COFACTOR * gamma)`.
+        let serial_number_nonce =
+            match N::hash_to_scalar_psd2(&[N::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()]) {
+                Ok(serial_number_nonce) => serial_number_nonce,
+                Err(error) => {
+                    eprintln!("Failed to compute the serial number nonce: {error}");
+                    return false;
+                }
+            };
 
-        // Compute `candidate_serial_number` as `Hash(state_digest || serial_number_nonce)`.
-        let candidate_serial_number = match N::hash_bhp512(&[state_digest, serial_number_nonce].to_bits_le()) {
+        // Compute `candidate_serial_number` as `Commit( (state_digest || input_index), serial_number_nonce )`.
+        let candidate_serial_number = match N::commit_bhp512(
+            &(N::serial_number_domain(), state_digest, input_index).to_bits_le(),
+            &serial_number_nonce,
+        ) {
             Ok(candidate_serial_number) => candidate_serial_number,
-            Err(err) => {
-                eprintln!("Failed to compute the serial number: {err}");
+            Err(error) => {
+                eprintln!("Failed to compute the serial number: {error}");
                 return false;
             }
         };
 
-        // Return `true` the serial number is valid.
+        // Return `true` the challenge and serial number is valid.
         challenge == candidate_challenge && self.serial_number == candidate_serial_number
     }
 }
@@ -72,6 +89,7 @@ impl<N: Network> SerialNumber<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_console_account::Address;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
@@ -85,12 +103,20 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             let sk_vrf = UniformRand::rand(rng);
-            let state_digest = UniformRand::rand(rng);
+            let state = State::from(
+                UniformRand::rand(rng),
+                UniformRand::rand(rng),
+                Address::from_group(UniformRand::rand(rng)),
+                UniformRand::rand(rng),
+                UniformRand::rand(rng),
+                UniformRand::rand(rng),
+            );
+            let input_index = UniformRand::rand(rng);
 
             let pk_vrf = CurrentNetwork::g_scalar_multiply(&sk_vrf).to_affine();
 
-            let proof = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, state_digest, rng)?;
-            assert!(proof.verify(&pk_vrf, state_digest));
+            let serial_number = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, &state, input_index, rng)?;
+            assert!(serial_number.verify(&pk_vrf, &state, input_index));
         }
         Ok(())
     }

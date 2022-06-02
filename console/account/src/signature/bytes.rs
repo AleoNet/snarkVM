@@ -61,8 +61,7 @@ mod tests {
 
             // Generate a signature.
             let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
-            let randomizer = UniformRand::rand(rng);
-            let signature = Signature::sign(&private_key, &message, randomizer)?;
+            let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 
             // Check the byte representation.

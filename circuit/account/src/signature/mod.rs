@@ -86,8 +86,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Generate a signature.
             let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
-            let randomizer = UniformRand::rand(rng);
-            let signature = console::Signature::sign(&private_key, &message, randomizer)?;
+            let signature = console::Signature::sign(&private_key, &message, rng)?;
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Signature::<Circuit>::new(mode, signature);

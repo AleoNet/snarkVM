@@ -17,28 +17,30 @@
 use super::*;
 
 impl<N: Network> Signature<N> {
-    /// Returns a signature `(challenge, response, compute_key)` for a given message and randomizer, where:
-    ///     challenge := HashToScalar(address, G^randomizer, message)
-    ///     response := randomizer - challenge * private_key.sk_sig()
-    pub fn sign(private_key: &PrivateKey<N>, message: &[N::Field], randomizer: N::Scalar) -> Result<Self> {
-        // Compute G^randomizer.
-        let g_randomizer = N::g_scalar_multiply(&randomizer).to_affine();
+    /// Returns a signature `(challenge, response, compute_key)` for a given message and nonce, where:
+    ///     challenge := HashToScalar(address, G^nonce, message)
+    ///     response := nonce - challenge * private_key.sk_sig()
+    pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[N::Field], rng: &mut R) -> Result<Self> {
+        // Sample a random nonce from the scalar field.
+        let nonce = N::Scalar::rand(rng);
+        // Compute G^nonce.
+        let g_nonce = N::g_scalar_multiply(&nonce).to_affine();
 
         // Derive the compute key from the private key.
         let compute_key = ComputeKey::try_from(private_key)?;
         // Derive the address from the compute key.
         let address = Address::try_from(compute_key)?;
 
-        // Construct the hash input (address, G^randomizer, message).
+        // Construct the hash input (address, G^nonce, message).
         let mut preimage = Vec::with_capacity(2 + message.len());
-        preimage.extend([*address, g_randomizer].map(|point| point.to_x_coordinate()));
+        preimage.extend([*address, g_nonce].map(|point| point.to_x_coordinate()));
         preimage.extend(message);
 
         // Compute the verifier challenge.
         let challenge = N::hash_to_scalar_psd4(&preimage)?;
 
         // Compute the prover response.
-        let response = randomizer - (challenge * private_key.sk_sig());
+        let response = nonce - (challenge * private_key.sk_sig());
 
         // Output the signature.
         Ok(Self { challenge, response, compute_key })
@@ -50,12 +52,12 @@ impl<N: Network> Signature<N> {
         // Compute pk_sig_challenge := pk_sig^challenge.
         let pk_sig_challenge = self.compute_key.pk_sig().to_projective() * self.challenge;
 
-        // Compute G^randomizer := G^response pk_sig_challenge.
-        let g_randomizer = (N::g_scalar_multiply(&self.response) + pk_sig_challenge).to_affine();
+        // Compute G^nonce := G^response pk_sig_challenge.
+        let g_nonce = (N::g_scalar_multiply(&self.response) + pk_sig_challenge).to_affine();
 
-        // Construct the hash input (address, G^randomizer, message).
+        // Construct the hash input (address, G^nonce, message).
         let mut preimage = Vec::with_capacity(2 + message.len());
-        preimage.extend([**address, g_randomizer].map(|point| point.to_x_coordinate()));
+        preimage.extend([**address, g_nonce].map(|point| point.to_x_coordinate()));
         preimage.extend(message);
 
         // Hash to derive the verifier challenge, and return `false` if this operation fails.
@@ -100,8 +102,7 @@ mod tests {
 
             // Check that the signature is valid for the message.
             let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
-            let randomizer = UniformRand::rand(rng);
-            let signature = Signature::sign(&private_key, &message, randomizer)?;
+            let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 
             // Check that the signature is invalid for an incorrect message.

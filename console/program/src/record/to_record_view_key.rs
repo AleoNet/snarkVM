@@ -14,17 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[cfg(test)]
-use snarkvm_circuit_network::AleoV0 as Circuit;
-
-mod data;
-pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
-
-mod record;
-pub use record::Record;
-
-mod state;
-pub use state::{Randomizer, SerialNumber, State};
+impl<N: Network> Record<N> {
+    /// Returns the record view key given the account view key.
+    pub fn to_record_view_key(&self, view_key: &ViewKey<N>) -> N::Field {
+        // Compute the record view key := G^r^view_key.
+        (self.nonce * **view_key).to_affine().to_x_coordinate()
+    }
+}

@@ -38,6 +38,9 @@ pub trait Aleo: Environment {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Field<Self>;
 
+    /// Returns the serial number domain as a constant field element.
+    fn serial_number_domain() -> Field<Self>;
+
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 

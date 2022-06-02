@@ -16,12 +16,34 @@
 
 use super::*;
 
-impl<A: Aleo> State<A> {
-    /// Returns the program state digest.
-    pub fn to_digest(&self) -> Field<A> {
-        // Compute the BHP hash of the program state.
-        A::hash_bhp1024(
-            &(&self.program, &self.process, &self.owner, &self.balance, &self.data, &self.nonce).to_bits_le(),
-        )
+impl<N: Network> ToBits for Record<N> {
+    /// Returns this data as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<bool> {
+        [
+            self.program,
+            self.process,
+            self.owner,
+            self.balance,
+            self.data,
+            self.nonce.to_x_coordinate(),
+            self.mac,
+            self.bcm,
+        ]
+        .to_bits_le()
+    }
+
+    /// Returns this data as a list of **big-endian** bits.
+    fn to_bits_be(&self) -> Vec<bool> {
+        [
+            self.program,
+            self.process,
+            self.owner,
+            self.balance,
+            self.data,
+            self.nonce.to_x_coordinate(),
+            self.mac,
+            self.bcm,
+        ]
+        .to_bits_be()
     }
 }

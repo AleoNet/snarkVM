@@ -40,7 +40,7 @@ impl<A: Aleo> Randomizer<A> {
         let candidate_randomizer =
             A::hash_to_scalar_psd2(&[A::randomizer_domain(), gamma.mul_by_cofactor().to_x_coordinate()]);
 
-        // Return `true` the randomizer is valid.
+        // Return `true` the challenge and randomizer is valid.
         challenge.is_equal(&candidate_challenge) & self.randomizer.is_equal(&candidate_randomizer)
     }
 }

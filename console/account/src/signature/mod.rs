@@ -22,8 +22,11 @@ use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
+    CryptoRng,
     FromBytes,
+    Rng,
     ToBytes,
+    UniformRand,
 };
 
 use anyhow::Result;
@@ -92,8 +95,7 @@ mod tests {
 
             // Generate a signature.
             let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
-            let randomizer = UniformRand::rand(rng);
-            let signature = Signature::sign(&private_key, &message, randomizer)?;
+            let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 
             // Check that the signature can be reconstructed from its parts.

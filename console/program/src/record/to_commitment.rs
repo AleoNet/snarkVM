@@ -20,18 +20,6 @@ impl<N: Network> Record<N> {
     /// Returns the record commitment.
     pub fn to_commitment(&self) -> Result<N::Field> {
         // Compute the BHP hash of the program record.
-        N::hash_bhp1024(
-            &[
-                self.program,
-                self.process,
-                self.owner,
-                self.balance,
-                self.data,
-                self.nonce.to_x_coordinate(),
-                self.mac,
-                self.bcm,
-            ]
-            .to_bits_le(),
-        )
+        N::hash_bhp1024(&self.to_bits_le())
     }
 }

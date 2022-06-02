@@ -20,6 +20,9 @@
 mod randomizer;
 pub use randomizer::Randomizer;
 
+mod serial_number;
+pub use serial_number::SerialNumber;
+
 mod decrypt;
 mod encrypt;
 mod to_digest;

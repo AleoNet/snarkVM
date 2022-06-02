@@ -21,15 +21,15 @@ impl<N: Network> State<N> {
     pub fn to_digest(&self) -> Result<N::Field> {
         // Compute the BHP hash of the program state.
         N::hash_bhp1024(
-            &[
+            &(
                 self.program,
                 self.process,
                 self.owner.to_x_coordinate(),
-                N::Field::from(self.balance as u128),
+                self.balance,
                 self.data,
                 self.nonce.to_x_coordinate(),
-            ]
-            .to_bits_le(),
+            )
+                .to_bits_le(),
         )
     }
 }

@@ -21,13 +21,12 @@ impl<N: Network> State<N> {
     pub fn to_serial_number<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
+        input_index: u16,
         rng: &mut R,
     ) -> Result<SerialNumber<N>> {
         // Ensure the private key belongs to the owner of the program state.
         ensure!(self.owner == private_key.try_into()?, "The private key does not match this program state");
-        // Compute the program state digest.
-        let state_digest = self.to_digest()?;
         // Compute the serial number.
-        SerialNumber::<N>::prove(&private_key.sk_vrf(), state_digest, rng)
+        SerialNumber::<N>::prove(&private_key.sk_vrf(), self, input_index, rng)
     }
 }

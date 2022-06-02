@@ -17,17 +17,26 @@
 mod prove;
 mod verify;
 
+use crate::State;
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
 use anyhow::Result;
 
+#[derive(Clone)]
 pub struct SerialNumber<N: Network> {
     /// The serial number from the VRF.
     serial_number: N::Field,
     /// The proof for the serial number: `(gamma, challenge, response)`.
     proof: (N::Affine, N::Scalar, N::Scalar),
+}
+
+impl<N: Network> From<(N::Field, (N::Affine, N::Scalar, N::Scalar))> for SerialNumber<N> {
+    /// Note: See `SerialNumber::prove` to create a serial number. This method is used to eject from a circuit.
+    fn from((serial_number, (gamma, challenge, response)): (N::Field, (N::Affine, N::Scalar, N::Scalar))) -> Self {
+        Self { serial_number, proof: (gamma, challenge, response) }
+    }
 }
 
 impl<N: Network> SerialNumber<N> {

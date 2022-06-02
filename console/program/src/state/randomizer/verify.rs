@@ -60,7 +60,7 @@ impl<N: Network> Randomizer<N> {
                 }
             };
 
-        // Return `true` the randomizer is valid.
+        // Return `true` the challenge and randomizer is valid.
         challenge == candidate_challenge && self.randomizer == candidate_randomizer
     }
 }

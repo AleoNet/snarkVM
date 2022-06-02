@@ -21,10 +21,10 @@ use console::{
     program::{Ciphertext, Data, Randomizer, Record, State},
 };
 use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::{CryptoRng, Rng, UniformRand};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
 use anyhow::{bail, Error, Result};
-use core::panic::UnwindSafe;
+use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;
 use snarkvm_algorithms::snark::marlin::Proof;
 use std::{thread, time::Instant};
@@ -87,13 +87,13 @@ mod output {
     impl<A: Aleo> OutputCircuit<A> {
         /// Initializes the output circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
-            // Ensure all members are public inputs.
+            // Ensure all public members are public inputs.
             ensure!(public.index.eject_mode().is_public(), "Output index must be public");
             ensure!(public.commitment.eject_mode().is_public(), "Output commitment must be public");
             ensure!(public.record.eject_mode().is_public(), "Output record must be public");
             ensure!(public.serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
 
-            // Ensure all members are private inputs.
+            // Ensure all private members are private inputs.
             ensure!(private.state.eject_mode().is_private(), "Output state must be private");
             ensure!(private.randomizer.eject_mode().is_private(), "Output randomizer must be private");
 
@@ -196,7 +196,9 @@ impl<N: Network> Transaction<N> {
 }
 
 pub struct Transition<N: Network> {
+    inputs: Vec<N::Field>,
     outputs: Vec<Record<N>>,
+    input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
 }
 
@@ -208,25 +210,26 @@ impl<N: Network> Transition<N> {
 }
 
 /// Transition: 0 -> 1
-fn mint<A: circuit::Aleo, R: Rng + CryptoRng>(rng: &mut R) -> Result<Transaction<A::Network>>
+fn mint<A: circuit::Aleo, R: Rng + CryptoRng>(
+    rng: &mut R,
+    caller_view_key: &ViewKey<A::Network>,
+) -> Result<Transaction<A::Network>>
 where
     A::BaseField: UnwindSafe,
     A::ScalarField: UnwindSafe,
     A::Affine: UnwindSafe,
 {
-    // Initialize a new sender account.
-    let sender_private_key = PrivateKey::<A::Network>::new(rng)?;
-    let sender_view_key = ViewKey::try_from(&sender_private_key)?;
-    let sender_address = Address::try_from(&sender_private_key)?;
+    // Initialize the caller address.
+    let caller_address = Address::try_from(caller_view_key)?;
 
     // Initialize the randomizer, which is bound to the account of the **sender**.
-    let randomizer = Randomizer::prove(&sender_view_key, &[], 0, rng)?;
+    let randomizer = Randomizer::prove(&caller_view_key, &[], 0, rng)?;
 
     // Initialize a coinbase.
     let (state, record) = {
         let program = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
         let process = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
-        let owner = sender_address;
+        let owner = caller_address;
         let balance = 100u64;
         let data = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
 
@@ -253,7 +256,8 @@ where
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
         let proof = snark::execute(assignment)?;
-        let transition = Transition { outputs: vec![record], output_proofs: vec![proof] };
+        let transition =
+            Transition { inputs: vec![], outputs: vec![record], input_proofs: vec![], output_proofs: vec![proof] };
 
         // Set the network ID to 0.
         let network = 0u16;
@@ -269,86 +273,206 @@ where
     }
 }
 
-/// Transition: 1 -> 1
-fn transfer<A: circuit::Aleo, R: Rng + CryptoRng>(rng: &mut R) -> Result<Transaction<A::Network>>
+/// Transition: 1 -> 0
+fn burn<A: circuit::Aleo, R: Rng + CryptoRng>(rng: &mut R) -> Result<Transaction<A::Network>>
 where
-    A::BaseField: UnwindSafe,
-    A::ScalarField: UnwindSafe,
-    A::Affine: UnwindSafe,
+    A::BaseField: UnwindSafe + RefUnwindSafe,
+    A::ScalarField: UnwindSafe + RefUnwindSafe,
+    A::Affine: UnwindSafe + RefUnwindSafe,
 {
+    // Initialize a new caller account.
+    let caller_private_key = PrivateKey::<A::Network>::new(rng)?;
+    let caller_view_key = ViewKey::try_from(&caller_private_key)?;
+    let caller_address = Address::try_from(&caller_private_key)?;
+
     // Generate a prior coinbase transaction.
-    let transaction = mint::<A, R>(rng)?;
+    let transaction = mint::<A, R>(rng, &caller_view_key)?;
 
-    // // Initialize a program tree with the coinbase record.
-    // let program = A::merkle_tree_bhp(&[record.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
+    // Retrieve the coinbase record.
+    let record = transaction.transitions()[0].outputs[0].clone();
 
-    //     // Initialize a prior account.
-    //     let prior_private_key = PrivateKey::new(&mut rng)?;
-    //     let prior_view_key = ViewKey::try_from(&prior_private_key)?;
-    //
-    //     // Initialize a new sender account.
-    //     let sender_private_key = PrivateKey::new(&mut rng)?;
-    //     let sender_view_key = ViewKey::try_from(&sender_private_key)?;
-    //     let sender_address = Address::try_from(&sender_private_key)?;
-    //
-    //     // Initialize a coinbase.
-    //     let (state, record) = {
-    //         let program = N::Field::rand(&mut rng);
-    //         let process = N::Field::rand(&mut rng);
-    //         let owner = sender_address;
-    //         let balance = 100u64;
-    //         let data = Data::<N, Ciphertext<N>>::from(vec![]);
-    //         let nonce = N::Affine::rand(&mut rng);
-    //
-    //         let state = State::new(program, process, owner, balance, data, nonce);
-    //
-    //
-    //         // Compute the encryption randomizer, which is bound to the account of the **sender**.
-    //         let randomizer = Randomizer::prove(prior_view_key, serial_numbers, output_index, rng)?;
-    //
-    //         let record = state.encrypt(&prior_view_key, &[], 0, &mut rng)?;
-    //
-    //         (state, record)
-    //     };
-    //
-    //     // let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
-    //     // Signature::sign(&sender_private_key, &[]);
+    // Initialize a program tree with the coinbase record.
+    let program = A::Network::merkle_tree_bhp::<32>(&[record.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
+    // Compute a Merkle path for the coinbase record.
+    let path = program.prove(0, &record.to_bits_le())?;
+    // Retrieve the Merkle root.
+    let root = program.root();
 
-    //     let commitment = state.to_commitment()?;
-    //     let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
-    //
-    //     // Signature::sign(&sender_private_key, &[*serial_number.value()], )
-    //
-    //     // Initialize a new receiver address.
-    //     let receiver_private_key = PrivateKey::new(&mut rng)?;
-    //     let receiver_view_key = ViewKey::try_from(&receiver_private_key)?;
-    //     let receiver_address = Address::try_from(&receiver_private_key)?;
-    //
-    //     // Initialize an instance of program state.
-    //     let (state, commitment) = {
-    //         let program = N::Field::rand(&mut rng);
-    //         let process = N::Field::rand(&mut rng);
-    //         let owner = receiver_address;
-    //         let balance = 100u64;
-    //         let data = Data::<N, Ciphertext<N>>::from(vec![]);
-    //         let nonce = N::Affine::rand(&mut rng);
-    //
-    //         let state = State::new(program, process, owner, balance, data, nonce);
-    //         let commitment = state.to_commitment()?;
-    //
-    //         (state, commitment)
-    //     };
-    //
-    //     // Derive the record corresponding to the program state.
-    //     let serial_number = state.to_serial_number(&sender_private_key, &mut rng)?;
-    //     let record = state.encrypt(&sender_view_key, &[*serial_number.value()], 0, &mut rng)?;
-    //
-    Ok(transaction)
+    // Decrypt the record into state.
+    let state = record.decrypt(&caller_view_key)?;
+
+    // Set the input index to 0.
+    let input_index = 0u16;
+
+    // Compute the serial number.
+    let serial_number = state.to_serial_number(&caller_private_key, input_index, rng)?;
+
+    // Compute the commitment.
+    let commitment = record.to_commitment()?;
+
+    // Compute the signature for the serial number.
+    let signature = Signature::sign(&caller_private_key, &[commitment], rng)?;
+
+    // Compute the record view key.
+    let record_view_key = record.to_record_view_key(&caller_view_key);
+
+    let process = std::panic::catch_unwind(|| {
+        let public = input::Public::<A>::from(input_index, *root, *serial_number.value());
+        let private = input::Private::<A>::from(record_view_key, record, state, serial_number.clone(), signature);
+        let input_circuit = input::InputCircuit::from(public, private)?;
+        input_circuit.execute();
+
+        let timer = Instant::now();
+        let assignment = circuit::Circuit::eject();
+        println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
+
+        let proof = snark::execute(assignment)?;
+        let transition = Transition {
+            inputs: vec![*serial_number.value()],
+            outputs: vec![],
+            input_proofs: vec![proof],
+            output_proofs: vec![],
+        };
+
+        // Set the network ID to 0.
+        let network = 0u16;
+        let transaction = Transaction { network, transitions: vec![transition] };
+
+        Ok::<_, Error>(transaction)
+    });
+
+    mod input {
+        use circuit::{
+            Aleo,
+            Eject,
+            Equal,
+            Field,
+            Inject,
+            Mode,
+            Randomizer,
+            Record,
+            SerialNumber,
+            Signature,
+            State,
+            U16,
+        };
+
+        use anyhow::{ensure, Result};
+
+        pub struct Public<A: Aleo> {
+            /// The input index.
+            index: U16<A>,
+            /// The input program root.
+            root: Field<A>,
+            /// The input serial number.
+            serial_number: Field<A>,
+        }
+
+        impl<A: Aleo> Public<A> {
+            /// Initializes the public inputs for the input circuit.
+            pub fn from(index: u16, root: A::BaseField, serial_number: A::BaseField) -> Self {
+                let index = U16::<A>::new(Mode::Public, index);
+                let root = Field::<A>::new(Mode::Public, root);
+                let serial_number = Field::<A>::new(Mode::Public, serial_number);
+
+                Self { index, root, serial_number }
+            }
+        }
+
+        pub struct Private<A: Aleo> {
+            /// The input record view key.
+            record_view_key: Field<A>,
+            /// The input record.
+            record: Record<A>,
+            /// The input state.
+            state: State<A>,
+            /// The input serial number proof.
+            serial_number: SerialNumber<A>,
+            /// The input signature.
+            signature: Signature<A>,
+        }
+
+        impl<A: Aleo> Private<A> {
+            /// Initializes the private inputs for the input circuit.
+            pub fn from(
+                record_view_key: A::BaseField,
+                record: console::program::Record<A::Network>,
+                state: console::program::State<A::Network>,
+                serial_number: console::program::SerialNumber<A::Network>,
+                signature: console::account::Signature<A::Network>,
+            ) -> Self {
+                let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
+                let record = Record::<A>::new(Mode::Private, record);
+                let state = State::<A>::new(Mode::Private, state);
+                let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
+                let signature = Signature::<A>::new(Mode::Private, signature);
+
+                Self { record_view_key, record, state, serial_number, signature }
+            }
+        }
+
+        pub struct InputCircuit<A: Aleo>(Public<A>, Private<A>);
+
+        impl<A: Aleo> InputCircuit<A> {
+            /// Initializes the input circuit.
+            pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
+                // Ensure all public members are public inputs.
+                ensure!(public.index.eject_mode().is_public(), "Input index must be public");
+                ensure!(public.root.eject_mode().is_public(), "Input program root must be public");
+                ensure!(public.serial_number.eject_mode().is_public(), "Input serial number must be public");
+
+                // Ensure all private members are private inputs.
+                ensure!(private.record_view_key.eject_mode().is_private(), "Input record view key must be private");
+                ensure!(private.record.eject_mode().is_private(), "Input record must be private");
+                ensure!(private.state.eject_mode().is_private(), "Input state must be private");
+                ensure!(private.serial_number.eject_mode().is_private(), "Input serial number proof must be private");
+                ensure!(private.signature.eject_mode().is_private(), "Input signature must be private");
+
+                Ok(Self(public, private))
+            }
+
+            /// Executes the input circuit.
+            pub fn execute(&self) {
+                let (public, private) = (&self.0, &self.1);
+
+                // Compute the record commitment.
+                let commitment = private.record.to_commitment();
+                println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+                // Decrypt the record into program state.
+                let state = private.record.decrypt_symmetric(&private.record_view_key);
+                println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+                // // Ensure the program state matches the declared state.
+                // A::assert(state.is_equal(&private.state));
+                // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+                let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+                println!(
+                    "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
+                );
+            }
+        }
+    }
+
+    match process {
+        Ok(Ok(transaction)) => Ok(transaction),
+        Ok(Err(error)) => bail!("{:?}", error),
+        Err(_) => bail!("Thread failed"),
+    }
 }
 
 fn main() -> Result<()> {
     let mut rng = rand::thread_rng();
-    mint::<circuit::AleoV0, ThreadRng>(&mut rng)?;
+
+    // // Initialize a new caller account.
+    // let caller_private_key = PrivateKey::<<circuit::AleoV0 as circuit::Environment>::Network>::new(&mut rng)?;
+    // let caller_view_key = ViewKey::try_from(&caller_private_key)?;
+    // let caller_address = Address::try_from(&caller_private_key)?;
+    //
+    // let transaction = mint::<circuit::AleoV0, ThreadRng>(&mut rng, &caller_view_key)?;
+
+    let transaction = burn::<circuit::AleoV0, ThreadRng>(&mut rng)?;
 
     Ok(())
 }
