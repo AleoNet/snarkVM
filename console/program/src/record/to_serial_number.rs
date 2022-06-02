@@ -16,16 +16,14 @@
 
 use super::*;
 
-impl<N: Network> State<N> {
-    /// Returns the serial number of the record, given the private key of the state owner and an RNG.
+impl<N: Network> Record<N> {
+    /// Returns the serial number of the record, given the private key of the record owner and an RNG.
     pub fn to_serial_number<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         rng: &mut R,
     ) -> Result<SerialNumber<N>> {
-        // Ensure the private key belongs to the owner of the program state.
-        ensure!(self.owner == private_key.try_into()?, "The private key does not match this program state");
         // Compute the serial number.
-        SerialNumber::<N>::prove(&private_key.sk_vrf(), self, rng)
+        SerialNumber::<N>::prove(&private_key.sk_vrf(), self.to_commitment()?, rng)
     }
 }

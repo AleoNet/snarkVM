@@ -19,7 +19,6 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 mod verify;
 
-use crate::State;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field, Group, Scalar, ToField, U16};
 

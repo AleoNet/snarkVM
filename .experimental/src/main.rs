@@ -298,17 +298,14 @@ where
     // Retrieve the Merkle root.
     let root = program.root();
 
-    // Decrypt the record into state.
-    let state = record.decrypt(&caller_view_key)?;
-
     // Compute the serial number.
-    let serial_number = state.to_serial_number(&caller_private_key, rng)?;
-
-    // Compute the commitment.
-    let commitment = record.to_commitment()?;
+    let serial_number = record.to_serial_number(&caller_private_key, rng)?;
 
     // Compute the signature for the serial number.
-    let signature = Signature::sign(&caller_private_key, &[commitment], rng)?;
+    let signature = Signature::sign(&caller_private_key, &[*serial_number.value()], rng)?;
+
+    // Decrypt the record into state.
+    let state = record.decrypt(&caller_view_key)?;
 
     // Compute the record view key.
     let record_view_key = record.to_record_view_key(&caller_view_key);

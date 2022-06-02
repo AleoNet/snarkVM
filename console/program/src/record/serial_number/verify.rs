@@ -18,21 +18,12 @@ use super::*;
 
 impl<N: Network> SerialNumber<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &N::Affine, state: &State<N>) -> bool {
+    pub fn verify(&self, pk_vrf: &N::Affine, commitment: N::Field) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
-        // Compute the state digest.
-        let state_digest = match state.to_digest() {
-            Ok(state_digest) => state_digest,
-            Err(error) => {
-                eprintln!("Failed to compute the state digest: {error}");
-                return false;
-            }
-        };
-
-        // Compute the generator `H` as `HashToGroup(state_digest)`.
-        let generator_h = match N::hash_to_group_psd4(&[N::serial_number_domain(), state_digest]) {
+        // Compute the generator `H` as `HashToGroup(commitment)`.
+        let generator_h = match N::hash_to_group_psd2(&[N::serial_number_domain(), commitment]) {
             Ok(generator_h) => generator_h,
             Err(error) => {
                 eprintln!("Failed to compute the generator H: {error}");
@@ -65,9 +56,9 @@ impl<N: Network> SerialNumber<N> {
                 }
             };
 
-        // Compute `candidate_serial_number` as `Commit( (state_digest), serial_number_nonce )`.
+        // Compute `candidate_serial_number` as `Commit(commitment, serial_number_nonce)`.
         let candidate_serial_number =
-            match N::commit_bhp512(&(N::serial_number_domain(), state_digest).to_bits_le(), &serial_number_nonce) {
+            match N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &serial_number_nonce) {
                 Ok(candidate_serial_number) => candidate_serial_number,
                 Err(error) => {
                     eprintln!("Failed to compute the serial number: {error}");
@@ -89,7 +80,7 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    pub(crate) const ITERATIONS: usize = 10000;
+    pub(crate) const ITERATIONS: usize = 1000;
 
     #[test]
     fn test_prove_and_verify() -> Result<()> {
@@ -97,19 +88,12 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             let sk_vrf = UniformRand::rand(rng);
-            let state = State::from(
-                UniformRand::rand(rng),
-                UniformRand::rand(rng),
-                Address::from_group(UniformRand::rand(rng)),
-                UniformRand::rand(rng),
-                UniformRand::rand(rng),
-                UniformRand::rand(rng),
-            );
+            let commitment = UniformRand::rand(rng);
 
             let pk_vrf = CurrentNetwork::g_scalar_multiply(&sk_vrf).to_affine();
 
-            let serial_number = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, &state, rng)?;
-            assert!(serial_number.verify(&pk_vrf, &state));
+            let serial_number = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, commitment, rng)?;
+            assert!(serial_number.verify(&pk_vrf, commitment));
         }
         Ok(())
     }

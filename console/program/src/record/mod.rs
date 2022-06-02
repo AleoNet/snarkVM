@@ -14,18 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod serial_number;
+pub use serial_number::SerialNumber;
+
 mod decrypt;
 mod encrypt;
 mod is_owner;
 mod to_bits;
 mod to_commitment;
 mod to_record_view_key;
+mod to_serial_number;
 
 use crate::{Ciphertext, Data, State};
-use snarkvm_console_account::{Address, ViewKey};
+use snarkvm_console_account::{Address, PrivateKey, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{ToBits, ToBytes};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits, ToBytes};
 
 use anyhow::{bail, Result};
 

@@ -17,19 +17,15 @@
 mod randomizer;
 pub use randomizer::Randomizer;
 
-mod serial_number;
-pub use serial_number::SerialNumber;
-
 mod decrypt;
 mod encrypt;
 mod to_digest;
-mod to_serial_number;
 
 use crate::{Ciphertext, Data, Record};
-use snarkvm_console_account::{Address, PrivateKey, ViewKey};
+use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{CryptoRng, Rng, ToBits};
+use snarkvm_utilities::ToBits;
 
 use anyhow::{bail, ensure, Result};
 

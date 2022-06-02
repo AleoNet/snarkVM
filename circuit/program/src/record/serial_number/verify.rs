@@ -18,15 +18,12 @@ use super::*;
 
 impl<A: Aleo> SerialNumber<A> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &Group<A>, state: &State<A>) -> Boolean<A> {
+    pub fn verify(&self, pk_vrf: &Group<A>, commitment: &Field<A>) -> Boolean<A> {
         // Retrieve the proof components.
         let (gamma, challenge, response) = &self.proof;
 
-        // Compute the state digest.
-        let state_digest = state.to_digest();
-
-        // Compute the generator `H` as `HashToGroup(state_digest)`.
-        let generator_h = A::hash_to_group_psd4(&[A::serial_number_domain(), state_digest.clone()]);
+        // Compute the generator `H` as `HashToGroup(commitment)`.
+        let generator_h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
 
         // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
         let u = (pk_vrf * challenge) + A::g_scalar_multiply(response);
@@ -41,9 +38,9 @@ impl<A: Aleo> SerialNumber<A> {
         let candidate_serial_number_nonce =
             A::hash_to_scalar_psd2(&[A::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()]);
 
-        // Compute `candidate_serial_number` as `Commit( (state_digest), serial_number_nonce )`.
+        // Compute `candidate_serial_number` as `Commit(commitment, serial_number_nonce)`.
         let candidate_serial_number =
-            A::commit_bhp512(&(&A::serial_number_domain(), &state_digest).to_bits_le(), &candidate_serial_number_nonce);
+            A::commit_bhp512(&(&A::serial_number_domain(), commitment).to_bits_le(), &candidate_serial_number_nonce);
 
         // Return `true` the challenge and serial number is valid.
         challenge.is_equal(&candidate_challenge) & self.serial_number.is_equal(&candidate_serial_number)
@@ -74,30 +71,23 @@ mod tests {
         for i in 0..ITERATIONS {
             // Compute the native serial number.
             let sk_vrf = UniformRand::rand(rng);
-            let state = console::State::from(
-                UniformRand::rand(rng),
-                UniformRand::rand(rng),
-                snarkvm_console_account::Address::from_group(UniformRand::rand(rng)),
-                UniformRand::rand(rng),
-                UniformRand::rand(rng),
-                UniformRand::rand(rng),
-            );
+            let commitment = UniformRand::rand(rng);
 
             let pk_vrf =
                 <<Circuit as Environment>::Network as snarkvm_console_network::Network>::g_scalar_multiply(&sk_vrf)
                     .into();
 
             let serial_number =
-                console::SerialNumber::<<Circuit as Environment>::Network>::prove(&sk_vrf, &state, rng)?;
-            assert!(serial_number.verify(&pk_vrf, &state));
+                console::SerialNumber::<<Circuit as Environment>::Network>::prove(&sk_vrf, commitment, rng)?;
+            assert!(serial_number.verify(&pk_vrf, commitment));
 
             // Inject the serial number and its arguments into circuits.
             let pk_vrf = Group::<Circuit>::new(mode, pk_vrf);
-            let state = State::new(mode, state);
+            let commitment = Field::new(mode, commitment);
             let serial_number = SerialNumber::new(mode, serial_number);
 
             Circuit::scope(format!("SerialNumber {i}"), || {
-                let candidate = serial_number.verify(&pk_vrf, &state);
+                let candidate = serial_number.verify(&pk_vrf, &commitment);
                 assert!(candidate.eject_value());
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
             })
@@ -112,11 +102,11 @@ mod tests {
 
     #[test]
     fn test_prove_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 29002, 0, 19689, 19718)
+        check_verify(Mode::Public, 15076, 0, 15365, 15388)
     }
 
     #[test]
     fn test_prove_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 29002, 0, 19689, 19718)
+        check_verify(Mode::Private, 15076, 0, 15365, 15388)
     }
 }

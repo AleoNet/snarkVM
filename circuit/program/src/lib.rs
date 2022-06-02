@@ -24,7 +24,7 @@ mod data;
 pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
 
 mod record;
-pub use record::Record;
+pub use record::{Record, SerialNumber};
 
 mod state;
-pub use state::{Randomizer, SerialNumber, State};
+pub use state::{Randomizer, State};

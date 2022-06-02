@@ -17,6 +17,9 @@
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
+mod serial_number;
+pub use serial_number::SerialNumber;
+
 mod decrypt;
 mod encrypt;
 mod equal;

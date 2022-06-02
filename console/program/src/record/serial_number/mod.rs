@@ -17,7 +17,6 @@
 mod prove;
 mod verify;
 
-use crate::State;
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
