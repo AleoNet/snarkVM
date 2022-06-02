@@ -301,11 +301,8 @@ where
     // Decrypt the record into state.
     let state = record.decrypt(&caller_view_key)?;
 
-    // Set the input index to 0.
-    let input_index = 0u16;
-
     // Compute the serial number.
-    let serial_number = state.to_serial_number(&caller_private_key, input_index, rng)?;
+    let serial_number = state.to_serial_number(&caller_private_key, rng)?;
 
     // Compute the commitment.
     let commitment = record.to_commitment()?;
@@ -317,6 +314,9 @@ where
     let record_view_key = record.to_record_view_key(&caller_view_key);
 
     let process = std::panic::catch_unwind(|| {
+        // Set the input index to 0.
+        let input_index = 0u16;
+
         let public = input::Public::<A>::from(input_index, *root, *serial_number.value());
         let private = input::Private::<A>::from(record_view_key, record, state, serial_number.clone(), signature);
         let input_circuit = input::InputCircuit::from(public, private)?;

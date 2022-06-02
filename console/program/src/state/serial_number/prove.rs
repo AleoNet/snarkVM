@@ -18,21 +18,15 @@ use super::*;
 
 impl<N: Network> SerialNumber<N> {
     /// Returns a new serial number and proof, given a VRF secret key, state digest, and an RNG.
-    pub fn prove<R: Rng + CryptoRng>(
-        sk_vrf: &N::Scalar,
-        state: &State<N>,
-        input_index: u16,
-        rng: &mut R,
-    ) -> Result<Self> {
+    pub fn prove<R: Rng + CryptoRng>(sk_vrf: &N::Scalar, state: &State<N>, rng: &mut R) -> Result<Self> {
         // Sample a random nonce from the scalar field.
         let nonce = N::Scalar::rand(rng);
 
         // Compute the state digest.
         let state_digest = state.to_digest()?;
 
-        // Compute the generator `H` as `HashToGroup(state_digest || input_index)`.
-        let generator_h =
-            N::hash_to_group_psd4(&[N::serial_number_domain(), state_digest, N::Field::from(input_index as u128)])?;
+        // Compute the generator `H` as `HashToGroup(state_digest)`.
+        let generator_h = N::hash_to_group_psd4(&[N::serial_number_domain(), state_digest])?;
 
         // Compute `pk_vrf` as `sk_vrf * G`.
         let pk_vrf = N::g_scalar_multiply(sk_vrf);
@@ -57,11 +51,9 @@ impl<N: Network> SerialNumber<N> {
         let serial_number_nonce =
             N::hash_to_scalar_psd2(&[N::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()])?;
 
-        // Compute `serial_number` as `Commit( (state_digest || input_index), serial_number_nonce)`.
-        let serial_number = N::commit_bhp512(
-            &(N::serial_number_domain(), state_digest, input_index).to_bits_le(),
-            &serial_number_nonce,
-        )?;
+        // Compute `serial_number` as `Commit( (state_digest), serial_number_nonce)`.
+        let serial_number =
+            N::commit_bhp512(&(N::serial_number_domain(), state_digest).to_bits_le(), &serial_number_nonce)?;
 
         // Return the serial number and proof.
         Ok(Self { serial_number, proof: (gamma, challenge, response) })

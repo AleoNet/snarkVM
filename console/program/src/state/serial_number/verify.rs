@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> SerialNumber<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &N::Affine, state: &State<N>, input_index: u16) -> bool {
+    pub fn verify(&self, pk_vrf: &N::Affine, state: &State<N>) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
@@ -31,12 +31,8 @@ impl<N: Network> SerialNumber<N> {
             }
         };
 
-        // Compute the generator `H` as `HashToGroup(state_digest || input_index)`.
-        let generator_h = match N::hash_to_group_psd4(&[
-            N::serial_number_domain(),
-            state_digest,
-            N::Field::from(input_index as u128),
-        ]) {
+        // Compute the generator `H` as `HashToGroup(state_digest)`.
+        let generator_h = match N::hash_to_group_psd4(&[N::serial_number_domain(), state_digest]) {
             Ok(generator_h) => generator_h,
             Err(error) => {
                 eprintln!("Failed to compute the generator H: {error}");
@@ -69,17 +65,15 @@ impl<N: Network> SerialNumber<N> {
                 }
             };
 
-        // Compute `candidate_serial_number` as `Commit( (state_digest || input_index), serial_number_nonce )`.
-        let candidate_serial_number = match N::commit_bhp512(
-            &(N::serial_number_domain(), state_digest, input_index).to_bits_le(),
-            &serial_number_nonce,
-        ) {
-            Ok(candidate_serial_number) => candidate_serial_number,
-            Err(error) => {
-                eprintln!("Failed to compute the serial number: {error}");
-                return false;
-            }
-        };
+        // Compute `candidate_serial_number` as `Commit( (state_digest), serial_number_nonce )`.
+        let candidate_serial_number =
+            match N::commit_bhp512(&(N::serial_number_domain(), state_digest).to_bits_le(), &serial_number_nonce) {
+                Ok(candidate_serial_number) => candidate_serial_number,
+                Err(error) => {
+                    eprintln!("Failed to compute the serial number: {error}");
+                    return false;
+                }
+            };
 
         // Return `true` the challenge and serial number is valid.
         challenge == candidate_challenge && self.serial_number == candidate_serial_number
@@ -111,12 +105,11 @@ mod tests {
                 UniformRand::rand(rng),
                 UniformRand::rand(rng),
             );
-            let input_index = UniformRand::rand(rng);
 
             let pk_vrf = CurrentNetwork::g_scalar_multiply(&sk_vrf).to_affine();
 
-            let serial_number = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, &state, input_index, rng)?;
-            assert!(serial_number.verify(&pk_vrf, &state, input_index));
+            let serial_number = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, &state, rng)?;
+            assert!(serial_number.verify(&pk_vrf, &state));
         }
         Ok(())
     }

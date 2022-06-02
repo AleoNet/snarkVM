@@ -18,16 +18,15 @@ use super::*;
 
 impl<A: Aleo> SerialNumber<A> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &Group<A>, state: &State<A>, input_index: &U16<A>) -> Boolean<A> {
+    pub fn verify(&self, pk_vrf: &Group<A>, state: &State<A>) -> Boolean<A> {
         // Retrieve the proof components.
         let (gamma, challenge, response) = &self.proof;
 
         // Compute the state digest.
         let state_digest = state.to_digest();
 
-        // Compute the generator `H` as `HashToGroup(state_digest || input_index)`.
-        let generator_h =
-            A::hash_to_group_psd4(&[A::serial_number_domain(), state_digest.clone(), input_index.to_field()]);
+        // Compute the generator `H` as `HashToGroup(state_digest)`.
+        let generator_h = A::hash_to_group_psd4(&[A::serial_number_domain(), state_digest.clone()]);
 
         // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
         let u = (pk_vrf * challenge) + A::g_scalar_multiply(response);
@@ -42,11 +41,9 @@ impl<A: Aleo> SerialNumber<A> {
         let candidate_serial_number_nonce =
             A::hash_to_scalar_psd2(&[A::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()]);
 
-        // Compute `candidate_serial_number` as `Commit( (state_digest || input_index), serial_number_nonce )`.
-        let candidate_serial_number = A::commit_bhp512(
-            &(&A::serial_number_domain(), &state_digest, input_index).to_bits_le(),
-            &candidate_serial_number_nonce,
-        );
+        // Compute `candidate_serial_number` as `Commit( (state_digest), serial_number_nonce )`.
+        let candidate_serial_number =
+            A::commit_bhp512(&(&A::serial_number_domain(), &state_digest).to_bits_le(), &candidate_serial_number_nonce);
 
         // Return `true` the challenge and serial number is valid.
         challenge.is_equal(&candidate_challenge) & self.serial_number.is_equal(&candidate_serial_number)
@@ -85,24 +82,22 @@ mod tests {
                 UniformRand::rand(rng),
                 UniformRand::rand(rng),
             );
-            let input_index = UniformRand::rand(rng);
 
             let pk_vrf =
                 <<Circuit as Environment>::Network as snarkvm_console_network::Network>::g_scalar_multiply(&sk_vrf)
                     .into();
 
             let serial_number =
-                console::SerialNumber::<<Circuit as Environment>::Network>::prove(&sk_vrf, &state, input_index, rng)?;
-            assert!(serial_number.verify(&pk_vrf, &state, input_index));
+                console::SerialNumber::<<Circuit as Environment>::Network>::prove(&sk_vrf, &state, rng)?;
+            assert!(serial_number.verify(&pk_vrf, &state));
 
             // Inject the serial number and its arguments into circuits.
             let pk_vrf = Group::<Circuit>::new(mode, pk_vrf);
             let state = State::new(mode, state);
-            let input_index = U16::new(mode, input_index);
             let serial_number = SerialNumber::new(mode, serial_number);
 
             Circuit::scope(format!("SerialNumber {i}"), || {
-                let candidate = serial_number.verify(&pk_vrf, &state, &input_index);
+                let candidate = serial_number.verify(&pk_vrf, &state);
                 assert!(candidate.eject_value());
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
             })
