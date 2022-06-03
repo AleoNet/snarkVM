@@ -50,7 +50,7 @@ pub struct Record<A: Aleo> {
     /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
     mac: Field<A>,
     /// The balance commitment for this record (i.e. `G^balance H^HashToScalar(G^r^view_key)`).
-    bcm: Field<A>,
+    bcm: Group<A>,
 }
 
 #[cfg(console)]
@@ -68,7 +68,7 @@ impl<A: Aleo> Inject for Record<A> {
             data: Field::new(mode, record.data()),
             nonce: Group::new(mode, record.nonce()),
             mac: Field::new(mode, record.mac()),
-            bcm: Field::new(mode, record.bcm()),
+            bcm: Group::new(mode, record.bcm()),
         }
     }
 }

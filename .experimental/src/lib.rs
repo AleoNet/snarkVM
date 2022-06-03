@@ -46,9 +46,9 @@ pub mod input {
         /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
         /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
-        bcm: Field<A>,
+        bcm: Group<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
-        fcm: Field<A>,
+        fcm: Group<A>,
     }
 
     impl<A: Aleo> Public<A> {
@@ -57,14 +57,14 @@ pub mod input {
             root: A::BaseField,
             serial_number: A::BaseField,
             acm: A::BaseField,
-            bcm: A::BaseField,
-            fcm: A::BaseField,
+            bcm: A::Affine,
+            fcm: A::Affine,
         ) -> Self {
             let root = Field::<A>::new(Mode::Public, root);
             let serial_number = Field::<A>::new(Mode::Public, serial_number);
             let acm = Field::<A>::new(Mode::Public, acm);
-            let bcm = Field::<A>::new(Mode::Public, bcm);
-            let fcm = Field::<A>::new(Mode::Public, fcm);
+            let bcm = Group::<A>::new(Mode::Public, bcm);
+            let fcm = Group::<A>::new(Mode::Public, fcm);
 
             Self { root, serial_number, acm, bcm, fcm }
         }
@@ -207,7 +207,7 @@ pub mod output {
         /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
-        fcm: Field<A>,
+        fcm: Group<A>,
     }
 
     impl<A: Aleo> Public<A> {
@@ -217,13 +217,13 @@ pub mod output {
             record: console::program::Record<A::Network>,
             serial_numbers_digest: A::BaseField,
             acm: A::BaseField,
-            fcm: A::BaseField,
+            fcm: A::Affine,
         ) -> Self {
             let index = U16::<A>::new(Mode::Public, index);
             let record = Record::<A>::new(Mode::Public, record);
             let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
             let acm = Field::<A>::new(Mode::Public, acm);
-            let fcm = Field::<A>::new(Mode::Public, fcm);
+            let fcm = Group::<A>::new(Mode::Public, fcm);
 
             Self { index, record, serial_numbers_digest, acm, fcm }
         }

@@ -52,7 +52,7 @@ pub struct Record<N: Network> {
     /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
     mac: N::Field,
     /// The balance commitment for this record (i.e. `G^balance H^HashToScalar(G^r^view_key)`).
-    bcm: N::Field,
+    bcm: N::Affine,
 }
 
 impl<N: Network> Record<N> {
@@ -65,7 +65,7 @@ impl<N: Network> Record<N> {
         data: N::Field,
         nonce: N::Affine,
         mac: N::Field,
-        bcm: N::Field,
+        bcm: N::Affine,
     ) -> Self {
         Self { program, process, owner, balance, data, nonce, mac, bcm }
     }
@@ -108,7 +108,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the balance commitment for this record.
-    pub const fn bcm(&self) -> N::Field {
+    pub const fn bcm(&self) -> N::Affine {
         self.bcm
     }
 }

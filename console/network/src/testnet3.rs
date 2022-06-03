@@ -220,13 +220,13 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
-        PEDERSEN_64.commit(input, randomizer)
+    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine> {
+        PEDERSEN_64.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
-        PEDERSEN_128.commit(input, randomizer)
+    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine> {
+        PEDERSEN_128.commit_uncompressed(input, randomizer)
     }
 
     /// Returns the BHP hash with an input hasher of 256-bits.

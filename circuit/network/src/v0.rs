@@ -17,6 +17,7 @@
 use crate::Aleo;
 use snarkvm_circuit_algorithms::{
     Commit,
+    CommitUncompressed,
     Hash,
     HashMany,
     HashToGroup,
@@ -147,13 +148,13 @@ impl Aleo for AleoV0 {
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
-        PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomizer))
+    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.commit_uncompressed(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
-        PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
+    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Group<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.commit_uncompressed(input, randomizer))
     }
 
     /// Returns the BHP hash with an input hasher of 256-bits.

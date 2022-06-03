@@ -108,10 +108,10 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn commit_bhp1024(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine>;
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine>;
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Self::Field>;

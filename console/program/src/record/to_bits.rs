@@ -27,7 +27,7 @@ impl<N: Network> ToBits for Record<N> {
             self.data,
             self.nonce.to_x_coordinate(),
             self.mac,
-            self.bcm,
+            self.bcm.to_x_coordinate(),
         ]
         .to_bits_le()
     }
@@ -42,7 +42,7 @@ impl<N: Network> ToBits for Record<N> {
             self.data,
             self.nonce.to_x_coordinate(),
             self.mac,
-            self.bcm,
+            self.bcm.to_x_coordinate(),
         ]
         .to_bits_be()
     }

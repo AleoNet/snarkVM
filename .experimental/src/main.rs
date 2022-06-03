@@ -20,6 +20,7 @@ use console::{
     network::{Network, Testnet3},
     program::{Ciphertext, Data, Randomizer, Record, State},
 };
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_experimental::{input, output, snark};
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
@@ -32,16 +33,26 @@ use snarkvm_curves::AffineCurve;
 use std::{thread, time::Instant};
 
 struct Input<N: Network> {
-    /// The serial number of the program record.
+    /// The serial number of the input record.
     serial_number: N::Field,
     /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
-    bcm: N::Field,
+    bcm: N::Affine,
 }
 
 impl<N: Network> Input<N> {
     /// Initializes a new `Input` for a transition.
-    pub const fn new(serial_number: N::Field, bcm: N::Field) -> Self {
+    pub const fn new(serial_number: N::Field, bcm: N::Affine) -> Self {
         Self { serial_number, bcm }
+    }
+
+    /// Returns the serial number of the input record.
+    pub const fn serial_number(&self) -> N::Field {
+        self.serial_number
+    }
+
+    /// Returns the balance commitment for the input record.
+    pub const fn bcm(&self) -> N::Affine {
+        self.bcm
     }
 }
 
@@ -61,6 +72,11 @@ impl<N: Network> Output<N> {
         &self.record
     }
 
+    /// Returns the balance commitment for the output record.
+    pub const fn bcm(&self) -> N::Affine {
+        self.record.bcm()
+    }
+
     /// Returns the output commitment.
     pub fn to_commitment(&self) -> Result<N::Field> {
         self.record.to_commitment()
@@ -78,8 +94,6 @@ pub struct Transition<N: Network> {
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
     acm: N::Field,
-    /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
-    fcm: N::Field,
     /// The fee (i.e. `fee := Σ balance_in - Σ balance_out`).
     fee: i64,
 }
@@ -91,9 +105,31 @@ impl<N: Network> Transition<N> {
         true
     }
 
+    /// Returns the serial numbers in the transition.
+    pub fn serial_numbers(&self) -> Vec<N::Field> {
+        self.inputs.iter().map(Input::serial_number).collect::<Vec<_>>()
+    }
+
     /// Returns the commitments in the transition.
     pub fn to_commitments(&self) -> Result<Vec<N::Field>> {
         self.outputs.iter().map(Output::to_commitment).collect::<Result<Vec<_>>>()
+    }
+
+    /// Returns the fee commitment of this transition, where:
+    ///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
+    pub fn fcm(&self) -> Result<N::Affine> {
+        let mut fcm = N::Projective::zero();
+        // Add the input balance commitments.
+        self.inputs.iter().for_each(|input| fcm += input.bcm().to_projective());
+        // Subtract the output balance commitments.
+        self.outputs.iter().for_each(|output| fcm -= output.bcm().to_projective());
+        // Subtract the fee to get the fee commitment.
+        let fcm = match self.fee.is_positive() {
+            true => fcm - N::commit_ped64(&self.fee.abs().to_bits_le(), &N::Scalar::zero())?.to_projective(),
+            false => fcm + N::commit_ped64(&self.fee.abs().to_bits_le(), &N::Scalar::zero())?.to_projective(),
+        };
+        // Return the fee commitment.
+        Ok(fcm.to_affine())
     }
 }
 
@@ -111,10 +147,11 @@ impl<N: Network> Transaction<N> {
     }
 }
 
+/// Returns the address commitment as `bcm := Commit(caller, r_acm)`.
 fn acm<A: circuit::Aleo, R: Rng + CryptoRng>(
     caller: &Address<A::Network>,
     rng: &mut R,
-) -> Result<(<A::Network as Network>::Field, <A::Network as Network>::Scalar)> {
+) -> Result<(A::BaseField, A::ScalarField)> {
     // TODO (howardwu): Domain separator.
     let r_acm = UniformRand::rand(rng);
     // TODO (howardwu): Add a to_bits impl for caller.
@@ -122,10 +159,8 @@ fn acm<A: circuit::Aleo, R: Rng + CryptoRng>(
     Ok((acm, r_acm))
 }
 
-fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(
-    balance: u64,
-    rng: &mut R,
-) -> Result<(<A::Network as Network>::Field, <A::Network as Network>::Scalar)> {
+/// Returns the balance commitment as `bcm := Commit(balance, r_bcm)`.
+fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(balance: u64, rng: &mut R) -> Result<(A::Affine, A::ScalarField)> {
     // TODO (howardwu): Domain separator.
     let r_bcm = UniformRand::rand(rng);
     let bcm = A::Network::commit_ped64(&balance.to_bits_le(), &r_bcm)?;
@@ -135,11 +170,11 @@ fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(
 /// Returns the fee commitment `fcm` and fee randomizer `r_fcm`, where:
 ///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
 ///   - `r_fcm := Σ r_in - Σ r_out`.
-fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> Result<(A::BaseField, A::ScalarField)> {
+fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> Result<(A::Affine, A::ScalarField)> {
     // Compute the fee randomizer.
     let mut r_fcm = A::ScalarField::zero();
-    r_in.iter().for_each(|r| r_fcm = r_fcm + r);
-    r_out.iter().for_each(|r| r_fcm = r_fcm - r);
+    r_in.iter().for_each(|r| r_fcm += r);
+    r_out.iter().for_each(|r| r_fcm -= r);
     // Compute the fee commitment.
     let fcm = A::Network::commit_ped64(&0u64.to_bits_le(), &r_fcm)?;
     Ok((fcm, r_fcm))
@@ -220,9 +255,9 @@ where
             input_proofs: vec![],
             output_proofs: vec![proof],
             acm,
-            fcm,
-            fee: 0i64,
+            fee: -(amount as i64),
         };
+        assert_eq!(fcm, transition.fcm()?);
 
         // Set the network ID to 0.
         let network = 0u16;
@@ -344,9 +379,9 @@ where
             input_proofs: vec![proof],
             output_proofs: vec![],
             acm,
-            fcm,
             fee,
         };
+        assert_eq!(fcm, transition.fcm()?);
 
         // Set the network ID to 0.
         let network = 0u16;

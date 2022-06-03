@@ -57,7 +57,7 @@ mod tests {
             data: Field::new(mode, UniformRand::rand(rng)),
             nonce: Group::new(mode, UniformRand::rand(rng)),
             mac: Field::new(mode, UniformRand::rand(rng)),
-            bcm: Field::new(mode, UniformRand::rand(rng)),
+            bcm: Group::new(mode, UniformRand::rand(rng)),
         }
     }
 
