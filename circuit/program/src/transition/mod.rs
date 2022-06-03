@@ -14,20 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
-
-#[cfg(test)]
-use snarkvm_circuit_network::AleoV0 as Circuit;
-
-mod data;
-pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
-
-mod record;
-pub use record::{Record, SerialNumber};
-
-mod state;
-pub use state::{Randomizer, State};
-
-mod transition;
-pub use transition::*;
+// #[cfg(test)]
+// use snarkvm_circuit_types::environment::assert_scope;
