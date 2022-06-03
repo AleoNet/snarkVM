@@ -45,7 +45,7 @@ pub mod input {
         serial_number: Field<A>,
         /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
-        /// The (re-randomized) balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
+        /// The re-randomized balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
         bcm: Group<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,

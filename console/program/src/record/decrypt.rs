@@ -24,12 +24,9 @@ impl<N: Network> Record<N> {
         // Decrypt the record.
         let state = self.decrypt_symmetric(&record_view_key)?;
         // Ensure the owner matches the account of the given view key.
-        match state.owner() == Address::try_from(view_key)? {
-            // Output the state.
-            true => Ok(state),
-            // Abort the decryption.
-            false => bail!("Failed to decrypt a record with the given view key"),
-        }
+        ensure!(state.owner() == Address::try_from(view_key)?, "Failed to decrypt a record with the given view key");
+        // Output the state.
+        Ok(state)
     }
 
     /// Returns the state corresponding to the record using the given record view key.
@@ -37,9 +34,7 @@ impl<N: Network> Record<N> {
         // Compute the candidate MAC := Hash(G^r^view_key).
         let candidate_mac = N::hash_psd2(&[N::mac_domain(), *record_view_key])?;
         // Ensure the MAC matches.
-        if self.mac != candidate_mac {
-            bail!("Failed to decrypt using the given record view key")
-        }
+        ensure!(self.mac == candidate_mac, "Failed to decrypt using the given record view key");
 
         // Compute the randomizers.
         let randomizers = N::hash_many_psd2(&[N::encryption_domain(), *record_view_key], 3);
@@ -50,9 +45,7 @@ impl<N: Network> Record<N> {
         // Decrypt the balance.
         let balance = (self.balance - randomizers[1]).to_bytes_le()?;
         // Ensure the balance is less than or equal to 2^52.
-        if balance.to_bits_le()[52..].iter().any(|bit| *bit) {
-            bail!("Failed to decrypt an invalid balance into state")
-        }
+        ensure!(balance.to_bits_le()[52..].iter().all(|bit| !bit), "Attempted to decrypt an invalid balance to state");
         // Recover the balance.
         let balance = u64::from_le_bytes(balance[0..8].try_into()?);
 
@@ -64,9 +57,7 @@ impl<N: Network> Record<N> {
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let candidate_bcm = N::commit_ped64(&balance.to_bits_le(), &r_bcm)?;
         // Ensure the balance commitment matches.
-        if self.bcm != candidate_bcm {
-            bail!("Failed to decrypt the balance commitment")
-        }
+        ensure!(self.bcm == candidate_bcm, "Failed to decrypt the balance commitment");
 
         // Output the state.
         Ok(State::from(self.program, self.process, owner, balance, self.data, self.nonce))

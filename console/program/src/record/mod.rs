@@ -31,7 +31,7 @@ use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, ToBytes};
 
-use anyhow::{bail, Result};
+use anyhow::{ensure, Result};
 
 /// A program's record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
@@ -112,23 +112,3 @@ impl<N: Network> Record<N> {
         self.bcm
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::aleo::Devnet as Circuit;
-//     use snarkvm_circuits_types::Group;
-//
-//     #[test]
-//     fn test_record() {
-//         let first = Literal::<Circuit>::from_str("10field.public");
-//         let second = Literal::from_str("true.private");
-//         let third = Literal::from_str("99i64.public");
-//
-//         let _candidate = Record::<Circuit> {
-//             owner: Address::from(Group::from_str("2group.private")),
-//             value: I64::from_str("1i64.private"),
-//             data: vec![first, second, third],
-//         };
-//     }
-// }

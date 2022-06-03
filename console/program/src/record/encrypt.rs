@@ -20,9 +20,7 @@ impl<N: Network> Record<N> {
     /// Initializes a new record by encrypting the given state with a given record view key.
     pub fn encrypt(state: &State<N>, record_view_key: &N::Field) -> Result<Self> {
         // Ensure the balance is less than or equal to 2^52.
-        if state.balance().to_bits_le()[52..].iter().any(|bit| *bit) {
-            bail!("Attempted to encrypt an invalid balance into a record")
-        }
+        ensure!(state.balance().to_bits_le()[52..].iter().all(|bit| !bit), "Attempted to encrypt an invalid balance");
         // Compute the randomizers.
         let randomizers = N::hash_many_psd2(&[N::encryption_domain(), *record_view_key], 3);
         // Encrypt the owner.
