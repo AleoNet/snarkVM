@@ -45,6 +45,7 @@ members = [
   "curves",
   "dpc",
   "fields",
+  "frost",
   "gadgets",
   "parameters",
   "r1cs",
