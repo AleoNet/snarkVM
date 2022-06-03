@@ -45,7 +45,7 @@ pub mod input {
         serial_number: Field<A>,
         /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
-        /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
+        /// The (randomized) balance commitment (i.e. `bcm := Commit(balance, r_bcm + k_bcm)`).
         bcm: Group<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,
@@ -144,13 +144,20 @@ pub mod input {
             let state = private.record.decrypt_symmetric(&private.record_view_key);
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Ensure the address commitment matches the record owner.
+            // Ensure the address commitment matches the state owner.
             A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Ensure the balance commitment matches the record balance.
-            A::assert_eq(&public.bcm, A::commit_ped64(&state.balance().to_bits_le(), &private.r_bcm));
+            // Ensure the randomized balance commitment is based on the original balance commitment.
+            A::assert_eq(
+                &public.bcm,
+                private.record.bcm() + &A::commit_ped64(&U64::zero().to_bits_le(), &private.r_bcm),
+            );
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // // Ensure the balance commitment matches the record balance.
+            // A::assert_eq(&public.bcm, A::commit_ped64(&state.balance().to_bits_le(), &private.r_bcm));
+            // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the fee commitment is correct.
             A::assert_eq(&public.fcm, A::commit_ped64(&U64::zero().to_bits_le(), &private.r_fcm));

@@ -73,6 +73,13 @@ impl<A: Aleo> Inject for Record<A> {
     }
 }
 
+impl<A: Aleo> Record<A> {
+    /// Returns the balance commitment for this record.
+    pub const fn bcm(&self) -> &Group<A> {
+        &self.bcm
+    }
+}
+
 #[cfg(console)]
 impl<A: Aleo> Eject for Record<A> {
     type Primitive = console::Record<A::Network>;

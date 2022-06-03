@@ -35,7 +35,7 @@ use std::{thread, time::Instant};
 struct Input<N: Network> {
     /// The serial number of the input record.
     serial_number: N::Field,
-    /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
+    /// The (randomized) balance commitment (i.e. `bcm := Commit(balance, r_bcm + k_bcm)`).
     bcm: N::Affine,
 }
 
@@ -159,12 +159,18 @@ fn acm<A: circuit::Aleo, R: Rng + CryptoRng>(
     Ok((acm, r_acm))
 }
 
-/// Returns the balance commitment as `bcm := Commit(balance, r_bcm)`.
-fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(balance: u64, rng: &mut R) -> Result<(A::Affine, A::ScalarField)> {
+/// Returns the (randomized) balance commitment as `bcm := Commit(balance, k_bcm + r_bcm)`.
+fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(
+    bcm: A::Affine,
+    record_view_key: A::BaseField,
+    rng: &mut R,
+) -> Result<(A::Affine, A::ScalarField, A::ScalarField)> {
+    // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
+    let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
     // TODO (howardwu): Domain separator.
-    let r_bcm = UniformRand::rand(rng);
-    let bcm = A::Network::commit_ped64(&balance.to_bits_le(), &r_bcm)?;
-    Ok((bcm, r_bcm))
+    let k_bcm = UniformRand::rand(rng);
+    let bcm = bcm.to_projective() + A::Network::commit_ped64(&0u64.to_bits_le(), &k_bcm)?.to_projective();
+    Ok((bcm.to_affine(), r_bcm, k_bcm))
 }
 
 /// Returns the fee commitment `fcm` and fee randomizer `r_fcm`, where:
@@ -339,10 +345,10 @@ where
     let fee = state.balance() as i64;
 
     // Compute the balance commitment.
-    let (bcm, r_bcm) = bcm::<A, R>(state.balance(), rng)?;
+    let (bcm, r_bcm, k_bcm) = bcm::<A, R>(record.bcm(), record_view_key, rng)?;
 
     // Compute the fee commitment.
-    let (fcm, r_fcm) = fcm::<A>(&[r_bcm], &[])?;
+    let (fcm, r_fcm) = fcm::<A>(&[r_bcm + k_bcm], &[])?;
 
     let process = std::panic::catch_unwind(|| {
         let public = input::Public::<A>::from(*root, *serial_number.value(), acm, bcm, fcm);
@@ -352,7 +358,7 @@ where
             serial_number.clone(),
             signature,
             r_acm,
-            r_bcm,
+            k_bcm,
             r_fcm,
         );
         let input_circuit = input::InputCircuit::from(public, private)?;
