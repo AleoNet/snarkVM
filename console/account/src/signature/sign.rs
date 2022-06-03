@@ -37,7 +37,7 @@ impl<N: Network> Signature<N> {
         preimage.extend(message);
 
         // Compute the verifier challenge.
-        let challenge = N::hash_to_scalar_psd4(&preimage)?;
+        let challenge = N::hash_to_scalar_psd8(&preimage)?;
 
         // Compute the prover response.
         let response = nonce - (challenge * private_key.sk_sig());
@@ -61,7 +61,7 @@ impl<N: Network> Signature<N> {
         preimage.extend(message);
 
         // Hash to derive the verifier challenge, and return `false` if this operation fails.
-        let candidate_challenge = match N::hash_to_scalar_psd4(&preimage) {
+        let candidate_challenge = match N::hash_to_scalar_psd8(&preimage) {
             // Output the computed candidate challenge.
             Ok(candidate_challenge) => candidate_challenge,
             // Return `false` if the challenge errored.

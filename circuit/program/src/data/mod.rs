@@ -34,7 +34,6 @@ pub use plaintext::Plaintext;
 
 mod decrypt;
 mod encrypt;
-// mod to_data_id;
 
 use snarkvm_circuit_account::ViewKey;
 use snarkvm_circuit_network::Aleo;

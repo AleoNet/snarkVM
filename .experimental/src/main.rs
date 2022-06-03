@@ -326,11 +326,6 @@ where
     //     Ok((bcm, r_bcm))
     // }
 
-    // // Compute the record view key.
-    // let record_view_key = record.to_record_view_key(caller_view_key);
-    // // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-    // let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
-
     // let fee = -(state.balance() as i64);
     // let (bcm, r_bcm) = bcm::<A>(0, A::ScalarField::zero(), state.balance(), r_bcm, fee)?;
 

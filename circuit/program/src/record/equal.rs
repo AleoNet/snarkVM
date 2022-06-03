@@ -115,35 +115,35 @@ mod tests {
 
     #[test]
     fn test_is_equal_constant() {
-        check_is_equal(Mode::Constant, Mode::Constant, 9, 0, 0, 0);
+        check_is_equal(Mode::Constant, Mode::Constant, 10, 0, 0, 0);
     }
 
     #[test]
     fn test_is_equal() {
-        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 26, 35);
-        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 26, 35);
-        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 26, 35);
-        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 26, 35);
-        check_is_equal(Mode::Public, Mode::Public, 0, 0, 26, 35);
-        check_is_equal(Mode::Public, Mode::Private, 0, 0, 26, 35);
-        check_is_equal(Mode::Private, Mode::Public, 0, 0, 26, 35);
-        check_is_equal(Mode::Private, Mode::Private, 0, 0, 26, 35);
+        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 29, 39);
+        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 29, 39);
+        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 29, 39);
+        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 29, 39);
+        check_is_equal(Mode::Public, Mode::Public, 0, 0, 29, 39);
+        check_is_equal(Mode::Public, Mode::Private, 0, 0, 29, 39);
+        check_is_equal(Mode::Private, Mode::Public, 0, 0, 29, 39);
+        check_is_equal(Mode::Private, Mode::Private, 0, 0, 29, 39);
     }
 
     #[test]
     fn test_is_not_equal_constant() {
-        check_is_not_equal(Mode::Constant, Mode::Constant, 9, 0, 0, 0);
+        check_is_not_equal(Mode::Constant, Mode::Constant, 10, 0, 0, 0);
     }
 
     #[test]
     fn test_is_not_equal() {
-        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 26, 35);
-        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 26, 35);
+        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 29, 39);
     }
 }

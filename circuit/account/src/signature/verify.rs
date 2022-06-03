@@ -32,7 +32,7 @@ impl<A: Aleo> Signature<A> {
         preimage.extend_from_slice(message);
 
         // Compute the candidate verifier challenge.
-        let candidate_challenge = A::hash_to_scalar_psd4(&preimage);
+        let candidate_challenge = A::hash_to_scalar_psd8(&preimage);
 
         // Compute the candidate address.
         let candidate_address = self.compute_key.to_address();
@@ -133,12 +133,12 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 1757, 0, 6379, 6383)
+        check_verify(Mode::Public, 1757, 0, 6519, 6523)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 1757, 0, 6379, 6383)
+        check_verify(Mode::Private, 1757, 0, 6519, 6523)
     }
 
     #[test]
@@ -148,11 +148,11 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_large_public() -> Result<()> {
-        check_verify_large(Mode::Public, 1757, 0, 6734, 6738)
+        check_verify_large(Mode::Public, 1757, 0, 6534, 6538)
     }
 
     #[test]
     fn test_verify_large_private() -> Result<()> {
-        check_verify_large(Mode::Private, 1757, 0, 6734, 6738)
+        check_verify_large(Mode::Private, 1757, 0, 6534, 6538)
     }
 }
