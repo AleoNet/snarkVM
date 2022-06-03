@@ -31,7 +31,9 @@ pub mod output {
         Scalar,
         State,
         ToBits,
+        Zero,
         U16,
+        U64,
     };
 
     use anyhow::{ensure, Result};
@@ -43,10 +45,10 @@ pub mod output {
         record: Record<A>,
         /// The serial numbers digest.
         serial_numbers_digest: Field<A>,
-        /// The address commitment (i.e. `acm := Commit(caller, randomizer)`).
+        /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
-        /// The balance commitment (i.e. `bcm := (Σ bcm_in - Σ bcm_out - Commit(fee, 0))`).
-        bcm: Field<A>,
+        /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
+        fcm: Field<A>,
     }
 
     impl<A: Aleo> Public<A> {
@@ -56,15 +58,15 @@ pub mod output {
             record: console::program::Record<A::Network>,
             serial_numbers_digest: A::BaseField,
             acm: A::BaseField,
-            bcm: A::BaseField,
+            fcm: A::BaseField,
         ) -> Self {
             let index = U16::<A>::new(Mode::Public, index);
             let record = Record::<A>::new(Mode::Public, record);
             let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
             let acm = Field::<A>::new(Mode::Public, acm);
-            let bcm = Field::<A>::new(Mode::Public, bcm);
+            let fcm = Field::<A>::new(Mode::Public, fcm);
 
-            Self { index, record, serial_numbers_digest, acm, bcm }
+            Self { index, record, serial_numbers_digest, acm, fcm }
         }
     }
 
@@ -77,8 +79,8 @@ pub mod output {
         caller: Address<A>,
         /// The address randomizer.
         r_acm: Scalar<A>,
-        /// The balance randomizer (i.e. `r_bcm := Σ r_in - Σ r_out`).
-        r_bcm: Scalar<A>,
+        /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
+        r_fcm: Scalar<A>,
     }
 
     impl<A: Aleo> Private<A> {
@@ -88,15 +90,15 @@ pub mod output {
             randomizer: console::program::Randomizer<A::Network>,
             caller: console::account::Address<A::Network>,
             r_acm: A::ScalarField,
-            r_bcm: A::ScalarField,
+            r_fcm: A::ScalarField,
         ) -> Self {
             let state = State::<A>::new(Mode::Private, state);
             let randomizer = Randomizer::<A>::new(Mode::Private, randomizer);
             let caller = Address::<A>::new(Mode::Private, caller);
             let r_acm = Scalar::<A>::new(Mode::Private, r_acm);
-            let r_bcm = Scalar::<A>::new(Mode::Private, r_bcm);
+            let r_fcm = Scalar::<A>::new(Mode::Private, r_fcm);
 
-            Self { state, randomizer, caller, r_acm, r_bcm }
+            Self { state, randomizer, caller, r_acm, r_fcm }
         }
     }
 
@@ -106,20 +108,20 @@ pub mod output {
         /// Initializes the output circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            let Public { index, record, serial_numbers_digest, acm, bcm } = &public;
+            let Public { index, record, serial_numbers_digest, acm, fcm } = &public;
             ensure!(index.eject_mode().is_public(), "Output index must be public");
             ensure!(record.eject_mode().is_public(), "Output record must be public");
             ensure!(serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
             ensure!(acm.eject_mode().is_public(), "Address commitment must be public");
-            ensure!(bcm.eject_mode().is_public(), "Balance commitment must be public");
+            ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
 
             // Ensure all private members are private inputs.
-            let Private { state, randomizer, caller, r_acm, r_bcm } = &private;
+            let Private { state, randomizer, caller, r_acm, r_fcm } = &private;
             ensure!(state.eject_mode().is_private(), "Output state must be private");
             ensure!(randomizer.eject_mode().is_private(), "Output randomizer must be private");
             ensure!(caller.eject_mode().is_private(), "Caller address must be private");
             ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
-            ensure!(r_bcm.eject_mode().is_private(), "Balance randomizer must be private");
+            ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
 
             Ok(Self(public, private))
         }
@@ -130,6 +132,10 @@ pub mod output {
 
             // Ensure the address commitment matches the declared caller.
             A::assert_eq(&public.acm, A::commit_bhp256(&private.caller.to_bits_le(), &private.r_acm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the fee commitment is correct.
+            A::assert_eq(&public.fcm, A::commit_ped64(&U64::zero().to_bits_le(), &private.r_fcm));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the randomizer is valid.

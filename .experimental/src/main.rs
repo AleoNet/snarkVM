@@ -46,7 +46,9 @@ mod input {
         Signature,
         State,
         ToBits,
+        Zero,
         U16,
+        U64,
     };
 
     use anyhow::{ensure, Result};
@@ -56,18 +58,30 @@ mod input {
         root: Field<A>,
         /// The input serial number.
         serial_number: Field<A>,
-        /// The address commitment (i.e. `acm := Commit(caller, randomizer)`).
+        /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
+        /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
+        bcm: Field<A>,
+        /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
+        fcm: Field<A>,
     }
 
     impl<A: Aleo> Public<A> {
         /// Initializes the public inputs for the input circuit.
-        pub fn from(root: A::BaseField, serial_number: A::BaseField, acm: A::BaseField) -> Self {
+        pub fn from(
+            root: A::BaseField,
+            serial_number: A::BaseField,
+            acm: A::BaseField,
+            bcm: A::BaseField,
+            fcm: A::BaseField,
+        ) -> Self {
             let root = Field::<A>::new(Mode::Public, root);
             let serial_number = Field::<A>::new(Mode::Public, serial_number);
             let acm = Field::<A>::new(Mode::Public, acm);
+            let bcm = Field::<A>::new(Mode::Public, bcm);
+            let fcm = Field::<A>::new(Mode::Public, fcm);
 
-            Self { root, serial_number, acm }
+            Self { root, serial_number, acm, bcm, fcm }
         }
     }
 
@@ -82,6 +96,10 @@ mod input {
         signature: Signature<A>,
         /// The address randomizer.
         r_acm: Scalar<A>,
+        /// The balance randomizer.
+        r_bcm: Scalar<A>,
+        /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
+        r_fcm: Scalar<A>,
     }
 
     impl<A: Aleo> Private<A> {
@@ -92,14 +110,18 @@ mod input {
             serial_number: console::program::SerialNumber<A::Network>,
             signature: console::account::Signature<A::Network>,
             r_acm: A::ScalarField,
+            r_bcm: A::ScalarField,
+            r_fcm: A::ScalarField,
         ) -> Self {
             let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
             let record = Record::<A>::new(Mode::Private, record);
             let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
             let signature = Signature::<A>::new(Mode::Private, signature);
             let r_acm = Scalar::<A>::new(Mode::Private, r_acm);
+            let r_bcm = Scalar::<A>::new(Mode::Private, r_bcm);
+            let r_fcm = Scalar::<A>::new(Mode::Private, r_fcm);
 
-            Self { record_view_key, record, serial_number, signature, r_acm }
+            Self { record_view_key, record, serial_number, signature, r_acm, r_bcm, r_fcm }
         }
     }
 
@@ -109,18 +131,22 @@ mod input {
         /// Initializes the input circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            let Public { root, serial_number, acm } = &public;
+            let Public { root, serial_number, acm, bcm, fcm } = &public;
             ensure!(root.eject_mode().is_public(), "Input root must be public");
             ensure!(serial_number.eject_mode().is_public(), "Input serial number must be public");
             ensure!(acm.eject_mode().is_public(), "Address commitment must be public");
+            ensure!(bcm.eject_mode().is_public(), "Balance commitment must be public");
+            ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
 
             // Ensure all private members are private inputs.
-            let Private { record_view_key, record, serial_number, signature, r_acm } = &private;
+            let Private { record_view_key, record, serial_number, signature, r_acm, r_bcm, r_fcm } = &private;
             ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
             ensure!(record.eject_mode().is_private(), "Input record must be private");
             ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
             ensure!(signature.eject_mode().is_private(), "Input signature must be private");
             ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
+            ensure!(r_bcm.eject_mode().is_private(), "Balance randomizer must be private");
+            ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
 
             Ok(Self(public, private))
         }
@@ -135,6 +161,14 @@ mod input {
 
             // Ensure the address commitment matches the record owner.
             A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the balance commitment matches the record balance.
+            A::assert_eq(&public.bcm, A::commit_ped64(&state.balance().to_bits_le(), &private.r_bcm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the fee commitment is correct.
+            A::assert_eq(&public.fcm, A::commit_ped64(&U64::zero().to_bits_le(), &private.r_fcm));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Compute the record commitment.
@@ -152,16 +186,14 @@ mod input {
             // Ensure the signature is valid.
             A::assert(private.signature.verify(state.owner(), &[private.serial_number.value().clone()]));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            // // Ensure the program state matches the declared state.
-            // A::assert(state.is_equal(&private.state));
-            // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
         }
     }
 }
 
 pub struct Transaction<N: Network> {
+    /// The network ID.
     network: u16,
+    /// The ordered list of transitions in this transaction.
     transitions: Vec<Transition<N>>,
 }
 
@@ -173,12 +205,16 @@ impl<N: Network> Transaction<N> {
 }
 
 pub struct Transition<N: Network> {
-    inputs: Vec<N::Field>,
+    /// (serial number, balance commitment).
+    inputs: Vec<(N::Field, N::Field)>,
     outputs: Vec<Record<N>>,
     input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
-    /// The address commitment.
+    /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
     acm: N::Field,
+    /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
+    fcm: N::Field,
+    /// The fee (i.e. `fee := Σ balance_in - Σ balance_out`).
     fee: i64,
 }
 
@@ -200,16 +236,48 @@ fn acm<A: circuit::Aleo, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> Result<(<A::Network as Network>::Field, <A::Network as Network>::Scalar)> {
     // TODO (howardwu): Domain separator.
-    let randomizer = UniformRand::rand(rng);
+    let r_acm = UniformRand::rand(rng);
     // TODO (howardwu): Add a to_bits impl for caller.
-    let acm = A::Network::commit_bhp256(&(*caller).to_x_coordinate().to_bits_le(), &randomizer)?;
-    Ok((acm, randomizer))
+    let acm = A::Network::commit_bhp256(&(*caller).to_x_coordinate().to_bits_le(), &r_acm)?;
+    Ok((acm, r_acm))
 }
+
+fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(
+    balance: u64,
+    rng: &mut R,
+) -> Result<(<A::Network as Network>::Field, <A::Network as Network>::Scalar)> {
+    // TODO (howardwu): Domain separator.
+    let r_bcm = UniformRand::rand(rng);
+    let bcm = A::Network::commit_ped64(&balance.to_bits_le(), &r_bcm)?;
+    Ok((bcm, r_bcm))
+}
+
+/// Returns the fee commitment `fcm` and fee randomizer `r_fcm`, where:
+///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
+///   - `r_fcm := Σ r_in - Σ r_out`.
+fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> Result<(A::BaseField, A::ScalarField)> {
+    // Compute the fee randomizer.
+    let mut r_fcm = A::ScalarField::zero();
+    r_in.iter().for_each(|r| r_fcm = r_fcm + r);
+    r_out.iter().for_each(|r| r_fcm = r_fcm - r);
+    // Compute the fee commitment.
+    let fcm = A::Network::commit_ped64(&0u64.to_bits_le(), &r_fcm)?;
+    Ok((fcm, r_fcm))
+}
+
+// // TODO (howardwu): Enforce 2^52.
+// let difference = b_in as i64 - b_out as i64 - fee;
+// let r_bcm = r_in - r_out;
+// // Compute bcm := G^(b_in - b_out - fee) H^(r_in - r_out).
+// let bcm = A::Network::commit_ped64(&difference.abs().to_bits_le(), &r_bcm)?;
+// // Ensure `bcm` == `G^0 H^(r_in - r_out)`.
+// assert_eq!(bcm, );
 
 /// Transition: 0 -> 1
 fn mint<A: circuit::Aleo, R: Rng + CryptoRng>(
     rng: &mut R,
     caller_view_key: &ViewKey<A::Network>,
+    amount: u64,
 ) -> Result<Transaction<A::Network>>
 where
     A::BaseField: UnwindSafe + RefUnwindSafe,
@@ -220,14 +288,14 @@ where
     let caller_address = Address::try_from(caller_view_key)?;
 
     // Initialize the randomizer, which is bound to the account of the **sender**.
-    let randomizer = Randomizer::prove(&caller_view_key, &[], 0, rng)?;
+    let randomizer = Randomizer::prove(caller_view_key, &[], 0, rng)?;
 
     // Initialize a coinbase.
     let (state, record) = {
         let program = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
         let process = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
         let owner = caller_address;
-        let balance = 100u64;
+        let balance = amount;
         let data = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
 
         let state = State::new(program, process, owner, balance, data, &randomizer);
@@ -235,33 +303,15 @@ where
         (state, record)
     };
 
-    fn bcm<A: circuit::Aleo>(
-        b_in: u64,
-        r_in: A::ScalarField,
-        b_out: u64,
-        r_out: A::ScalarField,
-        fee: i64,
-    ) -> Result<(A::BaseField, A::ScalarField)> {
-        // TODO (howardwu): Enforce 2^52.
-        let difference = b_in as i64 - b_out as i64 - fee;
-        let r_bcm = r_in - r_out;
-        // Compute bcm := G^(b_in - b_out - fee) H^(r_in - r_out).
-        let bcm = A::Network::commit_ped64(&difference.abs().to_bits_le(), &r_bcm)?;
-        // Ensure `bcm` == `G^0 H^(r_in - r_out)`.
-        assert_eq!(bcm, A::Network::commit_ped64(&0u64.to_bits_le(), &r_bcm)?);
-        Ok((bcm, r_bcm))
-    }
-
-    // Compute the record view key.
-    let record_view_key = record.to_record_view_key(&caller_view_key);
-    // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-    let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
-
-    let fee = -(state.balance() as i64);
-    let (bcm, r_bcm) = bcm::<A>(0, A::ScalarField::zero(), state.balance(), r_bcm, fee)?;
-
     // Compute the address commitment.
     let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
+
+    // Compute the record view key.
+    let record_view_key = record.to_record_view_key(caller_view_key);
+    // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
+    let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
+    // Compute the fee commitment.
+    let (fcm, r_fcm) = fcm::<A>(&[], &[r_bcm])?;
 
     let process = std::panic::catch_unwind(|| {
         // Set the output index to 0.
@@ -269,8 +319,8 @@ where
         // Compute the serial numbers digest.
         let serial_numbers_digest = A::Network::hash_bhp1024(&[])?;
 
-        let public = output::Public::<A>::from(output_index, record.clone(), serial_numbers_digest, acm, bcm);
-        let private = output::Private::<A>::from(state, randomizer, caller_address, r_acm, r_bcm);
+        let public = output::Public::<A>::from(output_index, record.clone(), serial_numbers_digest, acm, fcm);
+        let private = output::Private::<A>::from(state, randomizer, caller_address, r_acm, r_fcm);
         output::OutputCircuit::from(public, private)?.execute();
         println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
@@ -290,7 +340,8 @@ where
             input_proofs: vec![],
             output_proofs: vec![proof],
             acm,
-            fee,
+            fcm,
+            fee: 0i64,
         };
 
         // Set the network ID to 0.
@@ -320,7 +371,7 @@ where
     let caller_address = Address::try_from(&caller_private_key)?;
 
     // Generate a prior coinbase transaction.
-    let transaction = mint::<A, R>(rng, &caller_view_key)?;
+    let transaction = mint::<A, R>(rng, &caller_view_key, 100u64)?;
 
     // Retrieve the coinbase record.
     let record = transaction.transitions()[0].outputs[0].clone();
@@ -343,9 +394,50 @@ where
     // Compute the address commitment.
     let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
 
+    // fn bcm<A: circuit::Aleo>(
+    //     b_in: u64,
+    //     r_in: A::ScalarField,
+    //     b_out: u64,
+    //     r_out: A::ScalarField,
+    //     fee: i64,
+    // ) -> Result<(A::BaseField, A::ScalarField)> {
+    //     // TODO (howardwu): Enforce 2^52.
+    //     let difference = b_in as i64 - b_out as i64 - fee;
+    //     let r_bcm = r_in - r_out;
+    //     // Compute bcm := G^(b_in - b_out - fee) H^(r_in - r_out).
+    //     let bcm = A::Network::commit_ped64(&difference.abs().to_bits_le(), &r_bcm)?;
+    //     // Ensure `bcm` == `G^0 H^(r_in - r_out)`.
+    //     assert_eq!(bcm, A::Network::commit_ped64(&0u64.to_bits_le(), &r_bcm)?);
+    //     Ok((bcm, r_bcm))
+    // }
+
+    // // Compute the record view key.
+    // let record_view_key = record.to_record_view_key(caller_view_key);
+    // // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
+    // let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
+
+    // let fee = -(state.balance() as i64);
+    // let (bcm, r_bcm) = bcm::<A>(0, A::ScalarField::zero(), state.balance(), r_bcm, fee)?;
+
+    // // Compute the record view key.
+    // let record_view_key = record.to_record_view_key(&caller_view_key);
+    // // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
+    // let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
+
+    // Decrypt the record into program state.
+    let state = record.decrypt_symmetric(&record_view_key)?;
+    let fee = state.balance() as i64;
+
+    // Compute the balance commitment.
+    let (bcm, r_bcm) = bcm::<A, R>(state.balance(), rng)?;
+
+    // Compute the fee commitment.
+    let (fcm, r_fcm) = fcm::<A>(&[r_bcm], &[])?;
+
     let process = std::panic::catch_unwind(|| {
-        let public = input::Public::<A>::from(*root, *serial_number.value(), acm);
-        let private = input::Private::<A>::from(record_view_key, record, serial_number.clone(), signature, r_acm);
+        let public = input::Public::<A>::from(*root, *serial_number.value(), acm, bcm, fcm);
+        let private =
+            input::Private::<A>::from(record_view_key, record, serial_number.clone(), signature, r_acm, r_bcm, r_fcm);
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();
 
@@ -360,12 +452,13 @@ where
 
         let proof = snark::execute(assignment)?;
         let transition = Transition {
-            inputs: vec![*serial_number.value()],
+            inputs: vec![(*serial_number.value(), bcm)],
             outputs: vec![],
             input_proofs: vec![proof],
             output_proofs: vec![],
             acm,
-            fee: 0i64,
+            fcm,
+            fee,
         };
 
         // Set the network ID to 0.
@@ -390,7 +483,7 @@ fn main() -> Result<()> {
     // let caller_view_key = ViewKey::try_from(&caller_private_key)?;
     // let caller_address = Address::try_from(&caller_private_key)?;
     //
-    // let transaction = mint::<circuit::AleoV0, ThreadRng>(&mut rng, &caller_view_key)?;
+    // let transaction = mint::<circuit::AleoV0, ThreadRng>(&mut rng, &caller_view_key, 100u64)?;
 
     let transaction = burn::<circuit::AleoV0, ThreadRng>(&mut rng)?;
 
