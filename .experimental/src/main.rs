@@ -31,11 +31,50 @@ use snarkvm_algorithms::snark::marlin::Proof;
 use snarkvm_curves::AffineCurve;
 use std::{thread, time::Instant};
 
+struct Input<N: Network> {
+    /// The serial number of the program record.
+    serial_number: N::Field,
+    /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
+    bcm: N::Field,
+}
+
+impl<N: Network> Input<N> {
+    /// Initializes a new `Input` for a transition.
+    pub const fn new(serial_number: N::Field, bcm: N::Field) -> Self {
+        Self { serial_number, bcm }
+    }
+}
+
+struct Output<N: Network> {
+    /// The output record.
+    record: Record<N>,
+}
+
+impl<N: Network> Output<N> {
+    /// Initializes a new `Output` for a transition.
+    pub const fn new(record: Record<N>) -> Self {
+        Self { record }
+    }
+
+    /// Returns the output record.
+    pub const fn record(&self) -> &Record<N> {
+        &self.record
+    }
+
+    /// Returns the output commitment.
+    pub fn to_commitment(&self) -> Result<N::Field> {
+        self.record.to_commitment()
+    }
+}
+
 pub struct Transition<N: Network> {
-    /// (serial number, balance commitment).
-    inputs: Vec<(N::Field, N::Field)>,
-    outputs: Vec<Record<N>>,
+    /// The transition inputs.
+    inputs: Vec<Input<N>>,
+    /// The transition outputs.
+    outputs: Vec<Output<N>>,
+    /// The transition input proofs.
     input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
+    /// The transition output proofs.
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
     acm: N::Field,
@@ -54,7 +93,7 @@ impl<N: Network> Transition<N> {
 
     /// Returns the commitments in the transition.
     pub fn to_commitments(&self) -> Result<Vec<N::Field>> {
-        self.outputs.iter().map(|record| record.to_commitment()).collect::<Result<Vec<_>>>()
+        self.outputs.iter().map(Output::to_commitment).collect::<Result<Vec<_>>>()
     }
 }
 
@@ -177,7 +216,7 @@ where
         let proof = snark::execute(assignment)?;
         let transition = Transition {
             inputs: vec![],
-            outputs: vec![record],
+            outputs: vec![Output::new(record)],
             input_proofs: vec![],
             output_proofs: vec![proof],
             acm,
@@ -215,7 +254,7 @@ where
     let transaction = mint::<A, R>(rng, &caller_view_key, 100u64)?;
 
     // Retrieve the coinbase record.
-    let record = transaction.transitions()[0].outputs[0].clone();
+    let record = transaction.transitions()[0].outputs[0].record();
 
     // Initialize a program tree with the coinbase record.
     let program = A::Network::merkle_tree_bhp::<32>(&[record.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
@@ -277,8 +316,15 @@ where
 
     let process = std::panic::catch_unwind(|| {
         let public = input::Public::<A>::from(*root, *serial_number.value(), acm, bcm, fcm);
-        let private =
-            input::Private::<A>::from(record_view_key, record, serial_number.clone(), signature, r_acm, r_bcm, r_fcm);
+        let private = input::Private::<A>::from(
+            record_view_key,
+            record.clone(),
+            serial_number.clone(),
+            signature,
+            r_acm,
+            r_bcm,
+            r_fcm,
+        );
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();
 
@@ -293,7 +339,7 @@ where
 
         let proof = snark::execute(assignment)?;
         let transition = Transition {
-            inputs: vec![(*serial_number.value(), bcm)],
+            inputs: vec![Input::new(*serial_number.value(), bcm)],
             outputs: vec![],
             input_proofs: vec![proof],
             output_proofs: vec![],
