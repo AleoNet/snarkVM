@@ -35,7 +35,7 @@ use std::{thread, time::Instant};
 struct Input<N: Network> {
     /// The serial number of the input record.
     serial_number: N::Field,
-    /// The (randomized) balance commitment (i.e. `bcm := Commit(balance, r_bcm + k_bcm)`).
+    /// The re-randomized balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
     bcm: N::Affine,
 }
 
@@ -159,18 +159,16 @@ fn acm<A: circuit::Aleo, R: Rng + CryptoRng>(
     Ok((acm, r_acm))
 }
 
-/// Returns the (randomized) balance commitment as `bcm := Commit(balance, k_bcm + r_bcm)`.
-fn bcm<A: circuit::Aleo, R: Rng + CryptoRng>(
-    bcm: A::Affine,
-    record_view_key: A::BaseField,
-    rng: &mut R,
-) -> Result<(A::Affine, A::ScalarField, A::ScalarField)> {
-    // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-    let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
-    // TODO (howardwu): Domain separator.
-    let k_bcm = UniformRand::rand(rng);
-    let bcm = bcm.to_projective() + A::Network::commit_ped64(&0u64.to_bits_le(), &k_bcm)?.to_projective();
-    Ok((bcm.to_affine(), r_bcm, k_bcm))
+/// Returns the re-randomized balance commitment as `bcm := Commit(balance, r_bcm + r_bcm')`.
+fn bcm<A: circuit::Aleo>(balance: u64, record_view_key: A::BaseField) -> Result<(A::Affine, A::ScalarField)> {
+    // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key)).
+    let mut r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
+    // Compute the re-randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key)).
+    r_bcm += A::Network::hash_to_scalar_psd2(&[A::Network::r_bcm_domain(), record_view_key])?;
+    // Compute the re-randomized balance commitment (i.e. Commit(balance, r_bcm + r_bcm')).
+    let bcm = A::Network::commit_ped64(&balance.to_bits_le(), &r_bcm)?;
+    // Return the re-randomized balance commitment.
+    Ok((bcm, r_bcm))
 }
 
 /// Returns the fee commitment `fcm` and fee randomizer `r_fcm`, where:
@@ -345,22 +343,15 @@ where
     let fee = state.balance() as i64;
 
     // Compute the balance commitment.
-    let (bcm, r_bcm, k_bcm) = bcm::<A, R>(record.bcm(), record_view_key, rng)?;
+    let (bcm, r_bcm) = bcm::<A>(state.balance(), record_view_key)?;
 
     // Compute the fee commitment.
-    let (fcm, r_fcm) = fcm::<A>(&[r_bcm + k_bcm], &[])?;
+    let (fcm, r_fcm) = fcm::<A>(&[r_bcm], &[])?;
 
     let process = std::panic::catch_unwind(|| {
         let public = input::Public::<A>::from(*root, *serial_number.value(), acm, bcm, fcm);
-        let private = input::Private::<A>::from(
-            record_view_key,
-            record.clone(),
-            serial_number.clone(),
-            signature,
-            r_acm,
-            k_bcm,
-            r_fcm,
-        );
+        let private =
+            input::Private::<A>::from(record_view_key, record.clone(), serial_number.clone(), signature, r_acm, r_fcm);
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();
 

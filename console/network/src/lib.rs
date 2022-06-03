@@ -86,6 +86,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Self::Field;
 
+    /// Returns the balance commitment randomizer domain as a constant field element.
+    fn r_bcm_domain() -> Self::Field;
+
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Self::Field;
 

@@ -40,6 +40,7 @@ use itertools::Itertools;
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<<Testnet3 as Network>::Projective> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+
     /// The balance commitment domain as a constant field element.
     pub static ref BCM_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
@@ -48,6 +49,8 @@ lazy_static! {
     pub static ref MAC_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
     /// The randomizer domain as a constant field element.
     pub static ref RANDOMIZER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoRandomizer0");
+    /// The balance commitment randomizer domain as a constant field element.
+    pub static ref R_BCM_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoBalanceRandomizer0");
     /// The serial number domain as a constant field element.
     pub static ref SERIAL_NUMBER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSerialNumber0");
 
@@ -175,6 +178,11 @@ impl Network for Testnet3 {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Self::Field {
         *RANDOMIZER_DOMAIN
+    }
+
+    /// Returns the balance commitment randomizer domain as a constant field element.
+    fn r_bcm_domain() -> Self::Field {
+        *R_BCM_DOMAIN
     }
 
     /// Returns the serial number domain as a constant field element.

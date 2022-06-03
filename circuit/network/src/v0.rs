@@ -59,6 +59,8 @@ thread_local! {
     static MAC_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::mac_domain());
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
+    /// The balance commitment randomizer domain as a constant field element.
+    static R_BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::r_bcm_domain());
     /// The serial number domain as a constant field element.
     static SERIAL_NUMBER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::serial_number_domain());
 
@@ -109,6 +111,11 @@ impl Aleo for AleoV0 {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Field<Self> {
         RANDOMIZER_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the balance commitment randomizer domain as a constant field element.
+    fn r_bcm_domain() -> Field<Self> {
+        R_BCM_DOMAIN.with(|domain| domain.clone())
     }
 
     /// Returns the serial number domain as a constant field element.

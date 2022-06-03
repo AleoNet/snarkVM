@@ -45,7 +45,7 @@ pub mod input {
         serial_number: Field<A>,
         /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
         acm: Field<A>,
-        /// The (randomized) balance commitment (i.e. `bcm := Commit(balance, r_bcm + k_bcm)`).
+        /// The (re-randomized) balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
         bcm: Group<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,
@@ -81,8 +81,6 @@ pub mod input {
         signature: Signature<A>,
         /// The address randomizer.
         r_acm: Scalar<A>,
-        /// The balance randomizer.
-        r_bcm: Scalar<A>,
         /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
         r_fcm: Scalar<A>,
     }
@@ -95,7 +93,6 @@ pub mod input {
             serial_number: console::program::SerialNumber<A::Network>,
             signature: console::account::Signature<A::Network>,
             r_acm: A::ScalarField,
-            r_bcm: A::ScalarField,
             r_fcm: A::ScalarField,
         ) -> Self {
             let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
@@ -103,10 +100,9 @@ pub mod input {
             let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
             let signature = Signature::<A>::new(Mode::Private, signature);
             let r_acm = Scalar::<A>::new(Mode::Private, r_acm);
-            let r_bcm = Scalar::<A>::new(Mode::Private, r_bcm);
             let r_fcm = Scalar::<A>::new(Mode::Private, r_fcm);
 
-            Self { record_view_key, record, serial_number, signature, r_acm, r_bcm, r_fcm }
+            Self { record_view_key, record, serial_number, signature, r_acm, r_fcm }
         }
     }
 
@@ -124,13 +120,12 @@ pub mod input {
             ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
 
             // Ensure all private members are private inputs.
-            let Private { record_view_key, record, serial_number, signature, r_acm, r_bcm, r_fcm } = &private;
+            let Private { record_view_key, record, serial_number, signature, r_acm, r_fcm } = &private;
             ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
             ensure!(record.eject_mode().is_private(), "Input record must be private");
             ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
             ensure!(signature.eject_mode().is_private(), "Input signature must be private");
             ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
-            ensure!(r_bcm.eject_mode().is_private(), "Balance randomizer must be private");
             ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
 
             Ok(Self(public, private))
@@ -148,16 +143,13 @@ pub mod input {
             A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Ensure the randomized balance commitment is based on the original balance commitment.
-            A::assert_eq(
-                &public.bcm,
-                private.record.bcm() + &A::commit_ped64(&U64::zero().to_bits_le(), &private.r_bcm),
-            );
+            // Compute the re-randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
+            let r_bcm = A::hash_to_scalar_psd2(&[A::r_bcm_domain(), private.record_view_key.clone()]);
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // // Ensure the balance commitment matches the record balance.
-            // A::assert_eq(&public.bcm, A::commit_ped64(&state.balance().to_bits_le(), &private.r_bcm));
-            // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+            // Ensure the randomized balance commitment is based on the original balance commitment.
+            A::assert_eq(&public.bcm, private.record.bcm() + &A::commit_ped64(&U64::zero().to_bits_le(), &r_bcm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the fee commitment is correct.
             A::assert_eq(&public.fcm, A::commit_ped64(&U64::zero().to_bits_le(), &private.r_fcm));
