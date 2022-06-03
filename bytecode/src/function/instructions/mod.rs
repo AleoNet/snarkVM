@@ -1,12 +1,12 @@
 // Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
-// The snarkVM library is free software: you can redistribute it and/or modify
+// The snarkVM library is free software: you can redistribute it and/or pub modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// The snarkVM library is distributed in the hope that it will be useful,
+// The snarkVM library is distributed in the hope that it will be pub useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
@@ -14,113 +14,113 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod abs;
-use abs::*;
+pub mod abs;
+pub use abs::*;
 
-mod abs_wrapped;
-use abs_wrapped::*;
+pub mod abs_wrapped;
+pub use abs_wrapped::*;
 
-mod add;
-use add::*;
+pub mod add;
+pub use add::*;
 
-mod and;
-use and::*;
+pub mod and;
+pub use and::*;
 
-mod add_wrapped;
-use add_wrapped::*;
+pub mod add_wrapped;
+pub use add_wrapped::*;
 
-mod commit;
-use commit::*;
+pub mod commit;
+pub use commit::*;
 
-mod div;
-use div::*;
+pub mod div;
+pub use div::*;
 
-mod div_wrapped;
-use div_wrapped::*;
+pub mod div_wrapped;
+pub use div_wrapped::*;
 
-mod double;
-use double::*;
+pub mod double;
+pub use double::*;
 
-mod equal;
-use equal::*;
+pub mod equal;
+pub use equal::*;
 
-mod gt;
-use gt::*;
+pub mod gt;
+pub use gt::*;
 
-mod ge;
-use ge::*;
+pub mod ge;
+pub use ge::*;
 
-mod hash;
-use hash::*;
+pub mod hash;
+pub use hash::*;
 
-mod inv;
-use inv::*;
+pub mod inv;
+pub use inv::*;
 
-mod lt;
-use lt::*;
+pub mod lt;
+pub use lt::*;
 
-mod le;
-use le::*;
+pub mod le;
+pub use le::*;
 
-mod mul;
-use mul::*;
+pub mod mul;
+pub use mul::*;
 
-mod mul_wrapped;
-use mul_wrapped::*;
+pub mod mul_wrapped;
+pub use mul_wrapped::*;
 
-mod nand;
-use nand::*;
+pub mod nand;
+pub use nand::*;
 
-mod neg;
-use neg::*;
+pub mod neg;
+pub use neg::*;
 
-mod nor;
-use nor::*;
+pub mod nor;
+pub use nor::*;
 
-mod not;
-use not::*;
+pub mod not;
+pub use not::*;
 
-mod not_equal;
-use not_equal::*;
+pub mod not_equal;
+pub use not_equal::*;
 
-mod or;
-use or::*;
+pub mod or;
+pub use or::*;
 
-mod pow;
-use pow::*;
+pub mod pow;
+pub use pow::*;
 
-mod pow_wrapped;
-use pow_wrapped::*;
+pub mod pow_wrapped;
+pub use pow_wrapped::*;
 
-mod prf;
-use prf::*;
+pub mod prf;
+pub use prf::*;
 
-mod shl;
-use shl::*;
+pub mod shl;
+pub use shl::*;
 
-mod shl_wrapped;
-use shl_wrapped::*;
+pub mod shl_wrapped;
+pub use shl_wrapped::*;
 
-mod shr;
-use shr::*;
+pub mod shr;
+pub use shr::*;
 
-mod shr_wrapped;
-use shr_wrapped::*;
+pub mod shr_wrapped;
+pub use shr_wrapped::*;
 
-mod square;
-use square::*;
+pub mod square;
+pub use square::*;
 
-mod sub;
-use sub::*;
+pub mod sub;
+pub use sub::*;
 
-mod sub_wrapped;
-use sub_wrapped::*;
+pub mod sub_wrapped;
+pub use sub_wrapped::*;
 
-mod ternary;
-use ternary::*;
+pub mod ternary;
+pub use ternary::*;
 
-mod xor;
-use xor::*;
+pub mod xor;
+pub use xor::*;
 
 use crate::{
     function::{parsers::Operand, registers::Registers, Register},
