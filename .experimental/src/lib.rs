@@ -16,6 +16,165 @@
 
 #![forbid(unsafe_code)]
 
+pub mod input {
+    use circuit::{
+        Aleo,
+        Eject,
+        Equal,
+        Field,
+        Group,
+        Inject,
+        Mode,
+        Record,
+        Scalar,
+        SerialNumber,
+        Signature,
+        State,
+        ToBits,
+        Zero,
+        U16,
+        U64,
+    };
+
+    use anyhow::{ensure, Result};
+
+    pub struct Public<A: Aleo> {
+        /// The input program root.
+        root: Field<A>,
+        /// The input serial number.
+        serial_number: Field<A>,
+        /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
+        acm: Field<A>,
+        /// The balance commitment (i.e. `bcm := Commit(balance, r_bcm)`).
+        bcm: Field<A>,
+        /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
+        fcm: Field<A>,
+    }
+
+    impl<A: Aleo> Public<A> {
+        /// Initializes the public inputs for the input circuit.
+        pub fn from(
+            root: A::BaseField,
+            serial_number: A::BaseField,
+            acm: A::BaseField,
+            bcm: A::BaseField,
+            fcm: A::BaseField,
+        ) -> Self {
+            let root = Field::<A>::new(Mode::Public, root);
+            let serial_number = Field::<A>::new(Mode::Public, serial_number);
+            let acm = Field::<A>::new(Mode::Public, acm);
+            let bcm = Field::<A>::new(Mode::Public, bcm);
+            let fcm = Field::<A>::new(Mode::Public, fcm);
+
+            Self { root, serial_number, acm, bcm, fcm }
+        }
+    }
+
+    pub struct Private<A: Aleo> {
+        /// The input record view key.
+        record_view_key: Field<A>,
+        /// The input record.
+        record: Record<A>,
+        /// The input serial number proof.
+        serial_number: SerialNumber<A>,
+        /// The input signature.
+        signature: Signature<A>,
+        /// The address randomizer.
+        r_acm: Scalar<A>,
+        /// The balance randomizer.
+        r_bcm: Scalar<A>,
+        /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
+        r_fcm: Scalar<A>,
+    }
+
+    impl<A: Aleo> Private<A> {
+        /// Initializes the private inputs for the input circuit.
+        pub fn from(
+            record_view_key: A::BaseField,
+            record: console::program::Record<A::Network>,
+            serial_number: console::program::SerialNumber<A::Network>,
+            signature: console::account::Signature<A::Network>,
+            r_acm: A::ScalarField,
+            r_bcm: A::ScalarField,
+            r_fcm: A::ScalarField,
+        ) -> Self {
+            let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
+            let record = Record::<A>::new(Mode::Private, record);
+            let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
+            let signature = Signature::<A>::new(Mode::Private, signature);
+            let r_acm = Scalar::<A>::new(Mode::Private, r_acm);
+            let r_bcm = Scalar::<A>::new(Mode::Private, r_bcm);
+            let r_fcm = Scalar::<A>::new(Mode::Private, r_fcm);
+
+            Self { record_view_key, record, serial_number, signature, r_acm, r_bcm, r_fcm }
+        }
+    }
+
+    pub struct InputCircuit<A: Aleo>(Public<A>, Private<A>);
+
+    impl<A: Aleo> InputCircuit<A> {
+        /// Initializes the input circuit.
+        pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
+            // Ensure all public members are public inputs.
+            let Public { root, serial_number, acm, bcm, fcm } = &public;
+            ensure!(root.eject_mode().is_public(), "Input root must be public");
+            ensure!(serial_number.eject_mode().is_public(), "Input serial number must be public");
+            ensure!(acm.eject_mode().is_public(), "Address commitment must be public");
+            ensure!(bcm.eject_mode().is_public(), "Balance commitment must be public");
+            ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
+
+            // Ensure all private members are private inputs.
+            let Private { record_view_key, record, serial_number, signature, r_acm, r_bcm, r_fcm } = &private;
+            ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
+            ensure!(record.eject_mode().is_private(), "Input record must be private");
+            ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
+            ensure!(signature.eject_mode().is_private(), "Input signature must be private");
+            ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
+            ensure!(r_bcm.eject_mode().is_private(), "Balance randomizer must be private");
+            ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
+
+            Ok(Self(public, private))
+        }
+
+        /// Executes the input circuit.
+        pub fn execute(&self) {
+            let (public, private) = (&self.0, &self.1);
+
+            // Decrypt the record into program state.
+            let state = private.record.decrypt_symmetric(&private.record_view_key);
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the address commitment matches the record owner.
+            A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the balance commitment matches the record balance.
+            A::assert_eq(&public.bcm, A::commit_ped64(&state.balance().to_bits_le(), &private.r_bcm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the fee commitment is correct.
+            A::assert_eq(&public.fcm, A::commit_ped64(&U64::zero().to_bits_le(), &private.r_fcm));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Compute the record commitment.
+            let commitment = private.record.to_commitment();
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the serial number is valid.
+            A::assert(private.serial_number.verify(private.signature.compute_key().pk_vrf(), &commitment));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the serial number matches the declared serial number.
+            A::assert_eq(&public.serial_number, private.serial_number.value());
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the signature is valid.
+            A::assert(private.signature.verify(state.owner(), &[private.serial_number.value().clone()]));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+        }
+    }
+}
+
 pub mod output {
     use circuit::{
         Address,
