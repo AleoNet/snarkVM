@@ -20,6 +20,7 @@
 pub mod v0;
 pub use v0::*;
 
+use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{environment::Environment, Boolean, Field, Group, Scalar};
 
 pub trait Aleo: Environment {
@@ -127,4 +128,18 @@ pub trait Aleo: Environment {
 
     /// Returns the Poseidon PRF with an input rate of 8.
     fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_bhp<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Boolean<Self>>,
+    ) -> Boolean<Self>;
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_psd<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Field<Self>>,
+    ) -> Boolean<Self>;
 }

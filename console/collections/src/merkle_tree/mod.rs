@@ -254,6 +254,11 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH
         MerklePath::try_from((leaf_index as u64, path))
     }
 
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    pub fn verify(&self, path: &MerklePath<PH::Hash, DEPTH>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+        path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
+    }
+
     /// Returns the Merkle root of the tree.
     pub const fn root(&self) -> &PH::Hash {
         &self.root

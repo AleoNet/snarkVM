@@ -33,6 +33,7 @@ use snarkvm_circuit_algorithms::{
     BHP768,
     PRF,
 };
+use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
     environment::{prelude::*, Circuit},
     Boolean,
@@ -267,6 +268,24 @@ impl Aleo for AleoV0 {
     /// Returns the Poseidon PRF with an input rate of 8.
     fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
         POSEIDON_8.with(|poseidon| poseidon.prf(seed, input))
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_bhp<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Boolean<Self>>,
+    ) -> Boolean<Self> {
+        BHP_1024.with(|bhp1024| BHP_512.with(|bhp512| path.verify(bhp1024, bhp512, root, leaf)))
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_psd<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Field<Self>>,
+    ) -> Boolean<Self> {
+        POSEIDON_4.with(|psd4| POSEIDON_2.with(|psd2| path.verify(psd4, psd2, root, leaf)))
     }
 }
 

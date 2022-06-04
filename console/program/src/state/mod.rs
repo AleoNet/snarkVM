@@ -24,7 +24,7 @@ mod to_digest;
 use crate::Record;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::ToBits;
 
 use anyhow::{ensure, Result};

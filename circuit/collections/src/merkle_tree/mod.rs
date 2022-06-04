@@ -17,26 +17,22 @@
 mod helpers;
 use helpers::{LeafHash, PathHash};
 
-// mod to_root;
+mod verify;
 
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U64};
 
-use core::marker::PhantomData;
-
-pub struct MerklePath<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> {
+pub struct MerklePath<E: Environment, const DEPTH: u8> {
     /// The leaf index for the path.
     leaf_index: U64<E>,
     /// The `siblings` contains a list of sibling hashes from the leaf to the root.
     siblings: Vec<Field<E>>,
-    /// PhantomData.
-    _phantom: PhantomData<(LH, PH)>,
 }
 
 #[cfg(console)]
-impl<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> Inject for MerklePath<E, LH, PH, DEPTH> {
+impl<E: Environment, const DEPTH: u8> Inject for MerklePath<E, DEPTH> {
     type Primitive = console::merkle_tree::MerklePath<E::BaseField, DEPTH>;
 
     /// Initializes a Merkle path from the given mode and native Merkle path.
@@ -48,14 +44,14 @@ impl<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> Inject f
         // Ensure the Merkle path is the correct depth.
         match siblings.len() == DEPTH as usize {
             // Return the Merkle path.
-            true => Self { leaf_index, siblings, _phantom: PhantomData },
+            true => Self { leaf_index, siblings },
             false => E::halt("Merkle path is not the correct depth"),
         }
     }
 }
 
 #[cfg(console)]
-impl<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> Eject for MerklePath<E, LH, PH, DEPTH> {
+impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
     type Primitive = console::merkle_tree::MerklePath<E::BaseField, DEPTH>;
 
     /// Ejects the mode of the Merkle path.
@@ -72,92 +68,69 @@ impl<E: Environment, LH: LeafHash<E>, PH: PathHash<E>, const DEPTH: u8> Eject fo
     }
 }
 
-// #[cfg(all(test, console))]
-// pub(crate) mod tests {
-//     use super::*;
-//     use crate::{helpers::generate_account};
-//     use snarkvm_circuit_network::AleoV0 as Circuit;
-//
-//     use anyhow::Result;
-//
-//     const ITERATIONS: u64 = 100;
-//
-//     fn check_new(
-//         mode: Mode,
-//         num_constants: u64,
-//         num_public: u64,
-//         num_private: u64,
-//         num_constraints: u64,
-//     ) -> Result<()> {
-//
-//         // Construct the Merkle tree for the given leaves.
-//         type LH =
-//         let merkle_tree = console::merkle_tree::MerkleTree::<N, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
-//         assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
-//
-//         // Check each leaf in the Merkle tree.
-//         if !leaves.is_empty() {
-//             for (leaf_index, leaf) in leaves.iter().enumerate() {
-//                 // Compute a Merkle proof for the leaf.
-//                 let proof = merkle_tree.prove(leaf_index, leaf)?;
-//                 // Verify the Merkle proof succeeds.
-//                 assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
-//                 // Verify the Merkle proof **fails** on an invalid root.
-//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
-//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
-//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::rand(&mut test_rng()), leaf));
-//             }
-//         }
-//         // If additional leaves are provided, check that the Merkle tree is consistent with them.
-//         if !additional_leaves.is_empty() {
-//             // Append additional leaves to the Merkle tree.
-//             let merkle_tree = merkle_tree.append(additional_leaves)?;
-//             // Check each additional leaf in the Merkle tree.
-//             for (leaf_index, leaf) in additional_leaves.iter().enumerate() {
-//                 // Compute a Merkle proof for the leaf.
-//                 let proof = merkle_tree.prove(leaves.len() + leaf_index, leaf)?;
-//                 // Verify the Merkle proof succeeds.
-//                 assert!(proof.verify(leaf_hasher, path_hasher, merkle_tree.root(), leaf));
-//                 // Verify the Merkle proof **fails** on an invalid root.
-//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::zero(), leaf));
-//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::one(), leaf));
-//                 assert!(!proof.verify(leaf_hasher, path_hasher, &N::Field::rand(&mut test_rng()), leaf));
-//             }
-//         }
-//         Ok(())
-//
-//
-//         for i in 0..ITERATIONS {
-//
-//             Circuit::scope(format!("New {mode}"), || {
-//                 let candidate = ComputeKey::<Circuit>::new(mode, compute_key);
-//                 match mode.is_constant() {
-//                     true => assert_eq!(Mode::Constant, candidate.eject_mode()),
-//                     false => assert_eq!(Mode::Private, candidate.eject_mode()),
-//                 };
-//                 assert_eq!(compute_key, candidate.eject_value());
-//                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
-//                 if i > 0 {
-//                     assert_scope!(num_constants, num_public, num_private, num_constraints);
-//                 }
-//             });
-//             Circuit::reset();
-//         }
-//         Ok(())
-//     }
-//
-//     #[test]
-//     fn test_new_constant() -> Result<()> {
-//         check_new(Mode::Constant, 266, 0, 0, 0)
-//     }
-//
-//     #[test]
-//     fn test_new_public() -> Result<()> {
-//         check_new(Mode::Public, 7, 6, 604, 608)
-//     }
-//
-//     #[test]
-//     fn test_new_private() -> Result<()> {
-//         check_new(Mode::Private, 7, 0, 610, 608)
-//     }
-// }
+#[cfg(all(test, console))]
+mod tests {
+    use super::*;
+    use snarkvm_circuit_network::AleoV0 as Circuit;
+    use snarkvm_utilities::{test_rng, ToBits as T, UniformRand};
+
+    use anyhow::Result;
+
+    const ITERATIONS: u128 = 100;
+
+    fn check_new<const DEPTH: u8>(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
+        let create_leaves = |num_leaves| {
+            (0..num_leaves)
+                .map(|_| <Circuit as Environment>::BaseField::rand(&mut test_rng()).to_bits_le())
+                .collect::<Vec<_>>()
+        };
+
+        for i in 0..ITERATIONS {
+            // Determine the number of leaves.
+            let num_leaves = core::cmp::min(2u128.pow(DEPTH as u32), i);
+            // Compute the leaves.
+            let leaves = create_leaves(num_leaves);
+            // Compute the Merkle tree.
+            let merkle_tree = <<Circuit as Environment>::Network as snarkvm_console_network::Network>::merkle_tree_bhp::<
+                DEPTH,
+            >(&leaves)?;
+
+            for (index, leaf) in leaves.iter().enumerate() {
+                // Compute the Merkle path.
+                let merkle_path = merkle_tree.prove(index, leaf)?;
+
+                // // Initialize the Merkle leaf.
+                // let leaf: Vec<Boolean<_>> = Inject::new(mode, leaf.clone());
+
+                Circuit::scope(format!("New {mode}"), || {
+                    let candidate = MerklePath::<Circuit, DEPTH>::new(mode, merkle_path.clone());
+                    assert_eq!(merkle_path, candidate.eject_value());
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_new_constant() -> Result<()> {
+        check_new::<32>(Mode::Constant, 96, 0, 0, 0)
+    }
+
+    #[test]
+    fn test_new_public() -> Result<()> {
+        check_new::<32>(Mode::Public, 0, 96, 0, 64)
+    }
+
+    #[test]
+    fn test_new_private() -> Result<()> {
+        check_new::<32>(Mode::Private, 0, 0, 96, 64)
+    }
+}

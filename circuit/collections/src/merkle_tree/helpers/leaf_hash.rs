@@ -20,16 +20,18 @@ use snarkvm_circuit_algorithms::{Hash, Poseidon, BHP};
 /// A trait for a Merkle leaf hash function.
 pub trait LeafHash<E: Environment> {
     type Leaf;
+    type Hash: FieldTrait;
 
     /// Returns the hash of the given leaf node.
-    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<E>;
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash;
 }
 
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<E> for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    type Hash = Field<E>;
     type Leaf = Vec<Boolean<E>>;
 
     /// Returns the hash of the given leaf node.
-    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<E> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
         // Prepend the leaf with a `false` bit.
         let mut input = vec![Boolean::constant(false)];
         input.extend_from_slice(leaf);
@@ -39,12 +41,13 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> LeafHash<E> f
 }
 
 impl<E: Environment, const RATE: usize> LeafHash<E> for Poseidon<E, RATE> {
+    type Hash = Field<E>;
     type Leaf = Vec<Field<E>>;
 
     /// Returns the hash of the given leaf node.
-    fn hash_leaf(&self, leaf: &Self::Leaf) -> Field<E> {
+    fn hash_leaf(&self, leaf: &Self::Leaf) -> Self::Hash {
         // Prepend the leaf with a `0field` element.
-        let mut input = vec![Field::zero()];
+        let mut input = vec![Self::Hash::zero()];
         input.extend_from_slice(leaf);
         // Hash the input.
         Hash::hash(self, &input)
