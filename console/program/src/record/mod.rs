@@ -33,7 +33,7 @@ use snarkvm_utilities::{CryptoRng, Rng, ToBits, ToBytes};
 
 use anyhow::{ensure, Result};
 
-/// A program's record is a set of **ciphertext** variables used by a program.
+/// A program record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 #[derive(Clone)]
 pub struct Record<N: Network> {

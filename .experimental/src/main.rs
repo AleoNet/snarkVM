@@ -242,20 +242,14 @@ where
 {
     // Initialize the caller address.
     let caller_address = Address::try_from(caller_view_key)?;
-
+    // Initialize th empty data.
+    let data = A::BaseField::zero(); // TODO: Hardcode this option in the Network trait.
     // Initialize the randomizer, which is bound to the account of the **sender**.
     let randomizer = Randomizer::prove(caller_view_key, &[], 0, rng)?;
 
     // Initialize a coinbase.
-    let (state, record) = {
-        let owner = caller_address;
-        let balance = amount;
-        let data = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
-
-        let state = State::new(owner, balance, data, &randomizer);
-        let record = state.encrypt(&randomizer)?;
-        (state, record)
-    };
+    let state = State::new(caller_address, amount, data, &randomizer);
+    let record = state.encrypt(&randomizer)?;
 
     // Compute the address commitment.
     let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
@@ -353,10 +347,8 @@ where
 
     // Compute the address commitment.
     let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
-
     // Compute the balance commitment.
     let (bcm, r_bcm) = bcm::<A>(state.balance(), record_view_key)?;
-
     // Compute the fee commitment.
     let (fcm, r_fcm) = fcm::<A>(&[r_bcm], &[])?;
 

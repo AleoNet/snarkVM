@@ -32,7 +32,7 @@ use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
-/// A program's record is a set of **ciphertext** variables used by a program.
+/// A program record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 pub struct Record<A: Aleo> {
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
