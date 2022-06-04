@@ -32,10 +32,6 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Field, Group, U64}
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.
 pub struct State<A: Aleo> {
-    /// The program this state belongs to.
-    program: Field<A>,
-    /// The process this state corresponds to.
-    process: Field<A>,
     /// The Aleo address this state belongs to.
     owner: Address<A>,
     /// The account balance in this program state.
@@ -54,8 +50,6 @@ impl<A: Aleo> Inject for State<A> {
     fn new(mode: Mode, state: Self::Primitive) -> State<A> {
         // Return the state.
         Self {
-            program: Field::new(mode, state.program()),
-            process: Field::new(mode, state.process()),
             owner: Address::new(mode, state.owner()),
             balance: U64::new(mode, state.balance()),
             data: Field::new(mode, state.data()),
@@ -70,14 +64,12 @@ impl<A: Aleo> Eject for State<A> {
 
     /// Ejects the mode of the state.
     fn eject_mode(&self) -> Mode {
-        (&self.program, &self.process, &self.owner, &self.balance, &self.data, &self.nonce).eject_mode()
+        (&self.owner, &self.balance, &self.data, &self.nonce).eject_mode()
     }
 
     /// Ejects the state.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from(
-            self.program.eject_value(),
-            self.process.eject_value(),
             self.owner.eject_value(),
             self.balance.eject_value(),
             self.data.eject_value(),
@@ -86,26 +78,14 @@ impl<A: Aleo> Eject for State<A> {
     }
 }
 
-impl<A: Aleo> From<(Field<A>, Field<A>, Address<A>, U64<A>, Field<A>, Group<A>)> for State<A> {
+impl<A: Aleo> From<(Address<A>, U64<A>, Field<A>, Group<A>)> for State<A> {
     /// Initializes a new `State` from the given parameters.
-    fn from(
-        (program, process, owner, balance, data, nonce): (Field<A>, Field<A>, Address<A>, U64<A>, Field<A>, Group<A>),
-    ) -> Self {
-        Self { program, process, owner, balance, data, nonce }
+    fn from((owner, balance, data, nonce): (Address<A>, U64<A>, Field<A>, Group<A>)) -> Self {
+        Self { owner, balance, data, nonce }
     }
 }
 
 impl<A: Aleo> State<A> {
-    /// Returns the program ID.
-    pub fn program(&self) -> &Field<A> {
-        &self.program
-    }
-
-    /// Returns the process ID.
-    pub fn process(&self) -> &Field<A> {
-        &self.process
-    }
-
     /// Returns the account owner.
     pub fn owner(&self) -> &Address<A> {
         &self.owner

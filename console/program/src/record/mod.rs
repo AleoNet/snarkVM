@@ -37,10 +37,6 @@ use anyhow::{ensure, Result};
 /// Note: `Record` is the **encrypted** form of `State`.
 #[derive(Clone)]
 pub struct Record<N: Network> {
-    /// The program ID of this record.
-    program: N::Field,
-    /// The process ID of this record.
-    process: N::Field,
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: N::Field,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
@@ -58,8 +54,6 @@ pub struct Record<N: Network> {
 impl<N: Network> Record<N> {
     /// Initializes a new record.
     pub fn new(
-        program: N::Field,
-        process: N::Field,
         owner: N::Field,
         balance: N::Field,
         data: N::Field,
@@ -67,17 +61,7 @@ impl<N: Network> Record<N> {
         mac: N::Field,
         bcm: N::Affine,
     ) -> Self {
-        Self { program, process, owner, balance, data, nonce, mac, bcm }
-    }
-
-    /// Returns the program ID of the record.
-    pub const fn program(&self) -> N::Field {
-        self.program
-    }
-
-    /// Returns the process ID of the record.
-    pub const fn process(&self) -> N::Field {
-        self.process
+        Self { owner, balance, data, nonce, mac, bcm }
     }
 
     /// Returns the **encrypted** address this record belongs to.

@@ -22,8 +22,6 @@ impl<A: Aleo> Record<A> {
         // Compute the BHP hash of the program record.
         A::hash_bhp1024(
             &[
-                &self.program,
-                &self.process,
                 &self.owner,
                 &self.balance,
                 &self.data,

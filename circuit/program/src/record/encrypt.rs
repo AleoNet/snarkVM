@@ -37,15 +37,6 @@ impl<A: Aleo> Record<A> {
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = A::commit_ped64(&state.balance().to_bits_le(), &r_bcm);
 
-        Self {
-            program: state.program().clone(),
-            process: state.process().clone(),
-            owner,
-            balance,
-            data: state.data().clone(),
-            nonce: state.nonce().clone(),
-            mac,
-            bcm,
-        }
+        Self { owner, balance, data: state.data().clone(), nonce: state.nonce().clone(), mac, bcm }
     }
 }

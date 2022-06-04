@@ -29,10 +29,6 @@ use anyhow::{ensure, Result};
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.
 pub struct State<N: Network> {
-    /// The program ID of this state.
-    program: N::Field,
-    /// The process ID of this state.
-    process: N::Field,
     /// The Aleo address this state belongs to.
     owner: Address<N>,
     /// The account balance in this program state.
@@ -45,39 +41,15 @@ pub struct State<N: Network> {
 
 impl<N: Network> State<N> {
     /// Initializes a new instance of `State`.
-    pub fn new(
-        program: N::Field,
-        process: N::Field,
-        owner: Address<N>,
-        balance: u64,
-        data: N::Field,
-        randomizer: &Randomizer<N>,
-    ) -> Self {
+    pub fn new(owner: Address<N>, balance: u64, data: N::Field, randomizer: &Randomizer<N>) -> Self {
         // Return the new program state.
-        Self::from(program, process, owner, balance, data, randomizer.to_nonce())
+        Self::from(owner, balance, data, randomizer.to_nonce())
     }
 
     /// Initializes a new instance of `State`.
-    pub fn from(
-        program: N::Field,
-        process: N::Field,
-        owner: Address<N>,
-        balance: u64,
-        data: N::Field,
-        nonce: N::Affine,
-    ) -> Self {
+    pub fn from(owner: Address<N>, balance: u64, data: N::Field, nonce: N::Affine) -> Self {
         // Return the new program state.
-        Self { program, process, owner, balance, data, nonce }
-    }
-
-    /// Returns the program ID.
-    pub const fn program(&self) -> N::Field {
-        self.program
-    }
-
-    /// Returns the process ID.
-    pub const fn process(&self) -> N::Field {
-        self.process
+        Self { owner, balance, data, nonce }
     }
 
     /// Returns the account owner.

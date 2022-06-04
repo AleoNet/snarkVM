@@ -28,6 +28,3 @@ pub use record::{Record, SerialNumber};
 
 mod state;
 pub use state::{Randomizer, State};
-
-mod transition;
-pub use transition::*;

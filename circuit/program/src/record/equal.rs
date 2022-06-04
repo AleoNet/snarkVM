@@ -21,9 +21,7 @@ impl<A: Aleo> Equal<Self> for Record<A> {
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
-        self.program.is_equal(&other.program)
-            & self.process.is_equal(&other.process)
-            & self.owner.is_equal(&other.owner)
+        self.owner.is_equal(&other.owner)
             & self.balance.is_equal(&other.balance)
             & self.data.is_equal(&other.data)
             & self.nonce.is_equal(&other.nonce)
@@ -50,8 +48,6 @@ mod tests {
         let rng = &mut test_rng();
 
         Record::<Circuit> {
-            program: Field::new(mode, UniformRand::rand(rng)),
-            process: Field::new(mode, UniformRand::rand(rng)),
             owner: Field::new(mode, UniformRand::rand(rng)),
             balance: Field::new(mode, UniformRand::rand(rng)),
             data: Field::new(mode, UniformRand::rand(rng)),
@@ -115,35 +111,35 @@ mod tests {
 
     #[test]
     fn test_is_equal_constant() {
-        check_is_equal(Mode::Constant, Mode::Constant, 10, 0, 0, 0);
+        check_is_equal(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     fn test_is_equal() {
-        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 29, 39);
-        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 29, 39);
-        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 29, 39);
-        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 29, 39);
-        check_is_equal(Mode::Public, Mode::Public, 0, 0, 29, 39);
-        check_is_equal(Mode::Public, Mode::Private, 0, 0, 29, 39);
-        check_is_equal(Mode::Private, Mode::Public, 0, 0, 29, 39);
-        check_is_equal(Mode::Private, Mode::Private, 0, 0, 29, 39);
+        check_is_equal(Mode::Constant, Mode::Public, 0, 0, 23, 31);
+        check_is_equal(Mode::Constant, Mode::Private, 0, 0, 23, 31);
+        check_is_equal(Mode::Public, Mode::Constant, 0, 0, 23, 31);
+        check_is_equal(Mode::Private, Mode::Constant, 0, 0, 23, 31);
+        check_is_equal(Mode::Public, Mode::Public, 0, 0, 23, 31);
+        check_is_equal(Mode::Public, Mode::Private, 0, 0, 23, 31);
+        check_is_equal(Mode::Private, Mode::Public, 0, 0, 23, 31);
+        check_is_equal(Mode::Private, Mode::Private, 0, 0, 23, 31);
     }
 
     #[test]
     fn test_is_not_equal_constant() {
-        check_is_not_equal(Mode::Constant, Mode::Constant, 10, 0, 0, 0);
+        check_is_not_equal(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     fn test_is_not_equal() {
-        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 29, 39);
-        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 29, 39);
+        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 23, 31);
+        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 23, 31);
     }
 }

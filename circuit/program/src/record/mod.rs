@@ -35,10 +35,6 @@ use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Gr
 /// A program's record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 pub struct Record<A: Aleo> {
-    /// The program this record belongs to.
-    program: Field<A>,
-    /// The process this record corresponds to.
-    process: Field<A>,
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: Field<A>,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
@@ -61,8 +57,6 @@ impl<A: Aleo> Inject for Record<A> {
     fn new(mode: Mode, record: Self::Primitive) -> Record<A> {
         // Return the record.
         Self {
-            program: Field::new(mode, record.program()),
-            process: Field::new(mode, record.process()),
             owner: Field::new(mode, record.owner()),
             balance: Field::new(mode, record.balance()),
             data: Field::new(mode, record.data()),
@@ -86,15 +80,12 @@ impl<A: Aleo> Eject for Record<A> {
 
     /// Ejects the mode of the record.
     fn eject_mode(&self) -> Mode {
-        (&self.program, &self.process, &self.owner, &self.balance, &self.data, &self.nonce, &self.mac, &self.bcm)
-            .eject_mode()
+        (&self.owner, &self.balance, &self.data, &self.nonce, &self.mac, &self.bcm).eject_mode()
     }
 
     /// Ejects the record.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::new(
-            self.program.eject_value(),
-            self.process.eject_value(),
             self.owner.eject_value(),
             self.balance.eject_value(),
             self.data.eject_value(),

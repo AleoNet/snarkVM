@@ -39,15 +39,6 @@ impl<N: Network> Record<N> {
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = N::commit_ped64(&state.balance().to_bits_le(), &r_bcm)?;
 
-        Ok(Self {
-            program: state.program(),
-            process: state.process(),
-            owner,
-            balance,
-            data: state.data(),
-            nonce: state.nonce(),
-            mac,
-            bcm,
-        })
+        Ok(Self { owner, balance, data: state.data(), nonce: state.nonce(), mac, bcm })
     }
 }

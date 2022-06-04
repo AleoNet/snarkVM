@@ -93,10 +93,10 @@ impl<N: Network> Output<N> {
 
 #[allow(dead_code)]
 pub struct Transition<N: Network> {
-    // /// The program ID of the transition.
-    // program: N::Field,
-    // /// The process ID of the transition.
-    // process: N::Field,
+    /// The program ID of the transition.
+    program: N::Field,
+    /// The process ID of the transition.
+    process: N::Field,
     // /// The function that was executed.
     // function: Function<N>,
     /// The transition inputs.
@@ -248,13 +248,11 @@ where
 
     // Initialize a coinbase.
     let (state, record) = {
-        let program = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
-        let process = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
         let owner = caller_address;
         let balance = amount;
         let data = <A::Network as Network>::Field::zero(); // TODO: Hardcode this option in the Network trait.
 
-        let state = State::new(program, process, owner, balance, data, &randomizer);
+        let state = State::new(owner, balance, data, &randomizer);
         let record = state.encrypt(&randomizer)?;
         (state, record)
     };
@@ -291,6 +289,8 @@ where
 
         let proof = snark::execute(assignment)?;
         let transition = Transition {
+            program: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
+            process: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
             inputs: vec![],
             outputs: vec![Output::new(record)],
             input_proofs: vec![],
@@ -384,6 +384,8 @@ where
 
         let proof = snark::execute(assignment)?;
         let transition = Transition {
+            program: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
+            process: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
             inputs: vec![Input::new(*serial_number.value(), bcm)],
             outputs: vec![],
             input_proofs: vec![proof],
