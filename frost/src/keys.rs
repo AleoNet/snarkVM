@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utils::*;
-
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use anyhow::Result;
 use rand::Rng;
 use std::{
     collections::HashMap,
@@ -37,7 +34,7 @@ pub struct SignerPublicKey<G: AffineCurve>(pub G);
 
 /// The signer's secret key
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SignerSecretKey<G: AffineCurve>(pub <G as AffineCurve>::ScalarField);
+pub struct SignerSecretKey<G: AffineCurve>(pub G::ScalarField);
 
 /// The list of signer public keys and the group public key.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,7 +65,7 @@ impl<G: AffineCurve> SignerShare<G> {
     pub fn is_valid(&self) -> bool {
         let expected_result = G::prime_subgroup_generator().mul(self.secret_key.0);
 
-        let index_scalar = <G as AffineCurve>::ScalarField::from_repr((self.participant_index as u64).into()).unwrap();
+        let index_scalar = G::ScalarField::from_repr((self.participant_index as u64).into()).unwrap();
         let mut result = G::zero().to_projective();
         for (i, c) in self.commitment.iter().rev().enumerate() {
             result = result.add(c.to_projective());
@@ -92,7 +89,7 @@ impl<G: AffineCurve> SignerShare<G> {
 pub fn trusted_keygen<R: Rng, G: AffineCurve>(
     num_participants: u8,
     threshold: u8,
-    secret: &<G as AffineCurve>::ScalarField,
+    secret: &G::ScalarField,
     rng: &mut R,
 ) -> (Vec<SignerShare<G>>, PublicKeys<G>) {
     if num_participants < 1 {
@@ -103,13 +100,13 @@ pub fn trusted_keygen<R: Rng, G: AffineCurve>(
         panic!("threshold must be between 1 and num_participants");
     }
 
-    let mut coefficients: Vec<<G as AffineCurve>::ScalarField> = Vec::with_capacity(threshold as usize);
+    let mut coefficients: Vec<G::ScalarField> = Vec::with_capacity(threshold as usize);
     let mut share_commitment: Vec<G> = Vec::with_capacity(threshold as usize);
 
     // FROST KeyGen Round 1.1: Generate the polynomial coefficients.
     coefficients.push(*secret);
     for _ in 0..threshold - 1 {
-        coefficients.push(<G as AffineCurve>::ScalarField::rand(rng));
+        coefficients.push(G::ScalarField::rand(rng));
     }
 
     // TODO (raychu86): Generate the proof of knowledge of the very first coefficient.
@@ -130,8 +127,8 @@ pub fn trusted_keygen<R: Rng, G: AffineCurve>(
 
     for index in 1..num_participants + 1 {
         // Evaluate the polynomial at point `index`.
-        let index_scalar = <G as AffineCurve>::ScalarField::from_repr((index as u64).into()).unwrap();
-        let mut result = <G as AffineCurve>::ScalarField::zero();
+        let index_scalar = G::ScalarField::from_repr((index as u64).into()).unwrap();
+        let mut result = G::ScalarField::zero();
         for (i, coeff) in coefficients.iter().rev().enumerate() {
             result += coeff;
 
@@ -163,6 +160,9 @@ pub fn trusted_keygen<R: Rng, G: AffineCurve>(
 mod test {
     use super::*;
 
+    use crate::utils::*;
+
+    use anyhow::Result;
     use snarkvm_curves::edwards_bls12::EdwardsAffine as EdwardsBls12Affine;
     use snarkvm_utilities::test_rng;
 
@@ -170,7 +170,7 @@ mod test {
     pub fn reconstruct_secret<G: AffineCurve>(participants: &[SignerShare<G>]) -> Result<SignerSecretKey<G>> {
         let indexes = participants.iter().map(|p| p.participant_index).collect::<Vec<_>>();
 
-        let mut reconstructed_secret = <G as AffineCurve>::ScalarField::zero();
+        let mut reconstructed_secret = G::ScalarField::zero();
 
         for participant in participants {
             let coeff = calculate_lagrange_coefficients::<G>(participant.participant_index, &indexes)?;

@@ -2386,6 +2386,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "sha2 0.10.2",
  "smallvec",
  "snarkvm-curves",
  "snarkvm-fields",

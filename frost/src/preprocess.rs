@@ -22,9 +22,9 @@ use rand::Rng;
 /// The hiding and binding nonces used (only once) for a signing operation.
 pub struct SigningNonce<F: Field> {
     /// d\_{ij}
-    hiding: F,
+    pub(crate) hiding: F,
     /// e\_{ij}
-    binding: F,
+    pub(crate) binding: F,
 }
 
 impl<F: Field> SigningNonce<F> {
@@ -34,19 +34,18 @@ impl<F: Field> SigningNonce<F> {
 }
 
 /// A precomputed commitment share.
-pub struct CommitmentShare<G: AffineCurve> {
+pub struct SigningCommitment<G: AffineCurve> {
     /// The index of the participant.
-    pub participant_index: u64,
+    pub(crate) participant_index: u64,
     /// The hiding commitment - D\_{ij}.
-    pub hiding: G,
+    pub(crate) hiding: G,
     /// The binding commitment - E\_{ij}.
-    pub binding: G,
+    pub(crate) binding: G,
 }
 
-impl<G: AffineCurve> CommitmentShare<G> {
+impl<G: AffineCurve> SigningCommitment<G> {
     /// Generate the commitment share for a given participant index using a provided nonce.
     pub fn from(participant_index: u64, nonce: &SigningNonce<<G as AffineCurve>::ScalarField>) -> Self {
-        // TODO (raychu86): Confirm that the basepoint selection is correct.
         let basepoint = G::prime_subgroup_generator();
 
         Self {
@@ -62,24 +61,24 @@ impl<G: AffineCurve> CommitmentShare<G> {
 /// Every participant must call this function before signing. In the case of a two-round FROST protocol,
 /// then `num_nonces` should be set to 1.
 ///
-/// SigningNonce should be kept secret, while CommitmentShare should be distributed to other participants.
+/// `SigningNonce` should be kept secret, while `SigningCommitment` should be distributed to other participants.
 ///
 pub fn preprocess<G: AffineCurve, R: Rng>(
     num_nonces: usize,
     participant_index: u64,
     rng: &mut R,
-) -> (Vec<SigningNonce<<G as AffineCurve>::ScalarField>>, Vec<CommitmentShare<G>>) {
+) -> (Vec<SigningNonce<<G as AffineCurve>::ScalarField>>, Vec<SigningCommitment<G>>) {
     let mut singing_nonces = Vec::with_capacity(num_nonces);
-    let mut commitment_shares = Vec::with_capacity(num_nonces);
+    let mut signing_commitments = Vec::with_capacity(num_nonces);
 
     for _ in 0..num_nonces {
         let nonce = SigningNonce::new(rng);
-        let share = CommitmentShare::from(participant_index, &nonce);
+        let commitment = SigningCommitment::from(participant_index, &nonce);
         singing_nonces.push(nonce);
-        commitment_shares.push(share);
+        signing_commitments.push(commitment);
     }
 
-    (singing_nonces, commitment_shares)
+    (singing_nonces, signing_commitments)
 }
 
 #[cfg(test)]
@@ -87,7 +86,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_nonce_into_commitment_share() {}
+    fn test_nonce_into_commitment() {}
 
     #[test]
     fn test_preprocess() {}
