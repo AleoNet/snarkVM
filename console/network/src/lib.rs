@@ -44,6 +44,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     type Field: PrimeField + Copy;
     type Scalar: PrimeField + Copy;
 
+    /// The network ID.
+    const ID: u16;
+
     /// The maximum recursive depth of a value.
     /// Note: This value must be strictly less than u8::MAX.
     const DEPTH: u8 = 32;

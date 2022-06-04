@@ -107,6 +107,8 @@ impl Network for Testnet3 {
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
 
+    /// The network ID.
+    const ID: u16 = 3;
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::Field as PrimeField>::Parameters::CAPACITY;
     /// The maximum number of characters allowed in a string.

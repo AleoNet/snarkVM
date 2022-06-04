@@ -130,6 +130,7 @@ pub trait Aleo: Environment {
     fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    #[allow(clippy::ptr_arg)]
     fn verify_merkle_path_bhp<const DEPTH: u8>(
         path: &MerklePath<Self, DEPTH>,
         root: &Field<Self>,
@@ -137,6 +138,7 @@ pub trait Aleo: Environment {
     ) -> Boolean<Self>;
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    #[allow(clippy::ptr_arg)]
     fn verify_merkle_path_psd<const DEPTH: u8>(
         path: &MerklePath<Self, DEPTH>,
         root: &Field<Self>,

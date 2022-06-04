@@ -74,7 +74,6 @@ impl<N: Network> SerialNumber<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_account::Address;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 

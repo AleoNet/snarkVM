@@ -16,11 +16,11 @@
 
 use console::{
     account::{Address, PrivateKey, Signature, ViewKey},
-    collections::merkle_tree::MerkleTree,
-    network::{Network, Testnet3},
-    program::{Ciphertext, Data, Randomizer, Record, State},
+    network::Network,
+    program::{Randomizer, Record, State},
 };
-use snarkvm_curves::ProjectiveCurve;
+use snarkvm_algorithms::snark::marlin::Proof;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_experimental::{input, output, snark};
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
@@ -28,9 +28,16 @@ use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 use anyhow::{bail, Error, Result};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;
-use snarkvm_algorithms::snark::marlin::Proof;
-use snarkvm_curves::AffineCurve;
-use std::{thread, time::Instant};
+use std::time::Instant;
+
+// pub struct Execution;
+//
+// pub struct Function<N: Network> {
+//     /// The execution proof.
+//     execution: Execution,
+//     /// The process root.
+//     root: N::Field,
+// }
 
 struct Input<N: Network> {
     /// The serial number of the input record.
@@ -59,6 +66,8 @@ impl<N: Network> Input<N> {
 struct Output<N: Network> {
     /// The output record.
     record: Record<N>,
+    // /// The output program data.
+    // data: Vec<Data<N>>,
 }
 
 impl<N: Network> Output<N> {
@@ -84,6 +93,12 @@ impl<N: Network> Output<N> {
 }
 
 pub struct Transition<N: Network> {
+    // /// The program ID of the transition.
+    // program: N::Field,
+    // /// The process ID of the transition.
+    // process: N::Field,
+    // /// The function that was executed.
+    // function: Function<N>,
     /// The transition inputs.
     inputs: Vec<Input<N>>,
     /// The transition outputs.
@@ -101,6 +116,9 @@ pub struct Transition<N: Network> {
 impl<N: Network> Transition<N> {
     /// Returns `true` if the transition is valid.
     pub fn verify(&self) -> bool {
+        // // Ensure the program and process ID matches for all outputs.
+        // self.outputs.iter().all(|output| {})
+
         // self.
         true
     }
@@ -255,9 +273,7 @@ where
         };
         assert_eq!(fcm, transition.fcm()?);
 
-        // Set the network ID to 0.
-        let network = 0u16;
-        let transaction = Transaction { network, transitions: vec![transition] };
+        let transaction = Transaction { network: A::Network::ID, transitions: vec![transition] };
 
         Ok::<_, Error>(transaction)
     });
@@ -349,9 +365,7 @@ where
         };
         assert_eq!(fcm, transition.fcm()?);
 
-        // Set the network ID to 0.
-        let network = 0u16;
-        let transaction = Transaction { network, transitions: vec![transition] };
+        let transaction = Transaction { network: A::Network::ID, transitions: vec![transition] };
 
         Ok::<_, Error>(transaction)
     });
@@ -369,7 +383,7 @@ fn main() -> Result<()> {
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<<circuit::AleoV0 as circuit::Environment>::Network>::new(&mut rng)?;
     let caller_view_key = ViewKey::try_from(&caller_private_key)?;
-    let caller_address = Address::try_from(&caller_private_key)?;
+    let _caller_address = Address::try_from(&caller_private_key)?;
 
     // Generate a coinbase transaction.
     let transaction = mint::<circuit::AleoV0, ThreadRng>(&caller_view_key, 100u64, &mut rng)?;
@@ -378,7 +392,7 @@ fn main() -> Result<()> {
     let record = transaction.transitions()[0].outputs[0].record();
 
     // Spend the coinbase record.
-    let transaction = burn::<circuit::AleoV0, ThreadRng>(&caller_private_key, record, &mut rng)?;
+    let _transaction = burn::<circuit::AleoV0, ThreadRng>(&caller_private_key, record, &mut rng)?;
 
     Ok(())
 }

@@ -22,7 +22,6 @@ pub use randomizer::Randomizer;
 
 mod decrypt;
 mod encrypt;
-mod to_digest;
 
 use crate::Record;
 use snarkvm_circuit_account::ViewKey;
