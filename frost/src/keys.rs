@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::utils::*;
+
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
+use anyhow::Result;
 use rand::Rng;
 use std::{
     collections::HashMap,
@@ -37,6 +40,7 @@ pub struct SignerPublicKey<G: AffineCurve>(pub G);
 pub struct SignerSecretKey<G: AffineCurve>(pub <G as AffineCurve>::ScalarField);
 
 /// The list of signer public keys and the group public key.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKeys<G: AffineCurve> {
     /// The map of all participant public keys.
     pub public_keys: HashMap<u64, SignerPublicKey<G>>,
@@ -45,6 +49,7 @@ pub struct PublicKeys<G: AffineCurve> {
 }
 
 /// A signer's share that includes its secret key and all publicly known keys/commitments.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignerShare<G: AffineCurve> {
     /// The index of the participant.
     pub participant_index: u64,
@@ -81,9 +86,13 @@ impl<G: AffineCurve> SignerShare<G> {
 /// DKG, but for simplicity we will use a trusted dealer model. This trusted dealer model only
 /// generates a single polynomial for all participants, and then uses the indexes to determine
 /// secret shares for each participant.
+///
+/// The `secret` attribute is presampled where g^`secret` = GroupPublicKey.
+/// This `secret` attribute is passed through for testing purposes.
 pub fn trusted_keygen<R: Rng, G: AffineCurve>(
     num_participants: u8,
     threshold: u8,
+    secret: &<G as AffineCurve>::ScalarField,
     rng: &mut R,
 ) -> (Vec<SignerShare<G>>, PublicKeys<G>) {
     if num_participants < 1 {
@@ -97,11 +106,8 @@ pub fn trusted_keygen<R: Rng, G: AffineCurve>(
     let mut coefficients: Vec<<G as AffineCurve>::ScalarField> = Vec::with_capacity(threshold as usize);
     let mut share_commitment: Vec<G> = Vec::with_capacity(threshold as usize);
 
-    // Sample the `secret`where g^`secret` = GroupPublicKey.
-    let secret = <G as AffineCurve>::ScalarField::rand(rng);
-
     // FROST KeyGen Round 1.1: Generate the polynomial coefficients.
-    coefficients.push(secret);
+    coefficients.push(*secret);
     for _ in 0..threshold - 1 {
         coefficients.push(<G as AffineCurve>::ScalarField::rand(rng));
     }
@@ -114,7 +120,7 @@ pub fn trusted_keygen<R: Rng, G: AffineCurve>(
     }
 
     // Generate the group secret key from the provided secret.
-    let group_public_key = GroupPublicKey(G::prime_subgroup_generator().mul(secret).into());
+    let group_public_key = GroupPublicKey(G::prime_subgroup_generator().mul(*secret).into());
 
     // FROST KeyGen Round 2: Generate the secret shares for each participant using a centralized authority.
     // As described in https://github.com/isislovecruft/frost-dalek/blob/main/src/keygen.rs
@@ -160,6 +166,21 @@ mod test {
     use snarkvm_curves::edwards_bls12::EdwardsAffine as EdwardsBls12Affine;
     use snarkvm_utilities::test_rng;
 
+    /// Reconstruct the secret if there are enough participant shares (greater or equal to threshold).
+    pub fn reconstruct_secret<G: AffineCurve>(participants: &[SignerShare<G>]) -> Result<SignerSecretKey<G>> {
+        let indexes = participants.iter().map(|p| p.participant_index).collect::<Vec<_>>();
+
+        let mut reconstructed_secret = <G as AffineCurve>::ScalarField::zero();
+
+        for participant in participants {
+            let coeff = calculate_lagrange_coefficients::<G>(participant.participant_index, &indexes)?;
+
+            reconstructed_secret += participant.secret_key.0.mul(coeff);
+        }
+
+        Ok(SignerSecretKey(reconstructed_secret))
+    }
+
     #[test]
     fn test_single_participant_trusted_keygen() {
         let mut rng = test_rng();
@@ -167,7 +188,11 @@ mod test {
         let threshold = 1;
         let num_participants = 1;
 
-        let (shares, public_keys) = trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &mut rng);
+        // Sample the `secret`where g^`secret` = GroupPublicKey.
+        let secret = <EdwardsBls12Affine as AffineCurve>::ScalarField::rand(&mut rng);
+
+        let (shares, public_keys) =
+            trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &secret, &mut rng);
 
         assert_eq!(shares.len(), num_participants as usize);
         assert_eq!(public_keys.public_keys.len(), num_participants as usize);
@@ -187,7 +212,11 @@ mod test {
         let threshold = 3;
         let num_participants = 5;
 
-        let (shares, public_keys) = trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &mut rng);
+        // Sample the `secret`where g^`secret` = GroupPublicKey.
+        let secret = <EdwardsBls12Affine as AffineCurve>::ScalarField::rand(&mut rng);
+
+        let (shares, public_keys) =
+            trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &secret, &mut rng);
 
         assert_eq!(shares.len(), num_participants as usize);
         assert_eq!(public_keys.public_keys.len(), num_participants as usize);
@@ -204,10 +233,14 @@ mod test {
     fn test_6_out_of_10_trusted_keygen() {
         let mut rng = test_rng();
 
-        let threshold = 3;
-        let num_participants = 5;
+        let threshold = 6;
+        let num_participants = 10;
 
-        let (shares, public_keys) = trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &mut rng);
+        // Sample the `secret`where g^`secret` = GroupPublicKey.
+        let secret = <EdwardsBls12Affine as AffineCurve>::ScalarField::rand(&mut rng);
+
+        let (shares, public_keys) =
+            trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &secret, &mut rng);
 
         assert_eq!(shares.len(), num_participants as usize);
         assert_eq!(public_keys.public_keys.len(), num_participants as usize);
@@ -220,5 +253,24 @@ mod test {
         }
     }
 
-    // TODO (raychu86): Test secret reconstruction using lagrange coefficients.
+    #[test]
+    fn test_trusted_keygen_verifiable_secret_sharing() {
+        let mut rng = test_rng();
+
+        let threshold = 6;
+        let num_participants = 10;
+
+        // Sample the `secret`where g^`secret` = GroupPublicKey.
+        let secret = <EdwardsBls12Affine as AffineCurve>::ScalarField::rand(&mut rng);
+
+        let (shares, _) = trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &secret, &mut rng);
+
+        let enough_participants = shares[0..threshold as usize].to_vec();
+        let reconstructed_secret = reconstruct_secret(&enough_participants).unwrap();
+        assert_eq!(reconstructed_secret.0, secret);
+
+        let not_enough_participants = shares[0..threshold as usize - 1].to_vec();
+        let reconstructed_secret = reconstruct_secret(&not_enough_participants).unwrap();
+        assert_ne!(reconstructed_secret.0, secret);
+    }
 }
