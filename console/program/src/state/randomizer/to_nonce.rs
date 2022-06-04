@@ -16,17 +16,10 @@
 
 use super::*;
 
-impl<N: Network> State<N> {
-    /// Returns a new record by encrypting this state using the given randomizer,
-    /// which is derived from the view key of the **sender**,
-    /// along with the serial numbers and output index in the transition.
-    pub fn encrypt(&self, randomizer: &Randomizer<N>) -> Result<Record<N>> {
-        // Ensure the nonce corresponds to the given randomizer: `nonce == randomizer * G`.
-        ensure!(self.nonce == randomizer.to_nonce(), "Attempted to encrypt using an invalid randomizer");
-
-        // Compute the record view key.
-        let record_view_key = randomizer.to_record_view_key(&self.owner);
-        // Encrypt the record and output the state.
-        Record::encrypt(self, &record_view_key)
+impl<N: Network> Randomizer<N> {
+    /// Returns the nonce, computed as `randomizer * G`.
+    pub fn to_nonce(&self) -> N::Affine {
+        // Compute the program state nonce.
+        N::g_scalar_multiply(&self.randomizer).to_affine()
     }
 }

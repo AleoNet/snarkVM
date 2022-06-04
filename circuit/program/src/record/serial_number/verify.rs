@@ -51,7 +51,7 @@ impl<A: Aleo> SerialNumber<A> {
 mod tests {
     use super::*;
     use snarkvm_circuit_network::AleoV0;
-    use snarkvm_utilities::{test_crypto_rng, Rng, ToBits as T, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 

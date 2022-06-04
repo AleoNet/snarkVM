@@ -23,7 +23,7 @@ impl<A: Aleo> State<A> {
         A::assert_eq(&self.nonce, randomizer.to_nonce());
 
         // Compute the record view key.
-        let record_view_key = (self.owner.to_group() * randomizer.value()).to_x_coordinate();
+        let record_view_key = randomizer.to_record_view_key(&self.owner);
         // Encrypt the state and output the record.
         Record::encrypt(self, &record_view_key)
     }

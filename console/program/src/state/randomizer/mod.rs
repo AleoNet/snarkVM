@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod prove;
+mod to_nonce;
+mod to_record_view_key;
 mod verify;
 
 use snarkvm_console_account::{Address, ViewKey};
@@ -39,12 +41,6 @@ impl<N: Network> From<(N::Scalar, (N::Affine, N::Scalar, N::Scalar))> for Random
 }
 
 impl<N: Network> Randomizer<N> {
-    /// Returns the nonce, computed as `randomizer * G`.
-    pub fn to_nonce(&self) -> N::Affine {
-        // Compute the program state nonce.
-        N::g_scalar_multiply(&self.randomizer).to_affine()
-    }
-
     /// Returns the randomizer from the VRF.
     pub const fn value(&self) -> &N::Scalar {
         &self.randomizer

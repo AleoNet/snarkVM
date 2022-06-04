@@ -218,7 +218,7 @@ where
     let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
 
     // Compute the record view key.
-    let record_view_key = record.to_record_view_key(caller_view_key);
+    let record_view_key = randomizer.to_record_view_key(&caller_address);
     // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
     let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
     // Compute the fee commitment.
@@ -280,6 +280,7 @@ where
     A::ScalarField: UnwindSafe + RefUnwindSafe,
     A::Affine: UnwindSafe + RefUnwindSafe,
 {
+    // Initialize the caller view key and address.
     let caller_view_key = ViewKey::try_from(caller_private_key)?;
     let caller_address = Address::try_from(caller_private_key)?;
 

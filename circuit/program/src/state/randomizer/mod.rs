@@ -17,6 +17,8 @@
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
+mod to_nonce;
+mod to_record_view_key;
 mod verify;
 
 use snarkvm_circuit_network::Aleo;
@@ -62,12 +64,6 @@ impl<A: Aleo> Eject for Randomizer<A> {
 }
 
 impl<A: Aleo> Randomizer<A> {
-    /// Returns the nonce, computed as `randomizer * G`.
-    pub fn to_nonce(&self) -> Group<A> {
-        // Compute the program state nonce.
-        A::g_scalar_multiply(&self.randomizer)
-    }
-
     /// Returns the randomizer from the VRF.
     pub const fn value(&self) -> &Scalar<A> {
         &self.randomizer
