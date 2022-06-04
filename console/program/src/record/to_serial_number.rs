@@ -20,10 +20,12 @@ impl<N: Network> Record<N> {
     /// Returns the serial number of the record, given the private key of the record owner and an RNG.
     pub fn to_serial_number<R: Rng + CryptoRng>(
         &self,
-        private_key: &PrivateKey<N>,
+        sk_sig: &N::Scalar,
+        pr_sig: &N::Affine,
+        message: &[N::Field],
         rng: &mut R,
     ) -> Result<SerialNumber<N>> {
         // Compute the serial number.
-        SerialNumber::<N>::prove(&private_key.sk_vrf(), self.to_commitment()?, rng)
+        SerialNumber::<N>::sign(&sk_sig, pr_sig, message, self.to_commitment()?, rng)
     }
 }

@@ -18,7 +18,6 @@ use super::*;
 
 static ACCOUNT_SK_SIG_DOMAIN: &str = "AleoAccountSignatureSecretKey0";
 static ACCOUNT_R_SIG_DOMAIN: &str = "AleoAccountSignatureRandomizer0";
-static ACCOUNT_SK_VRF_DOMAIN: &str = "AleoAccountVRFSecretKey0";
 
 impl<N: Network> PrivateKey<N> {
     /// Returns the account private key from an account seed.
@@ -31,15 +30,6 @@ impl<N: Network> PrivateKey<N> {
         let r_sig_input = format!("{}.{}", ACCOUNT_R_SIG_DOMAIN, 0);
         let r_sig_domain = N::Scalar::from_bytes_le_mod_order(r_sig_input.as_bytes());
 
-        // Construct the sk_vrf domain separator.
-        let sk_vrf_input = format!("{}.{}", ACCOUNT_SK_VRF_DOMAIN, 0);
-        let sk_vrf_domain = N::Scalar::from_bytes_le_mod_order(sk_vrf_input.as_bytes());
-
-        Ok(Self {
-            seed,
-            sk_sig: N::prf_psd2s(&seed, &[sk_sig_domain])?,
-            r_sig: N::prf_psd2s(&seed, &[r_sig_domain])?,
-            sk_vrf: N::prf_psd2s(&seed, &[sk_vrf_domain])?,
-        })
+        Ok(Self { seed, sk_sig: N::prf_psd2s(&seed, &[sk_sig_domain])?, r_sig: N::prf_psd2s(&seed, &[r_sig_domain])? })
     }
 }

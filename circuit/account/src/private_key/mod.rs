@@ -29,8 +29,6 @@ pub struct PrivateKey<A: Aleo> {
     sk_sig: Scalar<A>,
     /// The signature secret randomizer.
     r_sig: Scalar<A>,
-    /// The VRF secret key.
-    sk_vrf: Scalar<A>,
 }
 
 #[cfg(console)]
@@ -39,11 +37,7 @@ impl<A: Aleo> Inject for PrivateKey<A> {
 
     /// Initializes an account private key from the given mode and native private key.
     fn new(mode: Mode, private_key: Self::Primitive) -> Self {
-        Self {
-            sk_sig: Scalar::new(mode, private_key.sk_sig()),
-            r_sig: Scalar::new(mode, private_key.r_sig()),
-            sk_vrf: Scalar::new(mode, private_key.sk_vrf()),
-        }
+        Self { sk_sig: Scalar::new(mode, private_key.sk_sig()), r_sig: Scalar::new(mode, private_key.r_sig()) }
     }
 }
 
@@ -57,25 +51,20 @@ impl<A: Aleo> PrivateKey<A> {
     pub const fn r_sig(&self) -> &Scalar<A> {
         &self.r_sig
     }
-
-    /// Returns the VRF secret key.
-    pub const fn sk_vrf(&self) -> &Scalar<A> {
-        &self.sk_vrf
-    }
 }
 
 #[cfg(console)]
 impl<A: Aleo> Eject for PrivateKey<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, A::ScalarField);
+    type Primitive = (A::ScalarField, A::ScalarField);
 
     /// Ejects the mode of the account private key.
     fn eject_mode(&self) -> Mode {
-        (&self.sk_sig, &self.r_sig, &self.sk_vrf).eject_mode()
+        (&self.sk_sig, &self.r_sig).eject_mode()
     }
 
-    /// Ejects the account private key as `(sk_sig, r_sig, sk_vrf)`.
+    /// Ejects the account private key as `(sk_sig, r_sig)`.
     fn eject_value(&self) -> Self::Primitive {
-        (&self.sk_sig, &self.r_sig, &self.sk_vrf).eject_value()
+        (&self.sk_sig, &self.r_sig).eject_value()
     }
 }
 
@@ -102,12 +91,11 @@ mod tests {
             // Retrieve the native private key components.
             let sk_sig = private_key.sk_sig();
             let r_sig = private_key.r_sig();
-            let sk_vrf = private_key.sk_vrf();
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = PrivateKey::<Circuit>::new(mode, private_key);
                 assert_eq!(mode, candidate.eject_mode());
-                assert_eq!((sk_sig, r_sig, sk_vrf), candidate.eject_value());
+                assert_eq!((sk_sig, r_sig), candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();

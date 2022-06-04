@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use console::{
-    account::{Address, PrivateKey, Signature, ViewKey},
+    account::{Address, PrivateKey, ViewKey},
     network::Network,
     program::{Randomizer, Record, State},
 };
@@ -26,6 +26,7 @@ use snarkvm_fields::Zero;
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
 use anyhow::{bail, Error, Result};
+use console::account::ComputeKey;
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;
 use std::time::Instant;
@@ -90,6 +91,7 @@ impl<N: Network> Output<N> {
     }
 }
 
+#[allow(dead_code)]
 pub struct Transition<N: Network> {
     // /// The program ID of the transition.
     // program: N::Field,
@@ -322,7 +324,8 @@ where
     A::ScalarField: UnwindSafe + RefUnwindSafe,
     A::Affine: UnwindSafe + RefUnwindSafe,
 {
-    // Initialize the caller view key and address.
+    // Initialize the caller compute key, view key, and address.
+    let caller_compute_key = ComputeKey::try_from(caller_private_key)?;
     let caller_view_key = ViewKey::try_from(caller_private_key)?;
     let caller_address = Address::try_from(caller_private_key)?;
 
@@ -339,10 +342,10 @@ where
     // Compute the record view key.
     let record_view_key = record.to_record_view_key(&caller_view_key);
 
-    // Compute the serial number.
-    let serial_number = record.to_serial_number(caller_private_key, rng)?;
-    // Compute the signature for the serial number.
-    let signature = Signature::sign(caller_private_key, &[*serial_number.value()], rng)?;
+    // Compute the serial number and signature.
+    // TODO (howardwu): Add the *serial_number.serial_number() to the message.
+    let serial_number =
+        record.to_serial_number(&caller_private_key.sk_sig(), &caller_compute_key.pr_sig(), &[], rng)?;
 
     // Decrypt the record into program state.
     let state = record.decrypt_symmetric(&record_view_key)?;
@@ -364,7 +367,6 @@ where
             record.clone(),
             merkle_path,
             serial_number.clone(),
-            signature,
             r_acm,
             r_fcm,
         );

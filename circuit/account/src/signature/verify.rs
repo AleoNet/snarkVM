@@ -24,10 +24,10 @@ impl<A: Aleo> Signature<A> {
         // Retrieve pr_sig.
         let pr_sig = self.compute_key.pr_sig();
 
-        // Compute G^nonce := G^response G^sk_sig^challenge.
+        // Compute `g_nonce` := (response * G) + (challenge * pk_sig).
         let g_nonce = A::g_scalar_multiply(&self.response) + (pk_sig * &self.challenge);
 
-        // Construct the hash input as (G^nonce, pk_sig, pr_sig, address, message).
+        // Construct the hash input as (nonce * G, pk_sig, pr_sig, address, message).
         let mut preimage = Vec::with_capacity(4 + message.len());
         preimage.extend([&g_nonce, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
         preimage.push(address.to_field());
@@ -38,6 +38,7 @@ impl<A: Aleo> Signature<A> {
         // Compute the candidate address.
         let candidate_address = self.compute_key.to_address();
 
+        // Return `true` if the challenge and address is valid.
         self.challenge.is_equal(&candidate_challenge) & address.is_equal(&candidate_address)
     }
 }

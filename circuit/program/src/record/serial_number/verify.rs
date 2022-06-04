@@ -17,22 +17,39 @@
 use super::*;
 
 impl<A: Aleo> SerialNumber<A> {
-    /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &Group<A>, commitment: &Field<A>) -> Boolean<A> {
+    /// Returns `true` if the signature is valid, and `false` otherwise.
+    ///
+    /// Verifies (challenge == challenge') && (address == address') && (serial_number == serial_number') where:
+    ///     challenge' := HashToScalar(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)
+    pub fn verify(&self, address: &Address<A>, message: &[Field<A>], commitment: &Field<A>) -> Boolean<A> {
         // Retrieve the proof components.
-        let (gamma, challenge, response) = &self.proof;
+        let (challenge, response, compute_key, gamma) = &self.signature;
+        // Retrieve pk_sig.
+        let pk_sig = compute_key.pk_sig();
+        // Retrieve pr_sig.
+        let pr_sig = compute_key.pr_sig();
 
         // Compute the generator `H` as `HashToGroup(commitment)`.
-        let generator_h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
+        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
 
-        // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
-        let u = (pk_vrf * challenge) + A::g_scalar_multiply(response);
+        // Compute `g_r` as `(challenge * address) + (response * G)`, equivalent to `r * G`.
+        let g_r = (pk_sig * challenge) + A::g_scalar_multiply(response);
 
-        // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `nonce * H`.
-        let v = (gamma * challenge) + (generator_h * response);
+        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+        let h_r = (gamma * challenge) + (&h * response);
 
-        // Compute `candidate_challenge` as `HashToScalar(address, gamma, nonce * G, nonce * H)`.
-        let candidate_challenge = A::hash_to_scalar_psd4(&[pk_vrf, gamma, &u, &v].map(|c| c.to_x_coordinate()));
+        // Construct the hash input as (H, H^r, gamma, G^r, pk_sig, pr_sig, address, message).
+        let mut preimage = Vec::with_capacity(8 + message.len());
+        preimage.push(A::serial_number_domain());
+        preimage.extend([&h, &h_r, gamma, &g_r, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
+        preimage.push(address.to_field());
+        preimage.extend_from_slice(message);
+
+        // Compute `candidate_challenge` as `HashToScalar(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)`.
+        let candidate_challenge = A::hash_to_scalar_psd8(&preimage);
+
+        // Compute the candidate address.
+        let candidate_address = compute_key.to_address();
 
         // Compute `candidate_serial_number_nonce` as `HashToScalar(COFACTOR * gamma)`.
         let candidate_serial_number_nonce =
@@ -42,8 +59,10 @@ impl<A: Aleo> SerialNumber<A> {
         let candidate_serial_number =
             A::commit_bhp512(&(&A::serial_number_domain(), commitment).to_bits_le(), &candidate_serial_number_nonce);
 
-        // Return `true` the challenge and serial number is valid.
-        challenge.is_equal(&candidate_challenge) & self.serial_number.is_equal(&candidate_serial_number)
+        // Return `true` if the challenge, address, and serial number are valid.
+        challenge.is_equal(&candidate_challenge)
+            & address.is_equal(&candidate_address)
+            & self.serial_number.is_equal(&candidate_serial_number)
     }
 }
 
@@ -57,7 +76,7 @@ mod tests {
 
     type Circuit = AleoV0;
 
-    pub(crate) const ITERATIONS: usize = 100;
+    pub(crate) const ITERATIONS: usize = 50;
 
     fn check_verify(
         mode: Mode,
@@ -70,24 +89,31 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Compute the native serial number.
-            let sk_vrf = UniformRand::rand(rng);
+            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
+            let message = UniformRand::rand(rng);
             let commitment = UniformRand::rand(rng);
 
-            let pk_vrf =
-                <<Circuit as Environment>::Network as snarkvm_console_network::Network>::g_scalar_multiply(&sk_vrf)
-                    .into();
+            let sk_sig = private_key.sk_sig();
+            let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
+            let address = snarkvm_console_account::Address::try_from(&private_key)?;
 
-            let serial_number =
-                console::SerialNumber::<<Circuit as Environment>::Network>::prove(&sk_vrf, commitment, rng)?;
-            assert!(serial_number.verify(&pk_vrf, commitment));
+            let serial_number = console::SerialNumber::<<Circuit as Environment>::Network>::sign(
+                &sk_sig,
+                &pr_sig,
+                &[message],
+                commitment,
+                rng,
+            )?;
+            assert!(serial_number.verify(&address, &[message], commitment));
 
             // Inject the serial number and its arguments into circuits.
-            let pk_vrf = Group::<Circuit>::new(mode, pk_vrf);
+            let address = Address::<Circuit>::new(mode, address);
+            let message = Field::new(mode, message);
             let commitment = Field::new(mode, commitment);
             let serial_number = SerialNumber::new(mode, serial_number);
 
             Circuit::scope(format!("SerialNumber {i}"), || {
-                let candidate = serial_number.verify(&pk_vrf, &commitment);
+                let candidate = serial_number.verify(&address, &[message], &commitment);
                 assert!(candidate.eject_value());
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
             })
@@ -96,17 +122,17 @@ mod tests {
     }
 
     #[test]
-    fn test_prove_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 37325, 0, 0, 0)
+    fn test_sign_and_verify_constant() -> Result<()> {
+        check_verify(Mode::Constant, 20969, 0, 0, 0)
     }
 
     #[test]
-    fn test_prove_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 15076, 0, 15365, 15388)
+    fn test_sign_and_verify_public() -> Result<()> {
+        check_verify(Mode::Public, 15792, 0, 17301, 17326)
     }
 
     #[test]
-    fn test_prove_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 15076, 0, 15365, 15388)
+    fn test_sign_and_verify_private() -> Result<()> {
+        check_verify(Mode::Private, 15792, 0, 17301, 17326)
     }
 }

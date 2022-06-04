@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod prove;
+mod sign;
 mod verify;
 
+use snarkvm_console_account::{Address, ComputeKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
@@ -25,27 +26,32 @@ use anyhow::Result;
 
 #[derive(Clone)]
 pub struct SerialNumber<N: Network> {
-    /// The serial number from the VRF.
+    /// The serial number of the record.
     serial_number: N::Field,
-    /// The proof for the serial number: `(gamma, challenge, response)`.
-    proof: (N::Affine, N::Scalar, N::Scalar),
+    /// The signature for the serial number: `(challenge, response, compute_key, gamma)`.
+    signature: (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine),
 }
 
-impl<N: Network> From<(N::Field, (N::Affine, N::Scalar, N::Scalar))> for SerialNumber<N> {
+impl<N: Network> From<(N::Field, (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine))> for SerialNumber<N> {
     /// Note: See `SerialNumber::prove` to create a serial number. This method is used to eject from a circuit.
-    fn from((serial_number, (gamma, challenge, response)): (N::Field, (N::Affine, N::Scalar, N::Scalar))) -> Self {
-        Self { serial_number, proof: (gamma, challenge, response) }
+    fn from(
+        (serial_number, (challenge, response, compute_key, gamma)): (
+            N::Field,
+            (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine),
+        ),
+    ) -> Self {
+        Self { serial_number, signature: (challenge, response, compute_key, gamma) }
     }
 }
 
 impl<N: Network> SerialNumber<N> {
-    /// Returns the serial number from the VRF.
+    /// Returns the serial number.
     pub const fn value(&self) -> &N::Field {
         &self.serial_number
     }
 
-    /// Returns the proof for the serial number.
-    pub const fn proof(&self) -> &(N::Affine, N::Scalar, N::Scalar) {
-        &self.proof
+    /// Returns the signature for the serial number.
+    pub const fn signature(&self) -> &(N::Scalar, N::Scalar, ComputeKey<N>, N::Affine) {
+        &self.signature
     }
 }

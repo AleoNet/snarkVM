@@ -17,33 +17,54 @@
 use super::*;
 
 impl<N: Network> SerialNumber<N> {
-    /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, pk_vrf: &N::Affine, commitment: N::Field) -> bool {
-        // Retrieve the proof components.
-        let (gamma, challenge, response) = self.proof;
+    /// Returns `true` if the signature is valid, and `false` otherwise.
+    ///
+    /// Verifies (challenge == challenge') && (address == address') && (serial_number == serial_number') where:
+    ///     challenge' := HashToScalar(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)
+    pub fn verify(&self, address: &Address<N>, message: &[N::Field], commitment: N::Field) -> bool {
+        // Retrieve the signature components.
+        let (challenge, response, compute_key, gamma) = self.signature;
+        // Retrieve pk_sig.
+        let pk_sig = compute_key.pk_sig();
+        // Retrieve pr_sig.
+        let pr_sig = compute_key.pr_sig();
 
         // Compute the generator `H` as `HashToGroup(commitment)`.
-        let generator_h = match N::hash_to_group_psd2(&[N::serial_number_domain(), commitment]) {
-            Ok(generator_h) => generator_h,
+        let h = match N::hash_to_group_psd2(&[N::serial_number_domain(), commitment]) {
+            Ok(h) => h,
             Err(error) => {
                 eprintln!("Failed to compute the generator H: {error}");
                 return false;
             }
         };
 
-        // Compute `u` as `(challenge * pk_vrf) + (response * G)`, equivalent to `nonce * G`.
-        let u = ((pk_vrf.to_projective() * challenge) + N::g_scalar_multiply(&response)).to_affine();
+        // Compute `g_r` as `(challenge * pk_sig) + (response * G)`, equivalent to `r * G`.
+        let g_r = ((pk_sig.to_projective() * challenge) + N::g_scalar_multiply(&response)).to_affine();
 
-        // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `nonce * H`.
-        let v = ((gamma.to_projective() * challenge) + (generator_h * response)).to_affine();
+        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+        let h_r = ((gamma.to_projective() * challenge) + (h * response)).to_affine();
 
-        // Compute `candidate_challenge` as `HashToScalar(pk_vrf, gamma, nonce * G, nonce * H)`.
-        let candidate_challenge = match N::hash_to_scalar_psd4(&[pk_vrf, &gamma, &u, &v].map(|c| c.to_x_coordinate())) {
+        // Construct the hash input as `(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)`.
+        let mut preimage = Vec::with_capacity(8 + message.len());
+        preimage.push(N::serial_number_domain());
+        preimage.extend([h, h_r, gamma, g_r, pk_sig, pr_sig, **address].map(|point| point.to_x_coordinate()));
+        preimage.extend(message);
+
+        // Compute `candidate_challenge` as `HashToScalar(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)`.
+        let candidate_challenge = match N::hash_to_scalar_psd8(&preimage) {
             Ok(candidate_challenge) => candidate_challenge,
             Err(error) => {
                 eprintln!("Failed to compute the challenge: {error}");
                 return false;
             }
+        };
+
+        // Derive the address from the compute key, and return `false` if this operation fails.
+        let candidate_address = match Address::try_from(compute_key) {
+            // Output the computed candidate address.
+            Ok(candidate_address) => candidate_address,
+            // Return `false` if the address errored.
+            Err(_) => return false,
         };
 
         // Compute `serial_number_nonce` as `HashToScalar(COFACTOR * gamma)`.
@@ -66,14 +87,17 @@ impl<N: Network> SerialNumber<N> {
                 }
             };
 
-        // Return `true` the challenge and serial number is valid.
-        challenge == candidate_challenge && self.serial_number == candidate_serial_number
+        // Return `true` if the challenge, address, and serial number are valid.
+        challenge == candidate_challenge
+            && *address == candidate_address
+            && self.serial_number == candidate_serial_number
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
@@ -82,17 +106,20 @@ mod tests {
     pub(crate) const ITERATIONS: usize = 1000;
 
     #[test]
-    fn test_prove_and_verify() -> Result<()> {
+    fn test_sign_and_verify() -> Result<()> {
         let rng = &mut test_crypto_rng();
 
         for _ in 0..ITERATIONS {
-            let sk_vrf = UniformRand::rand(rng);
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+            let message = UniformRand::rand(rng);
             let commitment = UniformRand::rand(rng);
 
-            let pk_vrf = CurrentNetwork::g_scalar_multiply(&sk_vrf).to_affine();
+            let sk_sig = private_key.sk_sig();
+            let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();
+            let address = Address::try_from(&private_key)?;
 
-            let serial_number = SerialNumber::<CurrentNetwork>::prove(&sk_vrf, commitment, rng)?;
-            assert!(serial_number.verify(&pk_vrf, commitment));
+            let serial_number = SerialNumber::<CurrentNetwork>::sign(&sk_sig, &pr_sig, &[message], commitment, rng)?;
+            assert!(serial_number.verify(&address, &[message], commitment));
         }
         Ok(())
     }

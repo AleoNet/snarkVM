@@ -19,21 +19,18 @@ use super::*;
 impl<A: Aleo> ComputeKey<A> {
     /// Returns the account compute key for this account private key.
     pub fn from_private_key(private_key: &PrivateKey<A>) -> Self {
-        // Extract (sk_sig, r_sig, sk_vrf).
-        let (sk_sig, r_sig, sk_vrf) = (private_key.sk_sig(), private_key.r_sig(), private_key.sk_vrf());
+        // Extract (sk_sig, r_sig).
+        let (sk_sig, r_sig) = (private_key.sk_sig(), private_key.r_sig());
 
         // Compute `pk_sig` := G^sk_sig.
         let pk_sig = A::g_scalar_multiply(sk_sig);
         // Compute `pr_sig` := G^r_sig.
         let pr_sig = A::g_scalar_multiply(r_sig);
-        // Compute `pk_vrf` := G^sk_vrf.
-        let pk_vrf = A::g_scalar_multiply(sk_vrf);
-        // Compute `sk_prf` := RO(G^sk_sig || G^r_sig || G^sk_vrf).
-        let sk_prf =
-            A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate(), pk_vrf.to_x_coordinate()]);
+        // Compute `sk_prf` := RO(G^sk_sig || G^r_sig).
+        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
         // Return the compute key.
-        Self { pk_sig, pr_sig, pk_vrf, sk_prf }
+        Self { pk_sig, pr_sig, sk_prf }
     }
 }
 

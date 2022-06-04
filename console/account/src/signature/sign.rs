@@ -17,13 +17,13 @@
 use super::*;
 
 impl<N: Network> Signature<N> {
-    /// Returns a signature `(challenge, response, compute_key)` for a given message and nonce, where:
-    ///     challenge := HashToScalar(G^nonce, pk_sig, pr_sig, address, message)
+    /// Returns a signature `(challenge, response, compute_key)` for a given message and RNG, where:
+    ///     challenge := HashToScalar(nonce * G, pk_sig, pr_sig, address, message)
     ///     response := nonce - challenge * private_key.sk_sig()
     pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[N::Field], rng: &mut R) -> Result<Self> {
         // Sample a random nonce from the scalar field.
         let nonce = N::Scalar::rand(rng);
-        // Compute G^nonce.
+        // Compute `g_nonce` as `nonce * G`.
         let g_nonce = N::g_scalar_multiply(&nonce).to_affine();
 
         // Derive the compute key from the private key.
@@ -36,7 +36,7 @@ impl<N: Network> Signature<N> {
         // Derive the address from the compute key.
         let address = Address::try_from(compute_key)?;
 
-        // Construct the hash input (G^nonce, pk_sig, pr_sig, address, message).
+        // Construct the hash input as (nonce * G, pk_sig, pr_sig, address, message).
         let mut preimage = Vec::with_capacity(4 + message.len());
         preimage.extend([g_nonce, pk_sig, pr_sig, *address].map(|point| point.to_x_coordinate()));
         preimage.extend(message);
@@ -58,10 +58,10 @@ impl<N: Network> Signature<N> {
         // Retrieve pr_sig.
         let pr_sig = self.compute_key.pr_sig();
 
-        // Compute G^nonce := G^response pk_sig^challenge.
+        // Compute `g_nonce` := (response * G) + (challenge * pk_sig).
         let g_nonce = (N::g_scalar_multiply(&self.response) + (pk_sig.to_projective() * self.challenge)).to_affine();
 
-        // Construct the hash input (G^nonce, address, pk_sig, pr_sig, message).
+        // Construct the hash input as (nonce * G, address, pk_sig, pr_sig, message).
         let mut preimage = Vec::with_capacity(4 + message.len());
         preimage.extend([g_nonce, pk_sig, pr_sig, **address].map(|point| point.to_x_coordinate()));
         preimage.extend(message);

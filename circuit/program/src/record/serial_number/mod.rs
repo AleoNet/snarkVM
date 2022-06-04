@@ -19,14 +19,15 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 mod verify;
 
+use snarkvm_circuit_account::ComputeKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar};
 
 pub struct SerialNumber<A: Aleo> {
-    /// The serial number from the VRF.
+    /// The serial number.
     serial_number: Field<A>,
-    /// The proof for the serial number: `(gamma, challenge, response)`.
-    proof: (Group<A>, Scalar<A>, Scalar<A>),
+    /// The signature for the serial number: `(challenge, response, compute_key, gamma)`.
+    signature: (Scalar<A>, Scalar<A>, ComputeKey<A>, Group<A>),
 }
 
 #[cfg(console)]
@@ -37,10 +38,11 @@ impl<A: Aleo> Inject for SerialNumber<A> {
     fn new(mode: Mode, serial_number: Self::Primitive) -> SerialNumber<A> {
         Self {
             serial_number: Field::new(mode, *serial_number.value()),
-            proof: (
-                Group::new(mode, serial_number.proof().0),
-                Scalar::new(mode, serial_number.proof().1),
-                Scalar::new(mode, serial_number.proof().2),
+            signature: (
+                Scalar::new(mode, serial_number.signature().0),
+                Scalar::new(mode, serial_number.signature().1),
+                ComputeKey::new(mode, serial_number.signature().2),
+                Group::new(mode, serial_number.signature().3),
             ),
         }
     }
@@ -52,23 +54,23 @@ impl<A: Aleo> Eject for SerialNumber<A> {
 
     /// Ejects the mode of the serial number.
     fn eject_mode(&self) -> Mode {
-        (&self.serial_number, &self.proof.0, &self.proof.1, &self.proof.2).eject_mode()
+        (&self.serial_number, &self.signature.0, &self.signature.1, &self.signature.2, &self.signature.3).eject_mode()
     }
 
     /// Ejects the serial number.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from((self.serial_number.eject_value(), (&self.proof).eject_value()))
+        Self::Primitive::from((self.serial_number.eject_value(), (&self.signature).eject_value()))
     }
 }
 
 impl<A: Aleo> SerialNumber<A> {
-    /// Returns the serial number from the VRF.
+    /// Returns the serial number.
     pub const fn value(&self) -> &Field<A> {
         &self.serial_number
     }
 
-    /// Returns the proof for the serial number.
-    pub const fn proof(&self) -> &(Group<A>, Scalar<A>, Scalar<A>) {
-        &self.proof
+    /// Returns the signature for the serial number.
+    pub const fn signature(&self) -> &(Scalar<A>, Scalar<A>, ComputeKey<A>, Group<A>) {
+        &self.signature
     }
 }

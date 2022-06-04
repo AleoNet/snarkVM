@@ -29,8 +29,6 @@ pub struct ComputeKey<A: Aleo> {
     pk_sig: Group<A>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: Group<A>,
-    /// The VRF public key `pk_vrf` := G^sk_vrf.
-    pk_vrf: Group<A>,
     /// The PRF secret key `sk_prf` := RO(G^sk_sig || G^r_sig).
     sk_prf: Scalar<A>,
 }
@@ -45,13 +43,10 @@ impl<A: Aleo> Inject for ComputeKey<A> {
         let pk_sig = Group::new(mode, compute_key.pk_sig());
         // Inject `pr_sig`.
         let pr_sig = Group::new(mode, compute_key.pr_sig());
-        // Inject `pk_vrf`.
-        let pk_vrf = Group::new(mode, compute_key.pk_vrf());
-        // Compute `sk_prf` := HashToScalar(G^sk_sig || G^r_sig || G^sk_vrf).
-        let sk_prf =
-            A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate(), pk_vrf.to_x_coordinate()]);
+        // Compute `sk_prf` := HashToScalar(G^sk_sig || G^r_sig).
+        let sk_prf = A::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
         // Output the compute key.
-        Self { pk_sig, pr_sig, pk_vrf, sk_prf }
+        Self { pk_sig, pr_sig, sk_prf }
     }
 }
 
@@ -66,11 +61,6 @@ impl<A: Aleo> ComputeKey<A> {
         &self.pr_sig
     }
 
-    /// Returns the VRF public key.
-    pub const fn pk_vrf(&self) -> &Group<A> {
-        &self.pk_vrf
-    }
-
     /// Returns the PRF secret key.
     pub const fn sk_prf(&self) -> &Scalar<A> {
         &self.sk_prf
@@ -83,12 +73,12 @@ impl<A: Aleo> Eject for ComputeKey<A> {
 
     /// Ejects the mode of the compute key.
     fn eject_mode(&self) -> Mode {
-        (&self.pk_sig, &self.pr_sig, &self.pk_vrf, &self.sk_prf).eject_mode()
+        (&self.pk_sig, &self.pr_sig, &self.sk_prf).eject_mode()
     }
 
     /// Ejects the compute key.
     fn eject_value(&self) -> Self::Primitive {
-        match Self::Primitive::try_from((&self.pk_sig, &self.pr_sig, &self.pk_vrf).eject_value()) {
+        match Self::Primitive::try_from((&self.pk_sig, &self.pr_sig).eject_value()) {
             Ok(compute_key) => compute_key,
             Err(error) => A::halt(format!("Failed to eject the compute key: {error}")),
         }

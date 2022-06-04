@@ -28,7 +28,6 @@ pub mod input {
         Record,
         Scalar,
         SerialNumber,
-        Signature,
         ToBits,
         Zero,
         U64,
@@ -75,10 +74,8 @@ pub mod input {
         record: Record<A>,
         /// The input commitment Merkle path.
         merkle_path: MerklePath<A, 32>,
-        /// The input serial number proof.
+        /// The input serial number signature.
         serial_number: SerialNumber<A>,
-        /// The input signature.
-        signature: Signature<A>,
         /// The address randomizer.
         r_acm: Scalar<A>,
         /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
@@ -92,7 +89,6 @@ pub mod input {
             record: console::program::Record<A::Network>,
             merkle_path: console::collections::merkle_tree::MerklePath<A::BaseField, 32>,
             serial_number: console::program::SerialNumber<A::Network>,
-            signature: console::account::Signature<A::Network>,
             r_acm: A::ScalarField,
             r_fcm: A::ScalarField,
         ) -> Self {
@@ -101,7 +97,6 @@ pub mod input {
                 record: Record::<A>::new(Mode::Private, record),
                 merkle_path: MerklePath::<A, 32>::new(Mode::Private, merkle_path),
                 serial_number: SerialNumber::<A>::new(Mode::Private, serial_number),
-                signature: Signature::<A>::new(Mode::Private, signature),
                 r_acm: Scalar::<A>::new(Mode::Private, r_acm),
                 r_fcm: Scalar::<A>::new(Mode::Private, r_fcm),
             }
@@ -122,12 +117,11 @@ pub mod input {
             ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
 
             // Ensure all private members are private inputs.
-            let Private { record_view_key, record, merkle_path, serial_number, signature, r_acm, r_fcm } = &private;
+            let Private { record_view_key, record, merkle_path, serial_number, r_acm, r_fcm } = &private;
             ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
             ensure!(record.eject_mode().is_private(), "Input record must be private");
             ensure!(merkle_path.eject_mode().is_private(), "Input commitment Merkle path must be private");
             ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
-            ensure!(signature.eject_mode().is_private(), "Input signature must be private");
             ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
             ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
 
@@ -167,15 +161,11 @@ pub mod input {
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the serial number is valid.
-            A::assert(private.serial_number.verify(private.signature.compute_key().pk_vrf(), &commitment));
+            A::assert(private.serial_number.verify(state.owner(), &[], &commitment));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the serial number matches the declared serial number.
             A::assert_eq(&public.serial_number, private.serial_number.value());
-            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            // Ensure the signature is valid.
-            A::assert(private.signature.verify(state.owner(), &[private.serial_number.value().clone()]));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
         }
     }
