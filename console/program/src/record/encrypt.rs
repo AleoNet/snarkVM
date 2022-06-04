@@ -42,3 +42,41 @@ impl<N: Network> Record<N> {
         Ok(Self { owner, balance, data: state.data(), nonce: state.nonce(), mac, bcm })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 100;
+
+    /// This test sanity checks that the first 2 indices of the randomizers remain the same,
+    /// even when `num_outputs` is greater than 2.
+    #[test]
+    fn test_randomizers_num_outputs() {
+        for _ in 0..ITERATIONS {
+            // Sample a random record view key.
+            let record_view_key = UniformRand::rand(&mut test_rng());
+            // Compute the randomizers.
+            let randomizers =
+                CurrentNetwork::hash_many_psd2(&[CurrentNetwork::encryption_domain(), record_view_key], 2);
+            // Retrieve the first and second randomizers.
+            let randomizer_0 = randomizers[0];
+            let randomizer_1 = randomizers[1];
+
+            for num_outputs in 2..50 {
+                // Compute the randomizers.
+                let randomizers = CurrentNetwork::hash_many_psd2(
+                    &[CurrentNetwork::encryption_domain(), record_view_key],
+                    num_outputs,
+                );
+                // Ensure the first two indices of the randomizers remain the same.
+                assert_eq!(randomizer_0, randomizers[0]);
+                assert_eq!(randomizer_1, randomizers[1]);
+            }
+        }
+    }
+}

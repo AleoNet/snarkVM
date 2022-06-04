@@ -47,5 +47,8 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.57"
 
+[dependencies.itertools]
+version = "0.10.1"
+
 [dependencies.rand]
 version = "0.8"

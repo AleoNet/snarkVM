@@ -33,6 +33,21 @@ pub enum Plaintext<A: Aleo> {
 }
 
 #[cfg(console)]
+impl<A: Aleo> Inject for Plaintext<A> {
+    type Primitive = console::Plaintext<A::Network>;
+
+    /// Initializes a new plaintext circuit from a primitive.
+    fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
+        match plaintext {
+            Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
+            Self::Primitive::Composite(composite, _) => {
+                Self::Composite(Inject::new(mode, composite), Default::default())
+            }
+        }
+    }
+}
+
+#[cfg(console)]
 impl<A: Aleo> Eject for Plaintext<A> {
     type Primitive = console::Plaintext<A::Network>;
 

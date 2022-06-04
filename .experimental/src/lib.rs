@@ -16,6 +16,10 @@
 
 #![forbid(unsafe_code)]
 
+#[allow(dead_code, unused_imports)]
+mod program;
+pub use program::*;
+
 pub mod input {
     use circuit::{
         merkle_tree::MerklePath,
@@ -58,11 +62,11 @@ pub mod input {
             fcm: A::Affine,
         ) -> Self {
             Self {
-                root: Field::<A>::new(Mode::Public, root),
-                serial_number: Field::<A>::new(Mode::Public, serial_number),
-                acm: Field::<A>::new(Mode::Public, acm),
-                bcm: Group::<A>::new(Mode::Public, bcm),
-                fcm: Group::<A>::new(Mode::Public, fcm),
+                root: Field::new(Mode::Public, root),
+                serial_number: Field::new(Mode::Public, serial_number),
+                acm: Field::new(Mode::Public, acm),
+                bcm: Group::new(Mode::Public, bcm),
+                fcm: Group::new(Mode::Public, fcm),
             }
         }
     }
@@ -93,12 +97,12 @@ pub mod input {
             r_fcm: A::ScalarField,
         ) -> Self {
             Self {
-                record_view_key: Field::<A>::new(Mode::Private, record_view_key),
-                record: Record::<A>::new(Mode::Private, record),
-                merkle_path: MerklePath::<A, 32>::new(Mode::Private, merkle_path),
-                serial_number: SerialNumber::<A>::new(Mode::Private, serial_number),
-                r_acm: Scalar::<A>::new(Mode::Private, r_acm),
-                r_fcm: Scalar::<A>::new(Mode::Private, r_fcm),
+                record_view_key: Field::new(Mode::Private, record_view_key),
+                record: Record::new(Mode::Private, record),
+                merkle_path: MerklePath::new(Mode::Private, merkle_path),
+                serial_number: SerialNumber::new(Mode::Private, serial_number),
+                r_acm: Scalar::new(Mode::Private, r_acm),
+                r_fcm: Scalar::new(Mode::Private, r_fcm),
             }
         }
     }
@@ -215,13 +219,13 @@ pub mod output {
             acm: A::BaseField,
             fcm: A::Affine,
         ) -> Self {
-            let index = U16::<A>::new(Mode::Public, index);
-            let record = Record::<A>::new(Mode::Public, record);
-            let serial_numbers_digest = Field::<A>::new(Mode::Public, serial_numbers_digest);
-            let acm = Field::<A>::new(Mode::Public, acm);
-            let fcm = Group::<A>::new(Mode::Public, fcm);
-
-            Self { index, record, serial_numbers_digest, acm, fcm }
+            Self {
+                index: U16::new(Mode::Public, index),
+                record: Record::new(Mode::Public, record),
+                serial_numbers_digest: Field::new(Mode::Public, serial_numbers_digest),
+                acm: Field::new(Mode::Public, acm),
+                fcm: Group::new(Mode::Public, fcm),
+            }
         }
     }
 
@@ -247,13 +251,13 @@ pub mod output {
             r_acm: A::ScalarField,
             r_fcm: A::ScalarField,
         ) -> Self {
-            let state = State::<A>::new(Mode::Private, state);
-            let randomizer = Randomizer::<A>::new(Mode::Private, randomizer);
-            let caller = Address::<A>::new(Mode::Private, caller);
-            let r_acm = Scalar::<A>::new(Mode::Private, r_acm);
-            let r_fcm = Scalar::<A>::new(Mode::Private, r_fcm);
-
-            Self { state, randomizer, caller, r_acm, r_fcm }
+            Self {
+                state: State::new(Mode::Private, state),
+                randomizer: Randomizer::new(Mode::Private, randomizer),
+                caller: Address::new(Mode::Private, caller),
+                r_acm: Scalar::new(Mode::Private, r_acm),
+                r_fcm: Scalar::new(Mode::Private, r_fcm),
+            }
         }
     }
 

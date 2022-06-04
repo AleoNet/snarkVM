@@ -92,7 +92,7 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait> ToBits for &[C] {
 /// A helper macro to implement `ToBits` for a tuple of `ToBits` circuits.
 macro_rules! to_bits_tuple {
     (($t0:ident, $i0:tt), $(($ty:ident, $idx:tt)),+) => {
-        impl<'a, B: BooleanTrait, $t0: ToBits<Boolean = B>, $($ty: ToBits<Boolean = B>),+> ToBits for (&'a $t0, $(&'a $ty),+) {
+        impl<B: BooleanTrait, $t0: ToBits<Boolean = B>, $($ty: ToBits<Boolean = B>),+> ToBits for ($t0, $($ty),+) {
             type Boolean = B;
 
             /// A helper method to return a concatenated list of little-endian bits from the circuits.

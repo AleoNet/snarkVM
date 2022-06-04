@@ -21,6 +21,12 @@ impl<A: Aleo> Data<A, Plaintext<A>> {
     pub fn encrypt(&self, address: &Address<A>, randomizer: &Scalar<A>) -> Data<A, Ciphertext<A>> {
         // Compute the data view key.
         let data_view_key = (address.to_group() * randomizer).to_x_coordinate();
+        // Encrypt the data.
+        self.encrypt_symmetric(data_view_key)
+    }
+
+    /// Encrypts `self` under the given data view key.
+    pub fn encrypt_symmetric(&self, data_view_key: Field<A>) -> Data<A, Ciphertext<A>> {
         // Determine the number of randomizers needed to encrypt the data.
         let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
         // Prepare a randomizer for each field element.
@@ -37,46 +43,6 @@ impl<A: Aleo> Data<A, Plaintext<A>> {
             index += num_randomizers as usize;
         }
         Data(encrypted_data)
-    }
-}
-
-#[cfg(all(test, console))]
-mod tests {
-    use super::*;
-    use crate::{Circuit, Literal};
-    use snarkvm_circuit_types::Field;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
-
-    use anyhow::Result;
-
-    const ITERATIONS: u64 = 100;
-
-    #[test]
-    fn test_encrypt_and_decrypt() -> Result<()> {
-        let rng = &mut test_crypto_rng();
-
-        for _ in 0..ITERATIONS {
-            // Generate a private key, view key, and address.
-            let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
-            let view_key = snarkvm_console_account::ViewKey::try_from(private_key)?;
-            let address = snarkvm_console_account::Address::try_from(private_key)?;
-
-            // Initialize a view key and address.
-            let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
-            let address = Address::<Circuit>::new(Mode::Private, address);
-
-            let data = Data(vec![(
-                Identifier::from_str("a"),
-                Entry::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
-            )]);
-
-            let randomizer = Scalar::new(Mode::Private, UniformRand::rand(rng));
-            let ciphertext = data.encrypt(&address, &randomizer);
-
-            let nonce = <Circuit as Aleo>::g_scalar_multiply(&randomizer);
-            assert_eq!(data.eject(), ciphertext.decrypt(&view_key, &nonce).eject());
-        }
-        Ok(())
     }
 }
 

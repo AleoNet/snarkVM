@@ -68,6 +68,11 @@ impl<A: Aleo> Inject for Record<A> {
 }
 
 impl<A: Aleo> Record<A> {
+    /// Returns the data ID for this record.
+    pub const fn data(&self) -> &Field<A> {
+        &self.data
+    }
+
     /// Returns the balance commitment for this record.
     pub const fn bcm(&self) -> &Group<A> {
         &self.bcm
