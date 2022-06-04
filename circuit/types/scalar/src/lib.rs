@@ -157,8 +157,7 @@ mod tests {
         let candidate = Scalar::<Circuit>::new(mode, element);
         assert_eq!(format!("{element}{}.{mode}", Scalar::<Circuit>::type_name()), format!("{candidate}"));
 
-        let candidate_element = <Circuit as Environment>::ScalarField::from_str(&candidate.to_string()).unwrap();
-        let candidate_recovered = Scalar::<Circuit>::new(mode, candidate_element);
+        let candidate_recovered = Scalar::<Circuit>::from_str(&format!("{candidate}"));
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
 

@@ -155,8 +155,7 @@ mod tests {
         let candidate = Field::<Circuit>::new(mode, element);
         assert_eq!(format!("{element}{}.{mode}", Field::<Circuit>::type_name()), format!("{candidate}"));
 
-        let candidate_element = <Circuit as Environment>::BaseField::from_str(&candidate.to_string()).unwrap();
-        let candidate_recovered = Field::<Circuit>::new(mode, candidate_element);
+        let candidate_recovered = Field::<Circuit>::from_str(&format!("{candidate}"));
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
 
