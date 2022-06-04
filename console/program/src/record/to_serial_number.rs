@@ -26,6 +26,6 @@ impl<N: Network> Record<N> {
         rng: &mut R,
     ) -> Result<SerialNumber<N>> {
         // Compute the serial number.
-        SerialNumber::<N>::sign(&sk_sig, pr_sig, message, self.to_commitment()?, rng)
+        SerialNumber::<N>::sign(sk_sig, pr_sig, message, self.to_commitment()?, rng)
     }
 }
