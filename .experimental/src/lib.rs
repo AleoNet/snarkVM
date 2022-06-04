@@ -18,9 +18,9 @@
 
 pub mod input {
     use circuit::{
+        merkle_tree::MerklePath,
         Aleo,
         Eject,
-        Equal,
         Field,
         Group,
         Inject,
@@ -29,10 +29,8 @@ pub mod input {
         Scalar,
         SerialNumber,
         Signature,
-        State,
         ToBits,
         Zero,
-        U16,
         U64,
     };
 
@@ -75,6 +73,8 @@ pub mod input {
         record_view_key: Field<A>,
         /// The input record.
         record: Record<A>,
+        /// The input commitment Merkle path.
+        merkle_path: MerklePath<A, 32>,
         /// The input serial number proof.
         serial_number: SerialNumber<A>,
         /// The input signature.
@@ -90,6 +90,7 @@ pub mod input {
         pub fn from(
             record_view_key: A::BaseField,
             record: console::program::Record<A::Network>,
+            merkle_path: console::collections::merkle_tree::MerklePath<A::BaseField, 32>,
             serial_number: console::program::SerialNumber<A::Network>,
             signature: console::account::Signature<A::Network>,
             r_acm: A::ScalarField,
@@ -98,6 +99,7 @@ pub mod input {
             Self {
                 record_view_key: Field::<A>::new(Mode::Private, record_view_key),
                 record: Record::<A>::new(Mode::Private, record),
+                merkle_path: MerklePath::<A, 32>::new(Mode::Private, merkle_path),
                 serial_number: SerialNumber::<A>::new(Mode::Private, serial_number),
                 signature: Signature::<A>::new(Mode::Private, signature),
                 r_acm: Scalar::<A>::new(Mode::Private, r_acm),
@@ -120,9 +122,10 @@ pub mod input {
             ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
 
             // Ensure all private members are private inputs.
-            let Private { record_view_key, record, serial_number, signature, r_acm, r_fcm } = &private;
+            let Private { record_view_key, record, merkle_path, serial_number, signature, r_acm, r_fcm } = &private;
             ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
             ensure!(record.eject_mode().is_private(), "Input record must be private");
+            ensure!(merkle_path.eject_mode().is_private(), "Input commitment Merkle path must be private");
             ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
             ensure!(signature.eject_mode().is_private(), "Input signature must be private");
             ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
@@ -157,6 +160,10 @@ pub mod input {
 
             // Compute the record commitment.
             let commitment = private.record.to_commitment();
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Ensure the commitment exists in the Merkle path.
+            A::assert(A::verify_merkle_path_bhp(&private.merkle_path, &public.root, &commitment.to_bits_le()));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the serial number is valid.

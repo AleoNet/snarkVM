@@ -22,7 +22,7 @@ use console::{
 };
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_experimental::{input, output, snark};
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::Zero;
 use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
 
 use anyhow::{bail, Error, Result};
@@ -284,10 +284,13 @@ where
     let caller_view_key = ViewKey::try_from(caller_private_key)?;
     let caller_address = Address::try_from(caller_private_key)?;
 
+    // Compute the record commitment.
+    let commitment = record.to_commitment()?;
+
     // Initialize a program tree with the coinbase record.
-    let program = A::Network::merkle_tree_bhp::<32>(&[record.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
+    let program = A::Network::merkle_tree_bhp::<32>(&[commitment.to_bits_le()])?; // TODO: Add test that record ID matches in tree.
     // Compute a Merkle path for the coinbase record.
-    let path = program.prove(0, &record.to_bits_le())?;
+    let merkle_path = program.prove(0, &commitment.to_bits_le())?;
     // Retrieve the Merkle root.
     let root = program.root();
 
@@ -295,9 +298,9 @@ where
     let record_view_key = record.to_record_view_key(&caller_view_key);
 
     // Compute the serial number.
-    let serial_number = record.to_serial_number(&caller_private_key, rng)?;
+    let serial_number = record.to_serial_number(caller_private_key, rng)?;
     // Compute the signature for the serial number.
-    let signature = Signature::sign(&caller_private_key, &[*serial_number.value()], rng)?;
+    let signature = Signature::sign(caller_private_key, &[*serial_number.value()], rng)?;
 
     // Decrypt the record into program state.
     let state = record.decrypt_symmetric(&record_view_key)?;
@@ -314,8 +317,15 @@ where
 
     let process = std::panic::catch_unwind(|| {
         let public = input::Public::<A>::from(*root, *serial_number.value(), acm, bcm, fcm);
-        let private =
-            input::Private::<A>::from(record_view_key, record.clone(), serial_number.clone(), signature, r_acm, r_fcm);
+        let private = input::Private::<A>::from(
+            record_view_key,
+            record.clone(),
+            merkle_path,
+            serial_number.clone(),
+            signature,
+            r_acm,
+            r_fcm,
+        );
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();
 
