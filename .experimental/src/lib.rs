@@ -60,13 +60,13 @@ pub mod input {
             bcm: A::Affine,
             fcm: A::Affine,
         ) -> Self {
-            let root = Field::<A>::new(Mode::Public, root);
-            let serial_number = Field::<A>::new(Mode::Public, serial_number);
-            let acm = Field::<A>::new(Mode::Public, acm);
-            let bcm = Group::<A>::new(Mode::Public, bcm);
-            let fcm = Group::<A>::new(Mode::Public, fcm);
-
-            Self { root, serial_number, acm, bcm, fcm }
+            Self {
+                root: Field::<A>::new(Mode::Public, root),
+                serial_number: Field::<A>::new(Mode::Public, serial_number),
+                acm: Field::<A>::new(Mode::Public, acm),
+                bcm: Group::<A>::new(Mode::Public, bcm),
+                fcm: Group::<A>::new(Mode::Public, fcm),
+            }
         }
     }
 
@@ -95,14 +95,14 @@ pub mod input {
             r_acm: A::ScalarField,
             r_fcm: A::ScalarField,
         ) -> Self {
-            let record_view_key = Field::<A>::new(Mode::Private, record_view_key);
-            let record = Record::<A>::new(Mode::Private, record);
-            let serial_number = SerialNumber::<A>::new(Mode::Private, serial_number);
-            let signature = Signature::<A>::new(Mode::Private, signature);
-            let r_acm = Scalar::<A>::new(Mode::Private, r_acm);
-            let r_fcm = Scalar::<A>::new(Mode::Private, r_fcm);
-
-            Self { record_view_key, record, serial_number, signature, r_acm, r_fcm }
+            Self {
+                record_view_key: Field::<A>::new(Mode::Private, record_view_key),
+                record: Record::<A>::new(Mode::Private, record),
+                serial_number: SerialNumber::<A>::new(Mode::Private, serial_number),
+                signature: Signature::<A>::new(Mode::Private, signature),
+                r_acm: Scalar::<A>::new(Mode::Private, r_acm),
+                r_fcm: Scalar::<A>::new(Mode::Private, r_fcm),
+            }
         }
     }
 
