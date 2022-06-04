@@ -95,9 +95,9 @@ pub fn calculate_binding_value<G: AffineCurve>(
 
     let result = sha256(&hash_input);
 
-    match G::ScalarField::from_random_bytes(&result) {
+    match G::ScalarField::from_random_bytes(&result[0..30]) {
         Some(res) => Ok(res),
-        None => Err(anyhow!("Failed to convert result to scalar")),
+        None => Err(anyhow!("Binding Value - Failed to convert result to scalar")),
     }
 }
 
@@ -136,8 +136,8 @@ pub fn generate_challenge<G: AffineCurve>(
 
     let result = sha256(&hash_input);
 
-    match G::ScalarField::from_random_bytes(&result) {
+    match G::ScalarField::from_random_bytes(&result[0..30]) {
         Some(res) => Ok(res),
-        None => Err(anyhow!("Failed to convert result to scalar")),
+        None => Err(anyhow!("Challenge - Failed to convert result to scalar")),
     }
 }

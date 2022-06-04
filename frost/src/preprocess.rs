@@ -20,6 +20,7 @@ use snarkvm_fields::Field;
 use rand::Rng;
 
 /// The hiding and binding nonces used (only once) for a signing operation.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SigningNonce<F: Field> {
     /// d\_{ij}
     pub(crate) hiding: F,
@@ -34,6 +35,7 @@ impl<F: Field> SigningNonce<F> {
 }
 
 /// A precomputed commitment share.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SigningCommitment<G: AffineCurve> {
     /// The index of the participant.
     pub(crate) participant_index: u64,
@@ -79,15 +81,4 @@ pub fn preprocess<G: AffineCurve, R: Rng>(
     }
 
     (singing_nonces, signing_commitments)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_nonce_into_commitment() {}
-
-    #[test]
-    fn test_preprocess() {}
 }

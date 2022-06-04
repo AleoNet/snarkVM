@@ -25,6 +25,7 @@ use std::collections::HashMap;
 /// A partial signature, made by each participant  of the (t-out-of-n) secret
 /// sharing scheme where t is the threshold required to reconstruct a secret
 /// from a total of n shares.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PartialThresholdSignature<G: AffineCurve> {
     /// The index of the participant.
     pub participant_index: u64,
@@ -101,18 +102,20 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
     }
 }
 
-/// A completed and aggregated threshold signature.
+/// A completed and aggregated threshold signature. This is indistinguishable from a Schnorr signature.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ThresholdSignature<G: AffineCurve> {
     pub r: G,
     pub z: G::ScalarField,
 }
 
 impl<G: AffineCurve> ThresholdSignature<G> {
+    /// Aggregate the partial signatures into the final signature.
     pub fn aggregate_signatures(
         partial_signatures: Vec<PartialThresholdSignature<G>>,
         signing_commitments: Vec<SigningCommitment<G>>,
         message: Vec<u8>,
-        public_keys: PublicKeys<G>,
+        public_keys: &PublicKeys<G>,
     ) -> Result<Self> {
         // Calculate the binding values for each other participant.
         let mut binding_values: HashMap<u64, G::ScalarField> = HashMap::with_capacity(signing_commitments.len());
@@ -163,5 +166,85 @@ impl<G: AffineCurve> ThresholdSignature<G> {
         }
 
         Ok(Self { r: group_commitment, z })
+    }
+
+    /// Verify that the aggregated signature is correct for a given message and group public key.
+    pub fn verify(&self, group_public_key: &GroupPublicKey<G>, message: Vec<u8>) -> Result<bool> {
+        let expected_challenge = generate_challenge(&self.r, group_public_key, &message)?;
+        let result = group_public_key.0.mul(-expected_challenge) + G::prime_subgroup_generator().mul(self.z);
+
+        Ok(result == self.r)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use snarkvm_curves::edwards_bls12::EdwardsAffine as EdwardsBls12Affine;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    fn test_signature_verification(threshold: u8, num_participants: u8, message: &str) {
+        let mut rng = test_rng();
+        let message = message.as_bytes().to_vec();
+
+        // Sample the `secret`where g^`secret` = GroupPublicKey.
+        let secret = <EdwardsBls12Affine as AffineCurve>::ScalarField::rand(&mut rng);
+
+        // Generate the signer keys.
+        let (shares, public_keys) =
+            trusted_keygen::<_, EdwardsBls12Affine>(num_participants, threshold, &secret, &mut rng);
+
+        let mut nonces = HashMap::with_capacity(threshold as usize);
+        let mut commitments = Vec::with_capacity(threshold as usize);
+
+        // Generate nonces and signing commitments for each participant.
+        for participant_index in 1..(threshold + 1) {
+            let (nonce, commitment) = preprocess::<EdwardsBls12Affine, _>(1, participant_index as u64, &mut rng);
+            nonces.insert(participant_index as u64, nonce);
+            commitments.push(commitment);
+        }
+
+        let round_number = 0;
+        let commitments_used_for_signing: Vec<_> =
+            commitments.iter().map(|commitments| commitments[round_number].clone()).collect();
+
+        // Craft the partial signatures for each signer
+        let mut partial_signatures = Vec::with_capacity(num_participants as usize);
+        for (index, nonce) in nonces {
+            let signer_share = shares.iter().find(|share| share.participant_index == index).unwrap();
+
+            let partial_signature = PartialThresholdSignature::new(
+                signer_share.clone(),
+                &nonce[round_number],
+                commitments_used_for_signing.clone(),
+                message.clone(),
+            )
+            .unwrap();
+
+            partial_signatures.push(partial_signature);
+        }
+
+        // Aggregate the partial signatures.
+        let aggregated_signature = ThresholdSignature::aggregate_signatures(
+            partial_signatures,
+            commitments_used_for_signing,
+            message.clone(),
+            &public_keys,
+        )
+        .unwrap();
+
+        // Verify the signature.
+        assert!(aggregated_signature.verify(&public_keys.group_public_key, message).unwrap());
+    }
+
+    #[test]
+    fn test_1_out_of_1_frost_signing_and_verification() {
+        test_signature_verification(1, 1, "Message to sign");
+    }
+
+    #[test]
+    fn test_3_out_of_5_frost_signing_and_verification() {
+        test_signature_verification(3, 5, "Message to sign");
     }
 }
