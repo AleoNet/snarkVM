@@ -116,7 +116,8 @@ pub fn calculate_group_commitment<G: AffineCurve>(
             return Err(anyhow!("Commitment equals the identity."));
         }
 
-        let rho_i = binding_values.get(&commitment.participant_index).ok_or(anyhow!("No matching commitment index"))?;
+        let rho_i =
+            binding_values.get(&commitment.participant_index).ok_or_else(|| anyhow!("No matching commitment index"))?;
         accumulator += commitment.hiding.to_projective() + (commitment.binding.mul(*rho_i))
     }
 
