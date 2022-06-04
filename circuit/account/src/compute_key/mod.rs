@@ -92,7 +92,7 @@ pub(crate) mod tests {
 
     use anyhow::Result;
 
-    const ITERATIONS: u64 = 1000;
+    const ITERATIONS: u64 = 250;
 
     fn check_new(
         mode: Mode,
@@ -124,16 +124,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_compute_key_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 266, 0, 0, 0)
+        check_new(Mode::Constant, 262, 0, 0, 0)
     }
 
     #[test]
     fn test_compute_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 7, 6, 604, 608)
+        check_new(Mode::Public, 5, 4, 597, 600)
     }
 
     #[test]
     fn test_compute_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 7, 0, 610, 608)
+        check_new(Mode::Private, 5, 0, 601, 600)
     }
 }
