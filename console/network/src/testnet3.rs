@@ -111,6 +111,14 @@ impl Network for Testnet3 {
     const ID: u16 = 3;
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::Field as PrimeField>::Parameters::CAPACITY;
+    /// The maximum number of inputs per transition.
+    const MAX_INPUTS: usize = 8;
+    /// The maximum number of outputs per transition.
+    const MAX_OUTPUTS: usize = 8;
+    /// The maximum number of transactions per block.
+    const MAX_TRANSACTIONS: usize = 65536;
+    /// The maximum number of transitions per transaction.
+    const MAX_TRANSITIONS: usize = 16;
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;
 

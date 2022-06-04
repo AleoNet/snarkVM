@@ -47,6 +47,16 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// The network ID.
     const ID: u16;
 
+    /// The maximum number of inputs per transition.
+    const MAX_INPUTS: usize;
+    /// The maximum number of outputs per transition.
+    const MAX_OUTPUTS: usize;
+    /// The maximum number of transitions per transaction.
+    const MAX_TRANSITIONS: usize;
+
+    /// The maximum number of transactions per block.
+    const MAX_TRANSACTIONS: usize;
+
     /// The maximum recursive depth of a value.
     /// Note: This value must be strictly less than u8::MAX.
     const DEPTH: u8 = 32;

@@ -35,8 +35,6 @@ use std::time::Instant;
 // pub struct Function<N: Network> {
 //     /// The execution proof.
 //     execution: Execution,
-//     /// The process root.
-//     root: N::Field,
 // }
 
 struct Input<N: Network> {
@@ -159,6 +157,33 @@ pub struct Transaction<N: Network> {
 }
 
 impl<N: Network> Transaction<N> {
+    /// Returns `true` if the transition is valid.
+    pub fn verify(&self) -> bool {
+        // Ensure the network ID matches.
+        if self.network != N::ID {
+            eprintln!("Network ID mismatch: expected {}, found {}", N::ID, self.network);
+            return false;
+        }
+
+        // Ensure there is at least one transition.
+        if self.transitions.is_empty() {
+            eprintln!("No transitions found");
+            return false;
+        }
+        // Ensure the number of transitions is less than the maximum.
+        else if self.transitions.len() > N::MAX_TRANSITIONS {
+            eprintln!("Exceed maximum transitions: expected {}, found {}", N::MAX_TRANSITIONS, self.transitions.len());
+            return false;
+        }
+        // Ensure the transitions are valid.
+        else if self.transitions.iter().any(|transition| !transition.verify()) {
+            eprintln!("Invalid transition");
+            return false;
+        }
+
+        true
+    }
+
     /// Returns the transitions in the transaction.
     pub fn transitions(&self) -> &Vec<Transition<N>> {
         &self.transitions
@@ -274,6 +299,7 @@ where
         assert_eq!(fcm, transition.fcm()?);
 
         let transaction = Transaction { network: A::Network::ID, transitions: vec![transition] };
+        assert!(transaction.verify());
 
         Ok::<_, Error>(transaction)
     });
@@ -366,6 +392,7 @@ where
         assert_eq!(fcm, transition.fcm()?);
 
         let transaction = Transaction { network: A::Network::ID, transitions: vec![transition] };
+        assert!(transaction.verify());
 
         Ok::<_, Error>(transaction)
     });
