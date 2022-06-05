@@ -17,8 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-#[cfg(test)]
-use snarkvm_circuit_network::AleoV0 as Circuit;
+mod record;
+pub use record::*;
 
-mod data;
-pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
+mod state;
+pub use state::*;

@@ -1,14 +1,14 @@
 [package]
-name = "snarkvm-circuit-program"
+name = "snarkvm-circuit-transition"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Program circuit library for a decentralized virtual machine"
+description = "Transition circuit library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
 [dependencies.console]
-package = "snarkvm-console-program"
-path = "../../console/program"
+package = "snarkvm-console-transition"
+path = "../../console/transition"
 version = "0.7.5"
 optional = true
 
@@ -30,6 +30,10 @@ version = "0.7.5"
 
 [dev-dependencies.snarkvm-console-account]
 path = "../../console/account"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-console-network]
+path = "../../console/network"
 version = "0.7.5"
 
 [dev-dependencies.anyhow]

@@ -17,7 +17,7 @@
 use console::{
     account::{Address, PrivateKey, ViewKey},
     network::Network,
-    program::{Record, State},
+    transition::{Record, State},
 };
 use snarkvm_algorithms::snark::marlin::Proof;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};

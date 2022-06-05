@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
-
-#[cfg(test)]
-use snarkvm_circuit_network::AleoV0 as Circuit;
-
-mod data;
-pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
+fn main() {
+    if cfg!(feature = "enable_console") {
+        println!("cargo:rustc-cfg=console");
+    }
+}

@@ -23,8 +23,6 @@ use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
 use snarkvm_utilities::{error, FromBits as FB, ToBits as TB};
 
-use nom::character::complete::{alpha1, alphanumeric1};
-
 /// An identifier is an **immutable** UTF-8 string,
 /// represented as a **constant** field element in the circuit.
 ///

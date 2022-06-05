@@ -41,4 +41,4 @@ pub mod variable;
 pub use variable::*;
 
 pub(super) mod r1cs;
-pub use r1cs::*;
+pub(super) use r1cs::*;

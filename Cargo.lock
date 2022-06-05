@@ -2055,6 +2055,7 @@ dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-network",
  "snarkvm-circuit-program",
+ "snarkvm-circuit-transition",
  "snarkvm-circuit-types",
 ]
 
@@ -2107,7 +2108,6 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
- "rayon",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-circuit-environment-witness",
@@ -2139,14 +2139,25 @@ name = "snarkvm-circuit-program"
 version = "0.7.5"
 dependencies = [
  "anyhow",
- "nom",
  "snarkvm-circuit-account",
- "snarkvm-circuit-algorithms",
+ "snarkvm-circuit-network",
+ "snarkvm-circuit-types",
+ "snarkvm-console-account",
+ "snarkvm-console-program",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-circuit-transition"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "snarkvm-circuit-account",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",
  "snarkvm-console-account",
  "snarkvm-console-network",
- "snarkvm-console-program",
+ "snarkvm-console-transition",
  "snarkvm-utilities",
 ]
 
@@ -2250,6 +2261,7 @@ dependencies = [
  "snarkvm-console-collections",
  "snarkvm-console-network",
  "snarkvm-console-program",
+ "snarkvm-console-transition",
  "snarkvm-console-types",
 ]
 
@@ -2297,8 +2309,6 @@ dependencies = [
  "bincode",
  "criterion",
  "itertools",
- "once_cell",
- "rand",
  "rayon",
  "serde",
  "snarkvm-console-algorithms",
@@ -2333,14 +2343,24 @@ dependencies = [
  "itertools",
  "once_cell",
  "rand",
- "rayon",
  "serde",
  "serde_json",
  "snarkvm-console-account",
- "snarkvm-console-algorithms",
  "snarkvm-console-network",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-transition"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "snarkvm-console-account",
+ "snarkvm-console-network",
+ "snarkvm-curves",
  "snarkvm-utilities",
 ]
 

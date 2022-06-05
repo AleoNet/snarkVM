@@ -53,7 +53,7 @@ pub mod program {
         /// Initializes the public inputs for the program circuit.
         pub fn from(
             serial_numbers: Vec<A::BaseField>,
-            output_records: Vec<console::program::Record<A::Network>>,
+            output_records: Vec<console::transition::Record<A::Network>>,
             output_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
             tcm: A::BaseField,
             tpk: A::Affine,
@@ -86,7 +86,7 @@ pub mod program {
         pub fn from(
             caller: console::account::Address<A::Network>,
             record_view_keys: Vec<A::BaseField>,
-            input_records: Vec<console::program::Record<A::Network>>,
+            input_records: Vec<console::transition::Record<A::Network>>,
             input_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
             r_tcm: A::BaseField,
         ) -> Self {
