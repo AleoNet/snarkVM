@@ -18,12 +18,11 @@ use super::*;
 
 impl<A: Aleo> State<A> {
     /// Returns a new record by encrypting this state with the given randomizer.
-    pub fn encrypt(&self, randomizer: &Randomizer<A>) -> Record<A> {
+    pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A> {
         // Ensure the nonce matches the given randomizer.
-        A::assert_eq(&self.nonce, randomizer.to_nonce());
-
-        // Compute the record view key.
-        let record_view_key = randomizer.to_record_view_key(&self.owner);
+        A::assert_eq(&self.nonce, A::g_scalar_multiply(&randomizer));
+        // Compute the record view key as `randomizer * address`.
+        let record_view_key = (self.owner.to_group() * randomizer).to_x_coordinate();
         // Encrypt the state and output the record.
         Record::encrypt(self, &record_view_key)
     }

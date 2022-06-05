@@ -17,7 +17,7 @@
 use console::{
     account::{Address, PrivateKey, ViewKey},
     network::Network,
-    program::{Randomizer, Record, State},
+    program::{Record, State},
 };
 use snarkvm_algorithms::snark::marlin::Proof;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
@@ -107,8 +107,10 @@ pub struct Transition<N: Network> {
     input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     /// The transition output proofs.
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
-    /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
-    acm: N::Field,
+    /// The transition view key commitment (i.e. `tcm := Hash(tvk)`).
+    tcm: N::Field,
+    /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
+    tpk: N::Affine,
     /// The fee (i.e. `fee := Σ balance_in - Σ balance_out`).
     fee: i64,
 }
@@ -192,18 +194,6 @@ impl<N: Network> Transaction<N> {
     }
 }
 
-/// Returns the address commitment as `bcm := Commit(caller, r_acm)`.
-fn acm<A: circuit::Aleo, R: Rng + CryptoRng>(
-    caller: &Address<A::Network>,
-    rng: &mut R,
-) -> Result<(A::BaseField, A::ScalarField)> {
-    // TODO (howardwu): Domain separator.
-    let r_acm = UniformRand::rand(rng);
-    // TODO (howardwu): Add a to_bits impl for caller.
-    let acm = A::Network::commit_bhp256(&(*caller).to_x_coordinate().to_bits_le(), &r_acm)?;
-    Ok((acm, r_acm))
-}
-
 /// Returns the re-randomized balance commitment as `bcm := Commit(balance, r_bcm + r_bcm')`.
 fn bcm<A: circuit::Aleo>(balance: u64, record_view_key: A::BaseField) -> Result<(A::Affine, A::ScalarField)> {
     // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key)).
@@ -229,9 +219,31 @@ fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> R
     Ok((fcm, r_fcm))
 }
 
+/// Returns the transition view key commitment as `tcm := Hash(HashToScalar(nonce) * caller)`.
+fn tcm<A: circuit::Aleo, R: Rng + CryptoRng>(
+    caller: &Address<A::Network>,
+    rng: &mut R,
+) -> Result<(A::BaseField, A::Affine, A::BaseField, A::Affine)> {
+    // Sample a random nonce.
+    let r_tcm = UniformRand::rand(rng);
+    // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+    // TODO (howardwu): Domain separator.
+    // let tsk = A::Network::hash_to_scalar_psd2(&[A::Network::tvk_domain(), r_tcm])?;
+    let tsk = A::Network::hash_to_scalar_psd2(&[r_tcm])?;
+    // Compute the transition public key `tpk` as `tsk * G`.
+    let tpk = A::Network::g_scalar_multiply(&tsk).to_affine();
+    // Compute the transition view key `tvk` as `tsk * caller`.
+    let tvk = (**caller * tsk).to_affine();
+    // Compute the transition view key commitment `tcm` := `Hash(tvk)`.
+    // TODO (howardwu): Domain separator.
+    // Compute the transition view key commitment `tcm` as `Hash(caller, tpk, tvk)`.
+    let tcm = A::Network::hash_psd4(&[**caller, tpk, tvk].map(|c| c.to_x_coordinate()))?;
+    Ok((tcm, tpk, r_tcm, tvk))
+}
+
 /// Transition: 0 -> 1
 fn mint<A: circuit::Aleo, R: Rng + CryptoRng>(
-    caller_view_key: &ViewKey<A::Network>,
+    caller: &Address<A::Network>,
     amount: u64,
     rng: &mut R,
 ) -> Result<Transaction<A::Network>>
@@ -240,35 +252,36 @@ where
     A::ScalarField: UnwindSafe + RefUnwindSafe,
     A::Affine: UnwindSafe + RefUnwindSafe,
 {
-    // Initialize the caller address.
-    let caller_address = Address::try_from(caller_view_key)?;
+    // Set the output index to 0.
+    let output_index = 0u16;
+
+    // Compute the transition view key commitment.
+    let (tcm, tpk, r_tcm, tvk) = tcm::<A, R>(&caller, rng)?;
+
+    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+    let randomizer =
+        A::Network::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), A::BaseField::from(output_index as u128)])?;
+
     // Initialize th empty data.
     let data = A::BaseField::zero(); // TODO: Hardcode this option in the Network trait.
-    // Initialize the randomizer, which is bound to the account of the **sender**.
-    let randomizer = Randomizer::prove(caller_view_key, &[], 0, rng)?;
-
+    // Compute the program state nonce.
+    let nonce = A::Network::g_scalar_multiply(&randomizer).to_affine();
     // Initialize a coinbase.
-    let state = State::new(caller_address, amount, data, &randomizer);
+    let state = State::new(*caller, amount, data, nonce);
+
+    // Encrypt the state into a record.
     let record = state.encrypt(&randomizer)?;
 
-    // Compute the address commitment.
-    let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
-
-    // Compute the record view key.
-    let record_view_key = randomizer.to_record_view_key(&caller_address);
+    // Compute the record view key as `randomizer * address`.
+    let record_view_key = (**caller * randomizer).to_affine().to_x_coordinate();
     // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
     let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
     // Compute the fee commitment.
     let (fcm, r_fcm) = fcm::<A>(&[], &[r_bcm])?;
 
     let process = std::panic::catch_unwind(|| {
-        // Set the output index to 0.
-        let output_index = 0u16;
-        // Compute the serial numbers digest.
-        let serial_numbers_digest = A::Network::hash_bhp1024(&[])?;
-
-        let public = output::Public::<A>::from(output_index, record.clone(), serial_numbers_digest, acm, fcm);
-        let private = output::Private::<A>::from(state, randomizer, caller_address, r_acm, r_fcm);
+        let public = output::Public::<A>::from(output_index, record.clone(), fcm, tcm, tpk);
+        let private = output::Private::<A>::from(state, *caller, r_fcm, r_tcm);
         output::OutputCircuit::from(public, private)?.execute();
         println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
@@ -289,7 +302,8 @@ where
             outputs: vec![Output::new(record)],
             input_proofs: vec![],
             output_proofs: vec![proof],
-            acm,
+            tcm,
+            tpk,
             fee: -(amount as i64),
         };
         assert_eq!(fcm, transition.fcm()?);
@@ -345,22 +359,22 @@ where
     let state = record.decrypt_symmetric(&record_view_key)?;
     let fee = state.balance() as i64;
 
-    // Compute the address commitment.
-    let (acm, r_acm) = acm::<A, R>(&caller_address, rng)?;
     // Compute the balance commitment.
     let (bcm, r_bcm) = bcm::<A>(state.balance(), record_view_key)?;
     // Compute the fee commitment.
     let (fcm, r_fcm) = fcm::<A>(&[r_bcm], &[])?;
+    // Compute the transition view key commitment.
+    let (tcm, tpk, r_tcm, _tvk) = tcm::<A, R>(&caller_address, rng)?;
 
     let process = std::panic::catch_unwind(|| {
-        let public = input::Public::<A>::from(*root, *serial_number.value(), acm, bcm, fcm);
+        let public = input::Public::<A>::from(*root, *serial_number.value(), bcm, fcm, tcm, tpk);
         let private = input::Private::<A>::from(
             record_view_key,
             record.clone(),
             merkle_path,
             serial_number.clone(),
-            r_acm,
             r_fcm,
+            r_tcm,
         );
         let input_circuit = input::InputCircuit::from(public, private)?;
         input_circuit.execute();
@@ -382,7 +396,8 @@ where
             outputs: vec![],
             input_proofs: vec![proof],
             output_proofs: vec![],
-            acm,
+            tcm,
+            tpk,
             fee,
         };
         assert_eq!(fcm, transition.fcm()?);
@@ -405,11 +420,11 @@ fn main() -> Result<()> {
 
     // Initialize a new caller account.
     let caller_private_key = PrivateKey::<<circuit::AleoV0 as circuit::Environment>::Network>::new(&mut rng)?;
-    let caller_view_key = ViewKey::try_from(&caller_private_key)?;
-    let _caller_address = Address::try_from(&caller_private_key)?;
+    let _caller_view_key = ViewKey::try_from(&caller_private_key)?;
+    let caller_address = Address::try_from(&caller_private_key)?;
 
     // Generate a coinbase transaction.
-    let transaction = mint::<circuit::AleoV0, ThreadRng>(&caller_view_key, 100u64, &mut rng)?;
+    let transaction = mint::<circuit::AleoV0, ThreadRng>(&caller_address, 100u64, &mut rng)?;
 
     // Retrieve the coinbase record.
     let record = transaction.transitions()[0].outputs[0].record();

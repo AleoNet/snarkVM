@@ -33,6 +33,7 @@ pub mod input {
         Scalar,
         SerialNumber,
         ToBits,
+        ToGroup,
         Zero,
         U64,
     };
@@ -44,12 +45,14 @@ pub mod input {
         root: Field<A>,
         /// The input serial number.
         serial_number: Field<A>,
-        /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
-        acm: Field<A>,
         /// The re-randomized balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
         bcm: Group<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,
+        /// The transition view key commitment (i.e. `tcm := Hash(tvk)`).
+        tcm: Field<A>,
+        /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
+        tpk: Group<A>,
     }
 
     impl<A: Aleo> Public<A> {
@@ -57,16 +60,18 @@ pub mod input {
         pub fn from(
             root: A::BaseField,
             serial_number: A::BaseField,
-            acm: A::BaseField,
             bcm: A::Affine,
             fcm: A::Affine,
+            tcm: A::BaseField,
+            tpk: A::Affine,
         ) -> Self {
             Self {
                 root: Field::new(Mode::Public, root),
                 serial_number: Field::new(Mode::Public, serial_number),
-                acm: Field::new(Mode::Public, acm),
                 bcm: Group::new(Mode::Public, bcm),
                 fcm: Group::new(Mode::Public, fcm),
+                tcm: Field::new(Mode::Public, tcm),
+                tpk: Group::new(Mode::Public, tpk),
             }
         }
     }
@@ -80,10 +85,10 @@ pub mod input {
         merkle_path: MerklePath<A, 32>,
         /// The input serial number signature.
         serial_number: SerialNumber<A>,
-        /// The address randomizer.
-        r_acm: Scalar<A>,
         /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
         r_fcm: Scalar<A>,
+        /// The transition view key commitment randomizer.
+        r_tcm: Field<A>,
     }
 
     impl<A: Aleo> Private<A> {
@@ -93,16 +98,16 @@ pub mod input {
             record: console::program::Record<A::Network>,
             merkle_path: console::collections::merkle_tree::MerklePath<A::BaseField, 32>,
             serial_number: console::program::SerialNumber<A::Network>,
-            r_acm: A::ScalarField,
             r_fcm: A::ScalarField,
+            r_tcm: A::BaseField,
         ) -> Self {
             Self {
                 record_view_key: Field::new(Mode::Private, record_view_key),
                 record: Record::new(Mode::Private, record),
                 merkle_path: MerklePath::new(Mode::Private, merkle_path),
                 serial_number: SerialNumber::new(Mode::Private, serial_number),
-                r_acm: Scalar::new(Mode::Private, r_acm),
                 r_fcm: Scalar::new(Mode::Private, r_fcm),
+                r_tcm: Field::new(Mode::Private, r_tcm),
             }
         }
     }
@@ -113,21 +118,22 @@ pub mod input {
         /// Initializes the input circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            let Public { root, serial_number, acm, bcm, fcm } = &public;
+            let Public { root, serial_number, bcm, fcm, tcm, tpk } = &public;
             ensure!(root.eject_mode().is_public(), "Input root must be public");
             ensure!(serial_number.eject_mode().is_public(), "Input serial number must be public");
-            ensure!(acm.eject_mode().is_public(), "Address commitment must be public");
             ensure!(bcm.eject_mode().is_public(), "Balance commitment must be public");
             ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
+            ensure!(tcm.eject_mode().is_public(), "Transition view key commitment must be public");
+            ensure!(tpk.eject_mode().is_public(), "Transition public key must be public");
 
             // Ensure all private members are private inputs.
-            let Private { record_view_key, record, merkle_path, serial_number, r_acm, r_fcm } = &private;
+            let Private { record_view_key, record, merkle_path, serial_number, r_fcm, r_tcm } = &private;
             ensure!(record_view_key.eject_mode().is_private(), "Input record view key must be private");
             ensure!(record.eject_mode().is_private(), "Input record must be private");
             ensure!(merkle_path.eject_mode().is_private(), "Input commitment Merkle path must be private");
             ensure!(serial_number.eject_mode().is_private(), "Input serial number proof must be private");
-            ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
             ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
+            ensure!(r_tcm.eject_mode().is_private(), "Transition view key commitment randomizer must be private");
 
             Ok(Self(public, private))
         }
@@ -140,14 +146,20 @@ pub mod input {
             let state = private.record.decrypt_symmetric(&private.record_view_key);
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-            // Ensure the address commitment matches the state owner.
-            A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
+            // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+            let tsk = A::hash_to_scalar_psd2(&[private.r_tcm.clone()]);
+            // Ensure the transition public key `tpk` is `tsk * G`.
+            A::assert_eq(&public.tpk, &A::g_scalar_multiply(&tsk));
+
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = state.owner().to_group() * tsk;
+            // Ensure the transition view key commitment `tcm` is `Hash(caller, tpk, tvk)`.
+            let preimage = [&state.owner().to_group(), &public.tpk, &tvk].map(|c| c.to_x_coordinate());
+            A::assert_eq(&public.tcm, &A::hash_psd4(&preimage));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Compute the re-randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
             let r_bcm = A::hash_to_scalar_psd2(&[A::r_bcm_domain(), private.record_view_key.clone()]);
-            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
             // Ensure the randomized balance commitment is based on the original balance commitment.
             A::assert_eq(&public.bcm, private.record.bcm() + &A::commit_ped64(&U64::zero().to_bits_le(), &r_bcm));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
@@ -185,11 +197,12 @@ pub mod output {
         Group,
         Inject,
         Mode,
-        Randomizer,
         Record,
         Scalar,
         State,
         ToBits,
+        ToField,
+        ToGroup,
         Zero,
         U16,
         U64,
@@ -202,12 +215,12 @@ pub mod output {
         index: U16<A>,
         /// The output record.
         record: Record<A>,
-        /// The serial numbers digest.
-        serial_numbers_digest: Field<A>,
-        /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
-        acm: Field<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,
+        /// The transition view key commitment (i.e. `tcm := Hash(tvk)`).
+        tcm: Field<A>,
+        /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
+        tpk: Group<A>,
     }
 
     impl<A: Aleo> Public<A> {
@@ -215,16 +228,16 @@ pub mod output {
         pub fn from(
             index: u16,
             record: console::program::Record<A::Network>,
-            serial_numbers_digest: A::BaseField,
-            acm: A::BaseField,
             fcm: A::Affine,
+            tcm: A::BaseField,
+            tpk: A::Affine,
         ) -> Self {
             Self {
                 index: U16::new(Mode::Public, index),
                 record: Record::new(Mode::Public, record),
-                serial_numbers_digest: Field::new(Mode::Public, serial_numbers_digest),
-                acm: Field::new(Mode::Public, acm),
                 fcm: Group::new(Mode::Public, fcm),
+                tcm: Field::new(Mode::Public, tcm),
+                tpk: Group::new(Mode::Public, tpk),
             }
         }
     }
@@ -232,31 +245,27 @@ pub mod output {
     pub struct Private<A: Aleo> {
         /// The output state.
         state: State<A>,
-        /// The output randomizer.
-        randomizer: Randomizer<A>,
         /// The caller address.
         caller: Address<A>,
-        /// The address randomizer.
-        r_acm: Scalar<A>,
         /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
         r_fcm: Scalar<A>,
+        /// The transition view key commitment randomizer.
+        r_tcm: Field<A>,
     }
 
     impl<A: Aleo> Private<A> {
         /// Initializes the private inputs for the output circuit.
         pub fn from(
             state: console::program::State<A::Network>,
-            randomizer: console::program::Randomizer<A::Network>,
             caller: console::account::Address<A::Network>,
-            r_acm: A::ScalarField,
             r_fcm: A::ScalarField,
+            r_tcm: A::BaseField,
         ) -> Self {
             Self {
                 state: State::new(Mode::Private, state),
-                randomizer: Randomizer::new(Mode::Private, randomizer),
                 caller: Address::new(Mode::Private, caller),
-                r_acm: Scalar::new(Mode::Private, r_acm),
                 r_fcm: Scalar::new(Mode::Private, r_fcm),
+                r_tcm: Field::new(Mode::Private, r_tcm),
             }
         }
     }
@@ -267,20 +276,19 @@ pub mod output {
         /// Initializes the output circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            let Public { index, record, serial_numbers_digest, acm, fcm } = &public;
+            let Public { index, record, fcm, tcm, tpk } = &public;
             ensure!(index.eject_mode().is_public(), "Output index must be public");
             ensure!(record.eject_mode().is_public(), "Output record must be public");
-            ensure!(serial_numbers_digest.eject_mode().is_public(), "Serial numbers digest must be public");
-            ensure!(acm.eject_mode().is_public(), "Address commitment must be public");
             ensure!(fcm.eject_mode().is_public(), "Fee commitment must be public");
+            ensure!(tcm.eject_mode().is_public(), "Transition view key commitment must be public");
+            ensure!(tpk.eject_mode().is_public(), "Transition public key must be public");
 
             // Ensure all private members are private inputs.
-            let Private { state, randomizer, caller, r_acm, r_fcm } = &private;
+            let Private { state, caller, r_fcm, r_tcm } = &private;
             ensure!(state.eject_mode().is_private(), "Output state must be private");
-            ensure!(randomizer.eject_mode().is_private(), "Output randomizer must be private");
             ensure!(caller.eject_mode().is_private(), "Caller address must be private");
-            ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
             ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
+            ensure!(r_tcm.eject_mode().is_private(), "Transition view key commitment randomizer must be private");
 
             Ok(Self(public, private))
         }
@@ -289,24 +297,30 @@ pub mod output {
         pub fn execute(&self) {
             let (public, private) = (&self.0, &self.1);
 
-            // Ensure the address commitment matches the declared caller.
-            A::assert_eq(&public.acm, A::commit_bhp256(&private.caller.to_bits_le(), &private.r_acm));
+            // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+            let tsk = A::hash_to_scalar_psd2(&[private.r_tcm.clone()]);
+            // Ensure the transition public key `tpk` is `tsk * G`.
+            A::assert_eq(&public.tpk, &A::g_scalar_multiply(&tsk));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = private.caller.to_group() * tsk;
+            // Ensure the transition view key commitment `tcm` is `Hash(caller, tpk, tvk)`.
+            let preimage = [&private.caller.to_group(), &public.tpk, &tvk].map(|c| c.to_x_coordinate());
+            A::assert_eq(&public.tcm, &A::hash_psd4(&preimage));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+            // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+            let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), public.index.to_field()]);
+            // Encrypt the program state into a record, using the randomizer.
+            let record = private.state.encrypt(&randomizer);
+            // Ensure the record matches the declared record.
+            A::assert(public.record.is_equal(&record));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
             // Ensure the fee commitment is correct.
             A::assert_eq(&public.fcm, A::commit_ped64(&U64::zero().to_bits_le(), &private.r_fcm));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            // Ensure the randomizer is valid.
-            A::assert(private.randomizer.verify(&private.caller, &public.serial_numbers_digest, &public.index));
-            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            // Encrypt the program state into a record.
-            let record = private.state.encrypt(&private.randomizer);
-            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
-            // Ensure the record matches the declared record.
-            A::assert(record.is_equal(&public.record));
         }
     }
 }

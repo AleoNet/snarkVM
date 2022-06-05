@@ -26,7 +26,7 @@ mod encrypt;
 use crate::Record;
 use snarkvm_circuit_account::ViewKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Field, Group, U64};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Field, Group, Scalar, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's state is a set of **plaintext** variables used by a program.
@@ -69,7 +69,7 @@ impl<A: Aleo> Eject for State<A> {
 
     /// Ejects the state.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from(
+        Self::Primitive::new(
             self.owner.eject_value(),
             self.balance.eject_value(),
             self.data.eject_value(),

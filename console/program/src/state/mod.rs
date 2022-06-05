@@ -23,6 +23,7 @@ mod encrypt;
 use crate::Record;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use anyhow::{ensure, Result};
 
@@ -41,13 +42,7 @@ pub struct State<N: Network> {
 
 impl<N: Network> State<N> {
     /// Initializes a new instance of `State`.
-    pub fn new(owner: Address<N>, balance: u64, data: N::Field, randomizer: &Randomizer<N>) -> Self {
-        // Return the new program state.
-        Self::from(owner, balance, data, randomizer.to_nonce())
-    }
-
-    /// Initializes a new instance of `State`.
-    pub fn from(owner: Address<N>, balance: u64, data: N::Field, nonce: N::Affine) -> Self {
+    pub fn new(owner: Address<N>, balance: u64, data: N::Field, nonce: N::Affine) -> Self {
         // Return the new program state.
         Self { owner, balance, data, nonce }
     }

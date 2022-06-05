@@ -60,6 +60,6 @@ impl<N: Network> Record<N> {
         ensure!(self.bcm == candidate_bcm, "Failed to decrypt the balance commitment");
 
         // Output the state.
-        Ok(State::from(owner, balance, self.data, self.nonce))
+        Ok(State::new(owner, balance, self.data, self.nonce))
     }
 }
