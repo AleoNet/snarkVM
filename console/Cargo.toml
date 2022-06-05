@@ -42,7 +42,7 @@ version = "0.7.5"
 optional = true
 
 [features]
-default = [ "account", "algorithms", "collections", "network", "program", "types" ]
+default = [ "account", "algorithms", "collections", "network", "program", "transition", "types" ]
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
 collections = [ "algorithms", "snarkvm-console-collections" ]
