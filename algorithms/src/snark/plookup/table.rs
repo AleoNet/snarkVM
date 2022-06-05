@@ -14,5 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod marlin;
-pub mod plookup;
+use snarkvm_fields::Field;
+
+pub struct LookupTable<F: Field>(Vec<Vec<F>>);
+
+impl<F: Field> LookupTable<F> {
+    pub fn compress(&self, zeta: F) -> Vec<F> {
+        self.0
+            .iter()
+            .map(|row| row.iter().enumerate().fold(F::zero(), |acc, (i, x)| acc + zeta.pow(&[i as u64]) * x))
+            .collect()
+    }
+}
