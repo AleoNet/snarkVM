@@ -35,6 +35,9 @@ version = "0.7.5"
 [dev-dependencies.anyhow]
 version = "1.0.57"
 
+[dev-dependencies.rand]
+version = "0.8"
+
 [features]
 default = ["enable_console"]
 # Use #[cfg(console)] instead.

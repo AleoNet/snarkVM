@@ -16,25 +16,6 @@
 
 use super::*;
 
-impl<N: Network> Identifier<N> {
-    /// Returns the number of bits of this identifier.
-    pub fn size_in_bits(&self) -> u8 {
-        8 * self.0.len() as u8
-    }
-}
-
-impl<N: Network> FromBits for Identifier<N> {
-    /// Initializes a new identifier from a list of little-endian bits *without* trailing zeros.
-    fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
-        Self::from_str(&String::from_utf8(Vec::<u8>::from_bits_le(bits_le)?)?)
-    }
-
-    /// Initializes a new identifier from a list of big-endian bits *without* leading zeros.
-    fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
-        Self::from_str(&String::from_utf8(Vec::<u8>::from_bits_be(bits_be)?)?)
-    }
-}
-
 impl<N: Network> ToBits for Identifier<N> {
     /// Returns the little-endian bits of the identifier.
     fn to_bits_le(&self) -> Vec<bool> {
@@ -50,43 +31,56 @@ impl<N: Network> ToBits for Identifier<N> {
 impl<N: Network> ToBits for &Identifier<N> {
     /// Returns the little-endian bits of the identifier.
     fn to_bits_le(&self) -> Vec<bool> {
-        self.0.to_bits_le()
+        self.0.to_bits_le()[..8 * self.1 as usize].to_vec()
     }
 
     /// Returns the big-endian bits of the identifier.
     fn to_bits_be(&self) -> Vec<bool> {
-        self.0.to_bits_be()
+        let mut bits = self.to_bits_le();
+        bits.reverse();
+        bits
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data::identifier::tests::sample_identifier_as_string;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, Rng};
-
-    use rand::distributions::Alphanumeric;
 
     type CurrentNetwork = Testnet3;
 
     const ITERATIONS: usize = 100;
 
     #[test]
-    fn test_identifier_bits() -> Result<()> {
-        let rng = &mut test_rng();
-
+    fn test_to_bits_le() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let string = "a".to_string()
-                + &rng
-                    .sample_iter(&Alphanumeric)
-                    .take(<CurrentNetwork as Network>::Field::size_in_data_bits() / (8 * 2))
-                    .map(char::from)
-                    .collect::<String>();
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            // Recover the field element from the bits.
+            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
 
-            let identifier = Identifier::<CurrentNetwork>::from_str(&string)?;
-            assert_eq!(identifier, Identifier::from_bits_le(&identifier.to_bits_le())?);
-            assert_eq!(identifier, Identifier::from_bits_be(&identifier.to_bits_be())?);
+            let candidate = Identifier::<CurrentNetwork>::from_str(&expected_string)?;
+            assert_eq!(expected_field, candidate.0);
+            assert_eq!(expected_field.to_bits_le()[..expected_string.len() * 8], candidate.to_bits_le());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_bits_be() -> Result<()> {
+        for _ in 0..ITERATIONS {
+            // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            // Recover the field element from the bits.
+            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
+
+            let candidate = Identifier::<CurrentNetwork>::from_str(&expected_string)?;
+            assert_eq!(expected_field, candidate.0);
+            assert_eq!(
+                expected_field.to_bits_le()[..expected_string.len() * 8].iter().rev().copied().collect::<Vec<_>>(),
+                candidate.to_bits_be()
+            );
         }
         Ok(())
     }

@@ -18,11 +18,29 @@ use snarkvm_fields::PrimeField;
 
 use anyhow::Result;
 
+/// Unary operator for converting to a base field.
+pub trait ToField {
+    type Field: PrimeField;
+
+    /// Returns the object as a base field element.
+    fn to_field(&self) -> Self::Field;
+}
+
+/// Unary operator for converting from a base field element.
+pub trait FromField {
+    type Field: PrimeField;
+
+    /// Initializes an object from a base field element.
+    fn from_field(field: &Self::Field) -> Result<Self>
+    where
+        Self: Sized;
+}
+
 /// Unary operator for converting to a list of base fields.
 pub trait ToFields {
     type Field: PrimeField;
 
-    /// Returns the circuit as a list of base field elements.
+    /// Returns the object as a list of base field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>>;
 }
 
@@ -30,7 +48,7 @@ pub trait ToFields {
 pub trait FromFields {
     type Field: PrimeField;
 
-    /// Casts a circuit from a list of base field elements.
+    /// Initializes an object from a list of base field elements.
     fn from_fields(fields: &[Self::Field]) -> Result<Self>
     where
         Self: Sized;

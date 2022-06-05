@@ -2139,6 +2139,7 @@ name = "snarkvm-circuit-program"
 version = "0.7.5"
 dependencies = [
  "anyhow",
+ "rand",
  "snarkvm-circuit-account",
  "snarkvm-circuit-network",
  "snarkvm-circuit-types",

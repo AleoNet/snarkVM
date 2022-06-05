@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(test)]
+use snarkvm_circuit_types::environment::assert_scope;
+
 mod from_bits;
+mod from_field;
 mod size_in_bits;
 mod to_bits;
 mod to_field;
@@ -33,7 +37,7 @@ use snarkvm_utilities::{error, FromBits as FB, ToBits as TB};
 /// The identifier must not consist solely of underscores.
 /// The identifier must fit within the data capacity of a base field element.
 #[derive(Clone)]
-pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes
+pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes in the identifier.
 
 #[cfg(console)]
 impl<A: Aleo> Inject for Identifier<A> {
@@ -44,38 +48,12 @@ impl<A: Aleo> Inject for Identifier<A> {
         // Convert the identifier to a string to check its validity.
         let identifier = identifier.to_string();
 
-        // Ensure the identifier is not an empty string, and does not start with a number.
-        match identifier.chars().next() {
-            Some(character) => {
-                if character.is_numeric() {
-                    A::halt("Identifier cannot start with a number")
-                }
-            }
-            None => A::halt("Identifier cannot be an empty string"),
-        }
-
-        // Ensure the identifier is alphanumeric and underscores.
-        if !identifier.chars().all(|character| character.is_alphanumeric() || character == '_') {
-            A::halt("Identifier must be alphanumeric and underscores")
-        }
-
-        // Ensure the identifier is not solely underscores.
-        if identifier.chars().all(|character| character == '_') {
-            A::halt("Identifier cannot consist solely of underscores")
-        }
-
-        // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        if identifier.len() > max_bytes {
-            A::halt(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long"))
-        }
-
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        let field = Field::from_bits_le(&Vec::<Boolean<_>>::constant(identifier.as_bytes().to_bits_le()));
+        let field = Field::from_bits_le(&Vec::<Boolean<_>>::constant(identifier.to_bits_le()));
 
         // Return the identifier.
-        Self(field, identifier.as_bytes().len() as u8)
+        Self(field, identifier.len() as u8)
     }
 }
 
@@ -90,32 +68,9 @@ impl<A: Aleo> Eject for Identifier<A> {
 
     /// Ejects the identifier as a string.
     fn eject_value(&self) -> Self::Primitive {
-        // Convert the identifier to bits.
-        let bits_le = self.0.to_bits_le().eject_value();
-        // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-        match String::from_utf8(
-            bits_le
-                .chunks(8)
-                .map(|byte| match u8::from_bits_le(byte) {
-                    Ok(byte) => byte,
-                    Err(error) => A::halt(format!("Failed to recover an identifier from bits: {error}")),
-                })
-                .collect::<Vec<_>>(),
-        ) {
-            // Truncate the UTF-8 string at the first instance of '\0'.
-            Ok(string) => match string.split('\0').next() {
-                // Check that the UTF-8 string matches the expected length.
-                Some(string) => match string.len() == self.1 as usize {
-                    // Return the string.
-                    true => match Self::Primitive::try_from(string) {
-                        Ok(identifier) => identifier,
-                        Err(error) => A::halt(format!("Failed to convert an identifier to a string: {error}")),
-                    },
-                    false => A::halt(format!("Identifier should be {} bytes, found {} bytes", self.1, string.len())),
-                },
-                None => A::halt("Identifier exceeds the maximum capacity allowed"),
-            },
-            Err(error) => A::halt(format!("Failed to eject identifier as string: {error}")),
+        match console::FromField::from_field(&self.0.eject_value()) {
+            Ok(identifier) => identifier,
+            Err(error) => A::halt(format!("Failed to convert an identifier to a string: {error}")),
         }
     }
 }
@@ -163,11 +118,42 @@ impl<A: Aleo> fmt::Display for Identifier<A> {
 }
 
 #[cfg(all(test, console))]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use crate::Circuit;
+    use snarkvm_utilities::{test_rng, Rng};
 
-    use anyhow::Result;
+    use anyhow::{bail, Result};
+    use core::str::FromStr;
+    use rand::distributions::Alphanumeric;
+
+    /// Samples a random identifier.
+    pub(super) fn sample_console_identifier<A: Aleo>() -> Result<console::Identifier<A::Network>> {
+        // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
+        let string = sample_console_identifier_as_string::<A>()?;
+        // Return the identifier.
+        console::Identifier::from_str(&string)
+    }
+
+    /// Samples a random identifier as a string.
+    pub(super) fn sample_console_identifier_as_string<A: Aleo>() -> Result<String> {
+        // Initialize a test RNG.
+        let rng = &mut test_rng();
+        // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
+        let string = "a".to_string()
+            + &rng
+                .sample_iter(&Alphanumeric)
+                .take(A::BaseField::size_in_data_bits() / (8 * 2))
+                .map(char::from)
+                .collect::<String>();
+        // Ensure identifier fits within the data capacity of the base field.
+        let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
+        match string.len() <= max_bytes {
+            // Return the identifier.
+            true => Ok(string),
+            false => bail!("Identifier exceeds the maximum capacity allowed"),
+        }
+    }
 
     #[test]
     fn test_identifier_parse() -> Result<()> {

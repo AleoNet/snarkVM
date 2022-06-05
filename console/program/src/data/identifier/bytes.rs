@@ -21,9 +21,11 @@ impl<N: Network> FromBytes for Identifier<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of bytes.
         let size = u8::read_le(&mut reader)?;
+
         // Read the identifier bytes.
         let mut buffer = vec![0u8; size as usize];
         reader.read_exact(&mut buffer)?;
+
         // from_str the identifier.
         Self::from_str(&String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?)
             .map_err(|e| error(format!("{e}")))
@@ -33,25 +35,29 @@ impl<N: Network> FromBytes for Identifier<N> {
 impl<N: Network> ToBytes for Identifier<N> {
     /// Writes an identifier to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Convert the identifier to a string.
+        let string = self.to_string();
+        if string.len() != self.1 as usize {
+            return Err(error(format!("Identifier length does not match expected size")));
+        }
+
         // Ensure identifier fits within the data capacity of the base field.
         let max_bytes = N::Field::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        if self.0.as_bytes().len() > max_bytes {
+        if string.len() > max_bytes {
             return Err(error(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")));
         }
 
-        (self.0.as_bytes().len() as u8).write_le(&mut writer)?;
-        self.0.as_bytes().write_le(&mut writer)
+        // Write the identifier to a buffer.
+        (string.len() as u8).write_le(&mut writer)?;
+        string.as_bytes().write_le(&mut writer)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data::identifier::tests::sample_identifier;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, Rng};
-
-    use anyhow::Result;
-    use rand::distributions::Alphanumeric;
 
     type CurrentNetwork = Testnet3;
 
@@ -59,17 +65,9 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let rng = &mut test_rng();
-
         for _ in 0..ITERATIONS {
-            // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let string = "a".to_string()
-                + &rng
-                    .sample_iter(&Alphanumeric)
-                    .take(<CurrentNetwork as Network>::Field::size_in_data_bits() / (8 * 2))
-                    .map(char::from)
-                    .collect::<String>();
-            let expected = Identifier::<CurrentNetwork>::from_str(&string)?;
+            // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
+            let expected = sample_identifier::<CurrentNetwork>()?;
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

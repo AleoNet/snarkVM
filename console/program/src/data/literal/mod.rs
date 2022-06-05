@@ -135,29 +135,6 @@ impl<N: Network> ToBytes for Literal<N> {
     }
 }
 
-// impl<N: Network> Debug for Literal<N> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Self::Address(literal) => Debug::fmt(literal, f),
-//             Self::Boolean(literal) => Debug::fmt(literal, f),
-//             Self::Field(literal) => Debug::fmt(literal, f),
-//             Self::Group(literal) => Debug::fmt(literal, f),
-//             Self::I8(literal) => Debug::fmt(literal, f),
-//             Self::I16(literal) => Debug::fmt(literal, f),
-//             Self::I32(literal) => Debug::fmt(literal, f),
-//             Self::I64(literal) => Debug::fmt(literal, f),
-//             Self::I128(literal) => Debug::fmt(literal, f),
-//             Self::U8(literal) => Debug::fmt(literal, f),
-//             Self::U16(literal) => Debug::fmt(literal, f),
-//             Self::U32(literal) => Debug::fmt(literal, f),
-//             Self::U64(literal) => Debug::fmt(literal, f),
-//             Self::U128(literal) => Debug::fmt(literal, f),
-//             Self::Scalar(literal) => Debug::fmt(literal, f),
-//             Self::String(literal) => Debug::fmt(literal, f),
-//         }
-//     }
-// }
-//
 // impl<N: Network> Display for Literal<N> {
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //         match self {

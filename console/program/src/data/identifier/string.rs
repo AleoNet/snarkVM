@@ -23,11 +23,7 @@ impl<N: Network> FromStr for Identifier<N> {
     fn from_str(identifier: &str) -> Result<Self, Self::Err> {
         // Ensure the identifier is not an empty string, and does not start with a number.
         match identifier.chars().next() {
-            Some(character) => {
-                if character.is_numeric() {
-                    bail!("Identifier cannot start with a number")
-                }
-            }
+            Some(character) => ensure!(!character.is_digit(10), "Identifier cannot start with a number"),
             None => bail!("Identifier cannot be an empty string"),
         }
 
@@ -47,25 +43,45 @@ impl<N: Network> FromStr for Identifier<N> {
             bail!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")
         }
 
-        // Return the identifier.
-        Ok(Self(identifier.to_string(), PhantomData))
+        // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
+        // for reconstructing the string when recovering the field element back into bytes.
+        Ok(Self(N::field_from_bits_le(&identifier.as_bytes().to_bits_le())?, identifier.len() as u8))
     }
 }
 
 impl<N: Network> fmt::Display for Identifier<N> {
     /// Prints the identifier as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        // Convert the identifier to bits.
+        let bits_le = self.0.to_bits_le();
+
+        // Convert the bits to bytes.
+        let bytes = bits_le
+            .chunks(8)
+            .map(|byte| u8::from_bits_le(byte).map_err(|_| fmt::Error))
+            .collect::<Result<Vec<u8>, _>>()?;
+
+        // Parse the bytes as a UTF-8 string.
+        let string = String::from_utf8(bytes).map_err(|_| fmt::Error)?;
+
+        // Truncate the UTF-8 string at the first instance of '\0'.
+        match string.split('\0').next() {
+            // Check that the UTF-8 string matches the expected length.
+            Some(string) => match string.len() == self.1 as usize {
+                // Return the string.
+                true => write!(f, "{string}"),
+                false => Err(fmt::Error),
+            },
+            None => Err(fmt::Error),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data::identifier::tests::sample_identifier_as_string;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, Rng};
-
-    use rand::distributions::Alphanumeric;
 
     type CurrentNetwork = Testnet3;
 
@@ -74,23 +90,18 @@ mod tests {
     #[test]
     fn test_identifier_from_str() -> Result<()> {
         let candidate = Identifier::<CurrentNetwork>::from_str("foo_bar").unwrap();
-        assert_eq!("foo_bar", candidate.0);
-
-        let rng = &mut test_rng();
+        assert_eq!("foo_bar", candidate.to_string());
 
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let string = "a".to_string()
-                + &rng
-                    .sample_iter(&Alphanumeric)
-                    .take(<CurrentNetwork as Network>::Field::size_in_data_bits() / (8 * 2))
-                    .map(char::from)
-                    .collect::<String>();
-            let expected = Identifier::<CurrentNetwork>::from_str(&string)?;
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            // Recover the field element from the bits.
+            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
 
-            let candidate = Identifier::<CurrentNetwork>::from_str(&string)?;
-            assert_eq!(expected, candidate);
-            assert_eq!(string, candidate.to_string());
+            let candidate = Identifier::<CurrentNetwork>::from_str(&expected_string)?;
+            assert_eq!(expected_string, candidate.to_string());
+            assert_eq!(expected_field, candidate.0);
+            assert_eq!(expected_string.len(), candidate.1 as usize);
         }
         Ok(())
     }
