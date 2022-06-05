@@ -28,7 +28,7 @@ impl<N: Network> FromBits for Identifier<N> {
         let field = N::field_from_bits_le(bits_le)?;
 
         // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-        let bytes = bits_le.chunks(8).map(|byte| u8::from_bits_le(byte)).collect::<Result<Vec<u8>>>()?;
+        let bytes = bits_le.chunks(8).map(u8::from_bits_le).collect::<Result<Vec<u8>>>()?;
 
         // Recover the identifier length from the bits, by finding the first instance of a `0` byte,
         // which is the null character '\0' in UTF-8, and an invalid character in an identifier.

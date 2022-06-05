@@ -38,7 +38,7 @@ impl<N: Network> ToBytes for Identifier<N> {
         // Convert the identifier to a string.
         let string = self.to_string();
         if string.len() != self.1 as usize {
-            return Err(error(format!("Identifier length does not match expected size")));
+            return Err(error("Identifier length does not match expected size"));
         }
 
         // Ensure identifier fits within the data capacity of the base field.

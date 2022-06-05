@@ -42,7 +42,7 @@ mod tests {
             // Initialize the circuit list of bits.
             let circuit_field = Field::constant(console::ToField::to_field(&console_identifier));
 
-            Circuit::scope(format!("Identifier ToBits"), || {
+            Circuit::scope("Identifier FromField", || {
                 let candidate = Identifier::<Circuit>::from_field(circuit_field);
                 assert_eq!(Mode::Constant, candidate.eject_mode());
                 assert_eq!(console_identifier, candidate.eject_value());

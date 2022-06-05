@@ -23,7 +23,7 @@ impl<N: Network> FromStr for Identifier<N> {
     fn from_str(identifier: &str) -> Result<Self, Self::Err> {
         // Ensure the identifier is not an empty string, and does not start with a number.
         match identifier.chars().next() {
-            Some(character) => ensure!(!character.is_digit(10), "Identifier cannot start with a number"),
+            Some(character) => ensure!(!character.is_numeric(), "Identifier cannot start with a number"),
             None => bail!("Identifier cannot be an empty string"),
         }
 

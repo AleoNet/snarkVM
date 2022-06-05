@@ -78,7 +78,7 @@ mod tests {
             // Initialize the circuit list of bits.
             let circuit_bits: Vec<_> = Inject::constant(console_identifier.to_bits_le());
 
-            Circuit::scope(format!("Identifier ToBits"), || {
+            Circuit::scope("Identifier FromBits", || {
                 let candidate = Identifier::<Circuit>::from_bits_le(&circuit_bits);
                 assert_eq!(Mode::Constant, candidate.eject_mode());
                 assert_eq!(console_identifier, candidate.eject_value());
@@ -96,7 +96,7 @@ mod tests {
             // Initialize the circuit list of bits.
             let circuit_bits: Vec<_> = Inject::constant(console_identifier.to_bits_be());
 
-            Circuit::scope(format!("Identifier ToBits"), || {
+            Circuit::scope("Identifier FromBits", || {
                 let candidate = Identifier::<Circuit>::from_bits_be(&circuit_bits);
                 assert_eq!(Mode::Constant, candidate.eject_mode());
                 assert_eq!(console_identifier, candidate.eject_value());

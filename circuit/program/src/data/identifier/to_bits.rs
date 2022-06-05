@@ -64,7 +64,7 @@ mod tests {
             // Initialize the circuit identifier.
             let circuit_identifier = Identifier::<Circuit>::new(Mode::Constant, console_identifier.clone());
 
-            Circuit::scope(format!("Identifier ToBits"), || {
+            Circuit::scope("Identifier ToBits", || {
                 let candidate = circuit_identifier.to_bits_le();
                 assert_eq!(Mode::Constant, candidate.eject_mode());
                 assert_eq!(console_identifier.to_bits_le(), candidate.eject_value());
@@ -82,7 +82,7 @@ mod tests {
             // Initialize the circuit identifier.
             let circuit_identifier = Identifier::<Circuit>::new(Mode::Constant, console_identifier.clone());
 
-            Circuit::scope(format!("Identifier ToBits"), || {
+            Circuit::scope("Identifier ToBits", || {
                 let candidate = circuit_identifier.to_bits_be();
                 assert_eq!(Mode::Constant, candidate.eject_mode());
                 assert_eq!(console_identifier.to_bits_be(), candidate.eject_value());
