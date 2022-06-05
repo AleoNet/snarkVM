@@ -17,9 +17,23 @@
 #![forbid(unsafe_code)]
 
 pub mod program {
-    use circuit::{Aleo, Ciphertext, Data, Eject, Field, Inject, Mode, Record, Scalar, ToBits};
+    use circuit::{
+        Address,
+        Aleo,
+        Ciphertext,
+        Data,
+        Eject,
+        Field,
+        Group,
+        Inject,
+        Mode,
+        Record,
+        Scalar,
+        ToBits,
+        ToGroup,
+    };
 
-    use anyhow::{ensure, Result};
+    use anyhow::{bail, ensure, Result};
     use itertools::Itertools;
 
     pub struct Public<A: Aleo> {
@@ -29,8 +43,10 @@ pub mod program {
         output_records: Vec<Record<A>>,
         /// The output data.
         output_data: Vec<Data<A, Ciphertext<A>>>,
-        /// The address commitment (i.e. `acm := Commit(caller, r_acm)`).
-        acm: Field<A>,
+        /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
+        tcm: Field<A>,
+        /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
+        tpk: Group<A>,
     }
 
     impl<A: Aleo> Public<A> {
@@ -39,41 +55,47 @@ pub mod program {
             serial_numbers: Vec<A::BaseField>,
             output_records: Vec<console::program::Record<A::Network>>,
             output_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
-            acm: A::BaseField,
+            tcm: A::BaseField,
+            tpk: A::Affine,
         ) -> Self {
             Self {
                 serial_numbers: Inject::new(Mode::Public, serial_numbers),
                 output_records: Inject::new(Mode::Public, output_records),
                 output_data: Inject::new(Mode::Public, output_data),
-                acm: Field::<A>::new(Mode::Public, acm),
+                tcm: Field::<A>::new(Mode::Public, tcm),
+                tpk: Group::<A>::new(Mode::Public, tpk),
             }
         }
     }
 
     pub struct Private<A: Aleo> {
+        /// The caller address.
+        caller: Address<A>,
         /// The input record view keys.
         input_record_view_keys: Vec<Field<A>>,
         /// The input records.
         input_records: Vec<Record<A>>,
         /// The input data.
         input_data: Vec<Data<A, Ciphertext<A>>>,
-        /// The address randomizer.
-        r_acm: Scalar<A>,
+        /// The transition view key commitment randomizer.
+        r_tcm: Field<A>,
     }
 
     impl<A: Aleo> Private<A> {
         /// Initializes the private inputs for the program circuit.
         pub fn from(
+            caller: console::account::Address<A::Network>,
             record_view_keys: Vec<A::BaseField>,
             input_records: Vec<console::program::Record<A::Network>>,
             input_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
-            r_acm: A::ScalarField,
+            r_tcm: A::BaseField,
         ) -> Self {
             Self {
+                caller: Address::new(Mode::Private, caller),
                 input_record_view_keys: Inject::new(Mode::Private, record_view_keys),
                 input_records: Inject::new(Mode::Private, input_records),
                 input_data: Inject::new(Mode::Private, input_data),
-                r_acm: Scalar::<A>::new(Mode::Private, r_acm),
+                r_tcm: Field::<A>::new(Mode::Private, r_tcm),
             }
         }
     }
@@ -84,30 +106,31 @@ pub mod program {
         /// Initializes the program circuit.
         pub fn from(public: Public<A>, private: Private<A>) -> Result<Self> {
             // Ensure all public members are public inputs.
-            let Public { serial_numbers, output_records, output_data, acm } = &public;
+            let Public { serial_numbers, output_records, output_data, tcm, tpk } = &public;
             serial_numbers.iter().try_for_each(|serial_number| {
-                Ok(ensure!(serial_number.eject_mode().is_public(), "Program serial number must be public"))
+                ensure!(serial_number.eject_mode().is_public(), "Program serial number must be public");
+                Ok(())
             })?;
-            output_records.iter().try_for_each(|output_record| {
-                Ok(ensure!(output_record.eject_mode().is_public(), "Program output record must be public"))
+            output_records.iter().zip_eq(output_data).try_for_each(|(output_record, output_data)| {
+                ensure!(output_record.eject_mode().is_public(), "Program output record must be public");
+                ensure!(output_data.eject_mode().is_public(), "Program output data must be public");
+                Ok(())
             })?;
-            output_data.iter().try_for_each(|output_data| {
-                Ok(ensure!(output_data.eject_mode().is_public(), "Program output data must be public"))
-            })?;
-            ensure!(acm.eject_mode().is_public(), "Address commitment must be public");
+            ensure!(tcm.eject_mode().is_public(), "Transition view key commitment must be public");
+            ensure!(tpk.eject_mode().is_public(), "Transition public key must be public");
 
             // Ensure all private members are private inputs.
-            let Private { input_record_view_keys, input_records, input_data, r_acm } = &private;
-            input_record_view_keys.iter().try_for_each(|record_view_key| {
-                Ok(ensure!(record_view_key.eject_mode().is_private(), "Program record view key must be private"))
-            })?;
-            input_records.iter().try_for_each(|record| {
-                Ok(ensure!(record.eject_mode().is_private(), "Program input record must be private"))
-            })?;
-            input_data.iter().try_for_each(|data| {
-                Ok(ensure!(data.eject_mode().is_private(), "Program input data must be private"))
-            })?;
-            ensure!(r_acm.eject_mode().is_private(), "Address randomizer must be private");
+            let Private { caller, input_record_view_keys, input_records, input_data, r_tcm } = &private;
+            ensure!(caller.eject_mode().is_private(), "Caller must be private");
+            input_record_view_keys.iter().zip_eq(input_records).zip_eq(input_data).try_for_each(
+                |((record_view_key, record), data)| {
+                    ensure!(record_view_key.eject_mode().is_private(), "Program record view key must be private");
+                    ensure!(record.eject_mode().is_private(), "Program input record must be private");
+                    ensure!(data.eject_mode().is_private(), "Program input data must be private");
+                    Ok(())
+                },
+            )?;
+            ensure!(r_tcm.eject_mode().is_private(), "Transition view key commitment randomizer must be private");
 
             Ok(Self(public, private))
         }
@@ -135,11 +158,11 @@ pub mod program {
                 // println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
                 // Decrypt the record into program state.
-                let state = record.decrypt_symmetric(&record_view_key);
+                let state = record.decrypt_symmetric(record_view_key);
                 println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
-                // Ensure the address commitment matches the state owner.
-                A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
+                // Ensure the caller is the owner of the record.
+                A::assert_eq(&private.caller, state.owner());
                 println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
                 // Compute the data ID.
@@ -167,6 +190,18 @@ pub mod program {
                 inputs.push((state, data));
             }
 
+            // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+            let tsk = A::hash_to_scalar_psd2(&[private.r_tcm.clone()]);
+            // Ensure the transition public key `tpk` is `tsk * G`.
+            A::assert_eq(&public.tpk, &A::g_scalar_multiply(&tsk));
+
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = private.caller.to_group() * tsk;
+            // Ensure the transition view key commitment `tcm` is `Hash(caller, tpk, tvk)`.
+            let preimage = [&private.caller.to_group(), &public.tpk, &tvk].map(|c| c.to_x_coordinate());
+            A::assert_eq(&public.tcm, &A::hash_psd4(&preimage));
+            println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
             // // Ensure all of the outputs are well-formed.
             // for (record, record_view_key) in public.output_records.iter().zip_eq(&public.output_data) {
             //     // Compute the record commitment.
@@ -182,10 +217,6 @@ pub mod program {
             //
             //     // Decrypt the record into program state.
             //     let state = record.decrypt_symmetric(&record_view_key);
-            //     println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-            //
-            //     // Ensure the address commitment matches the state owner.
-            //     A::assert_eq(&public.acm, A::commit_bhp256(&state.owner().to_bits_le(), &private.r_acm));
             //     println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
             //
             //     // Append the state to the outputs.

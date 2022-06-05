@@ -107,7 +107,7 @@ pub struct Transition<N: Network> {
     input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     /// The transition output proofs.
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
-    /// The transition view key commitment (i.e. `tcm := Hash(tvk)`).
+    /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
     tcm: N::Field,
     /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
     tpk: N::Affine,
@@ -219,7 +219,8 @@ fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> R
     Ok((fcm, r_fcm))
 }
 
-/// Returns the transition view key commitment as `tcm := Hash(HashToScalar(nonce) * caller)`.
+/// Returns the transition view key commitment as `tcm := Hash(caller, tpk, tvk)`.
+#[allow(clippy::type_complexity)]
 fn tcm<A: circuit::Aleo, R: Rng + CryptoRng>(
     caller: &Address<A::Network>,
     rng: &mut R,
@@ -256,7 +257,7 @@ where
     let output_index = 0u16;
 
     // Compute the transition view key commitment.
-    let (tcm, tpk, r_tcm, tvk) = tcm::<A, R>(&caller, rng)?;
+    let (tcm, tpk, r_tcm, tvk) = tcm::<A, R>(caller, rng)?;
 
     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
     let randomizer =
@@ -281,7 +282,7 @@ where
 
     let process = std::panic::catch_unwind(|| {
         let public = output::Public::<A>::from(output_index, record.clone(), fcm, tcm, tpk);
-        let private = output::Private::<A>::from(state, *caller, r_fcm, r_tcm);
+        let private = output::Private::<A>::from(*caller, state, r_fcm, r_tcm);
         output::OutputCircuit::from(public, private)?.execute();
         println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 

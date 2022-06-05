@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::module_inception)]
 
 #[allow(dead_code, unused_imports)]
 mod program;
@@ -49,7 +50,7 @@ pub mod input {
         bcm: Group<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,
-        /// The transition view key commitment (i.e. `tcm := Hash(tvk)`).
+        /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
         tcm: Field<A>,
         /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
         tpk: Group<A>,
@@ -217,7 +218,7 @@ pub mod output {
         record: Record<A>,
         /// The fee commitment (i.e. `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`).
         fcm: Group<A>,
-        /// The transition view key commitment (i.e. `tcm := Hash(tvk)`).
+        /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
         tcm: Field<A>,
         /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
         tpk: Group<A>,
@@ -243,10 +244,10 @@ pub mod output {
     }
 
     pub struct Private<A: Aleo> {
-        /// The output state.
-        state: State<A>,
         /// The caller address.
         caller: Address<A>,
+        /// The output state.
+        state: State<A>,
         /// The fee randomizer (i.e. `r_fcm := Σ r_in - Σ r_out`).
         r_fcm: Scalar<A>,
         /// The transition view key commitment randomizer.
@@ -256,14 +257,14 @@ pub mod output {
     impl<A: Aleo> Private<A> {
         /// Initializes the private inputs for the output circuit.
         pub fn from(
-            state: console::program::State<A::Network>,
             caller: console::account::Address<A::Network>,
+            state: console::program::State<A::Network>,
             r_fcm: A::ScalarField,
             r_tcm: A::BaseField,
         ) -> Self {
             Self {
-                state: State::new(Mode::Private, state),
                 caller: Address::new(Mode::Private, caller),
+                state: State::new(Mode::Private, state),
                 r_fcm: Scalar::new(Mode::Private, r_fcm),
                 r_tcm: Field::new(Mode::Private, r_tcm),
             }
@@ -284,9 +285,9 @@ pub mod output {
             ensure!(tpk.eject_mode().is_public(), "Transition public key must be public");
 
             // Ensure all private members are private inputs.
-            let Private { state, caller, r_fcm, r_tcm } = &private;
-            ensure!(state.eject_mode().is_private(), "Output state must be private");
+            let Private { caller, state, r_fcm, r_tcm } = &private;
             ensure!(caller.eject_mode().is_private(), "Caller address must be private");
+            ensure!(state.eject_mode().is_private(), "Output state must be private");
             ensure!(r_fcm.eject_mode().is_private(), "Fee randomizer must be private");
             ensure!(r_tcm.eject_mode().is_private(), "Transition view key commitment randomizer must be private");
 
