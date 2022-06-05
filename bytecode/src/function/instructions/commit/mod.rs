@@ -32,10 +32,7 @@ pub(super) use ped64::*;
 pub(super) mod ped128;
 pub(super) use ped128::*;
 
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Program, Register, Registers},
-    Value,
-};
+use crate::function::{parsers::*, Instruction, Opcode, Operation, Program, Register, Registers};
 use snarkvm_circuit::{Aleo, Literal, Parser, ParserResult, ToBits};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -80,10 +77,7 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
         // Load the input from the first operand.
         let input = registers.load(self.operation.first()).to_literals();
         // Load the randomizer from the second operand.
-        let randomizer = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => literal,
-            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
+        let randomizer = registers.load_literal(self.operation.second());
 
         // Compute the digest for the given input.
         if let Literal::Scalar(randomizer) = randomizer {

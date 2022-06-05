@@ -30,7 +30,9 @@ pub mod program {
         Record,
         Scalar,
         ToBits,
+        ToField,
         ToGroup,
+        U16,
     };
 
     use anyhow::{bail, ensure, Result};
@@ -202,8 +204,20 @@ pub mod program {
             A::assert_eq(&public.tcm, &A::hash_psd4(&preimage));
             println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
+            // // Execute the function.
+            // let (output_states, output_data) = A::transition(inputs);
+            //
             // // Ensure all of the outputs are well-formed.
-            // for (record, record_view_key) in public.output_records.iter().zip_eq(&public.output_data) {
+            // for (index, (record, record_view_key)) in public.output_records.iter().zip_eq(&public.output_data).enumerate() {
+            //     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+            //     let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), U16::constant(index as u16).to_field()]);
+            //     // Encrypt the program state into a record, using the randomizer.
+            //     let record = private.state.encrypt(&randomizer);
+            //     // Ensure the record matches the declared record.
+            //     A::assert(public.record.is_equal(&record));
+            //     println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+            //
+            //
             //     // Compute the record commitment.
             //     let commitment = record.to_commitment();
             //     println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());

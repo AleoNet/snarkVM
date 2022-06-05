@@ -20,6 +20,7 @@ use crate::{
     Program,
     Value,
 };
+use snarkvm_circuit::Literal;
 
 use indexmap::IndexMap;
 use std::{cell::RefCell, rc::Rc};
@@ -130,6 +131,20 @@ impl<P: Program> Registers<P> {
         }
     }
 
+    /// Loads the literal of a given operand from the registers.
+    ///
+    /// # Errors
+    /// This method will halt if the given operand is not a literal.
+    /// This method will halt if the register locator is not found.
+    /// In the case of register members, this method will halt if the member is not found.
+    #[inline]
+    pub fn load_literal<O: Into<Operand<P>>>(&self, operand: O) -> Literal<P::Environment> {
+        match self.load(operand) {
+            Value::Literal(literal) => literal,
+            Value::Definition(..) => P::halt("Operand is not a literal"),
+        }
+    }
+
     /// Loads the value of a given operand from the registers.
     ///
     /// # Errors
@@ -201,7 +216,7 @@ impl<P: Program> Registers<P> {
                                     // If the value is a literal, then halt as this should not be possible since it is not the last round.
                                     Value::Literal(..) => P::halt("Cannot load a literal from a register member"),
                                     // If the annotation is a definition, update the `member_values` to the next list of member values.
-                                    Value::Definition(_name, members) => member_values = (*members).clone(),
+                                    Value::Definition(_, members) => member_values = (*members).clone(),
                                 },
                                 // Halts if the member does not exist.
                                 None => P::halt(format!("Failed to locate '{register}': invalid member index")),

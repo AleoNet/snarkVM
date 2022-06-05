@@ -17,7 +17,6 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
-    Value,
 };
 use snarkvm_circuit::{
     Boolean,
@@ -74,19 +73,10 @@ impl<P: Program> Operation<P> for Ternary<P> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
-        // Load the values for the condition, first, and second operands.
-        let condition = match registers.load(self.operation.condition()) {
-            Value::Literal(literal) => literal,
-            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
-        let first = match registers.load(self.operation.first()) {
-            Value::Literal(literal) => literal,
-            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
-        let second = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => literal,
-            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
+        // Load the literals for the condition, first, and second operands.
+        let condition = registers.load_literal(self.operation.condition());
+        let first = registers.load_literal(self.operation.first());
+        let second = registers.load_literal(self.operation.second());
 
         // Perform the operation.
         let result = match (condition, first, second) {
@@ -178,7 +168,7 @@ impl<P: Program> Into<Instruction<P>> for Ternary<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Identifier, Process, Register};
+    use crate::{Identifier, Process, Register, Value};
 
     type P = Process;
 
@@ -299,7 +289,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "message is not a literal")]
+    #[should_panic(expected = "Operand is not a literal")]
     fn test_composite_halts() {
         let condition = Value::<P>::from_str("true.public");
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![

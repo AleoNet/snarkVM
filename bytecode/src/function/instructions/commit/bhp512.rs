@@ -27,7 +27,7 @@ impl CommitOpcode for BHP512 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{function::Register, Identifier, Process};
+    use crate::{function::Register, Identifier, Process, Value};
 
     type P = Process;
 

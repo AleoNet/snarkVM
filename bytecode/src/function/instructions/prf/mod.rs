@@ -26,7 +26,6 @@ pub(super) use psd8::*;
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
-    Value,
 };
 use snarkvm_circuit::{Aleo, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits, ToField};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -71,10 +70,7 @@ impl<P: Program, Op: PRFOpcode> Operation<P> for PRF<P, Op> {
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
         // Load the seed from the first operand.
-        let seed = match registers.load(self.operation.first()) {
-            Value::Literal(literal) => literal,
-            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
+        let seed = registers.load_literal(self.operation.first());
         // Load the input from the second operand.
         let input = registers.load(self.operation.second()).to_literals();
 
