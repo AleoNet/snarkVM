@@ -23,22 +23,22 @@ use crate::{Ciphertext, Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 
-/// An entry stored in program data.
+/// A value stored in program data.
 #[derive(Clone)]
-pub enum Entry<A: Aleo, Private: Visibility<A>> {
-    /// A constant entry.
+pub enum Value<A: Aleo, Private: Visibility<A>> {
+    /// A constant value.
     Constant(Plaintext<A>),
-    /// A publicly-visible entry.
+    /// A publicly-visible value.
     Public(Plaintext<A>),
-    /// A private entry encrypted under the account owner's address.
+    /// A private value encrypted under the account owner's address.
     Private(Private),
 }
 
 #[cfg(console)]
-impl<A: Aleo> Inject for Entry<A, Plaintext<A>> {
-    type Primitive = console::Entry<A::Network, console::Plaintext<A::Network>>;
+impl<A: Aleo> Inject for Value<A, Plaintext<A>> {
+    type Primitive = console::Value<A::Network, console::Plaintext<A::Network>>;
 
-    /// Initializes a new plaintext entry from a primitive.
+    /// Initializes a new plaintext value from a primitive.
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
             Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
@@ -49,10 +49,10 @@ impl<A: Aleo> Inject for Entry<A, Plaintext<A>> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> Inject for Entry<A, Ciphertext<A>> {
-    type Primitive = console::Entry<A::Network, console::Ciphertext<A::Network>>;
+impl<A: Aleo> Inject for Value<A, Ciphertext<A>> {
+    type Primitive = console::Value<A::Network, console::Ciphertext<A::Network>>;
 
-    /// Initializes a new ciphertext entry from a primitive.
+    /// Initializes a new ciphertext value from a primitive.
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
             Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
@@ -63,60 +63,60 @@ impl<A: Aleo> Inject for Entry<A, Ciphertext<A>> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> Eject for Entry<A, Plaintext<A>> {
-    type Primitive = console::Entry<A::Network, console::Plaintext<A::Network>>;
+impl<A: Aleo> Eject for Value<A, Plaintext<A>> {
+    type Primitive = console::Value<A::Network, console::Plaintext<A::Network>>;
 
-    /// Ejects the mode of the entry.
+    /// Ejects the mode of the value.
     fn eject_mode(&self) -> Mode {
         match self {
-            Entry::Constant(_) => Mode::Constant,
-            Entry::Public(_) => Mode::Public,
-            Entry::Private(_) => Mode::Private,
+            Value::Constant(_) => Mode::Constant,
+            Value::Public(_) => Mode::Public,
+            Value::Private(_) => Mode::Private,
         }
     }
 
-    /// Ejects the entry.
+    /// Ejects the value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Entry::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
-            Entry::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
-            Entry::Private(plaintext) => Self::Primitive::Private(plaintext.eject_value()),
+            Value::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
+            Value::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
+            Value::Private(plaintext) => Self::Primitive::Private(plaintext.eject_value()),
         }
     }
 }
 
 #[cfg(console)]
-impl<A: Aleo> Eject for Entry<A, Ciphertext<A>> {
-    type Primitive = console::Entry<A::Network, console::Ciphertext<A::Network>>;
+impl<A: Aleo> Eject for Value<A, Ciphertext<A>> {
+    type Primitive = console::Value<A::Network, console::Ciphertext<A::Network>>;
 
-    /// Ejects the mode of the entry.
+    /// Ejects the mode of the value.
     fn eject_mode(&self) -> Mode {
         match self {
-            Entry::Constant(_) => Mode::Constant,
-            Entry::Public(_) => Mode::Public,
-            Entry::Private(_) => Mode::Private,
+            Value::Constant(_) => Mode::Constant,
+            Value::Public(_) => Mode::Public,
+            Value::Private(_) => Mode::Private,
         }
     }
 
-    /// Ejects the entry.
+    /// Ejects the value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Entry::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
-            Entry::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
-            Entry::Private(ciphertext) => Self::Primitive::Private(ciphertext.eject_value()),
+            Value::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
+            Value::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
+            Value::Private(ciphertext) => Self::Primitive::Private(ciphertext.eject_value()),
         }
     }
 }
 
 // impl<A: Aleo, Literal: EntryMode<A>> Entry<A, Literal> {
-//     // /// Returns the recursive depth of this entry.
+//     // /// Returns the recursive depth of this value.
 //     // /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
 //     // fn depth(&self, counter: usize) -> usize {
 //     //     match self {
 //     //         Self::Literal(..) => 1,
 //     //         Self::Composite(composite) => {
 //     //             // Determine the maximum depth of the composite.
-//     //             let max_depth = composite.iter().map(|(_, entry)| entry.depth(counter)).fold(0, |a, b| a.max(b));
+//     //             let max_depth = composite.iter().map(|(_, value)| value.depth(counter)).fold(0, |a, b| a.max(b));
 //     //             // Add `1` to the depth of the member with the largest depth.
 //     //             max_depth.saturating_add(1)
 //     //         }

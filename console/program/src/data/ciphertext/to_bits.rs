@@ -17,14 +17,14 @@
 use super::*;
 
 impl<N: Network> ToBits for Ciphertext<N> {
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this ciphertext as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<bool> {
         let bits_le = self.0.to_bits_le();
         assert_eq!(self.0.len() * N::Field::size_in_bits(), bits_le.len());
         bits_le
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this ciphertext as a list of **big-endian** bits.
     fn to_bits_be(&self) -> Vec<bool> {
         let bits_be = self.0.to_bits_be();
         assert_eq!(self.0.len() * N::Field::size_in_bits(), bits_be.len());

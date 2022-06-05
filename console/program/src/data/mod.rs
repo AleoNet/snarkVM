@@ -17,9 +17,6 @@
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-mod entry;
-pub use entry::Entry;
-
 mod identifier;
 pub use identifier::Identifier;
 
@@ -28,6 +25,9 @@ pub use literal::Literal;
 
 mod plaintext;
 pub use plaintext::Plaintext;
+
+mod value;
+pub use value::Value;
 
 mod decrypt;
 mod encrypt;
@@ -50,18 +50,19 @@ pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
 
 /// A value stored in program data.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Data<N: Network, Private: Visibility<N>>(Vec<(Identifier<N>, Entry<N, Private>)>);
+pub struct Data<N: Network, Private: Visibility<N>>(Vec<(Identifier<N>, Value<N, Private>)>);
 
-impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Entry<N, Private>)>> for Data<N, Private> {
-    /// Initializes a new `Data` value from a vector of `(Identifier, Entry)` pairs.
-    fn from(entries: Vec<(Identifier<N>, Entry<N, Private>)>) -> Self {
+impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Value<N, Private>)>> for Data<N, Private> {
+    /// Initializes a new `Data` value from a vector of `(Identifier, Value)` pairs.
+    fn from(entries: Vec<(Identifier<N>, Value<N, Private>)>) -> Self {
         Self(entries)
     }
 }
 
 impl<N: Network, Private: Visibility<N>> Deref for Data<N, Private> {
-    type Target = [(Identifier<N>, Entry<N, Private>)];
+    type Target = [(Identifier<N>, Value<N, Private>)];
 
+    /// Dereferences the data into a slice of `(Identifier, Value)` tuples.
     fn deref(&self) -> &Self::Target {
         &self.0
     }

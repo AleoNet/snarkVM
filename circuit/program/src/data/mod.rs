@@ -20,9 +20,6 @@
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-mod entry;
-pub use entry::Entry;
-
 mod identifier;
 pub use identifier::Identifier;
 
@@ -31,6 +28,9 @@ pub use literal::Literal;
 
 mod plaintext;
 pub use plaintext::Plaintext;
+
+mod value;
+pub use value::Value;
 
 mod decrypt;
 mod encrypt;
@@ -46,7 +46,7 @@ pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToField
     fn size_in_fields(&self) -> u16;
 }
 
-pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Entry<A, Private>)>);
+pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Value<A, Private>)>);
 
 #[cfg(console)]
 impl<A: Aleo> Inject for Data<A, Plaintext<A>> {
@@ -54,7 +54,7 @@ impl<A: Aleo> Inject for Data<A, Plaintext<A>> {
 
     /// Initializes plaintext data from a primitive.
     fn new(mode: Mode, data: Self::Primitive) -> Self {
-        // TODO (howardwu): Enforce the maximum number of data entries.
+        // TODO (howardwu): Enforce the maximum number of data values.
         Self(Inject::new(mode, (*data).to_vec()))
     }
 }
@@ -65,7 +65,7 @@ impl<A: Aleo> Inject for Data<A, Ciphertext<A>> {
 
     /// Initializes ciphertext data from a primitive.
     fn new(mode: Mode, data: Self::Primitive) -> Self {
-        // TODO (howardwu): Enforce the maximum number of data entries.
+        // TODO (howardwu): Enforce the maximum number of data values.
         Self(Inject::new(mode, (*data).to_vec()))
     }
 }
@@ -76,13 +76,13 @@ impl<A: Aleo> Eject for Data<A, Plaintext<A>> {
 
     /// Ejects the mode of the data.
     fn eject_mode(&self) -> Mode {
-        self.0.iter().map(|(identifier, entry)| (identifier, entry).eject_mode()).collect::<Vec<_>>().eject_mode()
+        self.0.iter().map(|(identifier, value)| (identifier, value).eject_mode()).collect::<Vec<_>>().eject_mode()
     }
 
     /// Ejects the data.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from(
-            self.0.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<Vec<_>>(),
+            self.0.iter().map(|(identifier, value)| (identifier, value).eject_value()).collect::<Vec<_>>(),
         )
     }
 }
@@ -93,13 +93,13 @@ impl<A: Aleo> Eject for Data<A, Ciphertext<A>> {
 
     /// Ejects the mode of the data.
     fn eject_mode(&self) -> Mode {
-        self.0.iter().map(|(identifier, entry)| (identifier, entry).eject_mode()).collect::<Vec<_>>().eject_mode()
+        self.0.iter().map(|(identifier, value)| (identifier, value).eject_mode()).collect::<Vec<_>>().eject_mode()
     }
 
     /// Ejects the data.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from(
-            self.0.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<Vec<_>>(),
+            self.0.iter().map(|(identifier, value)| (identifier, value).eject_value()).collect::<Vec<_>>(),
         )
     }
 }
@@ -116,8 +116,8 @@ impl<A: Aleo, Private: Visibility<A>> TypeName for Data<A, Private> {
 //         Self(HashMap::new())
 //     }
 //
-//     pub fn insert(&mut self, identifier: Identifier<A>, entry: Entry<A, Private>) {
-//         self.0.insert(identifier, entry);
+//     pub fn insert(&mut self, identifier: Identifier<A>, value: Entry<A, Private>) {
+//         self.0.insert(identifier, value);
 //     }
 //
 //     pub fn get(&self, identifier: &Identifier<A>) -> Option<&Entry<A, Private>> {

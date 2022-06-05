@@ -29,19 +29,19 @@ impl<N: Network> Data<N, Ciphertext<N>> {
     pub fn decrypt_symmetric(&self, data_view_key: &N::Field) -> Result<Data<N, Plaintext<N>>> {
         // Determine the number of randomizers needed to encrypt the data.
         let num_randomizers =
-            self.0.iter().map(|(_, entry)| entry.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
+            self.0.iter().map(|(_, value)| value.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
         // Prepare a randomizer for each field element.
         let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *data_view_key], num_randomizers);
         // Decrypt the data.
         let mut index: usize = 0;
         let mut decrypted_data = Vec::with_capacity(self.0.len());
-        for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
+        for (id, value, num_randomizers) in self.0.iter().map(|(id, value)| (id, value, value.num_randomizers())) {
             // Retrieve the result for `num_randomizers`.
             let num_randomizers = num_randomizers? as usize;
-            // Retrieve the randomizers for this entry.
+            // Retrieve the randomizers for this value.
             let randomizers = &randomizers[index..index + num_randomizers];
-            // Decrypt the entry, and add the entry.
-            decrypted_data.push((id.clone(), entry.decrypt(randomizers)?));
+            // Decrypt the value, and add the value.
+            decrypted_data.push((id.clone(), value.decrypt(randomizers)?));
             // Increment the index.
             index += num_randomizers;
         }
@@ -75,7 +75,7 @@ mod tests {
 
             let data = Data(vec![(
                 Identifier::from_str("a")?,
-                Entry::Private(Plaintext::from(Literal::Field(UniformRand::rand(rng)))),
+                Value::Private(Plaintext::from(Literal::Field(UniformRand::rand(rng)))),
             )]);
 
             let randomizer = <CurrentNetwork as Network>::Scalar::rand(rng);
@@ -87,99 +87,3 @@ mod tests {
         Ok(())
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use snarkvm_algorithms::{encryption::ECIESPoseidonEncryption as NativeECIES, EncryptionScheme};
-//     use snarkvm_circuits_environment::Circuit;
-//     use snarkvm_curves::{
-//         edwards_bls12::{EdwardsAffine, EdwardsParameters},
-//         AffineCurve,
-//     };
-//     use snarkvm_utilities::{test_rng, UniformRand};
-//
-//     const ITERATIONS: u64 = 10;
-//     const MESSAGE: &str = "ECIESCircuit0";
-//     const RATE: usize = 4;
-//
-//     fn check_encode_decode(mode: Mode) {
-//         let circuit = ECIESPoseidonEncryption::<Circuit, RATE>::setup();
-//
-//         for i in 0..ITERATIONS {
-//             // Sample a random input.
-//             let input = (0..64).map(|_| u8::rand(&mut test_rng())).collect::<Vec<u8>>();
-//
-//             let expected = NativeECIES::<EdwardsParameters>::encode_message(&input).unwrap();
-//
-//             // Convert the message into bits.
-//             let mut plaintext_bits = Vec::<Boolean<_>>::with_capacity(input.len() * 8 + 1);
-//             for byte in input.iter() {
-//                 let mut byte = *byte;
-//                 for _ in 0..8 {
-//                     plaintext_bits.push(Inject::new(mode, byte & 1 == 1));
-//                     byte >>= 1;
-//                 }
-//             }
-//
-//             Circuit::scope(format!("ECIES {mode} {i}"), || {
-//                 let encoded = circuit.encode_message(&plaintext_bits);
-//                 let circ_decoded = circuit.decode_message(&encoded);
-//                 assert_eq!(expected, encoded.eject_value());
-//                 assert_eq!(plaintext_bits.eject_value(), circ_decoded.eject_value());
-//             });
-//         }
-//     }
-//
-//     fn check_encrypt_decrypt(mode: Mode) {
-//         let native = NativeECIES::<EdwardsParameters>::setup(MESSAGE);
-//         let circuit = ECIESPoseidonEncryption::<Circuit, RATE>::setup();
-//
-//         for i in 0..ITERATIONS {
-//             // Sample a random input.
-//             let input = (0..64).map(|_| u8::rand(&mut test_rng())).collect::<Vec<u8>>();
-//             let encoded = NativeECIES::<EdwardsParameters>::encode_message(&input).unwrap();
-//             let symmetric_key = <EdwardsAffine as AffineCurve>::BaseField::rand(&mut test_rng());
-//             let circ_input = encoded.iter().map(|el| Field::new(mode, *el)).collect::<Vec<Field<_>>>();
-//             let circ_symmetric_key = Field::new(mode, symmetric_key);
-//             let expected = native.encrypt(&symmetric_key, &encoded);
-//
-//             Circuit::scope(format!("ECIES {mode} {i}"), || {
-//                 let encrypted = circuit.encrypt(circ_symmetric_key.clone(), &circ_input);
-//                 let decrypted = circuit.decrypt(circ_symmetric_key, &encrypted);
-//                 assert_eq!(expected, encrypted.eject_value());
-//                 assert_eq!(encoded, decrypted.eject_value());
-//             });
-//         }
-//     }
-//
-//     #[test]
-//     fn test_encode_decode_constant() {
-//         check_encode_decode(Mode::Constant);
-//     }
-//
-//     #[test]
-//     fn test_encode_decode_public() {
-//         check_encode_decode(Mode::Public);
-//     }
-//
-//     #[test]
-//     fn test_encode_decode_private() {
-//         check_encode_decode(Mode::Private);
-//     }
-//
-//     #[test]
-//     fn test_encrypt_decrypt_constant() {
-//         check_encrypt_decrypt(Mode::Constant);
-//     }
-//
-//     #[test]
-//     fn test_encrypt_decrypt_public() {
-//         check_encrypt_decrypt(Mode::Public);
-//     }
-//
-//     #[test]
-//     fn test_encrypt_decrypt_private() {
-//         check_encrypt_decrypt(Mode::Private);
-//     }
-// }

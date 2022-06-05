@@ -16,13 +16,13 @@
 
 use super::*;
 
-impl<N: Network, Private: Visibility<N>> Entry<N, Private> {
+impl<A: Aleo, Private: Visibility<A>> Value<A, Private> {
     /// Returns the number of field elements to encode `self`.
-    pub(crate) fn num_randomizers(&self) -> Result<u16> {
+    pub(crate) fn num_randomizers(&self) -> u16 {
         match self {
-            // Constant and public entries do not need to be encrypted.
-            Self::Constant(..) | Self::Public(..) => Ok(0u16),
-            // Private entries need one randomizer per field element.
+            // Constant and public values do not need to be encrypted.
+            Self::Constant(..) | Self::Public(..) => 0u16,
+            // Private values need one randomizer per field element.
             Self::Private(private) => private.size_in_fields(),
         }
     }

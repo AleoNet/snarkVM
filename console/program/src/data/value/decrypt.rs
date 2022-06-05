@@ -16,30 +16,30 @@
 
 use super::*;
 
-impl<A: Aleo> Entry<A, Ciphertext<A>> {
-    /// Decrypts the entry using the given randomizers.
-    pub(crate) fn decrypt(&self, randomizers: &[Field<A>]) -> Entry<A, Plaintext<A>> {
+impl<N: Network> Value<N, Ciphertext<N>> {
+    /// Decrypts the value using the given randomizers.
+    pub(crate) fn decrypt(&self, randomizers: &[N::Field]) -> Result<Value<N, Plaintext<N>>> {
         // Ensure that the number of randomizers is correct.
-        if randomizers.len() != self.num_randomizers() as usize {
-            A::halt(format!(
+        if randomizers.len() != self.num_randomizers()? as usize {
+            bail!(
                 "Failed to decrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),
-                self.num_randomizers()
-            ))
+                self.num_randomizers()?
+            )
         }
         match self {
-            // Constant entries do not need to be decrypted.
-            Self::Constant(plaintext) => Entry::Constant(plaintext.clone()),
-            // Public entries do not need to be decrypted.
-            Self::Public(plaintext) => Entry::Public(plaintext.clone()),
-            // Private entries are decrypted with the given randomizers.
-            Self::Private(private) => Entry::Private(Plaintext::from_fields(
+            // Constant values do not need to be decrypted.
+            Self::Constant(plaintext) => Ok(Value::Constant(plaintext.clone())),
+            // Public values do not need to be decrypted.
+            Self::Public(plaintext) => Ok(Value::Public(plaintext.clone())),
+            // Private values are decrypted with the given randomizers.
+            Self::Private(private) => Ok(Value::Private(Plaintext::from_fields(
                 &*private
                     .iter()
                     .zip_eq(randomizers)
-                    .map(|(ciphertext, randomizer)| ciphertext - randomizer)
+                    .map(|(ciphertext, randomizer)| *ciphertext - randomizer)
                     .collect::<Vec<_>>(),
-            )),
+            )?)),
         }
     }
 }

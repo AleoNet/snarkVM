@@ -28,17 +28,17 @@ impl<A: Aleo> Data<A, Ciphertext<A>> {
     /// Decrypts `self` into plaintext using the given data view key.
     pub fn decrypt_symmetric(&self, data_view_key: Field<A>) -> Data<A, Plaintext<A>> {
         // Determine the number of randomizers needed to encrypt the data.
-        let num_randomizers = self.0.iter().map(|(_, entry)| entry.num_randomizers()).sum();
+        let num_randomizers = self.0.iter().map(|(_, value)| value.num_randomizers()).sum();
         // Prepare a randomizer for each field element.
         let randomizers = A::hash_many_psd8(&[A::encryption_domain(), data_view_key], num_randomizers);
         // Decrypt the data.
         let mut index: usize = 0;
         let mut decrypted_data = Vec::with_capacity(self.0.len());
-        for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
-            // Retrieve the randomizers for this entry.
+        for (id, value, num_randomizers) in self.0.iter().map(|(id, value)| (id, value, value.num_randomizers())) {
+            // Retrieve the randomizers for this value.
             let randomizers = &randomizers[index..index + num_randomizers as usize];
-            // Decrypt the entry, and add the entry.
-            decrypted_data.push((id.clone(), entry.decrypt(randomizers)));
+            // Decrypt the value, and add the value.
+            decrypted_data.push((id.clone(), value.decrypt(randomizers)));
             // Increment the index.
             index += num_randomizers as usize;
         }
@@ -73,7 +73,7 @@ mod tests {
 
             let data = Data(vec![(
                 Identifier::from_str("a"),
-                Entry::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
+                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
             )]);
 
             let randomizer = Scalar::new(Mode::Private, UniformRand::rand(rng));
@@ -94,7 +94,7 @@ mod tests {
             let symmetric_key = Field::<Circuit>::new(Mode::Private, UniformRand::rand(rng));
             let data = Data(vec![(
                 Identifier::from_str("a"),
-                Entry::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
+                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
             )]);
 
             let ciphertext = data.encrypt_symmetric(symmetric_key.clone());

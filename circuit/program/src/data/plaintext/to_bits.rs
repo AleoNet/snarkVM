@@ -19,7 +19,7 @@ use super::*;
 impl<A: Aleo> ToBits for Plaintext<A> {
     type Boolean = Boolean<A>;
 
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this plaintext as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<Boolean<A>> {
         match self {
             Self::Literal(literal, bits_le) => bits_le
@@ -48,7 +48,7 @@ impl<A: Aleo> ToBits for Plaintext<A> {
         }
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this plaintext as a list of **big-endian** bits.
     fn to_bits_be(&self) -> Vec<Boolean<A>> {
         match self {
             Self::Literal(literal, bits_be) => bits_be

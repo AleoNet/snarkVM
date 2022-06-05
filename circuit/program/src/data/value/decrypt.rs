@@ -16,29 +16,28 @@
 
 use super::*;
 
-impl<A: Aleo> Entry<A, Plaintext<A>> {
-    /// Encrypts the entry using the given randomizers.
-    pub(crate) fn encrypt(&self, randomizers: &[Field<A>]) -> Entry<A, Ciphertext<A>> {
+impl<A: Aleo> Value<A, Ciphertext<A>> {
+    /// Decrypts the value using the given randomizers.
+    pub(crate) fn decrypt(&self, randomizers: &[Field<A>]) -> Value<A, Plaintext<A>> {
         // Ensure that the number of randomizers is correct.
         if randomizers.len() != self.num_randomizers() as usize {
             A::halt(format!(
-                "Failed to encrypt: expected {} randomizers, found {} randomizers",
+                "Failed to decrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),
                 self.num_randomizers()
             ))
         }
         match self {
-            // Constant entries do not need to be encrypted.
-            Self::Constant(plaintext) => Entry::Constant(plaintext.clone()),
-            // Public entries do not need to be encrypted.
-            Self::Public(plaintext) => Entry::Public(plaintext.clone()),
-            // Private entries are encrypted with the given randomizers.
-            Self::Private(private) => Entry::Private(Ciphertext::from(
-                private
-                    .to_fields()
+            // Constant values do not need to be decrypted.
+            Self::Constant(plaintext) => Value::Constant(plaintext.clone()),
+            // Public values do not need to be decrypted.
+            Self::Public(plaintext) => Value::Public(plaintext.clone()),
+            // Private values are decrypted with the given randomizers.
+            Self::Private(private) => Value::Private(Plaintext::from_fields(
+                &*private
                     .iter()
                     .zip_eq(randomizers)
-                    .map(|(plaintext, randomizer)| plaintext + randomizer)
+                    .map(|(ciphertext, randomizer)| ciphertext - randomizer)
                     .collect::<Vec<_>>(),
             )),
         }

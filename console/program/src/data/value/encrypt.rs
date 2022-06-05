@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<N: Network> Entry<N, Plaintext<N>> {
-    /// Encrypts the entry using the given randomizers.
-    pub(crate) fn encrypt(&self, randomizers: &[N::Field]) -> Result<Entry<N, Ciphertext<N>>> {
+impl<N: Network> Value<N, Plaintext<N>> {
+    /// Encrypts the value using the given randomizers.
+    pub(crate) fn encrypt(&self, randomizers: &[N::Field]) -> Result<Value<N, Ciphertext<N>>> {
         // Ensure that the number of randomizers is correct.
         if randomizers.len() != self.num_randomizers()? as usize {
             bail!(
@@ -28,12 +28,12 @@ impl<N: Network> Entry<N, Plaintext<N>> {
             )
         }
         match self {
-            // Constant entries do not need to be encrypted.
-            Self::Constant(plaintext) => Ok(Entry::Constant(plaintext.clone())),
-            // Public entries do not need to be encrypted.
-            Self::Public(plaintext) => Ok(Entry::Public(plaintext.clone())),
-            // Private entries are encrypted with the given randomizers.
-            Self::Private(private) => Ok(Entry::Private(Ciphertext::try_from(
+            // Constant values do not need to be encrypted.
+            Self::Constant(plaintext) => Ok(Value::Constant(plaintext.clone())),
+            // Public values do not need to be encrypted.
+            Self::Public(plaintext) => Ok(Value::Public(plaintext.clone())),
+            // Private values are encrypted with the given randomizers.
+            Self::Private(private) => Ok(Value::Private(Ciphertext::try_from(
                 private
                     .to_fields()?
                     .iter()

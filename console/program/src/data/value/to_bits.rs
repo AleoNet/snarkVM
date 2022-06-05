@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network, Private: Visibility<N>> ToBits for Entry<N, Private> {
-    /// Returns this entry as a list of **little-endian** bits.
+impl<N: Network, Private: Visibility<N>> ToBits for Value<N, Private> {
+    /// Returns this value as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<bool> {
         let mut bits_le = match self {
             Self::Constant(..) => vec![false, false],
@@ -25,14 +25,14 @@ impl<N: Network, Private: Visibility<N>> ToBits for Entry<N, Private> {
             Self::Private(..) => vec![true, false],
         };
         match self {
-            Self::Constant(entry) => bits_le.extend(entry.to_bits_le()),
-            Self::Public(entry) => bits_le.extend(entry.to_bits_le()),
-            Self::Private(entry) => bits_le.extend(entry.to_bits_le()),
+            Self::Constant(value) => bits_le.extend(value.to_bits_le()),
+            Self::Public(value) => bits_le.extend(value.to_bits_le()),
+            Self::Private(value) => bits_le.extend(value.to_bits_le()),
         }
         bits_le
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this value as a list of **big-endian** bits.
     fn to_bits_be(&self) -> Vec<bool> {
         let mut bits_be = match self {
             Self::Constant(..) => vec![false, false],
@@ -40,9 +40,9 @@ impl<N: Network, Private: Visibility<N>> ToBits for Entry<N, Private> {
             Self::Private(..) => vec![true, false],
         };
         match self {
-            Self::Constant(entry) => bits_be.extend(entry.to_bits_be()),
-            Self::Public(entry) => bits_be.extend(entry.to_bits_be()),
-            Self::Private(entry) => bits_be.extend(entry.to_bits_be()),
+            Self::Constant(value) => bits_be.extend(value.to_bits_be()),
+            Self::Public(value) => bits_be.extend(value.to_bits_be()),
+            Self::Private(value) => bits_be.extend(value.to_bits_be()),
         }
         bits_be
     }

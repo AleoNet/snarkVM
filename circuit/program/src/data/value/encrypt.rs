@@ -16,30 +16,31 @@
 
 use super::*;
 
-impl<N: Network> Entry<N, Ciphertext<N>> {
-    /// Decrypts the entry using the given randomizers.
-    pub(crate) fn decrypt(&self, randomizers: &[N::Field]) -> Result<Entry<N, Plaintext<N>>> {
+impl<A: Aleo> Value<A, Plaintext<A>> {
+    /// Encrypts the value using the given randomizers.
+    pub(crate) fn encrypt(&self, randomizers: &[Field<A>]) -> Value<A, Ciphertext<A>> {
         // Ensure that the number of randomizers is correct.
-        if randomizers.len() != self.num_randomizers()? as usize {
-            bail!(
-                "Failed to decrypt: expected {} randomizers, found {} randomizers",
+        if randomizers.len() != self.num_randomizers() as usize {
+            A::halt(format!(
+                "Failed to encrypt: expected {} randomizers, found {} randomizers",
                 randomizers.len(),
-                self.num_randomizers()?
-            )
+                self.num_randomizers()
+            ))
         }
         match self {
-            // Constant entries do not need to be decrypted.
-            Self::Constant(plaintext) => Ok(Entry::Constant(plaintext.clone())),
-            // Public entries do not need to be decrypted.
-            Self::Public(plaintext) => Ok(Entry::Public(plaintext.clone())),
-            // Private entries are decrypted with the given randomizers.
-            Self::Private(private) => Ok(Entry::Private(Plaintext::from_fields(
-                &*private
+            // Constant values do not need to be encrypted.
+            Self::Constant(plaintext) => Value::Constant(plaintext.clone()),
+            // Public values do not need to be encrypted.
+            Self::Public(plaintext) => Value::Public(plaintext.clone()),
+            // Private values are encrypted with the given randomizers.
+            Self::Private(private) => Value::Private(Ciphertext::from(
+                private
+                    .to_fields()
                     .iter()
                     .zip_eq(randomizers)
-                    .map(|(ciphertext, randomizer)| *ciphertext - randomizer)
+                    .map(|(plaintext, randomizer)| plaintext + randomizer)
                     .collect::<Vec<_>>(),
-            )?)),
+            )),
         }
     }
 }

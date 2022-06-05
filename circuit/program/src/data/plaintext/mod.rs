@@ -51,19 +51,19 @@ impl<A: Aleo> Inject for Plaintext<A> {
 impl<A: Aleo> Eject for Plaintext<A> {
     type Primitive = console::Plaintext<A::Network>;
 
-    /// Ejects the mode of the plaintext entry.
+    /// Ejects the mode of the plaintext value.
     fn eject_mode(&self) -> Mode {
         match self {
             Self::Literal(literal, _) => literal.eject_mode(),
             Self::Composite(composite, _) => composite
                 .iter()
-                .map(|(identifier, entry)| (identifier, entry).eject_mode())
+                .map(|(identifier, value)| (identifier, value).eject_mode())
                 .collect::<Vec<_>>()
                 .eject_mode(),
         }
     }
 
-    /// Ejects the plaintext entry.
+    /// Ejects the plaintext value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),

@@ -47,16 +47,16 @@ impl<A: Aleo> Inject for Ciphertext<A> {
 impl<A: Aleo> Eject for Ciphertext<A> {
     type Primitive = console::Ciphertext<A::Network>;
 
-    /// Ejects the mode of the ciphertext entry.
+    /// Ejects the mode of the ciphertext.
     fn eject_mode(&self) -> Mode {
         self.0.eject_mode()
     }
 
-    /// Ejects the ciphertext entry.
+    /// Ejects the ciphertext.
     fn eject_value(&self) -> Self::Primitive {
         match console::FromFields::from_fields(&self.0.eject_value()) {
             Ok(ciphertext) => ciphertext,
-            Err(error) => A::halt(format!("Failed to eject a ciphertext entry: {error}")),
+            Err(error) => A::halt(format!("Failed to eject ciphertext: {error}")),
         }
     }
 }

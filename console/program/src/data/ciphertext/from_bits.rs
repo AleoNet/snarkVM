@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> FromBits for Ciphertext<N> {
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this ciphertext as a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         Ok(Self(
             bits_le
@@ -27,7 +27,7 @@ impl<N: Network> FromBits for Ciphertext<N> {
         ))
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this ciphertext as a list of **big-endian** bits.
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
         Ok(Self(
             bits_be

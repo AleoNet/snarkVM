@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<A: Aleo, Private: Visibility<A>> ToBits for Entry<A, Private> {
+impl<A: Aleo, Private: Visibility<A>> ToBits for Value<A, Private> {
     type Boolean = Boolean<A>;
 
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this value as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
         let mut bits_le = match self {
             Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
@@ -27,14 +27,14 @@ impl<A: Aleo, Private: Visibility<A>> ToBits for Entry<A, Private> {
             Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
         };
         match self {
-            Self::Constant(entry) => bits_le.extend(entry.to_bits_le()),
-            Self::Public(entry) => bits_le.extend(entry.to_bits_le()),
-            Self::Private(entry) => bits_le.extend(entry.to_bits_le()),
+            Self::Constant(value) => bits_le.extend(value.to_bits_le()),
+            Self::Public(value) => bits_le.extend(value.to_bits_le()),
+            Self::Private(value) => bits_le.extend(value.to_bits_le()),
         }
         bits_le
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this value as a list of **big-endian** bits.
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
         let mut bits_be = match self {
             Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
@@ -42,9 +42,9 @@ impl<A: Aleo, Private: Visibility<A>> ToBits for Entry<A, Private> {
             Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
         };
         match self {
-            Self::Constant(entry) => bits_be.extend(entry.to_bits_be()),
-            Self::Public(entry) => bits_be.extend(entry.to_bits_be()),
-            Self::Private(entry) => bits_be.extend(entry.to_bits_be()),
+            Self::Constant(value) => bits_be.extend(value.to_bits_be()),
+            Self::Public(value) => bits_be.extend(value.to_bits_be()),
+            Self::Private(value) => bits_be.extend(value.to_bits_be()),
         }
         bits_be
     }

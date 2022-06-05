@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> ToBits for Plaintext<N> {
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this plaintext as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<bool> {
         match self {
             Self::Literal(literal, bits_le) => bits_le
@@ -46,7 +46,7 @@ impl<N: Network> ToBits for Plaintext<N> {
         }
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this plaintext as a list of **big-endian** bits.
     fn to_bits_be(&self) -> Vec<bool> {
         match self {
             Self::Literal(literal, bits_be) => bits_be

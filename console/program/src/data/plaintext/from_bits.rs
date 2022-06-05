@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> FromBits for Plaintext<N> {
-    /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
+    /// Initializes a new plaintext from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         let mut counter = 0;
 
@@ -58,10 +58,10 @@ impl<N: Network> FromBits for Plaintext<N> {
                 let composite_size = u16::from_bits_le(&bits_le[counter..counter + 16])?;
                 counter += 16;
 
-                let entry = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize])?;
+                let value = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize])?;
                 counter += composite_size as usize;
 
-                composites.push((identifier, entry));
+                composites.push((identifier, value));
             }
 
             // Store the plaintext bits in the cache.
@@ -74,7 +74,7 @@ impl<N: Network> FromBits for Plaintext<N> {
         }
     }
 
-    /// Initializes a new value from a list of big-endian bits *without* trailing zeros.
+    /// Initializes a new plaintext from a list of big-endian bits *without* trailing zeros.
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
         let mut counter = 0;
 
@@ -115,10 +115,10 @@ impl<N: Network> FromBits for Plaintext<N> {
                 let composite_size = u16::from_bits_be(&bits_be[counter..counter + 16])?;
                 counter += 16;
 
-                let entry = Plaintext::from_bits_be(&bits_be[counter..counter + composite_size as usize])?;
+                let value = Plaintext::from_bits_be(&bits_be[counter..counter + composite_size as usize])?;
                 counter += composite_size as usize;
 
-                composites.push((identifier, entry));
+                composites.push((identifier, value));
             }
 
             // Store the plaintext bits in the cache.

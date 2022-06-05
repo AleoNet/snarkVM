@@ -26,26 +26,26 @@ use snarkvm_utilities::ToBits;
 use anyhow::{bail, Result};
 use itertools::Itertools;
 
-/// An entry stored in program data.
+/// A value stored in program data.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Entry<N: Network, Private: Visibility<N>> {
-    /// A constant entry.
+pub enum Value<N: Network, Private: Visibility<N>> {
+    /// A constant value.
     Constant(Plaintext<N>),
-    /// A publicly-visible entry.
+    /// A publicly-visible value.
     Public(Plaintext<N>),
-    /// A private entry encrypted under the account owner's address.
+    /// A private value encrypted under the account owner's address.
     Private(Private),
 }
 
-// impl<N: Network, Literal: EntryMode<N>>> Entry<N, Literal> {
-//     // /// Returns the recursive depth of this entry.
+// impl<N: Network, Private: Visibility<N>>> Value<N, Private> {
+//     // /// Returns the recursive depth of this value.
 //     // /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
 //     // fn depth(&self, counter: usize) -> usize {
 //     //     match self {
 //     //         Self::Literal(..) => 1,
 //     //         Self::Composite(composite) => {
 //     //             // Determine the maximum depth of the composite.
-//     //             let max_depth = composite.iter().map(|(_, entry)| entry.depth(counter)).fold(0, |a, b| a.max(b));
+//     //             let max_depth = composite.iter().map(|(_, value)| value.depth(counter)).fold(0, |a, b| a.max(b));
 //     //             // Add `1` to the depth of the member with the largest depth.
 //     //             max_depth.saturating_add(1)
 //     //         }

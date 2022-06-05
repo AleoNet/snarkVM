@@ -29,19 +29,19 @@ impl<N: Network> Data<N, Plaintext<N>> {
     pub fn encrypt_symmetric(&self, data_view_key: &N::Field) -> Result<Data<N, Ciphertext<N>>> {
         // Determine the number of randomizers needed to encrypt the data.
         let num_randomizers =
-            self.0.iter().map(|(_, entry)| entry.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
+            self.0.iter().map(|(_, value)| value.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
         // Prepare a randomizer for each field element.
         let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *data_view_key], num_randomizers);
         // Encrypt the data.
         let mut index: usize = 0;
         let mut encrypted_data = Vec::with_capacity(self.0.len());
-        for (id, entry, num_randomizers) in self.0.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
+        for (id, value, num_randomizers) in self.0.iter().map(|(id, value)| (id, value, value.num_randomizers())) {
             // Retrieve the result for `num_randomizers`.
             let num_randomizers = num_randomizers? as usize;
-            // Retrieve the randomizers for this entry.
+            // Retrieve the randomizers for this value.
             let randomizers = &randomizers[index..index + num_randomizers];
-            // Encrypt the entry, and add the entry.
-            encrypted_data.push((id.clone(), entry.encrypt(randomizers)?));
+            // Encrypt the value, and add the value.
+            encrypted_data.push((id.clone(), value.encrypt(randomizers)?));
             // Increment the index.
             index += num_randomizers;
         }

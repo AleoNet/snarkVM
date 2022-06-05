@@ -19,7 +19,7 @@ use super::*;
 impl<A: Aleo> FromBits for Plaintext<A> {
     type Boolean = Boolean<A>;
 
-    /// Initializes a new value from a list of little-endian bits *without* trailing zeros.
+    /// Initializes a new plaintext from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
         let mut counter = 0;
 
@@ -60,10 +60,10 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 let composite_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let entry = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
+                let value = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
                 counter += composite_size as usize;
 
-                composites.push((identifier, entry));
+                composites.push((identifier, value));
             }
 
             // Store the plaintext bits in the cache.
@@ -76,7 +76,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
         }
     }
 
-    /// Initializes a new value from a list of big-endian bits *without* trailing zeros.
+    /// Initializes a new plaintext from a list of big-endian bits *without* trailing zeros.
     fn from_bits_be(bits_be: &[Boolean<A>]) -> Self {
         let mut counter = 0;
 
@@ -117,10 +117,10 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 let composite_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let entry = Plaintext::from_bits_be(&bits_be[counter..counter + composite_size as usize]);
+                let value = Plaintext::from_bits_be(&bits_be[counter..counter + composite_size as usize]);
                 counter += composite_size as usize;
 
-                composites.push((identifier, entry));
+                composites.push((identifier, value));
             }
 
             // Store the plaintext bits in the cache.

@@ -14,18 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+mod literal_type;
 
-impl<A: Aleo> FromBits for Ciphertext<A> {
-    type Boolean = Boolean<A>;
+use crate::{FromFields, ToFields};
+use snarkvm_console_account::{Address, ViewKey};
+use snarkvm_console_network::Network;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_utilities::{FromBits, ToBits};
 
-    /// Returns this ciphertext as a list of **little-endian** bits.
-    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        Self(bits_le.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_le).collect())
-    }
+use anyhow::{bail, Result};
+use core::ops::Deref;
 
-    /// Returns this ciphertext as a list of **big-endian** bits.
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
-        Self(bits_be.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_be).collect())
-    }
-}
+// /// An interface representing the layout for program data.
+// #[derive(Clone, Debug, PartialEq, Eq)]
+// pub enum Interface<N: Network> {}
+
+// impl<N: Network> From<Vec<(Identifier<N>, Entry<N>)>> for Interface<N> {
+//     /// Initializes a new `Data` value from a vector of `(Identifier, Entry)` pairs.
+//     fn from(entries: Vec<(Identifier<N>, Entry<N>)>) -> Self {
+//         Self(entries)
+//     }
+// }
