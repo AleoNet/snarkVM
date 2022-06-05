@@ -23,7 +23,7 @@ use std::io::{Read, Result as IoResult, Write};
 
 /// The operand enum represents the complete set of options for operands in an instruction.
 /// This enum is designed to support instructions (such as `add {Register} {Value} into {Register}`).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Operand<P: Program> {
     /// A value contains a declared literal or definition.
     Value(Value<P>),

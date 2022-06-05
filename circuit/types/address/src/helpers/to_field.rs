@@ -39,7 +39,7 @@ impl<E: Environment> ToField for Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -50,8 +50,8 @@ mod tests {
     fn check_to_field(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Address::<Circuit>::new(mode, expected);
+            let expected = UniformRand::rand(&mut test_rng());
+            let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_field();

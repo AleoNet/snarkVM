@@ -18,13 +18,16 @@ mod helpers;
 
 mod hash;
 mod hash_many;
+mod hash_to_group;
 mod hash_to_scalar;
 mod prf;
 
-use crate::{poseidon::helpers::*, Hash, HashMany, HashToScalar, PRF};
+use crate::{poseidon::helpers::*, Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
 use anyhow::{bail, ensure, Result};
+use itertools::Itertools;
 use std::sync::Arc;
 
 const CAPACITY: usize = 1;

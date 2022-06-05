@@ -46,8 +46,6 @@ pub struct PrivateKey<N: Network> {
     sk_sig: N::Scalar,
     /// The derived signature randomizer.
     r_sig: N::Scalar,
-    /// The derived VRF secret key.
-    sk_vrf: N::Scalar,
 }
 
 impl<N: Network> PrivateKey<N> {
@@ -71,10 +69,5 @@ impl<N: Network> PrivateKey<N> {
     /// Returns the signature randomizer.
     pub const fn r_sig(&self) -> N::Scalar {
         self.r_sig
-    }
-
-    /// Returns the VRF secret key.
-    pub const fn sk_vrf(&self) -> N::Scalar {
-        self.sk_vrf
     }
 }

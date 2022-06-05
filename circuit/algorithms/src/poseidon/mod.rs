@@ -16,14 +16,15 @@
 
 mod hash;
 mod hash_many;
+mod hash_to_group;
 mod hash_to_scalar;
 mod prf;
 
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use crate::{Hash, HashMany, HashToScalar, PRF};
-use snarkvm_circuit_types::{environment::prelude::*, Field, Scalar};
+use crate::{Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
+use snarkvm_circuit_types::{environment::prelude::*, Field, Group, Scalar};
 
 /// Poseidon2 is a cryptographic hash function of input rate 2.
 pub type Poseidon2<E> = Poseidon<E, 2>;

@@ -28,7 +28,10 @@ use snarkvm_console_algorithms::{
     BHP512,
     BHP768,
 };
-use snarkvm_curves::{edwards_bls12::EdwardsAffine, AffineCurve};
+use snarkvm_curves::{
+    edwards_bls12::{EdwardsAffine, EdwardsParameters},
+    AffineCurve,
+};
 use snarkvm_utilities::ToBits;
 
 use anyhow::{anyhow, bail, Result};
@@ -37,12 +40,19 @@ use itertools::Itertools;
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<<Testnet3 as Network>::Projective> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+
+    /// The balance commitment domain as a constant field element.
+    pub static ref BCM_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoBalanceCommitment0");
     /// The encryption domain as a constant field element.
     pub static ref ENCRYPTION_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
     /// The MAC domain as a constant field element.
     pub static ref MAC_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
     /// The randomizer domain as a constant field element.
     pub static ref RANDOMIZER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoRandomizer0");
+    /// The balance commitment randomizer domain as a constant field element.
+    pub static ref R_BCM_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoBalanceRandomizer0");
+    /// The serial number domain as a constant field element.
+    pub static ref SERIAL_NUMBER_DOMAIN: <Testnet3 as Network>::Field = PrimeField::from_bytes_le_mod_order(b"AleoSerialNumber0");
 
     /// The BHP hash function, which can take an input of up to 256 bits.
     pub static ref BHP_256: BHP256<<Testnet3 as Network>::Affine> = BHP256::<<Testnet3 as Network>::Affine>::setup("AleoBHP256").expect("Failed to setup BHP256");
@@ -92,12 +102,23 @@ impl Testnet3 {
 
 impl Network for Testnet3 {
     type Affine = EdwardsAffine;
+    type AffineParameters = EdwardsParameters;
     type Field = <Self::Affine as AffineCurve>::BaseField;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
 
+    /// The network ID.
+    const ID: u16 = 3;
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::Field as PrimeField>::Parameters::CAPACITY;
+    /// The maximum number of inputs per transition.
+    const MAX_INPUTS: usize = 8;
+    /// The maximum number of outputs per transition.
+    const MAX_OUTPUTS: usize = 8;
+    /// The maximum number of transactions per block.
+    const MAX_TRANSACTIONS: usize = 65536;
+    /// The maximum number of transitions per transaction.
+    const MAX_TRANSITIONS: usize = 16;
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;
 
@@ -149,6 +170,11 @@ impl Network for Testnet3 {
         Self::scalar_from_bits_le(&bits)
     }
 
+    /// Returns the balance commitment domain as a constant field element.
+    fn bcm_domain() -> Self::Field {
+        *BCM_DOMAIN
+    }
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Self::Field {
         *ENCRYPTION_DOMAIN
@@ -162,6 +188,16 @@ impl Network for Testnet3 {
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Self::Field {
         *RANDOMIZER_DOMAIN
+    }
+
+    /// Returns the balance commitment randomizer domain as a constant field element.
+    fn r_bcm_domain() -> Self::Field {
+        *R_BCM_DOMAIN
+    }
+
+    /// Returns the serial number domain as a constant field element.
+    fn serial_number_domain() -> Self::Field {
+        *SERIAL_NUMBER_DOMAIN
     }
 
     /// Returns the powers of G.
@@ -202,13 +238,13 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
-        PEDERSEN_64.commit(input, randomizer)
+    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine> {
+        PEDERSEN_64.commit_uncompressed(input, randomizer)
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field> {
-        PEDERSEN_128.commit(input, randomizer)
+    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine> {
+        PEDERSEN_128.commit_uncompressed(input, randomizer)
     }
 
     /// Returns the BHP hash with an input hasher of 256-bits.
@@ -271,6 +307,21 @@ impl Network for Testnet3 {
         POSEIDON_8.hash_many(input, num_outputs)
     }
 
+    /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
+    fn hash_to_group_psd2(input: &[Self::Field]) -> Result<Self::Affine> {
+        POSEIDON_2.hash_to_group::<Self::Affine, Self::AffineParameters>(input)
+    }
+
+    /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
+    fn hash_to_group_psd4(input: &[Self::Field]) -> Result<Self::Affine> {
+        POSEIDON_4.hash_to_group::<Self::Affine, Self::AffineParameters>(input)
+    }
+
+    /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
+    fn hash_to_group_psd8(input: &[Self::Field]) -> Result<Self::Affine> {
+        POSEIDON_8.hash_to_group::<Self::Affine, Self::AffineParameters>(input)
+    }
+
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Self::Field]) -> Result<Self::Scalar> {
         POSEIDON_2.hash_to_scalar::<Self::Scalar>(input)
@@ -287,29 +338,17 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<MerkleTree<Self::Field, DEPTH>> {
+    fn merkle_tree_bhp<const DEPTH: u8>(
+        leaves: &[Vec<bool>],
+    ) -> Result<MerkleTree<BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>> {
         MerkleTree::new(&*BHP_1024, &*BHP_512, leaves)
     }
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Self::Field>]) -> Result<MerkleTree<Self::Field, DEPTH>> {
-        MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
-    }
-
-    /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_append_bhp<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
-        leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>> {
-        merkle_tree.append(&*BHP_1024, &*BHP_512, leaves)
-    }
-
-    /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_append_psd<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
+    fn merkle_tree_psd<const DEPTH: u8>(
         leaves: &[Vec<Self::Field>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>> {
-        merkle_tree.append(&*POSEIDON_4, &*POSEIDON_2, leaves)
+    ) -> Result<MerkleTree<Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>> {
+        MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
     }
 
     /// Returns the Poseidon PRF with an input rate of 2.

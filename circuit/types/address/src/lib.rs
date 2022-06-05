@@ -29,38 +29,42 @@ use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_group::Group;
 use snarkvm_circuit_types_scalar::Scalar;
 use snarkvm_curves::AffineCurve;
-use snarkvm_utilities::{error, FromBytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
-use bech32::{FromBase32, ToBase32};
+use bech32::ToBase32;
+use core::str::FromStr;
 
 #[derive(Clone)]
 pub struct Address<E: Environment>(Group<E>);
 
 impl<E: Environment> AddressTrait for Address<E> {}
 
+#[cfg(console)]
 impl<E: Environment> Inject for Address<E> {
-    type Primitive = E::Affine;
+    type Primitive = console::Address<E::Network>;
 
-    /// Initializes a new instance of an address from a string.
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self(Group::new(mode, value))
+    /// Initializes a new instance of an address.
+    fn new(mode: Mode, address: Self::Primitive) -> Self {
+        Self(Group::new(mode, *address))
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Eject for Address<E> {
-    type Primitive = E::Affine;
+    type Primitive = console::Address<E::Network>;
 
-    /// Ejects the mode of the group element.
+    /// Ejects the mode of the address.
     fn eject_mode(&self) -> Mode {
         self.0.eject_mode()
     }
 
-    /// Ejects the address as a constant affine group element.
+    /// Ejects the address.
     fn eject_value(&self) -> Self::Primitive {
-        self.0.eject_value()
+        Self::Primitive::from_group(self.0.eject_value())
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Parser for Address<E> {
     type Environment = E;
 
@@ -74,36 +78,19 @@ impl<E: Environment> Parser for Address<E> {
         ));
 
         // Parse the value from the string.
-        let (string, value) = map_res(address_parser, |primitive: &str| {
-            let address = primitive.replace('_', "");
-            if address.len() != 63 {
-                return Err(error(format!("Invalid address length of {}", address.len())));
-            }
-
-            let (hrp, data, variant) = bech32::decode(&address).map_err(|e| error(format!("{e}")))?;
-            if hrp != "aleo" {
-                return Err(error(format!("Invalid address prefix of {hrp}")));
-            }
-            if data.is_empty() {
-                return Err(error("Invalid byte length of 0"));
-            }
-            if variant != bech32::Variant::Bech32m {
-                eprintln!("[Warning] This Aleo address is in bech32 (deprecated)");
-            }
-
-            let buffer = Vec::from_base32(&data).map_err(|e| error(format!("{e}")))?;
-            Ok(E::affine_from_x_coordinate(E::BaseField::read_le(&*buffer)?))
-        })(string)?;
+        let (string, address) =
+            map_res(address_parser, |primitive: &str| console::Address::from_str(&primitive.replace('_', "")))(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
         match mode {
-            Some((_, mode)) => Ok((string, Address::new(mode, value))),
-            None => Ok((string, Address::new(Mode::Constant, value))),
+            Some((_, mode)) => Ok((string, Address::new(mode, address))),
+            None => Ok((string, Address::new(Mode::Constant, address))),
         }
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> TypeName for Address<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
@@ -112,12 +99,7 @@ impl<E: Environment> TypeName for Address<E> {
     }
 }
 
-impl<E: Environment> Debug for Address<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.eject_value())
-    }
-}
-
+#[cfg(console)]
 impl<E: Environment> Display for Address<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Convert the x-coordinate to bytes.
@@ -148,7 +130,7 @@ impl<E: Environment> From<&Address<E>> for LinearCombination<E::BaseField> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;

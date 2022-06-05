@@ -20,11 +20,13 @@ mod sign;
 use crate::{Address, ComputeKey, PrivateKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
+    CryptoRng,
     FromBytes,
+    Rng,
     ToBytes,
+    UniformRand,
 };
 
 use anyhow::Result;
@@ -74,7 +76,7 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 
@@ -84,15 +86,16 @@ mod tests {
 
     #[test]
     fn test_from() -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
         for i in 0..ITERATIONS {
             // Sample an address and a private key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let address = Address::try_from(&private_key)?;
 
             // Generate a signature.
-            let message: Vec<bool> = (0..(32 * i)).map(|_| bool::rand(&mut test_rng())).collect();
-            let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = Signature::sign(&private_key, &message, randomizer)?;
+            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 
             // Check that the signature can be reconstructed from its parts.

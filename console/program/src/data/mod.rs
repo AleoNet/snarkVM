@@ -31,6 +31,8 @@ pub use plaintext::Plaintext;
 
 mod decrypt;
 mod encrypt;
+mod to_bits;
+mod to_id;
 
 use crate::{FromFields, ToFields};
 use snarkvm_console_account::{Address, ViewKey};
@@ -39,6 +41,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{FromBits, ToBits};
 
 use anyhow::{bail, Result};
+use core::ops::Deref;
 
 pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
     /// Returns the number of field elements to encode `self`.
@@ -56,30 +59,10 @@ impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Entry<N, Priva
     }
 }
 
-impl<N: Network> Data<N, Ciphertext<N>> {
-    /// Returns the data ID, as a hash over the **`Data<N, Ciphertext<N>>` variant**.
-    pub fn to_id(&self) -> Result<N::Field> {
-        // for entry in &self.data {
-        //     match entry {
-        //         Entry::Constant(plaintext) => match plaintext {
-        //             Plaintext::Literal(literal) => literal.to_bytes_le(),
-        //             Plaintext::Composite(composite) =>
-        //         },
-        //         Entry::Public(plaintext) => ,
-        //         Entry::Private(ciphertext) => ,
-        //     }
-        //
-        // }
+impl<N: Network, Private: Visibility<N>> Deref for Data<N, Private> {
+    type Target = [(Identifier<N>, Entry<N, Private>)];
 
-        // N::hash_psd8([self.data])
-        use snarkvm_fields::Zero;
-        Ok(N::Field::zero())
-    }
-}
-
-impl<N: Network> Data<N, Plaintext<N>> {
-    /// Returns the data ID, as a hash over the **`Data<N, Ciphertext<N>>` variant**.
-    pub fn to_id(&self) -> Result<N::Field> {
-        bail!("Illegal operation: Data::to_id() cannot be invoked on the `Plaintext<N>` variant.")
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

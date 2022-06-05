@@ -153,22 +153,19 @@ mod tests {
     ) {
         println!("Checking homomorphic addition on {} + {}", first, second);
 
-        // Sample randomizers.
-        let first_randomizer = UniformRand::rand(&mut test_rng());
-        let second_randomizer = UniformRand::rand(&mut test_rng());
-        // Prepare the circuit randomizers.
-        let first_circuit_randomizer: Scalar<_> = Inject::new(Mode::Private, first_randomizer);
-        let second_circuit_randomizer: Scalar<_> = Inject::new(Mode::Private, second_randomizer);
+        // Sample the circuit randomizers.
+        let first_randomizer: Scalar<_> = Inject::new(Mode::Private, UniformRand::rand(&mut test_rng()));
+        let second_randomizer: Scalar<_> = Inject::new(Mode::Private, UniformRand::rand(&mut test_rng()));
 
         // Compute the expected commitment, by committing them individually and summing their results.
-        let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_circuit_randomizer);
-        let b = pedersen.commit_uncompressed(&second.to_bits_le(), &second_circuit_randomizer);
+        let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_randomizer);
+        let b = pedersen.commit_uncompressed(&second.to_bits_le(), &second_randomizer);
         let expected = (a + b).to_x_coordinate();
 
-        let circuit_combined_randomizer = first_circuit_randomizer + second_circuit_randomizer;
+        let combined_randomizer = first_randomizer + second_randomizer;
 
         // Sum the two integers, and then commit the sum.
-        let candidate = pedersen.commit(&(first + second).to_bits_le(), &circuit_combined_randomizer);
+        let candidate = pedersen.commit(&(first + second).to_bits_le(), &combined_randomizer);
         assert_eq!(expected.eject(), candidate.eject());
         assert!(Circuit::is_satisfied());
     }

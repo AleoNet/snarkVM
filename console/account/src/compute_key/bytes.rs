@@ -22,8 +22,7 @@ impl<N: Network> FromBytes for ComputeKey<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let pk_sig = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
         let pr_sig = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
-        let pk_vrf = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
-        Self::try_from((pk_sig, pr_sig, pk_vrf)).map_err(|e| error(format!("{e}")))
+        Self::try_from((pk_sig, pr_sig)).map_err(|e| error(format!("{e}")))
     }
 }
 
@@ -31,8 +30,7 @@ impl<N: Network> ToBytes for ComputeKey<N> {
     /// Writes an account compute key to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.pk_sig.to_x_coordinate().write_le(&mut writer)?;
-        self.pr_sig.to_x_coordinate().write_le(&mut writer)?;
-        self.pk_vrf.to_x_coordinate().write_le(&mut writer)
+        self.pr_sig.to_x_coordinate().write_le(&mut writer)
     }
 }
 

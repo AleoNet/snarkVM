@@ -88,16 +88,16 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
         // Compute the digest for the given input.
         if let Literal::Scalar(randomizer) = randomizer {
             let commitment = match Self::opcode() {
-                BHP256::OPCODE => P::Aleo::commit_bhp256(&input.to_bits_le(), &randomizer),
-                BHP512::OPCODE => P::Aleo::commit_bhp512(&input.to_bits_le(), &randomizer),
-                BHP768::OPCODE => P::Aleo::commit_bhp768(&input.to_bits_le(), &randomizer),
-                BHP1024::OPCODE => P::Aleo::commit_bhp1024(&input.to_bits_le(), &randomizer),
-                Ped64::OPCODE => P::Aleo::commit_ped64(&input.to_bits_le(), &randomizer),
-                Ped128::OPCODE => P::Aleo::commit_ped128(&input.to_bits_le(), &randomizer),
+                BHP256::OPCODE => Literal::Field(P::Aleo::commit_bhp256(&input.to_bits_le(), &randomizer)),
+                BHP512::OPCODE => Literal::Field(P::Aleo::commit_bhp512(&input.to_bits_le(), &randomizer)),
+                BHP768::OPCODE => Literal::Field(P::Aleo::commit_bhp768(&input.to_bits_le(), &randomizer)),
+                BHP1024::OPCODE => Literal::Field(P::Aleo::commit_bhp1024(&input.to_bits_le(), &randomizer)),
+                Ped64::OPCODE => Literal::Group(P::Aleo::commit_ped64(&input.to_bits_le(), &randomizer)),
+                Ped128::OPCODE => Literal::Group(P::Aleo::commit_ped128(&input.to_bits_le(), &randomizer)),
                 _ => P::halt("Invalid option provided for the `commit` instruction"),
             };
 
-            registers.assign(self.operation.destination(), Literal::Field(commitment));
+            registers.assign(self.operation.destination(), commitment);
         } else {
             P::halt("Invalid type provided for `randomness` in `commit` instruction")
         }

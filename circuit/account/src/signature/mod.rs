@@ -46,6 +46,13 @@ impl<A: Aleo> Inject for Signature<A> {
     }
 }
 
+impl<A: Aleo> Signature<A> {
+    /// Returns the account compute key.
+    pub const fn compute_key(&self) -> &ComputeKey<A> {
+        &self.compute_key
+    }
+}
+
 #[cfg(console)]
 impl<A: Aleo> Eject for Signature<A> {
     type Primitive = console::Signature<A::Network>;
@@ -65,11 +72,11 @@ impl<A: Aleo> Eject for Signature<A> {
 mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
-    use snarkvm_utilities::{test_crypto_rng, ToBits as T, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 
-    const ITERATIONS: u64 = 1000;
+    const ITERATIONS: u64 = 250;
 
     fn check_new(
         mode: Mode,
@@ -78,14 +85,15 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
         // Generate a private key, compute key, view key, and address.
         let (private_key, _compute_key, _view_key, _address) = generate_account()?;
 
         for i in 0..ITERATIONS {
             // Generate a signature.
-            let message = "Hi, I am an Aleo signature!";
-            let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = console::Signature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
+            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let signature = console::Signature::sign(&private_key, &message, rng)?;
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Signature::<Circuit>::new(mode, signature);
@@ -102,16 +110,16 @@ mod tests {
 
     #[test]
     fn test_signature_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 768, 0, 0, 0)
+        check_new(Mode::Constant, 764, 0, 0, 0)
     }
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 7, 508, 604, 1110)
+        check_new(Mode::Public, 5, 506, 597, 1102)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 7, 0, 1112, 1110)
+        check_new(Mode::Private, 5, 0, 1103, 1102)
     }
 }

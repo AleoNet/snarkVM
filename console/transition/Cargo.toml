@@ -1,0 +1,30 @@
+[package]
+name = "snarkvm-console-transition"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Transition operations for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-console-account]
+path = "../account"
+version = "0.7.5"
+
+[dependencies.snarkvm-console-network]
+path = "../network"
+version = "0.7.5"
+
+[dependencies.snarkvm-curves]
+path = "../../curves"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"
+
+[dependencies.anyhow]
+version = "1.0.57"
+
+[dependencies.itertools]
+version = "0.10.1"

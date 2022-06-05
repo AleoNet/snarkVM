@@ -6,6 +6,12 @@ description = "Address circuit for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[dependencies.console]
+package = "snarkvm-console-account"
+path = "../../../console/account"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-circuit-environment]
 path = "../../environment"
 version = "0.7.5"
@@ -37,3 +43,8 @@ default-features = false
 
 [dependencies.bech32]
 version = "0.9"
+
+[features]
+default = ["enable_console"]
+# Use #[cfg(console)] instead.
+enable_console = ["console"]

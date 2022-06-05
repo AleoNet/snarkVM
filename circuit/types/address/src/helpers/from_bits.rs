@@ -30,7 +30,7 @@ impl<E: Environment> FromBits for Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -46,7 +46,7 @@ mod tests {
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = Address::<Circuit>::from_bits_le(&candidate);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();
@@ -61,7 +61,7 @@ mod tests {
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = Address::<Circuit>::from_bits_be(&candidate);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();

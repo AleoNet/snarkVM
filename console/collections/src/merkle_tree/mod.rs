@@ -34,26 +34,26 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 #[derive(Default)]
-pub struct MerkleTree<F: PrimeField, const DEPTH: u8> {
+pub struct MerkleTree<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> {
+    /// The leaf hasher for the Merkle tree.
+    leaf_hasher: LH,
+    /// The path hasher for the Merkle tree.
+    path_hasher: PH,
     /// The computed root of the full Merkle tree.
-    root: F,
+    root: PH::Hash,
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
-    tree: Vec<F>,
+    tree: Vec<PH::Hash>,
     /// The canonical empty hash.
-    empty_hash: F,
+    empty_hash: PH::Hash,
     /// The number of hashed leaves in the tree.
     number_of_leaves: usize,
 }
 
-impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
+impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH, PH, DEPTH> {
     #[timed]
     #[inline]
     /// Initializes a new Merkle tree with the given leaves.
-    pub fn new<LH: LeafHash<F>, PH: PathHash<F>>(
-        leaf_hasher: &LH,
-        path_hasher: &PH,
-        leaves: &[LH::Leaf],
-    ) -> Result<Self> {
+    pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
         // Ensure the Merkle tree depth is greater than 0.
         ensure!(DEPTH > 0, "Merkle tree depth must be greater than 0");
         // Ensure the Merkle tree depth is less than or equal to 64.
@@ -100,18 +100,20 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
             root_hash = path_hasher.hash_children(&root_hash, &empty_hash)?;
         }
 
-        Ok(Self { root: root_hash, tree, empty_hash, number_of_leaves: leaves.len() })
+        Ok(Self {
+            leaf_hasher: leaf_hasher.clone(),
+            path_hasher: path_hasher.clone(),
+            root: root_hash,
+            tree,
+            empty_hash,
+            number_of_leaves: leaves.len(),
+        })
     }
 
     #[timed]
     #[inline]
     /// Returns a new Merkle tree with the given new leaves appended to it.
-    pub fn append<LH: LeafHash<F>, PH: PathHash<F>>(
-        &self,
-        leaf_hasher: &LH,
-        path_hasher: &PH,
-        new_leaves: &[LH::Leaf],
-    ) -> Result<Self> {
+    pub fn append(&self, new_leaves: &[LH::Leaf]) -> Result<Self> {
         // Compute the maximum number of leaves.
         let max_leaves = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
         // Compute the number of nodes.
@@ -128,7 +130,7 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
         // Extend the new Merkle tree with the existing leaf hashes.
         tree.extend(self.leaf_hashes());
         // Extend the new Merkle tree with the new leaf hashes.
-        tree.extend(&leaf_hasher.hash_leaves(new_leaves)?);
+        tree.extend(&self.leaf_hasher.hash_leaves(new_leaves)?);
         // Resize the new Merkle tree with empty hashes to pad up to `tree_size`.
         tree.resize(tree_size, self.empty_hash);
 
@@ -169,13 +171,13 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
                 // Option 1: Borrow the tree to compute and store the hashes for the new indices in the current level.
                 true => cfg_iter_mut!(tree[middle..end]).zip_eq(cfg_iter!(tuples)).try_for_each(
                     |(node, (left, right))| {
-                        *node = path_hasher.hash_children(left, right)?;
+                        *node = self.path_hasher.hash_children(left, right)?;
                         Ok::<_, Error>(())
                     },
                 )?,
                 // Option 2: Compute and store the hashes for the new indices in the current level.
                 false => tree[middle..end].iter_mut().zip_eq(&tuples).try_for_each(|(node, (left, right))| {
-                    *node = path_hasher.hash_children(left, right)?;
+                    *node = self.path_hasher.hash_children(left, right)?;
                     Ok::<_, Error>(())
                 })?,
             }
@@ -194,11 +196,13 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
         let mut root_hash = tree[0];
         for _ in 0..padding_depth {
             // Update the root hash, by hashing the current root hash with the empty hash.
-            root_hash = path_hasher.hash_children(&root_hash, &self.empty_hash)?;
+            root_hash = self.path_hasher.hash_children(&root_hash, &self.empty_hash)?;
         }
 
         // update the values at the very end so the original tree is not altered in case of failure
         Ok(Self {
+            leaf_hasher: self.leaf_hasher.clone(),
+            path_hasher: self.path_hasher.clone(),
             root: root_hash,
             tree,
             empty_hash: self.empty_hash,
@@ -208,17 +212,12 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
 
     #[inline]
     /// Returns the Merkle path for the given leaf index and leaf.
-    pub fn prove<LH: LeafHash<F>>(
-        &self,
-        leaf_hasher: &LH,
-        leaf_index: usize,
-        leaf: &LH::Leaf,
-    ) -> Result<MerklePath<F, DEPTH>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<PH::Hash, DEPTH>> {
         // Ensure the leaf index is valid.
         ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
 
         // Compute the leaf hash.
-        let leaf_hash = leaf_hasher.hash_leaf(leaf)?;
+        let leaf_hash = self.leaf_hasher.hash_leaf(leaf)?;
 
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
         let start = self.number_of_leaves.next_power_of_two() - 1;
@@ -255,18 +254,23 @@ impl<F: PrimeField, const DEPTH: u8> MerkleTree<F, DEPTH> {
         MerklePath::try_from((leaf_index as u64, path))
     }
 
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    pub fn verify(&self, path: &MerklePath<PH::Hash, DEPTH>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+        path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
+    }
+
     /// Returns the Merkle root of the tree.
-    pub const fn root(&self) -> &F {
+    pub const fn root(&self) -> &PH::Hash {
         &self.root
     }
 
     /// Returns the Merkle tree (excluding the hashes of the leaves).
-    pub fn tree(&self) -> &[F] {
+    pub fn tree(&self) -> &[PH::Hash] {
         &self.tree
     }
 
     /// Returns the leaf hashes from the Merkle tree.
-    pub fn leaf_hashes(&self) -> &[F] {
+    pub fn leaf_hashes(&self) -> &[LH::Hash] {
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.
         let start = self.number_of_leaves.next_power_of_two() - 1;
         // Compute the end index (on the right) for the leaf hashes level in the Merkle tree.

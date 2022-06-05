@@ -33,7 +33,7 @@ impl<'de, N: Network> Deserialize<'de> for ViewKey<N> {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
             false => FromBytesDeserializer::<Self>::deserialize(
                 deserializer,
-                "private key",
+                "view key",
                 (N::Scalar::size_in_bits() + 7) / 8,
             ),
         }

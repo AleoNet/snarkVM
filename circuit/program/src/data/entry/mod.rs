@@ -35,6 +35,34 @@ pub enum Entry<A: Aleo, Private: Visibility<A>> {
 }
 
 #[cfg(console)]
+impl<A: Aleo> Inject for Entry<A, Plaintext<A>> {
+    type Primitive = console::Entry<A::Network, console::Plaintext<A::Network>>;
+
+    /// Initializes a new plaintext entry from a primitive.
+    fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
+        match plaintext {
+            Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
+            Self::Primitive::Public(plaintext) => Self::Public(Plaintext::new(mode, plaintext)),
+            Self::Primitive::Private(plaintext) => Self::Private(Plaintext::new(mode, plaintext)),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Inject for Entry<A, Ciphertext<A>> {
+    type Primitive = console::Entry<A::Network, console::Ciphertext<A::Network>>;
+
+    /// Initializes a new ciphertext entry from a primitive.
+    fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
+        match plaintext {
+            Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
+            Self::Primitive::Public(plaintext) => Self::Public(Plaintext::new(mode, plaintext)),
+            Self::Primitive::Private(ciphertext) => Self::Private(Ciphertext::new(mode, ciphertext)),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<A: Aleo> Eject for Entry<A, Plaintext<A>> {
     type Primitive = console::Entry<A::Network, console::Plaintext<A::Network>>;
 
@@ -50,9 +78,32 @@ impl<A: Aleo> Eject for Entry<A, Plaintext<A>> {
     /// Ejects the entry.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Entry::Constant(plaintext) => console::Entry::Constant(plaintext.eject_value()),
-            Entry::Public(plaintext) => console::Entry::Public(plaintext.eject_value()),
-            Entry::Private(private) => console::Entry::Private(private.eject_value()),
+            Entry::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
+            Entry::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
+            Entry::Private(plaintext) => Self::Primitive::Private(plaintext.eject_value()),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Eject for Entry<A, Ciphertext<A>> {
+    type Primitive = console::Entry<A::Network, console::Ciphertext<A::Network>>;
+
+    /// Ejects the mode of the entry.
+    fn eject_mode(&self) -> Mode {
+        match self {
+            Entry::Constant(_) => Mode::Constant,
+            Entry::Public(_) => Mode::Public,
+            Entry::Private(_) => Mode::Private,
+        }
+    }
+
+    /// Ejects the entry.
+    fn eject_value(&self) -> Self::Primitive {
+        match self {
+            Entry::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
+            Entry::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
+            Entry::Private(ciphertext) => Self::Primitive::Private(ciphertext.eject_value()),
         }
     }
 }

@@ -50,9 +50,7 @@ impl<E: Environment> Inject for StringType<E> {
 impl<E: Environment> Eject for StringType<E> {
     type Primitive = String;
 
-    ///
     /// Ejects the mode of the string.
-    ///
     fn eject_mode(&self) -> Mode {
         match self.bytes.is_empty() {
             true => self.mode,
@@ -60,9 +58,7 @@ impl<E: Environment> Eject for StringType<E> {
         }
     }
 
-    ///
     /// Ejects the string as a string literal.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         // Ensure the string is within the allowed capacity.
         let num_bytes = self.bytes.len();
@@ -97,12 +93,6 @@ impl<E: Environment> TypeName for StringType<E> {
     #[inline]
     fn type_name() -> &'static str {
         "string"
-    }
-}
-
-impl<E: Environment> fmt::Debug for StringType<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\"{}\"", self.eject_value())
     }
 }
 

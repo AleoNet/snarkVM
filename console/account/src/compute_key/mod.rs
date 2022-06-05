@@ -42,9 +42,7 @@ pub struct ComputeKey<N: Network> {
     pk_sig: N::Affine,
     /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: N::Affine,
-    /// The VRF public key `pk_vrf` := G^sk_vrf.
-    pk_vrf: N::Affine,
-    /// The PRF secret key `sk_prf` := HashToScalar(pk_sig || pr_sig || pk_vrf).
+    /// The PRF secret key `sk_prf` := HashToScalar(pk_sig || pr_sig).
     sk_prf: N::Scalar,
 }
 
@@ -57,11 +55,6 @@ impl<N: Network> ComputeKey<N> {
     /// Returns the signature public randomizer.
     pub const fn pr_sig(&self) -> N::Affine {
         self.pr_sig
-    }
-
-    /// Returns the VRF public key.
-    pub const fn pk_vrf(&self) -> N::Affine {
-        self.pk_vrf
     }
 
     /// Returns a reference to the PRF secret key.

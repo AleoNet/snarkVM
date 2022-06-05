@@ -65,7 +65,6 @@ pub trait IntegerCore<I: IntegerType>:
     + BitXor<Output = Self>
     + Clone
     + Compare
-    + Debug
     + DivAssign
     + Div<Output = Self>
     + DivChecked<Output = Self>

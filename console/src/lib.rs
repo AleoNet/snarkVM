@@ -23,11 +23,17 @@ pub use snarkvm_console_account as account;
 #[cfg(feature = "algorithms")]
 pub use snarkvm_console_algorithms as algorithms;
 
+#[cfg(feature = "collections")]
+pub use snarkvm_console_collections as collections;
+
 #[cfg(feature = "network")]
 pub use snarkvm_console_network as network;
 
 #[cfg(feature = "program")]
 pub use snarkvm_console_program as program;
+
+#[cfg(feature = "transition")]
+pub use snarkvm_console_transition as transition;
 
 #[cfg(feature = "types")]
 pub use snarkvm_console_types as types;

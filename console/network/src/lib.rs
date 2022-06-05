@@ -23,8 +23,9 @@ extern crate lazy_static;
 pub mod testnet3;
 pub use testnet3::*;
 
+use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::MerkleTree;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use anyhow::Result;
@@ -37,9 +38,24 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
         ScalarField = Self::Scalar,
         Coordinates = (Self::Field, Self::Field),
     >;
+    type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
+        + TwistedEdwardsParameters<BaseField = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
     type Field: PrimeField + Copy;
     type Scalar: PrimeField + Copy;
+
+    /// The network ID.
+    const ID: u16;
+
+    /// The maximum number of inputs per transition.
+    const MAX_INPUTS: usize;
+    /// The maximum number of outputs per transition.
+    const MAX_OUTPUTS: usize;
+    /// The maximum number of transitions per transaction.
+    const MAX_TRANSITIONS: usize;
+
+    /// The maximum number of transactions per block.
+    const MAX_TRANSACTIONS: usize;
 
     /// The maximum recursive depth of a value.
     /// Note: This value must be strictly less than u8::MAX.
@@ -71,6 +87,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// A helper method to recover a scalar from **big-endian** bits.
     fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar>;
 
+    /// Returns the balance commitment domain as a constant field element.
+    fn bcm_domain() -> Self::Field;
+
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Self::Field;
 
@@ -79,6 +98,12 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Self::Field;
+
+    /// Returns the balance commitment randomizer domain as a constant field element.
+    fn r_bcm_domain() -> Self::Field;
+
+    /// Returns the serial number domain as a constant field element.
+    fn serial_number_domain() -> Self::Field;
 
     /// Returns the powers of G.
     fn g_powers() -> &'static Vec<Self::Projective>;
@@ -99,10 +124,10 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn commit_bhp1024(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine>;
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine>;
 
     /// Returns the BHP hash with an input hasher of 256-bits.
     fn hash_bhp256(input: &[bool]) -> Result<Self::Field>;
@@ -140,6 +165,15 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
 
+    /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
+    fn hash_to_group_psd2(input: &[Self::Field]) -> Result<Self::Affine>;
+
+    /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
+    fn hash_to_group_psd4(input: &[Self::Field]) -> Result<Self::Affine>;
+
+    /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
+    fn hash_to_group_psd8(input: &[Self::Field]) -> Result<Self::Affine>;
+
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
     fn hash_to_scalar_psd2(input: &[Self::Field]) -> Result<Self::Scalar>;
 
@@ -150,22 +184,16 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar>;
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<MerkleTree<Self::Field, DEPTH>>;
-
-    /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Self::Field>]) -> Result<MerkleTree<Self::Field, DEPTH>>;
-
-    /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_append_bhp<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
+    #[allow(clippy::type_complexity)]
+    fn merkle_tree_bhp<const DEPTH: u8>(
         leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>>;
+    ) -> Result<MerkleTree<BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>>;
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_append_psd<const DEPTH: u8>(
-        merkle_tree: &MerkleTree<Self::Field, DEPTH>,
+    #[allow(clippy::type_complexity)]
+    fn merkle_tree_psd<const DEPTH: u8>(
         leaves: &[Vec<Self::Field>],
-    ) -> Result<MerkleTree<Self::Field, DEPTH>>;
+    ) -> Result<MerkleTree<Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>>;
 
     /// Returns the Poseidon PRF with an input rate of 2.
     fn prf_psd2(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;

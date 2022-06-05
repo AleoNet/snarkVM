@@ -30,7 +30,7 @@ impl<E: Environment> Equal<Self> for Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -50,8 +50,8 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Address::<Circuit>::new(mode_a, UniformRand::rand(rng));
-            let b = Address::<Circuit>::new(mode_b, UniformRand::rand(rng));
+            let a = Address::<Circuit>::from_group(Group::new(mode_a, UniformRand::rand(rng)));
+            let b = Address::<Circuit>::from_group(Group::new(mode_b, UniformRand::rand(rng)));
 
             Circuit::scope(&format!("{mode_a} {mode_a} {i}"), || {
                 let equals = a.is_equal(&a);
@@ -78,8 +78,8 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a = Address::<Circuit>::new(mode_a, UniformRand::rand(rng));
-            let b = Address::<Circuit>::new(mode_b, UniformRand::rand(rng));
+            let a = Address::<Circuit>::from_group(Group::new(mode_a, UniformRand::rand(rng)));
+            let b = Address::<Circuit>::from_group(Group::new(mode_b, UniformRand::rand(rng)));
 
             Circuit::scope(&format!("{mode_a} {mode_a} {i}"), || {
                 let equals = a.is_not_equal(&a);

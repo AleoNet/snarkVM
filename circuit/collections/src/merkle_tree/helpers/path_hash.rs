@@ -19,18 +19,22 @@ use snarkvm_circuit_algorithms::{Hash, Poseidon, BHP};
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash<E: Environment> {
+    type Hash: FieldTrait;
+
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &Field<E>, right: &Field<E>) -> Field<E>;
+    fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Self::Hash;
 
     /// Returns the empty hash.
-    fn hash_empty(&self) -> Field<E> {
-        self.hash_children(&Field::zero(), &Field::zero())
+    fn hash_empty(&self) -> Self::Hash {
+        self.hash_children(&Self::Hash::zero(), &Self::Hash::zero())
     }
 }
 
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<E> for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    type Hash = Field<E>;
+
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &Field<E>, right: &Field<E>) -> Field<E> {
+    fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Self::Hash {
         // Prepend the nodes with a `true` bit.
         let mut input = vec![Boolean::constant(true)];
         input.extend(left.to_bits_le());
@@ -41,10 +45,12 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash<E> f
 }
 
 impl<E: Environment, const RATE: usize> PathHash<E> for Poseidon<E, RATE> {
+    type Hash = Field<E>;
+
     /// Returns the hash of the given child nodes.
-    fn hash_children(&self, left: &Field<E>, right: &Field<E>) -> Field<E> {
+    fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Self::Hash {
         // Prepend the nodes with a `1field` byte.
-        let mut input = vec![Field::one()];
+        let mut input = vec![Self::Hash::one()];
         input.push(left.clone());
         input.push(right.clone());
         // Hash the input.
@@ -76,10 +82,7 @@ mod tests {
                 let right = <Circuit as Environment>::BaseField::rand(&mut test_rng());
 
                 // Compute the expected hash.
-                let expected: <Circuit as Environment>::BaseField = console::merkle_tree::PathHash::<
-                    <Circuit as Environment>::BaseField,
-                >::hash_children(&native, &left, &right)
-                .expect("Failed to hash native input");
+                let expected = console::merkle_tree::PathHash::hash_children(&native, &left, &right)?;
 
                 // Prepare the circuit input.
                 let left = Field::new(Mode::$mode, left);
