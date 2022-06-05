@@ -41,6 +41,10 @@ version = "0.7.5"
 path = "./program"
 version = "0.7.5"
 
+[dependencies.snarkvm-circuit-transition]
+path = "./transition"
+version = "0.7.5"
+
 [dependencies.snarkvm-circuit-types]
 path = "./types"
 version = "0.7.5"

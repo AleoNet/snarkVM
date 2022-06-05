@@ -34,6 +34,9 @@ pub use snarkvm_circuit_network::*;
 pub use snarkvm_circuit_program as program;
 pub use snarkvm_circuit_program::*;
 
+pub use snarkvm_circuit_transition as transition;
+pub use snarkvm_circuit_transition::*;
+
 pub use snarkvm_circuit_types as types;
 pub use snarkvm_circuit_types::*;
 

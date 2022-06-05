@@ -31,6 +31,11 @@ path = "./program"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-console-transition]
+path = "./transition"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-console-types]
 path = "./types"
 version = "0.7.5"
@@ -40,7 +45,8 @@ optional = true
 default = [ "account", "algorithms", "collections", "network", "program", "types" ]
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
-collections = [ "snarkvm-console-collections" ]
-network = [ "snarkvm-console-network" ]
+collections = [ "algorithms", "snarkvm-console-collections" ]
+network = [ "collections", "snarkvm-console-network" ]
 program = [ "network", "snarkvm-console-program" ]
+transition = [ "network", "snarkvm-console-transition" ]
 types = [ "snarkvm-console-types" ]

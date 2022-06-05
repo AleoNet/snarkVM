@@ -84,4 +84,22 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn test_encrypt_symmetric_and_decrypt_symmetric() -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
+        for _ in 0..ITERATIONS {
+            // Sample a random symmetric key and data.
+            let symmetric_key = Field::<Circuit>::new(Mode::Private, UniformRand::rand(rng));
+            let data = Data(vec![(
+                Identifier::from_str("a"),
+                Entry::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
+            )]);
+
+            let ciphertext = data.encrypt_symmetric(symmetric_key.clone());
+            assert_eq!(data.eject(), ciphertext.decrypt_symmetric(symmetric_key).eject());
+        }
+        Ok(())
+    }
 }

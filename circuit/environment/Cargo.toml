@@ -59,9 +59,6 @@ version = "0.2"
 [dependencies.once_cell]
 version = "1.12.0"
 
-[dependencies.rayon]
-version = "1"
-
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 version = "0.7.5"

@@ -38,7 +38,7 @@ impl<A: Aleo> Equal<Self> for Record<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_network::AleoV0 as Circuit;
+    use crate::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;

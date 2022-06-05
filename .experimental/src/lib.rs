@@ -96,9 +96,9 @@ pub mod input {
         /// Initializes the private inputs for the input circuit.
         pub fn from(
             record_view_key: A::BaseField,
-            record: console::program::Record<A::Network>,
+            record: console::transition::Record<A::Network>,
             merkle_path: console::collections::merkle_tree::MerklePath<A::BaseField, 32>,
-            serial_number: console::program::SerialNumber<A::Network>,
+            serial_number: console::transition::SerialNumber<A::Network>,
             r_fcm: A::ScalarField,
             r_tcm: A::BaseField,
         ) -> Self {
@@ -228,7 +228,7 @@ pub mod output {
         /// Initializes the public inputs for the output circuit.
         pub fn from(
             index: u16,
-            record: console::program::Record<A::Network>,
+            record: console::transition::Record<A::Network>,
             fcm: A::Affine,
             tcm: A::BaseField,
             tpk: A::Affine,
@@ -258,7 +258,7 @@ pub mod output {
         /// Initializes the private inputs for the output circuit.
         pub fn from(
             caller: console::account::Address<A::Network>,
-            state: console::program::State<A::Network>,
+            state: console::transition::State<A::Network>,
             r_fcm: A::ScalarField,
             r_tcm: A::BaseField,
         ) -> Self {

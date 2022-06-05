@@ -48,12 +48,10 @@ impl<A: Aleo> Randomizer<A> {
 #[cfg(all(test, console))]
 mod tests {
     use super::*;
-    use snarkvm_circuit_network::AleoV0;
+    use crate::Circuit;
     use snarkvm_utilities::{test_crypto_rng, Rng, ToBits as T, UniformRand};
 
     use anyhow::Result;
-
-    type Circuit = AleoV0;
 
     pub(crate) const ITERATIONS: usize = 100;
 
