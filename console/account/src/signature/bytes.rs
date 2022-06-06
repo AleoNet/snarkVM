@@ -44,8 +44,6 @@ mod tests {
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
-    use anyhow::Result;
-
     type CurrentNetwork = Testnet3;
 
     const ITERATIONS: u64 = 100;

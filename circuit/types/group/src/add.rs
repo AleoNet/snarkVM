@@ -168,8 +168,8 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = UniformRand::rand(&mut test_rng());
+            let second = UniformRand::rand(&mut test_rng());
 
             let expected = (first.to_projective() + second.to_projective()).into();
             let a = Group::<Circuit>::new(mode_a, first);
@@ -230,8 +230,8 @@ mod tests {
     #[test]
     fn test_add_matches() {
         // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let b = <Circuit as Environment>::Affine::rand(&mut test_rng());
+        let a = UniformRand::rand(&mut test_rng());
+        let b = UniformRand::rand(&mut test_rng());
         let expected: <Circuit as Environment>::Affine = (a.to_projective() + b.to_projective()).into();
 
         // Constant

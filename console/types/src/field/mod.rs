@@ -14,6 +14,48 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_console_network::Network;
+mod arithmetic;
+mod one;
+mod parse;
+mod zero;
 
-pub struct Field<N: Network>(N::Field);
+use snarkvm_console_network::prelude::*;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Field<N: Network> {
+    /// The underlying field element.
+    field: N::Field,
+    /// The input mode for the field element.
+    mode: Mode,
+}
+
+impl<N: Network> FieldTrait for Field<N> {}
+
+impl<N: Network> Field<N> {
+    /// Initializes a new field with the given mode.
+    pub const fn new(mode: Mode, field: N::Field) -> Self {
+        Self { field, mode }
+    }
+
+    /// Returns the mode of the field element.
+    pub const fn mode(&self) -> Mode {
+        self.mode
+    }
+}
+
+impl<N: Network> TypeName for Field<N> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "field"
+    }
+}
+
+impl<N: Network> Deref for Field<N> {
+    type Target = N::Field;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.field
+    }
+}

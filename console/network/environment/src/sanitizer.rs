@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuit::ParserResult;
+use crate::ParserResult;
 
 use nom::{
     branch::alt,
@@ -26,7 +26,7 @@ use nom::{
     sequence::{preceded, terminated},
 };
 
-pub(crate) struct Sanitizer;
+pub struct Sanitizer;
 
 impl Sanitizer {
     /// Removes all leading whitespaces and comments from the given input, returning the sanitized input.

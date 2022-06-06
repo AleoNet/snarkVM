@@ -87,7 +87,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn MulWrapped<Integer<E, I>, Ou
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     use core::ops::RangeInclusive;
 
@@ -110,8 +110,8 @@ mod tests {
         for i in 0..ITERATIONS {
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
             //  Is there a better method for sampling arguments?
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: I = UniformRand::rand(&mut test_rng());
+            let first: I = Uniform::rand(&mut test_rng());
+            let second: I = Uniform::rand(&mut test_rng());
 
             let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
             check_mul(&name, first, second, mode_a, mode_b);

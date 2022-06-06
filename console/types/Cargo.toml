@@ -9,3 +9,7 @@ edition = "2021"
 [dependencies.snarkvm-console-network]
 path = "../network"
 version = "0.7.5"
+
+[dependencies.snarkvm-console-account]
+path = "../account"
+version = "0.7.5"

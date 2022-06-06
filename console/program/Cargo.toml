@@ -50,8 +50,5 @@ features = ["derive"]
 [dev-dependencies.bincode]
 version = "1.3"
 
-[dev-dependencies.rand]
-version = "0.8"
-
 [dev-dependencies.serde_json]
 version = "1.0"

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Mode;
+use console::Mode;
 
 /// Operations to eject from a circuit environment into primitive form.
 pub trait Eject {
@@ -60,32 +60,6 @@ pub trait Eject {
 }
 
 /********************/
-/****** Helper ******/
-/********************/
-
-/// A helper method to deduce the mode from a list of `Eject` circuits.
-#[inline]
-fn eject_mode(start_mode: Mode, modes: &[Mode]) -> Mode {
-    let mut current_mode = start_mode;
-    for next_mode in modes {
-        // Check if the current mode matches the next mode.
-        if !current_mode.is_private() && current_mode != *next_mode {
-            // Intuition: Start from `Mode::Constant`, and see if one needs to lift to `Mode::Public` or `Mode::Private`.
-            //   - If `current_mode == Mode::Constant`, then `current_mode = next_mode`.
-            //   - If `current_mode == Mode::Public` && `next_mode == Mode::Private`, then `current_mode = next_mode`.
-            //   - Otherwise, do nothing.
-            match (current_mode, next_mode) {
-                (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
-                    current_mode = *next_mode
-                }
-                (_, _) => (), // Do nothing.
-            }
-        }
-    }
-    current_mode
-}
-
-/********************/
 /****** Arrays ******/
 /********************/
 
@@ -98,7 +72,7 @@ impl Eject for Vec<Mode> {
         // TODO (howardwu): Determine if a default mode of `constant` is appropriate.
         // Retrieve the mode of the first circuit.
         match self.get(0) {
-            Some(first) => eject_mode(*first, &self[1..]),
+            Some(first) => Mode::combine(*first, self.iter().copied().skip(1)),
             None => Mode::Constant,
             // None => panic!("Attempted to eject the mode on an empty circuit"),
         }
@@ -152,9 +126,7 @@ impl<C: Eject<Primitive = P>, P> Eject for &[C] {
         // TODO (howardwu): Determine if a default mode of `constant` is appropriate.
         // Retrieve the mode of the first circuit.
         match self.get(0) {
-            Some(first) => {
-                eject_mode(first.eject_mode(), &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>())
-            }
+            Some(first) => Mode::combine(first.eject_mode(), self.iter().skip(1).map(Eject::eject_mode)),
             None => Mode::Constant,
             // None => panic!("Attempted to eject the mode on an empty circuit"),
         }
@@ -180,7 +152,7 @@ macro_rules! eject_tuple {
             /// A helper method to deduce the mode from a tuple of `Eject` circuits.
             #[inline]
             fn eject_mode(&self) -> Mode {
-                eject_mode(self.0.eject_mode(), &[ $(self.$idx.eject_mode()),* ])
+                Mode::combine(self.0.eject_mode(), [ $(self.$idx.eject_mode()),* ])
             }
 
             /// Ejects the value from each circuit.
@@ -196,7 +168,7 @@ macro_rules! eject_tuple {
             /// A helper method to deduce the mode from a tuple of `Eject` circuits.
             #[inline]
             fn eject_mode(&self) -> Mode {
-                eject_mode(self.0.eject_mode(), &[ $(self.$idx.eject_mode()),* ])
+                Mode::combine(self.0.eject_mode(), [ $(self.$idx.eject_mode()),* ])
             }
 
             /// Ejects the value from each circuit.

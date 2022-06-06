@@ -16,6 +16,22 @@
 
 use super::*;
 
+impl<N: Network> Parser for Identifier<N> {
+    /// Parses a string into an identifier.
+    ///
+    /// # Requirements
+    /// The identifier must be alphanumeric (or underscore).
+    /// The identifier must not start with a number.
+    /// The identifier must not be a keyword.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Check for alphanumeric characters and underscores.
+        map_res(recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_")))))), |identifier: &str| {
+            Self::from_str(identifier)
+        })(string)
+    }
+}
+
 impl<N: Network> FromStr for Identifier<N> {
     type Err = Error;
 
@@ -88,7 +104,62 @@ mod tests {
     const ITERATIONS: usize = 100;
 
     #[test]
-    fn test_identifier_from_str() -> Result<()> {
+    fn test_parse() -> Result<()> {
+        // Quick sanity check.
+        let (remainder, candidate) = Identifier::<CurrentNetwork>::parse("foo_bar1")?;
+        assert_eq!("foo_bar1", candidate.to_string());
+        assert_eq!("", remainder);
+
+        // Must be alphanumeric or underscore.
+        let (remainder, candidate) = Identifier::<CurrentNetwork>::parse("foo_bar~baz")?;
+        assert_eq!("foo_bar", candidate.to_string());
+        assert_eq!("~baz", remainder);
+
+        // Must be alphanumeric or underscore.
+        let (remainder, candidate) = Identifier::<CurrentNetwork>::parse("foo_bar-baz")?;
+        assert_eq!("foo_bar", candidate.to_string());
+        assert_eq!("-baz", remainder);
+
+        // Check random identifiers.
+        for _ in 0..ITERATIONS {
+            // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
+            let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
+            // Recover the field element from the bits.
+            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
+
+            let (remainder, candidate) = Identifier::<CurrentNetwork>::parse(expected_string.as_str()).unwrap();
+            assert_eq!(expected_string, candidate.to_string());
+            assert_eq!(expected_field, candidate.0);
+            assert_eq!(expected_string.len(), candidate.1 as usize);
+            assert_eq!("", remainder);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_fails() {
+        // Must not be solely underscores.
+        assert!(Identifier::<CurrentNetwork>::parse("_").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("__").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("___").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("____").is_err());
+
+        // Must not start with a number.
+        assert!(Identifier::<CurrentNetwork>::parse("1").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("2").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("3").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("1foo").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("12").is_err());
+        assert!(Identifier::<CurrentNetwork>::parse("111").is_err());
+
+        // Must fit within the data capacity of a base field element.
+        let identifier =
+            Identifier::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        assert!(identifier.is_err());
+    }
+
+    #[test]
+    fn test_from_str() -> Result<()> {
         let candidate = Identifier::<CurrentNetwork>::from_str("foo_bar").unwrap();
         assert_eq!("foo_bar", candidate.to_string());
 
@@ -107,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn test_identifier_from_str_fails() {
+    fn test_from_str_fails() {
         // Must be alphanumeric or underscore.
         assert!(Identifier::<CurrentNetwork>::from_str("foo_bar~baz").is_err());
         assert!(Identifier::<CurrentNetwork>::from_str("foo_bar-baz").is_err());
@@ -134,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn test_identifier_display() -> Result<()> {
+    fn test_display() -> Result<()> {
         let identifier = Identifier::<CurrentNetwork>::from_str("foo_bar")?;
         assert_eq!("foo_bar", format!("{identifier}"));
         Ok(())

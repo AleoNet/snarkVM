@@ -37,8 +37,6 @@ pub use inject::*;
 
 pub mod integers;
 pub use integers::{
-    integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
-    magnitude::Magnitude,
     IntegerCore,
     IntegerTrait,
 };

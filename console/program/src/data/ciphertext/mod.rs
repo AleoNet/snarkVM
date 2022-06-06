@@ -20,8 +20,8 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{FromFields, ToFields, Visibility};
-use snarkvm_console_network::Network;
+use crate::Visibility;
+use snarkvm_console_network::prelude::*;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBits, ToBits};
 

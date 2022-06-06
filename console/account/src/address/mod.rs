@@ -20,9 +20,7 @@ mod string;
 mod try_from;
 
 use crate::{ComputeKey, PrivateKey, ViewKey};
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
+use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -32,9 +30,7 @@ use snarkvm_utilities::{
     ToBytesSerializer,
 };
 
-use anyhow::{bail, Error};
 use bech32::{self, FromBase32, ToBase32};
-use core::{fmt, ops::Deref, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -61,8 +57,6 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
-
-    use anyhow::Result;
 
     type CurrentNetwork = Testnet3;
 

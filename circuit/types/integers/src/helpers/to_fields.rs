@@ -29,14 +29,14 @@ impl<E: Environment, I: IntegerType> ToFields for Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as TBits, UniformRand};
+    use snarkvm_utilities::{test_rng, ToBits as TBits, Uniform};
 
     const ITERATIONS: u64 = 128;
 
     fn check_to_fields<I: IntegerType>(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {

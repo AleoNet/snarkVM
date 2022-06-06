@@ -20,8 +20,17 @@
 #[macro_use]
 extern crate lazy_static;
 
+pub use snarkvm_console_network_environment as environment;
+pub use snarkvm_console_network_environment::*;
+
 pub mod testnet3;
 pub use testnet3::*;
+
+pub mod prelude {
+    pub use crate::environment::prelude::*;
+
+    pub use crate::Network;
+}
 
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::MerkleTree;
@@ -41,31 +50,32 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
         + TwistedEdwardsParameters<BaseField = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
-    type Field: PrimeField + Copy;
+    type Field: PrimeField + SquareRootField + Copy;
     type Scalar: PrimeField + Copy;
 
     /// The network ID.
     const ID: u16;
 
-    /// The maximum number of inputs per transition.
-    const MAX_INPUTS: usize;
-    /// The maximum number of outputs per transition.
-    const MAX_OUTPUTS: usize;
-    /// The maximum number of transitions per transaction.
-    const MAX_TRANSITIONS: usize;
-
-    /// The maximum number of transactions per block.
-    const MAX_TRANSACTIONS: usize;
-
-    /// The maximum recursive depth of a value.
+    /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.
-    const DEPTH: u8 = 32;
+    const MAX_DATA_DEPTH: usize = 32;
+    /// The maximum number of values and/or entries in data.
+    const MAX_DATA_ENTRIES: usize = 32;
 
-    /// The maximum number of bytes allowed in a string.
-    const NUM_STRING_BYTES: u32;
+    /// The maximum number of inputs per transition.
+    const MAX_INPUTS: usize = 8;
+    /// The maximum number of outputs per transition.
+    const MAX_OUTPUTS: usize = 8;
+    /// The maximum number of transitions per transaction.
+    const MAX_TRANSITIONS: usize = 16;
+    /// The maximum number of transactions per block.
+    const MAX_TRANSACTIONS: usize = 65536;
 
     /// The maximum number of bits in data (must not exceed u16::MAX).
-    const MAX_DATA_SIZE_IN_FIELDS: u32;
+    const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::Field as PrimeField>::Parameters::CAPACITY;
+
+    /// The maximum number of bytes allowed in a string.
+    const MAX_STRING_BYTES: u32 = u8::MAX as u32;
 
     /// A helper method to recover the y-coordinate given the x-coordinate for
     /// a twisted Edwards point, returning the affine curve point.
@@ -206,4 +216,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns the Poseidon PRF on the **scalar** field with an input rate of 2.
     fn prf_psd2s(seed: &Self::Scalar, input: &[Self::Scalar]) -> Result<Self::Scalar>;
+
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        panic!("{}", message.into())
+    }
 }

@@ -27,7 +27,8 @@ use snarkvm_utilities::{
     FromBytes,
     ToBits,
     ToBytes,
-    ToMinimalBits,
+    ToMinimalBits,    io::{Read, Result as IoResult, Write},
+
 };
 
 use rand::{
@@ -35,9 +36,8 @@ use rand::{
     Rng,
 };
 use serde::{Deserialize, Serialize};
-use std::{
+use core::{
     fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
     ops::{Mul, Neg},
 };
 
@@ -56,8 +56,21 @@ pub struct Affine<P: Parameters> {
 }
 
 impl<P: Parameters> Affine<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
+    #[inline]
+    pub const fn new(x: P::BaseField, y: P::BaseField) -> Self {
         Self { x, y }
+    }
+}
+
+impl<P: Parameters> Zero for Affine<P> {
+    #[inline]
+    fn zero() -> Self {
+        Self::new(P::BaseField::zero(), P::BaseField::one())
+    }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.x.is_zero() & self.y.is_one()
     }
 }
 
@@ -67,13 +80,10 @@ impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
     }
 }
 
-impl<P: Parameters> Zero for Affine<P> {
-    fn zero() -> Self {
-        Self::new(P::BaseField::zero(), P::BaseField::one())
-    }
-
-    fn is_zero(&self) -> bool {
-        self.x.is_zero() & self.y.is_one()
+impl<P: Parameters> Default for Affine<P> {
+    #[inline]
+    fn default() -> Self {
+        Self::zero()
     }
 }
 
@@ -270,13 +280,6 @@ impl<P: Parameters> FromBytes for Affine<P> {
     }
 }
 
-impl<P: Parameters> Default for Affine<P> {
-    #[inline]
-    fn default() -> Self {
-        Self::zero()
-    }
-}
-
 impl<P: Parameters> Distribution<Affine<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Affine<P> {
@@ -285,7 +288,7 @@ impl<P: Parameters> Distribution<Affine<P>> for Standard {
             let greatest = rng.gen();
 
             if let Some(p) = Affine::from_x_coordinate(x, greatest) {
-                return p.mul_by_cofactor_to_projective().into();
+                return p.mul_by_cofactor();
             }
         }
     }

@@ -116,7 +116,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn ShlWrapped<Int
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
@@ -145,8 +145,8 @@ mod tests {
         let check_shl = |name: &str, first: I, second: M| check_shl(name, first, second, mode_a, mode_b);
 
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: M = UniformRand::rand(&mut test_rng());
+            let first: I = Uniform::rand(&mut test_rng());
+            let second: M = Uniform::rand(&mut test_rng());
 
             let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
             check_shl(&name, first, second);

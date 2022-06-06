@@ -17,6 +17,12 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod address;
+pub use address::*;
+
+mod boolean;
+pub use boolean::*;
+
 mod field;
 pub use field::*;
 
@@ -28,3 +34,6 @@ pub use integers::*;
 
 mod scalar;
 pub use scalar::*;
+
+mod string;
+pub use string::*;

@@ -56,7 +56,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Not<Output = Integer<E, I>>>
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     use core::ops::RangeInclusive;
 
@@ -78,7 +78,7 @@ mod tests {
     fn run_test<I: IntegerType + Not<Output = I>>(mode: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Not: {} {}", mode, i);
-            let value: I = UniformRand::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut test_rng());
             check_not(&name, value, mode);
         }
 

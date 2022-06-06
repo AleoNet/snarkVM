@@ -14,6 +14,48 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_console_network::Network;
+mod arithmetic;
+mod one;
+mod parse;
+mod zero;
 
-pub struct Scalar<N: Network>(N::Scalar);
+use snarkvm_console_network::prelude::*;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Scalar<N: Network> {
+    /// The underlying scalar element.
+    scalar: N::Scalar,
+    /// The input mode for the scalar element.
+    mode: Mode,
+}
+
+impl<N: Network> ScalarTrait for Scalar<N> {}
+
+impl<N: Network> Scalar<N> {
+    /// Initializes a new scalar with the given mode.
+    pub const fn new(mode: Mode, scalar: N::Scalar) -> Self {
+        Self { scalar, mode }
+    }
+
+    /// Returns the mode of the scalar element.
+    pub const fn mode(&self) -> Mode {
+        self.mode
+    }
+}
+
+impl<N: Network> TypeName for Scalar<N> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "scalar"
+    }
+}
+
+impl<N: Network> Deref for Scalar<N> {
+    type Target = N::Scalar;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.scalar
+    }
+}

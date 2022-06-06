@@ -55,7 +55,7 @@ mod tests {
     use crate::Literal;
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng};
 
     use core::str::FromStr;
 
@@ -75,7 +75,7 @@ mod tests {
 
             let data = Data(vec![(
                 Identifier::from_str("a")?,
-                Value::Private(Plaintext::from(Literal::Field(UniformRand::rand(rng)))),
+                Value::Private(Plaintext::from(Literal::Field(Uniform::rand(rng)))),
             )]);
 
             let randomizer = <CurrentNetwork as Network>::Scalar::rand(rng);

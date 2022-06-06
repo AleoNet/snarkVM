@@ -44,6 +44,7 @@ members = [
   "console/algorithms",
   "console/collections",
   "console/network",
+  "console/network/environment",
   "console/program",
   "console/transition",
   "console/types",

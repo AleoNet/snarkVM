@@ -114,7 +114,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitAnd<Integer<E, I>, Output
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     use std::ops::RangeInclusive;
 
@@ -135,8 +135,8 @@ mod tests {
 
     fn run_test<I: IntegerType + BitAnd<Output = I>>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: I = UniformRand::rand(&mut test_rng());
+            let first: I = Uniform::rand(&mut test_rng());
+            let second: I = Uniform::rand(&mut test_rng());
 
             let name = format!("BitAnd: ({} & {}) {}", mode_a, mode_b, i);
             check_and(&name, first, second, mode_a, mode_b);

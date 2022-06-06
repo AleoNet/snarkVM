@@ -16,19 +16,20 @@
 
 mod from_bits;
 mod from_fields;
+mod parse;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{FromFields, Identifier, Literal, ToFields, Visibility};
-use snarkvm_console_network::Network;
+use crate::{Identifier, Literal, Visibility};
+use snarkvm_console_network::prelude::*;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{FromBits, ToBits};
+use snarkvm_utilities::{FromBits, error, ToBits};
 
 use anyhow::{bail, Error, Result};
 use once_cell::sync::OnceCell;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),

@@ -50,7 +50,7 @@ impl<E: Environment, I: IntegerType> ToBits for &Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     const ITERATIONS: u64 = 128;
 
@@ -63,7 +63,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected: I = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -90,7 +90,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected: I = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {

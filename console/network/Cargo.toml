@@ -14,6 +14,10 @@ version = "0.7.5"
 path = "../collections"
 version = "0.7.5"
 
+[dependencies.snarkvm-console-network-environment]
+path = "./environment"
+version = "0.7.5"
+
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"

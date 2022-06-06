@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Inject, LinearCombination, Mode, Variable};
+use crate::{Inject, LinearCombination, Variable};use console::Mode;
 use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
@@ -133,7 +133,7 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
-        panic!("{}", message.into())
+        <Self::Network as console::Network>::halt(message)
     }
 
     /// Clears and initializes an empty environment.

@@ -28,13 +28,14 @@ use serde::{de::DeserializeOwned, Serialize};
 
 /// Projective representation of an elliptic curve point guaranteed to be in the prime order subgroup.
 pub trait ProjectiveCurve:
-    ToBytes
-    + FromBytes
+    CanonicalSerialize
+    + CanonicalDeserialize
     + Copy
     + Clone
     + Debug
     + Display
     + Default
+    + FromBytes
     + Send
     + Sync
     + 'static
@@ -55,8 +56,7 @@ pub trait ProjectiveCurve:
     + for<'a> SubAssign<&'a Self>
     + PartialEq<Self::Affine>
     + Sized
-    + CanonicalSerialize
-    + CanonicalDeserialize
+    + ToBytes
     + iter::Sum
     + From<<Self as ProjectiveCurve>::Affine>
 {
@@ -109,13 +109,14 @@ pub trait ProjectiveCurve:
 /// in the correct prime order subgroup.
 #[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
-    ToBytes
-    + FromBytes
+    CanonicalSerialize
+    + CanonicalDeserialize
     + Copy
     + Clone
     + Debug
     + Display
     + Default
+    + FromBytes
     + Send
     + Sync
     + 'static
@@ -123,16 +124,15 @@ pub trait AffineCurve:
     + Hash
     + Neg<Output = Self>
     + UniformRand
-    + Zero
     + PartialEq<Self::Projective>
     + Mul<Self::ScalarField, Output = Self::Projective>
     + Sized
     + Serialize
     + DeserializeOwned
-    + CanonicalSerialize
-    + CanonicalDeserialize
+    + ToBytes
     + From<<Self as AffineCurve>::Projective>
     + ToMinimalBits
+    + Zero
 {
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
     type BaseField: Field + SquareRootField;

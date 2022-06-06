@@ -13,3 +13,68 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+mod arithmetic;
+mod bitwise;
+mod one;
+mod parse;
+mod zero;
+
+use snarkvm_console_network::{prelude::*, traits::integers::*};
+
+use core::marker::PhantomData;
+
+pub type I8<N> = Integer<N, i8>;
+pub type I16<N> = Integer<N, i16>;
+pub type I32<N> = Integer<N, i32>;
+pub type I64<N> = Integer<N, i64>;
+pub type I128<N> = Integer<N, i128>;
+
+pub type U8<N> = Integer<N, u8>;
+pub type U16<N> = Integer<N, u16>;
+pub type U32<N> = Integer<N, u32>;
+pub type U64<N> = Integer<N, u64>;
+pub type U128<N> = Integer<N, u128>;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Integer<N: Network, I: IntegerType> {
+    /// The underlying integer value.
+    integer: I,
+    /// The input mode of the integer.
+    mode: Mode,
+    /// PhantomData.
+    _phantom: PhantomData<N>,
+}
+
+impl<N: Network, I: IntegerType> IntegerTrait<I, U8<N>, U16<N>, U32<N>> for Integer<N, I> {}
+
+impl<N: Network, I: IntegerType> IntegerCore<I> for Integer<N, I> {}
+
+impl<N: Network, I: IntegerType> Integer<N, I> {
+    /// Initializes a new integer with the given mode.
+    pub const fn new(mode: Mode, integer: I) -> Self {
+        Self { integer, mode, _phantom: PhantomData }
+    }
+
+    /// Returns the mode of the integer.
+    pub const fn mode(&self) -> Mode {
+        self.mode
+    }
+}
+
+impl<N: Network, I: IntegerType> TypeName for Integer<N, I> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        I::type_name()
+    }
+}
+
+impl<N: Network, I: IntegerType> Deref for Integer<N, I> {
+    type Target = I;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.integer
+    }
+}

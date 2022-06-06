@@ -90,7 +90,7 @@ impl<E: Environment> OutputMode<dyn ToUpperBits<Boolean = Boolean<E>>> for Field
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBytes};
 
     const ITERATIONS: u64 = 100;
 
@@ -104,7 +104,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random unsigned integer.
-            let value: I = UniformRand::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut test_rng());
             let expected = value.to_bytes_le().unwrap().to_bits_le();
 
             // Construct the unsigned integer as a field element.

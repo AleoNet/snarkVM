@@ -186,7 +186,7 @@ impl<E: Environment, I: IntegerType> From<&Integer<E, I>> for LinearCombination<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     const ITERATIONS: u64 = 100;
 
@@ -198,7 +198,7 @@ mod tests {
         num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected: I = Uniform::rand(&mut test_rng());
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Integer::<Circuit, I>::new(mode, expected);
@@ -220,7 +220,7 @@ mod tests {
         num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
-            let value: I = UniformRand::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut test_rng());
             let expected = Integer::<Circuit, I>::new(mode, value);
 
             Circuit::scope(format!("Parse {mode}"), || {

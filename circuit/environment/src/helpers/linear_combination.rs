@@ -16,6 +16,7 @@
 
 use crate::*;
 use snarkvm_fields::PrimeField;
+use console::Mode;
 
 use core::{
     fmt,

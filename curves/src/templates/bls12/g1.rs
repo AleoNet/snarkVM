@@ -21,8 +21,7 @@ use crate::{
     },
     traits::AffineCurve,
 };
-use snarkvm_fields::Zero;
-use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
+use snarkvm_fields::Zero;use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 

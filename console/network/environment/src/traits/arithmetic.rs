@@ -14,7 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub trait One: Sized {
-    fn one() -> Self;
-    fn is_one(&self) -> bool;
+/// Unary operator for retrieving the doubled value.
+pub trait Double {
+    type Output;
+
+    fn double(&self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the inverse value.
+pub trait Inverse {
+    type Output;
+
+    fn inverse(&self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the squared value.
+pub trait Square {
+    type Output;
+
+    fn square(&self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the square root of the value.
+pub trait SquareRoot {
+    type Output;
+
+    fn square_root(&self) -> Self::Output;
 }

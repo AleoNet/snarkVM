@@ -23,8 +23,5 @@ extern crate enum_index_derive;
 mod data;
 pub use data::*;
 
-// mod interface;
-// pub use interface::*;
-
-pub mod traits;
-pub use traits::*;
+mod data_type;
+pub use data_type::*;

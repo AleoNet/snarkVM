@@ -16,6 +16,7 @@
 
 use crate::{helpers::Constraint, *};
 use snarkvm_curves::AffineCurve;
+use console::Mode;
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;

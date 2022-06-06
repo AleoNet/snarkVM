@@ -36,7 +36,7 @@ mod tests {
     fn check_mul_by_cofactor(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = UniformRand::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.mul_by_cofactor_inv();
@@ -74,7 +74,7 @@ mod tests {
     fn test_mul_by_cofactor_matches() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = UniformRand::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.mul_by_cofactor_inv();

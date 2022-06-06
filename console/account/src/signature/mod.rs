@@ -18,8 +18,7 @@ mod bytes;
 mod sign;
 
 use crate::{Address, ComputeKey, PrivateKey};
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     CryptoRng,
@@ -28,8 +27,6 @@ use snarkvm_utilities::{
     ToBytes,
     UniformRand,
 };
-
-use anyhow::Result;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
@@ -77,8 +74,6 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
-
-    use anyhow::Result;
 
     type CurrentNetwork = Testnet3;
 

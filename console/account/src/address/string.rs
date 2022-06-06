@@ -43,13 +43,16 @@ impl<N: Network> FromStr for Address<N> {
     }
 }
 
-impl<N: Network> fmt::Display for Address<N> {
+impl<N: Network> Display for Address<N> {
     /// Writes an account address as a bech32m string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Convert the address to bytes.
         let bytes = self.to_bytes_le().map_err(|_| fmt::Error)?;
         // Encode the bytes into bech32m.
-        bech32::encode(ADDRESS_PREFIX, bytes.to_base32(), bech32::Variant::Bech32m).map_err(|_| fmt::Error)?.fmt(f)
+        let string =
+            bech32::encode(ADDRESS_PREFIX, bytes.to_base32(), bech32::Variant::Bech32m).map_err(|_| fmt::Error)?;
+        // Output the string.
+        Display::fmt(&string, f)
     }
 }
 
@@ -58,8 +61,6 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
-
-    use anyhow::Result;
 
     type CurrentNetwork = Testnet3;
 

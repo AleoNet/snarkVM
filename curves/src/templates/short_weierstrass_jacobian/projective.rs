@@ -18,7 +18,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero, PrimeField};
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
@@ -46,8 +46,29 @@ pub struct Projective<P: Parameters> {
 }
 
 impl<P: Parameters> Projective<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField, z: P::BaseField) -> Self {
+    pub const fn new(x: P::BaseField, y: P::BaseField, z: P::BaseField) -> Self {
         Self { x, y, z }
+    }
+}
+
+impl<P: Parameters> Zero for Projective<P> {
+    // The point at infinity is always represented by Z = 0.
+    #[inline]
+    fn zero() -> Self {
+        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero())
+    }
+
+    // The point at infinity is always represented by Z = 0.
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.z.is_zero()
+    }
+}
+
+impl<P: Parameters> Default for Projective<P> {
+    #[inline]
+    fn default() -> Self {
+        Self::zero()
     }
 }
 
@@ -103,7 +124,7 @@ impl<P: Parameters> Distribution<Projective<P>> for Standard {
             let greatest = rng.gen();
 
             if let Some(p) = Affine::from_x_coordinate(x, greatest) {
-                return p.scale_by_cofactor();
+                return p.mul_by_cofactor_to_projective();
             }
         }
     }
@@ -125,29 +146,6 @@ impl<P: Parameters> FromBytes for Projective<P> {
         let y = P::BaseField::read_le(&mut reader)?;
         let z = P::BaseField::read_le(reader)?;
         Ok(Self::new(x, y, z))
-    }
-}
-
-impl<P: Parameters> Default for Projective<P> {
-    #[inline]
-    fn default() -> Self {
-        Self::zero()
-    }
-}
-
-impl<P: Parameters> Zero for Projective<P> {
-    // The point at infinity is always represented by
-    // Z = 0.
-    #[inline]
-    fn zero() -> Self {
-        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero())
-    }
-
-    // The point at infinity is always represented by
-    // Z = 0.
-    #[inline]
-    fn is_zero(&self) -> bool {
-        self.z.is_zero()
     }
 }
 

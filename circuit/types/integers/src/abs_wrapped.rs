@@ -67,7 +67,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AbsWrapped<Output = Integer<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     use core::{ops::RangeInclusive, panic::UnwindSafe};
 
@@ -88,7 +88,7 @@ mod tests {
     fn run_test<I: IntegerType + UnwindSafe>(mode: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Abs: {} {}", mode, i);
-            let value: I = UniformRand::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut test_rng());
             check_abs(&name, value, mode);
         }
 

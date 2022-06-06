@@ -17,8 +17,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-use crate::{variable_length::*, Identifier, Program};
+use crate::{Identifier, Program};
 use snarkvm_circuit::prelude::*;
+use snarkvm_console::network::variable_length::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::{cmp::Ordering, fmt};

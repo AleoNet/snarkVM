@@ -50,9 +50,6 @@ version = "0.10.1"
 [dependencies.nom]
 version = "7.1"
 
-[dependencies.num-derive]
-version = "0.3"
-
 [dependencies.num-traits]
 version = "0.2"
 

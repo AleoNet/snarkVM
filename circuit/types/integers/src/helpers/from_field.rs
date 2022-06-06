@@ -38,14 +38,14 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
 
     const ITERATIONS: u64 = 128;
 
     fn check_from_field<I: IntegerType>(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected).to_field();
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {

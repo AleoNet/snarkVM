@@ -17,7 +17,7 @@
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-mod identifier;
+pub(super) mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
@@ -34,9 +34,8 @@ mod encrypt;
 mod to_bits;
 mod to_id;
 
-use crate::{FromFields, ToFields};
 use snarkvm_console_account::{Address, ViewKey};
-use snarkvm_console_network::Network;
+use snarkvm_console_network::prelude::*;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{FromBits, ToBits};
 

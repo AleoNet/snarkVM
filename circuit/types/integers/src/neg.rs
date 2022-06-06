@@ -67,7 +67,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Neg<Output = Integer<E, I>>>
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
     use test_utilities::*;
 
     use core::{ops::RangeInclusive, panic::UnwindSafe};
@@ -101,13 +101,13 @@ mod tests {
         check_neg(&format!("Neg: {} one", mode), -I::one(), mode);
         // Check random values.
         for i in 0..ITERATIONS {
-            let value: I = UniformRand::rand(&mut test_rng());
+            let value: I = Uniform::rand(&mut test_rng());
             check_neg(&format!("Neg: {} {}", mode, i), value, mode);
         }
     }
 
     fn assert_unsigned_neg_halts<I: IntegerType + UnwindSafe>(mode: Mode) {
-        let candidate = Integer::<Circuit, I>::new(mode, UniformRand::rand(&mut test_rng()));
+        let candidate = Integer::<Circuit, I>::new(mode, Uniform::rand(&mut test_rng()));
         let operation = std::panic::catch_unwind(|| candidate.neg());
         assert!(operation.is_err());
     }

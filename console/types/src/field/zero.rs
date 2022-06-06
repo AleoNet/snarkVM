@@ -14,24 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod literal_type;
+use super::*;
 
-use crate::{FromFields, ToFields};
-use snarkvm_console_account::{Address, ViewKey};
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{FromBits, ToBits};
+impl<N: Network> Zero for Field<N> {
+    /// Returns the `0` element of the field.
+    fn zero() -> Self {
+        Self::new(Mode::Constant, N::Field::zero())
+    }
 
-use anyhow::{bail, Result};
-use core::ops::Deref;
-
-// /// An interface representing the layout for program data.
-// #[derive(Clone, Debug, PartialEq, Eq)]
-// pub enum Interface<N: Network> {}
-
-// impl<N: Network> From<Vec<(Identifier<N>, Entry<N>)>> for Interface<N> {
-//     /// Initializes a new `Data` value from a vector of `(Identifier, Entry)` pairs.
-//     fn from(entries: Vec<(Identifier<N>, Entry<N>)>) -> Self {
-//         Self(entries)
-//     }
-// }
+    /// Returns `true` if the element is zero.
+    fn is_zero(&self) -> bool {
+        self.field.is_zero()
+    }
+}

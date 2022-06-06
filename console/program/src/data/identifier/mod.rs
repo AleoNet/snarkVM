@@ -17,14 +17,13 @@
 mod bytes;
 mod from_bits;
 mod from_field;
+mod parse;
 mod serialize;
 mod size_in_bits;
-mod string;
 mod to_bits;
 mod to_field;
 
-use crate::{FromField, ToField};
-use snarkvm_console_network::Network;
+use snarkvm_console_network::prelude::*;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
@@ -63,19 +62,17 @@ impl<N: Network> TryFrom<&str> for Identifier<N> {
 }
 
 #[cfg(test)]
-pub(super) mod tests {
+pub(crate) mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::{test_rng, Rng};
-
-    use rand::distributions::Alphanumeric;
 
     type CurrentNetwork = Testnet3;
 
     const ITERATIONS: usize = 100;
 
     /// Samples a random identifier.
-    pub(super) fn sample_identifier<N: Network>() -> Result<Identifier<N>> {
+    pub(crate) fn sample_identifier<N: Network>() -> Result<Identifier<N>> {
         // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
         let string = sample_identifier_as_string::<N>()?;
         // Recover the field element from the bits.
@@ -85,7 +82,7 @@ pub(super) mod tests {
     }
 
     /// Samples a random identifier as a string.
-    pub(super) fn sample_identifier_as_string<N: Network>() -> Result<String> {
+    pub(crate) fn sample_identifier_as_string<N: Network>() -> Result<String> {
         // Initialize a test RNG.
         let rng = &mut test_rng();
         // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.

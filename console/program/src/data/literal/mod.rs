@@ -92,10 +92,10 @@ impl<N: Network> FromBytes for Literal<N> {
             14 => Self::Scalar(FromBytes::read_le(&mut reader)?),
             15 => {
                 let size = u32::read_le(&mut reader)?;
-                if size > N::NUM_STRING_BYTES {
+                if size > N::MAX_STRING_BYTES {
                     return Err(error(format!(
                         "String literal exceeds maximum length of {} bytes.",
-                        N::NUM_STRING_BYTES
+                        N::MAX_STRING_BYTES
                     )));
                 }
                 let mut buffer = vec![0u8; size as usize];

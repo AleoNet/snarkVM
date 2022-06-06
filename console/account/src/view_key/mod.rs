@@ -20,8 +20,7 @@ mod string;
 mod try_from;
 
 use crate::{ComputeKey, PrivateKey};
-use snarkvm_console_network::Network;
-use snarkvm_fields::PrimeField;
+use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     FromBytes,
@@ -30,9 +29,7 @@ use snarkvm_utilities::{
     ToBytesSerializer,
 };
 
-use anyhow::{anyhow, bail, Error};
 use base58::{FromBase58, ToBase58};
-use core::{fmt, ops::Deref, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// The account view key used to decrypt records and ciphertext.
@@ -60,8 +57,6 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
-
-    use anyhow::Result;
 
     type CurrentNetwork = Testnet3;
 

@@ -41,9 +41,9 @@ impl<N: Network> Literal<N> {
             14 => Literal::Scalar(N::scalar_from_bits_le(literal)?),
             15 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
-                match buffer.len() <= N::NUM_STRING_BYTES as usize {
+                match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => Self::String(String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?),
-                    false => bail!("String literal exceeds maximum length of {} bytes.", N::NUM_STRING_BYTES),
+                    false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
             16.. => bail!("Failed to initialize literal variant {} from bits (LE)", variant),
@@ -75,9 +75,9 @@ impl<N: Network> Literal<N> {
             14 => Literal::Scalar(N::scalar_from_bits_be(literal)?),
             15 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
-                match buffer.len() <= N::NUM_STRING_BYTES as usize {
+                match buffer.len() <= N::MAX_STRING_BYTES as usize {
                     true => Self::String(String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?),
-                    false => bail!("String literal exceeds maximum length of {} bytes.", N::NUM_STRING_BYTES),
+                    false => bail!("String literal exceeds maximum length of {} bytes.", N::MAX_STRING_BYTES),
                 }
             }
             16.. => bail!("Failed to initialize literal variant {} from bits (BE))", variant),

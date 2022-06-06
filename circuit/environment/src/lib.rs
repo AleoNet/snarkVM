@@ -17,9 +17,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
 
-#[macro_use]
-extern crate num_derive;
-
 extern crate snarkvm_circuit_environment_witness;
 
 pub use snarkvm_circuit_environment_witness::rename_selfs;
@@ -51,9 +48,18 @@ pub mod prelude {
         Count,
         Environment,
         LinearCombination,
-        Mode,
         OutputMode,
         Variable,
+    };
+    pub use console::{
+        Mode,
+        Uniform,
+        traits::{
+            integers::{
+                CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem,
+                Magnitude,
+            }
+        }
     };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, SquareRootField, Zero as Z};
 
