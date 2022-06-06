@@ -33,13 +33,8 @@ impl<N: Network> Parser for Group<N> {
                 false => N::affine_from_x_coordinate(x_coordinate),
             }
         })(string)?;
-        // Parse the mode from the string.
-        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
-        match mode {
-            Some((_, mode)) => Ok((string, Group::new(mode, group))),
-            None => Ok((string, Group::new(Mode::Constant, group))),
-        }
+        Ok((string, Group::new(group)))
     }
 }
 
@@ -69,7 +64,7 @@ impl<N: Network> Debug for Group<N> {
 
 impl<N: Network> Display for Group<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.group.to_affine().to_x_coordinate(), Self::type_name(), self.mode)
+        write!(f, "{}{}", self.group.to_affine().to_x_coordinate(), Self::type_name())
     }
 }
 
@@ -94,28 +89,9 @@ mod tests {
             // Sample a random value.
             let group: <CurrentNetwork as Network>::Affine = Uniform::rand(rng);
 
-            // Constant mode - A.
             let expected = format!("{}{}", group.to_x_coordinate(), Group::<CurrentNetwork>::type_name());
             let (remainder, candidate) = Group::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(format!("{expected}.constant"), candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Constant mode - B.
-            let expected = format!("{}{}.constant", group.to_x_coordinate(), Group::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Group::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Public mode.
-            let expected = format!("{}{}.public", group.to_x_coordinate(), Group::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Group::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Private mode.
-            let expected = format!("{}{}.private", group.to_x_coordinate(), Group::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Group::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
+            assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -123,14 +99,11 @@ mod tests {
 
     #[test]
     fn test_display() {
-        /// Attempts to construct a group from the given element and mode,
+        /// Attempts to construct a group from the given element,
         /// format it in display mode, and recover a group from it.
-        fn check_display<N: Network>(mode: Mode, element: N::Affine) {
-            let candidate = Group::<N>::new(mode, element);
-            assert_eq!(
-                format!("{}{}.{mode}", element.to_x_coordinate(), Group::<N>::type_name()),
-                format!("{candidate}")
-            );
+        fn check_display<N: Network>(element: N::Affine) {
+            let candidate = Group::<N>::new(element);
+            assert_eq!(format!("{}{}", element.to_x_coordinate(), Group::<N>::type_name()), format!("{candidate}"));
 
             let candidate_recovered = Group::<N>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
@@ -139,12 +112,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             let element = Uniform::rand(&mut test_rng());
 
-            // Constant
-            check_display::<CurrentNetwork>(Mode::Constant, element);
-            // Public
-            check_display::<CurrentNetwork>(Mode::Public, element);
-            // Private
-            check_display::<CurrentNetwork>(Mode::Private, element);
+            check_display::<CurrentNetwork>(element);
         }
     }
 
@@ -152,34 +120,16 @@ mod tests {
     fn test_display_zero() {
         let zero = <CurrentNetwork as Network>::Affine::zero();
 
-        // Constant
-        let candidate = Group::<CurrentNetwork>::new(Mode::Constant, zero);
-        assert_eq!("0group.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Group::<CurrentNetwork>::new(Mode::Public, zero);
-        assert_eq!("0group.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Group::<CurrentNetwork>::new(Mode::Private, zero);
-        assert_eq!("0group.private", &format!("{}", candidate));
+        let candidate = Group::<CurrentNetwork>::new(zero);
+        assert_eq!("0group", &format!("{}", candidate));
     }
 
     // #[test]
     // fn test_display_one() {
     //     let one = <CurrentNetwork as Network>::Affine::prime_subgroup_generator();
     //
-    //     // Constant
-    //     let candidate = Group::<CurrentNetwork>::new(Mode::Constant, one);
-    //     assert_eq!("1group.constant", &format!("{}", candidate));
-    //
-    //     // Public
-    //     let candidate = Group::<CurrentNetwork>::new(Mode::Public, one);
-    //     assert_eq!("1group.public", &format!("{}", candidate));
-    //
-    //     // Private
-    //     let candidate = Group::<CurrentNetwork>::new(Mode::Private, one);
-    //     assert_eq!("1group.private", &format!("{}", candidate));
+    //     let candidate = Group::<CurrentNetwork>::new(one);
+    //     assert_eq!("1group", &format!("{}", candidate));
     // }
     //
     // #[test]
@@ -187,16 +137,7 @@ mod tests {
     //     let one = <CurrentNetwork as Network>::Projective::prime_subgroup_generator();
     //     let two = (one + one).to_affine();
     //
-    //     // Constant
-    //     let candidate = Group::<CurrentNetwork>::new(Mode::Constant, two);
-    //     assert_eq!("2group.constant", &format!("{}", candidate));
-    //
-    //     // Public
-    //     let candidate = Group::<CurrentNetwork>::new(Mode::Public, two);
-    //     assert_eq!("2group.public", &format!("{}", candidate));
-    //
-    //     // Private
-    //     let candidate = Group::<CurrentNetwork>::new(Mode::Private, two);
-    //     assert_eq!("2group.private", &format!("{}", candidate));
+    //     let candidate = Group::<CurrentNetwork>::new(two);
+    //     assert_eq!("2group", &format!("{}", candidate));
     // }
 }

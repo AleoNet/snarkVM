@@ -22,7 +22,7 @@ impl<N: Network, I: IntegerType> Not for Integer<N, I> {
     /// Returns the bitwise `NOT` of `self`.
     #[inline]
     fn not(self) -> Self::Output {
-        Integer::new(self.mode, self.integer.not())
+        Integer::new(self.integer.not())
     }
 }
 
@@ -32,7 +32,7 @@ impl<N: Network, I: IntegerType> BitAnd for Integer<N, I> {
     /// Returns the bitwise `AND` of `self` and `other`.
     #[inline]
     fn bitand(self, other: Self) -> Self::Output {
-        Integer::new(Mode::combine(self.mode, other.mode), self.integer & other.integer)
+        Integer::new(self.integer & other.integer)
     }
 }
 
@@ -41,7 +41,6 @@ impl<N: Network, I: IntegerType> BitAndAssign for Integer<N, I> {
     #[inline]
     fn bitand_assign(&mut self, other: Self) {
         self.integer = self.integer & other.integer;
-        self.mode = Mode::combine(self.mode, other.mode);
     }
 }
 
@@ -51,7 +50,7 @@ impl<N: Network, I: IntegerType> BitOr for Integer<N, I> {
     /// Returns the bitwise `OR` of `self` and `other`.
     #[inline]
     fn bitor(self, other: Self) -> Self::Output {
-        Integer::new(Mode::combine(self.mode, other.mode), self.integer | other.integer)
+        Integer::new(self.integer | other.integer)
     }
 }
 
@@ -60,7 +59,6 @@ impl<N: Network, I: IntegerType> BitOrAssign for Integer<N, I> {
     #[inline]
     fn bitor_assign(&mut self, other: Self) {
         self.integer = self.integer | other.integer;
-        self.mode = Mode::combine(self.mode, other.mode);
     }
 }
 
@@ -70,7 +68,7 @@ impl<N: Network, I: IntegerType> BitXor for Integer<N, I> {
     /// Returns the bitwise `XOR` of `self` and `other`.
     #[inline]
     fn bitxor(self, other: Self) -> Self::Output {
-        Integer::new(Mode::combine(self.mode, other.mode), self.integer ^ other.integer)
+        Integer::new(self.integer ^ other.integer)
     }
 }
 
@@ -79,7 +77,6 @@ impl<N: Network, I: IntegerType> BitXorAssign for Integer<N, I> {
     #[inline]
     fn bitxor_assign(&mut self, other: Self) {
         self.integer = self.integer ^ other.integer;
-        self.mode = Mode::combine(self.mode, other.mode);
     }
 }
 
@@ -91,7 +88,7 @@ impl<N: Network, I: IntegerType, M: Magnitude> Shl<Integer<N, M>> for Integer<N,
     fn shl(self, n: Integer<N, M>) -> Self::Output {
         match self.integer.checked_shl(n.integer.to_u32().unwrap()) {
             // Unwrap is safe as we only cast up.
-            Some(shifted) => Integer::new(Mode::combine(self.mode, n.mode), shifted),
+            Some(shifted) => Integer::new(shifted),
             None => N::halt(format!("Failed to shift {self} left by {n} bits")),
         }
     }
@@ -105,7 +102,6 @@ impl<N: Network, I: IntegerType, M: Magnitude> ShlAssign<Integer<N, M>> for Inte
             // Unwrap is safe as we only cast up.
             Some(shifted) => {
                 self.integer = shifted;
-                self.mode = Mode::combine(self.mode, n.mode);
             }
             None => N::halt(format!("Failed to shift {self} left by {n} bits")),
         }
@@ -120,7 +116,7 @@ impl<N: Network, I: IntegerType, M: Magnitude> Shr<Integer<N, M>> for Integer<N,
     fn shr(self, n: Integer<N, M>) -> Self::Output {
         match self.integer.checked_shr(n.integer.to_u32().unwrap()) {
             // Unwrap is safe as we only cast up.
-            Some(shifted) => Integer::new(Mode::combine(self.mode, n.mode), shifted),
+            Some(shifted) => Integer::new(shifted),
             None => N::halt(format!("Failed to shift {self} right by {n} bits")),
         }
     }
@@ -134,7 +130,6 @@ impl<N: Network, I: IntegerType, M: Magnitude> ShrAssign<Integer<N, M>> for Inte
             // Unwrap is safe as we only cast up.
             Some(shifted) => {
                 self.integer = shifted;
-                self.mode = Mode::combine(self.mode, n.mode);
             }
             None => N::halt(format!("Failed to shift {self} right by {n} bits")),
         }

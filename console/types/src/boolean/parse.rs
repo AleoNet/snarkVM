@@ -22,13 +22,8 @@ impl<N: Network> Parser for Boolean<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the boolean from the string.
         let (string, value) = alt((map(tag("true"), |_| true), map(tag("false"), |_| false)))(string)?;
-        // Parse the mode from the string.
-        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
-        match mode {
-            Some((_, mode)) => Ok((string, Boolean::new(mode, value))),
-            None => Ok((string, Boolean::new(Mode::Constant, value))),
-        }
+        Ok((string, Boolean::new(value)))
     }
 }
 
@@ -58,7 +53,7 @@ impl<N: Network> Debug for Boolean<N> {
 
 impl<N: Network> Display for Boolean<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}.{}", self.boolean, self.mode)
+        write!(f, "{}", self.boolean)
     }
 }
 
@@ -76,28 +71,9 @@ mod tests {
         assert!(Boolean::<CurrentNetwork>::parse("").is_err());
 
         for boolean in &[true, false] {
-            // Constant mode - A.
             let expected = format!("{}", boolean);
             let (remainder, candidate) = Boolean::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(format!("{expected}.constant"), candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Constant mode - B.
-            let expected = format!("{}.constant", boolean);
-            let (remainder, candidate) = Boolean::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Public mode.
-            let expected = format!("{}.public", boolean);
-            let (remainder, candidate) = Boolean::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Private mode.
-            let expected = format!("{}.private", boolean);
-            let (remainder, candidate) = Boolean::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
+            assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -105,54 +81,31 @@ mod tests {
 
     #[test]
     fn test_display() {
-        /// Attempts to construct a boolean from the given element and mode,
+        /// Attempts to construct a boolean from the given element,
         /// format it in display mode, and recover a boolean from it.
-        fn check_display<N: Network>(mode: Mode, element: bool) {
-            let candidate = Boolean::<N>::new(mode, element);
-            assert_eq!(format!("{element}.{mode}"), format!("{candidate}"));
+        fn check_display<N: Network>(element: bool) {
+            let candidate = Boolean::<N>::new(element);
+            assert_eq!(format!("{element}"), format!("{candidate}"));
 
             let candidate_recovered = Boolean::<N>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
 
-        // Constant
-        check_display::<CurrentNetwork>(Mode::Constant, false);
-        check_display::<CurrentNetwork>(Mode::Constant, true);
-        // Public
-        check_display::<CurrentNetwork>(Mode::Public, false);
-        check_display::<CurrentNetwork>(Mode::Public, true);
-        // Private
-        check_display::<CurrentNetwork>(Mode::Private, false);
-        check_display::<CurrentNetwork>(Mode::Private, true);
+        check_display::<CurrentNetwork>(false);
+        check_display::<CurrentNetwork>(true);
     }
 
     #[test]
     fn test_display_false() {
         // Constant
-        let candidate = Boolean::<CurrentNetwork>::new(Mode::Constant, false);
-        assert_eq!("false.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Boolean::<CurrentNetwork>::new(Mode::Public, false);
-        assert_eq!("false.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Boolean::<CurrentNetwork>::new(Mode::Private, false);
-        assert_eq!("false.private", &format!("{}", candidate));
+        let candidate = Boolean::<CurrentNetwork>::new(false);
+        assert_eq!("false", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_true() {
         // Constant
-        let candidate = Boolean::<CurrentNetwork>::new(Mode::Constant, true);
-        assert_eq!("true.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Boolean::<CurrentNetwork>::new(Mode::Public, true);
-        assert_eq!("true.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Boolean::<CurrentNetwork>::new(Mode::Private, true);
-        assert_eq!("true.private", &format!("{}", candidate));
+        let candidate = Boolean::<CurrentNetwork>::new(true);
+        assert_eq!("true", &format!("{}", candidate));
     }
 }

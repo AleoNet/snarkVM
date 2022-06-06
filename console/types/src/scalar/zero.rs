@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Zero for Scalar<N> {
     /// Returns the `0` element of the scalar.
     fn zero() -> Self {
-        Self::new(Mode::Constant, N::Scalar::zero())
+        Self::new(N::Scalar::zero())
     }
 
     /// Returns `true` if the element is zero.

@@ -89,27 +89,27 @@ impl IntoIterator for Mode {
     }
 }
 
-impl FromStr for Mode {
-    type Err = Error;
-
-    /// Parses a string into a mode.
-    #[inline]
-    fn from_str(string: &str) -> Result<Self> {
-        match Self::parse(string) {
-            Ok((remainder, object)) => {
-                // Ensure the remainder is empty.
-                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
-                // Return the object.
-                Ok(object)
-            }
-            Err(error) => bail!("Failed to parse string. {error}"),
-        }
-    }
-}
+// impl FromStr for Mode {
+//     type Err = Error;
+//
+//     /// Parses a string into a mode.
+//     #[inline]
+//     fn from_str(string: &str) -> Result<Self> {
+//         match Self::parse(string) {
+//             Ok((remainder, object)) => {
+//                 // Ensure the remainder is empty.
+//                 ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+//                 // Return the object.
+//                 Ok(object)
+//             }
+//             Err(error) => bail!("Failed to parse string. {error}"),
+//         }
+//     }
+// }
 
 impl Display for Mode {
     /// Formats the mode as a lowercase string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Constant => write!(f, "constant"),
             Self::Public => write!(f, "public"),

@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Group<N> {
     /// Returns the `1` element of the group.
     pub fn one() -> Self {
-        Self::from_projective(Mode::Constant, N::Projective::prime_subgroup_generator())
+        Self::from_projective(N::Projective::prime_subgroup_generator())
     }
 
     /// Returns `true` if the element is one.

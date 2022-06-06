@@ -22,7 +22,7 @@ impl<N: Network> Not for Boolean<N> {
     /// Returns the `negation` of `self`.
     #[inline]
     fn not(self) -> Self::Output {
-        Boolean::new(self.mode, !self.boolean)
+        Boolean::new(!self.boolean)
     }
 }
 
@@ -32,7 +32,7 @@ impl<N: Network> BitAnd for Boolean<N> {
     /// Returns the bitwise `AND`` of `self` and `other`.
     #[inline]
     fn bitand(self, other: Self) -> Self::Output {
-        Boolean::new(Mode::combine(self.mode, other.mode), self.boolean & other.boolean)
+        Boolean::new(self.boolean & other.boolean)
     }
 }
 
@@ -40,7 +40,7 @@ impl<N: Network> BitAndAssign for Boolean<N> {
     /// Sets `self` as the bitwise `AND` of `self` and `other`.
     #[inline]
     fn bitand_assign(&mut self, other: Self) {
-        *self = Boolean::new(Mode::combine(self.mode, other.mode), self.boolean & other.boolean)
+        *self = Boolean::new(self.boolean & other.boolean)
     }
 }
 
@@ -50,7 +50,7 @@ impl<N: Network> BitOr for Boolean<N> {
     /// Returns the bitwise `OR` of `self` and `other`.
     #[inline]
     fn bitor(self, other: Self) -> Self::Output {
-        Boolean::new(Mode::combine(self.mode, other.mode), self.boolean | other.boolean)
+        Boolean::new(self.boolean | other.boolean)
     }
 }
 
@@ -58,7 +58,7 @@ impl<N: Network> BitOrAssign for Boolean<N> {
     /// Sets `self` as the bitwise `OR` of `self` and `other`.
     #[inline]
     fn bitor_assign(&mut self, other: Self) {
-        *self = Boolean::new(Mode::combine(self.mode, other.mode), self.boolean | other.boolean)
+        *self = Boolean::new(self.boolean | other.boolean)
     }
 }
 
@@ -68,7 +68,7 @@ impl<N: Network> BitXor for Boolean<N> {
     /// Returns the bitwise `XOR` of `self` and `other`.
     #[inline]
     fn bitxor(self, other: Self) -> Self::Output {
-        Boolean::new(Mode::combine(self.mode, other.mode), self.boolean ^ other.boolean)
+        Boolean::new(self.boolean ^ other.boolean)
     }
 }
 
@@ -76,7 +76,7 @@ impl<N: Network> BitXorAssign for Boolean<N> {
     /// Sets `self` as the bitwise `XOR` of `self` and `other`.
     #[inline]
     fn bitxor_assign(&mut self, other: Self) {
-        *self = Boolean::new(Mode::combine(self.mode, other.mode), self.boolean ^ other.boolean)
+        *self = Boolean::new(self.boolean ^ other.boolean)
     }
 }
 
@@ -86,7 +86,7 @@ impl<N: Network> Nand for Boolean<N> {
     /// Returns the bitwise `NAND` of `self` and `other`.
     #[inline]
     fn nand(&self, other: &Self) -> Self::Output {
-        Boolean::new(Mode::combine(self.mode, other.mode), !(self.boolean & other.boolean))
+        Boolean::new(!(self.boolean & other.boolean))
     }
 }
 
@@ -96,6 +96,6 @@ impl<N: Network> Nor for Boolean<N> {
     /// Returns the bitwise `NOR` of `self` and `other`.
     #[inline]
     fn nor(&self, other: &Self) -> Self::Output {
-        Boolean::new(Mode::combine(self.mode, other.mode), !(self.boolean | other.boolean))
+        Boolean::new(!(self.boolean | other.boolean))
     }
 }

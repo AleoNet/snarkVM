@@ -17,9 +17,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-mod mode;
-pub use mode::*;
-
 pub mod random;
 pub use random::*;
 

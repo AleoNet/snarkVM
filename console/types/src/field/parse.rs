@@ -27,18 +27,13 @@ impl<N: Network> Parser for Field<N> {
         // Parse the value from the string.
         let (string, value): (&str, N::Field) =
             map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
-        // Parse the mode from the string.
-        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
         // Negate the value if the negative sign was present.
         let value = match negation {
             true => -value,
             false => value,
         };
 
-        match mode {
-            Some((_, mode)) => Ok((string, Field::new(mode, value))),
-            None => Ok((string, Field::new(Mode::Constant, value))),
-        }
+        Ok((string, Field::new(value)))
     }
 }
 
@@ -68,7 +63,7 @@ impl<N: Network> Debug for Field<N> {
 
 impl<N: Network> Display for Field<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.field, Self::type_name(), self.mode)
+        write!(f, "{}{}", self.field, Self::type_name())
     }
 }
 
@@ -93,28 +88,9 @@ mod tests {
             // Sample a random value.
             let field: <CurrentNetwork as Network>::Field = Uniform::rand(rng);
 
-            // Constant mode - A.
             let expected = format!("{}{}", field, Field::<CurrentNetwork>::type_name());
             let (remainder, candidate) = Field::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(format!("{expected}.constant"), candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Constant mode - B.
-            let expected = format!("{}{}.constant", field, Field::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Field::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Public mode.
-            let expected = format!("{}{}.public", field, Field::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Field::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Private mode.
-            let expected = format!("{}{}.private", field, Field::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Field::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
+            assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -122,11 +98,11 @@ mod tests {
 
     #[test]
     fn test_display() {
-        /// Attempts to construct a field from the given element and mode,
+        /// Attempts to construct a field from the given element,
         /// format it in display mode, and recover a field from it.
-        fn check_display<N: Network>(mode: Mode, element: N::Field) {
-            let candidate = Field::<N>::new(mode, element);
-            assert_eq!(format!("{element}{}.{mode}", Field::<N>::type_name()), format!("{candidate}"));
+        fn check_display<N: Network>(element: N::Field) {
+            let candidate = Field::<N>::new(element);
+            assert_eq!(format!("{element}{}", Field::<N>::type_name()), format!("{candidate}"));
 
             let candidate_recovered = Field::<N>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
@@ -135,12 +111,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             let element = Uniform::rand(&mut test_rng());
 
-            // Constant
-            check_display::<CurrentNetwork>(Mode::Constant, element);
-            // Public
-            check_display::<CurrentNetwork>(Mode::Public, element);
-            // Private
-            check_display::<CurrentNetwork>(Mode::Private, element);
+            check_display::<CurrentNetwork>(element);
         }
     }
 
@@ -148,34 +119,16 @@ mod tests {
     fn test_display_zero() {
         let zero = <CurrentNetwork as Network>::Field::zero();
 
-        // Constant
-        let candidate = Field::<CurrentNetwork>::new(Mode::Constant, zero);
-        assert_eq!("0field.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Field::<CurrentNetwork>::new(Mode::Public, zero);
-        assert_eq!("0field.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Field::<CurrentNetwork>::new(Mode::Private, zero);
-        assert_eq!("0field.private", &format!("{}", candidate));
+        let candidate = Field::<CurrentNetwork>::new(zero);
+        assert_eq!("0field", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_one() {
         let one = <CurrentNetwork as Network>::Field::one();
 
-        // Constant
-        let candidate = Field::<CurrentNetwork>::new(Mode::Constant, one);
-        assert_eq!("1field.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Field::<CurrentNetwork>::new(Mode::Public, one);
-        assert_eq!("1field.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Field::<CurrentNetwork>::new(Mode::Private, one);
-        assert_eq!("1field.private", &format!("{}", candidate));
+        let candidate = Field::<CurrentNetwork>::new(one);
+        assert_eq!("1field", &format!("{}", candidate));
     }
 
     #[test]
@@ -183,16 +136,7 @@ mod tests {
         let one = <CurrentNetwork as Network>::Field::one();
         let two = one + one;
 
-        // Constant
-        let candidate = Field::<CurrentNetwork>::new(Mode::Constant, two);
-        assert_eq!("2field.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Field::<CurrentNetwork>::new(Mode::Public, two);
-        assert_eq!("2field.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Field::<CurrentNetwork>::new(Mode::Private, two);
-        assert_eq!("2field.private", &format!("{}", candidate));
+        let candidate = Field::<CurrentNetwork>::new(two);
+        assert_eq!("2field", &format!("{}", candidate));
     }
 }

@@ -23,22 +23,22 @@ impl<N: Network> Parser for Literal<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         alt((
-            map(AddressType::<N>::parse, |literal| Self::Address(*literal)),
-            map(Boolean::<N>::parse, |literal| Self::Boolean(*literal)),
-            map(Field::<N>::parse, |literal| Self::Field(*literal)),
-            map(Group::<N>::parse, |literal: Group<N>| Self::Group((*literal).to_affine())),
-            map(I8::<N>::parse, |literal| Self::I8(*literal)),
-            map(I16::<N>::parse, |literal| Self::I16(*literal)),
-            map(I32::<N>::parse, |literal| Self::I32(*literal)),
-            map(I64::<N>::parse, |literal| Self::I64(*literal)),
-            map(I128::<N>::parse, |literal| Self::I128(*literal)),
-            map(U8::<N>::parse, |literal| Self::U8(*literal)),
-            map(U16::<N>::parse, |literal| Self::U16(*literal)),
-            map(U32::<N>::parse, |literal| Self::U32(*literal)),
-            map(U64::<N>::parse, |literal| Self::U64(*literal)),
-            map(U128::<N>::parse, |literal| Self::U128(*literal)),
-            map(Scalar::<N>::parse, |literal| Self::Scalar(*literal)),
-            map(StringType::<N>::parse, |literal| Self::String(literal.deref().to_string())),
+            map(AddressType::<N>::parse, |literal| Self::Address(literal)),
+            map(Boolean::<N>::parse, |literal| Self::Boolean(literal)),
+            map(Field::<N>::parse, |literal| Self::Field(literal)),
+            map(Group::<N>::parse, |literal: Group<N>| Self::Group(literal)),
+            map(I8::<N>::parse, |literal| Self::I8(literal)),
+            map(I16::<N>::parse, |literal| Self::I16(literal)),
+            map(I32::<N>::parse, |literal| Self::I32(literal)),
+            map(I64::<N>::parse, |literal| Self::I64(literal)),
+            map(I128::<N>::parse, |literal| Self::I128(literal)),
+            map(U8::<N>::parse, |literal| Self::U8(literal)),
+            map(U16::<N>::parse, |literal| Self::U16(literal)),
+            map(U32::<N>::parse, |literal| Self::U32(literal)),
+            map(U64::<N>::parse, |literal| Self::U64(literal)),
+            map(U128::<N>::parse, |literal| Self::U128(literal)),
+            map(Scalar::<N>::parse, |literal| Self::Scalar(literal)),
+            map(StringType::<N>::parse, |literal| Self::String(literal)),
         ))(string)
     }
 }

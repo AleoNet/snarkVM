@@ -23,21 +23,14 @@ use snarkvm_console_network::prelude::*;
 pub struct Address<N: Network> {
     /// The underlying address.
     address: NativeAddress<N>,
-    /// The input mode for the address.
-    mode: Mode,
 }
 
 impl<N: Network> AddressTrait for Address<N> {}
 
 impl<N: Network> Address<N> {
-    /// Initializes a new address with the given mode.
-    pub const fn new(mode: Mode, address: NativeAddress<N>) -> Self {
-        Self { address, mode }
-    }
-
-    /// Returns the mode of the address.
-    pub const fn mode(&self) -> Mode {
-        self.mode
+    /// Initializes a new address.
+    pub const fn new(address: NativeAddress<N>) -> Self {
+        Self { address }
     }
 }
 

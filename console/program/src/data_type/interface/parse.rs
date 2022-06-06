@@ -57,6 +57,8 @@ impl<N: Network> Parser for Interface<N> {
             Ok((string, Interface::Composite(composites)))
         }
 
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the interface (order matters).
         alt((
             // Parse a interface literal.
@@ -130,29 +132,6 @@ mod tests {
         assert_eq!("{ foo: u8 }", candidate.to_string());
         assert_eq!("", remainder);
 
-        // // Must be alphanumeric or underscore.
-        // let (remainder, candidate) = Interface::<CurrentNetwork>::parse("foo_bar~baz")?;
-        // assert_eq!("foo_bar", candidate.to_string());
-        // assert_eq!("~baz", remainder);
-        //
-        // // Must be alphanumeric or underscore.
-        // let (remainder, candidate) = Interface::<CurrentNetwork>::parse("foo_bar-baz")?;
-        // assert_eq!("foo_bar", candidate.to_string());
-        // assert_eq!("-baz", remainder);
-        //
-        // // Check random identifiers.
-        // for _ in 0..ITERATIONS {
-        //     // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-        //     let expected_string = sample_identifier::<CurrentNetwork>()?;
-        //     // Recover the field element from the bits.
-        //     let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
-        //
-        //     let (remainder, candidate) = Interface::<CurrentNetwork>::parse(expected_string.as_str()).unwrap();
-        //     assert_eq!(expected_string, candidate.to_string());
-        //     assert_eq!(expected_field, candidate.0);
-        //     assert_eq!(expected_string.len(), candidate.1 as usize);
-        //     assert_eq!("", remainder);
-        // }
         Ok(())
     }
 

@@ -27,18 +27,13 @@ impl<N: Network> Parser for Scalar<N> {
         // Parse the value from the string.
         let (string, value): (&str, N::Scalar) =
             map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
-        // Parse the mode from the string.
-        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
         // Negate the value if the negative sign was present.
         let value = match negation {
             true => -value,
             false => value,
         };
 
-        match mode {
-            Some((_, mode)) => Ok((string, Scalar::new(mode, value))),
-            None => Ok((string, Scalar::new(Mode::Constant, value))),
-        }
+        Ok((string, Scalar::new(value)))
     }
 }
 
@@ -68,7 +63,7 @@ impl<N: Network> Debug for Scalar<N> {
 
 impl<N: Network> Display for Scalar<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.scalar, Self::type_name(), self.mode)
+        write!(f, "{}{}", self.scalar, Self::type_name())
     }
 }
 
@@ -93,28 +88,9 @@ mod tests {
             // Sample a random value.
             let scalar: <CurrentNetwork as Network>::Scalar = Uniform::rand(rng);
 
-            // Constant mode - A.
             let expected = format!("{}{}", scalar, Scalar::<CurrentNetwork>::type_name());
             let (remainder, candidate) = Scalar::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(format!("{expected}.constant"), candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Constant mode - B.
-            let expected = format!("{}{}.constant", scalar, Scalar::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Scalar::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Public mode.
-            let expected = format!("{}{}.public", scalar, Scalar::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Scalar::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Private mode.
-            let expected = format!("{}{}.private", scalar, Scalar::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Scalar::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
+            assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -122,11 +98,11 @@ mod tests {
 
     #[test]
     fn test_display() {
-        /// Attempts to construct a scalar from the given element and mode,
+        /// Attempts to construct a scalar from the given element,
         /// format it in display mode, and recover a scalar from it.
-        fn check_display<N: Network>(mode: Mode, element: N::Scalar) {
-            let candidate = Scalar::<N>::new(mode, element);
-            assert_eq!(format!("{element}{}.{mode}", Scalar::<N>::type_name()), format!("{candidate}"));
+        fn check_display<N: Network>(element: N::Scalar) {
+            let candidate = Scalar::<N>::new(element);
+            assert_eq!(format!("{element}{}", Scalar::<N>::type_name()), format!("{candidate}"));
 
             let candidate_recovered = Scalar::<N>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
@@ -135,12 +111,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             let element = Uniform::rand(&mut test_rng());
 
-            // Constant
-            check_display::<CurrentNetwork>(Mode::Constant, element);
-            // Public
-            check_display::<CurrentNetwork>(Mode::Public, element);
-            // Private
-            check_display::<CurrentNetwork>(Mode::Private, element);
+            check_display::<CurrentNetwork>(element);
         }
     }
 
@@ -148,34 +119,16 @@ mod tests {
     fn test_display_zero() {
         let zero = <CurrentNetwork as Network>::Scalar::zero();
 
-        // Constant
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Constant, zero);
-        assert_eq!("0scalar.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Public, zero);
-        assert_eq!("0scalar.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Private, zero);
-        assert_eq!("0scalar.private", &format!("{}", candidate));
+        let candidate = Scalar::<CurrentNetwork>::new(zero);
+        assert_eq!("0scalar", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_one() {
         let one = <CurrentNetwork as Network>::Scalar::one();
 
-        // Constant
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Constant, one);
-        assert_eq!("1scalar.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Public, one);
-        assert_eq!("1scalar.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Private, one);
-        assert_eq!("1scalar.private", &format!("{}", candidate));
+        let candidate = Scalar::<CurrentNetwork>::new(one);
+        assert_eq!("1scalar", &format!("{}", candidate));
     }
 
     #[test]
@@ -183,16 +136,7 @@ mod tests {
         let one = <CurrentNetwork as Network>::Scalar::one();
         let two = one + one;
 
-        // Constant
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Constant, two);
-        assert_eq!("2scalar.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Public, two);
-        assert_eq!("2scalar.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Scalar::<CurrentNetwork>::new(Mode::Private, two);
-        assert_eq!("2scalar.private", &format!("{}", candidate));
+        let candidate = Scalar::<CurrentNetwork>::new(two);
+        assert_eq!("2scalar", &format!("{}", candidate));
     }
 }

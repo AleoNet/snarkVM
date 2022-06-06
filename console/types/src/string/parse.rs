@@ -22,13 +22,8 @@ impl<N: Network> Parser for StringType<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the starting and ending quote '"' keyword from the string.
         let (string, value) = string_parser::parse_string(string)?;
-        // Parse the mode from the string.
-        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
-        match mode {
-            Some((_, mode)) => Ok((string, StringType::new(mode, &value))),
-            None => Ok((string, StringType::new(Mode::Constant, &value))),
-        }
+        Ok((string, StringType::new(&value)))
     }
 }
 
@@ -58,7 +53,7 @@ impl<N: Network> Debug for StringType<N> {
 
 impl<N: Network> Display for StringType<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "\"{}\".{}", self.string, self.mode)
+        write!(f, "\"{}\"", self.string)
     }
 }
 
@@ -73,16 +68,6 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        /// Attempts to construct an string from the given native string and mode,
-        /// format it in display mode, and recover an string from it.
-        fn check_display<N: Network>(mode: Mode, string: &str) {
-            let candidate = StringType::<N>::new(mode, string);
-            assert_eq!(format!("\"{string}\".{mode}"), format!("{candidate}"));
-
-            let candidate_recovered = StringType::<N>::from_str(&format!("{candidate}")).unwrap();
-            assert_eq!(candidate, candidate_recovered);
-        }
-
         // Ensure type and empty value fails.
         assert!(StringType::<CurrentNetwork>::parse(&StringType::<CurrentNetwork>::type_name()).is_err());
         assert!(StringType::<CurrentNetwork>::parse("").is_err());
@@ -98,12 +83,11 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= CurrentNetwork::MAX_STRING_BYTES as usize);
 
-            // Constant
-            check_display::<CurrentNetwork>(Mode::Constant, &expected);
-            // Public
-            check_display::<CurrentNetwork>(Mode::Public, &expected);
-            // Private
-            check_display::<CurrentNetwork>(Mode::Private, &expected);
+            let candidate = StringType::<CurrentNetwork>::new(&expected);
+            assert_eq!(format!("\"{expected}\""), format!("{candidate}"));
+
+            let candidate_recovered = StringType::<CurrentNetwork>::from_str(&format!("{candidate}")).unwrap();
+            assert_eq!(candidate, candidate_recovered);
         }
         Ok(())
     }

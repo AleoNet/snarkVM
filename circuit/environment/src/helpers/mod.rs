@@ -34,6 +34,9 @@ pub(super) use counter::*;
 pub mod linear_combination;
 pub use linear_combination::*;
 
+mod mode;
+pub use mode::*;
+
 pub mod variable;
 pub use variable::*;
 

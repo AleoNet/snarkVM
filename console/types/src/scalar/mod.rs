@@ -25,21 +25,14 @@ use snarkvm_console_network::prelude::*;
 pub struct Scalar<N: Network> {
     /// The underlying scalar element.
     scalar: N::Scalar,
-    /// The input mode for the scalar element.
-    mode: Mode,
 }
 
 impl<N: Network> ScalarTrait for Scalar<N> {}
 
 impl<N: Network> Scalar<N> {
-    /// Initializes a new scalar with the given mode.
-    pub const fn new(mode: Mode, scalar: N::Scalar) -> Self {
-        Self { scalar, mode }
-    }
-
-    /// Returns the mode of the scalar element.
-    pub const fn mode(&self) -> Mode {
-        self.mode
+    /// Initializes a new scalar.
+    pub const fn new(scalar: N::Scalar) -> Self {
+        Self { scalar }
     }
 }
 

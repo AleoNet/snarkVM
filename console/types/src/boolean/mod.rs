@@ -25,8 +25,6 @@ use core::marker::PhantomData;
 pub struct Boolean<N: Network> {
     /// The underlying boolean.
     boolean: bool,
-    /// The input mode for the boolean.
-    mode: Mode,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
@@ -34,14 +32,9 @@ pub struct Boolean<N: Network> {
 impl<N: Network> BooleanTrait for Boolean<N> {}
 
 impl<N: Network> Boolean<N> {
-    /// Initializes a new boolean with the given mode.
-    pub const fn new(mode: Mode, boolean: bool) -> Self {
-        Self { boolean, mode, _phantom: PhantomData }
-    }
-
-    /// Returns the mode of the boolean element.
-    pub const fn mode(&self) -> Mode {
-        self.mode
+    /// Initializes a new boolean.
+    pub const fn new(boolean: bool) -> Self {
+        Self { boolean, _phantom: PhantomData }
     }
 }
 

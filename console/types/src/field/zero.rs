@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Zero for Field<N> {
     /// Returns the `0` element of the field.
     fn zero() -> Self {
-        Self::new(Mode::Constant, N::Field::zero())
+        Self::new(N::Field::zero())
     }
 
     /// Returns `true` if the element is zero.

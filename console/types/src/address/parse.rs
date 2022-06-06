@@ -26,15 +26,10 @@ impl<N: Network> Parser for Address<N> {
             many1(terminated(one_of("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), many0(char('_')))),
         ));
 
-        // Parse the address and optional mode from the string.
-        let (string, address) =
-            map_res(pair(parse_address, opt(pair(tag("."), Mode::parse))), |(address, mode)| -> Result<_, Error> {
-                let address = NativeAddress::from_str(&address.replace('_', ""))?;
-                match mode {
-                    Some((_, mode)) => Ok(Address::new(mode, address)),
-                    None => Ok(Address::new(Mode::Constant, address)),
-                }
-            })(string)?;
+        // Parse the address from the string.
+        let (string, address) = map_res(parse_address, |address: &str| -> Result<_, Error> {
+            Ok(Address::new(NativeAddress::from_str(&address.replace('_', ""))?))
+        })(string)?;
 
         Ok((string, address))
     }
@@ -66,7 +61,7 @@ impl<N: Network> Debug for Address<N> {
 
 impl<N: Network> Display for Address<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}.{}", self.address, self.mode)
+        write!(f, "{}", self.address)
     }
 }
 
@@ -90,28 +85,9 @@ mod tests {
             let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
             let address = NativeAddress::try_from(private_key)?;
 
-            // Constant mode - A.
             let expected = format!("{}", address);
             let (remainder, candidate) = Address::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(format!("{expected}.constant"), candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Constant mode - B.
-            let expected = format!("{}.constant", address);
-            let (remainder, candidate) = Address::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Public mode.
-            let expected = format!("{}.public", address);
-            let (remainder, candidate) = Address::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Private mode.
-            let expected = format!("{}.private", address);
-            let (remainder, candidate) = Address::<CurrentNetwork>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
+            assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -119,27 +95,16 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        /// Attempts to construct an address from the given native address and mode,
-        /// format it in display mode, and recover an address from it.
-        fn check_display<N: Network>(mode: Mode, address: NativeAddress<N>) {
-            let candidate = Address::<N>::new(mode, address);
-            assert_eq!(format!("{address}.{mode}"), format!("{candidate}"));
-
-            let candidate_recovered = Address::<N>::from_str(&format!("{candidate}")).unwrap();
-            assert_eq!(candidate, candidate_recovered);
-        }
-
         for _ in 0..ITERATIONS {
             // Sample a new address.
             let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
             let address = NativeAddress::try_from(private_key)?;
 
-            // Constant
-            check_display::<CurrentNetwork>(Mode::Constant, address);
-            // Public
-            check_display::<CurrentNetwork>(Mode::Public, address);
-            // Private
-            check_display::<CurrentNetwork>(Mode::Private, address);
+            let candidate = Address::<CurrentNetwork>::new(address);
+            assert_eq!(format!("{address}"), format!("{candidate}"));
+
+            let candidate_recovered = Address::<CurrentNetwork>::from_str(&format!("{candidate}")).unwrap();
+            assert_eq!(candidate, candidate_recovered);
         }
         Ok(())
     }

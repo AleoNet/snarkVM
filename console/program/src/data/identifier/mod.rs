@@ -24,7 +24,6 @@ mod to_bits;
 mod to_field;
 
 use snarkvm_console_network::prelude::*;
-use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},

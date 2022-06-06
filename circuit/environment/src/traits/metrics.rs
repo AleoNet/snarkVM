@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Count;
-use console::Mode;
+use crate::{Count, Mode};
 
 /// Trait for determining the number of constants, public input, private inputs, and constraints for an operation.
 pub trait Metrics<Op: ?Sized> {

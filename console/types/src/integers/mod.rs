@@ -40,8 +40,6 @@ pub type U128<N> = Integer<N, u128>;
 pub struct Integer<N: Network, I: IntegerType> {
     /// The underlying integer value.
     integer: I,
-    /// The input mode of the integer.
-    mode: Mode,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
@@ -51,14 +49,9 @@ impl<N: Network, I: IntegerType> IntegerTrait<I, U8<N>, U16<N>, U32<N>> for Inte
 impl<N: Network, I: IntegerType> IntegerCore<I> for Integer<N, I> {}
 
 impl<N: Network, I: IntegerType> Integer<N, I> {
-    /// Initializes a new integer with the given mode.
-    pub const fn new(mode: Mode, integer: I) -> Self {
-        Self { integer, mode, _phantom: PhantomData }
-    }
-
-    /// Returns the mode of the integer.
-    pub const fn mode(&self) -> Mode {
-        self.mode
+    /// Initializes a new integer.
+    pub const fn new(integer: I) -> Self {
+        Self { integer, _phantom: PhantomData }
     }
 }
 

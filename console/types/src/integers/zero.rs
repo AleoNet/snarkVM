@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network, I: IntegerType> Zero for Integer<N, I> {
     /// Returns the `0` element of the integer.
     fn zero() -> Self {
-        Self::new(Mode::Constant, I::zero())
+        Self::new(I::zero())
     }
 
     /// Returns `true` if the element is zero.

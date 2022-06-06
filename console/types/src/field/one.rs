@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> One for Field<N> {
     /// Returns the `1` element of the field.
     fn one() -> Self {
-        Self::new(Mode::Constant, N::Field::one())
+        Self::new(N::Field::one())
     }
 
     /// Returns `true` if the element is one.

@@ -25,21 +25,14 @@ use snarkvm_console_network::prelude::*;
 pub struct Field<N: Network> {
     /// The underlying field element.
     field: N::Field,
-    /// The input mode for the field element.
-    mode: Mode,
 }
 
 impl<N: Network> FieldTrait for Field<N> {}
 
 impl<N: Network> Field<N> {
-    /// Initializes a new field with the given mode.
-    pub const fn new(mode: Mode, field: N::Field) -> Self {
-        Self { field, mode }
-    }
-
-    /// Returns the mode of the field element.
-    pub const fn mode(&self) -> Mode {
-        self.mode
+    /// Initializes a new field.
+    pub const fn new(field: N::Field) -> Self {
+        Self { field }
     }
 }
 

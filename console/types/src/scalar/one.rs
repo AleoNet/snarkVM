@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> One for Scalar<N> {
     /// Returns the `1` element of the scalar.
     fn one() -> Self {
-        Self::new(Mode::Constant, N::Scalar::one())
+        Self::new(N::Scalar::one())
     }
 
     /// Returns `true` if the element is one.

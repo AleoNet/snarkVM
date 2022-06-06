@@ -22,7 +22,7 @@ impl<N: Network> Neg for Group<N> {
     /// Returns the `negation` of `self`.
     #[inline]
     fn neg(self) -> Self::Output {
-        Group::from_projective(self.mode, -self.group)
+        Group::from_projective(-self.group)
     }
 }
 
@@ -32,7 +32,7 @@ impl<N: Network> Add<Group<N>> for Group<N> {
     /// Returns the `sum` of `self` and `other`.
     #[inline]
     fn add(self, other: Group<N>) -> Self::Output {
-        Group::from_projective(Mode::combine(self.mode, other.mode), self.group + other.group)
+        Group::from_projective(self.group + other.group)
     }
 }
 
@@ -41,7 +41,6 @@ impl<N: Network> AddAssign<Group<N>> for Group<N> {
     #[inline]
     fn add_assign(&mut self, other: Group<N>) {
         self.group += other.group;
-        self.mode = Mode::combine(self.mode, other.mode);
     }
 }
 
@@ -51,7 +50,7 @@ impl<N: Network> Sub<Group<N>> for Group<N> {
     /// Returns the `difference` of `self` and `other`.
     #[inline]
     fn sub(self, other: Group<N>) -> Self::Output {
-        Group::from_projective(Mode::combine(self.mode, other.mode), self.group - other.group)
+        Group::from_projective(self.group - other.group)
     }
 }
 
@@ -60,7 +59,6 @@ impl<N: Network> SubAssign<Group<N>> for Group<N> {
     #[inline]
     fn sub_assign(&mut self, other: Group<N>) {
         self.group -= other.group;
-        self.mode = Mode::combine(self.mode, other.mode);
     }
 }
 
@@ -70,7 +68,7 @@ impl<N: Network> Mul<Scalar<N>> for Group<N> {
     /// Returns the `product` of `self` and `other`.
     #[inline]
     fn mul(self, other: Scalar<N>) -> Self::Output {
-        Group::from_projective(Mode::combine(self.mode, other.mode()), self.group * *other)
+        Group::from_projective(self.group * *other)
     }
 }
 
@@ -79,7 +77,6 @@ impl<N: Network> MulAssign<Scalar<N>> for Group<N> {
     #[inline]
     fn mul_assign(&mut self, other: Scalar<N>) {
         self.group *= *other;
-        self.mode = Mode::combine(self.mode, other.mode());
     }
 }
 
@@ -89,6 +86,6 @@ impl<N: Network> Double for Group<N> {
     /// Returns the `double` of `self`.
     #[inline]
     fn double(&self) -> Self::Output {
-        Group::from_projective(self.mode, self.group.double())
+        Group::from_projective(self.group.double())
     }
 }

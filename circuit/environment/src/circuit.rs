@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Constraint, *};
-use console::Mode;
+use crate::{helpers::Constraint, Mode, *};
 use snarkvm_curves::AffineCurve;
 
 use core::{cell::RefCell, fmt};

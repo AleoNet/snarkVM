@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Zero for Group<N> {
     /// Returns the `0` element of the group.
     fn zero() -> Self {
-        Self::from_projective(Mode::Constant, N::Projective::zero())
+        Self::from_projective(N::Projective::zero())
     }
 
     /// Returns `true` if the element is zero.

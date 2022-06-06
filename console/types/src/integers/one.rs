@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network, I: IntegerType> One for Integer<N, I> {
     /// Returns the `1` element of the integer.
     fn one() -> Self {
-        Self::new(Mode::Constant, I::one())
+        Self::new(I::one())
     }
 
     /// Returns `true` if the element is one.

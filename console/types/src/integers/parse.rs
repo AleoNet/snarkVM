@@ -28,13 +28,8 @@ impl<N: Network, I: IntegerType> Parser for Integer<N, I> {
         let primitive = negation + primitive;
         // Parse the value from the string.
         let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
-        // Parse the mode from the string.
-        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
-        match mode {
-            Some((_, mode)) => Ok((string, Integer::new(mode, value))),
-            None => Ok((string, Integer::new(Mode::Constant, value))),
-        }
+        Ok((string, Integer::new(value)))
     }
 }
 
@@ -64,7 +59,7 @@ impl<N: Network, I: IntegerType> Debug for Integer<N, I> {
 
 impl<N: Network, I: IntegerType> Display for Integer<N, I> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.integer, Self::type_name(), self.mode)
+        write!(f, "{}{}", self.integer, Self::type_name())
     }
 }
 
@@ -89,28 +84,9 @@ mod tests {
             // Sample a random value.
             let integer: i8 = Uniform::rand(rng);
 
-            // Constant mode - A.
             let expected = format!("{}{}", integer, Integer::<CurrentNetwork, i8>::type_name());
             let (remainder, candidate) = Integer::<CurrentNetwork, i8>::parse(&expected).unwrap();
-            assert_eq!(format!("{expected}.constant"), candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Constant mode - B.
-            let expected = format!("{}{}.constant", integer, Integer::<CurrentNetwork, i8>::type_name());
-            let (remainder, candidate) = Integer::<CurrentNetwork, i8>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Public mode.
-            let expected = format!("{}{}.public", integer, Integer::<CurrentNetwork, i8>::type_name());
-            let (remainder, candidate) = Integer::<CurrentNetwork, i8>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
-            assert_eq!("", remainder);
-
-            // Private mode.
-            let expected = format!("{}{}.private", integer, Integer::<CurrentNetwork, i8>::type_name());
-            let (remainder, candidate) = Integer::<CurrentNetwork, i8>::parse(&expected).unwrap();
-            assert_eq!(expected, candidate.to_string());
+            assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -118,23 +94,17 @@ mod tests {
 
     #[test]
     fn test_display() {
-        /// Attempts to construct a integer from the given element and mode,
+        /// Attempts to construct a integer from the given element,
         /// format it in display mode, and recover a integer from it.
         fn check_display<N: Network, I: IntegerType>() {
             for _ in 0..ITERATIONS {
                 let element = Uniform::rand(&mut test_rng());
 
-                let check_display = |(mode, element)| {
-                    let candidate = Integer::<N, I>::new(mode, element);
-                    assert_eq!(format!("{element}{}.{mode}", Integer::<N, I>::type_name()), format!("{candidate}"));
+                let candidate = Integer::<N, I>::new(element);
+                assert_eq!(format!("{element}{}", Integer::<N, I>::type_name()), format!("{candidate}"));
 
-                    let candidate_recovered = Integer::<N, I>::from_str(&format!("{candidate}")).unwrap();
-                    assert_eq!(candidate, candidate_recovered);
-                };
-
-                check_display((Mode::Constant, element));
-                check_display((Mode::Public, element));
-                check_display((Mode::Private, element));
+                let candidate_recovered = Integer::<N, I>::from_str(&format!("{candidate}")).unwrap();
+                assert_eq!(candidate, candidate_recovered);
             }
         }
 
@@ -155,34 +125,16 @@ mod tests {
     fn test_display_zero() {
         let zero = i8::zero();
 
-        // Constant
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Constant, zero);
-        assert_eq!("0i8.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Public, zero);
-        assert_eq!("0i8.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Private, zero);
-        assert_eq!("0i8.private", &format!("{}", candidate));
+        let candidate = Integer::<CurrentNetwork, i8>::new(zero);
+        assert_eq!("0i8", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_one() {
         let one = i8::one();
 
-        // Constant
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Constant, one);
-        assert_eq!("1i8.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Public, one);
-        assert_eq!("1i8.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Private, one);
-        assert_eq!("1i8.private", &format!("{}", candidate));
+        let candidate = Integer::<CurrentNetwork, i8>::new(one);
+        assert_eq!("1i8", &format!("{}", candidate));
     }
 
     #[test]
@@ -190,16 +142,7 @@ mod tests {
         let one = i8::one();
         let two = one + one;
 
-        // Constant
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Constant, two);
-        assert_eq!("2i8.constant", &format!("{}", candidate));
-
-        // Public
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Public, two);
-        assert_eq!("2i8.public", &format!("{}", candidate));
-
-        // Private
-        let candidate = Integer::<CurrentNetwork, i8>::new(Mode::Private, two);
-        assert_eq!("2i8.private", &format!("{}", candidate));
+        let candidate = Integer::<CurrentNetwork, i8>::new(two);
+        assert_eq!("2i8", &format!("{}", candidate));
     }
 }

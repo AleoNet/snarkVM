@@ -26,28 +26,21 @@ use snarkvm_console_network::prelude::*;
 pub struct Group<N: Network> {
     /// The underlying group element.
     group: N::Projective,
-    /// The input mode for the group element.
-    mode: Mode,
 }
 
 impl<N: Network> GroupTrait<Scalar<N>> for Group<N> {}
 
 impl<N: Network> Group<N> {
-    /// Initializes a new group with the given mode.
-    pub fn new(mode: Mode, group: N::Affine) -> Self {
-        Self { group: group.into(), mode }
-    }
-
-    /// Returns the mode of the group element.
-    pub const fn mode(&self) -> Mode {
-        self.mode
+    /// Initializes a new group.
+    pub fn new(group: N::Affine) -> Self {
+        Self { group: group.into() }
     }
 }
 
 impl<N: Network> Group<N> {
     /// This internal function initializes a group element from projective coordinates.
-    const fn from_projective(mode: Mode, group: N::Projective) -> Self {
-        Self { group, mode }
+    const fn from_projective(group: N::Projective) -> Self {
+        Self { group }
     }
 }
 
