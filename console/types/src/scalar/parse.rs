@@ -45,7 +45,7 @@ impl<N: Network> Parser for Scalar<N> {
 impl<N: Network> FromStr for Scalar<N> {
     type Err = Error;
 
-    /// Parses a string into a mode.
+    /// Parses a string into a scalar.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -84,6 +84,10 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         let rng = &mut test_rng();
+
+        // Ensure empty value fails.
+        assert!(Scalar::<CurrentNetwork>::parse(&Scalar::<CurrentNetwork>::type_name()).is_err());
+        assert!(Scalar::<CurrentNetwork>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.

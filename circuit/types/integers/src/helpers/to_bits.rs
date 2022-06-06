@@ -51,7 +51,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-
     const ITERATIONS: u64 = 128;
 
     fn check_to_bits_le<I: IntegerType>(

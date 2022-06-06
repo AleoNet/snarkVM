@@ -36,10 +36,7 @@ pub mod inject;
 pub use inject::*;
 
 pub mod integers;
-pub use integers::{
-    IntegerCore,
-    IntegerTrait,
-};
+pub use integers::{IntegerCore, IntegerTrait};
 
 pub mod metrics;
 pub use metrics::*;

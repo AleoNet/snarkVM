@@ -27,13 +27,14 @@ impl<N: Network> Parser for Address<N> {
         ));
 
         // Parse the address and optional mode from the string.
-        let (string, address) = map_res(pair(parse_address, opt(pair(tag("."), Mode::parse))), |(address, mode)| -> Result<_, Error> {
-            let address = NativeAddress::from_str(&address.replace('_', ""))?;
-            match mode {
-                Some((_, mode)) => Ok(Address::new(mode, address)),
-                None => Ok(Address::new(Mode::Constant, address)),
-            }
-        })(string)?;
+        let (string, address) =
+            map_res(pair(parse_address, opt(pair(tag("."), Mode::parse))), |(address, mode)| -> Result<_, Error> {
+                let address = NativeAddress::from_str(&address.replace('_', ""))?;
+                match mode {
+                    Some((_, mode)) => Ok(Address::new(mode, address)),
+                    None => Ok(Address::new(Mode::Constant, address)),
+                }
+            })(string)?;
 
         Ok((string, address))
     }
@@ -42,7 +43,7 @@ impl<N: Network> Parser for Address<N> {
 impl<N: Network> FromStr for Address<N> {
     type Err = Error;
 
-    /// Parses a string into a mode.
+    /// Parses a string into an address.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -80,6 +81,10 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
+        // Ensure type and empty value fails.
+        assert!(Address::<CurrentNetwork>::parse(&Address::<CurrentNetwork>::type_name()).is_err());
+        assert!(Address::<CurrentNetwork>::parse("").is_err());
+
         for _ in 0..ITERATIONS {
             // Sample a new address.
             let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;

@@ -52,14 +52,12 @@ pub mod prelude {
         Variable,
     };
     pub use console::{
-        Mode,
-        Uniform,
+        environment::random::*,
         traits::{
-            integers::{
-                CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem,
-                Magnitude,
-            }
-        }
+            integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
+            string_parser,
+        },
+        Mode,
     };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, SquareRootField, Zero as Z};
 

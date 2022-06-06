@@ -135,7 +135,6 @@ mod tests {
     use crate::test_utilities::*;
     use snarkvm_circuit_environment::Circuit;
 
-
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     // Lowered to 4; we run (~5 * ITERATIONS) cases for most tests.

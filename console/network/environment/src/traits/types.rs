@@ -17,20 +17,12 @@
 use crate::prelude::*;
 
 /// Representation of an address.
-pub trait AddressTrait:
-Copy
-+ Clone
-+ Deref
-+ Eq
-+ Parser
-+ TypeName
-{
-}
+pub trait AddressTrait: Copy + Clone + Deref + Eq + Parser + TypeName {}
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
-    BitAndAssign
-    + BitAnd<Output = Self>
+    BitAnd<Output = Self>
+    + BitAndAssign
     + BitOrAssign
     + BitOr<Output = Self>
     + BitXorAssign
@@ -118,6 +110,9 @@ pub trait ScalarTrait:
     + Zero
 {
 }
+
+/// Representation of a string.
+pub trait StringTrait: Clone + Display + Parser + TypeName {}
 
 /// Representation of an integer.
 pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16>, U32: IntegerCore<u32>>:

@@ -24,7 +24,7 @@ mod to_fields;
 use crate::{Identifier, Literal, Visibility};
 use snarkvm_console_network::prelude::*;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{FromBits, error, ToBits};
+use snarkvm_utilities::{error, FromBits, ToBits};
 
 use anyhow::{bail, Error, Result};
 use once_cell::sync::OnceCell;

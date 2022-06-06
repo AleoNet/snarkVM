@@ -20,6 +20,8 @@
 #[macro_use]
 extern crate enum_index_derive;
 
+pub use snarkvm_console_network::prelude::*;
+
 mod data;
 pub use data::*;
 

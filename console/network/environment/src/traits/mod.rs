@@ -26,6 +26,9 @@ pub use from_field::*;
 mod parse;
 pub use parse::*;
 
+mod string;
+pub use string::string_parser;
+
 mod to_field;
 pub use to_field::*;
 

@@ -22,24 +22,24 @@ use crate::{
 use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
+    io::{Read, Result as IoResult, Write},
     rand::UniformRand,
     serialize::*,
     FromBytes,
     ToBits,
     ToBytes,
-    ToMinimalBits,    io::{Read, Result as IoResult, Write},
-
+    ToMinimalBits,
 };
 
+use core::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    ops::{Mul, Neg},
+};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
 use serde::{Deserialize, Serialize};
-use core::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    ops::{Mul, Neg},
-};
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(

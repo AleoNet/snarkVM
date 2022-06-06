@@ -87,7 +87,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-
     use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     // Lowered to 4; we run (~6 * ITERATIONS) cases for most tests.

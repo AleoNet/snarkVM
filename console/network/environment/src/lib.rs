@@ -20,7 +20,7 @@
 mod mode;
 pub use mode::*;
 
-mod random;
+pub mod random;
 pub use random::*;
 
 mod sanitizer;
@@ -35,8 +35,8 @@ pub use variable_length::{read_variable_length_integer, variable_length_integer}
 pub mod prelude {
     pub use super::*;
 
-    pub use snarkvm_curves::{ProjectiveCurve, AffineCurve};
-    pub use snarkvm_fields::{Field as _, Zero as _, PrimeField as _, SquareRootField as _};
+    pub use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+    pub use snarkvm_fields::{Field as _, PrimeField as _, SquareRootField as _, Zero as _};
 
     pub use core::{
         fmt::{self, Debug, Display, Formatter},
@@ -80,6 +80,5 @@ pub mod prelude {
 
     pub use num_traits::{One, Pow, Zero};
 
-    pub use rand::{CryptoRng, Rng};
-    pub use rand::distributions::Alphanumeric;
+    pub use rand::{distributions::Alphanumeric, CryptoRng, Rng};
 }

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{helpers::Constraint, *};
-use snarkvm_curves::AffineCurve;
 use console::Mode;
+use snarkvm_curves::AffineCurve;
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;

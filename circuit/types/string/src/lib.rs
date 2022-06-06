@@ -21,7 +21,7 @@ mod helpers;
 #[cfg(test)]
 use snarkvm_circuit_environment::assert_scope;
 
-use snarkvm_circuit_environment::{prelude::*, string_parser::parse_string};
+use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_integers::U8;
 
@@ -76,8 +76,8 @@ impl<E: Environment> Parser for StringType<E> {
     /// Parses a string into a string circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the starting quote '"' keyword from the string.
-        let (string, value) = parse_string(string)?;
+        // Parse the starting and ending quote '"' keyword from the string.
+        let (string, value) = string_parser::parse_string(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 

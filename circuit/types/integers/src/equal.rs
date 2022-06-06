@@ -78,7 +78,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-
     use std::ops::RangeInclusive;
 
     const ITERATIONS: u64 = 100;

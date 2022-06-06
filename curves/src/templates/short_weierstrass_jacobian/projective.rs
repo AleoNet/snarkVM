@@ -18,7 +18,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, Zero, PrimeField};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{

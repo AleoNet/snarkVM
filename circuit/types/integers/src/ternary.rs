@@ -87,7 +87,6 @@ mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
 
-
     fn run_test<I: IntegerType>(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
         for flag in &[true, false] {
             let first: I = Uniform::rand(&mut test_rng());

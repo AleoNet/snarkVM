@@ -2347,6 +2347,7 @@ dependencies = [
  "serde_json",
  "snarkvm-console-account",
  "snarkvm-console-network",
+ "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",

@@ -58,3 +58,12 @@ impl<N: Network> TypeName for Group<N> {
         "group"
     }
 }
+
+impl<N: Network> Deref for Group<N> {
+    type Target = N::Projective;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.group
+    }
+}

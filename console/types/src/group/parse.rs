@@ -46,7 +46,7 @@ impl<N: Network> Parser for Group<N> {
 impl<N: Network> FromStr for Group<N> {
     type Err = Error;
 
-    /// Parses a string into a mode.
+    /// Parses a string into a group.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -85,6 +85,10 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         let rng = &mut test_rng();
+
+        // Ensure empty value fails.
+        assert!(Group::<CurrentNetwork>::parse(&Group::<CurrentNetwork>::type_name()).is_err());
+        assert!(Group::<CurrentNetwork>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.

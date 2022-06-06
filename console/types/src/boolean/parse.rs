@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Parser for Boolean<N> {
-    /// Parses a string into a boolean circuit.
+    /// Parses a string into a boolean.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the boolean from the string.
@@ -35,7 +35,7 @@ impl<N: Network> Parser for Boolean<N> {
 impl<N: Network> FromStr for Boolean<N> {
     type Err = Error;
 
-    /// Parses a string into a mode.
+    /// Parses a string into a boolean.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -71,6 +71,10 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
+        // Ensure type and empty value fails.
+        assert!(Boolean::<CurrentNetwork>::parse(&Boolean::<CurrentNetwork>::type_name()).is_err());
+        assert!(Boolean::<CurrentNetwork>::parse("").is_err());
+
         for boolean in &[true, false] {
             // Constant mode - A.
             let expected = format!("{}", boolean);

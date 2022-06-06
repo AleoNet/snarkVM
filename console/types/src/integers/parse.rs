@@ -41,7 +41,7 @@ impl<N: Network, I: IntegerType> Parser for Integer<N, I> {
 impl<N: Network, I: IntegerType> FromStr for Integer<N, I> {
     type Err = Error;
 
-    /// Parses a string into a mode.
+    /// Parses a string into an integer.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -80,6 +80,10 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         let rng = &mut test_rng();
+
+        // Ensure empty value fails.
+        assert!(Integer::<CurrentNetwork, i8>::parse(&Integer::<CurrentNetwork, i8>::type_name()).is_err());
+        assert!(Integer::<CurrentNetwork, i8>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.

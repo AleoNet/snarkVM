@@ -22,12 +22,13 @@ use crate::{
 use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
+    io::{Error, ErrorKind, Read, Result as IoResult, Write},
     rand::UniformRand,
     serialize::*,
     FromBytes,
     ToBits,
     ToBytes,
-    ToMinimalBits,    io::{Error, ErrorKind, Read, Result as IoResult, Write},
+    ToMinimalBits,
 };
 
 use core::{

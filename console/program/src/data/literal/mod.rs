@@ -15,10 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod from_bits;
+mod parse;
 mod size_in_bits;
 mod to_bits;
 mod variant;
 
+// use snarkvm_console_network::prelude::*;
 use snarkvm_console_account::Address;
 use snarkvm_console_network::Network;
 use snarkvm_fields::PrimeField;
@@ -35,7 +37,7 @@ use anyhow::{bail, Result};
 use enum_index::EnumIndex;
 
 /// The literal enum represents all supported types in snarkVM.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, EnumIndex)]
+#[derive(Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum Literal<N: Network> {
     /// The Aleo address type.
     Address(Address<N>),
@@ -69,6 +71,36 @@ pub enum Literal<N: Network> {
     Scalar(N::Scalar),
     /// The string type.
     String(String),
+    // /// The boolean type.
+    // Boolean(Boolean<N>),
+    // /// The field type.
+    // Field(Field<N>),
+    // /// The group type.
+    // Group(Group<N>),
+    // /// The 8-bit signed integer type.
+    // I8(I8<N>),
+    // /// The 16-bit signed integer type.
+    // I16(I16<N>),
+    // /// The 32-bit signed integer type.
+    // I32(I32<N>),
+    // /// The 64-bit signed integer type.
+    // I64(I64<N>),
+    // /// The 128-bit signed integer type.
+    // I128(I128<N>),
+    // /// The 8-bit unsigned integer type.
+    // U8(U8<N>),
+    // /// The 16-bit unsigned integer type.
+    // U16(U16<N>),
+    // /// The 32-bit unsigned integer type.
+    // U32(U32<N>),
+    // /// The 64-bit unsigned integer type.
+    // U64(U64<N>),
+    // /// The 128-bit unsigned integer type.
+    // U128(U128<N>),
+    // /// The scalar type.
+    // Scalar(Scalar<N>),
+    // /// The string type.
+    // String(StringType<N>),
 }
 
 impl<N: Network> FromBytes for Literal<N> {
@@ -134,26 +166,3 @@ impl<N: Network> ToBytes for Literal<N> {
         }
     }
 }
-
-// impl<N: Network> Display for Literal<N> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Self::Address(literal) => Display::fmt(literal, f),
-//             Self::Boolean(literal) => Display::fmt(literal, f),
-//             Self::Field(literal) => Display::fmt(literal, f),
-//             Self::Group(literal) => Display::fmt(literal, f),
-//             Self::I8(literal) => Display::fmt(literal, f),
-//             Self::I16(literal) => Display::fmt(literal, f),
-//             Self::I32(literal) => Display::fmt(literal, f),
-//             Self::I64(literal) => Display::fmt(literal, f),
-//             Self::I128(literal) => Display::fmt(literal, f),
-//             Self::U8(literal) => Display::fmt(literal, f),
-//             Self::U16(literal) => Display::fmt(literal, f),
-//             Self::U32(literal) => Display::fmt(literal, f),
-//             Self::U64(literal) => Display::fmt(literal, f),
-//             Self::U128(literal) => Display::fmt(literal, f),
-//             Self::Scalar(literal) => Display::fmt(literal, f),
-//             Self::String(literal) => Display::fmt(literal, f),
-//         }
-//     }
-// }

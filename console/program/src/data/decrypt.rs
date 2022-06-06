@@ -55,7 +55,7 @@ mod tests {
     use crate::Literal;
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng};
+    use snarkvm_utilities::test_crypto_rng;
 
     use core::str::FromStr;
 
