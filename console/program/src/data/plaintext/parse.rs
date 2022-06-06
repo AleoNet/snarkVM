@@ -122,8 +122,6 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: usize = 100;
-
     #[test]
     fn test_parse() -> Result<()> {
         // Sanity check.

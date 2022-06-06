@@ -17,55 +17,54 @@
 use super::*;
 
 impl<N: Network> Parser for Interface<N> {
-    /// Parses a string into an identifier.
+    /// Parses an interface as:
+    /// ```text
+    ///   interface message:
+    ///       owner as address;
+    ///       balance as u64;
+    /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        /// Parses a interface as `{ identifier_0: interface_0, ..., identifier_n: interface_n }`.
-        fn parse_composite<N: Network>(string: &str) -> ParserResult<Interface<N>> {
-            /// Parses a sanitized composite tuple.
-            fn parse_composite_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Interface<N>)> {
-                // Parse the whitespace and comments from the string.
-                let (string, _) = Sanitizer::parse(string)?;
-                // Parse the identifier from the string.
-                let (string, identifier) = Identifier::parse(string)?;
-                // Parse the ":" from the string.
-                let (string, _) = tag(":")(string)?;
-                // Parse the interface from the string.
-                let (string, interface) = Interface::parse(string)?;
-                // Return the identifier and interface.
-                Ok((string, (identifier, interface)))
-            }
-
+        /// Parses a string into a tuple.
+        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, ValueType<N>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
-            // Parse the "{" from the string.
-            let (string, _) = tag("{")(string)?;
-            // Parse the composites.
-            let (string, composites) =
-                map_res(separated_list1(tag(","), parse_composite_tuple), |composites: Vec<_>| {
-                    // Ensure the number of composites is within `N::MAX_DATA_ENTRIES`.
-                    match composites.len() <= N::MAX_DATA_ENTRIES {
-                        true => Ok(composites),
-                        false => Err(error(format!("Found an interface that exceeds size ({})", composites.len()))),
-                    }
-                })(string)?;
-            // Parse the whitespace and comments from the string.
-            let (string, _) = Sanitizer::parse(string)?;
-            // Parse the '}' from the string.
-            let (string, _) = tag("}")(string)?;
-            // Output the interface.
-            Ok((string, Interface::Composite(composites)))
+            // Parse the identifier from the string.
+            let (string, identifier) = Identifier::parse(string)?;
+            // Parse the " as " from the string.
+            let (string, _) = tag(" as ")(string)?;
+            // Parse the value type from the string.
+            let (string, value_type) = ValueType::parse(string)?;
+            // Parse the semicolon ';' keyword from the string.
+            let (string, _) = tag(";")(string)?;
+            // Return the identifier and value type.
+            Ok((string, (identifier, value_type)))
         }
 
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse to determine the interface (order matters).
-        alt((
-            // Parse a interface literal.
-            map(LiteralType::parse, |literal| Self::Literal(literal)),
-            // Parse a interface composite.
-            parse_composite,
-        ))(string)
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the type name from the string.
+        let (string, _) = tag(Self::type_name())(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
+        // Parse the interface name from the string.
+        let (string, name) = Identifier::parse(string)?;
+        // Parse the colon ':' keyword from the string.
+        let (string, _) = tag(":")(string)?;
+        // Parse the members from the string.
+        let (string, members) = map_res(many1(parse_tuple), |members| {
+            // Ensure the members has no duplicate names.
+            if has_duplicates(members.iter().map(|(identifier, _)| identifier)) {
+                return Err(error(format!("Duplicate identifier found in interface '{}'", name)));
+            }
+            // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+            if members.len() > N::MAX_DATA_ENTRIES {
+                return Err(error("Failed to parse interface: too many members"));
+            }
+            Ok(members)
+        })(string)?;
+        // Return the interface.
+        Ok((string, Self { name, members }))
     }
 }
 
@@ -97,41 +96,41 @@ impl<N: Network> Debug for Interface<N> {
 impl<N: Network> Display for Interface<N> {
     /// Prints the interface as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            // Prints the literal, i.e. 10field
-            Self::Literal(literal) => Display::fmt(literal, f),
-            // Prints the composite, i.e. { owner: aleo1xxx.public, balance: 10i64.private }
-            Self::Composite(composite) => {
-                let mut output = format!("{{ ");
-                for (identifier, interface) in composite.iter() {
-                    output += &format!("{identifier}: {interface}, ");
-                }
-                output.pop(); // trailing space
-                output.pop(); // trailing comma
-                output += " }";
-                write!(f, "{output}")
-            }
+        let mut output = format!("{} {}:\n", Self::type_name(), self.name);
+        for (identifier, value_type) in &self.members {
+            output += &format!("    {identifier} as {value_type};\n");
         }
+        output.pop(); // trailing newline
+        write!(f, "{}", output)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::identifier::tests::sample_identifier;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: usize = 100;
-
     #[test]
     fn test_parse() -> Result<()> {
-        // Sanity check.
-        let (remainder, candidate) = Interface::<CurrentNetwork>::parse("{ foo: u8 }")?;
-        assert_eq!("{ foo: u8 }", candidate.to_string());
-        assert_eq!("", remainder);
+        let expected = Interface::<CurrentNetwork> {
+            name: Identifier::from_str("message")?,
+            members: vec![
+                (Identifier::from_str("sender")?, ValueType::from_str("address")?),
+                (Identifier::from_str("amount")?, ValueType::from_str("u64")?),
+            ],
+        };
 
+        let (remainder, candidate) = Interface::<CurrentNetwork>::parse(
+            r"
+interface message:
+    sender as address;
+    amount as u64;
+",
+        )?;
+        assert_eq!("\n", remainder);
+        assert_eq!(expected, candidate);
         Ok(())
     }
 
@@ -139,9 +138,10 @@ mod tests {
     fn test_parse_fails() {
         // Must be non-empty.
         assert!(Interface::<CurrentNetwork>::parse("").is_err());
-        assert!(Interface::<CurrentNetwork>::parse("{}").is_err());
+        assert!(Interface::<CurrentNetwork>::parse("interface message:").is_err());
 
         // Invalid characters.
+        assert!(Interface::<CurrentNetwork>::parse("{}").is_err());
         assert!(Interface::<CurrentNetwork>::parse("_").is_err());
         assert!(Interface::<CurrentNetwork>::parse("__").is_err());
         assert!(Interface::<CurrentNetwork>::parse("___").is_err());
@@ -165,4 +165,39 @@ mod tests {
             Interface::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(interface.is_err());
     }
+
+    #[test]
+    fn test_display() {
+        let expected = "interface message:\n    first as field;\n    second as field;";
+        let message = Interface::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(expected, format!("{}", message));
+    }
+
+    #[test]
+    fn test_display_fails() {
+        // Duplicate identifier.
+        let candidate =
+            Interface::<CurrentNetwork>::parse("interface message:\n    first as field;\n    first as field;");
+        assert!(candidate.is_err());
+        // Visibility in value type.
+        let candidate = Interface::<CurrentNetwork>::parse(
+            "interface message:\n    first as field.public;\n    first as field.private;",
+        );
+        assert!(candidate.is_err());
+    }
+
+    // #[test]
+    // fn test_matches() {
+    //     // Test a struct.
+    //     let message =
+    //         Definition::<CurrentNetwork>::from_str("interface message:\n    first as field.public;\n    second as field.private;");
+    //     let message_value = Value::from_str("message { 2field.public, 3field.private }");
+    //     let message_value_fails_1 = Value::from_str("message { 2field.public }");
+    //     let message_value_fails_2 = Value::from_str("message { 2field.private, 3field.private }");
+    //     let message_value_fails_3 = Value::from_str("message { 2field.public, 3field.private, 2field.public }");
+    //     assert!(message.matches(&message_value));
+    //     assert!(!message.matches(&message_value_fails_1));
+    //     assert!(!message.matches(&message_value_fails_2));
+    //     assert!(!message.matches(&message_value_fails_3));
+    // }
 }

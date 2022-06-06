@@ -48,7 +48,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 /// The identifier must be alphanumeric, and may include underscores.
 /// The identifier must not consist solely of underscores.
 /// The identifier must fit within the data capacity of a base field element.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier<N: Network>(N::Field, u8); // Number of bytes in the identifier.
 
 impl<N: Network> TryFrom<&str> for Identifier<N> {

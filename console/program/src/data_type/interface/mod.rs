@@ -16,92 +16,119 @@
 
 mod parse;
 
-use crate::{Identifier, LiteralType};
+use crate::{Identifier, ValueType};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
+    has_duplicates,
     io::{Read, Result as IoResult, Write},
     FromBytes,
     ToBytes,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub enum Interface<N: Network> {
-    /// A literal.
-    Literal(LiteralType),
-    /// A composite.
-    Composite(Vec<(Identifier<N>, Interface<N>)>),
+pub struct Interface<N: Network> {
+    /// The name of the interface.
+    name: Identifier<N>,
+    /// The name and type for the members of the interface.
+    members: Vec<(Identifier<N>, ValueType<N>)>,
+}
+
+impl<N: Network> TypeName for Interface<N> {
+    /// Returns the type name.
+    fn type_name() -> &'static str {
+        "interface"
+    }
 }
 
 impl<N: Network> FromBytes for Interface<N> {
+    /// Reads an interface from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let variant = u8::read_le(&mut reader)?;
-        match variant {
-            0 => Ok(Self::Literal(FromBytes::read_le(&mut reader)?)),
-            1 => {
-                // Read the number of composites.
-                let num_composites = u16::read_le(&mut reader)?;
-                // Ensure the number of composites is within `N::MAX_DATA_ENTRIES`.
-                if num_composites as usize > N::MAX_DATA_ENTRIES {
-                    return Err(error(format!(
-                        "Interface exceeds size: expected <= {}, found {num_composites}",
-                        N::MAX_DATA_ENTRIES
-                    )));
-                }
-                // Read the composites.
-                let mut composites = Vec::with_capacity(num_composites as usize);
-                for _ in 0..num_composites {
-                    // Read the identifier.
-                    let identifier = Identifier::read_le(&mut reader)?;
-                    // Read the number of bytes for the composite.
-                    let num_bytes = read_variable_length_integer(&mut reader)?;
-                    // Read the composite.
-                    let mut bytes = vec![0; num_bytes as usize];
-                    reader.read_exact(&mut bytes)?;
-                    // Append the composite.
-                    composites.push((identifier, Interface::read_le(&mut bytes.as_slice())?));
-                }
-                Ok(Self::Composite(composites))
-            }
-            2.. => Err(error(format!("Failed to deserialize interface variant {variant}"))),
+        // Read the name of the interface.
+        let name = Identifier::read_le(&mut reader)?;
+
+        // Read the number of members.
+        let num_members = u16::read_le(&mut reader)?;
+        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+        if num_members as usize > N::MAX_DATA_ENTRIES {
+            return Err(error(format!(
+                "Interface exceeds size: expected <= {}, found {num_members}",
+                N::MAX_DATA_ENTRIES
+            )));
         }
+        // Read the members.
+        let mut members = Vec::with_capacity(num_members as usize);
+        for _ in 0..num_members {
+            // Read the identifier.
+            let identifier = Identifier::read_le(&mut reader)?;
+            // Read the value type.
+            let value_type = ValueType::read_le(&mut reader)?;
+            // Append the member.
+            members.push((identifier, value_type));
+        }
+
+        // Ensure the members has no duplicate names.
+        if has_duplicates(members.iter().map(|(name, ..)| name)) {
+            return Err(error(format!("Duplicate member in interface '{name}'")));
+        }
+        Ok(Self { name, members })
     }
 }
 
 impl<N: Network> ToBytes for Interface<N> {
+    /// Writes the interface to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Literal(literal) => {
-                u8::write_le(&0u8, &mut writer)?;
-                literal.write_le(&mut writer)
-            }
-            Self::Composite(composite) => {
-                // Ensure the composite is within `P::MAX_DATA_ENTRIES`.
-                if composite.len() > N::MAX_DATA_ENTRIES {
-                    return Err(error("Failed to serialize interface: too many entries"));
-                }
-
-                // Write the variant.
-                u8::write_le(&1u8, &mut writer)?;
-                // Write the number of composite members.
-                (composite.len() as u16).write_le(&mut writer)?;
-                // Write the composite as bytes.
-                for (identifier, interface) in composite {
-                    // Write the identifier.
-                    identifier.write_le(&mut writer)?;
-                    // Attempt to serialize the interface.
-                    match interface.to_bytes_le() {
-                        Ok(bytes) => {
-                            // Write the size in bytes of the interface.
-                            variable_length_integer(&(bytes.len() as u64)).write_le(&mut writer)?;
-                            // Write the interface to the buffer.
-                            bytes.write_le(&mut writer)?;
-                        }
-                        Err(err) => return Err(error(format!("{err}"))),
-                    }
-                }
-                Ok(())
-            }
+        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+        if self.members.len() > N::MAX_DATA_ENTRIES {
+            return Err(error("Failed to serialize interface: too many members"));
         }
+        // Ensure the members has no duplicate names.
+        if has_duplicates(self.members.iter().map(|(name, ..)| name)) {
+            return Err(error(format!("Duplicate member in interface '{}'", self.name)));
+        }
+
+        // Write the name of the interface.
+        self.name.write_le(&mut writer)?;
+
+        // Write the number of members.
+        (self.members.len() as u16).write_le(&mut writer)?;
+        // Write the members as bytes.
+        for (identifier, value_type) in &self.members {
+            // Write the identifier.
+            identifier.write_le(&mut writer)?;
+            // Write the value type to the buffer.
+            value_type.write_le(&mut writer)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_bytes() -> Result<()> {
+        let expected =
+            Interface::<CurrentNetwork>::from_str("interface message:\n    first as field;\n    second as field;")?;
+        let candidate = Interface::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+        assert_eq!(expected, candidate);
+        Ok(())
+    }
+
+    #[test]
+    fn test_bytes_fails() -> Result<()> {
+        let expected = Interface::<CurrentNetwork> {
+            name: Identifier::from_str("message")?,
+            members: vec![
+                (Identifier::from_str("first")?, ValueType::from_str("field")?),
+                (Identifier::from_str("first")?, ValueType::from_str("boolean")?),
+            ],
+        };
+        assert!(expected.to_bytes_le().is_err());
+        Ok(())
     }
 }

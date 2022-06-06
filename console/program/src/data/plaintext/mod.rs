@@ -23,7 +23,6 @@ mod to_fields;
 
 use crate::{Identifier, Literal, Visibility};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::*;
 use snarkvm_utilities::{error, FromBits, ToBits};
 
 use anyhow::{bail, Error, Result};
@@ -55,6 +54,7 @@ impl<N: Network> From<&Literal<N>> for Plaintext<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
+    use snarkvm_console_types::Field;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::str::FromStr;

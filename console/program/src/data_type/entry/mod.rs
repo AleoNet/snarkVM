@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, Interface};
-use snarkvm_console_network::Network;
+mod parse;
+
+use crate::ValueType;
+use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -25,18 +27,37 @@ use snarkvm_utilities::{
 
 use enum_index::EnumIndex;
 
-#[derive(Clone, PartialEq, Eq, Hash, EnumIndex)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum Entry<N: Network> {
     /// A constant value.
-    Constant(Interface<N>),
+    Constant(ValueType<N>),
     /// A publicly-visible value.
-    Public(Interface<N>),
+    Public(ValueType<N>),
     /// A private value decrypted with the account owner's address.
-    Private(Interface<N>),
+    Private(ValueType<N>),
 }
 
 impl<N: Network> ToBytes for Entry<N> {
+    /// Writes an entry to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.enum_index() as u16).write_le(&mut writer)
+        (self.enum_index() as u8).write_le(&mut writer)?;
+        match self {
+            Entry::Constant(value_type) => value_type.write_le(&mut writer),
+            Entry::Public(value_type) => value_type.write_le(&mut writer),
+            Entry::Private(value_type) => value_type.write_le(&mut writer),
+        }
+    }
+}
+
+impl<N: Network> FromBytes for Entry<N> {
+    /// Reads an entry from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let variant = u8::read_le(&mut reader)?;
+        match variant {
+            0 => Ok(Entry::Constant(ValueType::read_le(&mut reader)?)),
+            1 => Ok(Entry::Public(ValueType::read_le(&mut reader)?)),
+            2 => Ok(Entry::Private(ValueType::read_le(&mut reader)?)),
+            _ => Err(error(format!("Failed to deserialize entry variant {}", variant))),
+        }
     }
 }

@@ -23,11 +23,11 @@ pub use interface::Interface;
 mod literal_type;
 pub use literal_type::LiteralType;
 
+mod value_type;
+pub use value_type::ValueType;
+
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
-
-use anyhow::{bail, Result};
-use core::ops::Deref;
 
 /// The declared layout for program data.
 #[derive(Clone, PartialEq, Eq)]
