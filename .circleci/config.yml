@@ -434,6 +434,69 @@ jobs:
           workspace_member: console/types
           cache_key: snarkvm-console-types-cache
 
+  console-types-address:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/address
+          cache_key: snarkvm-console-types-address-cache
+
+  console-types-boolean:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/boolean
+          cache_key: snarkvm-console-types-boolean-cache
+
+  console-types-field:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/field
+          cache_key: snarkvm-console-types-field-cache
+
+  console-types-group:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/group
+          cache_key: snarkvm-console-types-group-cache
+
+  console-types-integers:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/integers
+          cache_key: snarkvm-console-types-integers-cache
+
+  console-types-scalar:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/scalar
+          cache_key: snarkvm-console-types-scalar-cache
+
+  console-types-string:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/string
+          cache_key: snarkvm-console-types-string-cache
+
   curves:
     docker:
       - image: cimg/rust:1.61
@@ -611,6 +674,13 @@ workflows:
       - console-program
       - console-transition
       - console-types
+      - console-types-address
+      - console-types-boolean
+      - console-types-field
+      - console-types-group
+      - console-types-integers
+      - console-types-scalar
+      - console-types-string
       - curves
       - dpc
       - fields

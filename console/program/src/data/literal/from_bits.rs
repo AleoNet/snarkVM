@@ -15,16 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_console_account::Address as NativeAddress;
 
 impl<N: Network> Literal<N> {
     /// Initializes a new literal from a list of little-endian bits *without* trailing zeros.
     pub fn from_bits_le(variant: u8, bits_le: &[bool]) -> Result<Self> {
         let literal = bits_le;
         let literal = match variant {
-            0 => Literal::Address(Address::new(NativeAddress::from_group(N::affine_from_x_coordinate(
+            0 => Literal::Address(Address::new(N::affine_from_x_coordinate(
                 N::field_from_bits_le(literal)?,
-            )?))),
+            )?)),
             1 => match bits_le.len() {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_le.len()),
@@ -61,9 +60,9 @@ impl<N: Network> Literal<N> {
     pub fn from_bits_be(variant: u8, bits_be: &[bool]) -> Result<Self> {
         let literal = bits_be;
         let literal = match variant {
-            0 => Literal::Address(Address::new(NativeAddress::from_group(N::affine_from_x_coordinate(
+            0 => Literal::Address(Address::new(N::affine_from_x_coordinate(
                 N::field_from_bits_be(literal)?,
-            )?))),
+            )?)),
             1 => match bits_be.len() {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_be.len()),

@@ -17,23 +17,23 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-mod address;
-pub use address::*;
+pub use snarkvm_console_types_address as address;
+pub use snarkvm_console_types_address::Address;
 
-mod boolean;
-pub use boolean::*;
+pub use snarkvm_console_types_boolean as boolean;
+pub use snarkvm_console_types_boolean::Boolean;
 
-mod field;
-pub use field::*;
+pub use snarkvm_console_types_field as field;
+pub use snarkvm_console_types_field::Field;
 
-mod group;
-pub use group::*;
+pub use snarkvm_console_types_group as group;
+pub use snarkvm_console_types_group::Group;
 
-mod integers;
-pub use integers::*;
+pub use snarkvm_console_types_integers as integers;
+pub use snarkvm_console_types_integers::{U8, U16, U32, U64, U128, I8, I16, I32, I64, I128};
 
-mod scalar;
-pub use scalar::*;
+pub use snarkvm_console_types_scalar as scalar;
+pub use snarkvm_console_types_scalar::Scalar;
 
-mod string;
-pub use string::*;
+pub use snarkvm_console_types_string as string;
+pub use snarkvm_console_types_string::StringType;

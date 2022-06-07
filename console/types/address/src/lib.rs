@@ -14,23 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod parse;
+mod serialize;
 
-use snarkvm_console_account::Address as NativeAddress;
 use snarkvm_console_network::prelude::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Address<N: Network> {
     /// The underlying address.
-    address: NativeAddress<N>,
+    address: N::Affine,
 }
 
 impl<N: Network> AddressTrait for Address<N> {}
 
 impl<N: Network> Address<N> {
-    /// Initializes a new address.
-    pub const fn new(address: NativeAddress<N>) -> Self {
-        Self { address }
+    /// Initializes an address from a group element.
+    pub const fn new(group: N::Affine) -> Self {
+        Self { address: group }
     }
 }
 
@@ -43,10 +44,36 @@ impl<N: Network> TypeName for Address<N> {
 }
 
 impl<N: Network> Deref for Address<N> {
-    type Target = NativeAddress<N>;
+    type Target = N::Affine;
 
+    /// Returns the address as a group element.
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.address
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+    use snarkvm_utilities::test_crypto_rng;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 1000;
+
+    #[test]
+    fn test_deref() -> Result<()> {
+        for _ in 0..ITERATIONS {
+            // Sample a new address.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = Address::try_from(private_key)?;
+
+            // Check the group representation.
+            let candidate = *expected;
+            assert_eq!(expected, Address::new(candidate));
+        }
+        Ok(())
     }
 }

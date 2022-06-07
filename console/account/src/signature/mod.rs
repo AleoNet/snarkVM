@@ -17,8 +17,9 @@
 mod bytes;
 mod sign;
 
-use crate::{Address, ComputeKey, PrivateKey};
+use crate::{ComputeKey, PrivateKey};
 use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::Address;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     CryptoRng,

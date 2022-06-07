@@ -23,6 +23,9 @@ version = "0.7.5"
 [dependencies.anyhow]
 version = "1.0.57"
 
+[dependencies.bech32]
+version = "0.9"
+
 [dependencies.itertools]
 version = "0.10.1"
 
@@ -40,3 +43,6 @@ features = [ "getrandom", "std_rng" ]
 [dependencies.rand_xorshift]
 version = "0.3"
 default-features = false
+
+[dependencies.serde]
+version = "1.0"

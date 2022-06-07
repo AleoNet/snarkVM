@@ -50,6 +50,7 @@ pub mod prelude {
         LinearCombination,
         OutputMode,
         Variable,
+        Mode,
     };
     pub use console::{
         environment::random::*,
@@ -57,7 +58,6 @@ pub mod prelude {
             integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
             string_parser,
         },
-        Mode,
     };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, SquareRootField, Zero as Z};
 

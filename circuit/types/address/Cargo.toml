@@ -7,8 +7,8 @@ license = "GPL-3.0"
 edition = "2021"
 
 [dependencies.console]
-package = "snarkvm-console-account"
-path = "../../../console/account"
+package = "snarkvm-console-types-address"
+path = "../../../console/types/address"
 version = "0.7.5"
 optional = true
 
