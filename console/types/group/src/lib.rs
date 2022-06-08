@@ -19,8 +19,8 @@ mod arithmetic;
 mod parse;
 mod zero;
 
-use crate::Scalar;
 use snarkvm_console_network::prelude::*;
+use snarkvm_console_types_scalar::Scalar;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Group<N: Network> {

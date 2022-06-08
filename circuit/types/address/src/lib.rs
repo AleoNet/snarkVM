@@ -60,7 +60,7 @@ impl<E: Environment> Eject for Address<E> {
 
     /// Ejects the address.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from_group(self.0.eject_value())
+        Self::Primitive::new(self.0.eject_value())
     }
 }
 

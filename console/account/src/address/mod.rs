@@ -14,65 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod serialize;
-mod string;
 mod try_from;
 
-use crate::{ComputeKey, PrivateKey, ViewKey};
+use crate::{PrivateKey, ComputeKey, ViewKey};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
 
-use bech32::{self, FromBase32, ToBase32};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Address<N: Network>(N::Affine);
-
-impl<N: Network> Address<N> {
-    /// Returns a new address from an affine group element.
-    pub fn from_group(group: N::Affine) -> Self {
-        Self(group)
-    }
-}
-
-impl<N: Network> Deref for Address<N> {
-    type Target = N::Affine;
-
-    /// Returns the account address as an affine group element.
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
-
-    type CurrentNetwork = Testnet3;
-
-    const ITERATIONS: u64 = 1000;
-
-    #[test]
-    fn test_deref() -> Result<()> {
-        for _ in 0..ITERATIONS {
-            // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let expected = Address::try_from(private_key)?;
-
-            // Check the group representation.
-            let candidate = *expected;
-            assert_eq!(expected, Address::from_group(candidate));
-        }
-        Ok(())
-    }
-}
+/// See `snarkvm/console/types/address` for the `Address` type.
+pub type Address<N> = snarkvm_console_types::Address<N>;

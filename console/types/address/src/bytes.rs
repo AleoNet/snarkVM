@@ -21,14 +21,14 @@ impl<N: Network> FromBytes for Address<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x_coordinate = N::Field::read_le(&mut reader)?;
-        Ok(Self(N::affine_from_x_coordinate(x_coordinate).map_err(|e| error(format!("{e}")))?))
+        Ok(Address::new(N::affine_from_x_coordinate(x_coordinate).map_err(|e| error(format!("{e}")))?))
     }
 }
 
 impl<N: Network> ToBytes for Address<N> {
     /// Writes an account address to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.to_x_coordinate().write_le(&mut writer)
+        self.address.to_x_coordinate().write_le(&mut writer)
     }
 }
 

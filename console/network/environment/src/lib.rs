@@ -34,14 +34,19 @@ pub mod prelude {
 
     pub use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     pub use snarkvm_fields::{Field as _, PrimeField as _, SquareRootField as _, Zero as _};
+    pub use snarkvm_utilities::{
+        error,
+        io::{Read, Result as IoResult, Write},
+        FromBytes,
+        FromBytesDeserializer,
+        ToBytes,
+        ToBytesSerializer,
+    };
 
     pub use core::{
         fmt::{self, Debug, Display, Formatter},
         str::{self, FromStr},
     };
-
-    pub use anyhow::{anyhow, bail, ensure, Error, Result};
-
     pub use core::ops::{
         Add,
         AddAssign,
@@ -66,6 +71,8 @@ pub mod prelude {
         SubAssign,
     };
 
+    pub use anyhow::{anyhow, bail, ensure, Error, Result};
+    pub use bech32::{self, FromBase32, ToBase32};
     pub use nom::{
         branch::alt,
         bytes::complete::tag,
@@ -74,8 +81,7 @@ pub mod prelude {
         multi::{many0, many1, separated_list1},
         sequence::{pair, terminated},
     };
-
     pub use num_traits::{One, Pow, Zero};
-
     pub use rand::{distributions::Alphanumeric, CryptoRng, Rng};
+    pub use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 }

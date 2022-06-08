@@ -16,6 +16,8 @@
 
 use super::*;
 
+static ADDRESS_PREFIX: &str = "aleo";
+
 impl<N: Network> Parser for Address<N> {
     /// Parses a string into an address.
     #[inline]
@@ -27,29 +29,30 @@ impl<N: Network> Parser for Address<N> {
         ));
 
         // Parse the address from the string.
-        let (string, address) = map_res(parse_address, |address: &str| -> Result<_, Error> {
-            Ok(Address::new(NativeAddress::from_str(&address.replace('_', ""))?))
-        })(string)?;
-
-        Ok((string, address))
+        map_res(parse_address, |address: &str| -> Result<_, Error> { Ok(Self::from_str(&address.replace('_', ""))?) })(string)
     }
 }
 
 impl<N: Network> FromStr for Address<N> {
     type Err = Error;
 
-    /// Parses a string into an address.
-    #[inline]
-    fn from_str(string: &str) -> Result<Self> {
-        match Self::parse(string) {
-            Ok((remainder, object)) => {
-                // Ensure the remainder is empty.
-                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
-                // Return the object.
-                Ok(object)
-            }
-            Err(error) => bail!("Failed to parse string. {error}"),
+    /// Reads in an account address string.
+    fn from_str(address: &str) -> Result<Self, Self::Err> {
+        // Ensure the address string length is 63 characters.
+        if address.len() != 63 {
+            bail!("Invalid account address length: found {}, expected 63", address.len())
         }
+        // Decode the address string from bech32m.
+        let (hrp, data, variant) = bech32::decode(address)?;
+        if hrp != ADDRESS_PREFIX {
+            bail!("Failed to decode address: '{hrp}' is an invalid prefix")
+        } else if data.is_empty() {
+            bail!("Failed to decode address: data field is empty")
+        } else if variant != bech32::Variant::Bech32m {
+            bail!("Found an address that is not bech32m encoded: {address}");
+        }
+        // Decode the address data from u5 to u8, and into an account address.
+        Ok(Self::read_le(&Vec::from_base32(&data)?[..])?)
     }
 }
 
@@ -60,8 +63,15 @@ impl<N: Network> Debug for Address<N> {
 }
 
 impl<N: Network> Display for Address<N> {
+    /// Writes an account address as a bech32m string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.address)
+        // Convert the address to bytes.
+        let bytes = self.to_bytes_le().map_err(|_| fmt::Error)?;
+        // Encode the bytes into bech32m.
+        let string =
+            bech32::encode(ADDRESS_PREFIX, bytes.to_base32(), bech32::Variant::Bech32m).map_err(|_| fmt::Error)?;
+        // Output the string.
+        Display::fmt(&string, f)
     }
 }
 
@@ -83,12 +93,28 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new address.
             let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let address = NativeAddress::try_from(private_key)?;
+            let address = Address::try_from(private_key)?;
 
-            let expected = format!("{}", address);
+            let expected = format!("{address}");
             let (remainder, candidate) = Address::<CurrentNetwork>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
+            assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
             assert_eq!("", remainder);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_string() -> Result<()> {
+        for _ in 0..ITERATIONS {
+            // Sample a new address.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = Address::try_from(private_key)?;
+
+            // Check the string representation.
+            let candidate = format!("{expected}");
+            assert_eq!(expected, Address::from_str(&candidate)?);
+            assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
         }
         Ok(())
     }
@@ -98,12 +124,13 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new address.
             let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let address = NativeAddress::try_from(private_key)?;
+            let address = Address::try_from(private_key)?;
 
-            let candidate = Address::<CurrentNetwork>::new(address);
-            assert_eq!(format!("{address}"), format!("{candidate}"));
+            let candidate = address.to_string();
+            assert_eq!(format!("{address}"), candidate);
+            assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
 
-            let candidate_recovered = Address::<CurrentNetwork>::from_str(&format!("{candidate}")).unwrap();
+            let candidate_recovered = Address::<CurrentNetwork>::from_str(&format!("{candidate}"))?;
             assert_eq!(candidate, candidate_recovered);
         }
         Ok(())
