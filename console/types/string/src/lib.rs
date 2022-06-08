@@ -16,7 +16,9 @@
 
 mod parse;
 
-use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_types_field::Field;
+pub use snarkvm_console_types_integers::Integer;
 
 use core::marker::PhantomData;
 

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use anyhow::Result;
+
 /// Unary operator for retrieving the doubled value.
 pub trait Double {
     type Output;
@@ -25,7 +27,7 @@ pub trait Double {
 pub trait Inverse {
     type Output;
 
-    fn inverse(&self) -> Self::Output;
+    fn inverse(&self) -> Result<Self::Output>;
 }
 
 /// Unary operator for retrieving the squared value.
@@ -39,5 +41,5 @@ pub trait Square {
 pub trait SquareRoot {
     type Output;
 
-    fn square_root(&self) -> Self::Output;
+    fn square_root(&self) -> Result<Self::Output>;
 }

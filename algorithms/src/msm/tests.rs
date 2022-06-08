@@ -21,7 +21,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{
-    rand::{test_rng, UniformRand},
+    rand::{test_rng, Uniform},
     BitIteratorBE,
 };
 

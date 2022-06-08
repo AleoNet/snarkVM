@@ -19,7 +19,7 @@ use crate::{
     traits::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},

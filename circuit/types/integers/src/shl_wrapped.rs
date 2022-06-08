@@ -24,14 +24,17 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
         // Determine the variable mode.
         if self.is_constant() && rhs.is_constant() {
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_shl(rhs.eject_value().to_u32().unwrap()))
+            Integer::new(
+                Mode::Constant,
+                console::Integer::new(self.eject_value().wrapping_shl(rhs.eject_value().to_u32().unwrap())),
+            )
         } else {
             // Index of the first upper bit of rhs that we mask.
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
 
             // Perform the left shift operation by exponentiation and multiplication.
             // By masking the upper bits, we have that rhs < I::BITS.
-            // Therefore, 2^{rhs} < I::MAX.
+            // Therefore, 2^{rhs} < Integer::MAX.
 
             // Zero-extend `rhs` by `8`.
             let mut bits_le = rhs.bits_le[..first_upper_bit_index].to_vec();
@@ -43,7 +46,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
             if rhs_as_u8.is_constant() {
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
                 let shift_amount = rhs_as_u8.eject_value();
-                let mut bits_le = vec![Boolean::constant(false); shift_amount as usize];
+                let mut bits_le = vec![Boolean::constant(false); *shift_amount as usize];
 
                 bits_le.extend_from_slice(&self.bits_le);
                 bits_le.truncate(I::BITS as usize);
@@ -51,7 +54,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
                 Self { bits_le, phantom: Default::default() }
             } else {
                 // Calculate the value of the shift directly in the field.
-                // Since 2^{rhs} < I::MAX, we know that the operation will not overflow I::MAX or the field modulus.
+                // Since 2^{rhs} < Integer::MAX, we know that the operation will not overflow Integer::MAX or the field modulus.
                 let two = Field::one() + Field::one();
                 let mut shift_in_field = Field::one();
                 for bit in rhs.bits_le[..first_upper_bit_index].iter().rev() {
@@ -123,8 +126,8 @@ mod tests {
 
     fn check_shl<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
         name: &str,
-        first: I,
-        second: M,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, M>,
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -133,7 +136,8 @@ mod tests {
         let b = Integer::<Circuit, M>::new(mode_b, second);
         Circuit::scope(name, || {
             let candidate = a.shl_wrapped(&b);
-            assert_eq!(expected, candidate.eject_value());
+            assert_eq!(expected, *candidate.eject_value());
+            assert_eq!(console::Integer::new(expected), candidate.eject_value());
             assert_count!(ShlWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
             assert_output_mode!(ShlWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
@@ -141,22 +145,20 @@ mod tests {
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
-        let check_shl = |name: &str, first: I, second: M| check_shl(name, first, second, mode_a, mode_b);
-
         for i in 0..ITERATIONS {
-            let first: I = Uniform::rand(&mut test_rng());
-            let second: M = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
-            check_shl(&name, first, second);
+            check_shl::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift left by one is computed correctly.
             let name = format!("Double: {} << {} {}", mode_a, mode_b, i);
-            check_shl(&name, first, M::one());
+            check_shl::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
 
             // Check that shift left by two is computed correctly.
             let name = format!("Quadruple: {} << {} {}", mode_a, mode_b, i);
-            check_shl(&name, first, M::one() + M::one());
+            check_shl::<I, M>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
         }
     }
 
@@ -167,8 +169,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in M::MIN..=M::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, M>::new(second);
+
                 let name = format!("Shl: ({} << {})", first, second);
-                check_shl(&name, first, second, mode_a, mode_b);
+                check_shl::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }
     }

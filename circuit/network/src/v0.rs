@@ -398,12 +398,6 @@ impl Environment for AleoV0 {
         E::num_gates_in_scope()
     }
 
-    /// A helper method to recover the y-coordinate given the x-coordinate for
-    /// a twisted Edwards point, returning the affine curve point.
-    fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
-        E::affine_from_x_coordinate(x)
-    }
-
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         E::halt(message)

@@ -23,7 +23,7 @@ use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     io::{Read, Result as IoResult, Write},
-    rand::UniformRand,
+    rand::Uniform,
     serialize::*,
     FromBytes,
     ToBits,
@@ -102,7 +102,9 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self {
         let (x, y) = coordinates;
-        Self { x, y }
+        let point = Self { x, y };
+        assert!(point.is_on_curve());
+        point
     }
 
     #[inline]

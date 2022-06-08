@@ -16,7 +16,7 @@
 
 use crate::PairingEngine;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::UniformRand, serialize::*, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::{
     fmt::{Debug, Display},
@@ -42,7 +42,7 @@ pub trait ProjectiveCurve:
     + Eq
     + Hash
     + Neg<Output = Self>
-    + UniformRand
+    + Uniform
     + Zero
     + Add<Self, Output = Self>
     + Sub<Self, Output = Self>
@@ -123,7 +123,7 @@ pub trait AffineCurve:
     + Eq
     + Hash
     + Neg<Output = Self>
-    + UniformRand
+    + Uniform
     + PartialEq<Self::Projective>
     + Mul<Self::ScalarField, Output = Self::Projective>
     + Sized

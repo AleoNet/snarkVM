@@ -43,7 +43,7 @@ mod tests {
     use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_curves::AffineCurve;
     use snarkvm_fields::Zero;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 

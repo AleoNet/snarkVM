@@ -21,15 +21,15 @@ impl<N: Network> Literal<N> {
     pub fn from_bits_le(variant: u8, bits_le: &[bool]) -> Result<Self> {
         let literal = bits_le;
         let literal = match variant {
-            0 => Literal::Address(Address::new(N::affine_from_x_coordinate(
+            0 => Literal::Address(Address::new(Group::from_x_coordinate(
                 N::field_from_bits_le(literal)?,
             )?)),
             1 => match bits_le.len() {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_le.len()),
             },
-            2 => Literal::Field(Field::new(N::field_from_bits_le(literal)?)),
-            3 => Literal::Group(Group::new(N::affine_from_x_coordinate(N::field_from_bits_le(literal)?)?)),
+            2 => Literal::Field(Field::from_bits_le(literal)?),
+            3 => Literal::Group(Group::from_x_coordinate(Field::from_bits_le(literal)?)?),
             4 => Literal::I8(I8::new(i8::from_bits_le(literal)?)),
             5 => Literal::I16(I16::new(i16::from_bits_le(literal)?)),
             6 => Literal::I32(I32::new(i32::from_bits_le(literal)?)),
@@ -40,7 +40,7 @@ impl<N: Network> Literal<N> {
             11 => Literal::U32(U32::new(u32::from_bits_le(literal)?)),
             12 => Literal::U64(U64::new(u64::from_bits_le(literal)?)),
             13 => Literal::U128(U128::new(u128::from_bits_le(literal)?)),
-            14 => Literal::Scalar(Scalar::new(N::scalar_from_bits_le(literal)?)),
+            14 => Literal::Scalar(Scalar::from_bits_le(literal)?),
             15 => {
                 let buffer = Vec::<u8>::from_bits_le(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
@@ -60,15 +60,15 @@ impl<N: Network> Literal<N> {
     pub fn from_bits_be(variant: u8, bits_be: &[bool]) -> Result<Self> {
         let literal = bits_be;
         let literal = match variant {
-            0 => Literal::Address(Address::new(N::affine_from_x_coordinate(
-                N::field_from_bits_be(literal)?,
+            0 => Literal::Address(Address::new(Group::from_x_coordinate(
+                Field::from_bits_be(literal)?,
             )?)),
             1 => match bits_be.len() {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_be.len()),
             },
-            2 => Literal::Field(Field::new(N::field_from_bits_be(literal)?)),
-            3 => Literal::Group(Group::new(N::affine_from_x_coordinate(N::field_from_bits_be(literal)?)?)),
+            2 => Literal::Field(Field::from_bits_be(literal)?),
+            3 => Literal::Group(Group::from_x_coordinate(Field::from_bits_be(literal)?)?),
             4 => Literal::I8(I8::new(i8::from_bits_be(literal)?)),
             5 => Literal::I16(I16::new(i16::from_bits_be(literal)?)),
             6 => Literal::I32(I32::new(i32::from_bits_be(literal)?)),
@@ -79,7 +79,7 @@ impl<N: Network> Literal<N> {
             11 => Literal::U32(U32::new(u32::from_bits_be(literal)?)),
             12 => Literal::U64(U64::new(u64::from_bits_be(literal)?)),
             13 => Literal::U128(U128::new(u128::from_bits_be(literal)?)),
-            14 => Literal::Scalar(Scalar::new(N::scalar_from_bits_be(literal)?)),
+            14 => Literal::Scalar(Scalar::from_bits_be(literal)?),
             15 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
                 match buffer.len() <= N::MAX_STRING_BYTES as usize {
@@ -100,7 +100,7 @@ impl<N: Network> Literal<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{rand::Rng, test_rng, UniformRand};
+    use snarkvm_utilities::{rand::Rng, test_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 
@@ -121,37 +121,35 @@ mod tests {
             let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
 
             // Address
-            check_serialization(Literal::<CurrentNetwork>::Address(Address::new(NativeAddress::try_from(
-                private_key,
-            )?)))?;
+            check_serialization(Literal::<CurrentNetwork>::Address(Address::try_from(private_key)?))?;
             // Boolean
-            check_serialization(Literal::<CurrentNetwork>::Boolean(Boolean::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::Boolean(Boolean::new(Uniform::rand(rng))))?;
             // Field
-            check_serialization(Literal::<CurrentNetwork>::Field(Field::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::Field(Uniform::rand(rng)))?;
             // Group
-            check_serialization(Literal::<CurrentNetwork>::Group(Group::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::Group(Uniform::rand(rng)))?;
             // I8
-            check_serialization(Literal::<CurrentNetwork>::I8(I8::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::I8(I8::new(Uniform::rand(rng))))?;
             // I16
-            check_serialization(Literal::<CurrentNetwork>::I16(I16::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::I16(I16::new(Uniform::rand(rng))))?;
             // I32
-            check_serialization(Literal::<CurrentNetwork>::I32(I32::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::I32(I32::new(Uniform::rand(rng))))?;
             // I64
-            check_serialization(Literal::<CurrentNetwork>::I64(I64::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::I64(I64::new(Uniform::rand(rng))))?;
             // I128
-            check_serialization(Literal::<CurrentNetwork>::I128(I128::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::I128(I128::new(Uniform::rand(rng))))?;
             // U8
-            check_serialization(Literal::<CurrentNetwork>::U8(U8::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::U8(U8::new(Uniform::rand(rng))))?;
             // U16
-            check_serialization(Literal::<CurrentNetwork>::U16(U16::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::U16(U16::new(Uniform::rand(rng))))?;
             // U32
-            check_serialization(Literal::<CurrentNetwork>::U32(U32::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::U32(U32::new(Uniform::rand(rng))))?;
             // U64
-            check_serialization(Literal::<CurrentNetwork>::U64(U64::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::U64(U64::new(Uniform::rand(rng))))?;
             // U128
-            check_serialization(Literal::<CurrentNetwork>::U128(U128::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::U128(U128::new(Uniform::rand(rng))))?;
             // Scalar
-            check_serialization(Literal::<CurrentNetwork>::Scalar(Scalar::new(UniformRand::rand(rng))))?;
+            check_serialization(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let string: String = (0..(CurrentNetwork::MAX_STRING_BYTES) / 4).map(|_| rng.gen::<char>()).collect();

@@ -65,6 +65,8 @@ use snarkvm_circuit_environment::{
     count,
     output_mode,
 };
+#[cfg(test)]
+use snarkvm_utilities::{test_rng, Uniform};
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
@@ -82,8 +84,20 @@ impl<E: Environment, I: IntegerType> IntegerTrait<I, U8<E>, U16<E>, U32<E>> for 
 
 impl<E: Environment, I: IntegerType> IntegerCore<I> for Integer<E, I> {}
 
+// TODO (@pranav) Document
+impl<E: Environment, I: IntegerType> Integer<E, I> {
+    pub fn size_in_bits() -> u16 {
+        I::BITS as u16
+    }
+
+    fn cast_as_dual(self) -> Integer<E, I::Dual> {
+        Integer::<E, I::Dual> { bits_le: self.bits_le, phantom: Default::default() }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
-    type Primitive = I;
+    type Primitive = console::Integer<E::Network, I>;
 
     /// Initializes a new integer.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
@@ -97,69 +111,80 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
     }
 }
 
-// TODO (@pranav) Document
-impl<E: Environment, I: IntegerType> Integer<E, I> {
-    pub fn size_in_bits() -> u16 {
-        I::BITS as u16
-    }
-
-    fn cast_as_dual(self) -> Integer<E, I::Dual> {
-        Integer::<E, I::Dual> { bits_le: self.bits_le, phantom: Default::default() }
-    }
-}
-
+#[cfg(console)]
 impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
-    type Primitive = I;
+    type Primitive = console::Integer<E::Network, I>;
 
     /// Ejects the mode of the integer.
     fn eject_mode(&self) -> Mode {
         self.bits_le.eject_mode()
     }
 
-    /// Ejects the integer as a constant integer value.
+    /// Ejects the integer circuit as a console integer value.
     fn eject_value(&self) -> Self::Primitive {
-        self.bits_le.iter().rev().fold(I::zero(), |value, bit| match bit.eject_value() {
-            true => (value.wrapping_shl(1)) ^ I::one(),
-            false => (value.wrapping_shl(1)) ^ I::zero(),
+        self.bits_le.iter().rev().fold(console::Integer::zero(), |value, bit| match bit.eject_value() {
+            true => console::Integer::new((value.wrapping_shl(1)) ^ I::one()),
+            false => console::Integer::new((value.wrapping_shl(1)) ^ I::zero()),
         })
     }
 }
 
+#[cfg(console)]
 impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
-    type Environment = E;
-
     /// Parses a string into an integer circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the negative sign '-' from the string.
-        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.unwrap_or_default().to_string())(string)?;
-        // Parse the digits from the string.
-        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
-        // Combine the sign and primitive.
-        let primitive = negation + primitive;
-        // Parse the value from the string.
-        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        // Parse the integer from the string.
+        let (string, integer) = console::Integer::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
         match mode {
-            Some((_, mode)) => Ok((string, Self::new(mode, value))),
-            None => Ok((string, Self::new(Mode::Constant, value))),
+            Some((_, mode)) => Ok((string, Integer::new(mode, integer))),
+            None => Ok((string, Integer::new(Mode::Constant, integer))),
         }
     }
 }
 
+#[cfg(console)]
+impl<E: Environment, I: IntegerType> FromStr for Integer<E, I> {
+    type Err = Error;
+
+    /// Parses a string into an integer circuit.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment, I: IntegerType> TypeName for Integer<E, I> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        I::type_name()
+        console::Integer::<E::Network, I>::type_name()
     }
 }
 
+#[cfg(console)]
+impl<E: Environment, I: IntegerType> Debug for Integer<E, I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment, I: IntegerType> Display for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -197,7 +222,7 @@ mod tests {
         num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
-            let expected: I = Uniform::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Integer::<Circuit, I>::new(mode, expected);
@@ -207,8 +232,8 @@ mod tests {
             })
         }
         // Check that the minimum and maximum integer bounds are correct.
-        assert_eq!(I::MIN, Integer::<Circuit, I>::new(mode, I::MIN).eject_value());
-        assert_eq!(I::MAX, Integer::<Circuit, I>::new(mode, I::MAX).eject_value());
+        assert_eq!(console::Integer::MIN, Integer::<Circuit, I>::new(mode, console::Integer::MIN).eject_value());
+        assert_eq!(console::Integer::MAX, Integer::<Circuit, I>::new(mode, console::Integer::MAX).eject_value());
     }
 
     fn check_parse<I: IntegerType>(
@@ -219,7 +244,7 @@ mod tests {
         num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
-            let value: I = Uniform::rand(&mut test_rng());
+            let value = Uniform::rand(&mut test_rng());
             let expected = Integer::<Circuit, I>::new(mode, value);
 
             Circuit::scope(format!("Parse {mode}"), || {
@@ -234,15 +259,15 @@ mod tests {
 
     fn check_display<I: IntegerType>() {
         // Constant
-        let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
+        let candidate = Integer::<Circuit, I>::new(Mode::Constant, console::Integer::one() + console::Integer::one());
         assert_eq!(format!("2{}.constant", I::type_name()), format!("{}", candidate));
 
         // Public
-        let candidate = Integer::<Circuit, I>::new(Mode::Public, I::one() + I::one());
+        let candidate = Integer::<Circuit, I>::new(Mode::Public, console::Integer::one() + console::Integer::one());
         assert_eq!(format!("2{}.public", I::type_name()), format!("{}", candidate));
 
         // Private
-        let candidate = Integer::<Circuit, I>::new(Mode::Private, I::one() + I::one());
+        let candidate = Integer::<Circuit, I>::new(Mode::Private, console::Integer::one() + console::Integer::one());
         assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
     }
 

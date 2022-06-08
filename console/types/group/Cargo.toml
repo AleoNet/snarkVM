@@ -10,6 +10,10 @@ edition = "2021"
 path = "../../network"
 version = "0.7.5"
 
+[dependencies.snarkvm-console-types-field]
+path = "../field"
+version = "0.7.5"
+
 [dependencies.snarkvm-console-types-scalar]
 path = "../scalar"
 version = "0.7.5"

@@ -47,7 +47,6 @@ impl<E: Environment> Equal<Self> for Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -56,8 +55,8 @@ mod tests {
         // Constant == Constant
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let a = Uniform::rand(&mut test_rng());
+            let b = Uniform::rand(&mut test_rng());
 
             let a = Group::<Circuit>::new(Mode::Constant, a);
             let b = Group::<Circuit>::new(Mode::Constant, b);
@@ -80,8 +79,8 @@ mod tests {
         // Constant == Public
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let a = Uniform::rand(&mut test_rng());
+            let b = Uniform::rand(&mut test_rng());
 
             let a = Group::<Circuit>::new(Mode::Constant, a);
             let b = Group::<Circuit>::new(Mode::Public, b);
@@ -104,8 +103,8 @@ mod tests {
         // Public == Constant
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let a = Uniform::rand(&mut test_rng());
+            let b = Uniform::rand(&mut test_rng());
 
             let a = Group::<Circuit>::new(Mode::Public, a);
             let b = Group::<Circuit>::new(Mode::Constant, b);
@@ -128,8 +127,8 @@ mod tests {
         // Public == Public
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let a = Uniform::rand(&mut test_rng());
+            let b = Uniform::rand(&mut test_rng());
 
             let a = Group::<Circuit>::new(Mode::Public, a);
             let b = Group::<Circuit>::new(Mode::Public, b);
@@ -152,8 +151,8 @@ mod tests {
         // Private == Private
         for i in 0..ITERATIONS {
             // Sample two random elements.
-            let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let a = Uniform::rand(&mut test_rng());
+            let b = Uniform::rand(&mut test_rng());
 
             let a = Group::<Circuit>::new(Mode::Private, a);
             let b = Group::<Circuit>::new(Mode::Private, b);

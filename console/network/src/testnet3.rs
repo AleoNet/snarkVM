@@ -103,28 +103,13 @@ impl Testnet3 {
 impl Network for Testnet3 {
     type Affine = EdwardsAffine;
     type AffineParameters = EdwardsParameters;
+    type BigInteger = <Self::Field as PrimeField>::BigInteger;
     type Field = <Self::Affine as AffineCurve>::BaseField;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
 
     /// The network ID.
     const ID: u16 = 3;
-
-    /// A helper method to recover the y-coordinate given the x-coordinate for
-    /// a twisted Edwards point, returning the affine curve point.
-    fn affine_from_x_coordinate(x: Self::Field) -> Result<Self::Affine> {
-        if let Some(element) = Self::Affine::from_x_coordinate(x, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(element);
-            }
-        }
-        if let Some(element) = Self::Affine::from_x_coordinate(x, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(element);
-            }
-        }
-        bail!("Failed to recover an affine group from an x-coordinate of {x}")
-    }
 
     /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
     /// A helper method to recover a field element from **little-endian** bits.
@@ -140,22 +125,6 @@ impl Network for Testnet3 {
         let mut bits = bits.to_vec();
         bits.reverse();
         Self::field_from_bits_le(&bits)
-    }
-
-    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
-    /// A helper method to recover a scalar from **little-endian** bits.
-    fn scalar_from_bits_le(bits: &[bool]) -> Result<Self::Scalar> {
-        use snarkvm_utilities::FromBits;
-        Self::Scalar::from_repr(<Self::Scalar as PrimeField>::BigInteger::from_bits_le(bits)?)
-            .ok_or_else(|| anyhow!("Invalid scalar from bits"))
-    }
-
-    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
-    /// A helper method to recover a scalar from **big-endian** bits.
-    fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar> {
-        let mut bits = bits.to_vec();
-        bits.reverse();
-        Self::scalar_from_bits_le(&bits)
     }
 
     /// Returns the balance commitment domain as a constant field element.

@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon2, BHP512};
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 

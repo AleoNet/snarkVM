@@ -28,7 +28,7 @@ use snarkvm_curves::{
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
-    rand::UniformRand,
+    rand::Uniform,
     serialize::*,
     FromBits,
     FromBytes,

@@ -18,7 +18,7 @@ use super::*;
 use snarkvm_console_algorithms::{Poseidon, BHP1024, BHP512};
 use snarkvm_console_network::{Network, Testnet3};
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::{test_rng, ToBits, UniformRand};
+use snarkvm_utilities::{test_rng, ToBits, Uniform};
 
 type CurrentNetwork = Testnet3;
 
@@ -430,7 +430,7 @@ fn test_merkle_tree_poseidon() -> Result<()> {
         let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
 
         let create_leaves =
-            |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
+            |num_leaves| (0..num_leaves).map(|_| vec![Uniform::rand(&mut test_rng())]).collect::<Vec<_>>();
 
         for i in 0..ITERATIONS {
             for j in 0..ITERATIONS {
@@ -496,8 +496,7 @@ fn test_merkle_tree_depth_2_poseidon() -> Result<()> {
 
     let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
     let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
-    let create_leaves =
-        |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
+    let create_leaves = |num_leaves| (0..num_leaves).map(|_| vec![Uniform::rand(&mut test_rng())]).collect::<Vec<_>>();
 
     // Check the depth-2 Merkle tree.
     check_merkle_tree_depth_2::<LH, PH>(&leaf_hasher, &path_hasher, &create_leaves(4))
@@ -527,8 +526,7 @@ fn test_merkle_tree_depth_3_poseidon() -> Result<()> {
 
     let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
     let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
-    let create_leaves =
-        |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
+    let create_leaves = |num_leaves| (0..num_leaves).map(|_| vec![Uniform::rand(&mut test_rng())]).collect::<Vec<_>>();
 
     // Check the depth-3 Merkle tree.
     check_merkle_tree_depth_3_padded::<LH, PH>(&leaf_hasher, &path_hasher, &create_leaves(4), &create_leaves(1))
@@ -558,8 +556,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 
     let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
     let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
-    let create_leaves =
-        |num_leaves| (0..num_leaves).map(|_| vec![UniformRand::rand(&mut test_rng())]).collect::<Vec<_>>();
+    let create_leaves = |num_leaves| (0..num_leaves).map(|_| vec![Uniform::rand(&mut test_rng())]).collect::<Vec<_>>();
 
     // Check the depth-4 Merkle tree.
     check_merkle_tree_depth_4_padded::<LH, PH>(&leaf_hasher, &path_hasher, &create_leaves(4), &create_leaves(2))
@@ -570,7 +567,7 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 #[test]
 fn test_profiler() -> Result<()> {
     use snarkvm_console_network::{Network, Testnet3};
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const DEPTH: u8 = 32;
     const NUM_LEAVES: &[usize] = &[1000, 10000];

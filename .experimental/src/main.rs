@@ -23,7 +23,7 @@ use snarkvm_algorithms::snark::marlin::Proof;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_experimental::{input, output, snark};
 use snarkvm_fields::Zero;
-use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits, Uniform};
 
 use anyhow::{bail, Error, Result};
 use console::account::ComputeKey;
@@ -226,7 +226,7 @@ fn tcm<A: circuit::Aleo, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> Result<(A::BaseField, A::Affine, A::BaseField, A::Affine)> {
     // Sample a random nonce.
-    let r_tcm = UniformRand::rand(rng);
+    let r_tcm = Uniform::rand(rng);
     // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
     // TODO (howardwu): Domain separator.
     // let tsk = A::Network::hash_to_scalar_psd2(&[A::Network::tvk_domain(), r_tcm])?;

@@ -16,7 +16,7 @@
 
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
-    rand::UniformRand,
+    rand::Uniform,
     serialize::{SerializationError, *},
     FromBytes,
     ToBits,
@@ -338,7 +338,7 @@ impl<P: Fp2Parameters> Neg for Fp2<P> {
 impl<P: Fp2Parameters> Distribution<Fp2<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Fp2<P> {
-        Fp2::new(UniformRand::rand(rng), UniformRand::rand(rng))
+        Fp2::new(Uniform::rand(rng), Uniform::rand(rng))
     }
 }
 

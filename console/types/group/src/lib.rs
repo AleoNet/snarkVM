@@ -15,12 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod arithmetic;
-// mod one;
+mod from_x_coordinate;
+mod from_xy_coordinate;
 mod parse;
+mod random;
+mod to_x_coordinate;
+mod to_y_coordinate;
 mod zero;
 
-use snarkvm_console_network::prelude::*;
-use snarkvm_console_types_scalar::Scalar;
+pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_types_field::Field;
+pub use snarkvm_console_types_scalar::Scalar;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Group<N: Network> {

@@ -24,7 +24,7 @@ use snarkvm_utilities::{
     FromBytesDeserializer,
     ToBytes,
     ToBytesSerializer,
-    UniformRand,
+    Uniform,
 };
 
 use anyhow::{anyhow, Result};
@@ -139,7 +139,7 @@ impl<N: Network> BlockHeader<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Instantiate the circuit.
-        let mut circuit = PoSWCircuit::<N>::new(block_template, UniformRand::rand(rng))?;
+        let mut circuit = PoSWCircuit::<N>::new(block_template, Uniform::rand(rng))?;
 
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.

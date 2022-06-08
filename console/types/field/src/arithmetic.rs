@@ -123,10 +123,10 @@ impl<N: Network> Inverse for Field<N> {
 
     /// Returns the `inverse` of `self`.
     #[inline]
-    fn inverse(&self) -> Self::Output {
+    fn inverse(&self) -> Result<Self::Output> {
         match self.field.inverse() {
-            Some(inverse) => Field::new(inverse),
-            None => N::halt(format!("Failed to invert a field element: {}", self)),
+            Some(inverse) => Ok(Field::new(inverse)),
+            None => bail!("Failed to invert a field element: {self}"),
         }
     }
 }
@@ -146,10 +146,10 @@ impl<N: Network> SquareRoot for Field<N> {
 
     /// Returns the `square_root` of `self`.
     #[inline]
-    fn square_root(&self) -> Self::Output {
+    fn square_root(&self) -> Result<Self::Output> {
         match self.field.sqrt() {
-            Some(sqrt) => Field::new(sqrt),
-            None => N::halt(format!("Failed to square root a field element: {}", self)),
+            Some(sqrt) => Ok(Field::new(sqrt)),
+            None => bail!("Failed to square root a field element: {self}"),
         }
     }
 }

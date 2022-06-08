@@ -47,7 +47,7 @@ impl<N: Network> Record<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 
@@ -59,7 +59,7 @@ mod tests {
     fn test_randomizers_num_outputs() {
         for _ in 0..ITERATIONS {
             // Sample a random record view key.
-            let record_view_key = UniformRand::rand(&mut test_rng());
+            let record_view_key = Uniform::rand(&mut test_rng());
             // Compute the randomizers.
             let randomizers =
                 CurrentNetwork::hash_many_psd2(&[CurrentNetwork::encryption_domain(), record_view_key], 2);

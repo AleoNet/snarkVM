@@ -20,7 +20,7 @@ impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     fn zero() -> Self {
-        Integer::constant(I::zero())
+        Integer::constant(console::Integer::zero())
     }
 
     fn is_zero(&self) -> Self::Boolean {
@@ -53,7 +53,7 @@ mod tests {
         Circuit::scope("Zero", || {
             assert_scope!(0, 0, 0, 0);
             let candidate = Integer::<Circuit, I>::zero();
-            assert_eq!(I::zero(), candidate.eject_value());
+            assert_eq!(console::Integer::zero(), candidate.eject_value());
             assert_count!(Zero<Boolean>() => Integer<I>, &());
             assert_output_mode!(Zero<Boolean>() => Integer<I>, &(), candidate);
         });

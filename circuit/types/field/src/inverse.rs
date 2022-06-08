@@ -45,8 +45,8 @@ impl<E: Environment> Inverse for &Field<E> {
 
     fn inverse(self) -> Self::Output {
         let inverse = witness!(|self| match self.inverse() {
-            Some(inverse) => inverse,
-            None => E::BaseField::zero(),
+            Ok(inverse) => inverse,
+            _ => console::Field::zero(),
         });
 
         // Ensure `self` * `self^(-1)` == 1.
@@ -82,16 +82,15 @@ impl<E: Environment> OutputMode<dyn Inverse<Output = Field<E>>> for Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1_000;
 
     fn check_inverse(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
             // Compute it's inverse, or skip this iteration if it does not natively exist.
-            if let Some(expected) = given.inverse() {
+            if let Ok(expected) = given.inverse() {
                 let candidate = Field::<Circuit>::new(mode, given);
 
                 Circuit::scope(name, || {
@@ -114,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_zero_inverse_fails() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         let result = std::panic::catch_unwind(|| Field::<Circuit>::zero().inverse());
         assert!(result.is_err());

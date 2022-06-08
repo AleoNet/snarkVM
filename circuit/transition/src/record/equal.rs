@@ -39,7 +39,7 @@ impl<A: Aleo> Equal<Self> for Record<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 100;
 
@@ -48,12 +48,12 @@ mod tests {
         let rng = &mut test_rng();
 
         Record::<Circuit> {
-            owner: Field::new(mode, UniformRand::rand(rng)),
-            balance: Field::new(mode, UniformRand::rand(rng)),
-            data: Field::new(mode, UniformRand::rand(rng)),
-            nonce: Group::new(mode, UniformRand::rand(rng)),
-            mac: Field::new(mode, UniformRand::rand(rng)),
-            bcm: Group::new(mode, UniformRand::rand(rng)),
+            owner: Field::new(mode, Uniform::rand(rng)),
+            balance: Field::new(mode, Uniform::rand(rng)),
+            data: Field::new(mode, Uniform::rand(rng)),
+            nonce: Group::new(mode, Uniform::rand(rng)),
+            mac: Field::new(mode, Uniform::rand(rng)),
+            bcm: Group::new(mode, Uniform::rand(rng)),
         }
     }
 

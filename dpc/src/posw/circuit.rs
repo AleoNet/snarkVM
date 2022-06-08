@@ -155,7 +155,7 @@ mod test {
     use crate::{testnet1::Testnet1, testnet2::Testnet2, PoSWProof};
     use snarkvm_algorithms::snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode};
     use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{FromBytes, ToBytes, Uniform};
 
     use rand::{rngs::ThreadRng, thread_rng, CryptoRng, Rng};
     use std::time::Instant;
@@ -192,7 +192,7 @@ mod test {
         };
 
         // Sample a random nonce.
-        let nonce = UniformRand::rand(rng);
+        let nonce = Uniform::rand(rng);
 
         // Construct the block template.
         let block = N::genesis_block();

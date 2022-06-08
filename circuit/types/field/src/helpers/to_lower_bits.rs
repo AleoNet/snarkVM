@@ -87,28 +87,20 @@ impl<E: Environment> OutputMode<dyn ToLowerBits<Boolean = Boolean<E>>> for Field
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBytes};
 
     const ITERATIONS: u64 = 100;
 
     #[rustfmt::skip]
-    fn check_to_lower_k_bits_le<I: IntegerType + Unsigned + ToBytes>(
+    fn check_to_lower_k_bits_le<I: IntegerType + Unsigned>(
         mode: Mode,
     ) {
-        let size_in_bits = <Circuit as Environment>::BaseField::size_in_bits();
-        let size_in_bytes = (size_in_bits + 7) / 8;
-
         for i in 0..ITERATIONS {
             // Sample a random unsigned integer.
             let value: I = Uniform::rand(&mut test_rng());
-            let expected = value.to_bytes_le().unwrap().to_bits_le();
+            let expected = value.to_bits_le();
 
             // Construct the unsigned integer as a field element.
-            let candidate = {
-                let mut field_bytes = bytes_from_bits_le(&expected);
-                field_bytes.resize(size_in_bytes, 0u8); // Pad up to byte size.
-                Field::<Circuit>::new(mode, FromBytes::from_bytes_le(&field_bytes).unwrap())
-            };
+            let candidate = Field::<Circuit>::new(mode, console::Field::from_bits_le(&expected).unwrap());
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_lower_bits_le(I::BITS as usize);

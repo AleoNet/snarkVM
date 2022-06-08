@@ -21,7 +21,10 @@ impl<E: Environment> Group<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     pub fn from_x_coordinate(x: Field<E>) -> Self {
         // Derive the y-coordinate.
-        let y = witness!(|x| E::affine_from_x_coordinate(x).to_y_coordinate());
+        let y = witness!(|x| match console::Group::from_x_coordinate(x) {
+            Ok(point) => point.to_y_coordinate(),
+            Err(_) => console::Field::zero(),
+        });
 
         Self::from_xy_coordinates(x, y)
     }
@@ -31,7 +34,6 @@ impl<E: Environment> Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -44,12 +46,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Verify the recovery method is behaving correctly.
-            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
-            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
-            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
+            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Inject the x-coordinate.
             let x_coordinate = Field::new(mode, point.to_x_coordinate());

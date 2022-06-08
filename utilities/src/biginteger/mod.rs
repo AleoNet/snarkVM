@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{rand::UniformRand, FromBits, FromBytes, ToBits, ToBytes};
+use crate::{rand::Uniform, FromBits, FromBytes, ToBits, ToBytes};
 
 use num_bigint::BigUint;
 use std::fmt::{Debug, Display};
@@ -46,7 +46,7 @@ pub trait BigInteger:
     + Sized
     + Sync
     + 'static
-    + UniformRand
+    + Uniform
     + AsMut<[u64]>
     + AsRef<[u64]>
     + From<u64>

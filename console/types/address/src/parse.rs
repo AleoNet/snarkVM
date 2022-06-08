@@ -29,7 +29,9 @@ impl<N: Network> Parser for Address<N> {
         ));
 
         // Parse the address from the string.
-        map_res(parse_address, |address: &str| -> Result<_, Error> { Ok(Self::from_str(&address.replace('_', ""))?) })(string)
+        map_res(parse_address, |address: &str| -> Result<_, Error> { Ok(Self::from_str(&address.replace('_', ""))?) })(
+            string,
+        )
     }
 }
 

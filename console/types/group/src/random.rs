@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use super::*;
 
-pub trait StringTrait:
-    Clone + Display + Eject<Primitive = String> + Inject<Primitive = String> + FromBits + Parser + ToBits + TypeName
-{
+impl<N: Network> Distribution<Group<N>> for Standard {
+    #[inline]
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Group<N> {
+        Group::new(Uniform::rand(rng))
+    }
 }

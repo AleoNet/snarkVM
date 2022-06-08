@@ -42,7 +42,6 @@ impl<E: Environment> ToField for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     fn check_to_field(name: &str, expected: &[bool], candidate: &Scalar<Circuit>) {
         Circuit::scope(name, || {
@@ -55,7 +54,7 @@ mod tests {
             assert_eq!(<Circuit as Environment>::BaseField::size_in_bits(), candidate_bits_le.len());
 
             // Ensure all scalar bits match with the expected result.
-            let num_scalar_bits = <Circuit as Environment>::ScalarField::size_in_bits();
+            let num_scalar_bits = console::Scalar::<<Circuit as Environment>::Network>::size_in_bits();
             for (expected_bit, candidate_bit) in expected.iter().zip_eq(&candidate_bits_le[0..num_scalar_bits]) {
                 assert_eq!(expected_bit, candidate_bit);
             }
@@ -70,21 +69,21 @@ mod tests {
 
     #[test]
     fn test_to_field_constant() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_field("Constant", &expected.to_bits_le(), &candidate);
     }
 
     #[test]
     fn test_to_field_public() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_field("Public", &expected.to_bits_le(), &candidate);
     }
 
     #[test]
     fn test_to_field_private() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_field("Private", &expected.to_bits_le(), &candidate);
     }
@@ -101,7 +100,7 @@ mod tests {
             }
         }
 
-        let one = <Circuit as Environment>::ScalarField::one();
+        let one = console::Scalar::<<Circuit as Environment>::Network>::one();
 
         // Constant
         check_to_field_one(Scalar::<Circuit>::new(Mode::Constant, one));

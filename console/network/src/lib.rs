@@ -36,6 +36,7 @@ use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::MerkleTree;
 use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
+use snarkvm_utilities::BigInteger;
 
 use anyhow::Result;
 use core::{fmt, hash};
@@ -50,8 +51,9 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
         + TwistedEdwardsParameters<BaseField = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
-    type Field: PrimeField + SquareRootField + Copy;
-    type Scalar: PrimeField + Copy;
+    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
+    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
+    type BigInteger: BigInteger;
 
     /// The network ID.
     const ID: u16;
@@ -77,10 +79,6 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// The maximum number of bytes allowed in a string.
     const MAX_STRING_BYTES: u32 = u8::MAX as u32;
 
-    /// A helper method to recover the y-coordinate given the x-coordinate for
-    /// a twisted Edwards point, returning the affine curve point.
-    fn affine_from_x_coordinate(x: Self::Field) -> Result<Self::Affine>;
-
     /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
     /// A helper method to recover a field element from **little-endian** bits.
     fn field_from_bits_le(bits: &[bool]) -> Result<Self::Field>;
@@ -88,14 +86,6 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
     /// A helper method to recover a field element from **big-endian** bits.
     fn field_from_bits_be(bits: &[bool]) -> Result<Self::Field>;
-
-    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
-    /// A helper method to recover a scalar from **little-endian** bits.
-    fn scalar_from_bits_le(bits: &[bool]) -> Result<Self::Scalar>;
-
-    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
-    /// A helper method to recover a scalar from **big-endian** bits.
-    fn scalar_from_bits_be(bits: &[bool]) -> Result<Self::Scalar>;
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Self::Field;

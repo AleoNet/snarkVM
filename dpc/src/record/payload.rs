@@ -115,7 +115,7 @@ impl<N: Network> Default for Payload<N> {
 mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::Uniform;
 
     use rand::thread_rng;
 

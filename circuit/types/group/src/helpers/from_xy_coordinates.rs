@@ -27,8 +27,8 @@ impl<E: Environment> Group<E> {
         // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
         //
         {
-            let a = Field::constant(E::AffineParameters::COEFF_A);
-            let d = Field::constant(E::AffineParameters::COEFF_D);
+            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
+            let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
 
             let x2 = x.square();
             let y2 = y.square();
@@ -49,7 +49,6 @@ impl<E: Environment> Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -62,7 +61,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Inject the x- and y-coordinates.
             let x_coordinate = Field::new(mode, point.to_x_coordinate());

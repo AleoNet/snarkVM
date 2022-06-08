@@ -48,7 +48,6 @@ impl<E: Environment> ToBits for &StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as TBits};
 
     use rand::Rng;
 
@@ -63,14 +62,14 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
 
-            let candidate = StringType::<Circuit>::new(mode, expected.clone());
+            let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
                 assert_eq!((expected_num_bytes * 8) as usize, candidate.len());
 
                 // Ensure every bit matches.
-                for (expected_bit, candidate_bit) in expected.as_bytes().to_bits_le().iter().zip_eq(candidate.iter()) {
+                for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
                     assert_eq!(expected_bit, &candidate_bit.eject_value());
                 }
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -88,14 +87,14 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
 
-            let candidate = StringType::<Circuit>::new(mode, expected.clone());
+            let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected));
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_be();
                 assert_eq!((expected_num_bytes * 8) as usize, candidate.len());
 
                 // Ensure every bit matches.
-                for (expected_bit, candidate_bit) in expected.as_bytes().to_bits_be().iter().zip_eq(candidate.iter()) {
+                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
                     assert_eq!(expected_bit, &candidate_bit.eject_value());
                 }
                 assert_scope!(num_constants, num_public, num_private, num_constraints);

@@ -25,16 +25,16 @@ impl<N: Network> Parser for Group<N> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the group from the string.
-        let (string, group): (&str, N::Affine) = map_res(tag(Self::type_name()), |_| {
+        let (string, group): (&str, Self) = map_res(tag(Self::type_name()), |_| {
             let x_coordinate = primitive.replace('_', "").parse()?;
             // Recover and negate the group element if the negative sign was present.
             match negation {
-                true => Ok(-N::affine_from_x_coordinate(x_coordinate)?),
-                false => N::affine_from_x_coordinate(x_coordinate),
+                true => Ok(-Group::from_x_coordinate(Field::new(x_coordinate))?),
+                false => Group::from_x_coordinate(Field::new(x_coordinate)),
             }
         })(string)?;
 
-        Ok((string, Group::new(group)))
+        Ok((string, group))
     }
 }
 
@@ -123,21 +123,4 @@ mod tests {
         let candidate = Group::<CurrentNetwork>::new(zero);
         assert_eq!("0group", &format!("{}", candidate));
     }
-
-    // #[test]
-    // fn test_display_one() {
-    //     let one = <CurrentNetwork as Network>::Affine::prime_subgroup_generator();
-    //
-    //     let candidate = Group::<CurrentNetwork>::new(one);
-    //     assert_eq!("1group", &format!("{}", candidate));
-    // }
-    //
-    // #[test]
-    // fn test_display_two() {
-    //     let one = <CurrentNetwork as Network>::Projective::prime_subgroup_generator();
-    //     let two = (one + one).to_affine();
-    //
-    //     let candidate = Group::<CurrentNetwork>::new(two);
-    //     assert_eq!("2group", &format!("{}", candidate));
-    // }
 }

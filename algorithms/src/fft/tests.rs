@@ -18,7 +18,7 @@ use crate::fft::{domain::*, DensePolynomial};
 use rand::Rng;
 use snarkvm_curves::bls12_377::{Fr, G1Projective};
 use snarkvm_fields::{FftField, Field, One, Zero};
-use snarkvm_utilities::{rand::UniformRand, test_rng};
+use snarkvm_utilities::{rand::Uniform, test_rng};
 
 #[test]
 fn vanishing_polynomial_evaluation() {
@@ -284,11 +284,7 @@ fn parallel_fft_consistency() {
 
 #[test]
 fn fft_composition() {
-    fn test_fft_composition<
-        F: FftField,
-        T: crate::fft::DomainCoeff<F> + UniformRand + core::fmt::Debug + Eq,
-        R: Rng,
-    >(
+    fn test_fft_composition<F: FftField, T: crate::fft::DomainCoeff<F> + Uniform + core::fmt::Debug + Eq, R: Rng>(
         rng: &mut R,
         max_coeffs: usize,
     ) {

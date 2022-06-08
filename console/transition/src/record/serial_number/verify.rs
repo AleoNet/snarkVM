@@ -99,7 +99,7 @@ mod tests {
     use super::*;
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 
@@ -111,8 +111,8 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
-            let message = UniformRand::rand(rng);
-            let commitment = UniformRand::rand(rng);
+            let message = Uniform::rand(rng);
+            let commitment = Uniform::rand(rng);
 
             let sk_sig = private_key.sk_sig();
             let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();

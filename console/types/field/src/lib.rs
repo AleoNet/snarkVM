@@ -15,11 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod arithmetic;
+mod compare;
+mod from_bits;
 mod one;
 mod parse;
+mod random;
+mod size_in_bits;
+mod to_bits;
 mod zero;
 
-use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network::prelude::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Field<N: Network> {

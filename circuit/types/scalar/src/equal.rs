@@ -38,7 +38,6 @@ impl<E: Environment> Equal<Self> for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     fn check_is_equal(
         name: &str,
@@ -60,8 +59,8 @@ mod tests {
 
     #[test]
     fn test_constant_equals_constant() {
-        let first = UniformRand::rand(&mut test_rng());
-        let second = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -78,8 +77,8 @@ mod tests {
 
     #[test]
     fn test_constant_equals_public() {
-        let first = UniformRand::rand(&mut test_rng());
-        let second = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -96,8 +95,8 @@ mod tests {
 
     #[test]
     fn test_public_equals_constant() {
-        let first = UniformRand::rand(&mut test_rng());
-        let second = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -114,8 +113,8 @@ mod tests {
 
     #[test]
     fn test_public_equals_public() {
-        let first = UniformRand::rand(&mut test_rng());
-        let second = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -132,8 +131,8 @@ mod tests {
 
     #[test]
     fn test_public_equals_private() {
-        let first = UniformRand::rand(&mut test_rng());
-        let second = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;
@@ -150,8 +149,8 @@ mod tests {
 
     #[test]
     fn test_private_equals_private() {
-        let first = UniformRand::rand(&mut test_rng());
-        let second = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // a == a
         let expected = true;

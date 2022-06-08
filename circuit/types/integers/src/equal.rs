@@ -82,7 +82,13 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_equals<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_equals<I: IntegerType>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let expected = first == second;
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
@@ -97,12 +103,12 @@ mod tests {
 
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = Uniform::rand(&mut test_rng());
-            let second: I = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Eq: {} == {} {}", mode_a, mode_b, i);
-            check_equals(&name, first, second, mode_a, mode_b);
-            check_equals(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_equals::<I>(&name, first, second, mode_a, mode_b);
+            check_equals::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
         }
     }
 
@@ -112,8 +118,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("Equals: ({} == {})", first, second);
-                check_equals(&name, first, second, mode_a, mode_b);
+                check_equals::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

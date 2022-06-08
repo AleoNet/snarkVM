@@ -69,10 +69,10 @@ pub trait IntegerCore<I: IntegerType>:
     + Div<Output = Self>
     + DivChecked<Output = Self>
     + DivWrapped<Output = Self>
-    + Eject<Primitive = I>
+    + Eject
     + Equal
     + FromBits
-    + Inject<Primitive = I>
+    + Inject
     + MulAssign
     + Mul<Output = Self>
     + MulChecked<Output = Self>

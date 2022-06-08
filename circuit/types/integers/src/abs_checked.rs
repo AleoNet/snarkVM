@@ -74,12 +74,17 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
-    fn check_abs<I: IntegerType + UnwindSafe>(name: &str, value: I, mode: Mode) {
+    fn check_abs<I: IntegerType + UnwindSafe>(
+        name: &str,
+        value: console::Integer<<Circuit as Environment>::Network, I>,
+        mode: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode, value);
         match value.checked_abs() {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.abs_checked();
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
+                assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 assert_count!(AbsChecked(Integer<I>) => Integer<I>, &mode);
                 assert_output_mode!(AbsChecked(Integer<I>) => Integer<I>, &mode, candidate);
             }),
@@ -97,21 +102,21 @@ mod tests {
     fn run_test<I: IntegerType + UnwindSafe>(mode: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Abs: {} {}", mode, i);
-            let value: I = Uniform::rand(&mut test_rng());
-            check_abs(&name, value, mode);
+            let value = Uniform::rand(&mut test_rng());
+            check_abs::<I>(&name, value, mode);
         }
 
         // Check the 0 case.
         let name = format!("Abs: {} zero", mode);
-        check_abs(&name, I::zero(), mode);
+        check_abs::<I>(&name, console::Integer::zero(), mode);
 
         // Check the 1 case.
         let name = format!("Abs: {} one", mode);
-        check_abs(&name, I::one(), mode);
+        check_abs::<I>(&name, console::Integer::one(), mode);
 
-        // Check the I::MIN (checked) case.
+        // Check the console::Integer::MIN (checked) case.
         let name = format!("Abs: {} one", mode);
-        check_abs(&name, I::MIN, mode);
+        check_abs::<I>(&name, console::Integer::MIN, mode);
     }
 
     fn run_exhaustive_test<I: IntegerType + UnwindSafe>(mode: Mode)
@@ -119,8 +124,10 @@ mod tests {
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for value in I::MIN..=I::MAX {
+            let value = console::Integer::<_, I>::new(value);
+
             let name = format!("Abs: {}", mode);
-            check_abs(&name, value, mode);
+            check_abs::<I>(&name, value, mode);
         }
     }
 

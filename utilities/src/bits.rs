@@ -257,7 +257,7 @@ impl FromBits for Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_rng, UniformRand};
+    use crate::{test_rng, Uniform};
 
     use anyhow::Result;
 

@@ -35,7 +35,6 @@ impl<E: Environment, I: IntegerType> ToField for Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as TBits, Uniform};
 
     const ITERATIONS: u64 = 128;
 
@@ -55,7 +54,7 @@ mod tests {
                 assert_eq!(<Circuit as Environment>::BaseField::size_in_bits(), candidate_bits_le.len());
 
                 // Ensure all integer bits match with the expected result.
-                let expected_bits = expected.to_bytes_le().unwrap().to_bits_le();
+                let expected_bits = expected.to_bits_le();
                 for (expected_bit, candidate_bit) in
                     expected_bits.iter().zip_eq(&candidate_bits_le[0..I::BITS as usize])
                 {

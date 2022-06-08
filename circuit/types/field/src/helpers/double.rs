@@ -55,14 +55,13 @@ impl<E: Environment> OutputMode<dyn Double<Output = Field<E>>> for Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10_000;
 
     fn check_double(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let given = Uniform::rand(&mut test_rng());
             let candidate = Field::<Circuit>::new(mode, given);
 
             Circuit::scope(name, || {
@@ -83,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_0_double() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero).double();
         assert_eq!(zero, candidate.eject_value());
@@ -91,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_1_double() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
 
         let candidate = Field::<Circuit>::new(Mode::Public, one).double();

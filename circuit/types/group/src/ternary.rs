@@ -62,11 +62,10 @@ impl<E: Environment> OutputMode<dyn Ternary<Boolean = Boolean<E>, Output = Self>
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     fn check_ternary(
         name: &str,
-        expected: <Circuit as Environment>::Affine,
+        expected: console::Group<<Circuit as Environment>::Network>,
         condition: Boolean<Circuit>,
         a: Group<Circuit>,
         b: Group<Circuit>,
@@ -82,8 +81,8 @@ mod tests {
 
     #[test]
     fn test_constant_condition() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Constant
         let expected = second;
@@ -172,8 +171,8 @@ mod tests {
 
     #[test]
     fn test_public_condition_and_constant_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Constant
         let expected = second;
@@ -192,8 +191,8 @@ mod tests {
 
     #[test]
     fn test_public_condition_and_mixed_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Public
         let expected = second;
@@ -226,8 +225,8 @@ mod tests {
 
     #[test]
     fn test_private_condition_and_constant_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Constant
         let expected = second;
@@ -246,8 +245,8 @@ mod tests {
 
     #[test]
     fn test_private_condition_and_mixed_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Constant : Public
         let expected = second;
@@ -280,8 +279,8 @@ mod tests {
 
     #[test]
     fn test_public_condition_and_variable_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Public : Public
         let expected = second;
@@ -342,8 +341,8 @@ mod tests {
 
     #[test]
     fn test_private_condition_and_variable_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let first = Uniform::rand(&mut test_rng());
+        let second = Uniform::rand(&mut test_rng());
 
         // false ? Public : Public
         let expected = second;

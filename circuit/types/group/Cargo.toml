@@ -6,6 +6,12 @@ description = "Group circuit for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[dependencies.console]
+package = "snarkvm-console-types-group"
+path = "../../../console/types/group"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-circuit-environment]
 path = "../../environment"
 version = "0.7.5"
@@ -31,3 +37,8 @@ default-features = false
 path = "../../../utilities"
 version = "0.7.5"
 default-features = false
+
+[features]
+default = ["enable_console"]
+# Use #[cfg(console)] instead.
+enable_console = ["console"]

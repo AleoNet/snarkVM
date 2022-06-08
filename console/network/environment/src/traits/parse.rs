@@ -22,7 +22,7 @@ pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 /// Operations to parse a string literal into an object.
 pub trait Parser: core::fmt::Display + core::str::FromStr {
     /// Parses a string literal into an object.
-    fn parse(s: &str) -> ParserResult<Self>
+    fn parse(string: &str) -> ParserResult<Self>
     where
         Self: Sized;
 }

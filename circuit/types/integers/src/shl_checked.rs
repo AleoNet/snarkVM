@@ -72,7 +72,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
         if self.is_constant() && rhs.is_constant() {
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
             match self.eject_value().checked_shl(rhs.eject_value().to_u32().unwrap()) {
-                Some(value) => Integer::new(Mode::Constant, value),
+                Some(value) => Integer::new(Mode::Constant, console::Integer::new(value)),
                 None => E::halt("Constant shifted by constant exceeds the allowed bitwidth."),
             }
         } else {
@@ -163,8 +163,8 @@ mod tests {
 
     fn check_shl<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
         name: &str,
-        first: I,
-        second: M,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, M>,
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -173,7 +173,8 @@ mod tests {
         match first.checked_shl(second.to_u32().unwrap()) {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.shl_checked(&b);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
+                assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 assert_count!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                 assert_output_mode!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
             }),
@@ -190,19 +191,19 @@ mod tests {
 
     fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = Uniform::rand(&mut test_rng());
-            let second: M = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
-            check_shl(&name, first, second, mode_a, mode_b);
+            check_shl::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift left by one is computed correctly.
             let name = format!("Double: {} << {} {}", mode_a, mode_b, i);
-            check_shl(&name, first, M::one(), mode_a, mode_b);
+            check_shl::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
 
             // Check that shift left by two is computed correctly.
             let name = format!("Quadruple: {} << {} {}", mode_a, mode_b, i);
-            check_shl(&name, first, M::one() + M::one(), mode_a, mode_b);
+            check_shl::<I, M>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
         }
     }
 
@@ -213,8 +214,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in M::MIN..=M::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, M>::new(second);
+
                 let name = format!("Shl: ({} << {})", first, second);
-                check_shl(&name, first, second, mode_a, mode_b);
+                check_shl::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }
     }

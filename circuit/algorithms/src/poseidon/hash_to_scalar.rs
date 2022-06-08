@@ -37,7 +37,7 @@ impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, FromBits, ToBits, UniformRand};
+    use snarkvm_utilities::{test_rng, FromBits, ToBits, Uniform};
 
     use anyhow::Result;
 

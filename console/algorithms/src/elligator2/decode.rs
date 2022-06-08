@@ -103,7 +103,7 @@ impl<
 mod tests {
     use super::*;
     use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsParameters};
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     pub(crate) const ITERATIONS: usize = 10000;
 
@@ -115,7 +115,7 @@ mod tests {
         let mut low_ctr = 0usize;
 
         for _ in 0..ITERATIONS {
-            let expected = UniformRand::rand(rng);
+            let expected = Uniform::rand(rng);
 
             let (encoded, sign_high) =
                 Elligator2::<EdwardsAffine, EdwardsParameters>::encode_without_cofactor_clear(&expected)?;

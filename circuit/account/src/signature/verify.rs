@@ -48,7 +48,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
     use snarkvm_circuit_types::Group;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     use anyhow::Result;
 
@@ -68,7 +68,7 @@ pub(crate) mod tests {
             let (private_key, _compute_key, _view_key, address) = generate_account()?;
 
             // Generate a signature.
-            let message = [Field::new(mode, UniformRand::rand(rng)), Field::new(mode, UniformRand::rand(rng))];
+            let message = [Field::new(mode, Uniform::rand(rng)), Field::new(mode, Uniform::rand(rng))];
             let signature = console::Signature::sign(&private_key, &message.eject_value(), rng)?;
 
             // Initialize the signature and address.
@@ -103,11 +103,11 @@ pub(crate) mod tests {
 
             // Generate a signature.
             let message = [
-                Address::from_group(Group::new(mode, UniformRand::rand(rng))).to_field(),
-                Field::from_boolean(&Boolean::new(mode, UniformRand::rand(rng))),
-                Field::new(mode, UniformRand::rand(rng)),
-                Group::new(mode, UniformRand::rand(rng)).to_x_coordinate(),
-                Scalar::new(mode, UniformRand::rand(rng)).to_field(),
+                Address::from_group(Group::new(mode, Uniform::rand(rng))).to_field(),
+                Field::from_boolean(&Boolean::new(mode, Uniform::rand(rng))),
+                Field::new(mode, Uniform::rand(rng)),
+                Group::new(mode, Uniform::rand(rng)).to_x_coordinate(),
+                Scalar::new(mode, Uniform::rand(rng)).to_field(),
             ];
             let signature = console::Signature::sign(&private_key, &message.eject_value(), rng)?;
 

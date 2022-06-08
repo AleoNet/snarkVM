@@ -34,10 +34,11 @@ pub mod ternary;
 
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
+#[cfg(test)]
+use snarkvm_utilities::{test_rng, Uniform};
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
-use snarkvm_utilities::ToBits as TBits;
 
 #[derive(Clone)]
 pub struct Field<E: Environment> {
@@ -50,68 +51,87 @@ pub struct Field<E: Environment> {
 
 impl<E: Environment> FieldTrait for Field<E> {}
 
+#[cfg(console)]
 impl<E: Environment> Inject for Field<E> {
-    type Primitive = E::BaseField;
+    type Primitive = console::Field<E::Network>;
 
-    /// Initializes a new instance of a base field from a primitive base field value.
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
+    /// Initializes a field circuit from a console field.
+    fn new(mode: Mode, field: Self::Primitive) -> Self {
+        Self { linear_combination: E::new_variable(mode, *field).into(), bits_le: Default::default() }
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Eject for Field<E> {
-    type Primitive = E::BaseField;
+    type Primitive = console::Field<E::Network>;
 
-    /// Ejects the mode of the base field.
+    /// Ejects the mode of the field circuit.
     fn eject_mode(&self) -> Mode {
         self.linear_combination.mode()
     }
 
-    /// Ejects the base field as a constant base field value.
+    /// Ejects the field circuit as a console field.
     fn eject_value(&self) -> Self::Primitive {
-        self.linear_combination.value()
+        console::Field::new(self.linear_combination.value())
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Parser for Field<E> {
-    type Environment = E;
-
-    /// Parses a string into a base field circuit.
+    /// Parses a string into a field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the optional negative sign '-' from the string.
-        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
-        // Parse the digits from the string.
-        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
-        // Parse the value from the string.
-        let (string, value): (&str, E::BaseField) =
-            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        // Parse the field from the string.
+        let (string, field) = console::Field::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
-        // Negate the value if the negative sign was present.
-        let value = match negation {
-            true => -value,
-            false => value,
-        };
 
         match mode {
-            Some((_, mode)) => Ok((string, Field::new(mode, value))),
-            None => Ok((string, Field::new(Mode::Constant, value))),
+            Some((_, mode)) => Ok((string, Field::new(mode, field))),
+            None => Ok((string, Field::new(Mode::Constant, field))),
         }
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> FromStr for Field<E> {
+    type Err = Error;
+
+    /// Parses a string into a field circuit.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> TypeName for Field<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "field"
+        console::Field::<E::Network>::type_name()
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> Debug for Field<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> Display for Field<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -143,39 +163,38 @@ impl<E: Environment> From<&Field<E>> for LinearCombination<E::BaseField> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
-
-    use std::str::FromStr;
 
     const ITERATIONS: u64 = 10_000;
 
     /// Attempts to construct a field from the given element and mode,
     /// format it in display mode, and recover a field from it.
-    fn check_display(mode: Mode, element: <Circuit as Environment>::BaseField) {
+    fn check_display(mode: Mode, element: console::Field<<Circuit as Environment>::Network>) -> Result<()> {
         let candidate = Field::<Circuit>::new(mode, element);
-        assert_eq!(format!("{element}{}.{mode}", Field::<Circuit>::type_name()), format!("{candidate}"));
+        assert_eq!(format!("{element}.{mode}"), format!("{candidate}"));
 
-        let candidate_recovered = Field::<Circuit>::from_str(&format!("{candidate}"));
+        let candidate_recovered = Field::<Circuit>::from_str(&format!("{candidate}"))?;
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
+        Ok(())
     }
 
     #[test]
-    fn test_display() {
+    fn test_display() -> Result<()> {
         for _ in 0..ITERATIONS {
-            let element = UniformRand::rand(&mut test_rng());
+            let element = Uniform::rand(&mut test_rng());
 
             // Constant
-            check_display(Mode::Constant, element);
+            check_display(Mode::Constant, element)?;
             // Public
-            check_display(Mode::Public, element);
+            check_display(Mode::Public, element)?;
             // Private
-            check_display(Mode::Private, element);
+            check_display(Mode::Private, element)?;
         }
+        Ok(())
     }
 
     #[test]
     fn test_display_zero() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, zero);
@@ -192,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_display_one() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         // Constant
         let candidate = Field::<Circuit>::new(Mode::Constant, one);
@@ -209,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_display_two() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
 
         // Constant
@@ -227,67 +246,67 @@ mod tests {
 
     #[test]
     fn test_parser() {
-        type Primitive = <Circuit as Environment>::BaseField;
+        type Primitive = console::Field<<Circuit as Environment>::Network>;
 
         // Constant
 
         let (_, candidate) = Field::<Circuit>::parse("5field").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Field::<Circuit>::parse("5_field").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Field::<Circuit>::parse("1_5_field").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15field").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Field::<Circuit>::parse("5field.constant").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Field::<Circuit>::parse("5_field.constant").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Field::<Circuit>::parse("1_5_field.constant").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15field").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         // Public
 
         let (_, candidate) = Field::<Circuit>::parse("5field.public").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Field::<Circuit>::parse("5_field.public").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Field::<Circuit>::parse("1_5_field.public").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15field").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         // Private
 
         let (_, candidate) = Field::<Circuit>::parse("5field.private").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Field::<Circuit>::parse("5_field.private").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5field").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Field::<Circuit>::parse("1_5_field.private").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15field").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         // Random
 
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let value: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+                let value = Uniform::rand(&mut test_rng());
                 let expected = Field::<Circuit>::new(mode, value);
 
                 let (_, candidate) = Field::<Circuit>::parse(&format!("{expected}")).unwrap();

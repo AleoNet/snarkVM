@@ -18,19 +18,21 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_types_field::Field;
+pub use snarkvm_console_types_group::Group;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Address<N: Network> {
     /// The underlying address.
-    address: N::Affine,
+    address: Group<N>,
 }
 
 impl<N: Network> AddressTrait for Address<N> {}
 
 impl<N: Network> Address<N> {
     /// Initializes an address from a group element.
-    pub const fn new(group: N::Affine) -> Self {
+    pub const fn new(group: Group<N>) -> Self {
         Self { address: group }
     }
 }
@@ -44,7 +46,7 @@ impl<N: Network> TypeName for Address<N> {
 }
 
 impl<N: Network> Deref for Address<N> {
-    type Target = N::Affine;
+    type Target = Group<N>;
 
     /// Returns the address as a group element.
     #[inline]

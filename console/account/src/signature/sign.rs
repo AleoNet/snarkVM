@@ -91,7 +91,7 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 
@@ -107,12 +107,12 @@ mod tests {
             let address = Address::try_from(&private_key)?;
 
             // Check that the signature is valid for the message.
-            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
             let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 
             // Check that the signature is invalid for an incorrect message.
-            let failure_message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let failure_message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
             if message != failure_message {
                 assert!(!signature.verify(&address, &failure_message));
             }

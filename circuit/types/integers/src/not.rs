@@ -61,7 +61,11 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
-    fn check_not<I: IntegerType + Not<Output = I>>(name: &str, first: I, mode: Mode) {
+    fn check_not<I: IntegerType + Not<Output = I>>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        mode: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode, first);
         let expected = !first;
 
@@ -77,17 +81,17 @@ mod tests {
     fn run_test<I: IntegerType + Not<Output = I>>(mode: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Not: {} {}", mode, i);
-            let value: I = Uniform::rand(&mut test_rng());
-            check_not(&name, value, mode);
+            let value = Uniform::rand(&mut test_rng());
+            check_not::<I>(&name, value, mode);
         }
 
         // Check the 0 case.
         let name = format!("Not: {} zero", mode);
-        check_not(&name, I::zero(), mode);
+        check_not::<I>(&name, console::Integer::zero(), mode);
 
         // Check the 1 case.
         let name = format!("Not: {} one", mode);
-        check_not(&name, I::one(), mode);
+        check_not::<I>(&name, console::Integer::one(), mode);
     }
 
     fn run_exhaustive_test<I: IntegerType + Not<Output = I>>(mode: Mode)
@@ -95,8 +99,10 @@ mod tests {
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for value in I::MIN..=I::MAX {
+            let value = console::Integer::<_, I>::new(value);
+
             let name = format!("Not: {}", mode);
-            check_not(&name, value, mode);
+            check_not::<I>(&name, value, mode);
         }
     }
 

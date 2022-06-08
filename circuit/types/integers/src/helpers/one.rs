@@ -20,7 +20,7 @@ impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     fn one() -> Self {
-        Integer::constant(I::one())
+        Integer::constant(console::Integer::one())
     }
 
     fn is_one(&self) -> Self::Boolean {
@@ -53,7 +53,7 @@ mod tests {
         Circuit::scope("One", || {
             assert_scope!(0, 0, 0, 0);
             let candidate = Integer::<Circuit, I>::one();
-            assert_eq!(I::one(), candidate.eject_value());
+            assert_eq!(console::Integer::one(), candidate.eject_value());
             assert_count!(One<Boolean>() => Integer<I>, &());
             assert_output_mode!(One<Boolean>() => Integer<I>, &(), candidate);
         });

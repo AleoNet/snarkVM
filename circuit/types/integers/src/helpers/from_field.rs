@@ -51,7 +51,7 @@ mod tests {
                 // Perform the operation.
                 let candidate = Integer::from_field(candidate);
                 assert_eq!(expected, candidate.eject_value());
-                assert_scope!(0, 0, 0, 0);
+                assert_scope!(I::BITS, 0, 0, 0);
             });
             Circuit::reset();
         }

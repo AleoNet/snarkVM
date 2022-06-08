@@ -98,7 +98,6 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -138,8 +137,8 @@ mod tests {
         num_constraints: u64,
     ) {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);

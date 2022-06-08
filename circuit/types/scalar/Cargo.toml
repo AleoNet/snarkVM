@@ -6,6 +6,12 @@ description = "Scalar circuit for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[dependencies.console]
+package = "snarkvm-console-types-scalar"
+path = "../../../console/types/scalar"
+version = "0.7.5"
+optional = true
+
 [dependencies.snarkvm-circuit-environment]
 path = "../../environment"
 version = "0.7.5"
@@ -18,7 +24,12 @@ version = "0.7.5"
 path = "../field"
 version = "0.7.5"
 
-[dependencies.snarkvm-utilities]
+[dev-dependencies.snarkvm-utilities]
 path = "../../../utilities"
 version = "0.7.5"
 default-features = false
+
+[features]
+default = ["enable_console"]
+# Use #[cfg(console)] instead.
+enable_console = ["console"]

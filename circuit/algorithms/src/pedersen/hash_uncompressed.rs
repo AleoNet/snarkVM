@@ -111,7 +111,7 @@ impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn HashUncompressed<Input =
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";

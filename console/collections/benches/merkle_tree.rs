@@ -18,7 +18,7 @@
 extern crate criterion;
 
 use snarkvm_console_network::{Network, Testnet3};
-use snarkvm_utilities::{test_rng, UniformRand};
+use snarkvm_utilities::{test_rng, Uniform};
 
 use criterion::Criterion;
 

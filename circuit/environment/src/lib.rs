@@ -48,43 +48,50 @@ pub mod prelude {
         Count,
         Environment,
         LinearCombination,
+        Mode,
         OutputMode,
         Variable,
-        Mode,
     };
     pub use console::{
-        environment::random::*,
+        prelude::{bail, ensure, fmt, Debug, Display, Error, FromStr, One as _, Result, Zero as _},
         traits::{
             integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
             string_parser,
+            Double as _,
+            FromBits as _,
+            Inverse as _,
+            Square as _,
+            SquareRoot as _,
+            ToBits as _,
         },
+        Parser,
+        ParserResult,
+        TypeName,
     };
-    pub use snarkvm_fields::{Field as F, One as O, PrimeField, SquareRootField, Zero as Z};
+    pub use snarkvm_fields::{Field as _, PrimeField, Zero as _};
+    pub use snarkvm_utilities::ToBits as _;
 
-    pub use core::{
-        fmt::{self, Debug, Display},
-        ops::{
-            Add,
-            AddAssign,
-            BitAnd,
-            BitAndAssign,
-            BitOr,
-            BitOrAssign,
-            BitXor,
-            BitXorAssign,
-            Div,
-            DivAssign,
-            Mul,
-            MulAssign,
-            Neg,
-            Not,
-            Shl,
-            ShlAssign,
-            Shr,
-            ShrAssign,
-            Sub,
-            SubAssign,
-        },
+    pub use core::ops::{
+        Add,
+        AddAssign,
+        BitAnd,
+        BitAndAssign,
+        BitOr,
+        BitOrAssign,
+        BitXor,
+        BitXorAssign,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Not,
+        Shl,
+        ShlAssign,
+        Shr,
+        ShrAssign,
+        Sub,
+        SubAssign,
     };
     pub use itertools::Itertools;
     pub use nom::{

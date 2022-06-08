@@ -72,7 +72,7 @@ impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
 mod tests {
     use super::*;
     use snarkvm_circuit_network::AleoV0 as Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as T, UniformRand};
+    use snarkvm_utilities::{test_rng, ToBits as T, Uniform};
 
     use anyhow::Result;
 

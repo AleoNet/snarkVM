@@ -29,7 +29,7 @@ use snarkvm_utilities::{
     Rng,
     ToBytes,
     ToBytesSerializer,
-    UniformRand,
+    Uniform,
 };
 
 use base58::{FromBase58, ToBase58};
@@ -50,7 +50,7 @@ impl<N: Network> PrivateKey<N> {
     #[inline]
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Sample a random account seed.
-        Self::try_from(UniformRand::rand(rng))
+        Self::try_from(Uniform::rand(rng))
     }
 
     /// Returns the account seed.

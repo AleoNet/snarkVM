@@ -123,10 +123,10 @@ impl<N: Network> Inverse for Scalar<N> {
 
     /// Returns the `inverse` of `self`.
     #[inline]
-    fn inverse(&self) -> Self::Output {
+    fn inverse(&self) -> Result<Self::Output> {
         match self.scalar.inverse() {
-            Some(inverse) => Scalar::new(inverse),
-            None => N::halt(format!("Failed to invert a scalar element: {}", self)),
+            Some(inverse) => Ok(Scalar::new(inverse)),
+            None => bail!("Failed to invert a scalar element: {self}"),
         }
     }
 }

@@ -89,8 +89,8 @@ mod tests {
 
     fn run_test<I: IntegerType>(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
         for flag in &[true, false] {
-            let first: I = Uniform::rand(&mut test_rng());
-            let second: I = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
             let expected = if *flag { first } else { second };
 
             let condition = Boolean::<Circuit>::new(mode_condition, *flag);

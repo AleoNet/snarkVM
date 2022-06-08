@@ -17,7 +17,7 @@
 mod bitwise;
 mod parse;
 
-use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network::prelude::*;
 
 use core::marker::PhantomData;
 

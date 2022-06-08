@@ -70,7 +70,7 @@ impl<A: Aleo> Literal<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{rand::Rng, test_rng, UniformRand};
+    use snarkvm_utilities::{rand::Rng, test_rng, Uniform};
 
     const ITERATIONS: u32 = 1000;
 
@@ -99,36 +99,36 @@ mod tests {
             // Address
             check_serialization(Literal::<Circuit>::Address(Address::new(
                 mode,
-                snarkvm_console_account::Address::from_group(UniformRand::rand(rng)),
+                snarkvm_console_account::Address::from_group(Uniform::rand(rng)),
             )));
             // Boolean
-            check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, Uniform::rand(rng))));
             // Field
-            check_serialization(Literal::<Circuit>::Field(Field::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::Field(Field::new(mode, Uniform::rand(rng))));
             // Group
-            check_serialization(Literal::<Circuit>::Group(Group::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::Group(Group::new(mode, Uniform::rand(rng))));
             // I8
-            check_serialization(Literal::<Circuit>::I8(I8::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::I8(I8::new(mode, Uniform::rand(rng))));
             // I16
-            check_serialization(Literal::<Circuit>::I16(I16::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::I16(I16::new(mode, Uniform::rand(rng))));
             // I32
-            check_serialization(Literal::<Circuit>::I32(I32::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::I32(I32::new(mode, Uniform::rand(rng))));
             // I64
-            check_serialization(Literal::<Circuit>::I64(I64::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::I64(I64::new(mode, Uniform::rand(rng))));
             // I128
-            check_serialization(Literal::<Circuit>::I128(I128::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::I128(I128::new(mode, Uniform::rand(rng))));
             // U8
-            check_serialization(Literal::<Circuit>::U8(U8::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::U8(U8::new(mode, Uniform::rand(rng))));
             // U16
-            check_serialization(Literal::<Circuit>::U16(U16::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::U16(U16::new(mode, Uniform::rand(rng))));
             // U32
-            check_serialization(Literal::<Circuit>::U32(U32::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::U32(U32::new(mode, Uniform::rand(rng))));
             // U64
-            check_serialization(Literal::<Circuit>::U64(U64::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::U64(U64::new(mode, Uniform::rand(rng))));
             // U128
-            check_serialization(Literal::<Circuit>::U128(U128::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::U128(U128::new(mode, Uniform::rand(rng))));
             // Scalar
-            check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, UniformRand::rand(rng))));
+            check_serialization(Literal::<Circuit>::Scalar(Scalar::new(mode, Uniform::rand(rng))));
             // String
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let range = 0..rng.gen_range(0..Circuit::NUM_STRING_BYTES / 4);

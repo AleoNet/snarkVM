@@ -9,3 +9,11 @@ edition = "2021"
 [dependencies.snarkvm-console-network]
 path = "../../network"
 version = "0.7.5"
+
+[dependencies.snarkvm-console-types-field]
+path = "../field"
+version = "0.7.5"
+
+[dependencies.snarkvm-console-types-group]
+path = "../group"
+version = "0.7.5"

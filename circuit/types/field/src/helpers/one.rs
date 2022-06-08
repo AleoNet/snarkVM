@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         Circuit::scope("One", || {
             assert_scope!(0, 0, 0, 0);

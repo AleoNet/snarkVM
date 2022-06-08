@@ -98,7 +98,7 @@ impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Public, Mode::Constant) => match &case.1 {
-                CircuitType::Constant(constant) => match constant.eject_value() == E::BaseField::one() {
+                CircuitType::Constant(constant) => match constant.eject_value().is_one() {
                     true => Mode::Public,
                     false => Mode::Private,
                 },
@@ -113,11 +113,15 @@ impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1000;
 
-    fn check_div(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
+    fn check_div(
+        name: &str,
+        expected: &console::Field<<Circuit as Environment>::Network>,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let candidate = a / b;
             assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
@@ -128,7 +132,7 @@ mod tests {
 
     fn check_div_assign(
         name: &str,
-        expected: &<Circuit as Environment>::BaseField,
+        expected: &console::Field<<Circuit as Environment>::Network>,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
     ) {
@@ -143,8 +147,8 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let expected = first / second;
             let a = Field::<Circuit>::new(mode_a, first);
@@ -156,7 +160,7 @@ mod tests {
             check_div_assign(&name, &expected, &a, &b);
 
             // Check division by one.
-            let one = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::one());
+            let one = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::one());
             let name = format!("Div By One {}", i);
             check_div(&name, &first, &a, &one);
             let name = format!("DivAssign By One {}", i);
@@ -211,8 +215,8 @@ mod tests {
 
     #[test]
     fn test_div_by_zero_fails() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         let result = std::panic::catch_unwind(|| Field::<Circuit>::one() / Field::zero());
         assert!(result.is_err()); // Probe further for specific error type here, if desired

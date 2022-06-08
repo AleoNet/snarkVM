@@ -2169,14 +2169,12 @@ dependencies = [
 name = "snarkvm-circuit-types-address"
 version = "0.7.5"
 dependencies = [
- "bech32",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
  "snarkvm-circuit-types-group",
  "snarkvm-circuit-types-scalar",
  "snarkvm-console-types-address",
- "snarkvm-curves",
  "snarkvm-utilities",
 ]
 
@@ -2186,6 +2184,7 @@ version = "0.7.5"
 dependencies = [
  "criterion",
  "snarkvm-circuit-environment",
+ "snarkvm-console-types-boolean",
 ]
 
 [[package]]
@@ -2194,6 +2193,7 @@ version = "0.7.5"
 dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
+ "snarkvm-console-types-field",
  "snarkvm-utilities",
 ]
 
@@ -2205,6 +2205,7 @@ dependencies = [
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
  "snarkvm-circuit-types-scalar",
+ "snarkvm-console-types-group",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
@@ -2217,6 +2218,7 @@ dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
+ "snarkvm-console-types-integers",
  "snarkvm-utilities",
 ]
 
@@ -2227,6 +2229,7 @@ dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
+ "snarkvm-console-types-scalar",
  "snarkvm-utilities",
 ]
 
@@ -2239,6 +2242,7 @@ dependencies = [
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
  "snarkvm-circuit-types-integers",
+ "snarkvm-console-types-string",
  "snarkvm-utilities",
 ]
 
@@ -2385,6 +2389,8 @@ name = "snarkvm-console-types-address"
 version = "0.7.5"
 dependencies = [
  "snarkvm-console-network",
+ "snarkvm-console-types-field",
+ "snarkvm-console-types-group",
 ]
 
 [[package]]
@@ -2406,6 +2412,7 @@ name = "snarkvm-console-types-group"
 version = "0.7.5"
 dependencies = [
  "snarkvm-console-network",
+ "snarkvm-console-types-field",
  "snarkvm-console-types-scalar",
 ]
 
@@ -2428,6 +2435,8 @@ name = "snarkvm-console-types-string"
 version = "0.7.5"
 dependencies = [
  "snarkvm-console-network",
+ "snarkvm-console-types-field",
+ "snarkvm-console-types-integers",
 ]
 
 [[package]]

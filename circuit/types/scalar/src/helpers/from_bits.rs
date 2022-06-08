@@ -40,7 +40,7 @@ impl<E: Environment> FromBits for Scalar<E> {
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = Scalar::constant(-E::ScalarField::one());
+            let modulus_minus_one = Scalar::constant(-console::Scalar::one());
 
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
@@ -76,14 +76,13 @@ impl<E: Environment> FromBits for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
@@ -116,7 +115,7 @@ mod tests {
     fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 

@@ -44,7 +44,7 @@ mod tests {
     use super::*;
     use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq};
     use snarkvm_fields::Zero;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 1000;
 

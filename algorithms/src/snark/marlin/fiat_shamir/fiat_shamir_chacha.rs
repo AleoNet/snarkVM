@@ -140,7 +140,7 @@ mod tests {
     use super::*;
 
     use snarkvm_curves::bls12_377::{Fq, Fr};
-    use snarkvm_utilities::rand::UniformRand;
+    use snarkvm_utilities::rand::Uniform;
 
     use blake2::Blake2s256;
     use rand_chacha::ChaChaRng;

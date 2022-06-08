@@ -22,7 +22,7 @@ use crate::{
 use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform};
 
 use core::ops::Mul;
 use rand::thread_rng;
@@ -34,8 +34,8 @@ where
     GG: GroupGadget<TEAffine<P>, F, Value = TEAffine<P>>,
     CS: ConstraintSystem<F>,
 {
-    let a: TEAffine<P> = UniformRand::rand(&mut thread_rng());
-    let b: TEAffine<P> = UniformRand::rand(&mut thread_rng());
+    let a: TEAffine<P> = Uniform::rand(&mut thread_rng());
+    let b: TEAffine<P> = Uniform::rand(&mut thread_rng());
     let gadget_a = GG::alloc(&mut cs.ns(|| "a"), || Ok(a)).unwrap();
     let gadget_b = GG::alloc(&mut cs.ns(|| "b"), || Ok(b)).unwrap();
     assert_eq!(gadget_a.get_value().unwrap(), a);
@@ -43,7 +43,7 @@ where
     group_test::<F, TEAffine<P>, GG, _>(&mut cs.ns(|| "GroupTest(a, b)"), gadget_a.clone(), gadget_b);
 
     // Check mul_bits
-    let scalar: <TEAffine<P> as AffineCurve>::ScalarField = UniformRand::rand(&mut thread_rng());
+    let scalar: <TEAffine<P> as AffineCurve>::ScalarField = Uniform::rand(&mut thread_rng());
     let native_result = a.mul(scalar);
 
     let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.to_repr()).collect();

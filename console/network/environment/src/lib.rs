@@ -17,9 +17,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod random;
-pub use random::*;
-
 mod sanitizer;
 pub use sanitizer::Sanitizer;
 
@@ -37,38 +34,44 @@ pub mod prelude {
     pub use snarkvm_utilities::{
         error,
         io::{Read, Result as IoResult, Write},
+        test_crypto_rng,
+        test_rng,
+        FromBits as _,
         FromBytes,
         FromBytesDeserializer,
+        ToBits as _,
         ToBytes,
         ToBytesSerializer,
+        Uniform,
     };
 
     pub use core::{
+        cmp::Ordering,
         fmt::{self, Debug, Display, Formatter},
+        ops::{
+            Add,
+            AddAssign,
+            BitAnd,
+            BitAndAssign,
+            BitOr,
+            BitOrAssign,
+            BitXor,
+            BitXorAssign,
+            Deref,
+            Div,
+            DivAssign,
+            Mul,
+            MulAssign,
+            Neg,
+            Not,
+            Shl,
+            ShlAssign,
+            Shr,
+            ShrAssign,
+            Sub,
+            SubAssign,
+        },
         str::{self, FromStr},
-    };
-    pub use core::ops::{
-        Add,
-        AddAssign,
-        BitAnd,
-        BitAndAssign,
-        BitOr,
-        BitOrAssign,
-        BitXor,
-        BitXorAssign,
-        Deref,
-        Div,
-        DivAssign,
-        Mul,
-        MulAssign,
-        Neg,
-        Not,
-        Shl,
-        ShlAssign,
-        Shr,
-        ShrAssign,
-        Sub,
-        SubAssign,
     };
 
     pub use anyhow::{anyhow, bail, ensure, Error, Result};
@@ -82,6 +85,10 @@ pub mod prelude {
         sequence::{pair, terminated},
     };
     pub use num_traits::{One, Pow, Zero};
-    pub use rand::{distributions::Alphanumeric, CryptoRng, Rng};
+    pub use rand::{
+        distributions::{Alphanumeric, Distribution, Standard},
+        CryptoRng,
+        Rng,
+    };
     pub use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 }

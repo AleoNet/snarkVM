@@ -80,14 +80,14 @@ impl<E: Environment> OutputMode<dyn Add<Field<E>, Output = Field<E>>> for Field<
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Constant, Mode::Public) => match &case.0 {
-                CircuitType::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Public,
                     false => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
             },
             (Mode::Public, Mode::Constant) => match &case.1 {
-                CircuitType::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Public,
                     false => Mode::Private,
                 },
@@ -102,11 +102,15 @@ impl<E: Environment> OutputMode<dyn Add<Field<E>, Output = Field<E>>> for Field<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10_000;
 
-    fn check_add(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
+    fn check_add(
+        name: &str,
+        expected: &console::Field<<Circuit as Environment>::Network>,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
@@ -117,7 +121,7 @@ mod tests {
 
     fn check_add_assign(
         name: &str,
-        expected: &<Circuit as Environment>::BaseField,
+        expected: &console::Field<<Circuit as Environment>::Network>,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
     ) {
@@ -132,8 +136,8 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let expected = first + second;
             let a = Field::<Circuit>::new(mode_a, first);
@@ -146,13 +150,13 @@ mod tests {
 
             // Test identity.
             let name = format!("Add: a + 0 {}", i);
-            let zero = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::zero());
+            let zero = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::zero());
             check_add(&name, &first, &a, &zero);
             let name = format!("AddAssign: a + 0 {}", i);
             check_add_assign(&name, &first, &a, &zero);
 
             let name = format!("Add: 0 + b {}", i);
-            let zero = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::zero());
+            let zero = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::zero());
             check_add(&name, &second, &zero, &b);
             let name = format!("AddAssign: 0 + b {}", i);
             check_add_assign(&name, &second, &zero, &b);
@@ -206,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_0_plus_0() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         let candidate = Field::<Circuit>::zero() + Field::zero();
         assert_eq!(zero, candidate.eject_value());
@@ -226,8 +230,8 @@ mod tests {
 
     #[test]
     fn test_0_plus_1() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         let candidate = Field::<Circuit>::zero() + Field::one();
         assert_eq!(one, candidate.eject_value());
@@ -253,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_1_plus_1() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
 
         let candidate = Field::<Circuit>::one() + Field::one();
@@ -274,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_1_plus_2() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
         let three = two + one;
 

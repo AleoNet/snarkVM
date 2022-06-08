@@ -50,7 +50,6 @@ impl<E: Environment> ToBits for &Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     fn check_to_bits_le(
         name: &str,
@@ -61,7 +60,7 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
-        let expected_number_of_bits = <<Circuit as Environment>::ScalarField as PrimeField>::size_in_bits();
+        let expected_number_of_bits = console::Scalar::<<Circuit as Environment>::Network>::size_in_bits();
 
         Circuit::scope(name, || {
             let candidate = candidate.to_bits_le();
@@ -82,7 +81,7 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
-        let expected_number_of_bits = <<Circuit as Environment>::ScalarField as PrimeField>::size_in_bits();
+        let expected_number_of_bits = console::Scalar::<<Circuit as Environment>::Network>::size_in_bits();
 
         Circuit::scope(name, || {
             let candidate = candidate.to_bits_be();
@@ -96,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_to_bits_constant() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_bits_le("Constant", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
         check_to_bits_be("Constant", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
@@ -104,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_to_bits_public() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_bits_le("Public", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
         check_to_bits_be("Public", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
@@ -112,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_to_bits_private() {
-        let expected = UniformRand::rand(&mut test_rng());
+        let expected = Uniform::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_bits_le("Private", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
         check_to_bits_be("Private", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
@@ -140,7 +139,7 @@ mod tests {
             }
         }
 
-        let one = <Circuit as Environment>::ScalarField::one();
+        let one = console::Scalar::<<Circuit as Environment>::Network>::one();
 
         // Constant
         check_bits_le(Scalar::<Circuit>::new(Mode::Constant, one));

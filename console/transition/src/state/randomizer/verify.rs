@@ -70,7 +70,7 @@ mod tests {
     use super::*;
     use snarkvm_console_account::{Address, PrivateKey, ViewKey};
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, ToBits, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, ToBits, Uniform};
 
     type CurrentNetwork = Testnet3;
 
@@ -85,8 +85,8 @@ mod tests {
             let view_key = ViewKey::<CurrentNetwork>::try_from(&private_key)?;
             let address = Address::<CurrentNetwork>::try_from(&view_key)?;
 
-            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
-            let output_index = UniformRand::rand(rng);
+            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
+            let output_index = Uniform::rand(rng);
 
             let randomizer = Randomizer::<CurrentNetwork>::prove(&view_key, &serial_numbers, output_index, rng)?;
 

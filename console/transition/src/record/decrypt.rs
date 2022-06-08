@@ -40,7 +40,7 @@ impl<N: Network> Record<N> {
         let randomizers = N::hash_many_psd2(&[N::encryption_domain(), *record_view_key], 3);
 
         // Decrypt and recover the owner.
-        let owner = Address::new(N::affine_from_x_coordinate(self.owner - randomizers[0])?);
+        let owner = Address::new(Group::from_x_coordinate(self.owner - randomizers[0])?);
 
         // Decrypt the balance.
         let balance = (self.balance - randomizers[1]).to_bytes_le()?;

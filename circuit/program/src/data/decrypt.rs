@@ -51,7 +51,7 @@ mod tests {
     use super::*;
     use crate::{Circuit, Literal};
     use snarkvm_circuit_types::Field;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     use anyhow::Result;
 
@@ -73,10 +73,10 @@ mod tests {
 
             let data = Data(vec![(
                 Identifier::from_str("a"),
-                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
+                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
             )]);
 
-            let randomizer = Scalar::new(Mode::Private, UniformRand::rand(rng));
+            let randomizer = Scalar::new(Mode::Private, Uniform::rand(rng));
             let ciphertext = data.encrypt(&address, &randomizer);
 
             let nonce = <Circuit as Aleo>::g_scalar_multiply(&randomizer);
@@ -91,10 +91,10 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random symmetric key and data.
-            let symmetric_key = Field::<Circuit>::new(Mode::Private, UniformRand::rand(rng));
+            let symmetric_key = Field::<Circuit>::new(Mode::Private, Uniform::rand(rng));
             let data = Data(vec![(
                 Identifier::from_str("a"),
-                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, UniformRand::rand(rng))))),
+                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
             )]);
 
             let ciphertext = data.encrypt_symmetric(symmetric_key.clone());

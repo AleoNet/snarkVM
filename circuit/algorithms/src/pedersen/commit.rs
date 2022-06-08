@@ -93,7 +93,7 @@ impl<E: Environment, const NUM_BITS: u8>
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
@@ -110,7 +110,7 @@ mod tests {
             // Sample a random input.
             let input = (0..NUM_BITS).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Sample a randomizer.
-            let randomizer = UniformRand::rand(&mut test_rng());
+            let randomizer = Uniform::rand(&mut test_rng());
             // Compute the expected commitment.
             let expected = native.commit(&input, &randomizer).expect("Failed to commit native input");
             // Prepare the circuit input.
@@ -154,8 +154,8 @@ mod tests {
         println!("Checking homomorphic addition on {} + {}", first, second);
 
         // Sample the circuit randomizers.
-        let first_randomizer: Scalar<_> = Inject::new(Mode::Private, UniformRand::rand(&mut test_rng()));
-        let second_randomizer: Scalar<_> = Inject::new(Mode::Private, UniformRand::rand(&mut test_rng()));
+        let first_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(&mut test_rng()));
+        let second_randomizer: Scalar<_> = Inject::new(Mode::Private, Uniform::rand(&mut test_rng()));
 
         // Compute the expected commitment, by committing them individually and summing their results.
         let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_randomizer);

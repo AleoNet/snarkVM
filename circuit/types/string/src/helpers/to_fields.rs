@@ -33,13 +33,13 @@ impl<E: Environment> ToFields for StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBits as TBits};
+    use snarkvm_utilities::{bytes_from_bits_le, FromBytes};
 
     use rand::Rng;
 
-    fn native_string_to_fields(string: &str) -> Vec<<Circuit as Environment>::BaseField> {
+    fn native_string_to_fields(string: &str) -> Vec<console::Field<<Circuit as Environment>::Network>> {
         string
-            .as_bytes()
+            .to_string()
             .to_bits_le()
             .chunks(<Circuit as Environment>::BaseField::size_in_data_bits())
             .map(|chunk| {
@@ -48,14 +48,14 @@ mod tests {
                 chunk.resize(<Circuit as Environment>::BaseField::size_in_bits(), false);
                 // Recover the field element.
                 let chunk = bytes_from_bits_le(&chunk);
-                <Circuit as Environment>::BaseField::from_bytes_le(&chunk).unwrap()
+                console::Field::new(<Circuit as Environment>::BaseField::from_bytes_le(&chunk).unwrap())
             })
             .collect()
     }
 
     fn check_to_fields(
         name: &str,
-        expected: &[<Circuit as Environment>::BaseField],
+        expected: &[console::Field<<Circuit as Environment>::Network>],
         candidate: &StringType<Circuit>,
         num_constants: u64,
         num_public: u64,
@@ -84,7 +84,7 @@ mod tests {
         let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
 
         let expected = native_string_to_fields(&given);
-        let candidate = StringType::<Circuit>::new(Mode::Constant, given);
+        let candidate = StringType::<Circuit>::new(Mode::Constant, console::StringType::new(&given));
         check_to_fields("Constant", &expected, &candidate, 0, 0, 0, 0);
     }
 
@@ -96,7 +96,7 @@ mod tests {
         let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
 
         let expected = native_string_to_fields(&given);
-        let candidate = StringType::<Circuit>::new(Mode::Public, given);
+        let candidate = StringType::<Circuit>::new(Mode::Public, console::StringType::new(&given));
         check_to_fields("Public", &expected, &candidate, 0, 0, 0, 0);
     }
 
@@ -108,7 +108,7 @@ mod tests {
         let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
 
         let expected = native_string_to_fields(&given);
-        let candidate = StringType::<Circuit>::new(Mode::Private, given);
+        let candidate = StringType::<Circuit>::new(Mode::Private, console::StringType::new(&given));
         check_to_fields("Private", &expected, &candidate, 0, 0, 0, 0);
     }
 }

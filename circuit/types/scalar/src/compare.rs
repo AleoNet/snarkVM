@@ -84,7 +84,6 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -98,11 +97,11 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element `a`.
-            let expected_a: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected_a = Uniform::rand(&mut test_rng());
             let candidate_a = Scalar::<Circuit>::new(mode_a, expected_a);
 
             // Sample a random element `b`.
-            let expected_b: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected_b = Uniform::rand(&mut test_rng());
             let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
 
             // Perform the less than comparison.

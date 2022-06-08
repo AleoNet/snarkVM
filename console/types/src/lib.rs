@@ -30,7 +30,7 @@ pub use snarkvm_console_types_group as group;
 pub use snarkvm_console_types_group::Group;
 
 pub use snarkvm_console_types_integers as integers;
-pub use snarkvm_console_types_integers::{U8, U16, U32, U64, U128, I8, I16, I32, I64, I128};
+pub use snarkvm_console_types_integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
 
 pub use snarkvm_console_types_scalar as scalar;
 pub use snarkvm_console_types_scalar::Scalar;

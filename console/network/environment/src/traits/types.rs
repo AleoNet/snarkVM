@@ -55,6 +55,7 @@ pub trait FieldTrait:
     + MulAssign
     + Neg<Output = Self>
     + One
+    + Ord
     + Parser
     + Pow<Self, Output = Self>
     + Square<Output = Self>
@@ -164,8 +165,8 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
 }
 
 pub(super) mod integer_type {
-    use crate::Uniform;
-    use snarkvm_utilities::{FromBytes, ToBytes};
+    use crate::{FromBits, ToBits};
+    use snarkvm_utilities::Uniform;
 
     use core::{
         fmt::{Debug, Display},
@@ -200,11 +201,11 @@ pub(super) mod integer_type {
         + Debug
         + Default
         + Display
-        + FromBytes
+        + FromBits
         + FromStr<Err = ParseIntError>
         + NumZero
         + NumOne
-        + ToBytes
+        + ToBits
         + ToPrimitive
         + Uniform
         + WrappingAbs

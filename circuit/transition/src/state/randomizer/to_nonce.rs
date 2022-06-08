@@ -28,7 +28,7 @@ impl<A: Aleo> Randomizer<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, Rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Rng, Uniform};
 
     use anyhow::Result;
 
@@ -49,8 +49,8 @@ mod tests {
                 snarkvm_console_account::ViewKey::<<Circuit as Environment>::Network>::try_from(&private_key)?;
 
             // Compute the native randomizer.
-            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
-            let output_index = UniformRand::rand(rng);
+            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
+            let output_index = Uniform::rand(rng);
             let randomizer = console::Randomizer::<<Circuit as Environment>::Network>::prove(
                 &view_key,
                 &serial_numbers,

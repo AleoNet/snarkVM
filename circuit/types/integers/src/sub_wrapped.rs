@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the difference and return the new constant.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_sub(&other.eject_value()))
+            Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_sub(&other.eject_value())))
         } else {
             // Instead of subtracting the bits of `self` and `other` directly, the integers are
             // converted into field elements to perform the operation, before converting back to integers.
@@ -75,13 +75,20 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
-    fn check_sub<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_sub<I: IntegerType>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
         let expected = first.wrapping_sub(&second);
         Circuit::scope(name, || {
             let candidate = a.sub_wrapped(&b);
-            assert_eq!(expected, candidate.eject_value());
+            assert_eq!(expected, *candidate.eject_value());
+            assert_eq!(console::Integer::new(expected), candidate.eject_value());
             assert_count!(SubWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
             assert_output_mode!(SubWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
@@ -91,17 +98,17 @@ mod tests {
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Sub: {} - {} {}", mode_a, mode_b, i);
-            let first: I = Uniform::rand(&mut test_rng());
-            let second: I = Uniform::rand(&mut test_rng());
-            check_sub(&name, first, second, mode_a, mode_b);
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
+            check_sub::<I>(&name, first, second, mode_a, mode_b);
         }
 
         // Overflow
         if I::is_signed() {
-            check_sub("MAX - (-1)", I::MAX, I::zero() - I::one(), mode_a, mode_b);
+            check_sub::<I>("MAX - (-1)", console::Integer::MAX, -console::Integer::one(), mode_a, mode_b);
         }
         // Underflow
-        check_sub("MIN - 1", I::MIN, I::one(), mode_a, mode_b);
+        check_sub::<I>("MIN - 1", console::Integer::MIN, console::Integer::one(), mode_a, mode_b);
     }
 
     fn run_exhaustive_test<I: IntegerType>(mode_a: Mode, mode_b: Mode)
@@ -110,8 +117,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("Sub: ({} - {})", first, second);
-                check_sub(&name, first, second, mode_a, mode_b);
+                check_sub::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

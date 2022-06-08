@@ -22,7 +22,7 @@ mod verify;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
+use snarkvm_utilities::{CryptoRng, Rng, ToBits, Uniform};
 
 use anyhow::Result;
 

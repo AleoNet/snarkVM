@@ -19,7 +19,7 @@ use crate::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters};
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{
     io::Cursor,
-    rand::UniformRand,
+    rand::Uniform,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     Compress,
     Validate,

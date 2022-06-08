@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the sum and return the new constant.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_add(&other.eject_value()))
+            Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_add(&other.eject_value())))
         } else {
             // Instead of adding the bits of `self` and `other` directly, the integers are
             // converted into a field elements, and summed, before converting back to integers.
@@ -75,13 +75,20 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
-    fn check_add<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_add<I: IntegerType>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
         let expected = first.wrapping_add(&second);
         Circuit::scope(name, || {
             let candidate = a.add_wrapped(&b);
-            assert_eq!(expected, candidate.eject_value());
+            assert_eq!(expected, *candidate.eject_value());
+            assert_eq!(console::Integer::new(expected), candidate.eject_value());
             assert_count!(AddWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
             assert_output_mode!(AddWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
@@ -90,22 +97,22 @@ mod tests {
 
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = Uniform::rand(&mut test_rng());
-            let second: I = Uniform::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
-            check_add(&name, first, second, mode_a, mode_b);
-            check_add(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_add::<I>(&name, first, second, mode_a, mode_b);
+            check_add::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
         }
 
         // Overflow
-        check_add("MAX + 1", I::MAX, I::one(), mode_a, mode_b);
-        check_add("1 + MAX", I::one(), I::MAX, mode_a, mode_b);
+        check_add::<I>("MAX + 1", console::Integer::MAX, console::Integer::one(), mode_a, mode_b);
+        check_add::<I>("1 + MAX", console::Integer::one(), console::Integer::MAX, mode_a, mode_b);
 
         // Underflow
         if I::is_signed() {
-            check_add("MIN + (-1)", I::MIN, I::zero() - I::one(), mode_a, mode_b);
-            check_add("-1 + MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b);
+            check_add::<I>("MIN + (-1)", console::Integer::MIN, -console::Integer::one(), mode_a, mode_b);
+            check_add::<I>("-1 + MIN", -console::Integer::one(), console::Integer::MIN, mode_a, mode_b);
         }
     }
 
@@ -115,8 +122,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("Add: ({} + {})", first, second);
-                check_add(&name, first, second, mode_a, mode_b);
+                check_add::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

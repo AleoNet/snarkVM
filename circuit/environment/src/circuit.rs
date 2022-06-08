@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{helpers::Constraint, Mode, *};
-use snarkvm_curves::AffineCurve;
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
@@ -263,24 +262,6 @@ impl Environment for Circuit {
     /// Returns the number of gates for the current scope.
     fn num_gates_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_gates_in_scope())
-    }
-
-    /// A helper method to recover the y-coordinate given the x-coordinate for
-    /// a twisted Edwards point, returning the affine curve point.
-    fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
-        if let Some(element) = Self::Affine::from_x_coordinate(x, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return element;
-            }
-        }
-
-        if let Some(element) = Self::Affine::from_x_coordinate(x, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return element;
-            }
-        }
-
-        Self::halt(format!("Failed to recover an affine group from an x-coordinate of {}", x))
     }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.

@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::{prf::PoseidonPRF, traits::PRF};
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_utilities::UniformRand;
+use snarkvm_utilities::Uniform;
 
 use criterion::Criterion;
 use rand::thread_rng;
@@ -28,8 +28,8 @@ fn poseidon_prf(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("PoseidonPRF PRF evaluation", move |b| {
-        let input: Vec<_> = vec![UniformRand::rand(rng)];
-        let seed = UniformRand::rand(rng);
+        let input: Vec<_> = vec![Uniform::rand(rng)];
+        let seed = Uniform::rand(rng);
 
         b.iter(|| PoseidonPRF::<Fr, 4>::prf(&seed, &input))
     });

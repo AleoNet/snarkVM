@@ -25,7 +25,7 @@ use snarkvm_curves::{
     TwistedEdwardsParameters,
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::{ops::Mul, serialize::*, BitIteratorBE, FromBits, ToBits, UniformRand};
+use snarkvm_utilities::{ops::Mul, serialize::*, BitIteratorBE, FromBits, ToBits, Uniform};
 
 use anyhow::{bail, Result};
 use itertools::Itertools;
@@ -87,7 +87,7 @@ where
         rng: &mut R,
     ) -> (Self::ScalarRandomness, Self::CiphertextRandomizer, Self::SymmetricKey) {
         // Sample randomness.
-        let randomness: Self::ScalarRandomness = UniformRand::rand(rng);
+        let randomness: Self::ScalarRandomness = Uniform::rand(rng);
 
         // Compute the randomizer := G^r
         let ciphertext_randomizer =

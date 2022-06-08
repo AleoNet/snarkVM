@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::{commitment::bhp::BHPCommitment, traits::CommitmentScheme};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::rand::Uniform;
 
 use criterion::Criterion;
 use rand::{

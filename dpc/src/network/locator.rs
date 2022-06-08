@@ -26,7 +26,7 @@ use snarkvm_utilities::{
     FromBytesDeserializer,
     ToBytes,
     ToBytesSerializer,
-    UniformRand,
+    Uniform,
 };
 
 use anyhow::Result;
@@ -182,6 +182,6 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Into<Vec<F>> for A
 impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Distribution<AleoLocator<F, PREFIX>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> AleoLocator<F, PREFIX> {
-        AleoLocator::<F, PREFIX>(UniformRand::rand(rng))
+        AleoLocator::<F, PREFIX>(Uniform::rand(rng))
     }
 }

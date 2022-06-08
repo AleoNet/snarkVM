@@ -23,7 +23,7 @@ use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    rand::UniformRand,
+    rand::Uniform,
     serialize::*,
     FromBytes,
     ToBits,

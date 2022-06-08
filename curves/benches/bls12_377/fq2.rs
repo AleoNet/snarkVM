@@ -16,7 +16,7 @@
 
 use snarkvm_curves::bls12_377::Fq2;
 use snarkvm_fields::{Field, SquareRootField};
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::rand::Uniform;
 
 use criterion::Criterion;
 use rand::SeedableRng;

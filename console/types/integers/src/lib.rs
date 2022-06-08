@@ -16,11 +16,15 @@
 
 mod arithmetic;
 mod bitwise;
+mod compare;
 mod one;
 mod parse;
+mod random;
 mod zero;
 
-use snarkvm_console_network::{prelude::*, traits::integers::*};
+pub use snarkvm_console_network::prelude::*;
+
+use snarkvm_console_network::traits::integers::*;
 
 use core::marker::PhantomData;
 
@@ -49,6 +53,9 @@ impl<N: Network, I: IntegerType> IntegerTrait<I, U8<N>, U16<N>, U32<N>> for Inte
 impl<N: Network, I: IntegerType> IntegerCore<I> for Integer<N, I> {}
 
 impl<N: Network, I: IntegerType> Integer<N, I> {
+    pub const MAX: Self = Self::new(I::MAX);
+    pub const MIN: Self = Self::new(I::MIN);
+
     /// Initializes a new integer.
     pub const fn new(integer: I) -> Self {
         Self { integer, _phantom: PhantomData }

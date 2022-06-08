@@ -36,15 +36,14 @@ impl<E: Environment> Ternary for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 32;
 
     fn check_ternary(
         name: &str,
         flag: bool,
-        first: <Circuit as Environment>::ScalarField,
-        second: <Circuit as Environment>::ScalarField,
+        first: console::Scalar<<Circuit as Environment>::Network>,
+        second: console::Scalar<<Circuit as Environment>::Network>,
         mode_condition: Mode,
         mode_a: Mode,
         mode_b: Mode,
@@ -98,15 +97,15 @@ mod tests {
             for flag in [true, false] {
                 let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
 
-                let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-                let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+                let first = Uniform::rand(&mut test_rng());
+                let second = Uniform::rand(&mut test_rng());
 
                 check_ternary(&name, flag, first, second);
             }
         }
 
-        let zero = <Circuit as Environment>::ScalarField::zero();
-        let one = <Circuit as Environment>::ScalarField::one();
+        let zero = console::Scalar::<<Circuit as Environment>::Network>::zero();
+        let one = console::Scalar::<<Circuit as Environment>::Network>::one();
 
         check_ternary("true ? zero : zero", true, zero, zero);
         check_ternary("true ? zero : one", true, zero, one);

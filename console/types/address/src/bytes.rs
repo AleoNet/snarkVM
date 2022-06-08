@@ -21,7 +21,7 @@ impl<N: Network> FromBytes for Address<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x_coordinate = N::Field::read_le(&mut reader)?;
-        Ok(Address::new(N::affine_from_x_coordinate(x_coordinate).map_err(|e| error(format!("{e}")))?))
+        Ok(Address::new(Group::from_x_coordinate(Field::new(x_coordinate)).map_err(|e| error(format!("{e}")))?))
     }
 }
 

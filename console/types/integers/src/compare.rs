@@ -16,14 +16,18 @@
 
 use super::*;
 
-impl<N: Network> Group<N> {
-    /// Returns the `1` element of the group.
-    pub fn one() -> Self {
-        Self::from_projective(N::Projective::prime_subgroup_generator())
+impl<N: Network, I: IntegerType> Ord for Integer<N, I> {
+    /// Returns the lexicographic ordering of `self` and `other`.
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.integer.cmp(&other.integer)
     }
+}
 
-    /// Returns `true` if the element is one.
-    pub fn is_one(&self) -> bool {
-        self.group == N::Projective::prime_subgroup_generator()
+impl<N: Network, I: IntegerType> PartialOrd for Integer<N, I> {
+    /// Returns the lexicographic ordering of `self` and `other`.
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

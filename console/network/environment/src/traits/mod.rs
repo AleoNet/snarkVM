@@ -20,6 +20,9 @@ pub use arithmetic::*;
 mod bitwise;
 pub use bitwise::*;
 
+mod from_bits;
+pub use from_bits::*;
+
 mod from_field;
 pub use from_field::*;
 
@@ -28,6 +31,9 @@ pub use parse::*;
 
 mod string;
 pub use string::string_parser;
+
+mod to_bits;
+pub use to_bits::*;
 
 mod to_field;
 pub use to_field::*;
