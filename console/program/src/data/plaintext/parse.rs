@@ -21,9 +21,9 @@ impl<N: Network> Parser for Plaintext<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a plaintext as `{ identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
-        fn parse_composite<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
-            /// Parses a sanitized composite tuple.
-            fn parse_composite_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Plaintext<N>)> {
+        fn parse_interface<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
+            /// Parses a sanitized interface tuple.
+            fn parse_interface_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Plaintext<N>)> {
                 // Parse the whitespace and comments from the string.
                 let (string, _) = Sanitizer::parse(string)?;
                 // Parse the identifier from the string.
@@ -40,21 +40,20 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the "{" from the string.
             let (string, _) = tag("{")(string)?;
-            // Parse the composites.
-            let (string, composites) =
-                map_res(separated_list1(tag(","), parse_composite_tuple), |composites: Vec<_>| {
-                    // Ensure the number of composites is within `N::MAX_DATA_ENTRIES`.
-                    match composites.len() <= N::MAX_DATA_ENTRIES {
-                        true => Ok(composites),
-                        false => Err(error(format!("Found a plaintext that exceeds size ({})", composites.len()))),
-                    }
-                })(string)?;
+            // Parse the members.
+            let (string, members) = map_res(separated_list1(tag(","), parse_interface_tuple), |members: Vec<_>| {
+                // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
+                match members.len() <= N::MAX_DATA_ENTRIES {
+                    true => Ok(members),
+                    false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
+                }
+            })(string)?;
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the '}' from the string.
             let (string, _) = tag("}")(string)?;
             // Output the plaintext.
-            Ok((string, Plaintext::Composite(composites, Default::default())))
+            Ok((string, Plaintext::Interface(members, Default::default())))
         }
 
         // Parse the whitespace from the string.
@@ -63,8 +62,8 @@ impl<N: Network> Parser for Plaintext<N> {
         alt((
             // Parse a plaintext literal.
             map(Literal::parse, |literal| Self::Literal(literal, Default::default())),
-            // Parse a plaintext composite.
-            parse_composite,
+            // Parse a plaintext interface.
+            parse_interface,
         ))(string)
     }
 }
@@ -100,10 +99,10 @@ impl<N: Network> Display for Plaintext<N> {
         match self {
             // Prints the literal, i.e. 10field
             Self::Literal(literal, ..) => Display::fmt(literal, f),
-            // Prints the composite, i.e. { owner: aleo1xxx.public, balance: 10i64.private }
-            Self::Composite(composite, ..) => {
+            // Prints the interface, i.e. { owner: aleo1xxx.public, balance: 10i64.private }
+            Self::Interface(interface, ..) => {
                 let mut output = format!("{{ ");
-                for (identifier, plaintext) in composite.iter() {
+                for (identifier, plaintext) in interface.iter() {
                     output += &format!("{identifier}: {plaintext}, ");
                 }
                 output.pop(); // trailing space

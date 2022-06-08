@@ -40,7 +40,7 @@ impl<A: Aleo> Inject for Plaintext<A> {
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
-            Self::Primitive::Composite(composite, _) => {
+            Self::Primitive::Interface(composite, _) => {
                 Self::Composite(Inject::new(mode, composite), Default::default())
             }
         }
@@ -67,7 +67,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_value(&self) -> Self::Primitive {
         match self {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
-            Self::Composite(composite, _) => console::Plaintext::Composite(
+            Self::Composite(composite, _) => console::Plaintext::Interface(
                 composite.iter().map(|pair| pair.eject_value()).collect(),
                 Default::default(),
             ),

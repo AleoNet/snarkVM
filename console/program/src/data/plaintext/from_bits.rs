@@ -42,33 +42,33 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Composite
+        // Interface
         else {
-            let num_composites = u8::from_bits_le(&bits_le[counter..counter + 8])?;
+            let num_members = u8::from_bits_le(&bits_le[counter..counter + 8])?;
             counter += 8;
 
-            let mut composites = Vec::with_capacity(num_composites as usize);
-            for _ in 0..num_composites {
+            let mut members = Vec::with_capacity(num_members as usize);
+            for _ in 0..num_members {
                 let identifier_size = u8::from_bits_le(&bits_le[counter..counter + 8])?;
                 counter += 8;
 
                 let identifier = Identifier::from_bits_le(&bits_le[counter..counter + identifier_size as usize])?;
                 counter += identifier_size as usize;
 
-                let composite_size = u16::from_bits_le(&bits_le[counter..counter + 16])?;
+                let member_size = u16::from_bits_le(&bits_le[counter..counter + 16])?;
                 counter += 16;
 
-                let value = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize])?;
-                counter += composite_size as usize;
+                let value = Plaintext::from_bits_le(&bits_le[counter..counter + member_size as usize])?;
+                counter += member_size as usize;
 
-                composites.push((identifier, value));
+                members.push((identifier, value));
             }
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_le.to_vec()) {
-                // Return the composite.
-                Ok(_) => Ok(Self::Composite(composites, cache)),
+                // Return the interface.
+                Ok(_) => Ok(Self::Interface(members, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
@@ -99,33 +99,33 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Composite
+        // Interface
         else {
-            let num_composites = u8::from_bits_be(&bits_be[counter..counter + 8])?;
+            let num_members = u8::from_bits_be(&bits_be[counter..counter + 8])?;
             counter += 8;
 
-            let mut composites = Vec::with_capacity(num_composites as usize);
-            for _ in 0..num_composites {
+            let mut members = Vec::with_capacity(num_members as usize);
+            for _ in 0..num_members {
                 let identifier_size = u8::from_bits_be(&bits_be[counter..counter + 8])?;
                 counter += 8;
 
                 let identifier = Identifier::from_bits_be(&bits_be[counter..counter + identifier_size as usize])?;
                 counter += identifier_size as usize;
 
-                let composite_size = u16::from_bits_be(&bits_be[counter..counter + 16])?;
+                let member_size = u16::from_bits_be(&bits_be[counter..counter + 16])?;
                 counter += 16;
 
-                let value = Plaintext::from_bits_be(&bits_be[counter..counter + composite_size as usize])?;
-                counter += composite_size as usize;
+                let value = Plaintext::from_bits_be(&bits_be[counter..counter + member_size as usize])?;
+                counter += member_size as usize;
 
-                composites.push((identifier, value));
+                members.push((identifier, value));
             }
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_be.to_vec()) {
-                // Return the composite.
-                Ok(_) => Ok(Self::Composite(composites, cache)),
+                // Return the interface.
+                Ok(_) => Ok(Self::Interface(members, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }

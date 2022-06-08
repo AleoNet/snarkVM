@@ -29,11 +29,11 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_le
                 })
                 .clone(),
-            Self::Composite(composite, bits_le) => bits_le
+            Self::Interface(interface, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![true]; // Variant bit.
-                    bits_le.extend((composite.len() as u8).to_bits_le());
-                    for (identifier, value) in composite {
+                    bits_le.extend((interface.len() as u8).to_bits_le());
+                    for (identifier, value) in interface {
                         let value_bits = value.to_bits_le();
                         bits_le.extend(identifier.size_in_bits().to_bits_le());
                         bits_le.extend(identifier.to_bits_le());
@@ -58,11 +58,11 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_be
                 })
                 .clone(),
-            Self::Composite(composite, bits_be) => bits_be
+            Self::Interface(interface, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![true]; // Variant bit.
-                    bits_be.extend((composite.len() as u8).to_bits_be());
-                    for (identifier, value) in composite {
+                    bits_be.extend((interface.len() as u8).to_bits_be());
+                    for (identifier, value) in interface {
                         let value_bits = value.to_bits_be();
                         bits_be.extend(identifier.size_in_bits().to_bits_be());
                         bits_be.extend(identifier.to_bits_be());
