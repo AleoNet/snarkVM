@@ -110,8 +110,7 @@ pub fn calculate_group_commitment<G: AffineCurve>(
     let mut accumulator = G::zero().to_projective();
 
     for commitment in signing_commitments.iter() {
-        // The following check prevents a party from accidentally revealing their share.
-        // Note that the '&&' operator would be sufficient.
+        // Enforce that the signing commitments won't reveal the signer's
         if G::zero() == commitment.binding || G::zero() == commitment.hiding {
             return Err(anyhow!("Commitment equals the identity."));
         }

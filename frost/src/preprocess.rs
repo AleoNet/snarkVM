@@ -58,9 +58,9 @@ impl<G: AffineCurve> SigningCommitment<G> {
     }
 }
 
-/// Performs the precomputation of nonces and commitments used by each participant during signing.
+/// Performs the pre-computation of nonces and commitments used by each participant during signing.
 ///
-/// Every participant must call this function before signing. In the case of a two-round FROST protocol,
+/// Every participant must call this function to enable signing. In the case of a two-round FROST protocol,
 /// then `num_nonces` should be set to 1.
 ///
 /// `SigningNonce` should be kept secret, while `SigningCommitment` should be distributed to other participants.

@@ -36,14 +36,15 @@ pub struct PartialThresholdSignature<G: AffineCurve> {
 impl<G: AffineCurve> PartialThresholdSignature<G> {
     /// Generate a new partial threshold signature for a participant.
     ///
-    /// `participant_signing_share` - Keys required for the participant to sign.
+    /// `participant_signing_share` - Keys required for the participant to craft a signature.
     /// `signing_nonce` - (private) The signing nonce the participant has kept secret.
-    /// `signing_commitments` - (public) The list of signing commitments published by participants.
+    /// `signing_commitments` - (public) Each participant's public signing commitment.
     /// `message` - (public) The message to be signed.
     ///
-    /// z_i = d_i + (e_i + rho_i) + lambda_i * (s_i + c)
+    /// z_i = d_i + (e_i * rho_i) + lambda_i * s_i * c
     /// s_i = secret key
-    /// d_i and e_i = signing nonces
+    /// (d_i, e_i) = signing nonces
+    /// (G^d_i, G^e_i) = (D_i, E_i) = signing commitments
     /// rho_i = binding value = H_1(i, message, signer's signing commitment)
     /// lambda_i = Lagrange coefficient
     /// c = challenge = H_2(group commitment, group public key, message)
@@ -77,7 +78,7 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
             calculate_lagrange_coefficients::<G>(participant_signing_share.participant_index, &participant_indexes)?;
 
         // Calculate the signature.
-        // z_i = d_i + (e_i * rho_i) + lambda_i * (s_i * c)
+        // z_i = d_i + (e_i * rho_i) + lambda_i * s_i * c
         let partial_signature = signing_nonce.hiding
             + (signing_nonce.binding * signer_binding_value)
             + (lambda_i * participant_signing_share.secret_key.0 * challenge);
@@ -85,7 +86,7 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
         Ok(Self { participant_index: participant_signing_share.participant_index, partial_signature })
     }
 
-    /// Verify that the partial signature is valid.
+    /// Returns `true` if the partial signature is valid.
     pub fn is_valid(
         &self,
         public_key: &SignerPublicKey<G>,
@@ -105,8 +106,10 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
 /// A completed and aggregated threshold signature. This is indistinguishable from a Schnorr signature.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ThresholdSignature<G: AffineCurve> {
-    pub r: G,
-    pub z: G::ScalarField,
+    // The public group commitment for this signing round.
+    pub group_commitment: G,
+    // The aggregated threshold signature.
+    pub signature: G::ScalarField,
 }
 
 impl<G: AffineCurve> ThresholdSignature<G> {
@@ -160,20 +163,21 @@ impl<G: AffineCurve> ThresholdSignature<G> {
             }
         }
 
-        let mut z = G::ScalarField::zero();
+        // Aggregate the partial signatures.
+        let mut signature = G::ScalarField::zero();
         for partial_signature in &partial_signatures {
-            z += partial_signature.partial_signature;
+            signature += partial_signature.partial_signature;
         }
 
-        Ok(Self { r: group_commitment, z })
+        Ok(Self { group_commitment, signature })
     }
 
-    /// Verify that the aggregated signature is correct for a given message and group public key.
+    /// Returns `true` if the aggregated signature is valid.
     pub fn verify(&self, group_public_key: &GroupPublicKey<G>, message: Vec<u8>) -> Result<bool> {
-        let expected_challenge = generate_challenge(&self.r, group_public_key, &message)?;
-        let result = group_public_key.0.mul(-expected_challenge) + G::prime_subgroup_generator().mul(self.z);
+        let expected_challenge = generate_challenge(&self.group_commitment, group_public_key, &message)?;
+        let result = group_public_key.0.mul(-expected_challenge) + G::prime_subgroup_generator().mul(self.signature);
 
-        Ok(result == self.r)
+        Ok(result == self.group_commitment)
     }
 }
 
