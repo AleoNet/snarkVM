@@ -188,7 +188,13 @@ mod test {
     use snarkvm_curves::edwards_bls12::EdwardsAffine as EdwardsBls12Affine;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    fn test_signature_verification(threshold: u8, num_participants: u8, message: &str) {
+    fn test_signature_verification(
+        threshold: u8,
+        num_participants: u8,
+        message: &str,
+        num_rounds: usize,
+        insufficient_threshold: bool,
+    ) {
         let mut rng = test_rng();
         let message = message.as_bytes().to_vec();
 
@@ -204,51 +210,78 @@ mod test {
 
         // Generate nonces and signing commitments for each participant.
         for participant_index in 1..(threshold + 1) {
-            let (nonce, commitment) = preprocess::<EdwardsBls12Affine, _>(1, participant_index as u64, &mut rng);
+            let (nonce, commitment) =
+                preprocess::<EdwardsBls12Affine, _>(num_rounds, participant_index as u64, &mut rng);
             nonces.insert(participant_index as u64, nonce);
             commitments.push(commitment);
         }
 
-        let round_number = 0;
-        let commitments_used_for_signing: Vec<_> =
-            commitments.iter().map(|commitments| commitments[round_number].clone()).collect();
+        // Perform the signing and verification for each round
 
-        // Craft the partial signatures for each signer
-        let mut partial_signatures = Vec::with_capacity(num_participants as usize);
-        for (index, nonce) in nonces {
-            let signer_share = shares.iter().find(|share| share.participant_index == index).unwrap();
+        for round_number in 0..num_rounds {
+            let mut commitments_used_for_signing: Vec<_> =
+                commitments.iter().map(|commitments| commitments[round_number].clone()).collect();
 
-            let partial_signature = PartialThresholdSignature::new(
-                signer_share.clone(),
-                &nonce[round_number],
-                commitments_used_for_signing.clone(),
+            // Craft the partial signatures for each signer
+            let mut partial_signatures = Vec::with_capacity(num_participants as usize);
+            for (index, nonce) in &nonces {
+                let signer_share = shares.iter().find(|share| share.participant_index == *index).unwrap();
+
+                let partial_signature = PartialThresholdSignature::new(
+                    signer_share.clone(),
+                    &nonce[round_number],
+                    commitments_used_for_signing.clone(),
+                    message.clone(),
+                )
+                .unwrap();
+
+                partial_signatures.push(partial_signature);
+            }
+
+            // Attempt to aggregate the signature with `threshold - 1` signatures.
+            if insufficient_threshold {
+                let removed = partial_signatures.pop().unwrap();
+                commitments_used_for_signing.retain(|x| x.participant_index != removed.participant_index);
+            }
+
+            // Aggregate the partial signatures.
+            let aggregated_signature = ThresholdSignature::aggregate_signatures(
+                partial_signatures,
+                commitments_used_for_signing,
                 message.clone(),
+                &public_keys,
             )
             .unwrap();
 
-            partial_signatures.push(partial_signature);
+            // Verify the signature.
+            assert!(aggregated_signature.verify(&public_keys.group_public_key, message.clone()).unwrap());
         }
-
-        // Aggregate the partial signatures.
-        let aggregated_signature = ThresholdSignature::aggregate_signatures(
-            partial_signatures,
-            commitments_used_for_signing,
-            message.clone(),
-            &public_keys,
-        )
-        .unwrap();
-
-        // Verify the signature.
-        assert!(aggregated_signature.verify(&public_keys.group_public_key, message).unwrap());
     }
 
     #[test]
     fn test_1_out_of_1_frost_signing_and_verification() {
-        test_signature_verification(1, 1, "Message to sign");
+        test_signature_verification(1, 1, "Message to sign", 3, false);
     }
 
     #[test]
     fn test_3_out_of_5_frost_signing_and_verification() {
-        test_signature_verification(3, 5, "Message to sign");
+        test_signature_verification(3, 5, "Message to sign", 3, false);
+    }
+
+    #[test]
+    fn test_6_out_of_10_frost_signing_and_verification() {
+        test_signature_verification(6, 10, "Message to sign", 3, false);
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_3_out_of_5_frost_signing_and_verification_insufficient_threshold() {
+        test_signature_verification(3, 5, "Message to sign", 1, true);
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_6_out_of_10_frost_signing_and_verification_insufficient_threshold() {
+        test_signature_verification(6, 10, "Message to sign", 1, true);
     }
 }
