@@ -37,7 +37,7 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
     /// Generate a new partial threshold signature for a participant.
     ///
     /// `participant_signing_share` - Keys required for the participant to sign.
-    /// `signing_nonces` - (private) The signing nonces the participant has kept secret.
+    /// `signing_nonce` - (private) The signing nonce the participant has kept secret.
     /// `signing_commitments` - (public) The list of signing commitments published by participants.
     /// `message` - (public) The message to be signed.
     ///
@@ -49,7 +49,7 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
     /// c = challenge = H_2(group commitment, group public key, message)
     pub fn new(
         participant_signing_share: SignerShare<G>,
-        signing_nonces: &SigningNonce<G::ScalarField>,
+        signing_nonce: &SigningNonce<G::ScalarField>,
         signing_commitments: Vec<SigningCommitment<G>>,
         message: Vec<u8>,
     ) -> Result<Self> {
@@ -77,9 +77,9 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
             calculate_lagrange_coefficients::<G>(participant_signing_share.participant_index, &participant_indexes)?;
 
         // Calculate the signature.
-        // z_i = d_i + (e_i + rho_i) + lambda_i * (s_i + c)
-        let partial_signature = signing_nonces.hiding
-            + (signing_nonces.binding * signer_binding_value)
+        // z_i = d_i + (e_i * rho_i) + lambda_i * (s_i * c)
+        let partial_signature = signing_nonce.hiding
+            + (signing_nonce.binding * signer_binding_value)
             + (lambda_i * participant_signing_share.secret_key.0 * challenge);
 
         Ok(Self { participant_index: participant_signing_share.participant_index, partial_signature })
