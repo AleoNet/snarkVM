@@ -14,26 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::preprocess::SigningCommitment;
+use crate::{preprocess::SigningCommitment, GroupPublicKey};
 
+use console::algorithms::{Hash, HashToScalar, Poseidon4};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, ToConstraintField, Zero};
 
-use crate::GroupPublicKey;
 use anyhow::{anyhow, Result};
-use sha2::{Digest, Sha256};
-use snarkvm_utilities::ToBytes;
 use std::{
     collections::HashMap,
     ops::{Mul, Sub},
 };
-
-pub fn sha256(data: &[u8]) -> [u8; 32] {
-    let digest = Sha256::digest(&data);
-    let mut ret = [0u8; 32];
-    ret.copy_from_slice(&digest);
-    ret
-}
 
 /// Calculate the Lagrange coefficient for a given participant index.
 pub fn calculate_lagrange_coefficients<G: AffineCurve>(
@@ -75,30 +66,39 @@ pub fn calculate_lagrange_coefficients<G: AffineCurve>(
     Ok(numerator.mul(inverted_denominator))
 }
 
-// TODO (raychu86): Use hash_to_scalar_field instead of sha256.
 /// Generates the binding value, `rho_i` that ensures the signature is unique for a particular
 /// signing set, set of commitments, and message.
 pub fn calculate_binding_value<G: AffineCurve>(
     participant_index: u64,
     signing_commitments: &[SigningCommitment<G>],
     message: &[u8],
-) -> Result<G::ScalarField> {
-    let message_hash = sha256(message);
+) -> Result<G::ScalarField>
+where
+    G::BaseField: PrimeField,
+{
+    // TODO (raychu86): Move this setup out of the function.
+    let poseidon4 = Poseidon4::<G::BaseField>::setup("FROST_binding_value")?;
 
-    let mut hash_input = ["FROST_SHA256".as_bytes(), &participant_index.to_bytes_le()?, &message_hash].concat();
+    let message_hash = poseidon4.hash(&message.to_field_elements()?)?;
+
+    let mut preimage = Vec::new();
+    preimage.extend(&"FROST_SHA256".as_bytes().to_field_elements()?);
+    preimage.push(
+        G::BaseField::from_repr(participant_index.into())
+            .ok_or(anyhow!("Failed to convert participant index to scalar"))?,
+    );
+    preimage.push(message_hash);
 
     for commitment in signing_commitments {
-        hash_input.extend(commitment.participant_index.to_bytes_le()?);
-        hash_input.extend(commitment.hiding.to_x_coordinate().to_bytes_le()?);
-        hash_input.extend(commitment.binding.to_x_coordinate().to_bytes_le()?);
+        preimage.push(
+            G::BaseField::from_repr(commitment.participant_index.into())
+                .ok_or(anyhow!("Failed to convert participant index to scalar"))?,
+        );
+        preimage.push(commitment.hiding.to_x_coordinate());
+        preimage.push(commitment.binding.to_x_coordinate());
     }
 
-    let result = sha256(&hash_input);
-
-    match G::ScalarField::from_random_bytes(&result[0..30]) {
-        Some(res) => Ok(res),
-        None => Err(anyhow!("Binding Value - Failed to convert result to scalar")),
-    }
+    Ok(poseidon4.hash_to_scalar(&preimage[..])?)
 }
 
 /// Calculate the group commitment which is published as part of the joint
@@ -128,15 +128,18 @@ pub fn generate_challenge<G: AffineCurve>(
     group_commitment: &G,
     group_public_key: &GroupPublicKey<G>,
     message: &[u8],
-) -> Result<G::ScalarField> {
-    let hash_input =
-        [group_commitment.to_x_coordinate().to_bytes_le()?, group_public_key.0.to_bytes_le()?, message.to_vec()]
-            .concat();
+) -> Result<G::ScalarField>
+where
+    G::BaseField: PrimeField,
+{
+    // TODO (raychu86): Move this setup out of the function.
+    let poseidon4 = Poseidon4::<G::BaseField>::setup("FROST_challenge")?;
 
-    let result = sha256(&hash_input);
+    let mut preimage = vec![];
+    preimage.push(group_commitment.to_x_coordinate());
+    preimage.push(group_public_key.0.to_x_coordinate());
+    preimage.push(G::BaseField::from(message.len() as u128));
+    preimage.extend(&message.to_field_elements()?);
 
-    match G::ScalarField::from_random_bytes(&result[0..30]) {
-        Some(res) => Ok(res),
-        None => Err(anyhow!("Challenge - Failed to convert result to scalar")),
-    }
+    Ok(poseidon4.hash_to_scalar(&preimage[..])?)
 }

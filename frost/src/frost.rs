@@ -17,7 +17,7 @@
 use crate::{keys::*, preprocess::*, utils::*};
 
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::Zero;
+use snarkvm_fields::{PrimeField, Zero};
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
@@ -26,14 +26,20 @@ use std::collections::HashMap;
 /// sharing scheme where t is the threshold required to reconstruct a secret
 /// from a total of n shares.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PartialThresholdSignature<G: AffineCurve> {
+pub struct PartialThresholdSignature<G: AffineCurve>
+where
+    G::BaseField: PrimeField,
+{
     /// The index of the participant.
     pub participant_index: u64,
     /// The participant's signature over the message.
     pub partial_signature: G::ScalarField,
 }
 
-impl<G: AffineCurve> PartialThresholdSignature<G> {
+impl<G: AffineCurve> PartialThresholdSignature<G>
+where
+    G::BaseField: PrimeField,
+{
     /// Generate a new partial threshold signature for a participant.
     ///
     /// `participant_signing_share` - Keys required for the participant to craft a signature.
@@ -105,14 +111,20 @@ impl<G: AffineCurve> PartialThresholdSignature<G> {
 
 /// A completed and aggregated threshold signature. This is indistinguishable from a Schnorr signature.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ThresholdSignature<G: AffineCurve> {
+pub struct ThresholdSignature<G: AffineCurve>
+where
+    G::BaseField: PrimeField,
+{
     // The public group commitment for this signing round.
     pub group_commitment: G,
     // The aggregated threshold signature.
     pub signature: G::ScalarField,
 }
 
-impl<G: AffineCurve> ThresholdSignature<G> {
+impl<G: AffineCurve> ThresholdSignature<G>
+where
+    G::BaseField: PrimeField,
+{
     /// Aggregate the partial signatures into the final signature.
     pub fn aggregate_signatures(
         partial_signatures: Vec<PartialThresholdSignature<G>>,
