@@ -85,20 +85,20 @@ where
     preimage.extend(&"FROST_SHA256".as_bytes().to_field_elements()?);
     preimage.push(
         G::BaseField::from_repr(participant_index.into())
-            .ok_or(anyhow!("Failed to convert participant index to scalar"))?,
+            .ok_or_else(|| anyhow!("Failed to convert participant index to scalar"))?,
     );
     preimage.push(message_hash);
 
     for commitment in signing_commitments {
         preimage.push(
             G::BaseField::from_repr(commitment.participant_index.into())
-                .ok_or(anyhow!("Failed to convert participant index to scalar"))?,
+                .ok_or_else(|| anyhow!("Failed to convert participant index to scalar"))?,
         );
         preimage.push(commitment.hiding.to_x_coordinate());
         preimage.push(commitment.binding.to_x_coordinate());
     }
 
-    Ok(poseidon4.hash_to_scalar(&preimage[..])?)
+    poseidon4.hash_to_scalar(&preimage[..])
 }
 
 /// Calculate the group commitment which is published as part of the joint
@@ -141,5 +141,5 @@ where
     preimage.push(G::BaseField::from(message.len() as u128));
     preimage.extend(&message.to_field_elements()?);
 
-    Ok(poseidon4.hash_to_scalar(&preimage[..])?)
+    poseidon4.hash_to_scalar(&preimage[..])
 }
