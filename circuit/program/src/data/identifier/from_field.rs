@@ -40,7 +40,7 @@ mod tests {
             // Initialize the console identifier.
             let console_identifier = sample_console_identifier::<Circuit>()?;
             // Initialize the circuit list of bits.
-            let circuit_field = Field::constant(console::ToField::to_field(&console_identifier));
+            let circuit_field = Field::constant(console::ToField::to_field(&console_identifier)?);
 
             Circuit::scope("Identifier FromField", || {
                 let candidate = Identifier::<Circuit>::from_field(circuit_field);

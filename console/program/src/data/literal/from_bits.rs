@@ -21,23 +21,23 @@ impl<N: Network> Literal<N> {
     pub fn from_bits_le(variant: u8, bits_le: &[bool]) -> Result<Self> {
         let literal = bits_le;
         let literal = match variant {
-            0 => Literal::Address(Address::new(Group::from_x_coordinate(N::field_from_bits_le(literal)?)?)),
+            0 => Literal::Address(Address::new(Group::from_x_coordinate(Field::<N>::from_bits_le(literal)?)?)),
             1 => match bits_le.len() {
                 1 => Literal::Boolean(Boolean::new(literal[0])),
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_le.len()),
             },
             2 => Literal::Field(Field::from_bits_le(literal)?),
-            3 => Literal::Group(Group::from_x_coordinate(Field::from_bits_le(literal)?)?),
-            4 => Literal::I8(I8::new(i8::from_bits_le(literal)?)),
-            5 => Literal::I16(I16::new(i16::from_bits_le(literal)?)),
-            6 => Literal::I32(I32::new(i32::from_bits_le(literal)?)),
-            7 => Literal::I64(I64::new(i64::from_bits_le(literal)?)),
-            8 => Literal::I128(I128::new(i128::from_bits_le(literal)?)),
-            9 => Literal::U8(U8::new(u8::from_bits_le(literal)?)),
-            10 => Literal::U16(U16::new(u16::from_bits_le(literal)?)),
-            11 => Literal::U32(U32::new(u32::from_bits_le(literal)?)),
-            12 => Literal::U64(U64::new(u64::from_bits_le(literal)?)),
-            13 => Literal::U128(U128::new(u128::from_bits_le(literal)?)),
+            3 => Literal::Group(Group::from_bits_le(literal)?),
+            4 => Literal::I8(I8::from_bits_le(literal)?),
+            5 => Literal::I16(I16::from_bits_le(literal)?),
+            6 => Literal::I32(I32::from_bits_le(literal)?),
+            7 => Literal::I64(I64::from_bits_le(literal)?),
+            8 => Literal::I128(I128::from_bits_le(literal)?),
+            9 => Literal::U8(U8::from_bits_le(literal)?),
+            10 => Literal::U16(U16::from_bits_le(literal)?),
+            11 => Literal::U32(U32::from_bits_le(literal)?),
+            12 => Literal::U64(U64::from_bits_le(literal)?),
+            13 => Literal::U128(U128::from_bits_le(literal)?),
             14 => Literal::Scalar(Scalar::from_bits_le(literal)?),
             15 => {
                 let buffer = Vec::<u8>::from_bits_le(literal)?;
@@ -64,17 +64,17 @@ impl<N: Network> Literal<N> {
                 _ => bail!("Expected a boolean literal, but found a list of {} bits.", bits_be.len()),
             },
             2 => Literal::Field(Field::from_bits_be(literal)?),
-            3 => Literal::Group(Group::from_x_coordinate(Field::from_bits_be(literal)?)?),
-            4 => Literal::I8(I8::new(i8::from_bits_be(literal)?)),
-            5 => Literal::I16(I16::new(i16::from_bits_be(literal)?)),
-            6 => Literal::I32(I32::new(i32::from_bits_be(literal)?)),
-            7 => Literal::I64(I64::new(i64::from_bits_be(literal)?)),
-            8 => Literal::I128(I128::new(i128::from_bits_be(literal)?)),
-            9 => Literal::U8(U8::new(u8::from_bits_be(literal)?)),
-            10 => Literal::U16(U16::new(u16::from_bits_be(literal)?)),
-            11 => Literal::U32(U32::new(u32::from_bits_be(literal)?)),
-            12 => Literal::U64(U64::new(u64::from_bits_be(literal)?)),
-            13 => Literal::U128(U128::new(u128::from_bits_be(literal)?)),
+            3 => Literal::Group(Group::from_bits_be(literal)?),
+            4 => Literal::I8(I8::from_bits_be(literal)?),
+            5 => Literal::I16(I16::from_bits_be(literal)?),
+            6 => Literal::I32(I32::from_bits_be(literal)?),
+            7 => Literal::I64(I64::from_bits_be(literal)?),
+            8 => Literal::I128(I128::from_bits_be(literal)?),
+            9 => Literal::U8(U8::from_bits_be(literal)?),
+            10 => Literal::U16(U16::from_bits_be(literal)?),
+            11 => Literal::U32(U32::from_bits_be(literal)?),
+            12 => Literal::U64(U64::from_bits_be(literal)?),
+            13 => Literal::U128(U128::from_bits_be(literal)?),
             14 => Literal::Scalar(Scalar::from_bits_be(literal)?),
             15 => {
                 let buffer = Vec::<u8>::from_bits_be(literal)?;
@@ -96,7 +96,6 @@ impl<N: Network> Literal<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{rand::Rng, test_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 

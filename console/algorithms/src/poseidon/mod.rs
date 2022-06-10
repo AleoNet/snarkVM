@@ -54,7 +54,7 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
         ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
 
         Ok(Self {
-            domain: Field::<E>::new(E::Field::from_bytes_le_mod_order(domain.as_bytes())),
+            domain: Field::<E>::new_domain_separator(domain),
             parameters: Arc::new(E::Field::default_poseidon_parameters::<RATE>()?),
         })
     }

@@ -17,20 +17,20 @@
 use super::*;
 
 impl<N: Network> ToField for Identifier<N> {
-    type Field = N::Field;
+    type Field = Field<N>;
 
     /// Returns the identifier as a field element.
-    fn to_field(&self) -> Self::Field {
-        self.0
+    fn to_field(&self) -> Result<Self::Field> {
+        (&self).to_field()
     }
 }
 
 impl<N: Network> ToField for &Identifier<N> {
-    type Field = N::Field;
+    type Field = Field<N>;
 
     /// Returns the identifier as a field element.
-    fn to_field(&self) -> Self::Field {
-        self.0
+    fn to_field(&self) -> Result<Self::Field> {
+        Ok(self.0)
     }
 }
 
@@ -50,10 +50,10 @@ mod tests {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
             let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
             // Recover the field element from the bits.
-            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
+            let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
             let candidate = Identifier::<CurrentNetwork>::from_str(&expected_string)?;
-            assert_eq!(expected_field, candidate.to_field());
+            assert_eq!(expected_field, candidate.to_field()?);
         }
         Ok(())
     }

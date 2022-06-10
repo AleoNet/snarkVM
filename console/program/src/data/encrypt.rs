@@ -18,15 +18,15 @@ use super::*;
 
 impl<N: Network> Data<N, Plaintext<N>> {
     /// Encrypts `self` under the given Aleo address and randomizer.
-    pub fn encrypt(&self, address: Address<N>, randomizer: N::Scalar) -> Result<Data<N, Ciphertext<N>>> {
+    pub fn encrypt(&self, address: Address<N>, randomizer: Scalar<N>) -> Result<Data<N, Ciphertext<N>>> {
         // Compute the data view key.
-        let data_view_key = (*address * randomizer).to_affine().to_x_coordinate();
+        let data_view_key = (*address * randomizer).to_x_coordinate();
         // Encrypt the data.
         self.encrypt_symmetric(&data_view_key)
     }
 
     /// Encrypts `self` under the given data view key.
-    pub fn encrypt_symmetric(&self, data_view_key: &N::Field) -> Result<Data<N, Ciphertext<N>>> {
+    pub fn encrypt_symmetric(&self, data_view_key: &Field<N>) -> Result<Data<N, Ciphertext<N>>> {
         // Determine the number of randomizers needed to encrypt the data.
         let num_randomizers =
             self.0.iter().map(|(_, value)| value.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();

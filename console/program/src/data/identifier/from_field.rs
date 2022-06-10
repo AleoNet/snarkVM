@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> FromField for Identifier<N> {
-    type Field = N::Field;
+    type Field = Field<N>;
 
     /// Initializes a new identifier from a field element.
     fn from_field(field: &Self::Field) -> Result<Self> {

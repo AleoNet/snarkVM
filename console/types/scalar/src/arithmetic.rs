@@ -36,10 +36,28 @@ impl<E: Environment> Add<Scalar<E>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> Add<&Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
+
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn add(self, other: &Scalar<E>) -> Self::Output {
+        Scalar::new(self.scalar + other.scalar)
+    }
+}
+
 impl<E: Environment> AddAssign<Scalar<E>> for Scalar<E> {
     /// Adds `other` to `self`.
     #[inline]
     fn add_assign(&mut self, other: Scalar<E>) {
+        self.scalar += other.scalar;
+    }
+}
+
+impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
+    /// Adds `other` to `self`.
+    #[inline]
+    fn add_assign(&mut self, other: &Scalar<E>) {
         self.scalar += other.scalar;
     }
 }
@@ -54,10 +72,28 @@ impl<E: Environment> Sub<Scalar<E>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> Sub<&Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
+
+    /// Returns the `difference` of `self` and `other`.
+    #[inline]
+    fn sub(self, other: &Scalar<E>) -> Self::Output {
+        Scalar::new(self.scalar - other.scalar)
+    }
+}
+
 impl<E: Environment> SubAssign<Scalar<E>> for Scalar<E> {
     /// Subtracts `other` from `self`.
     #[inline]
     fn sub_assign(&mut self, other: Scalar<E>) {
+        self.scalar -= other.scalar;
+    }
+}
+
+impl<E: Environment> SubAssign<&Scalar<E>> for Scalar<E> {
+    /// Subtracts `other` from `self`.
+    #[inline]
+    fn sub_assign(&mut self, other: &Scalar<E>) {
         self.scalar -= other.scalar;
     }
 }
@@ -72,10 +108,28 @@ impl<E: Environment> Mul<Scalar<E>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> Mul<&Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
+
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn mul(self, other: &Scalar<E>) -> Self::Output {
+        Scalar::new(self.scalar * other.scalar)
+    }
+}
+
 impl<E: Environment> MulAssign<Scalar<E>> for Scalar<E> {
     /// Multiplies `self` by `other`.
     #[inline]
     fn mul_assign(&mut self, other: Scalar<E>) {
+        self.scalar *= other.scalar;
+    }
+}
+
+impl<E: Environment> MulAssign<&Scalar<E>> for Scalar<E> {
+    /// Multiplies `self` by `other`.
+    #[inline]
+    fn mul_assign(&mut self, other: &Scalar<E>) {
         self.scalar *= other.scalar;
     }
 }
@@ -90,10 +144,28 @@ impl<E: Environment> Div<Scalar<E>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> Div<&Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
+
+    /// Returns the `quotient` of `self` and `other`.
+    #[inline]
+    fn div(self, other: &Scalar<E>) -> Self::Output {
+        Scalar::new(self.scalar / other.scalar)
+    }
+}
+
 impl<E: Environment> DivAssign<Scalar<E>> for Scalar<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: Scalar<E>) {
+        self.scalar /= other.scalar;
+    }
+}
+
+impl<E: Environment> DivAssign<&Scalar<E>> for Scalar<E> {
+    /// Divides `self` by `other`.
+    #[inline]
+    fn div_assign(&mut self, other: &Scalar<E>) {
         self.scalar /= other.scalar;
     }
 }
@@ -104,6 +176,16 @@ impl<E: Environment> Pow<Scalar<E>> for Scalar<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Scalar<E>) -> Self::Output {
+        Scalar::new(self.scalar.pow(other.scalar.to_repr()))
+    }
+}
+
+impl<E: Environment> Pow<&Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: &Scalar<E>) -> Self::Output {
         Scalar::new(self.scalar.pow(other.scalar.to_repr()))
     }
 }
@@ -138,5 +220,37 @@ impl<E: Environment> Square for Scalar<E> {
     #[inline]
     fn square(&self) -> Self::Output {
         Scalar::new(self.scalar.square())
+    }
+}
+
+impl<E: Environment> Sum<Scalar<E>> for Scalar<E> {
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn sum<I: Iterator<Item = Scalar<E>>>(iter: I) -> Self {
+        iter.fold(Scalar::zero(), |a, b| a + b)
+    }
+}
+
+impl<'a, E: Environment> Sum<&'a Scalar<E>> for Scalar<E> {
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn sum<I: Iterator<Item = &'a Scalar<E>>>(iter: I) -> Self {
+        iter.fold(Scalar::zero(), |a, b| a + b)
+    }
+}
+
+impl<E: Environment> Product<Scalar<E>> for Scalar<E> {
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn product<I: Iterator<Item = Scalar<E>>>(iter: I) -> Self {
+        iter.fold(Scalar::one(), |a, b| a * b)
+    }
+}
+
+impl<'a, E: Environment> Product<&'a Scalar<E>> for Scalar<E> {
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn product<I: Iterator<Item = &'a Scalar<E>>>(iter: I) -> Self {
+        iter.fold(Scalar::one(), |a, b| a * b)
     }
 }

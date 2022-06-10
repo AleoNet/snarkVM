@@ -22,16 +22,15 @@ mod to_fields;
 
 use crate::Visibility;
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{FromBits, ToBits};
+use snarkvm_console_types::Field;
 
-use anyhow::{bail, Error, Result};
 use core::ops::Deref;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Ciphertext<N: Network>(Vec<N::Field>);
+pub struct Ciphertext<N: Network>(Vec<Field<N>>);
 
 impl<N: Network> Deref for Ciphertext<N> {
-    type Target = [N::Field];
+    type Target = [Field<N>];
 
     fn deref(&self) -> &Self::Target {
         &self.0

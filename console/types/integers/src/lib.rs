@@ -17,9 +17,12 @@
 mod arithmetic;
 mod bitwise;
 mod compare;
+mod from_bits;
 mod one;
 mod parse;
 mod random;
+mod size_in_bits;
+mod to_bits;
 mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;

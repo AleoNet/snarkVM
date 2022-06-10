@@ -20,18 +20,15 @@ mod size_in_bits;
 mod to_bits;
 mod variant;
 
-use snarkvm_console_network::{prelude::*, Network};
-use snarkvm_console_types::*;
+use snarkvm_console_network::Network;
+use snarkvm_console_types::{prelude::*, Boolean};
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
-    FromBits,
     FromBytes,
-    ToBits,
     ToBytes,
 };
 
-use anyhow::{bail, Result};
 use enum_index::EnumIndex;
 
 /// The literal enum represents all supported types in snarkVM.
@@ -75,7 +72,10 @@ impl<N: Network> FromBytes for Literal<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;
         let literal = match index {
-            0 => Self::Address(Address::new(FromBytes::read_le(&mut reader)?)),
+            0 => Self::Address(Address::new(
+                Group::from_x_coordinate(Field::new(FromBytes::read_le(&mut reader)?))
+                    .map_err(|e| error(format!("{e}")))?,
+            )),
             1 => Self::Boolean(Boolean::new(FromBytes::read_le(&mut reader)?)),
             2 => Self::Field(Field::new(FromBytes::read_le(&mut reader)?)),
             3 => Self::Group(Group::new(FromBytes::read_le(&mut reader)?)),

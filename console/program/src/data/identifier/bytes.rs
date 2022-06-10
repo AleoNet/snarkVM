@@ -42,7 +42,7 @@ impl<N: Network> ToBytes for Identifier<N> {
         }
 
         // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = N::Field::size_in_data_bits() / 8; // Note: This intentionally rounds down.
+        let max_bytes = Field::<N>::size_in_data_bits() / 8; // Note: This intentionally rounds down.
         if string.len() > max_bytes {
             return Err(error(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")));
         }

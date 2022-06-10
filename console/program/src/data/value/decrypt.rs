@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Value<N, Ciphertext<N>> {
     /// Decrypts the value using the given randomizers.
-    pub(crate) fn decrypt(&self, randomizers: &[N::Field]) -> Result<Value<N, Plaintext<N>>> {
+    pub(crate) fn decrypt(&self, randomizers: &[Field<N>]) -> Result<Value<N, Plaintext<N>>> {
         // Ensure that the number of randomizers is correct.
         if randomizers.len() != self.num_randomizers()? as usize {
             bail!(

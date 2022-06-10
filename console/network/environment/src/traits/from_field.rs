@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::PrimeField;
+use super::FieldTrait;
 
 use anyhow::Result;
 
 /// Unary operator for converting from a base field element.
 pub trait FromField {
-    type Field: PrimeField;
+    type Field: FieldTrait;
 
     /// Initializes an object from a base field element.
     fn from_field(field: &Self::Field) -> Result<Self>
@@ -30,7 +30,7 @@ pub trait FromField {
 
 /// Unary operator for converting from a list of base elements.
 pub trait FromFields {
-    type Field: PrimeField;
+    type Field: FieldTrait;
 
     /// Initializes an object from a list of base field elements.
     fn from_fields(fields: &[Self::Field]) -> Result<Self>

@@ -20,7 +20,7 @@ mod string;
 mod try_from;
 
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Scalar;
+use snarkvm_console_types::{Field, Scalar};
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -36,7 +36,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PrivateKey<N: Network> {
     /// The account seed that derives the full private key.
-    seed: Scalar<N>,
+    seed: Field<N>,
     /// The derived signature secret key.
     sk_sig: Scalar<N>,
     /// The derived signature randomizer.
@@ -52,7 +52,7 @@ impl<N: Network> PrivateKey<N> {
     }
 
     /// Returns the account seed.
-    pub const fn seed(&self) -> Scalar<N> {
+    pub const fn seed(&self) -> Field<N> {
         self.seed
     }
 

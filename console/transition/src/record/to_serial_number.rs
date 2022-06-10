@@ -20,9 +20,9 @@ impl<N: Network> Record<N> {
     /// Returns the serial number of the record, given the private key of the record owner and an RNG.
     pub fn to_serial_number<R: Rng + CryptoRng>(
         &self,
-        sk_sig: &N::Scalar,
-        pr_sig: &N::Affine,
-        message: &[N::Field],
+        sk_sig: &Scalar<N>,
+        pr_sig: &Group<N>,
+        message: &[Field<N>],
         rng: &mut R,
     ) -> Result<SerialNumber<N>> {
         // Compute the serial number.

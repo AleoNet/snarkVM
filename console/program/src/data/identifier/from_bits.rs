@@ -22,10 +22,10 @@ impl<N: Network> FromBits for Identifier<N> {
         // Ensure the number of bits does not exceed the size in bits of the field.
         // This check is not sufficient to ensure the identifier is of valid size,
         // the final step checks the byte-aligned field element is within the data capacity.
-        ensure!(bits_le.len() <= N::Field::size_in_bits(), "Identifier exceeds the maximum bits allowed");
+        ensure!(bits_le.len() <= Field::<N>::size_in_bits(), "Identifier exceeds the maximum bits allowed");
 
         // Recover the field element from the bits.
-        let field = N::field_from_bits_le(bits_le)?;
+        let field = Field::<N>::from_bits_le(bits_le)?;
 
         // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
         let bytes = bits_le.chunks(8).map(u8::from_bits_le).collect::<Result<Vec<u8>>>()?;
@@ -38,7 +38,7 @@ impl<N: Network> FromBits for Identifier<N> {
         };
 
         // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = N::Field::size_in_data_bits() / 8; // Note: This intentionally rounds down.
+        let max_bytes = Field::<N>::size_in_data_bits() / 8; // Note: This intentionally rounds down.
         match num_bytes <= max_bytes {
             // Return the identifier.
             true => Ok(Self(field, num_bytes as u8)),

@@ -22,10 +22,10 @@ mod to_bits;
 mod to_fields;
 
 use crate::{Identifier, Literal, Visibility};
-use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{error, FromBits, ToBits};
+use snarkvm_console_network::Network;
+use snarkvm_console_types::prelude::*;
+use snarkvm_utilities::error;
 
-use anyhow::{bail, Error, Result};
 use once_cell::sync::OnceCell;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -55,7 +55,6 @@ mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
     use snarkvm_console_types::Field;
-    use snarkvm_utilities::{test_rng, Uniform};
 
     use core::str::FromStr;
 

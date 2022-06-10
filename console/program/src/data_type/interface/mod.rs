@@ -16,7 +16,7 @@
 
 mod parse;
 
-use crate::{Identifier, Plaintext, ValueType};
+use crate::{Identifier, ValueType};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -25,8 +25,6 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
 };
-
-use itertools::Itertools;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Interface<N: Network> {

@@ -22,9 +22,12 @@ mod parse;
 mod random;
 mod size_in_bits;
 mod to_bits;
+mod to_field;
 mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;
+
+use snarkvm_console_types_field::Field;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Scalar<E: Environment> {

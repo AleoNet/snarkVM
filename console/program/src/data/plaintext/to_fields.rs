@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> ToFields for Plaintext<N> {
-    type Field = N::Field;
+    type Field = Field<N>;
 
     /// Returns this plaintext as a list of field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
@@ -28,8 +28,8 @@ impl<N: Network> ToFields for Plaintext<N> {
         bits_le.push(true);
         // Pack the bits into field elements.
         let fields = bits_le
-            .chunks(N::Field::size_in_data_bits())
-            .map(|bits_le| N::field_from_bits_le(bits_le))
+            .chunks(Field::<N>::size_in_data_bits())
+            .map(|bits_le| Field::<N>::from_bits_le(bits_le))
             .collect::<Result<Vec<_>>>()?;
         // Ensure the number of field elements does not exceed the maximum allowed size.
         match fields.len() <= N::MAX_DATA_SIZE_IN_FIELDS as usize {

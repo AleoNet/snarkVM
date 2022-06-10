@@ -123,27 +123,38 @@ pub trait GroupTrait<S: ScalarTrait>:
 pub trait ScalarTrait:
     'static
     + Add<Self, Output = Self>
-    + AddAssign
+    + for<'a> Add<&'a Self, Output = Self>
+    + AddAssign<Self>
+    + for<'a> AddAssign<&'a Self>
     + Clone
     + Copy
     + Debug
     + Deref
-    + Div<Output = Self>
-    + DivAssign
+    + Div<Self, Output = Self>
+    + for<'a> Div<&'a Self, Output = Self>
+    + DivAssign<Self>
+    + for<'a> DivAssign<&'a Self>
     + Double<Output = Self>
     + Eq
     + Inverse<Output = Self>
-    + Mul<Output = Self>
-    + MulAssign
+    + Mul<Self, Output = Self>
+    + for<'a> Mul<&'a Self, Output = Self>
+    + MulAssign<Self>
+    + for<'a> MulAssign<&'a Self>
     + Neg<Output = Self>
     + One
     + Parser
     + Pow<Self, Output = Self>
+    + for<'a> Pow<&'a Self, Output = Self>
+    + Product<Self>
+    + for<'a> Product<&'a Self>
     + Send
     + Sync
     + Square<Output = Self>
-    + Sub<Output = Self>
-    + SubAssign
+    + SubAssign<Self>
+    + for<'a> SubAssign<&'a Self>
+    + Sum<Self>
+    + for<'a> Sum<&'a Self>
     + TypeName
     + Uniform
     + Zero
@@ -151,7 +162,7 @@ pub trait ScalarTrait:
 }
 
 /// Representation of a string.
-pub trait StringTrait: Clone + Debug + Display + Parser + Send + Sync + TypeName + Uniform {}
+pub trait StringTrait: Clone + Debug + Display + Parser + Send + Sync + TypeName {}
 
 /// Representation of an integer.
 pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16>, U32: IntegerCore<u32>>:
@@ -248,6 +259,8 @@ pub(super) mod integer_type {
         + Hash
         + NumZero
         + NumOne
+        + Send
+        + Sync
         + ToBits
         + ToPrimitive
         + Uniform

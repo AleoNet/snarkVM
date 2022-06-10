@@ -28,71 +28,69 @@ mod to_serial_number;
 use crate::State;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{CryptoRng, Rng, ToBits, ToBytes};
-
-use anyhow::{ensure, Result};
+use snarkvm_console_types::prelude::*;
+use snarkvm_utilities::ToBytes;
 
 /// A program record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.
 #[derive(Clone)]
 pub struct Record<N: Network> {
     /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
-    owner: N::Field,
+    owner: Field<N>,
     /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
-    balance: N::Field,
+    balance: Field<N>,
     /// The data ID of this record.
-    data: N::Field,
+    data: Field<N>,
     /// The nonce for this record (i.e. `G^r`).
-    nonce: N::Affine,
+    nonce: Group<N>,
     /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
-    mac: N::Field,
+    mac: Field<N>,
     /// The balance commitment for this record (i.e. `G^balance H^HashToScalar(G^r^view_key)`).
-    bcm: N::Affine,
+    bcm: Group<N>,
 }
 
 impl<N: Network> Record<N> {
     /// Initializes a new record.
     pub fn new(
-        owner: N::Field,
-        balance: N::Field,
-        data: N::Field,
-        nonce: N::Affine,
-        mac: N::Field,
-        bcm: N::Affine,
+        owner: Field<N>,
+        balance: Field<N>,
+        data: Field<N>,
+        nonce: Group<N>,
+        mac: Field<N>,
+        bcm: Group<N>,
     ) -> Self {
         Self { owner, balance, data, nonce, mac, bcm }
     }
 
     /// Returns the **encrypted** address this record belongs to.
     /// Note: `owner` is the **encrypted** form of `State::owner`.
-    pub const fn owner(&self) -> N::Field {
+    pub const fn owner(&self) -> Field<N> {
         self.owner
     }
 
     /// Returns the **encrypted** balance in this record.
     /// Note: `balance` is the **encrypted** form of `State::balance`.
-    pub const fn balance(&self) -> N::Field {
+    pub const fn balance(&self) -> Field<N> {
         self.balance
     }
 
     /// Returns the program data.
-    pub const fn data(&self) -> N::Field {
+    pub const fn data(&self) -> Field<N> {
         self.data
     }
 
     /// Returns the nonce for this record.
-    pub const fn nonce(&self) -> N::Affine {
+    pub const fn nonce(&self) -> Group<N> {
         self.nonce
     }
 
     /// Returns the MAC for this record.
-    pub const fn mac(&self) -> N::Field {
+    pub const fn mac(&self) -> Field<N> {
         self.mac
     }
 
     /// Returns the balance commitment for this record.
-    pub const fn bcm(&self) -> N::Affine {
+    pub const fn bcm(&self) -> Group<N> {
         self.bcm
     }
 }

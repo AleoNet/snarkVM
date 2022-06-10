@@ -54,14 +54,14 @@ impl<N: Network> FromStr for Identifier<N> {
         }
 
         // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = N::Field::size_in_data_bits() / 8; // Note: This intentionally rounds down.
+        let max_bytes = Field::<N>::size_in_data_bits() / 8; // Note: This intentionally rounds down.
         if identifier.len() > max_bytes {
             bail!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")
         }
 
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        Ok(Self(N::field_from_bits_le(&identifier.as_bytes().to_bits_le())?, identifier.len() as u8))
+        Ok(Self(Field::<N>::from_bits_le(&identifier.as_bytes().to_bits_le())?, identifier.len() as u8))
     }
 }
 
@@ -125,7 +125,7 @@ mod tests {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
             let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
             // Recover the field element from the bits.
-            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
+            let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
             let (remainder, candidate) = Identifier::<CurrentNetwork>::parse(expected_string.as_str()).unwrap();
             assert_eq!(expected_string, candidate.to_string());
@@ -167,7 +167,7 @@ mod tests {
             // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
             let expected_string = sample_identifier_as_string::<CurrentNetwork>()?;
             // Recover the field element from the bits.
-            let expected_field = <CurrentNetwork as Network>::field_from_bits_le(&expected_string.to_bits_le())?;
+            let expected_field = Field::<CurrentNetwork>::from_bits_le(&expected_string.to_bits_le())?;
 
             let candidate = Identifier::<CurrentNetwork>::from_str(&expected_string)?;
             assert_eq!(expected_string, candidate.to_string());

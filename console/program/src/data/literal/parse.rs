@@ -15,15 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Address as AddressType, Group, StringType, *};
 
 impl<N: Network> Parser for Literal<N> {
     /// Parses a string into a literal.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         alt((
-            map(AddressType::<N>::parse, |literal| Self::Address(literal)),
+            map(Address::<N>::parse, |literal| Self::Address(literal)),
             map(Boolean::<N>::parse, |literal| Self::Boolean(literal)),
             map(Field::<N>::parse, |literal| Self::Field(literal)),
             map(Group::<N>::parse, |literal: Group<N>| Self::Group(literal)),

@@ -25,7 +25,7 @@ impl<N: Network> Signature<N> {
         // Sample a random nonce from the scalar field.
         let nonce = Scalar::rand(rng);
         // Compute `g_nonce` as `nonce * G`.
-        let g_nonce = N::g_scalar_multiply(&nonce).to_affine();
+        let g_nonce = N::g_scalar_multiply(&nonce);
 
         // Derive the compute key from the private key.
         let compute_key = ComputeKey::try_from(private_key)?;
@@ -60,7 +60,7 @@ impl<N: Network> Signature<N> {
         let pr_sig = self.compute_key.pr_sig();
 
         // Compute `g_nonce` := (response * G) + (challenge * pk_sig).
-        let g_nonce = (N::g_scalar_multiply(&self.response) + (pk_sig.to_projective() * self.challenge)).to_affine();
+        let g_nonce = N::g_scalar_multiply(&self.response) + (pk_sig * self.challenge);
 
         // Construct the hash input as (nonce * G, address, pk_sig, pr_sig, message).
         let mut preimage = Vec::with_capacity(4 + message.len());

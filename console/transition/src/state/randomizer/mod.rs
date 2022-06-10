@@ -21,33 +21,30 @@ mod verify;
 
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{CryptoRng, Rng, ToBits, Uniform};
-
-use anyhow::Result;
+use snarkvm_console_types::prelude::*;
 
 pub struct Randomizer<N: Network> {
     /// The randomizer from the VRF.
-    randomizer: N::Scalar,
+    randomizer: Scalar<N>,
     /// The proof for the randomizer: `(gamma, challenge, response)`.
-    proof: (N::Affine, N::Scalar, N::Scalar),
+    proof: (Group<N>, Scalar<N>, Scalar<N>),
 }
 
-impl<N: Network> From<(N::Scalar, (N::Affine, N::Scalar, N::Scalar))> for Randomizer<N> {
+impl<N: Network> From<(Scalar<N>, (Group<N>, Scalar<N>, Scalar<N>))> for Randomizer<N> {
     /// Note: See `Randomizer::prove` to create a randomizer. This method is used to eject from a circuit.
-    fn from((randomizer, (gamma, challenge, response)): (N::Scalar, (N::Affine, N::Scalar, N::Scalar))) -> Self {
+    fn from((randomizer, (gamma, challenge, response)): (Scalar<N>, (Group<N>, Scalar<N>, Scalar<N>))) -> Self {
         Self { randomizer, proof: (gamma, challenge, response) }
     }
 }
 
 impl<N: Network> Randomizer<N> {
     /// Returns the randomizer from the VRF.
-    pub const fn value(&self) -> &N::Scalar {
+    pub const fn value(&self) -> &Scalar<N> {
         &self.randomizer
     }
 
     /// Returns the proof for the randomizer.
-    pub const fn proof(&self) -> &(N::Affine, N::Scalar, N::Scalar) {
+    pub const fn proof(&self) -> &(Group<N>, Scalar<N>, Scalar<N>) {
         &self.proof
     }
 }

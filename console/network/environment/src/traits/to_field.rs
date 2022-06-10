@@ -14,21 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::PrimeField;
+use super::FieldTrait;
 
 use anyhow::Result;
 
 /// Unary operator for converting to a base field.
 pub trait ToField {
-    type Field: PrimeField;
+    type Field: FieldTrait;
 
     /// Returns the object as a base field element.
-    fn to_field(&self) -> Self::Field;
+    fn to_field(&self) -> Result<Self::Field>;
 }
 
 /// Unary operator for converting to a list of base fields.
 pub trait ToFields {
-    type Field: PrimeField;
+    type Field: FieldTrait;
 
     /// Returns the object as a list of base field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>>;

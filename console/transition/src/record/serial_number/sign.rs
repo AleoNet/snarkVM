@@ -21,33 +21,28 @@ impl<N: Network> SerialNumber<N> {
     ///     challenge := HashToScalar(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
-        sk_sig: &N::Scalar,
-        pr_sig: &N::Affine,
-        message: &[N::Field],
-        commitment: N::Field,
+        sk_sig: &Scalar<N>,
+        pr_sig: &Group<N>,
+        message: &[Field<N>],
+        commitment: Field<N>,
         rng: &mut R,
     ) -> Result<Self> {
-        // Sample a random nonce from the scalar field.
-        let nonce = N::Scalar::rand(rng);
-        // Compute a `r` as `PRF(sk_sig, (HashToScalar(message) || k))`.
-        let r = N::prf_psd2s(sk_sig, &[N::hash_to_scalar_psd8(message)?, nonce])?;
+        // Sample a random nonce.
+        let nonce = Field::<N>::rand(rng);
+        // Compute a `r` as `HashToScalar(sk_sig || nonce || Hash(message))`.
+        let r = N::hash_to_scalar_psd2(&[sk_sig.to_field()?, nonce, N::hash_psd8(message)?])?;
 
         // Compute the generator `H` as `HashToGroup(commitment)`.
         let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
         // Compute `h_r` as `r * H`.
         let h_r = h * r;
         // Compute `gamma` as `sk_sig * H`.
-        let gamma = h * *sk_sig;
+        let gamma = h * sk_sig;
 
         // Compute `g_r` as `r * G`.
         let g_r = N::g_scalar_multiply(&r);
         // Compute `pk_sig` as `sk_sig * G`.
         let pk_sig = N::g_scalar_multiply(sk_sig);
-
-        // Prepare the preimage as `(h_r, gamma, g_r, pk_sig)`, and use the x-coordinate of each affine point.
-        let mut preimage = [h_r, gamma, g_r, pk_sig];
-        N::Projective::batch_normalization(&mut preimage);
-        let [h_r, gamma, g_r, pk_sig] = preimage.map(|c| c.to_affine());
 
         // Derive the compute key.
         let compute_key = ComputeKey::try_from((pk_sig, *pr_sig))?;

@@ -2310,6 +2310,7 @@ dependencies = [
  "snarkvm-console-algorithms",
  "snarkvm-console-collections",
  "snarkvm-console-network-environment",
+ "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
@@ -2336,19 +2337,15 @@ dependencies = [
 name = "snarkvm-console-program"
 version = "0.7.5"
 dependencies = [
- "anyhow",
  "bincode",
  "enum_index",
  "enum_index_derive",
- "itertools",
  "once_cell",
  "serde",
  "serde_json",
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-curves",
- "snarkvm-fields",
  "snarkvm-utilities",
 ]
 
@@ -2360,6 +2357,7 @@ dependencies = [
  "itertools",
  "snarkvm-console-account",
  "snarkvm-console-network",
+ "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]
@@ -2423,6 +2421,7 @@ name = "snarkvm-console-types-scalar"
 version = "0.7.5"
 dependencies = [
  "snarkvm-console-network-environment",
+ "snarkvm-console-types-field",
 ]
 
 [[package]]

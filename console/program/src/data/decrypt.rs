@@ -18,15 +18,15 @@ use super::*;
 
 impl<N: Network> Data<N, Ciphertext<N>> {
     /// Decrypts `self` into plaintext using the given view key & nonce.
-    pub fn decrypt(&self, view_key: ViewKey<N>, nonce: N::Affine) -> Result<Data<N, Plaintext<N>>> {
+    pub fn decrypt(&self, view_key: ViewKey<N>, nonce: Group<N>) -> Result<Data<N, Plaintext<N>>> {
         // Compute the data view key.
-        let data_view_key = (nonce * *view_key).to_affine().to_x_coordinate();
+        let data_view_key = (nonce * *view_key).to_x_coordinate();
         // Decrypt the data.
         self.decrypt_symmetric(&data_view_key)
     }
 
     /// Decrypts `self` into plaintext using the given data view key.
-    pub fn decrypt_symmetric(&self, data_view_key: &N::Field) -> Result<Data<N, Plaintext<N>>> {
+    pub fn decrypt_symmetric(&self, data_view_key: &Field<N>) -> Result<Data<N, Plaintext<N>>> {
         // Determine the number of randomizers needed to encrypt the data.
         let num_randomizers =
             self.0.iter().map(|(_, value)| value.num_randomizers()).collect::<Result<Vec<_>>>()?.iter().sum();
@@ -56,9 +56,6 @@ mod tests {
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
     use snarkvm_console_types::Field;
-    use snarkvm_utilities::test_crypto_rng;
-
-    use core::str::FromStr;
 
     type CurrentNetwork = Testnet3;
 
@@ -76,13 +73,13 @@ mod tests {
 
             let data = Data(vec![(
                 Identifier::from_str("a")?,
-                Value::Private(Plaintext::from(Literal::Field(Field::new(Uniform::rand(rng))))),
+                Value::Private(Plaintext::from(Literal::Field(Field::rand(rng)))),
             )]);
 
-            let randomizer = <CurrentNetwork as Network>::Scalar::rand(rng);
+            let randomizer = Scalar::rand(rng);
             let ciphertext = data.encrypt(address, randomizer)?;
 
-            let nonce = <CurrentNetwork as Network>::g_scalar_multiply(&randomizer).to_affine();
+            let nonce = <CurrentNetwork as Network>::g_scalar_multiply(&randomizer);
             assert_eq!(data, ciphertext.decrypt(view_key, nonce)?);
         }
         Ok(())

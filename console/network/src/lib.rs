@@ -27,34 +27,17 @@ pub mod testnet3;
 pub use testnet3::*;
 
 pub mod prelude {
-    pub use crate::environment::prelude::*;
-
-    pub use crate::Network;
+    pub use crate::{environment::prelude::*, Network};
 }
 
+use crate::environment::prelude::*;
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::MerkleTree;
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::traits::*;
-use snarkvm_utilities::BigInteger;
+use snarkvm_console_types::{Field, Group, Scalar};
 
-use anyhow::Result;
-use core::{fmt, hash};
-
-pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
-    type Affine: AffineCurve<
-        Projective = Self::Projective,
-        BaseField = Self::Field,
-        ScalarField = Self::Scalar,
-        Coordinates = (Self::Field, Self::Field),
-    >;
-    type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
-        + TwistedEdwardsParameters<BaseField = Self::Field>;
-    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
-    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
-    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
-    type BigInteger: BigInteger;
-
+pub trait Network:
+    'static + Environment + Copy + Clone + Debug + Eq + PartialEq + core::hash::Hash + Send + Sync
+{
     /// The network ID.
     const ID: u16;
 
@@ -74,138 +57,124 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     const MAX_TRANSACTIONS: usize = 65536;
 
     /// The maximum number of bits in data (must not exceed u16::MAX).
-    const MAX_DATA_SIZE_IN_FIELDS: u32 = (128 * 1024 * 8) / <Self::Field as PrimeField>::Parameters::CAPACITY;
-
-    /// The maximum number of bytes allowed in a string.
-    const MAX_STRING_BYTES: u32 = u8::MAX as u32;
-
-    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
-    /// A helper method to recover a field element from **little-endian** bits.
-    fn field_from_bits_le(bits: &[bool]) -> Result<Self::Field>;
-
-    /// TODO (howardwu): Refactor Fp256 and Fp384 and deprecate this method.
-    /// A helper method to recover a field element from **big-endian** bits.
-    fn field_from_bits_be(bits: &[bool]) -> Result<Self::Field>;
+    const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::size_in_data_bits()) as u32;
 
     /// Returns the balance commitment domain as a constant field element.
-    fn bcm_domain() -> Self::Field;
+    fn bcm_domain() -> Field<Self>;
 
     /// Returns the encryption domain as a constant field element.
-    fn encryption_domain() -> Self::Field;
+    fn encryption_domain() -> Field<Self>;
 
     /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Self::Field;
+    fn mac_domain() -> Field<Self>;
 
     /// Returns the randomizer domain as a constant field element.
-    fn randomizer_domain() -> Self::Field;
+    fn randomizer_domain() -> Field<Self>;
 
     /// Returns the balance commitment randomizer domain as a constant field element.
-    fn r_bcm_domain() -> Self::Field;
+    fn r_bcm_domain() -> Field<Self>;
 
     /// Returns the serial number domain as a constant field element.
-    fn serial_number_domain() -> Self::Field;
+    fn serial_number_domain() -> Field<Self>;
 
     /// Returns the powers of G.
-    fn g_powers() -> &'static Vec<Self::Projective>;
+    fn g_powers() -> &'static Vec<Group<Self>>;
 
     /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective;
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
-    fn commit_bhp256(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a BHP commitment with an input hasher of 512-bits.
-    fn commit_bhp512(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_bhp512(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a BHP commitment with an input hasher of 768-bits.
-    fn commit_bhp768(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_bhp768(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a BHP commitment with an input hasher of 1024-bits.
-    fn commit_bhp1024(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+    fn commit_bhp1024(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
-    fn commit_ped64(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine>;
+    fn commit_ped64(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
-    fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Affine>;
+    fn commit_ped128(input: &[bool], randomizer: &Scalar<Self>) -> Result<Group<Self>>;
 
     /// Returns the BHP hash with an input hasher of 256-bits.
-    fn hash_bhp256(input: &[bool]) -> Result<Self::Field>;
+    fn hash_bhp256(input: &[bool]) -> Result<Field<Self>>;
 
     /// Returns the BHP hash with an input hasher of 512-bits.
-    fn hash_bhp512(input: &[bool]) -> Result<Self::Field>;
+    fn hash_bhp512(input: &[bool]) -> Result<Field<Self>>;
 
     /// Returns the BHP hash with an input hasher of 768-bits.
-    fn hash_bhp768(input: &[bool]) -> Result<Self::Field>;
+    fn hash_bhp768(input: &[bool]) -> Result<Field<Self>>;
 
     /// Returns the BHP hash with an input hasher of 1024-bits.
-    fn hash_bhp1024(input: &[bool]) -> Result<Self::Field>;
+    fn hash_bhp1024(input: &[bool]) -> Result<Field<Self>>;
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
-    fn hash_ped64(input: &[bool]) -> Result<Self::Field>;
+    fn hash_ped64(input: &[bool]) -> Result<Field<Self>>;
 
     /// Returns the Pedersen hash for a given (up to) 128-bit input.
-    fn hash_ped128(input: &[bool]) -> Result<Self::Field>;
+    fn hash_ped128(input: &[bool]) -> Result<Field<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 2.
-    fn hash_psd2(input: &[Self::Field]) -> Result<Self::Field>;
+    fn hash_psd2(input: &[Field<Self>]) -> Result<Field<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 4.
-    fn hash_psd4(input: &[Self::Field]) -> Result<Self::Field>;
+    fn hash_psd4(input: &[Field<Self>]) -> Result<Field<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 8.
-    fn hash_psd8(input: &[Self::Field]) -> Result<Self::Field>;
+    fn hash_psd8(input: &[Field<Self>]) -> Result<Field<Self>>;
 
     /// Returns the extended Poseidon hash with an input rate of 2.
-    fn hash_many_psd2(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
+    fn hash_many_psd2(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
     /// Returns the extended Poseidon hash with an input rate of 4.
-    fn hash_many_psd4(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
+    fn hash_many_psd4(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
     /// Returns the extended Poseidon hash with an input rate of 8.
-    fn hash_many_psd8(input: &[Self::Field], num_outputs: u16) -> Vec<Self::Field>;
+    fn hash_many_psd8(input: &[Field<Self>], num_outputs: u16) -> Vec<Field<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 2 on the affine curve.
-    fn hash_to_group_psd2(input: &[Self::Field]) -> Result<Self::Affine>;
+    fn hash_to_group_psd2(input: &[Field<Self>]) -> Result<Group<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 4 on the affine curve.
-    fn hash_to_group_psd4(input: &[Self::Field]) -> Result<Self::Affine>;
+    fn hash_to_group_psd4(input: &[Field<Self>]) -> Result<Group<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 8 on the affine curve.
-    fn hash_to_group_psd8(input: &[Self::Field]) -> Result<Self::Affine>;
+    fn hash_to_group_psd8(input: &[Field<Self>]) -> Result<Group<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
-    fn hash_to_scalar_psd2(input: &[Self::Field]) -> Result<Self::Scalar>;
+    fn hash_to_scalar_psd2(input: &[Field<Self>]) -> Result<Scalar<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 4 on the scalar field.
-    fn hash_to_scalar_psd4(input: &[Self::Field]) -> Result<Self::Scalar>;
+    fn hash_to_scalar_psd4(input: &[Field<Self>]) -> Result<Scalar<Self>>;
 
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
-    fn hash_to_scalar_psd8(input: &[Self::Field]) -> Result<Self::Scalar>;
+    fn hash_to_scalar_psd8(input: &[Field<Self>]) -> Result<Scalar<Self>>;
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
     #[allow(clippy::type_complexity)]
     fn merkle_tree_bhp<const DEPTH: u8>(
         leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<BHP1024<Self::Affine>, BHP512<Self::Affine>, DEPTH>>;
+    ) -> Result<MerkleTree<Self, BHP1024<Self>, BHP512<Self>, DEPTH>>;
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
     #[allow(clippy::type_complexity)]
     fn merkle_tree_psd<const DEPTH: u8>(
-        leaves: &[Vec<Self::Field>],
-    ) -> Result<MerkleTree<Poseidon4<Self::Field>, Poseidon2<Self::Field>, DEPTH>>;
+        leaves: &[Vec<Field<Self>>],
+    ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>>;
 
     /// Returns the Poseidon PRF with an input rate of 2.
-    fn prf_psd2(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;
+    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
 
     /// Returns the Poseidon PRF with an input rate of 4.
-    fn prf_psd4(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;
+    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
 
     /// Returns the Poseidon PRF with an input rate of 8.
-    fn prf_psd8(seed: &Self::Field, input: &[Self::Field]) -> Result<Self::Field>;
-
-    /// Returns the Poseidon PRF on the **scalar** field with an input rate of 2.
-    fn prf_psd2s(seed: &Self::Scalar, input: &[Self::Scalar]) -> Result<Self::Scalar>;
+    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {

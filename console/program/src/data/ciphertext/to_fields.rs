@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> ToFields for Ciphertext<N> {
-    type Field = N::Field;
+    type Field = Field<N>;
 
     /// Returns this ciphertext as a list of field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {

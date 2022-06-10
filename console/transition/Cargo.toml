@@ -14,6 +14,10 @@ version = "0.7.5"
 path = "../network"
 version = "0.7.5"
 
+[dependencies.snarkvm-console-types]
+path = "../types"
+version = "0.7.5"
+
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"

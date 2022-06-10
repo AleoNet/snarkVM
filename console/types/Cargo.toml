@@ -46,20 +46,12 @@ version = "0.7.5"
 optional = true
 
 [features]
-default = [
-    "snarkvm-console-types-address",
-    "snarkvm-console-types-boolean",
-    "snarkvm-console-types-field",
-    "snarkvm-console-types-group",
-    "snarkvm-console-types-integers",
-    "snarkvm-console-types-scalar",
-    "snarkvm-console-types-string",
-]
+default = ["address", "boolean", "field", "group", "integers", "scalar", "string"]
 
 address = ["snarkvm-console-types-address", "snarkvm-console-types-field", "snarkvm-console-types-group"]
 boolean = ["snarkvm-console-types-boolean"]
 field = ["snarkvm-console-types-field"]
 group = ["snarkvm-console-types-group", "snarkvm-console-types-field", "snarkvm-console-types-scalar"]
 integers = ["snarkvm-console-types-integers"]
-scalar = ["snarkvm-console-types-scalar"]
+scalar = ["snarkvm-console-types-scalar", "snarkvm-console-types-field"]
 string = ["snarkvm-console-types-string", "snarkvm-console-types-field", "snarkvm-console-types-integers"]

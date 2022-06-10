@@ -20,7 +20,7 @@ impl<N: Network> Record<N> {
     /// Returns the state corresponding to the record using the given view key.
     pub fn decrypt(&self, view_key: &ViewKey<N>) -> Result<State<N>> {
         // Compute the record view key := G^r^view_key.
-        let record_view_key = (self.nonce * **view_key).to_affine().to_x_coordinate();
+        let record_view_key = (self.nonce * **view_key).to_x_coordinate();
         // Decrypt the record.
         let state = self.decrypt_symmetric(&record_view_key)?;
         // Ensure the owner matches the account of the given view key.
@@ -30,7 +30,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the state corresponding to the record using the given record view key.
-    pub fn decrypt_symmetric(&self, record_view_key: &N::Field) -> Result<State<N>> {
+    pub fn decrypt_symmetric(&self, record_view_key: &Field<N>) -> Result<State<N>> {
         // Compute the candidate MAC := Hash(G^r^view_key).
         let candidate_mac = N::hash_psd2(&[N::mac_domain(), *record_view_key])?;
         // Ensure the MAC matches.

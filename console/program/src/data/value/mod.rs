@@ -20,11 +20,8 @@ mod num_randomizers;
 mod to_bits;
 
 use crate::{Ciphertext, Plaintext, Visibility};
-use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::ToBits;
-
-use anyhow::{bail, Result};
-use itertools::Itertools;
+use snarkvm_console_network::Network;
+use snarkvm_console_types::prelude::*;
 
 /// A value stored in program data.
 #[derive(Clone, Debug, PartialEq, Eq)]

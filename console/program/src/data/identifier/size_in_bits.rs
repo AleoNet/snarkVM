@@ -20,7 +20,7 @@ impl<N: Network> Identifier<N> {
     /// Returns the number of bits of this identifier.
     pub fn size_in_bits(&self) -> u8 {
         // The size in bits always fits in a u8, as the underlying representation is a field element.
-        debug_assert!(N::Field::size_in_data_bits() <= u8::MAX as usize);
+        debug_assert!(Field::<N>::size_in_data_bits() <= u8::MAX as usize);
         // Convert the size to bits (as a byte-aligned multiple).
         8 * self.1
     }

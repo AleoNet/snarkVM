@@ -36,11 +36,7 @@ impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
         // Slicing here is safe as the base field is larger than the scalar field.
         let bits = &output.to_bits_le()[..Scalar::<E>::size_in_data_bits()];
 
-        // Output the scalar field.
-        match E::Scalar::from_repr(E::BigInteger::from_bits_le(bits)?) {
-            // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
-            Some(scalar) => Ok(Scalar::new(scalar)),
-            _ => bail!("Failed to hash input into scalar field"),
-        }
+        // Output the scalar.
+        Scalar::from_bits_le(&bits)
     }
 }

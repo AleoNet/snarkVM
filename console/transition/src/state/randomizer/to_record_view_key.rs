@@ -18,8 +18,8 @@ use super::*;
 
 impl<N: Network> Randomizer<N> {
     /// Returns the record view key given the account address.
-    pub fn to_record_view_key(&self, address: &Address<N>) -> N::Field {
+    pub fn to_record_view_key(&self, address: &Address<N>) -> Field<N> {
         // Compute the record view key as `randomizer * address`.
-        ((*address).to_projective() * self.randomizer).to_affine().to_x_coordinate()
+        (**address * self.randomizer).to_x_coordinate()
     }
 }

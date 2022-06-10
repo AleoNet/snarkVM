@@ -26,7 +26,7 @@ use snarkvm_utilities::BigInteger;
 
 use core::{fmt::Debug, hash::Hash};
 
-pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash {
+pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync {
     type Affine: AffineCurve<
         Projective = Self::Projective,
         BaseField = Self::Field,
@@ -35,10 +35,10 @@ pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash {
     >;
     type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
         + TwistedEdwardsParameters<BaseField = Self::Field>;
-    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
-    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
-    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
     type BigInteger: BigInteger;
+    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
+    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
+    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
 
     /// The maximum number of bytes allowed in a string.
     const MAX_STRING_BYTES: u32 = u8::MAX as u32;

@@ -40,6 +40,26 @@ impl<E: Environment> Field<E> {
         Self { field }
     }
 
+    /// Initializes a new field as a domain separator.
+    pub fn new_domain_separator(domain: &str) -> Self {
+        Self::new(E::Field::from_bytes_le_mod_order(domain.as_bytes()))
+    }
+
+    /// Initializes a new field from a `u8`.
+    pub fn from_u8(value: u8) -> Self {
+        Self { field: E::Field::from(value as u128) }
+    }
+
+    /// Initializes a new field from a `u16`.
+    pub fn from_u16(value: u16) -> Self {
+        Self { field: E::Field::from(value as u128) }
+    }
+
+    /// Initializes a new field from a `u32`.
+    pub fn from_u32(value: u32) -> Self {
+        Self { field: E::Field::from(value as u128) }
+    }
+
     /// Initializes a new field from a `u64`.
     pub fn from_u64(value: u64) -> Self {
         Self { field: E::Field::from(value as u128) }

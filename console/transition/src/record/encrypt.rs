@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Record<N> {
     /// Initializes a new record by encrypting the given state with a given record view key.
-    pub fn encrypt(state: &State<N>, record_view_key: &N::Field) -> Result<Self> {
+    pub fn encrypt(state: &State<N>, record_view_key: &Field<N>) -> Result<Self> {
         // Ensure the balance is less than or equal to 2^52.
         ensure!(state.balance().to_bits_le()[52..].iter().all(|bit| !bit), "Attempted to encrypt an invalid balance");
         // Compute the randomizers.
@@ -26,7 +26,7 @@ impl<N: Network> Record<N> {
         // Encrypt the owner.
         let owner = state.owner().to_x_coordinate() + randomizers[0];
         // Encrypt the balance.
-        let balance = N::Field::from(state.balance() as u128) + randomizers[1];
+        let balance = Field::<N>::from_u64(state.balance()) + randomizers[1];
 
         // // Encrypt the data.
         // let data = state.data().encrypt_symmetric(&(*record_view_key * randomizers[2]))?;

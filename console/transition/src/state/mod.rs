@@ -23,9 +23,7 @@ mod encrypt;
 use crate::Record;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-
-use anyhow::{ensure, Result};
+use snarkvm_console_types::prelude::*;
 
 /// A program's state is a set of **plaintext** variables used by a program.
 /// Note: `State` is the **decrypted** form of `Record`.
@@ -35,14 +33,14 @@ pub struct State<N: Network> {
     /// The account balance in this program state.
     balance: u64,
     /// The data for this program state.
-    data: N::Field,
+    data: Field<N>,
     /// The nonce for this program state (i.e. `G^r`).
-    nonce: N::Affine,
+    nonce: Group<N>,
 }
 
 impl<N: Network> State<N> {
     /// Initializes a new instance of `State`.
-    pub fn new(owner: Address<N>, balance: u64, data: N::Field, nonce: N::Affine) -> Self {
+    pub fn new(owner: Address<N>, balance: u64, data: Field<N>, nonce: Group<N>) -> Self {
         // Return the new program state.
         Self { owner, balance, data, nonce }
     }
@@ -58,12 +56,12 @@ impl<N: Network> State<N> {
     }
 
     /// Returns the data ID.
-    pub const fn data(&self) -> N::Field {
+    pub const fn data(&self) -> Field<N> {
         self.data
     }
 
     /// Returns the nonce for this program state.
-    pub const fn nonce(&self) -> N::Affine {
+    pub const fn nonce(&self) -> Group<N> {
         self.nonce
     }
 }

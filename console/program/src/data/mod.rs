@@ -36,10 +36,8 @@ mod to_id;
 
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::prelude::*;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{FromBits, ToBits};
+use snarkvm_console_types::{Field, Group, Scalar};
 
-use anyhow::{bail, Result};
 use core::ops::Deref;
 
 pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
