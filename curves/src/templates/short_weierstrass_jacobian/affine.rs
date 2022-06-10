@@ -107,6 +107,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     #[inline]
+    fn cofactor() -> &'static [u64] {
+        P::COFACTOR
+    }
+
+    #[inline]
     fn prime_subgroup_generator() -> Self {
         Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1, false)
     }

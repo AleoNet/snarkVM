@@ -16,21 +16,17 @@
 
 use super::*;
 
-impl<
-    G: AffineCurve<Coordinates = (BaseField<G>, BaseField<G>)>,
-    P: MontgomeryParameters<BaseField = BaseField<G>> + TwistedEdwardsParameters<BaseField = BaseField<G>>,
-> Elligator2<G, P>
-{
+impl<E: Environment> Elligator2<E> {
     /// Returns the decoded field element, given the encoded affine group element and sign.
-    pub fn decode(group: &G, sign_high: bool) -> Result<BaseField<G>> {
+    pub fn decode(group: &Group<E>, sign_high: bool) -> Result<Field<E>> {
         ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
         ensure!(!group.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
-        ensure!(group.is_on_curve(), "Inputs to Elligator2 must be on the twisted Edwards curve");
+        ensure!((**group).to_affine().is_on_curve(), "Inputs to Elligator2 must be on the twisted Edwards curve");
 
         // Compute the coefficients for the Weierstrass form: v^2 == u^3 + A * u^2 + B * u.
         let (montgomery_b_inverse, a, b) = match Self::MONTGOMERY_B.inverse() {
-            Some(b_inverse) => (b_inverse, Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
-            None => bail!("Montgomery B must be invertible in order to use Elligator2"),
+            Ok(b_inverse) => (b_inverse, Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
+            Err(_) => bail!("Montgomery B must be invertible in order to use Elligator2"),
         };
 
         let x = group.to_x_coordinate();
@@ -46,17 +42,17 @@ impl<
 
         // Convert the twisted Edwards element (x, y) to the Weierstrass element (u, v)
         let (u, v) = {
-            let one = BaseField::<G>::one();
+            let one = Field::<E>::one();
 
             let numerator = one + y;
             let denominator = one - y;
 
             // Compute u = (1 + y) / (1 - y).
-            let u = numerator * denominator.inverse().ok_or_else(|| anyhow!("Elligator2 failed: (1 - y) == 0"))?;
+            let u = numerator * denominator.inverse().map_err(|_| anyhow!("Elligator2 failed: (1 - y) == 0"))?;
 
             // Compute v = (1 + y) / ((1 - y) * x).
-            let v = numerator
-                * (denominator * x).inverse().ok_or_else(|| anyhow!("Elligator2 failed: x * (1 - y) == 0"))?;
+            let v =
+                numerator * (denominator * x).inverse().map_err(|_| anyhow!("Elligator2 failed: x * (1 - y) == 0"))?;
 
             // Ensure (u, v) is a valid Montgomery element on: B * v^2 == u^3 + A * u^2 + u
             let u2 = u.square();
@@ -80,17 +76,18 @@ impl<
         let u_plus_a = u + a;
         ensure!((-du * u_plus_a).legendre().is_qr(), "Elligator2 failed: -D * u * (u + A) is not a quadratic residue");
 
-        let v_reconstructed = v.square().sqrt().ok_or_else(|| anyhow!("Elligator2 failed: cannot square root v^2"))?;
+        let v_reconstructed =
+            v.square().square_root().map_err(|_| anyhow!("Elligator2 failed: cannot square root v^2"))?;
         let exists_in_sqrt_fq2 = v_reconstructed == v;
 
         let element = match exists_in_sqrt_fq2 {
             // Let element = sqrt(-u / ((u + A) * D)).
-            true => -u * (u_plus_a * Self::D).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (u+A) * D == 0"))?,
+            true => -u * (u_plus_a * Self::D).inverse().map_err(|_| anyhow!("Elligator2 failed: (u+A) * D == 0"))?,
             // Let element = sqrt(-(u + A) / Du)).
-            false => -u_plus_a * du.inverse().ok_or_else(|| anyhow!("Elligator2 failed: D * u == 0"))?,
+            false => -u_plus_a * du.inverse().map_err(|_| anyhow!("Elligator2 failed: D * u == 0"))?,
         }
-        .sqrt()
-        .ok_or_else(|| anyhow!("Elligator2 failed: cannot compute the square root for the element"))?;
+        .square_root()
+        .map_err(|_| anyhow!("Elligator2 failed: cannot compute the square root for the element"))?;
 
         match sign_high {
             true => Ok(cmp::max(element, -element)),
@@ -102,8 +99,9 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsParameters};
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_console_types::environment::Console;
+
+    type CurrentEnvironment = Console;
 
     pub(crate) const ITERATIONS: usize = 10000;
 
@@ -117,9 +115,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             let expected = Uniform::rand(rng);
 
-            let (encoded, sign_high) =
-                Elligator2::<EdwardsAffine, EdwardsParameters>::encode_without_cofactor_clear(&expected)?;
-            let decoded = Elligator2::<EdwardsAffine, EdwardsParameters>::decode(&encoded, sign_high)?;
+            let (encoded, sign_high) = Elligator2::<CurrentEnvironment>::encode_without_cofactor_clear(&expected)?;
+            let decoded = Elligator2::<CurrentEnvironment>::decode(&encoded, sign_high)?;
             assert_eq!(expected, decoded);
 
             match sign_high {
@@ -134,12 +131,12 @@ mod tests {
 
     #[test]
     fn test_zero_fails() {
-        let encode = Elligator2::<EdwardsAffine, EdwardsParameters>::encode(&Zero::zero());
+        let encode = Elligator2::<CurrentEnvironment>::encode(&Zero::zero());
         assert!(encode.is_err());
 
-        let decode = Elligator2::<EdwardsAffine, EdwardsParameters>::decode(&Zero::zero(), true);
+        let decode = Elligator2::<CurrentEnvironment>::decode(&Zero::zero(), true);
         assert!(decode.is_err());
-        let decode = Elligator2::<EdwardsAffine, EdwardsParameters>::decode(&Zero::zero(), false);
+        let decode = Elligator2::<CurrentEnvironment>::decode(&Zero::zero(), false);
         assert!(decode.is_err());
     }
 }

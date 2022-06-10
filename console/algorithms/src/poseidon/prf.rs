@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<F: PrimeField, const RATE: usize> PRF for Poseidon<F, RATE> {
-    type Input = F;
-    type Output = F;
-    type Seed = F;
+impl<E: Environment, const RATE: usize> PRF for Poseidon<E, RATE> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+    type Seed = Field<E>;
 
     #[inline]
     fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Result<Self::Output> {

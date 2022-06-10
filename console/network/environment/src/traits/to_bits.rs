@@ -83,46 +83,6 @@ to_bits_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C
 to_bits_tuple!((C0, 0), (C1, 1), (C2, 2), (C3, 3), (C4, 4), (C5, 5), (C6, 6), (C7, 7), (C8, 8), (C9, 9), (C10, 10));
 
 /********************/
-/***** Integers *****/
-/********************/
-
-macro_rules! impl_bits_for_integer {
-    ($int:ty) => {
-        impl ToBits for $int {
-            /// Returns `self` as a boolean array in little-endian order.
-            #[inline]
-            fn to_bits_le(&self) -> Vec<bool> {
-                let mut bits_le = Vec::with_capacity(<$int>::BITS as usize);
-                let mut value = self.to_le();
-                for _ in 0..<$int>::BITS {
-                    bits_le.push(value & 1 == 1);
-                    value = value.wrapping_shr(1u32);
-                }
-                bits_le
-            }
-
-            /// Returns `self` as a boolean array in big-endian order.
-            #[inline]
-            fn to_bits_be(&self) -> Vec<bool> {
-                self.to_bits_le().into_iter().rev().collect()
-            }
-        }
-    };
-}
-
-impl_bits_for_integer!(u8);
-impl_bits_for_integer!(u16);
-impl_bits_for_integer!(u32);
-impl_bits_for_integer!(u64);
-impl_bits_for_integer!(u128);
-
-impl_bits_for_integer!(i8);
-impl_bits_for_integer!(i16);
-impl_bits_for_integer!(i32);
-impl_bits_for_integer!(i64);
-impl_bits_for_integer!(i128);
-
-/********************/
 /****** Arrays ******/
 /********************/
 

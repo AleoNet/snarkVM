@@ -49,6 +49,7 @@ pub mod prelude {
         cmp::Ordering,
         fmt::{self, Debug, Display, Formatter},
         hash::Hash,
+        iter::{Product, Sum},
         ops::{
             Add,
             AddAssign,

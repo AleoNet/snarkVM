@@ -32,12 +32,27 @@ pub struct Field<E: Environment> {
     field: E::Field,
 }
 
-impl<E: Environment> FieldTrait for Field<E> {}
+impl<'a, E: Environment> FieldTrait<'a> for Field<E> {}
 
 impl<E: Environment> Field<E> {
     /// Initializes a new field.
     pub const fn new(field: E::Field) -> Self {
         Self { field }
+    }
+
+    /// Initializes a new field from a `u64`.
+    pub fn from_u64(value: u64) -> Self {
+        Self { field: E::Field::from(value as u128) }
+    }
+
+    /// Initializes a new field from a `u128`.
+    pub fn from_u128(value: u128) -> Self {
+        Self { field: E::Field::from(value) }
+    }
+
+    /// Returns `1 * 2^{-1}`.
+    pub fn half() -> Self {
+        Self { field: E::Field::half() }
     }
 }
 

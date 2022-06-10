@@ -23,51 +23,49 @@ mod hash_to_scalar;
 mod prf;
 
 use crate::{poseidon::helpers::*, Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{PoseidonParameters, PrimeField};
+use snarkvm_console_types::prelude::*;
+use snarkvm_fields::{PoseidonDefaultField, PoseidonParameters};
 
-use anyhow::{bail, ensure, Result};
-use itertools::Itertools;
 use std::sync::Arc;
 
 const CAPACITY: usize = 1;
 
 /// Poseidon2 is a cryptographic hash function of input rate 2.
-pub type Poseidon2<F> = Poseidon<F, 2>;
+pub type Poseidon2<E> = Poseidon<E, 2>;
 /// Poseidon4 is a cryptographic hash function of input rate 4.
-pub type Poseidon4<F> = Poseidon<F, 4>;
+pub type Poseidon4<E> = Poseidon<E, 4>;
 /// Poseidon8 is a cryptographic hash function of input rate 8.
-pub type Poseidon8<F> = Poseidon<F, 8>;
+pub type Poseidon8<E> = Poseidon<E, 8>;
 
 #[derive(Clone)]
-pub struct Poseidon<F: PrimeField, const RATE: usize> {
+pub struct Poseidon<E: Environment, const RATE: usize> {
     /// The domain separator for the Poseidon hash function.
-    domain: F,
+    domain: Field<E>,
     /// The Poseidon parameters for hashing.
-    parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
+    parameters: Arc<PoseidonParameters<E::Field, RATE, CAPACITY>>,
 }
 
-impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Initializes a new instance of Poseidon.
     pub fn setup(domain: &str) -> Result<Self> {
         // Ensure the given domain is within the allowed size in bits.
         let num_bits = domain.len().saturating_mul(8);
-        let max_bits = F::size_in_data_bits();
+        let max_bits = Field::<E>::size_in_data_bits();
         ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
 
         Ok(Self {
-            domain: F::from_bytes_le_mod_order(domain.as_bytes()),
-            parameters: Arc::new(F::default_poseidon_parameters::<RATE>()?),
+            domain: Field::<E>::new(E::Field::from_bytes_le_mod_order(domain.as_bytes())),
+            parameters: Arc::new(E::Field::default_poseidon_parameters::<RATE>()?),
         })
     }
 
     /// Returns the domain separator for the hash function.
-    pub fn domain(&self) -> F {
+    pub fn domain(&self) -> Field<E> {
         self.domain
     }
 
     /// Returns the Poseidon parameters for hashing.
-    pub fn parameters(&self) -> &Arc<PoseidonParameters<F, RATE, CAPACITY>> {
+    pub fn parameters(&self) -> &Arc<PoseidonParameters<E::Field, RATE, CAPACITY>> {
         &self.parameters
     }
 }
@@ -75,10 +73,12 @@ impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_console_types::environment::Console;
     use snarkvm_curves::edwards_bls12::Fq;
     use snarkvm_fields::{PoseidonDefaultField, PoseidonGrainLFSR};
 
-    use core::fmt::Debug;
+    type CurrentEnvironment = Console;
+
     use std::{path::PathBuf, sync::Arc};
 
     /// Returns the path to the `resources` folder for this module.
@@ -139,8 +139,8 @@ mod tests {
             for squeeze in 0..10 {
                 let iteration = format!("absorb_{absorb}_squeeze_{squeeze}");
 
-                let mut sponge = PoseidonSponge::<Fq, RATE, CAPACITY>::new(&parameters);
-                sponge.absorb(&vec![Fq::from(1237812u64); absorb]);
+                let mut sponge = PoseidonSponge::<CurrentEnvironment, RATE, CAPACITY>::new(&parameters);
+                sponge.absorb(&vec![Field::<CurrentEnvironment>::from_u64(1237812u64); absorb]);
 
                 let next_absorb_index = if absorb % RATE != 0 || absorb == 0 { absorb % RATE } else { RATE };
                 assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{iteration}");

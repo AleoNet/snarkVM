@@ -2284,6 +2284,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
@@ -2375,6 +2376,7 @@ dependencies = [
 name = "snarkvm-console-types"
 version = "0.7.5"
 dependencies = [
+ "snarkvm-console-network-environment",
  "snarkvm-console-types-address",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",

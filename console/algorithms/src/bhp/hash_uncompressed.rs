@@ -16,12 +16,11 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-where
-    <G as AffineCurve>::BaseField: PrimeField,
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
+    for BHP<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = bool;
-    type Output = G;
+    type Output = Group<E>;
 
     /// Returns the BHP hash of the given input as an affine group element.
     ///
@@ -31,12 +30,12 @@ where
         // The number of hasher bits to fit.
         let num_hasher_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
         // The number of data bits in the output.
-        let num_data_bits = G::BaseField::size_in_data_bits();
+        let num_data_bits = Field::<E>::size_in_data_bits();
         // The maximum number of input bits per iteration.
         let max_input_bits_per_iteration = num_hasher_bits - num_data_bits;
 
         // Initialize a variable to store the hash from the current iteration.
-        let mut digest = G::zero();
+        let mut digest = Group::<E>::zero();
 
         // Compute the hash of the input.
         for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
@@ -67,14 +66,15 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_curves::edwards_bls12::EdwardsAffine;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_console_types::environment::Console;
+
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 1000;
 
     #[test]
     fn test_bhp256_input_size() -> Result<()> {
-        let bhp = BHP256::<EdwardsAffine>::setup("BHPTest")?;
+        let bhp = BHP256::<CurrentEnvironment>::setup("BHPTest")?;
         for i in 0..ITERATIONS {
             let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_bhp512_input_size() -> Result<()> {
-        let bhp = BHP512::<EdwardsAffine>::setup("BHPTest")?;
+        let bhp = BHP512::<CurrentEnvironment>::setup("BHPTest")?;
         for i in 0..ITERATIONS {
             let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_bhp768_input_size() -> Result<()> {
-        let bhp = BHP768::<EdwardsAffine>::setup("BHPTest")?;
+        let bhp = BHP768::<CurrentEnvironment>::setup("BHPTest")?;
         for i in 0..ITERATIONS {
             let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_bhp1024_input_size() -> Result<()> {
-        let bhp = BHP1024::<EdwardsAffine>::setup("BHPTest")?;
+        let bhp = BHP1024::<CurrentEnvironment>::setup("BHPTest")?;
         for i in 0..ITERATIONS {
             let input = (0..bhp.window_size() as u64 + i).map(|_| bool::rand(&mut test_rng())).collect::<Vec<_>>();
             bhp.hash_uncompressed(&input)?;

@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
-use snarkvm_fields::PrimeField;
-
 use anyhow::Result;
 
 /// A trait for a commitment scheme.
@@ -60,24 +57,19 @@ pub trait HashMany {
 /// A trait for a hash function that projects the value to an affine group element.
 pub trait HashToGroup {
     type Input;
-    type Field;
+    type Output;
 
     /// Returns the hash of the given input.
-    fn hash_to_group<
-        G: AffineCurve<BaseField = Self::Field, Coordinates = (Self::Field, Self::Field)>,
-        P: MontgomeryParameters<BaseField = Self::Field> + TwistedEdwardsParameters<BaseField = Self::Field>,
-    >(
-        &self,
-        input: &[Self::Input],
-    ) -> Result<G>;
+    fn hash_to_group(&self, input: &[Self::Input]) -> Result<Self::Output>;
 }
 
 /// A trait for a hash function that projects the value to a scalar.
 pub trait HashToScalar {
     type Input;
+    type Output;
 
     /// Returns the hash of the given input.
-    fn hash_to_scalar<Scalar: PrimeField>(&self, input: &[Self::Input]) -> Result<Scalar>;
+    fn hash_to_scalar(&self, input: &[Self::Input]) -> Result<Self::Output>;
 }
 
 /// A trait for a hash function of an uncompressed variant.

@@ -36,12 +36,26 @@ pub struct Group<E: Environment> {
     group: E::Projective,
 }
 
-impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
+impl<'a, E: Environment> GroupTrait<'a, Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Group<E> {
     /// Initializes a new group.
     pub fn new(group: E::Affine) -> Self {
         Self { group: group.into() }
+    }
+
+    /// Returns the prime subgroup generator.
+    pub fn generator() -> Self {
+        Self { group: E::Affine::prime_subgroup_generator().to_projective() }
+    }
+
+    /// Returns `self * COFACTOR`.
+    pub fn mul_by_cofactor(&self) -> Self {
+        // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
+        // See unit tests below, which sanity check that this condition holds.
+        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
+
+        Self { group: self.group.double().double() }
     }
 }
 

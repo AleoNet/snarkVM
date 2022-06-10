@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
-    for BHPHasher<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
+    for BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = bool;
-    type Output = G;
+    type Output = Group<E>;
 
     /// Returns the BHP hash of the given input as an affine group element.
     ///
@@ -58,7 +58,6 @@ impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                     base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
                 })
             })
-            .sum::<G::Projective>()
-            .to_affine())
+            .sum())
     }
 }

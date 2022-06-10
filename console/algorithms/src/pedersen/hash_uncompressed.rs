@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_BITS: u8> HashUncompressed for Pedersen<G, NUM_BITS> {
+impl<E: Environment, const NUM_BITS: u8> HashUncompressed for Pedersen<E, NUM_BITS> {
     type Input = bool;
-    type Output = G;
+    type Output = Group<E>;
 
-    /// Returns the Pedersen hash of the given input as an affine group element.
+    /// Returns the Pedersen hash of the given input as a group element.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output> {
         let mut input = Cow::Borrowed(input);
         match input.len() <= NUM_BITS as usize {
@@ -38,7 +38,6 @@ impl<G: AffineCurve, const NUM_BITS: u8> HashUncompressed for Pedersen<G, NUM_BI
                 true => Some(*base),
                 false => None,
             })
-            .sum::<G::Projective>()
-            .to_affine())
+            .sum())
     }
 }

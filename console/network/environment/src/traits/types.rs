@@ -40,47 +40,68 @@ pub trait BooleanTrait:
 }
 
 /// Representation of a base field element.
-pub trait FieldTrait:
-    Add<Output = Self>
-    + AddAssign
+pub trait FieldTrait<'a>:
+    'static
+    + Add<Self, Output = Self>
+    + Add<&'a Self, Output = Self>
+    + AddAssign<Self>
+    + AddAssign<&'a Self>
     + Clone
     + Copy
     + Deref
-    + Div<Output = Self>
-    + DivAssign
-    + Double
+    + Div<Self, Output = Self>
+    + Div<&'a Self, Output = Self>
+    + DivAssign<Self>
+    + DivAssign<&'a Self>
+    + Double<Output = Self>
     + Eq
-    + Inverse
-    + Mul<Output = Self>
-    + MulAssign
+    + Inverse<Output = Self>
+    + Mul<Self, Output = Self>
+    + Mul<&'a Self, Output = Self>
+    + MulAssign<Self>
+    + MulAssign<&'a Self>
     + Neg<Output = Self>
     + One
     + Ord
     + Parser
     + Pow<Self, Output = Self>
+    + Pow<&'a Self, Output = Self>
+    + Product<Self>
+    + Product<&'a Self>
     + Square<Output = Self>
     + SquareRoot<Output = Self>
-    + Sub<Output = Self>
-    + SubAssign
+    + SubAssign<Self>
+    + SubAssign<&'a Self>
+    + Sum<Self>
+    + Sum<&'a Self>
     + TypeName
     + Zero
 {
 }
 
 /// Representation of a group element.
-pub trait GroupTrait<S: ScalarTrait>:
-    Add<Output = Self>
-    + AddAssign
+pub trait GroupTrait<'a, S: ScalarTrait>:
+    'static
+    + Add<Self, Output = Self>
+    + Add<&'a Self, Output = Self>
+    + AddAssign<Self>
+    + AddAssign<&'a Self>
     + Clone
     + Copy
-    + Double
+    + Double<Output = Self>
     + Eq
     + Mul<S>
+    + Mul<&'a S>
     + MulAssign<S>
+    + MulAssign<&'a S>
     + Neg<Output = Self>
     + Parser
-    + Sub<Output = Self>
-    + SubAssign
+    + Sub<Self, Output = Self>
+    + Sub<&'a Self, Output = Self>
+    + SubAssign<Self>
+    + SubAssign<&'a Self>
+    + Sum<Self>
+    + Sum<&'a Self>
     + TypeName
     + Zero
 {
@@ -88,16 +109,17 @@ pub trait GroupTrait<S: ScalarTrait>:
 
 /// Representation of a scalar field element.
 pub trait ScalarTrait:
-    Add<Output = Self>
+    'static
+    + Add<Self, Output = Self>
     + AddAssign
     + Clone
     + Copy
     + Deref
     + Div<Output = Self>
     + DivAssign
-    + Double
+    + Double<Output = Self>
     + Eq
-    + Inverse
+    + Inverse<Output = Self>
     + Mul<Output = Self>
     + MulAssign
     + Neg<Output = Self>
@@ -165,8 +187,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
 }
 
 pub(super) mod integer_type {
-    use crate::{FromBits, ToBits};
-    use snarkvm_utilities::Uniform;
+    use snarkvm_utilities::{FromBits, ToBits, Uniform};
 
     use core::{
         fmt::{Debug, Display},

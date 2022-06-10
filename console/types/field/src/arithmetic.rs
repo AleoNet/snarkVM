@@ -36,10 +36,28 @@ impl<E: Environment> Add<Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Add<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn add(self, other: &Field<E>) -> Self::Output {
+        Field::new(self.field + other.field)
+    }
+}
+
 impl<E: Environment> AddAssign<Field<E>> for Field<E> {
     /// Adds `other` to `self`.
     #[inline]
     fn add_assign(&mut self, other: Field<E>) {
+        self.field += other.field;
+    }
+}
+
+impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
+    /// Adds `other` to `self`.
+    #[inline]
+    fn add_assign(&mut self, other: &Field<E>) {
         self.field += other.field;
     }
 }
@@ -54,10 +72,28 @@ impl<E: Environment> Sub<Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Sub<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    /// Returns the `difference` of `self` and `other`.
+    #[inline]
+    fn sub(self, other: &Field<E>) -> Self::Output {
+        Field::new(self.field - other.field)
+    }
+}
+
 impl<E: Environment> SubAssign<Field<E>> for Field<E> {
     /// Subtracts `other` from `self`.
     #[inline]
     fn sub_assign(&mut self, other: Field<E>) {
+        self.field -= other.field;
+    }
+}
+
+impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
+    /// Subtracts `other` from `self`.
+    #[inline]
+    fn sub_assign(&mut self, other: &Field<E>) {
         self.field -= other.field;
     }
 }
@@ -72,10 +108,28 @@ impl<E: Environment> Mul<Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Mul<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn mul(self, other: &Field<E>) -> Self::Output {
+        Field::new(self.field * other.field)
+    }
+}
+
 impl<E: Environment> MulAssign<Field<E>> for Field<E> {
     /// Multiplies `self` by `other`.
     #[inline]
     fn mul_assign(&mut self, other: Field<E>) {
+        self.field *= other.field;
+    }
+}
+
+impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
+    /// Multiplies `self` by `other`.
+    #[inline]
+    fn mul_assign(&mut self, other: &Field<E>) {
         self.field *= other.field;
     }
 }
@@ -90,10 +144,28 @@ impl<E: Environment> Div<Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Div<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    /// Returns the `quotient` of `self` and `other`.
+    #[inline]
+    fn div(self, other: &Field<E>) -> Self::Output {
+        Field::new(self.field / other.field)
+    }
+}
+
 impl<E: Environment> DivAssign<Field<E>> for Field<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: Field<E>) {
+        self.field /= other.field;
+    }
+}
+
+impl<E: Environment> DivAssign<&Field<E>> for Field<E> {
+    /// Divides `self` by `other`.
+    #[inline]
+    fn div_assign(&mut self, other: &Field<E>) {
         self.field /= other.field;
     }
 }
@@ -104,6 +176,16 @@ impl<E: Environment> Pow<Field<E>> for Field<E> {
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow(self, other: Field<E>) -> Self::Output {
+        Field::new(self.field.pow(other.field.to_repr()))
+    }
+}
+
+impl<E: Environment> Pow<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: &Field<E>) -> Self::Output {
         Field::new(self.field.pow(other.field.to_repr()))
     }
 }
@@ -151,5 +233,37 @@ impl<E: Environment> SquareRoot for Field<E> {
             Some(sqrt) => Ok(Field::new(sqrt)),
             None => bail!("Failed to square root a field element: {self}"),
         }
+    }
+}
+
+impl<E: Environment> Sum<Field<E>> for Field<E> {
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn sum<I: Iterator<Item = Field<E>>>(iter: I) -> Self {
+        iter.fold(Field::zero(), |a, b| a + b)
+    }
+}
+
+impl<'a, E: Environment> Sum<&'a Field<E>> for Field<E> {
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn sum<I: Iterator<Item = &'a Field<E>>>(iter: I) -> Self {
+        iter.fold(Field::zero(), |a, b| a + b)
+    }
+}
+
+impl<E: Environment> Product<Field<E>> for Field<E> {
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn product<I: Iterator<Item = Field<E>>>(iter: I) -> Self {
+        iter.fold(Field::one(), |a, b| a * b)
+    }
+}
+
+impl<'a, E: Environment> Product<&'a Field<E>> for Field<E> {
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn product<I: Iterator<Item = &'a Field<E>>>(iter: I) -> Self {
+        iter.fold(Field::one(), |a, b| a * b)
     }
 }

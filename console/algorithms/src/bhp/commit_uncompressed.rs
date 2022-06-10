@@ -16,24 +16,22 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompressed
-    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-where
-    <G as AffineCurve>::BaseField: PrimeField,
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompressed
+    for BHP<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = bool;
-    type Output = G;
-    type Randomizer = G::ScalarField;
+    type Output = Group<E>;
+    type Randomizer = Scalar<E>;
 
     /// Returns the BHP commitment of the given input and randomizer as an affine group element.
     fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output> {
-        let mut output = self.hash_uncompressed(input)?.to_projective();
+        let mut output = self.hash_uncompressed(input)?;
 
         // Compute h^r.
         randomizer.to_bits_le().iter().zip_eq(&**self.random_base()).filter(|(bit, _)| **bit).for_each(|(_, base)| {
             output += base;
         });
 
-        Ok(output.to_affine())
+        Ok(output)
     }
 }

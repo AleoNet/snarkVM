@@ -16,34 +16,30 @@
 
 use super::*;
 
-impl<
-    G: AffineCurve<Coordinates = (BaseField<G>, BaseField<G>)>,
-    P: MontgomeryParameters<BaseField = BaseField<G>> + TwistedEdwardsParameters<BaseField = BaseField<G>>,
-> Elligator2<G, P>
-{
-    pub(super) const D: BaseField<G> = <P as TwistedEdwardsParameters>::COEFF_D;
-    pub(super) const MONTGOMERY_A: BaseField<G> = <P as MontgomeryParameters>::COEFF_A;
-    pub(super) const MONTGOMERY_B: BaseField<G> = <P as MontgomeryParameters>::COEFF_B;
+impl<E: Environment> Elligator2<E> {
+    pub(super) const D: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D);
+    pub(super) const MONTGOMERY_A: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_A);
+    pub(super) const MONTGOMERY_B: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_B);
 
     /// Returns the encoded affine group element and sign, given a field element.
-    pub fn encode(input: &BaseField<G>) -> Result<(G, bool)> {
+    pub fn encode(input: &Field<E>) -> Result<(Group<E>, bool)> {
         // Compute the encoding of the input field element.
         let (encoding, sign_high) = Self::encode_without_cofactor_clear(input)?;
 
         // Cofactor clear the twisted Edwards element (x, y).
-        let group = encoding.mul_by_cofactor();
+        let group = encoding.mul_by_cofactor().to_affine();
         ensure!(group.is_on_curve(), "Elligator2 failed: element is not on curve");
         ensure!(group.is_in_correct_subgroup_assuming_on_curve(), "Elligator2 failed: element in incorrect subgroup");
 
-        Ok((group, sign_high))
+        Ok((Group::new(group), sign_high))
     }
 
     /// Returns the encoded affine group element and sign, given a field element.
-    pub(crate) fn encode_without_cofactor_clear(input: &BaseField<G>) -> Result<(G, bool)> {
+    pub(crate) fn encode_without_cofactor_clear(input: &Field<E>) -> Result<(Group<E>, bool)> {
         ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
         ensure!(!input.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
 
-        let one = BaseField::<G>::one();
+        let one = Field::<E>::one();
 
         // Store the sign of the input, to be returned with the output.
         let sign_high = input > &input.neg();
@@ -52,8 +48,8 @@ impl<
         let (u, v) = {
             // Compute the coefficients for the Weierstrass form: y^2 == x^3 + A * x^2 + B * x.
             let (a, b) = match Self::MONTGOMERY_B.inverse() {
-                Some(b_inverse) => (Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
-                None => bail!("Montgomery B must be invertible in order to use Elligator2"),
+                Ok(b_inverse) => (Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
+                Err(_) => bail!("Montgomery B must be invertible in order to use Elligator2"),
             };
 
             // Let (u, r) = (D, input).
@@ -66,7 +62,7 @@ impl<
             ensure!(a.square() * ur2 != b * (one + ur2).square(), "Elligator2 failed: A^2 * ur^2 == B(1 + ur^2)^2");
 
             // Let v = -A / (1 + ur^2).
-            let v = -a * (one + ur2).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (1 + ur^2) == 0"))?;
+            let v = -a * (one + ur2).inverse().map_err(|_| anyhow!("Elligator2 failed: (1 + ur^2) == 0"))?;
 
             // Ensure v is nonzero.
             ensure!(!v.is_zero(), "Elligator2 failed: v == 0");
@@ -80,7 +76,7 @@ impl<
 
             // Let x = ev - ((1 - e) * A/2).
             let x = match e {
-                LegendreSymbol::Zero => -a * BaseField::<G>::half(),
+                LegendreSymbol::Zero => -a * Field::<E>::half(),
                 LegendreSymbol::QuadraticResidue => v,
                 LegendreSymbol::QuadraticNonResidue => -v - a,
             };
@@ -91,9 +87,9 @@ impl<
             // Let y = -e * sqrt(x^3 + Ax^2 + Bx).
             let x2 = x.square();
             let rhs = (x2 * x) + (a * x2) + (b * x);
-            let value = rhs.sqrt().ok_or_else(|| anyhow!("Elligator2 failed: sqrt(x^3 + Ax^2 + Bx) failed"))?;
+            let value = rhs.square_root().map_err(|_| anyhow!("Elligator2 failed: sqrt(x^3 + Ax^2 + Bx) failed"))?;
             let y = match e {
-                LegendreSymbol::Zero => BaseField::<G>::zero(),
+                LegendreSymbol::Zero => Field::<E>::zero(),
                 LegendreSymbol::QuadraticResidue => -value,
                 LegendreSymbol::QuadraticNonResidue => value,
             };
@@ -119,9 +115,9 @@ impl<
         };
 
         // Convert the Montgomery element (u, v) to the twisted Edwards element (x, y).
-        let x = u * v.inverse().ok_or_else(|| anyhow!("Elligator2 failed: v == 0"))?;
-        let y = (u - one) * (u + one).inverse().ok_or_else(|| anyhow!("Elligator2 failed: (u + 1) == 0"))?;
+        let x = u * v.inverse().map_err(|_| anyhow!("Elligator2 failed: v == 0"))?;
+        let y = (u - one) * (u + one).inverse().map_err(|_| anyhow!("Elligator2 failed: (u + 1) == 0"))?;
 
-        Ok((G::from_coordinates((x, y)), sign_high))
+        Ok((Group::from_xy_coordinates((x, y)), sign_high))
     }
 }

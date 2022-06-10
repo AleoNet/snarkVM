@@ -142,6 +142,9 @@ pub trait AffineCurve:
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self;
 
+    /// Returns the cofactor of the curve.
+    fn cofactor() -> &'static [u64];
+
     /// Returns a fixed generator of unknown exponent.
     #[must_use]
     fn prime_subgroup_generator() -> Self;

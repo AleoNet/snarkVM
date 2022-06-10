@@ -714,7 +714,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
+        let cofactor_weight = BitIteratorBE::new(&[P::COFACTOR]).filter(|b| *b).count();
         // If we multiply by r, we actually multiply by r - 2.
         let r_minus_1 = (-P::ScalarField::one()).to_repr();
         let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
@@ -731,7 +731,7 @@ where
                 Self::alloc(cs.ns(|| "Alloc checked"), || value_gen().map(|ge| ge.borrow().mul_by_cofactor_inv()))?;
             let mut seen_one = false;
             let mut result = Self::zero(cs.ns(|| "result"))?;
-            for (i, b) in BitIteratorBE::new(P::COFACTOR).enumerate() {
+            for (i, b) in BitIteratorBE::new(&[P::COFACTOR]).enumerate() {
                 let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                 let old_seen_one = seen_one;

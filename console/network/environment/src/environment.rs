@@ -24,9 +24,9 @@ use snarkvm_curves::{
 use snarkvm_fields::{PrimeField, SquareRootField};
 use snarkvm_utilities::BigInteger;
 
-use core::hash::Hash;
+use core::{fmt::Debug, hash::Hash};
 
-pub trait Environment: 'static + Copy + Clone + PartialEq + Eq + Hash {
+pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash {
     type Affine: AffineCurve<
         Projective = Self::Projective,
         BaseField = Self::Field,
@@ -49,7 +49,7 @@ pub trait Environment: 'static + Copy + Clone + PartialEq + Eq + Hash {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Console;
 
 impl Environment for Console {
