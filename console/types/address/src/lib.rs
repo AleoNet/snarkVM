@@ -17,6 +17,8 @@
 mod bytes;
 mod parse;
 mod serialize;
+mod size_in_bits;
+mod to_bits;
 
 pub use snarkvm_console_network::prelude::*;
 pub use snarkvm_console_types_field::Field;
@@ -59,7 +61,6 @@ impl<N: Network> Deref for Address<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 

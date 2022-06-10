@@ -27,3 +27,33 @@ impl<N: Network> Zero for Group<N> {
         self.group.is_zero()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 100;
+
+    #[test]
+    fn test_zero() {
+        let zero = Group::<CurrentNetwork>::zero();
+
+        for bit in zero.to_bits_le().iter() {
+            assert!(!bit)
+        }
+    }
+
+    #[test]
+    fn test_is_zero() {
+        assert!(Group::<CurrentNetwork>::zero().is_zero());
+
+        // Note: This test technically has a `1 / MODULUS` probability of being flaky.
+        for _ in 0..ITERATIONS {
+            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            assert!(!group.is_zero());
+        }
+    }
+}

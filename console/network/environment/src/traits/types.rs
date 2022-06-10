@@ -173,6 +173,7 @@ pub(super) mod integer_type {
         num::ParseIntError,
         ops::{Div, Rem},
         str::FromStr,
+        hash::Hash
     };
     use num_traits::{
         CheckedNeg,
@@ -203,6 +204,7 @@ pub(super) mod integer_type {
         + Display
         + FromBits
         + FromStr<Err = ParseIntError>
+        + Hash
         + NumZero
         + NumOne
         + ToBits

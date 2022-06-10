@@ -27,3 +27,43 @@ impl<N: Network> ToBits for Scalar<N> {
         (**self).to_bits_be()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 10_000;
+
+    #[test]
+    fn test_to_bits_le() {
+        for _ in 0..ITERATIONS {
+            // Sample a random value.
+            let scalar: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+
+            let candidate = scalar.to_bits_le();
+            assert_eq!(Scalar::<CurrentNetwork>::size_in_bits(), candidate.len());
+
+            for (expected, candidate) in (*scalar).to_bits_le().iter().zip_eq(&candidate) {
+                assert_eq!(expected, candidate);
+            }
+        }
+    }
+
+    #[test]
+    fn test_to_bits_be() {
+        for _ in 0..ITERATIONS {
+            // Sample a random value.
+            let scalar: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+
+            let candidate = scalar.to_bits_be();
+            assert_eq!(Scalar::<CurrentNetwork>::size_in_bits(), candidate.len());
+
+            for (expected, candidate) in (*scalar).to_bits_be().iter().zip_eq(&candidate) {
+                assert_eq!(expected, candidate);
+            }
+        }
+    }
+}

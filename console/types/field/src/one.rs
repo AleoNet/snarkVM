@@ -27,3 +27,36 @@ impl<N: Network> One for Field<N> {
         self.field.is_one()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 100;
+
+    #[test]
+    fn test_one() {
+        let one = Field::<CurrentNetwork>::one();
+
+        for (index, bit) in one.to_bits_le().iter().enumerate() {
+            match index == 0 {
+                true => assert!(bit),
+                false => assert!(!bit)
+            }
+        }
+    }
+
+    #[test]
+    fn test_is_one() {
+        assert!(Field::<CurrentNetwork>::one().is_one());
+
+        // Note: This test technically has a `1 / MODULUS` probability of being flaky.
+        for _ in 0..ITERATIONS {
+            let field: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            assert!(!field.is_one());
+        }
+    }
+}

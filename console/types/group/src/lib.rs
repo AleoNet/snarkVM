@@ -15,10 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod arithmetic;
+mod from_bits;
 mod from_x_coordinate;
 mod from_xy_coordinate;
 mod parse;
 mod random;
+mod size_in_bits;
+mod to_bits;
 mod to_x_coordinate;
 mod to_y_coordinate;
 mod zero;

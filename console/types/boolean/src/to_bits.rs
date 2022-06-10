@@ -16,15 +16,15 @@
 
 use super::*;
 
-impl<N: Network> One for Scalar<N> {
-    /// Returns the `1` element of the scalar.
-    fn one() -> Self {
-        Self::new(N::Scalar::one())
+impl<N: Network> ToBits for Boolean<N> {
+    /// Outputs `self` in a vector.
+    fn to_bits_le(&self) -> Vec<bool> {
+        vec![**self]
     }
 
-    /// Returns `true` if the element is one.
-    fn is_one(&self) -> bool {
-        self.scalar.is_one()
+    /// Outputs `self` in a vector.
+    fn to_bits_be(&self) -> Vec<bool> {
+        vec![**self]
     }
 }
 
@@ -35,28 +35,29 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: u64 = 10_000;
 
     #[test]
-    fn test_one() {
-        let one = Scalar::<CurrentNetwork>::one();
+    fn test_to_bits_le() {
+        for _ in 0..ITERATIONS {
+            // Sample a random value.
+            let boolean: Boolean<CurrentNetwork> = Uniform::rand(&mut test_rng());
 
-        for (index, bit) in one.to_bits_le().iter().enumerate() {
-            match index == 0 {
-                true => assert!(bit),
-                false => assert!(!bit)
-            }
+            let candidate = boolean.to_bits_le();
+            assert_eq!(vec![*boolean], candidate);
+            assert_eq!(Boolean::<CurrentNetwork>::size_in_bits(), candidate.len());
         }
     }
 
     #[test]
-    fn test_is_one() {
-        assert!(Scalar::<CurrentNetwork>::one().is_one());
-
-        // Note: This test technically has a `1 / MODULUS` probability of being flaky.
+    fn test_to_bits_be() {
         for _ in 0..ITERATIONS {
-            let scalar: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
-            assert!(!scalar.is_one());
+            // Sample a random value.
+            let boolean: Boolean<CurrentNetwork> = Uniform::rand(&mut test_rng());
+
+            let candidate = boolean.to_bits_be();
+            assert_eq!(vec![*boolean], candidate);
+            assert_eq!(Boolean::<CurrentNetwork>::size_in_bits(), candidate.len());
         }
     }
 }

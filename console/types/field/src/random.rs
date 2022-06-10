@@ -22,3 +22,31 @@ impl<N: Network> Distribution<Field<N>> for Standard {
         Field::new(Uniform::rand(rng))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    use std::collections::HashSet;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 100;
+
+    #[test]
+    fn test_random() {
+        // Initialize a set to store all seen random elements.
+        let mut set = HashSet::with_capacity(ITERATIONS as usize);
+
+        // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
+        for _ in 0..ITERATIONS {
+            // Sample a random value.
+            let field: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            assert!(!set.contains(&field));
+
+            // Add the new random value to the set.
+            set.insert(field);
+        }
+    }
+}

@@ -22,3 +22,41 @@ impl<N: Network, I: IntegerType> Distribution<Integer<N, I>> for Standard {
         Integer::new(Uniform::rand(rng))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    use std::collections::HashSet;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 10;
+
+    fn check_random<I: IntegerType>() {
+        // Initialize a set to store all seen random elements.
+        let mut set = HashSet::with_capacity(ITERATIONS as usize);
+
+        // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
+        for _ in 0..ITERATIONS {
+            // Sample a random value.
+            let integer: Integer<CurrentNetwork, I> = Uniform::rand(&mut test_rng());
+            assert!(!set.contains(&integer));
+
+            // Add the new random value to the set.
+            set.insert(integer);
+        }
+    }
+
+    #[test]
+    fn test_random() {
+        check_random::<u32>();
+        check_random::<u64>();
+        check_random::<u128>();
+
+        check_random::<i32>();
+        check_random::<i64>();
+        check_random::<i128>();
+    }
+}

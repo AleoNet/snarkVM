@@ -14,47 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bitwise;
-mod from_bits;
-mod parse;
-mod random;
-mod size_in_bits;
-mod to_bits;
-
-pub use snarkvm_console_network::prelude::*;
-
-use core::marker::PhantomData;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Boolean<N: Network> {
-    /// The underlying boolean.
-    boolean: bool,
-    /// PhantomData.
-    _phantom: PhantomData<N>,
-}
-
-impl<N: Network> BooleanTrait for Boolean<N> {}
+use super::*;
 
 impl<N: Network> Boolean<N> {
-    /// Initializes a new boolean.
-    pub const fn new(boolean: bool) -> Self {
-        Self { boolean, _phantom: PhantomData }
-    }
-}
-
-impl<N: Network> TypeName for Boolean<N> {
-    /// Returns the type name as a string.
+    /// Returns the field size in bits.
     #[inline]
-    fn type_name() -> &'static str {
-        "boolean"
+    pub fn size_in_bits() -> usize {
+        1
     }
-}
 
-impl<N: Network> Deref for Boolean<N> {
-    type Target = bool;
-
+    /// Returns the field capacity for data bits.
     #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.boolean
+    pub fn size_in_data_bits() -> usize {
+        1
     }
 }

@@ -71,11 +71,13 @@ pub mod prelude {
             Sub,
             SubAssign,
         },
+        hash::Hash,
         str::{self, FromStr},
     };
 
     pub use anyhow::{anyhow, bail, ensure, Error, Result};
     pub use bech32::{self, FromBase32, ToBase32};
+    pub use itertools::Itertools;
     pub use nom::{
         branch::alt,
         bytes::complete::tag,

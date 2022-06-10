@@ -16,15 +16,15 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Field<N> {
-    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
+impl<N: Network> ToBits for Group<N> {
+    /// Outputs the little-endian bit representation of `self.to_x_coordinate()` *without* trailing zeros.
     fn to_bits_le(&self) -> Vec<bool> {
-        (**self).to_bits_le()
+        self.to_x_coordinate().to_bits_le()
     }
 
-    /// Outputs the big-endian bit representation of `self` *without* leading zeros.
+    /// Outputs the big-endian bit representation of `self.to_x_coordinate()` *without* leading zeros.
     fn to_bits_be(&self) -> Vec<bool> {
-        (**self).to_bits_be()
+        self.to_x_coordinate().to_bits_be()
     }
 }
 
@@ -41,12 +41,12 @@ mod tests {
     fn test_to_bits_le() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let field: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
 
-            let candidate = field.to_bits_le();
-            assert_eq!(Field::<CurrentNetwork>::size_in_bits(), candidate.len());
+            let candidate = group.to_bits_le();
+            assert_eq!(Group::<CurrentNetwork>::size_in_bits(), candidate.len());
 
-            for (expected, candidate) in (*field).to_bits_le().iter().zip_eq(&candidate) {
+            for (expected, candidate) in (*group).to_affine().to_x_coordinate().to_bits_le().iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
             }
         }
@@ -56,12 +56,12 @@ mod tests {
     fn test_to_bits_be() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let field: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
 
-            let candidate = field.to_bits_be();
-            assert_eq!(Field::<CurrentNetwork>::size_in_bits(), candidate.len());
+            let candidate = group.to_bits_be();
+            assert_eq!(Group::<CurrentNetwork>::size_in_bits(), candidate.len());
 
-            for (expected, candidate) in (*field).to_bits_be().iter().zip_eq(&candidate) {
+            for (expected, candidate) in (*group).to_affine().to_x_coordinate().to_bits_be().iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
             }
         }

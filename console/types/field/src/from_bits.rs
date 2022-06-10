@@ -85,45 +85,41 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le() -> Result<()> {
-        let expected_size_in_bits = <CurrentNetwork as Network>::Field::size_in_bits();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
-            let given_bits = Field::<CurrentNetwork>::new(expected).to_bits_le();
-            assert_eq!(expected_size_in_bits, given_bits.len());
+            let expected: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let given_bits = expected.to_bits_le();
+            assert_eq!(Field::<CurrentNetwork>::size_in_bits(), given_bits.len());
 
             let candidate = Field::<CurrentNetwork>::from_bits_le(&given_bits)?;
-            assert_eq!(expected, *candidate);
+            assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![false; i as usize]].concat();
 
             let candidate = Field::<CurrentNetwork>::from_bits_le(&candidate)?;
-            assert_eq!(expected, *candidate);
-            assert_eq!(expected_size_in_bits, candidate.to_bits_le().len());
+            assert_eq!(expected, candidate);
+            assert_eq!(Field::<CurrentNetwork>::size_in_bits(), candidate.to_bits_le().len());
         }
         Ok(())
     }
 
     fn check_from_bits_be() -> Result<()> {
-        let expected_size_in_bits = <CurrentNetwork as Network>::Field::size_in_bits();
-
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = Uniform::rand(&mut test_rng());
-            let given_bits = Field::<CurrentNetwork>::new(expected).to_bits_be();
-            assert_eq!(expected_size_in_bits, given_bits.len());
+            let expected: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let given_bits = expected.to_bits_be();
+            assert_eq!(Field::<CurrentNetwork>::size_in_bits(), given_bits.len());
 
             let candidate = Field::<CurrentNetwork>::from_bits_be(&given_bits)?;
-            assert_eq!(expected, *candidate);
+            assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![vec![false; i as usize], given_bits].concat();
 
             let candidate = Field::<CurrentNetwork>::from_bits_be(&candidate)?;
-            assert_eq!(expected, *candidate);
-            assert_eq!(expected_size_in_bits, candidate.to_bits_be().len());
+            assert_eq!(expected, candidate);
+            assert_eq!(Field::<CurrentNetwork>::size_in_bits(), candidate.to_bits_be().len());
         }
         Ok(())
     }
