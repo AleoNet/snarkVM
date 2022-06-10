@@ -19,23 +19,23 @@ use super::*;
 impl<A: Aleo> Literal<A> {
     /// Returns the variant of the literal.
     pub fn variant(&self) -> U8<A> {
-        match self {
-            Self::Address(..) => U8::constant(0),
-            Self::Boolean(..) => U8::constant(1),
-            Self::Field(..) => U8::constant(2),
-            Self::Group(..) => U8::constant(3),
-            Self::I8(..) => U8::constant(4),
-            Self::I16(..) => U8::constant(5),
-            Self::I32(..) => U8::constant(6),
-            Self::I64(..) => U8::constant(7),
-            Self::I128(..) => U8::constant(8),
-            Self::U8(..) => U8::constant(9),
-            Self::U16(..) => U8::constant(10),
-            Self::U32(..) => U8::constant(11),
-            Self::U64(..) => U8::constant(12),
-            Self::U128(..) => U8::constant(13),
-            Self::Scalar(..) => U8::constant(14),
-            Self::String(..) => U8::constant(15),
-        }
+        U8::constant(match self {
+            Self::Address(..) => console::U8::new(0),
+            Self::Boolean(..) => console::U8::new(1),
+            Self::Field(..) => console::U8::new(2),
+            Self::Group(..) => console::U8::new(3),
+            Self::I8(..) => console::U8::new(4),
+            Self::I16(..) => console::U8::new(5),
+            Self::I32(..) => console::U8::new(6),
+            Self::I64(..) => console::U8::new(7),
+            Self::I128(..) => console::U8::new(8),
+            Self::U8(..) => console::U8::new(9),
+            Self::U16(..) => console::U8::new(10),
+            Self::U32(..) => console::U8::new(11),
+            Self::U64(..) => console::U8::new(12),
+            Self::U128(..) => console::U8::new(13),
+            Self::Scalar(..) => console::U8::new(14),
+            Self::String(..) => console::U8::new(15),
+        })
     }
 }

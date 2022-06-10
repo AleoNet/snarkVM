@@ -26,7 +26,7 @@ impl<E: Environment, const DEPTH: u8> MerklePath<E, DEPTH> {
         leaf: &LH::Leaf,
     ) -> Boolean<E> {
         // Ensure the leaf index is within the tree depth.
-        if (self.leaf_index.eject_value() as u128) >= (1u128 << DEPTH) {
+        if (*self.leaf_index.eject_value() as u128) >= (1u128 << DEPTH) {
             E::halt("Found an out of bounds Merkle leaf index")
         }
         // Ensure the path length matches the expected depth.
@@ -70,13 +70,15 @@ mod tests {
     const DOMAIN: &str = "MerkleTreeCircuit0";
 
     macro_rules! check_verify {
-        ($lh:ident, $ph:ident, $form:ident, $mode:ident, $depth:expr, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+        ($lh:ident, $ph:ident, $mode:ident, $depth:expr, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
             // Initialize the leaf hasher.
-            let native_leaf_hasher = snarkvm_console_algorithms::$lh::<<Circuit as Environment>::$form>::setup(DOMAIN)?;
+            let native_leaf_hasher =
+                snarkvm_console_algorithms::$lh::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit_leaf_hasher = $lh::<Circuit>::constant(native_leaf_hasher.clone());
 
             // Initialize the path hasher.
-            let native_path_hasher = snarkvm_console_algorithms::$ph::<<Circuit as Environment>::$form>::setup(DOMAIN)?;
+            let native_path_hasher =
+                snarkvm_console_algorithms::$ph::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit_path_hasher = $ph::<Circuit>::constant(native_path_hasher.clone());
 
             let create_leaves = |num_leaves| {
@@ -91,7 +93,7 @@ mod tests {
                 // Compute the leaves.
                 let leaves = create_leaves(num_leaves);
                 // Compute the Merkle tree.
-                let merkle_tree = console::merkle_tree::MerkleTree::<_, _, $depth>::new(
+                let merkle_tree = console::merkle_tree::MerkleTree::<_, _, _, $depth>::new(
                     &native_leaf_hasher,
                     &native_path_hasher,
                     &leaves,
@@ -148,31 +150,31 @@ mod tests {
 
     #[test]
     fn test_verify_bhp512_constant() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Affine, Constant, 32, 1024, (53360, 0, 0, 0))
+        check_verify!(BHP1024, BHP512, Constant, 32, 1024, (53360, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_bhp512_public() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Affine, Public, 32, 1024, (13901, 0, 46144, 46209))
+        check_verify!(BHP1024, BHP512, Public, 32, 1024, (13901, 0, 46144, 46209))
     }
 
     #[test]
     fn test_verify_bhp512_private() -> Result<()> {
-        check_verify!(BHP1024, BHP512, Affine, Private, 32, 1024, (13901, 0, 46144, 46209))
+        check_verify!(BHP1024, BHP512, Private, 32, 1024, (13901, 0, 46144, 46209))
     }
 
     #[test]
     fn test_verify_poseidon2_constant() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, BaseField, Constant, 32, 4, (34, 0, 0, 0))
+        check_verify!(Poseidon4, Poseidon2, Constant, 32, 4, (34, 0, 0, 0))
     }
 
     #[test]
     fn test_verify_poseidon2_public() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, BaseField, Public, 32, 4, (33, 0, 18046, 18047))
+        check_verify!(Poseidon4, Poseidon2, Public, 32, 4, (33, 0, 18046, 18047))
     }
 
     #[test]
     fn test_verify_poseidon2_private() -> Result<()> {
-        check_verify!(Poseidon4, Poseidon2, BaseField, Private, 32, 4, (33, 0, 18046, 18047))
+        check_verify!(Poseidon4, Poseidon2, Private, 32, 4, (33, 0, 18046, 18047))
     }
 }

@@ -17,6 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub use snarkvm_console_types::{environment::prelude::*, Field, Group, Scalar};
+
 pub mod address;
 pub use address::*;
 

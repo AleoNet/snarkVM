@@ -19,7 +19,7 @@ version = "0.7.5"
 path = "../types"
 version = "0.7.5"
 default-features = false
-features = ["field"]
+features = ["field", "integers"]
 
 [dependencies.snarkvm-utilities]
 path = "../../utilities"

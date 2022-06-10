@@ -105,7 +105,6 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
 mod tests {
     use super::*;
     use snarkvm_circuit_types::{environment::Circuit, Eject};
-    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     use anyhow::Result;
 
@@ -115,7 +114,7 @@ mod tests {
     #[test]
     fn test_setup_constant() -> Result<()> {
         for _ in 0..ITERATIONS {
-            let native = console::BHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE)?;
+            let native = console::BHP::<<Circuit as Environment>::Network, 8, 32>::setup(MESSAGE)?;
             let circuit = BHPHasher::<Circuit, 8, 32>::new(Mode::Constant, native.clone());
 
             native.bases().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
@@ -128,8 +127,8 @@ mod tests {
                         let edwards_y = (&x_bases[0] - Field::one()) / (&x_bases[0] + Field::one());
                         (edwards_x, edwards_y)
                     };
-                    assert_eq!(native_base.to_affine().to_x_coordinate(), circuit_x.eject_value());
-                    assert_eq!(native_base.to_affine().to_y_coordinate(), circuit_y.eject_value());
+                    assert_eq!(native_base.to_x_coordinate(), circuit_x.eject_value());
+                    assert_eq!(native_base.to_y_coordinate(), circuit_y.eject_value());
                 })
             });
         }

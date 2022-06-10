@@ -34,12 +34,12 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Composite(composite, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![Boolean::constant(true)]; // Variant bit.
-                    bits_le.extend(U8::constant(composite.len() as u8).to_bits_le());
+                    bits_le.extend(U8::constant(console::U8::new(composite.len() as u8)).to_bits_le());
                     for (identifier, value) in composite {
                         let value_bits = value.to_bits_le();
                         bits_le.extend(identifier.size_in_bits().to_bits_le());
                         bits_le.extend(identifier.to_bits_le());
-                        bits_le.extend(U16::constant(value_bits.len() as u16).to_bits_le());
+                        bits_le.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_le());
                         bits_le.extend(value_bits);
                     }
                     bits_le
@@ -63,12 +63,12 @@ impl<A: Aleo> ToBits for Plaintext<A> {
             Self::Composite(composite, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![Boolean::constant(true)]; // Variant bit.
-                    bits_be.extend(U8::constant(composite.len() as u8).to_bits_be());
+                    bits_be.extend(U8::constant(console::U8::new(composite.len() as u8)).to_bits_be());
                     for (identifier, value) in composite {
                         let value_bits = value.to_bits_be();
                         bits_be.extend(identifier.size_in_bits().to_bits_be());
                         bits_be.extend(identifier.to_bits_be());
-                        bits_be.extend(U16::constant(value_bits.len() as u16).to_bits_be());
+                        bits_be.extend(U16::constant(console::U16::new(value_bits.len() as u16)).to_bits_be());
                         bits_be.extend(value_bits);
                     }
                     bits_be

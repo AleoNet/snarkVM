@@ -66,6 +66,15 @@ impl<E: Environment> Group<E> {
 
         Self { group: self.group.double().double() }
     }
+
+    /// Returns `self / COFACTOR`.
+    pub fn div_by_cofactor(&self) -> Self {
+        // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
+        // See unit tests below, which sanity check that this condition holds.
+        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
+
+        Self { group: self.group.to_affine().mul_by_cofactor_inv().into() }
+    }
 }
 
 impl<E: Environment> Group<E> {

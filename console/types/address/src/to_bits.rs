@@ -46,8 +46,7 @@ mod tests {
             let candidate = address.to_bits_le();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), candidate.len());
 
-            for (expected, candidate) in (*address).to_x_coordinate().to_bits_le().iter().zip_eq(&candidate)
-            {
+            for (expected, candidate) in (*address).to_x_coordinate().to_bits_le().iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
             }
         }
@@ -62,8 +61,7 @@ mod tests {
             let candidate = address.to_bits_be();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), candidate.len());
 
-            for (expected, candidate) in (*address).to_x_coordinate().to_bits_be().iter().zip_eq(&candidate)
-            {
+            for (expected, candidate) in (*address).to_x_coordinate().to_bits_be().iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
             }
         }

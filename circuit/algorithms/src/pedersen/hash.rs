@@ -63,7 +63,7 @@ mod tests {
         use console::Hash as H;
 
         // Initialize the Pedersen hash.
-        let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let native = console::Pedersen::<<Circuit as Environment>::Network, NUM_BITS>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_BITS>::constant(native.clone());
 
         for i in 0..ITERATIONS {

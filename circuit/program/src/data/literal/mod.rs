@@ -68,7 +68,7 @@ impl<A: Aleo> Inject for Literal<A> {
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
             Self::Primitive::Address(address) => Self::Address(Address::new(mode, address)),
-            Self::Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, boolean)),
+            Self::Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, *boolean)),
             Self::Primitive::Field(field) => Self::Field(Field::new(mode, field)),
             Self::Primitive::Group(group) => Self::Group(Group::new(mode, group)),
             Self::Primitive::I8(i8) => Self::I8(I8::new(mode, i8)),
@@ -117,7 +117,7 @@ impl<A: Aleo> Eject for Literal<A> {
     fn eject_value(&self) -> Self::Primitive {
         match self {
             Self::Address(literal) => Self::Primitive::Address(literal.eject_value()),
-            Self::Boolean(literal) => Self::Primitive::Boolean(literal.eject_value()),
+            Self::Boolean(literal) => Self::Primitive::Boolean(console::Boolean::new(literal.eject_value())),
             Self::Field(literal) => Self::Primitive::Field(literal.eject_value()),
             Self::Group(literal) => Self::Primitive::Group(literal.eject_value()),
             Self::I8(literal) => Self::Primitive::I8(literal.eject_value()),
@@ -138,8 +138,6 @@ impl<A: Aleo> Eject for Literal<A> {
 
 #[cfg(console)]
 impl<A: Aleo> Parser for Literal<A> {
-    type Environment = A;
-
     /// Parses a string into a literal.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -161,6 +159,25 @@ impl<A: Aleo> Parser for Literal<A> {
             map(Scalar::parse, |literal| Self::Scalar(literal)),
             map(StringType::parse, |literal| Self::String(literal)),
         ))(string)
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> FromStr for Literal<A> {
+    type Err = Error;
+
+    /// Parses a string into a literal circuit.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
     }
 }
 

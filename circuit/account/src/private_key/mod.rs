@@ -55,7 +55,7 @@ impl<A: Aleo> PrivateKey<A> {
 
 #[cfg(console)]
 impl<A: Aleo> Eject for PrivateKey<A> {
-    type Primitive = (A::ScalarField, A::ScalarField);
+    type Primitive = (console::Scalar<A::Network>, console::Scalar<A::Network>);
 
     /// Ejects the mode of the account private key.
     fn eject_mode(&self) -> Mode {

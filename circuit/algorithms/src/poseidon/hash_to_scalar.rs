@@ -37,7 +37,6 @@ impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, FromBits, ToBits, Uniform};
 
     use anyhow::Result;
 
@@ -55,35 +54,16 @@ mod tests {
     ) -> Result<()> {
         use console::HashToScalar as H;
 
-        let native = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup(DOMAIN)?;
+        let native = console::Poseidon::<<Circuit as Environment>::Network, RATE>::setup(DOMAIN)?;
         let poseidon = Poseidon::<Circuit, RATE>::constant(native.clone());
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
-            let native_input =
-                (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(&mut test_rng())).collect::<Vec<_>>();
+            let native_input = (0..num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash to scalar.
-            let expected = {
-                // Use Poseidon as a random oracle.
-                let output = native
-                    .hash_to_scalar::<<Circuit as Environment>::ScalarField>(&native_input)
-                    .expect("Failed to hash native input");
-
-                // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
-                let mut bits = output.to_bits_le();
-                bits.resize(<Circuit as Environment>::ScalarField::size_in_data_bits(), false);
-
-                // Output the scalar field.
-                let biginteger =
-                    <<Circuit as Environment>::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits).unwrap();
-                match <<Circuit as Environment>::ScalarField as PrimeField>::from_repr(biginteger) {
-                    // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
-                    Some(scalar) => scalar,
-                    _ => panic!("Failed to hash input into scalar field"),
-                }
-            };
+            let expected = native.hash_to_scalar(&native_input)?;
 
             // Compute the circuit hash.
             Circuit::scope(format!("Poseidon {mode} {i}"), || {

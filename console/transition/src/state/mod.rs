@@ -31,7 +31,7 @@ pub struct State<N: Network> {
     /// The Aleo address this state belongs to.
     owner: Address<N>,
     /// The account balance in this program state.
-    balance: u64,
+    balance: U64<N>,
     /// The data for this program state.
     data: Field<N>,
     /// The nonce for this program state (i.e. `G^r`).
@@ -42,7 +42,7 @@ impl<N: Network> State<N> {
     /// Initializes a new instance of `State`.
     pub fn new(owner: Address<N>, balance: u64, data: Field<N>, nonce: Group<N>) -> Self {
         // Return the new program state.
-        Self { owner, balance, data, nonce }
+        Self { owner, balance: U64::new(balance), data, nonce }
     }
 
     /// Returns the account owner.
@@ -51,7 +51,7 @@ impl<N: Network> State<N> {
     }
 
     /// Returns the account balance.
-    pub const fn balance(&self) -> u64 {
+    pub const fn balance(&self) -> U64<N> {
         self.balance
     }
 

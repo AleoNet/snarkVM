@@ -41,7 +41,6 @@ use snarkvm_circuit_types::{
     Group,
     Scalar,
 };
-use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::FieldParameters;
 
 use core::fmt;
@@ -50,7 +49,7 @@ type E = Circuit;
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().map(|g| g.to_affine()).collect());
+    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().copied().collect());
 
     /// The balance commitment domain as a constant field element.
     static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());

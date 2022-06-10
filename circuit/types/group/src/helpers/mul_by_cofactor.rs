@@ -40,7 +40,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
-            let input = (*expected).to_affine().mul_by_cofactor_inv();
+            let input = expected.div_by_cofactor();
             assert_eq!(*expected, input.mul_by_cofactor());
 
             // Initialize the input.
@@ -78,7 +78,7 @@ mod tests {
             let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
-            let input = (*expected).to_affine().mul_by_cofactor_inv();
+            let input = expected.div_by_cofactor();
             assert_eq!(*expected, input.mul_by_cofactor());
 
             // Initialize the input.

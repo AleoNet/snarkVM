@@ -21,7 +21,7 @@ impl<N: Network> Randomizer<N> {
     pub fn prove<R: Rng + CryptoRng>(
         view_key: &ViewKey<N>,
         serial_numbers: &[Field<N>],
-        output_index: u16,
+        output_index: U16<N>,
         rng: &mut R,
     ) -> Result<Self> {
         // Sample a random nonce from the scalar field.
@@ -34,7 +34,7 @@ impl<N: Network> Randomizer<N> {
         let generator_h = N::hash_to_group_psd4(&[
             N::randomizer_domain(),
             serial_numbers_digest,
-            Field::<N>::from_u16(output_index),
+            Field::<N>::from_u16(*output_index),
         ])?;
 
         // Compute `address` as `view_key * G`.

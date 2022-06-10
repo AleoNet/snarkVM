@@ -41,9 +41,7 @@ impl<E: Environment, const RATE: usize> HashToGroup for Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_curves::AffineCurve;
-    use snarkvm_fields::Zero;
-    use snarkvm_utilities::{test_rng, Uniform};
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     use anyhow::Result;
 
@@ -53,17 +51,14 @@ mod tests {
     macro_rules! check_hash_to_group {
         ($poseidon:ident, $mode:ident, $num_fields:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
             // Initialize Poseidon.
-            let native = console::$poseidon::<<Circuit as Environment>::BaseField>::setup(DOMAIN)?;
+            let native = console::$poseidon::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $poseidon::<Circuit>::constant(native.clone());
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
                 let input = (0..$num_fields).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
                 // Compute the expected hash.
-                let expected = console::HashToGroup::hash_to_group::<
-                    <Circuit as Environment>::Affine,
-                    <Circuit as Environment>::AffineParameters,
-                >(&native, &input)?;
+                let expected = console::HashToGroup::hash_to_group(&native, &input)?;
                 // Prepare the circuit input.
                 let circuit_input: Vec<Field<_>> = Inject::new(Mode::$mode, input);
 
@@ -75,12 +70,12 @@ mod tests {
 
                     // Eject the value to inspect it further.
                     let candidate = candidate.eject_value();
-                    assert!(candidate.is_on_curve());
-                    assert!(candidate.is_in_correct_subgroup_assuming_on_curve());
-                    assert_ne!(<Circuit as Environment>::Affine::zero(), candidate);
-                    assert_ne!(<Circuit as Environment>::Affine::prime_subgroup_generator(), candidate);
+                    assert!((*candidate).to_affine().is_on_curve());
+                    assert!((*candidate).to_affine().is_in_correct_subgroup_assuming_on_curve());
+                    assert_ne!(console::Group::<<Circuit as Environment>::Network>::zero(), candidate);
+                    assert_ne!(console::Group::<<Circuit as Environment>::Network>::generator(), candidate);
 
-                    let candidate_cofactor_inv = candidate.mul_by_cofactor_inv();
+                    let candidate_cofactor_inv = candidate.div_by_cofactor();
                     assert_eq!(candidate, candidate_cofactor_inv.mul_by_cofactor());
                 });
                 Circuit::reset();

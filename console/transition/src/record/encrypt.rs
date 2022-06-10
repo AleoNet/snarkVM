@@ -26,7 +26,7 @@ impl<N: Network> Record<N> {
         // Encrypt the owner.
         let owner = state.owner().to_x_coordinate() + randomizers[0];
         // Encrypt the balance.
-        let balance = Field::<N>::from_u64(state.balance()) + randomizers[1];
+        let balance = Field::<N>::from_u64(*state.balance()) + randomizers[1];
 
         // // Encrypt the data.
         // let data = state.data().encrypt_symmetric(&(*record_view_key * randomizers[2]))?;

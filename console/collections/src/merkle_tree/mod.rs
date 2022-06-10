@@ -249,7 +249,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         path.resize(DEPTH as usize, self.empty_hash);
 
         // Return the Merkle path.
-        MerklePath::try_from((leaf_index as u64, path))
+        MerklePath::try_from((U64::new(leaf_index as u64), path))
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.

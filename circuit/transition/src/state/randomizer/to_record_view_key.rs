@@ -28,7 +28,7 @@ impl<A: Aleo> Randomizer<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, Rng, Uniform};
+    use console::{test_crypto_rng, Rng, Uniform};
 
     use anyhow::Result;
 

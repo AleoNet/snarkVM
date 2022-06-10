@@ -2119,7 +2119,6 @@ dependencies = [
  "snarkvm-circuit-collections",
  "snarkvm-circuit-types",
  "snarkvm-console-network",
- "snarkvm-curves",
  "snarkvm-fields",
 ]
 

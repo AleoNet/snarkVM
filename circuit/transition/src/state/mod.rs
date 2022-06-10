@@ -71,7 +71,7 @@ impl<A: Aleo> Eject for State<A> {
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::new(
             self.owner.eject_value(),
-            self.balance.eject_value(),
+            *self.balance.eject_value(),
             self.data.eject_value(),
             self.nonce.eject_value(),
         )

@@ -34,7 +34,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let literal_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
             counter += 16;
 
-            let literal = Literal::from_bits_le(&literal_variant, &bits_le[counter..counter + literal_size as usize]);
+            let literal = Literal::from_bits_le(&literal_variant, &bits_le[counter..counter + *literal_size as usize]);
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
@@ -49,19 +49,19 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let num_composites = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
             counter += 8;
 
-            let mut composites = Vec::with_capacity(num_composites as usize);
-            for _ in 0..num_composites {
+            let mut composites = Vec::with_capacity(*num_composites as usize);
+            for _ in 0..*num_composites {
                 let identifier_size = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
                 counter += 8;
 
-                let identifier = Identifier::from_bits_le(&bits_le[counter..counter + identifier_size as usize]);
-                counter += identifier_size as usize;
+                let identifier = Identifier::from_bits_le(&bits_le[counter..counter + *identifier_size as usize]);
+                counter += *identifier_size as usize;
 
                 let composite_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let value = Plaintext::from_bits_le(&bits_le[counter..counter + composite_size as usize]);
-                counter += composite_size as usize;
+                let value = Plaintext::from_bits_le(&bits_le[counter..counter + *composite_size as usize]);
+                counter += *composite_size as usize;
 
                 composites.push((identifier, value));
             }
@@ -91,7 +91,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let literal_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
             counter += 16;
 
-            let literal = Literal::from_bits_be(&literal_variant, &bits_be[counter..counter + literal_size as usize]);
+            let literal = Literal::from_bits_be(&literal_variant, &bits_be[counter..counter + *literal_size as usize]);
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
@@ -106,19 +106,19 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             let num_composites = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
             counter += 8;
 
-            let mut composites = Vec::with_capacity(num_composites as usize);
-            for _ in 0..num_composites {
+            let mut composites = Vec::with_capacity(*num_composites as usize);
+            for _ in 0..*num_composites {
                 let identifier_size = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
                 counter += 8;
 
-                let identifier = Identifier::from_bits_be(&bits_be[counter..counter + identifier_size as usize]);
-                counter += identifier_size as usize;
+                let identifier = Identifier::from_bits_be(&bits_be[counter..counter + *identifier_size as usize]);
+                counter += *identifier_size as usize;
 
                 let composite_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let value = Plaintext::from_bits_be(&bits_be[counter..counter + composite_size as usize]);
-                counter += composite_size as usize;
+                let value = Plaintext::from_bits_be(&bits_be[counter..counter + *composite_size as usize]);
+                counter += *composite_size as usize;
 
                 composites.push((identifier, value));
             }

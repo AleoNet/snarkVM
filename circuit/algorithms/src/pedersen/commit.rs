@@ -103,7 +103,7 @@ mod tests {
         use console::Commit as C;
 
         // Initialize Pedersen.
-        let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let native = console::Pedersen::<<Circuit as Environment>::Network, NUM_BITS>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_BITS>::constant(native.clone());
 
         for i in 0..ITERATIONS {
@@ -207,23 +207,23 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
-            let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            let first = U8::<Circuit>::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
+            let second = U8::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
             check_homomorphic_addition(&pedersen, first, second);
 
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
-            let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            let first = U16::<Circuit>::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
+            let second = U16::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
             check_homomorphic_addition(&pedersen, first, second);
 
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
-            let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            let first = U32::<Circuit>::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
+            let second = U32::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
             check_homomorphic_addition(&pedersen, first, second);
 
             // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
-            let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            let first = U64::<Circuit>::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
+            let second = U64::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
             check_homomorphic_addition(&pedersen, first, second);
         }
     }
@@ -238,28 +238,28 @@ mod tests {
         ) {
             for _ in 0..ITERATIONS {
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
-                let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+                let first = U8::<Circuit>::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
+                let second = U8::new(Mode::Private, console::U8::new(u8::rand(&mut test_rng()) >> 1));
                 check_homomorphic_addition(pedersen, first, second);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
-                let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+                let first = U16::<Circuit>::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
+                let second = U16::new(Mode::Private, console::U16::new(u16::rand(&mut test_rng()) >> 1));
                 check_homomorphic_addition(pedersen, first, second);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
-                let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+                let first = U32::<Circuit>::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
+                let second = U32::new(Mode::Private, console::U32::new(u32::rand(&mut test_rng()) >> 1));
                 check_homomorphic_addition(pedersen, first, second);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
-                let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+                let first = U64::<Circuit>::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
+                let second = U64::new(Mode::Private, console::U64::new(u64::rand(&mut test_rng()) >> 1));
                 check_homomorphic_addition(pedersen, first, second);
 
                 // Sample two random unsigned integers, with the MSB set to 0.
-                let first = U128::<Circuit>::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
-                let second = U128::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+                let first = U128::<Circuit>::new(Mode::Private, console::U128::new(u128::rand(&mut test_rng()) >> 1));
+                let second = U128::new(Mode::Private, console::U128::new(u128::rand(&mut test_rng()) >> 1));
                 check_homomorphic_addition(pedersen, first, second);
             }
         }

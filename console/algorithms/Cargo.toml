@@ -10,7 +10,7 @@ edition = "2021"
 path = "../types"
 version = "0.7.5"
 default-features = false
-features = ["field", "group", "scalar"]
+features = ["field", "group", "integers", "scalar"]
 
 [dependencies.snarkvm-fields]
 path = "../../fields"

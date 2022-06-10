@@ -67,9 +67,9 @@ mod tests {
     const DOMAIN: &str = "MerkleTreeCircuit0";
 
     macro_rules! check_hash_leaf {
-        ($hash:ident, $form:ident, $mode:ident, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+        ($hash:ident, $mode:ident, $num_inputs:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
             // Initialize the hash.
-            let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::$form>::setup(DOMAIN)?;
+            let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $hash::<Circuit>::constant(native.clone());
 
             for i in 0..ITERATIONS {
@@ -96,31 +96,31 @@ mod tests {
 
     #[test]
     fn test_hash_leaf_bhp1024_constant() -> Result<()> {
-        check_hash_leaf!(BHP1024, Affine, Constant, 1024, (1807, 0, 0, 0))
+        check_hash_leaf!(BHP1024, Constant, 1024, (1807, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_public() -> Result<()> {
-        check_hash_leaf!(BHP1024, Affine, Public, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Public, 1024, (429, 0, 1758, 1758))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_private() -> Result<()> {
-        check_hash_leaf!(BHP1024, Affine, Private, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Private, 1024, (429, 0, 1758, 1758))
     }
 
     #[test]
     fn test_hash_leaf_poseidon4_constant() -> Result<()> {
-        check_hash_leaf!(Poseidon4, BaseField, Constant, 4, (1, 0, 0, 0))
+        check_hash_leaf!(Poseidon4, Constant, 4, (1, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_leaf_poseidon4_public() -> Result<()> {
-        check_hash_leaf!(Poseidon4, BaseField, Public, 4, (1, 0, 700, 700))
+        check_hash_leaf!(Poseidon4, Public, 4, (1, 0, 700, 700))
     }
 
     #[test]
     fn test_hash_leaf_poseidon4_private() -> Result<()> {
-        check_hash_leaf!(Poseidon4, BaseField, Private, 4, (1, 0, 700, 700))
+        check_hash_leaf!(Poseidon4, Private, 4, (1, 0, 700, 700))
     }
 }

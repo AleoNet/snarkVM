@@ -17,4 +17,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub use snarkvm_console_types::prelude::*;
+
 pub mod merkle_tree;

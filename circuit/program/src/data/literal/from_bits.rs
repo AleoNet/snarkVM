@@ -20,7 +20,7 @@ impl<A: Aleo> Literal<A> {
     /// Initializes a new literal from a list of little-endian bits *without* trailing zeros.
     pub fn from_bits_le(variant: &U8<A>, bits_le: &[Boolean<A>]) -> Self {
         let literal = bits_le;
-        match variant.eject_value() {
+        match *variant.eject_value() {
             0 => Literal::Address(Address::from_bits_le(literal)),
             1 => Literal::Boolean(Boolean::from_bits_le(literal)),
             2 => Literal::Field(Field::from_bits_le(literal)),
@@ -44,7 +44,7 @@ impl<A: Aleo> Literal<A> {
     /// Initializes a new literal from a list of big-endian bits *without* leading zeros.
     pub fn from_bits_be(variant: &U8<A>, bits_be: &[Boolean<A>]) -> Self {
         let literal = bits_be;
-        match variant.eject_value() {
+        match *variant.eject_value() {
             0 => Literal::Address(Address::from_bits_be(literal)),
             1 => Literal::Boolean(Boolean::from_bits_be(literal)),
             2 => Literal::Field(Field::from_bits_be(literal)),
@@ -70,7 +70,7 @@ impl<A: Aleo> Literal<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{rand::Rng, test_rng, Uniform};
+    use console::{test_rng, Rng, Uniform};
 
     const ITERATIONS: u32 = 1000;
 
@@ -99,7 +99,7 @@ mod tests {
             // Address
             check_serialization(Literal::<Circuit>::Address(Address::new(
                 mode,
-                snarkvm_console_account::Address::from_group(Uniform::rand(rng)),
+                console::Address::new(Uniform::rand(rng)),
             )));
             // Boolean
             check_serialization(Literal::<Circuit>::Boolean(Boolean::new(mode, Uniform::rand(rng))));
@@ -133,7 +133,7 @@ mod tests {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
             let range = 0..rng.gen_range(0..Circuit::NUM_STRING_BYTES / 4);
             let string: String = range.map(|_| rng.gen::<char>()).collect();
-            check_serialization(Literal::<Circuit>::String(StringType::new(mode, string)));
+            check_serialization(Literal::<Circuit>::String(StringType::new(mode, console::StringType::new(&string))));
         }
     }
 

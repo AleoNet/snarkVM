@@ -72,7 +72,7 @@ mod tests {
             let address = Address::<Circuit>::new(Mode::Private, address);
 
             let data = Data(vec![(
-                Identifier::from_str("a"),
+                Identifier::from_str("a")?,
                 Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
             )]);
 
@@ -93,7 +93,7 @@ mod tests {
             // Sample a random symmetric key and data.
             let symmetric_key = Field::<Circuit>::new(Mode::Private, Uniform::rand(rng));
             let data = Data(vec![(
-                Identifier::from_str("a"),
+                Identifier::from_str("a")?,
                 Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
             )]);
 

@@ -115,7 +115,7 @@ mod tests {
     fn check_encode(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: <Circuit as Environment>::BaseField = Uniform::rand(&mut test_rng());
+            let given = Uniform::rand(&mut test_rng());
 
             // Compute the expected native result.
             let (expected, _sign) = console::Elligator2::<<Circuit as Environment>::Network>::encode(&given).unwrap();

@@ -33,7 +33,7 @@ pub struct MerklePath<E: Environment, const DEPTH: u8> {
 
 #[cfg(console)]
 impl<E: Environment, const DEPTH: u8> Inject for MerklePath<E, DEPTH> {
-    type Primitive = console::merkle_tree::MerklePath<E::BaseField, DEPTH>;
+    type Primitive = console::merkle_tree::MerklePath<E::Network, DEPTH>;
 
     /// Initializes a Merkle path from the given mode and native Merkle path.
     fn new(mode: Mode, merkle_path: Self::Primitive) -> Self {
@@ -52,7 +52,7 @@ impl<E: Environment, const DEPTH: u8> Inject for MerklePath<E, DEPTH> {
 
 #[cfg(console)]
 impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
-    type Primitive = console::merkle_tree::MerklePath<E::BaseField, DEPTH>;
+    type Primitive = console::merkle_tree::MerklePath<E::Network, DEPTH>;
 
     /// Ejects the mode of the Merkle path.
     fn eject_mode(&self) -> Mode {
@@ -72,7 +72,7 @@ impl<E: Environment, const DEPTH: u8> Eject for MerklePath<E, DEPTH> {
 mod tests {
     use super::*;
     use snarkvm_circuit_network::AleoV0 as Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as T, Uniform};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -87,7 +87,7 @@ mod tests {
     ) -> Result<()> {
         let create_leaves = |num_leaves| {
             (0..num_leaves)
-                .map(|_| <Circuit as Environment>::BaseField::rand(&mut test_rng()).to_bits_le())
+                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut test_rng()).to_bits_le())
                 .collect::<Vec<_>>()
         };
 

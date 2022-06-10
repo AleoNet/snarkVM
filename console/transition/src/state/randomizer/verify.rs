@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Randomizer<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, address: &Address<N>, serial_numbers_digest: Field<N>, output_index: u16) -> bool {
+    pub fn verify(&self, address: &Address<N>, serial_numbers_digest: Field<N>, output_index: U16<N>) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
@@ -26,7 +26,7 @@ impl<N: Network> Randomizer<N> {
         let generator_h = match N::hash_to_group_psd4(&[
             N::randomizer_domain(),
             serial_numbers_digest,
-            Field::<N>::from_u16(output_index),
+            Field::<N>::from_u16(*output_index),
         ]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
