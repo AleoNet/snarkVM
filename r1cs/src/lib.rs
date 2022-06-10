@@ -35,6 +35,9 @@ pub use errors::*;
 mod linear_combination;
 pub use linear_combination::*;
 
+mod lookup_table;
+pub use lookup_table::*;
+
 mod namespace;
 pub use namespace::*;
 

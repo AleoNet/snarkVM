@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, LookupTable, Variable};
 use snarkvm_fields::Field;
 
 /// Constraint system for testing purposes.
@@ -23,6 +23,8 @@ pub struct TestConstraintChecker<F: Field> {
     public_variables: Vec<F>,
     // the list of currently applicable auxiliary variables
     private_variables: Vec<F>,
+    // the currently applicable lookup table
+    lookup_table: Option<LookupTable<F>>,
     // whether or not unsatisfactory constraint has been found
     found_unsatisfactory_constraint: bool,
     // number of constraints
@@ -38,6 +40,7 @@ impl<F: Field> Default for TestConstraintChecker<F> {
         Self {
             public_variables: vec![F::one()],
             private_variables: vec![],
+            lookup_table: None,
             found_unsatisfactory_constraint: false,
             num_constraints: 0,
             segments: vec![],
@@ -73,6 +76,11 @@ impl<F: Field> TestConstraintChecker<F> {
 
 impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
     type Root = Self;
+
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
+        self.lookup_table = Some(lookup_table);
+        Ok(())
+    }
 
     fn alloc<Fn, A, AR>(&mut self, _annotation: A, f: Fn) -> Result<Variable, SynthesisError>
     where
@@ -136,6 +144,21 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
             path.push(new);
             self.first_unsatisfied_constraint = Some(path.join("/"));
         }
+    }
+
+    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
+        let res = if let Some(lookup_table) = &self.lookup_table {
+            *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
+        } else {
+            if self.first_unsatisfied_constraint.is_none() {
+                self.found_unsatisfactory_constraint = true;
+                self.first_unsatisfied_constraint = Some("lookup".to_string());
+            }
+            return Err(SynthesisError::LookupTableMissing);
+        };
+
+        self.num_constraints += 1;
+        self.alloc(|| "lookup_table", || Ok(res))
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

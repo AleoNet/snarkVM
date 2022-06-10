@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SynthesisError, Index, LinearCombination, Namespace, Variable};
+use crate::{errors::SynthesisError, Index, LinearCombination, LookupTable, Namespace, Variable};
 use snarkvm_fields::Field;
 
 use std::marker::PhantomData;
@@ -38,6 +38,10 @@ pub trait ConstraintSystem<F: Field>: Sized {
     fn one() -> Variable {
         Variable::new_unchecked(Index::Public(0))
     }
+
+    /// Add a lookup table to the constraint system. This allows for calls to `lookup`,
+    /// adding lookup constraints to the circuit.
+    fn add_lookup_table(&mut self, table: LookupTable<F>) -> Result<(), SynthesisError>;
 
     /// Allocate a private variable in the constraint system. The provided
     /// function is used to determine the assignment of the variable. The
@@ -67,6 +71,9 @@ pub trait ConstraintSystem<F: Field>: Sized {
         LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
         LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>;
+
+    /// Lookup a value given an input.
+    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError>;
 
     /// Create a new (sub)namespace and enter into it. Not intended
     /// for downstream use; use `namespace` instead.
@@ -118,6 +125,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
     }
 
     #[inline]
+    fn add_lookup_table(&mut self, table: LookupTable<F>) -> Result<(), SynthesisError> {
+        (**self).add_lookup_table(table)
+    }
+
+    #[inline]
     fn alloc<FN, A, AR>(&mut self, annotation: A, f: FN) -> Result<Variable, SynthesisError>
     where
         FN: FnOnce() -> Result<F, SynthesisError>,
@@ -147,6 +159,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         (**self).enforce(annotation, a, b, c)
+    }
+
+    #[inline]
+    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
+        (**self).lookup(val)
     }
 
     #[inline]

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SynthesisError, ConstraintSystem, LinearCombination, Variable};
+use crate::{errors::SynthesisError, ConstraintSystem, LinearCombination, LookupTable, Variable};
 use snarkvm_fields::Field;
 
 use std::marker::PhantomData;
@@ -29,6 +29,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
     #[inline]
     fn one() -> Variable {
         CS::one()
+    }
+
+    #[inline]
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
+        self.0.add_lookup_table(lookup_table)
     }
 
     #[inline]
@@ -61,6 +66,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         self.0.enforce(annotation, a, b, c)
+    }
+
+    #[inline]
+    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
+        self.0.lookup(val)
     }
 
     // Downstream users who use `namespace` will never interact with these

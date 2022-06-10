@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, LookupTable, Variable};
 use snarkvm_fields::Field;
 
 /// Constraint counter for testing purposes.
@@ -27,6 +27,10 @@ pub struct ConstraintCounter {
 
 impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
     type Root = Self;
+
+    fn add_lookup_table(&mut self, _: LookupTable<ConstraintF>) -> Result<(), SynthesisError> {
+        Ok(())
+    }
 
     fn alloc<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
     where
@@ -60,6 +64,13 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         LC: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
     {
         self.num_constraints += 1;
+    }
+
+    fn lookup(&mut self, _: LinearCombination<ConstraintF>) -> Result<Variable, SynthesisError> {
+        self.num_constraints += 1;
+        let var = Variable::new_unchecked(Index::Private(self.num_private_variables));
+        self.num_private_variables += 1;
+        Ok(var)
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

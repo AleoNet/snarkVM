@@ -37,6 +37,14 @@ pub enum SynthesisError {
     /// During synthesis, our polynomials ended up being too high of degree
     #[error("Polynomial degree is too large")]
     PolynomialDegreeTooLarge,
+    /// During synthesis, we attempted to lookup a variable without a lookup table
+    /// being present in the constraint system.
+    #[error("Lookup table missing")]
+    LookupTableMissing,
+    /// During synthesis, we attempted to lookup a variable without this variable
+    /// being present in the lookup table.
+    #[error("Lookup value missing")]
+    LookupValueMissing,
     /// During proof generation, we encountered an identity in the CRS
     #[error("Encountered an identity element in the CRS")]
     UnexpectedIdentity,

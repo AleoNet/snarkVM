@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, OptionalVec, Variable};
+use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, LookupTable, OptionalVec, Variable};
 use snarkvm_fields::Field;
 
 use cfg_if::cfg_if;
@@ -56,11 +56,26 @@ pub struct InternedPath {
 }
 
 #[derive(PartialEq, Eq, Hash)]
-pub struct TestConstraint {
-    interned_path: InternedPath,
-    a: Vec<(Variable, InternedField)>,
-    b: Vec<(Variable, InternedField)>,
-    c: Vec<(Variable, InternedField)>,
+pub enum TestEntry<F: Field> {
+    TestConstraint {
+        interned_path: InternedPath,
+        a: Vec<(Variable, InternedField)>,
+        b: Vec<(Variable, InternedField)>,
+        c: Vec<(Variable, InternedField)>,
+    },
+    TestLookup {
+        val: LinearCombination<F>,
+        result: Variable,
+    },
+}
+
+impl<F: Field> TestEntry<F> {
+    fn interned_path(&self) -> InternedPath {
+        match self {
+            TestEntry::TestConstraint { interned_path, .. } => *interned_path,
+            TestEntry::TestLookup { .. } => InternedPath { parent_namespace: 0, last_segment: 0 },
+        }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -94,8 +109,10 @@ pub struct TestConstraintSystem<F: Field> {
     // a stack of current path's segments and the index of the current path's
     // index in the named_objects map
     current_namespace: CurrentNamespace,
+    // the currently applicable lookup table
+    lookup_table: Option<LookupTable<F>>,
     // the list of currently applicable constraints
-    constraints: OptionalVec<TestConstraint>,
+    constraints: OptionalVec<TestEntry<F>>,
     // the list of currently applicable input variables
     public_variables: OptionalVec<InternedField>,
     // the list of currently applicable auxiliary variables
@@ -135,6 +152,7 @@ impl<F: Field> Default for TestConstraintSystem<F> {
             interned_path_segments,
             named_objects,
             current_namespace: Default::default(),
+            lookup_table: None,
             constraints,
             public_variables: inputs,
             private_variables: Default::default(),
@@ -150,27 +168,42 @@ impl<F: Field> TestConstraintSystem<F> {
     /// Prints the constraint at which `self` and `other` differ.
     pub fn diff(&self, other: &Self) {
         for (i, (self_c, other_c)) in self.constraints.iter().zip(other.constraints.iter()).enumerate() {
-            let self_interned_path = self_c.interned_path;
-            let other_interned_path = other_c.interned_path;
-            if self_c.a != other_c.a {
-                println!("A row {} is different:", i);
-                println!("self: {}", self.unintern_path(self_interned_path));
-                println!("other: {}", other.unintern_path(other_interned_path));
-                break;
-            }
+            match (self_c, other_c) {
+                (
+                    TestEntry::TestConstraint { interned_path: self_interned_path, a: self_a, b: self_b, c: self_c },
+                    TestEntry::TestConstraint {
+                        interned_path: other_interned_path,
+                        a: other_a,
+                        b: other_b,
+                        c: other_c,
+                    },
+                ) => {
+                    if self_a != other_a {
+                        println!("A row {} is different:", i);
+                        println!("self: {}", self.unintern_path(*self_interned_path));
+                        println!("other: {}", other.unintern_path(*other_interned_path));
+                        break;
+                    }
 
-            if self_c.b != other_c.b {
-                println!("B row {} is different:", i);
-                println!("self: {}", self.unintern_path(self_interned_path));
-                println!("other: {}", other.unintern_path(other_interned_path));
-                break;
-            }
+                    if self_b != other_b {
+                        println!("B row {} is different:", i);
+                        println!("self: {}", self.unintern_path(*self_interned_path));
+                        println!("other: {}", other.unintern_path(*other_interned_path));
+                        break;
+                    }
 
-            if self_c.c != other_c.c {
-                println!("C row {} is different:", i);
-                println!("self: {}", self.unintern_path(self_interned_path));
-                println!("other: {}", other.unintern_path(other_interned_path));
-                break;
+                    if self_c != other_c {
+                        println!("C row {} is different:", i);
+                        println!("self: {}", self.unintern_path(*self_interned_path));
+                        println!("other: {}", other.unintern_path(*other_interned_path));
+                        break;
+                    }
+                }
+                (
+                    TestEntry::TestLookup { val: self_val, result: self_result },
+                    TestEntry::TestLookup { val: other_val, result: other_result },
+                ) => {}
+                _ => panic!("constraint systems aren't equal"),
             }
         }
     }
@@ -203,8 +236,13 @@ impl<F: Field> TestConstraintSystem<F> {
     }
 
     pub fn print_named_objects(&self) {
-        for TestConstraint { interned_path, .. } in self.constraints.iter() {
-            println!("{}", self.unintern_path(*interned_path));
+        for entry in self.constraints.iter() {
+            match entry {
+                TestEntry::TestConstraint { interned_path, .. } => {
+                    println!("{}", self.unintern_path(*interned_path));
+                }
+                _ => {}
+            }
         }
     }
 
@@ -227,15 +265,20 @@ impl<F: Field> TestConstraintSystem<F> {
     }
 
     pub fn which_is_unsatisfied(&self) -> Option<String> {
-        for TestConstraint { interned_path, a, b, c } in self.constraints.iter() {
-            let mut a = self.eval_lc(a.as_ref());
-            let b = self.eval_lc(b.as_ref());
-            let c = self.eval_lc(c.as_ref());
+        for entry in self.constraints.iter() {
+            match entry {
+                TestEntry::TestConstraint { interned_path, a, b, c } => {
+                    let mut a = self.eval_lc(a.as_ref());
+                    let b = self.eval_lc(b.as_ref());
+                    let c = self.eval_lc(c.as_ref());
 
-            a.mul_assign(&b);
+                    a.mul_assign(&b);
 
-            if a != c {
-                return Some(self.unintern_path(*interned_path));
+                    if a != c {
+                        return Some(self.unintern_path(*interned_path));
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -252,10 +295,15 @@ impl<F: Field> TestConstraintSystem<F> {
         let mut non_zero_a = 0;
         let mut non_zero_b = 0;
         let mut non_zero_c = 0;
-        for TestConstraint { a, b, c, .. } in self.constraints.iter() {
-            non_zero_a += a.len();
-            non_zero_b += b.len();
-            non_zero_c += c.len();
+        for entry in self.constraints.iter() {
+            match entry {
+                TestEntry::TestConstraint { a, b, c, .. } => {
+                    non_zero_a += a.len();
+                    non_zero_b += b.len();
+                    non_zero_c += c.len();
+                }
+                _ => {}
+            }
         }
         (non_zero_a, non_zero_b, non_zero_c)
     }
@@ -267,7 +315,7 @@ impl<F: Field> TestConstraintSystem<F> {
 
     #[inline]
     pub fn get_constraint_path(&self, i: usize) -> String {
-        self.unintern_path(self.constraints.iter().nth(i).unwrap().interned_path)
+        self.unintern_path(self.constraints.iter().nth(i).unwrap().interned_path())
     }
 
     pub fn set(&mut self, path: &str, to: F) {
@@ -375,6 +423,11 @@ impl<F: Field> TestConstraintSystem<F> {
 impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     type Root = Self;
 
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
+        self.lookup_table = Some(lookup_table);
+        Ok(())
+    }
+
     fn alloc<Fn, A, AR>(&mut self, annotation: A, f: Fn) -> Result<Variable, SynthesisError>
     where
         Fn: FnOnce() -> Result<F, SynthesisError>,
@@ -437,7 +490,17 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         let b = intern_fields(b(LinearCombination::zero()).0);
         let c = intern_fields(c(LinearCombination::zero()).0);
 
-        self.constraints.insert(TestConstraint { interned_path, a, b, c });
+        self.constraints.insert(TestEntry::TestConstraint { interned_path, a, b, c });
+    }
+
+    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
+        let res = if let Some(lookup_table) = &self.lookup_table {
+            *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
+        } else {
+            return Err(SynthesisError::LookupTableMissing);
+        };
+
+        self.alloc(|| "lookup_table", || Ok(res))
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {
