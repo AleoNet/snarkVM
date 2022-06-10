@@ -22,8 +22,8 @@ impl<N: Network> FromBits for Field<N> {
     ///   - If `bits_le` is shorter than `N::Field::size_in_bits()`, it is padded with `0`s up to field size.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         // Retrieve the data and field size.
-        let size_in_data_bits = N::Field::size_in_data_bits();
-        let size_in_bits = N::Field::size_in_bits();
+        let size_in_data_bits = Field::<N>::size_in_data_bits();
+        let size_in_bits = Field::<N>::size_in_bits();
 
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
@@ -36,17 +36,13 @@ impl<N: Network> FromBits for Field<N> {
 
         // If `num_bits` is greater than `size_in_data_bits`, check it is less than `Field::MODULUS`.
         if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
-            // (For advanced users) Field::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = N::Field::modulus();
-
             // Recover the field as a `BigInteger` for comparison.
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
             let field = N::BigInteger::from_bits_le(&bits_le[..size_in_bits])?;
 
             // Ensure the field is less than `Field::MODULUS`.
-            ensure!(field < modulus_minus_one, "The field is greater than or equal to the modulus.");
+            ensure!(field < N::Field::modulus(), "The field is greater than or equal to the modulus.");
 
             // Return the field.
             Ok(Field { field: N::Field::from_repr(field).ok_or_else(|| anyhow!("Invalid field from bits"))? })

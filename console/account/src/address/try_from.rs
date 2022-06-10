@@ -16,6 +16,7 @@
 
 use super::*;
 
+#[cfg(feature = "private_key")]
 impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {
     type Error = Error;
 
@@ -25,15 +26,17 @@ impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {
     }
 }
 
+#[cfg(feature = "private_key")]
 impl<N: Network> TryFrom<&PrivateKey<N>> for Address<N> {
     type Error = Error;
 
     /// Derives the account address from an account private key.
     fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
-        Self::try_from(ViewKey::try_from(private_key)?)
+        Self::try_from(ComputeKey::try_from(private_key)?)
     }
 }
 
+#[cfg(feature = "compute_key")]
 impl<N: Network> TryFrom<ComputeKey<N>> for Address<N> {
     type Error = Error;
 
@@ -43,6 +46,7 @@ impl<N: Network> TryFrom<ComputeKey<N>> for Address<N> {
     }
 }
 
+#[cfg(feature = "compute_key")]
 impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
     type Error = Error;
 
@@ -51,12 +55,11 @@ impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
         // Compute pk_prf := G^sk_prf.
         let pk_prf = N::g_scalar_multiply(&compute_key.sk_prf());
         // Compute the address := pk_sig + pr_sig + pk_prf.
-        Ok(Self::new(
-            (compute_key.pk_sig().to_projective() + compute_key.pr_sig().to_projective() + pk_prf).to_affine(),
-        ))
+        Ok(Self::new(compute_key.pk_sig() + compute_key.pr_sig() + pk_prf))
     }
 }
 
+#[cfg(feature = "view_key")]
 impl<N: Network> TryFrom<ViewKey<N>> for Address<N> {
     type Error = Error;
 
@@ -66,6 +69,7 @@ impl<N: Network> TryFrom<ViewKey<N>> for Address<N> {
     }
 }
 
+#[cfg(feature = "view_key")]
 impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
     type Error = Error;
 
@@ -79,7 +83,6 @@ impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ComputeKey;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;

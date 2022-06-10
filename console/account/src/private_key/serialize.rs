@@ -44,7 +44,6 @@ impl<'de, N: Network> Deserialize<'de> for PrivateKey<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 

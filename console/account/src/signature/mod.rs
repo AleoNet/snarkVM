@@ -17,50 +17,52 @@
 mod bytes;
 mod sign;
 
-use crate::{ComputeKey, PrivateKey};
+#[cfg(feature = "compute_key")]
+use crate::ComputeKey;
+#[cfg(feature = "private_key")]
+use crate::PrivateKey;
+
+use crate::Address;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Address;
+use snarkvm_console_types::{Field, Scalar};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
-    CryptoRng,
     FromBytes,
-    Rng,
     ToBytes,
-    Uniform,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
     /// The verifier challenge to check against.
-    challenge: N::Scalar,
+    challenge: Scalar<N>,
     /// The prover response to the challenge.
-    response: N::Scalar,
+    response: Scalar<N>,
     /// The compute key of the prover.
     compute_key: ComputeKey<N>,
 }
 
-impl<N: Network> From<(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+impl<N: Network> From<(Scalar<N>, Scalar<N>, ComputeKey<N>)> for Signature<N> {
     /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
-    fn from((challenge, response, compute_key): (N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+    fn from((challenge, response, compute_key): (Scalar<N>, Scalar<N>, ComputeKey<N>)) -> Self {
         Self { challenge, response, compute_key }
     }
 }
 
-impl<N: Network> From<&(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+impl<N: Network> From<&(Scalar<N>, Scalar<N>, ComputeKey<N>)> for Signature<N> {
     /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
-    fn from((challenge, response, compute_key): &(N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+    fn from((challenge, response, compute_key): &(Scalar<N>, Scalar<N>, ComputeKey<N>)) -> Self {
         Self { challenge: *challenge, response: *response, compute_key: *compute_key }
     }
 }
 
 impl<N: Network> Signature<N> {
     /// Returns the verifier challenge.
-    pub const fn challenge(&self) -> N::Scalar {
+    pub const fn challenge(&self) -> Scalar<N> {
         self.challenge
     }
 
     /// Returns the prover response.
-    pub const fn response(&self) -> N::Scalar {
+    pub const fn response(&self) -> Scalar<N> {
         self.response
     }
 

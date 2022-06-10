@@ -31,9 +31,11 @@ impl<'de, N: Network> Deserialize<'de> for Address<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => {
-                FromBytesDeserializer::<Self>::deserialize(deserializer, "address", (N::Field::size_in_bits() + 7) / 8)
-            }
+            false => FromBytesDeserializer::<Self>::deserialize(
+                deserializer,
+                "address",
+                (Field::<N>::size_in_bits() + 7) / 8,
+            ),
         }
     }
 }

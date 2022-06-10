@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> FromBytes for ViewKey<N> {
     /// Reads an account view key from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(FromBytes::read_le(&mut reader)?))
+        Ok(Self::from_scalar(Scalar::new(FromBytes::read_le(&mut reader)?)))
     }
 }
 
@@ -33,9 +33,7 @@ impl<N: Network> ToBytes for ViewKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 

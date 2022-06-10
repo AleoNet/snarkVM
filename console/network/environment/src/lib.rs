@@ -17,14 +17,14 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-mod sanitizer;
-pub use sanitizer::Sanitizer;
+mod environment;
+pub use environment::*;
+
+mod helpers;
+pub use helpers::*;
 
 pub mod traits;
 pub use traits::*;
-
-pub mod variable_length;
-pub use variable_length::{read_variable_length_integer, variable_length_integer};
 
 pub mod prelude {
     pub use super::*;
@@ -48,6 +48,7 @@ pub mod prelude {
     pub use core::{
         cmp::Ordering,
         fmt::{self, Debug, Display, Formatter},
+        hash::Hash,
         ops::{
             Add,
             AddAssign,
@@ -71,7 +72,6 @@ pub mod prelude {
             Sub,
             SubAssign,
         },
-        hash::Hash,
         str::{self, FromStr},
     };
 

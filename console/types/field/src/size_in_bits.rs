@@ -19,13 +19,13 @@ use super::*;
 impl<N: Network> Field<N> {
     /// Returns the field size in bits.
     #[inline]
-    pub fn size_in_bits() -> usize {
-        N::Field::size_in_bits()
+    pub const fn size_in_bits() -> usize {
+        N::Field::SIZE_IN_BITS
     }
 
     /// Returns the field capacity for data bits.
     #[inline]
-    pub fn size_in_data_bits() -> usize {
-        N::Field::size_in_data_bits()
+    pub const fn size_in_data_bits() -> usize {
+        N::Field::SIZE_IN_DATA_BITS
     }
 }

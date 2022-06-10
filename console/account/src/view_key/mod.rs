@@ -19,8 +19,13 @@ mod serialize;
 mod string;
 mod try_from;
 
-use crate::{ComputeKey, PrivateKey};
+#[cfg(feature = "compute_key")]
+use crate::ComputeKey;
+#[cfg(feature = "private_key")]
+use crate::PrivateKey;
+
 use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::Scalar;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     FromBytes,
@@ -34,17 +39,17 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// The account view key used to decrypt records and ciphertext.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ViewKey<N: Network>(N::Scalar);
+pub struct ViewKey<N: Network>(Scalar<N>);
 
 impl<N: Network> ViewKey<N> {
     /// Initializes the account view key from a scalar.
-    pub fn from_scalar(view_key: N::Scalar) -> Self {
+    pub const fn from_scalar(view_key: Scalar<N>) -> Self {
         Self(view_key)
     }
 }
 
 impl<N: Network> Deref for ViewKey<N> {
-    type Target = N::Scalar;
+    type Target = Scalar<N>;
 
     /// Returns the account view key as a scalar.
     fn deref(&self) -> &Self::Target {
@@ -56,7 +61,6 @@ impl<N: Network> Deref for ViewKey<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 

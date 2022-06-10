@@ -21,7 +21,7 @@ impl<N: Network> FromBits for Boolean<N> {
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         match bits_le.len().is_one() {
             true => Ok(Boolean::new(bits_le[0])),
-            false => bail!("Boolean::from_bits_le expects a list of one boolean, found {}", bits_le.len())
+            false => bail!("Boolean::from_bits_le expects a list of one boolean, found {}", bits_le.len()),
         }
     }
 
@@ -29,7 +29,7 @@ impl<N: Network> FromBits for Boolean<N> {
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
         match bits_be.len().is_one() {
             true => Ok(Boolean::new(bits_be[0])),
-            false => bail!("Boolean::from_bits_be expects a list of one boolean, found {}", bits_be.len())
+            false => bail!("Boolean::from_bits_be expects a list of one boolean, found {}", bits_be.len()),
         }
     }
 }

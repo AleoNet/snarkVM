@@ -16,6 +16,7 @@
 
 use super::*;
 
+#[cfg(feature = "private_key")]
 impl<N: Network> TryFrom<PrivateKey<N>> for ViewKey<N> {
     type Error = Error;
 
@@ -25,6 +26,7 @@ impl<N: Network> TryFrom<PrivateKey<N>> for ViewKey<N> {
     }
 }
 
+#[cfg(feature = "private_key")]
 impl<N: Network> TryFrom<&PrivateKey<N>> for ViewKey<N> {
     type Error = Error;
 
@@ -41,7 +43,6 @@ impl<N: Network> TryFrom<&PrivateKey<N>> for ViewKey<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 

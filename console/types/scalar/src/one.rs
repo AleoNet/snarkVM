@@ -44,7 +44,7 @@ mod tests {
         for (index, bit) in one.to_bits_le().iter().enumerate() {
             match index == 0 {
                 true => assert!(bit),
-                false => assert!(!bit)
+                false => assert!(!bit),
             }
         }
     }

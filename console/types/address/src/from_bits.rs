@@ -19,12 +19,12 @@ use super::*;
 impl<N: Network> FromBits for Address<N> {
     /// Initializes a new address by recovering the **x-coordinate** of an affine group from a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
-        Address::new(Group::from_bits_le(bits_le)?)
+        Ok(Address::new(Group::from_bits_le(bits_le)?))
     }
 
     /// Initializes a new address by recovering the **x-coordinate** of an affine group from a list of **big-endian** bits.
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
-        Address::new(Group::from_bits_be(bits_be)?)
+        Ok(Address::new(Group::from_bits_be(bits_be)?))
     }
 }
 

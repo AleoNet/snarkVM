@@ -296,8 +296,7 @@ impl<P: Parameters> Distribution<Affine<P>> for Standard {
     }
 }
 
-// The projective point X, Y, T, Z is represented in the affine
-// coordinates as X/Z, Y/Z.
+// The projective point X, Y, T, Z is represented in the affine coordinates as X/Z, Y/Z.
 impl<P: Parameters> From<Projective<P>> for Affine<P> {
     fn from(p: Projective<P>) -> Affine<P> {
         if p.is_zero() {

@@ -170,10 +170,10 @@ pub(super) mod integer_type {
 
     use core::{
         fmt::{Debug, Display},
+        hash::Hash,
         num::ParseIntError,
         ops::{Div, Rem},
         str::FromStr,
-        hash::Hash
     };
     use num_traits::{
         CheckedNeg,

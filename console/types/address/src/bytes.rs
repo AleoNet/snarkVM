@@ -20,7 +20,7 @@ impl<N: Network> FromBytes for Address<N> {
     /// Reads in an account address from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = N::Field::read_le(&mut reader)?;
+        let x_coordinate = FromBytes::read_le(&mut reader)?;
         Ok(Address::new(Group::from_x_coordinate(Field::new(x_coordinate)).map_err(|e| error(format!("{e}")))?))
     }
 }

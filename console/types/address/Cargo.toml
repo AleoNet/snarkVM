@@ -17,3 +17,9 @@ version = "0.7.5"
 [dependencies.snarkvm-console-types-group]
 path = "../group"
 version = "0.7.5"
+
+[dev-dependencies.snarkvm-console-account]
+path = "../../account"
+version = "0.7.5"
+default-features = false
+features = ["private_key"]

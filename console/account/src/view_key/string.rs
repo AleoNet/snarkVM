@@ -31,7 +31,7 @@ impl<N: Network> FromStr for ViewKey<N> {
             bail!("Invalid account view key prefix: found {:?}, expected {:?}", &data[0..7], VIEW_KEY_PREFIX)
         }
         // Output the view key.
-        Ok(Self(FromBytes::read_le(&data[7..39])?))
+        Ok(Self::from_scalar(Scalar::new(FromBytes::read_le(&data[7..39])?)))
     }
 }
 
@@ -50,9 +50,7 @@ impl<N: Network> fmt::Display for ViewKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 

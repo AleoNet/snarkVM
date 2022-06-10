@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod bytes;
+mod from_bits;
 mod parse;
 mod serialize;
 mod size_in_bits;

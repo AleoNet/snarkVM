@@ -16,7 +16,13 @@
 
 mod try_from;
 
-use crate::{ComputeKey, PrivateKey, ViewKey};
+#[cfg(feature = "compute_key")]
+use crate::ComputeKey;
+#[cfg(feature = "private_key")]
+use crate::PrivateKey;
+#[cfg(feature = "view_key")]
+use crate::ViewKey;
+
 use snarkvm_console_network::prelude::*;
 
 /// See `snarkvm/console/types/address` for the `Address` type.

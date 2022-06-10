@@ -34,7 +34,7 @@ use snarkvm_curves::{
 };
 use snarkvm_utilities::ToBits;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 
 lazy_static! {

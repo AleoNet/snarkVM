@@ -20,9 +20,10 @@ impl<N: Network> Signature<N> {
     /// Returns a signature `(challenge, response, compute_key)` for a given message and RNG, where:
     ///     challenge := HashToScalar(nonce * G, pk_sig, pr_sig, address, message)
     ///     response := nonce - challenge * private_key.sk_sig()
-    pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[N::Field], rng: &mut R) -> Result<Self> {
+    #[cfg(feature = "private_key")]
+    pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[Field<N>], rng: &mut R) -> Result<Self> {
         // Sample a random nonce from the scalar field.
-        let nonce = N::Scalar::rand(rng);
+        let nonce = Scalar::rand(rng);
         // Compute `g_nonce` as `nonce * G`.
         let g_nonce = N::g_scalar_multiply(&nonce).to_affine();
 
@@ -52,7 +53,7 @@ impl<N: Network> Signature<N> {
 
     /// Verifies (challenge == challenge') && (address == address') where:
     ///     challenge' := HashToScalar(G^response pk_sig^challenge, pk_sig, pr_sig, address, message)
-    pub fn verify(&self, address: &Address<N>, message: &[N::Field]) -> bool {
+    pub fn verify(&self, address: &Address<N>, message: &[Field<N>]) -> bool {
         // Retrieve pk_sig.
         let pk_sig = self.compute_key.pk_sig();
         // Retrieve pr_sig.
@@ -91,7 +92,6 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 

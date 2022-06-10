@@ -16,6 +16,7 @@
 
 use super::*;
 
+#[cfg(feature = "private_key")]
 impl<N: Network> TryFrom<PrivateKey<N>> for ComputeKey<N> {
     type Error = Error;
 
@@ -25,6 +26,7 @@ impl<N: Network> TryFrom<PrivateKey<N>> for ComputeKey<N> {
     }
 }
 
+#[cfg(feature = "private_key")]
 impl<N: Network> TryFrom<&PrivateKey<N>> for ComputeKey<N> {
     type Error = Error;
 
@@ -45,20 +47,20 @@ impl<N: Network> TryFrom<&PrivateKey<N>> for ComputeKey<N> {
     }
 }
 
-impl<N: Network> TryFrom<(N::Affine, N::Affine)> for ComputeKey<N> {
+impl<N: Network> TryFrom<(Group<N>, Group<N>)> for ComputeKey<N> {
     type Error = Error;
 
     /// Derives the account compute key from a tuple `(pk_sig, pr_sig)`.
-    fn try_from((pk_sig, pr_sig): (N::Affine, N::Affine)) -> Result<Self> {
+    fn try_from((pk_sig, pr_sig): (Group<N>, Group<N>)) -> Result<Self> {
         Self::try_from(&(pk_sig, pr_sig))
     }
 }
 
-impl<N: Network> TryFrom<&(N::Affine, N::Affine)> for ComputeKey<N> {
+impl<N: Network> TryFrom<&(Group<N>, Group<N>)> for ComputeKey<N> {
     type Error = Error;
 
     /// Derives the account compute key from a tuple `(pk_sig, pr_sig)`.
-    fn try_from((pk_sig, pr_sig): &(N::Affine, N::Affine)) -> Result<Self> {
+    fn try_from((pk_sig, pr_sig): &(Group<N>, Group<N>)) -> Result<Self> {
         // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
         let sk_prf = N::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()])?;
         // Output the compute key.
@@ -70,7 +72,6 @@ impl<N: Network> TryFrom<&(N::Affine, N::Affine)> for ComputeKey<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 
@@ -86,8 +87,8 @@ mod tests {
             // Check that sk_prf matches.
             // Compute sk_prf := HashToScalar(pk_sig || pr_sig).
             let candidate_sk_prf = CurrentNetwork::hash_to_scalar_psd4(&[
-                candidate.pk_sig().to_x_coordinate(),
-                candidate.pr_sig().to_x_coordinate(),
+                *candidate.pk_sig().to_x_coordinate(),
+                *candidate.pr_sig().to_x_coordinate(),
             ])?;
             assert_eq!(candidate.sk_prf(), candidate_sk_prf);
 

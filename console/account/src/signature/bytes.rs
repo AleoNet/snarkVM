@@ -20,8 +20,8 @@ impl<N: Network> FromBytes for Signature<N> {
     /// Reads an account signature from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let challenge = N::Scalar::read_le(&mut reader)?;
-        let response = N::Scalar::read_le(&mut reader)?;
+        let challenge = Scalar::new(FromBytes::read_le(&mut reader)?);
+        let response = Scalar::new(FromBytes::read_le(&mut reader)?);
         let compute_key = ComputeKey::read_le(&mut reader)?;
         Ok(Self { challenge, response, compute_key })
     }
@@ -40,9 +40,7 @@ impl<N: Network> ToBytes for Signature<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 

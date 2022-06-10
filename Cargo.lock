@@ -2388,6 +2388,7 @@ dependencies = [
 name = "snarkvm-console-types-address"
 version = "0.7.5"
 dependencies = [
+ "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types-field",
  "snarkvm-console-types-group",

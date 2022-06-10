@@ -19,13 +19,13 @@ use super::*;
 impl<N: Network> Scalar<N> {
     /// Returns the scalar size in bits.
     #[inline]
-    pub fn size_in_bits() -> usize {
-        N::Scalar::size_in_bits()
+    pub const fn size_in_bits() -> usize {
+        N::Scalar::SIZE_IN_BITS
     }
 
     /// Returns the scalar capacity for data bits.
     #[inline]
-    pub fn size_in_data_bits() -> usize {
-        N::Scalar::size_in_data_bits()
+    pub const fn size_in_data_bits() -> usize {
+        N::Scalar::SIZE_IN_DATA_BITS
     }
 }

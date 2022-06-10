@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> Address<N> {
     /// Returns the group size in bits.
     #[inline]
-    pub fn size_in_bits() -> usize {
+    pub const fn size_in_bits() -> usize {
         // As we serialize into the affine **x-coordinate**, we only require `Field::size_in_bits()`.
         Field::<N>::size_in_bits()
     }

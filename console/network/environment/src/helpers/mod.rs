@@ -14,18 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+mod sanitizer;
+pub use sanitizer::Sanitizer;
 
-impl<N: Network> Boolean<N> {
-    /// Returns the field size in bits.
-    #[inline]
-    pub const fn size_in_bits() -> usize {
-        1
-    }
-
-    /// Returns the field capacity for data bits.
-    #[inline]
-    pub const fn size_in_data_bits() -> usize {
-        1
-    }
-}
+pub mod variable_length;
+pub use variable_length::{read_variable_length_integer, variable_length_integer};
