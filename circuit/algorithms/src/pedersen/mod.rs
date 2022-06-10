@@ -24,7 +24,6 @@ use snarkvm_circuit_types::environment::{assert_count, assert_output_mode, asser
 
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
-use snarkvm_curves::ProjectiveCurve;
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
 pub type Pedersen64<E> = Pedersen<E, 64>;
@@ -42,16 +41,16 @@ pub struct Pedersen<E: Environment, const NUM_BITS: u8> {
 
 #[cfg(console)]
 impl<E: Environment, const NUM_BITS: u8> Inject for Pedersen<E, NUM_BITS> {
-    type Primitive = console::Pedersen<E::Affine, NUM_BITS>;
+    type Primitive = console::Pedersen<E::Network, NUM_BITS>;
 
     /// Initializes a new instance of Pedersen with the given Pedersen variant.
     fn new(_mode: Mode, pedersen: Self::Primitive) -> Self {
         // Initialize the base window.
-        let base_window = Vec::constant(pedersen.base_window().iter().map(|base| base.to_affine()).collect());
+        let base_window = Vec::constant(pedersen.base_window().iter().copied().collect());
         assert_eq!(base_window.len(), NUM_BITS as usize);
 
         // Initialize the random base.
-        let random_base = Vec::constant(pedersen.random_base_window().iter().map(|base| base.to_affine()).collect());
+        let random_base = Vec::constant(pedersen.random_base_window().iter().copied().collect());
         assert_eq!(random_base.len(), E::ScalarField::size_in_bits());
 
         Self { base_window, random_base }

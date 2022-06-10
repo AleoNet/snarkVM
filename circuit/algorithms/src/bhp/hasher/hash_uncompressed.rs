@@ -47,11 +47,11 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         }
 
         // Declare the 1/2 constant field element.
-        let one_half = Field::constant(E::BaseField::half());
+        let one_half = Field::constant(console::Field::<E::Network>::half());
 
         // Declare the constant coefficients A and B for the Montgomery curve.
-        let coeff_a = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_A);
-        let coeff_b = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_B);
+        let coeff_a = Field::constant(console::Group::<E::Network>::MONTGOMERY_A);
+        let coeff_b = Field::constant(console::Group::<E::Network>::MONTGOMERY_B);
 
         // Implements the incomplete addition formulae of two Montgomery curve points.
         let montgomery_add = |(this_x, this_y): (&Field<E>, &Field<E>), (that_x, that_y): (&Field<E>, &Field<E>)| {
@@ -187,12 +187,12 @@ mod tests {
 
         // Initialize the native BHP hasher.
         let native =
-            console::bhp::hasher::BHPHasher::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(
+            console::bhp::hasher::BHPHasher::<<Circuit as Environment>::Network, NUM_WINDOWS, WINDOW_SIZE>::setup(
                 MESSAGE,
             )?;
 
         // Initialize the circuit BHP hasher.
-        let primitive = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
+        let primitive = console::BHP::<<Circuit as Environment>::Network, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE)?;
         let circuit = BHPHasher::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, primitive);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;

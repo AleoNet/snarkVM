@@ -19,7 +19,7 @@ use crate::{helpers::Constraint, Mode, *};
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
 
-type Field = <console::Testnet3 as console::Network>::Field;
+type Field = <console::Testnet3 as console::Environment>::Field;
 
 thread_local! {
     pub(super) static CIRCUIT: Rc<RefCell<R1CS<Field>>> = Rc::new(RefCell::new(R1CS::new()));
@@ -50,11 +50,11 @@ impl Circuit {
 }
 
 impl Environment for Circuit {
-    type Affine = <console::Testnet3 as console::Network>::Affine;
-    type AffineParameters = <console::Testnet3 as console::Network>::AffineParameters;
+    type Affine = <console::Testnet3 as console::Environment>::Affine;
+    type AffineParameters = <console::Testnet3 as console::Environment>::AffineParameters;
     type BaseField = Field;
     type Network = console::Testnet3;
-    type ScalarField = <console::Testnet3 as console::Network>::Scalar;
+    type ScalarField = <console::Testnet3 as console::Environment>::Scalar;
 
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;

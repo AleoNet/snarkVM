@@ -18,8 +18,8 @@ version = "0.7.5"
 path = "../group"
 version = "0.7.5"
 
-[dev-dependencies.snarkvm-console-account]
-path = "../../account"
-version = "0.7.5"
-default-features = false
-features = ["private_key"]
+[dev-dependencies.bincode]
+version = "1.3"
+
+[dev-dependencies.serde_json]
+version = "1.0"

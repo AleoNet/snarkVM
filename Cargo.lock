@@ -2296,6 +2296,7 @@ dependencies = [
  "criterion",
  "rayon",
  "snarkvm-console-algorithms",
+ "snarkvm-console-network",
  "snarkvm-console-types",
  "snarkvm-utilities",
 ]
@@ -2341,7 +2342,6 @@ dependencies = [
  "enum_index",
  "enum_index_derive",
  "once_cell",
- "serde",
  "serde_json",
  "snarkvm-console-account",
  "snarkvm-console-network",
@@ -2353,12 +2353,9 @@ dependencies = [
 name = "snarkvm-console-transition"
 version = "0.7.5"
 dependencies = [
- "anyhow",
- "itertools",
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-curves",
  "snarkvm-utilities",
 ]
 
@@ -2380,7 +2377,8 @@ dependencies = [
 name = "snarkvm-console-types-address"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-account",
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-field",
  "snarkvm-console-types-group",

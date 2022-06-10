@@ -25,7 +25,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
         // Construct the preimage: [ DOMAIN || LENGTH(INPUT) || [0; RATE-2] || INPUT ].
         let mut preimage = Vec::with_capacity(RATE + input.len());
         preimage.push(self.domain.clone());
-        preimage.push(Field::constant((input.len() as u128).into()));
+        preimage.push(Field::constant(console::Field::from_u128(input.len() as u128)));
         preimage.extend(vec![Field::zero(); RATE - 2]); // Pad up to RATE.
         preimage.extend_from_slice(input);
 

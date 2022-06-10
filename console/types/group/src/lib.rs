@@ -39,6 +39,15 @@ pub struct Group<E: Environment> {
 impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Group<E> {
+    /// The coefficient A for the twisted Edwards curve equation.
+    pub const EDWARDS_A: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_A);
+    /// The coefficient D for the twisted Edwards curve equation.
+    pub const EDWARDS_D: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D);
+    /// The coefficient A for the Montgomery curve equation.
+    pub const MONTGOMERY_A: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_A);
+    /// The coefficient B for the Montgomery curve equation.
+    pub const MONTGOMERY_B: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_B);
+
     /// Initializes a new group.
     pub fn new(group: E::Affine) -> Self {
         Self { group: group.into() }

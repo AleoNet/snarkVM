@@ -45,8 +45,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
-            let expected = Address::try_from(private_key)?;
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;

@@ -18,7 +18,6 @@ mod decode;
 mod encode;
 
 use snarkvm_console_types::prelude::*;
-use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_fields::LegendreSymbol;
 
 use core::{cmp, marker::PhantomData};

@@ -21,7 +21,7 @@ impl<E: Environment> Elligator2<E> {
     /// Note: Unlike the console implementation, this function does not return the sign bit.
     pub fn encode(input: &Field<E>) -> Group<E> {
         // Ensure D on the twisted Edwards curve is a quadratic nonresidue.
-        debug_assert!(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D.legendre().is_qnr());
+        debug_assert!(console::Group::<E::Network>::EDWARDS_D.legendre().is_qnr());
 
         // Ensure the input is nonzero.
         E::assert(!input.is_zero());
@@ -30,23 +30,23 @@ impl<E: Environment> Elligator2<E> {
         let one = Field::one();
 
         // Define the Montgomery curve coefficients A and B.
-        let montgomery_a = Field::constant(<E::AffineParameters as MontgomeryParameters>::COEFF_A);
-        let montgomery_b = Field::constant(<E::AffineParameters as MontgomeryParameters>::COEFF_B);
+        let montgomery_a = Field::constant(console::Group::<E::Network>::MONTGOMERY_A);
+        let montgomery_b = Field::constant(console::Group::<E::Network>::MONTGOMERY_B);
         let montgomery_b_inverse = (&montgomery_b).inverse();
         let montgomery_b2 = (&montgomery_b).square();
         let montgomery_b3 = &montgomery_b2 * &montgomery_b;
 
         // Define the twisted Edwards curve coefficient D.
-        let edwards_d = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D);
+        let edwards_d = Field::constant(console::Group::<E::Network>::EDWARDS_D);
 
         // Define the coefficients for the Weierstrass form: y^2 == x^3 + A * x^2 + B * x.
         let a = &montgomery_a * &montgomery_b_inverse;
-        let a_half = &a * Field::constant(E::BaseField::half());
+        let a_half = &a * Field::constant(console::Field::half());
         let b = montgomery_b_inverse.square();
 
         // Define the MODULUS_MINUS_ONE_DIV_TWO as a constant.
         let modulus_minus_one_div_two = match E::BaseField::from_repr(E::BaseField::modulus_minus_one_div_two()) {
-            Some(modulus_minus_one_div_two) => Field::constant(modulus_minus_one_div_two),
+            Some(modulus_minus_one_div_two) => Field::constant(console::Field::new(modulus_minus_one_div_two)),
             None => E::halt("Failed to initialize MODULUS_MINUS_ONE_DIV_TWO as a constant"),
         };
 
@@ -118,11 +118,7 @@ mod tests {
             let given: <Circuit as Environment>::BaseField = Uniform::rand(&mut test_rng());
 
             // Compute the expected native result.
-            let (expected, _sign) = console::Elligator2::<
-                <Circuit as Environment>::Affine,
-                <Circuit as Environment>::AffineParameters,
-            >::encode(&given)
-            .unwrap();
+            let (expected, _sign) = console::Elligator2::<<Circuit as Environment>::Network>::encode(&given).unwrap();
 
             // Initialize the input field element.
             let input = Field::<Circuit>::new(mode, given);

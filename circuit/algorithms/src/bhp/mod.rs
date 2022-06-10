@@ -63,7 +63,7 @@ pub struct BHP<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
 
 #[cfg(console)]
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
-    type Primitive = console::BHP<E::Affine, NUM_WINDOWS, WINDOW_SIZE>;
+    type Primitive = console::BHP<E::Network, NUM_WINDOWS, WINDOW_SIZE>;
 
     /// Initializes a new instance of a BHP circuit with the given BHP variant.
     fn new(_mode: Mode, bhp: Self::Primitive) -> Self {

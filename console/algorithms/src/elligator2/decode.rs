@@ -19,13 +19,16 @@ use super::*;
 impl<E: Environment> Elligator2<E> {
     /// Returns the decoded field element, given the encoded affine group element and sign.
     pub fn decode(group: &Group<E>, sign_high: bool) -> Result<Field<E>> {
-        ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
+        ensure!(
+            Group::<E>::EDWARDS_D.legendre().is_qnr(),
+            "D on the twisted Edwards curve must be a quadratic nonresidue"
+        );
         ensure!(!group.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
         ensure!((**group).to_affine().is_on_curve(), "Inputs to Elligator2 must be on the twisted Edwards curve");
 
         // Compute the coefficients for the Weierstrass form: v^2 == u^3 + A * u^2 + B * u.
-        let (montgomery_b_inverse, a, b) = match Self::MONTGOMERY_B.inverse() {
-            Ok(b_inverse) => (b_inverse, Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
+        let (montgomery_b_inverse, a, b) = match Group::<E>::MONTGOMERY_B.inverse() {
+            Ok(b_inverse) => (b_inverse, Group::MONTGOMERY_A * b_inverse, b_inverse.square()),
             Err(_) => bail!("Montgomery B must be invertible in order to use Elligator2"),
         };
 
@@ -57,7 +60,7 @@ impl<E: Environment> Elligator2<E> {
             // Ensure (u, v) is a valid Montgomery element on: B * v^2 == u^3 + A * u^2 + u
             let u2 = u.square();
             ensure!(
-                Self::MONTGOMERY_B * v.square() == (u2 * u) + (Self::MONTGOMERY_A * u2) + u,
+                Group::MONTGOMERY_B * v.square() == (u2 * u) + (Group::MONTGOMERY_A * u2) + u,
                 "Elligator2 failed: B * v^2 != u^3 + A * u^2 + u"
             );
 
@@ -72,7 +75,7 @@ impl<E: Environment> Elligator2<E> {
         };
 
         // Ensure -D * u * (u + A) is a residue.
-        let du = Self::D * u;
+        let du = Group::EDWARDS_D * u;
         let u_plus_a = u + a;
         ensure!((-du * u_plus_a).legendre().is_qr(), "Elligator2 failed: -D * u * (u + A) is not a quadratic residue");
 
@@ -82,7 +85,11 @@ impl<E: Environment> Elligator2<E> {
 
         let element = match exists_in_sqrt_fq2 {
             // Let element = sqrt(-u / ((u + A) * D)).
-            true => -u * (u_plus_a * Self::D).inverse().map_err(|_| anyhow!("Elligator2 failed: (u+A) * D == 0"))?,
+            true => {
+                -u * (u_plus_a * Group::EDWARDS_D)
+                    .inverse()
+                    .map_err(|_| anyhow!("Elligator2 failed: (u+A) * D == 0"))?
+            }
             // Let element = sqrt(-(u + A) / Du)).
             false => -u_plus_a * du.inverse().map_err(|_| anyhow!("Elligator2 failed: D * u == 0"))?,
         }

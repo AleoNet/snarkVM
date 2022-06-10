@@ -55,7 +55,7 @@ impl<A: Aleo> Data<A, Plaintext<A>> {
 //         edwards_bls12::{EdwardsAffine, EdwardsParameters},
 //         AffineCurve,
 //     };
-//     use snarkvm_utilities::{test_rng, UniformRand};
+//     use snarkvm_utilities::{test_rng, Uniform};
 //
 //     const ITERATIONS: u64 = 10;
 //     const MESSAGE: &str = "ECIESCircuit0";

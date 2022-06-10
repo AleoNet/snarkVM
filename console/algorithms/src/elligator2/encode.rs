@@ -17,10 +17,6 @@
 use super::*;
 
 impl<E: Environment> Elligator2<E> {
-    pub(super) const D: Field<E> = Field::<E>::new(<E::AffineParameters as TwistedEdwardsParameters>::COEFF_D);
-    pub(super) const MONTGOMERY_A: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_A);
-    pub(super) const MONTGOMERY_B: Field<E> = Field::<E>::new(<E::AffineParameters as MontgomeryParameters>::COEFF_B);
-
     /// Returns the encoded affine group element and sign, given a field element.
     pub fn encode(input: &Field<E>) -> Result<(Group<E>, bool)> {
         // Compute the encoding of the input field element.
@@ -36,7 +32,10 @@ impl<E: Environment> Elligator2<E> {
 
     /// Returns the encoded affine group element and sign, given a field element.
     pub(crate) fn encode_without_cofactor_clear(input: &Field<E>) -> Result<(Group<E>, bool)> {
-        ensure!(Self::D.legendre().is_qnr(), "D on the twisted Edwards curve must be a quadratic nonresidue");
+        ensure!(
+            Group::<E>::EDWARDS_D.legendre().is_qnr(),
+            "D on the twisted Edwards curve must be a quadratic nonresidue"
+        );
         ensure!(!input.is_zero(), "Inputs to Elligator2 must be nonzero (inverses will fail)");
 
         let one = Field::<E>::one();
@@ -47,13 +46,13 @@ impl<E: Environment> Elligator2<E> {
         // Compute the mapping from Fq to E(Fq) as a Montgomery element (u, v).
         let (u, v) = {
             // Compute the coefficients for the Weierstrass form: y^2 == x^3 + A * x^2 + B * x.
-            let (a, b) = match Self::MONTGOMERY_B.inverse() {
-                Ok(b_inverse) => (Self::MONTGOMERY_A * b_inverse, b_inverse.square()),
+            let (a, b) = match Group::<E>::MONTGOMERY_B.inverse() {
+                Ok(b_inverse) => (Group::MONTGOMERY_A * b_inverse, b_inverse.square()),
                 Err(_) => bail!("Montgomery B must be invertible in order to use Elligator2"),
             };
 
             // Let (u, r) = (D, input).
-            let (u, r) = (Self::D, input);
+            let (u, r) = (Group::EDWARDS_D, input);
 
             // Let ur2 = u * r^2;
             let ur2 = u * r.square();
@@ -101,13 +100,13 @@ impl<E: Environment> Elligator2<E> {
             ensure!(y.square() == rhs, "Elligator2 failed: y^2 != x^3 + A * x^2 + B * x");
 
             // Convert the Weierstrass element (x, y) to Montgomery element (u, v).
-            let u = x * Self::MONTGOMERY_B;
-            let v = y * Self::MONTGOMERY_B;
+            let u = x * Group::MONTGOMERY_B;
+            let v = y * Group::MONTGOMERY_B;
 
             // Ensure (u, v) is a valid Montgomery element on: B * v^2 == u^3 + A * u^2 + u
             let u2 = u.square();
             ensure!(
-                Self::MONTGOMERY_B * v.square() == (u2 * u) + (Self::MONTGOMERY_A * u2) + u,
+                Group::MONTGOMERY_B * v.square() == (u2 * u) + (Group::MONTGOMERY_A * u2) + u,
                 "Elligator2 failed: B * v^2 != u^3 + A * u^2 + u"
             );
 

@@ -32,7 +32,7 @@ const REBUILD_SIZES: &[usize] = &[10, 100, 1000];
 macro_rules! generate_leaves {
     ($num_leaves:expr, $leaf_size:expr) => {{
         (0..$num_leaves)
-            .map(|_| (0..$leaf_size).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>())
+            .map(|_| (0..$leaf_size).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>())
             .collect::<Vec<_>>()
     }};
 }

@@ -53,8 +53,7 @@ mod tests {
     fn test_serde_json() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
-            let expected = Address::try_from(private_key)?;
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -72,8 +71,7 @@ mod tests {
     fn test_bincode() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
-            let expected = Address::try_from(private_key)?;
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

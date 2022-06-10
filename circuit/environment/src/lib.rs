@@ -71,6 +71,9 @@ pub mod prelude {
     pub use snarkvm_fields::{Field as _, PrimeField, Zero as _};
     pub use snarkvm_utilities::ToBits as _;
 
+    #[cfg(debug_assertions)]
+    pub use snarkvm_curves::AffineCurve as _;
+
     pub use core::ops::{
         Add,
         AddAssign,

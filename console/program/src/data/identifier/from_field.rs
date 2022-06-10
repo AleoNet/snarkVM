@@ -41,7 +41,7 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
             let identifier = sample_identifier::<CurrentNetwork>()?;
-            assert_eq!(identifier, Identifier::from_field(&identifier.to_field())?);
+            assert_eq!(identifier, Identifier::from_field(&identifier.to_field()?)?);
         }
         Ok(())
     }

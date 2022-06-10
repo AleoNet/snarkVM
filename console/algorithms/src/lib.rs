@@ -17,6 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub use snarkvm_console_types::prelude::*;
+
 pub mod bhp;
 pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 

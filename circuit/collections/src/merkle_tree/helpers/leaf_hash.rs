@@ -74,7 +74,7 @@ mod tests {
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_inputs).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
 
                 // Compute the expected hash.
                 let expected = console::merkle_tree::LeafHash::hash_leaf(&native, &input)?;

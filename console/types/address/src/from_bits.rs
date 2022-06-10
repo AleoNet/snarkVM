@@ -40,10 +40,9 @@ mod tests {
     fn check_from_bits_le() -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
-            let address = Address::new(group);
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
-            let given_bits = address.to_bits_le();
+            let given_bits = expected.to_bits_le();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
             let candidate = Address::<CurrentEnvironment>::from_bits_le(&given_bits)?;
@@ -52,7 +51,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![false; i as usize]].concat();
 
-            let candidate = Group::<CurrentEnvironment>::from_bits_le(&candidate)?;
+            let candidate = Address::<CurrentEnvironment>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
             assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), candidate.to_bits_le().len());
         }
@@ -62,10 +61,9 @@ mod tests {
     fn check_from_bits_be() -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
-            let address = Address::new(group);
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
-            let given_bits = address.to_bits_be();
+            let given_bits = expected.to_bits_be();
             assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
             let candidate = Address::<CurrentEnvironment>::from_bits_be(&given_bits)?;
@@ -74,7 +72,7 @@ mod tests {
             // Add excess zero bits.
             let candidate = vec![vec![false; i as usize], given_bits].concat();
 
-            let candidate = Group::<CurrentEnvironment>::from_bits_be(&candidate)?;
+            let candidate = Address::<CurrentEnvironment>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);
             assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), candidate.to_bits_be().len());
         }

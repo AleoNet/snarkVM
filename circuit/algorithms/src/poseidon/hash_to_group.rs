@@ -58,7 +58,7 @@ mod tests {
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_fields).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_fields).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
                 // Compute the expected hash.
                 let expected = console::HashToGroup::hash_to_group::<
                     <Circuit as Environment>::Affine,

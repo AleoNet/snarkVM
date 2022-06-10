@@ -94,13 +94,12 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
-            let address = Address::try_from(private_key)?;
+            let address = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             let expected = format!("{address}");
             let (remainder, candidate) = Address::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
-            assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
+            assert_eq!(ADDRESS_PREFIX, candidate.to_string().split('1').next().unwrap());
             assert_eq!("", remainder);
         }
         Ok(())
@@ -110,13 +109,12 @@ mod tests {
     fn test_string() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
-            let expected = Address::try_from(private_key)?;
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             // Check the string representation.
             let candidate = format!("{expected}");
             assert_eq!(expected, Address::from_str(&candidate)?);
-            assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
+            assert_eq!(ADDRESS_PREFIX, candidate.to_string().split('1').next().unwrap());
         }
         Ok(())
     }
@@ -125,15 +123,14 @@ mod tests {
     fn test_display() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
-            let address = Address::try_from(private_key)?;
+            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
-            let candidate = address.to_string();
-            assert_eq!(format!("{address}"), candidate);
+            let candidate = expected.to_string();
+            assert_eq!(format!("{expected}"), candidate);
             assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
 
             let candidate_recovered = Address::<CurrentEnvironment>::from_str(&format!("{candidate}"))?;
-            assert_eq!(candidate, candidate_recovered);
+            assert_eq!(expected, candidate_recovered);
         }
         Ok(())
     }

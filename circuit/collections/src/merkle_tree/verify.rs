@@ -81,7 +81,7 @@ mod tests {
 
             let create_leaves = |num_leaves| {
                 (0..num_leaves)
-                    .map(|_| (0..$num_inputs).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>())
+                    .map(|_| (0..$num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>())
                     .collect::<Vec<_>>()
             };
 
@@ -128,9 +128,9 @@ mod tests {
 
                     // Initialize an incorrect Merkle leaf.
                     let mut incorrect_leaf = leaf.clone();
-                    let mut incorrect_value = UniformRand::rand(&mut test_rng());
+                    let mut incorrect_value = Uniform::rand(&mut test_rng());
                     while incorrect_value == incorrect_leaf[0].eject_value() {
-                        incorrect_value = UniformRand::rand(&mut test_rng());
+                        incorrect_value = Uniform::rand(&mut test_rng());
                     }
                     incorrect_leaf[0] = Inject::new(Mode::$mode, incorrect_value);
 
