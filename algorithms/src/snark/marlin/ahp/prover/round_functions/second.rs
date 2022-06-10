@@ -231,9 +231,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             */
                     };
                     // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
-                    cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
-
-                    // Now, add lookup argument to this polynomial sum
+                    // cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
                     // Multiply by linear combination coefficient.
                     cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
