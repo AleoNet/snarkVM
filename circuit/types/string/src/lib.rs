@@ -19,9 +19,9 @@
 mod helpers;
 
 #[cfg(test)]
-use snarkvm_circuit_environment::assert_scope;
+use console::test_rng;
 #[cfg(test)]
-use snarkvm_utilities::test_rng;
+use snarkvm_circuit_environment::assert_scope;
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;

@@ -63,7 +63,7 @@ mod tests {
                     assert_ne!(Group::<CurrentEnvironment>::generator(), candidate);
 
                     let candidate_cofactor_inv = candidate.div_by_cofactor();
-                    assert_eq!(*candidate, candidate_cofactor_inv.mul_by_cofactor());
+                    assert_eq!(candidate, candidate_cofactor_inv.mul_by_cofactor());
                 }
             }
             Ok(())

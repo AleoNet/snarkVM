@@ -20,11 +20,6 @@ version = "0.7.5"
 path = "../boolean"
 version = "0.7.5"
 
-[dev-dependencies.snarkvm-utilities]
-path = "../../../utilities"
-version = "0.7.5"
-default-features = false
-
 [features]
 default = ["enable_console"]
 # Use #[cfg(console)] instead.

@@ -41,10 +41,10 @@ mod tests {
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.div_by_cofactor();
-            assert_eq!(*expected, input.mul_by_cofactor());
+            assert_eq!(expected, input.mul_by_cofactor());
 
             // Initialize the input.
-            let affine = Group::<Circuit>::new(mode, console::Group::new(input));
+            let affine = Group::<Circuit>::new(mode, input);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = affine.mul_by_cofactor();
@@ -79,10 +79,10 @@ mod tests {
 
             // Multiply the point by the inverse of the cofactor.
             let input = expected.div_by_cofactor();
-            assert_eq!(*expected, input.mul_by_cofactor());
+            assert_eq!(expected, input.mul_by_cofactor());
 
             // Initialize the input.
-            let affine = Group::<Circuit>::new(Mode::Private, console::Group::new(input));
+            let affine = Group::<Circuit>::new(Mode::Private, input);
 
             Circuit::scope(&format!("Constant {}", i), || {
                 let candidate =

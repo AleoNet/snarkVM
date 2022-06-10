@@ -21,9 +21,9 @@ mod helpers;
 pub mod equal;
 
 #[cfg(test)]
-use snarkvm_circuit_environment::assert_scope;
+use console::{test_rng, Uniform};
 #[cfg(test)]
-use snarkvm_utilities::{test_rng, Uniform};
+use snarkvm_circuit_environment::assert_scope;
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;

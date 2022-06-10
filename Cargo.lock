@@ -2119,6 +2119,7 @@ dependencies = [
  "snarkvm-circuit-collections",
  "snarkvm-circuit-types",
  "snarkvm-console-network",
+ "snarkvm-console-types",
  "snarkvm-fields",
 ]
 
@@ -2174,7 +2175,6 @@ dependencies = [
  "snarkvm-circuit-types-group",
  "snarkvm-circuit-types-scalar",
  "snarkvm-console-types-address",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2193,7 +2193,6 @@ dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-console-types-field",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2229,7 +2228,6 @@ dependencies = [
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
  "snarkvm-console-types-scalar",
- "snarkvm-utilities",
 ]
 
 [[package]]

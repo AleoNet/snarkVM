@@ -29,6 +29,10 @@ path = "../../fields"
 version = "0.7.5"
 default-features = false
 
+[dev-dependencies.snarkvm-console-types]
+path = "../../console/types"
+version = "0.7.5"
+
 [features]
 default = ["enable_console"]
 
