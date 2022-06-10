@@ -2276,11 +2276,9 @@ dependencies = [
 name = "snarkvm-console-algorithms"
 version = "0.7.5"
 dependencies = [
- "anyhow",
  "blake2s_simd",
  "expect-test",
  "hex",
- "itertools",
  "serde",
  "serde_json",
  "smallvec",
@@ -2295,16 +2293,10 @@ name = "snarkvm-console-collections"
 version = "0.7.5"
 dependencies = [
  "aleo-std",
- "anyhow",
- "bincode",
  "criterion",
- "itertools",
  "rayon",
- "serde",
  "snarkvm-console-algorithms",
- "snarkvm-console-network",
- "snarkvm-curves",
- "snarkvm-fields",
+ "snarkvm-console-types",
  "snarkvm-utilities",
 ]
 

@@ -32,7 +32,7 @@ pub struct Field<E: Environment> {
     field: E::Field,
 }
 
-impl<'a, E: Environment> FieldTrait<'a> for Field<E> {}
+impl<E: Environment> FieldTrait for Field<E> {}
 
 impl<E: Environment> Field<E> {
     /// Initializes a new field.

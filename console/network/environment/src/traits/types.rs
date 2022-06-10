@@ -17,7 +17,7 @@
 use crate::prelude::*;
 
 /// Representation of an address.
-pub trait AddressTrait: Copy + Clone + Deref + Eq + Parser + TypeName {}
+pub trait AddressTrait: Copy + Clone + Debug + Deref + Eq + Parser + Send + Sync + TypeName {}
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
@@ -29,80 +29,92 @@ pub trait BooleanTrait:
     + BitXor<Output = Self>
     + Copy
     + Clone
+    + Debug
     + Deref
     + Eq
     + Nand
     + Nor
     + Not
     + Parser
+    + Send
+    + Sync
     + TypeName
+    + Uniform
 {
 }
 
 /// Representation of a base field element.
-pub trait FieldTrait<'a>:
+pub trait FieldTrait:
     'static
     + Add<Self, Output = Self>
-    + Add<&'a Self, Output = Self>
+    + for<'a> Add<&'a Self, Output = Self>
     + AddAssign<Self>
-    + AddAssign<&'a Self>
+    + for<'a> AddAssign<&'a Self>
     + Clone
     + Copy
+    + Debug
     + Deref
     + Div<Self, Output = Self>
-    + Div<&'a Self, Output = Self>
+    + for<'a> Div<&'a Self, Output = Self>
     + DivAssign<Self>
-    + DivAssign<&'a Self>
+    + for<'a> DivAssign<&'a Self>
     + Double<Output = Self>
     + Eq
     + Inverse<Output = Self>
     + Mul<Self, Output = Self>
-    + Mul<&'a Self, Output = Self>
+    + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>
-    + MulAssign<&'a Self>
+    + for<'a> MulAssign<&'a Self>
     + Neg<Output = Self>
     + One
     + Ord
     + Parser
     + Pow<Self, Output = Self>
-    + Pow<&'a Self, Output = Self>
+    + for<'a> Pow<&'a Self, Output = Self>
     + Product<Self>
-    + Product<&'a Self>
+    + for<'a> Product<&'a Self>
+    + Send
+    + Sync
     + Square<Output = Self>
     + SquareRoot<Output = Self>
     + SubAssign<Self>
-    + SubAssign<&'a Self>
+    + for<'a> SubAssign<&'a Self>
     + Sum<Self>
-    + Sum<&'a Self>
+    + for<'a> Sum<&'a Self>
+    + Uniform
     + TypeName
     + Zero
 {
 }
 
 /// Representation of a group element.
-pub trait GroupTrait<'a, S: ScalarTrait>:
+pub trait GroupTrait<S: ScalarTrait>:
     'static
     + Add<Self, Output = Self>
-    + Add<&'a Self, Output = Self>
+    + for<'a> Add<&'a Self, Output = Self>
     + AddAssign<Self>
-    + AddAssign<&'a Self>
+    + for<'a> AddAssign<&'a Self>
     + Clone
     + Copy
+    + Debug
     + Double<Output = Self>
     + Eq
     + Mul<S>
-    + Mul<&'a S>
+    + for<'a> Mul<&'a S>
     + MulAssign<S>
-    + MulAssign<&'a S>
+    + for<'a> MulAssign<&'a S>
     + Neg<Output = Self>
     + Parser
+    + Send
+    + Sync
     + Sub<Self, Output = Self>
-    + Sub<&'a Self, Output = Self>
+    + for<'a> Sub<&'a Self, Output = Self>
     + SubAssign<Self>
-    + SubAssign<&'a Self>
+    + for<'a> SubAssign<&'a Self>
     + Sum<Self>
-    + Sum<&'a Self>
+    + for<'a> Sum<&'a Self>
     + TypeName
+    + Uniform
     + Zero
 {
 }
@@ -114,6 +126,7 @@ pub trait ScalarTrait:
     + AddAssign
     + Clone
     + Copy
+    + Debug
     + Deref
     + Div<Output = Self>
     + DivAssign
@@ -126,16 +139,19 @@ pub trait ScalarTrait:
     + One
     + Parser
     + Pow<Self, Output = Self>
+    + Send
+    + Sync
     + Square<Output = Self>
     + Sub<Output = Self>
     + SubAssign
     + TypeName
+    + Uniform
     + Zero
 {
 }
 
 /// Representation of a string.
-pub trait StringTrait: Clone + Display + Parser + TypeName {}
+pub trait StringTrait: Clone + Debug + Display + Parser + Send + Sync + TypeName + Uniform {}
 
 /// Representation of an integer.
 pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16>, U32: IntegerCore<u32>>:
@@ -169,6 +185,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + BitXor<Output = Self>
     + Copy
     + Clone
+    + Debug
     + Deref
     + DivAssign
     + Div<Output = Self>
@@ -179,9 +196,12 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + Not<Output = Self>
     + One
     + Parser
+    + Send
+    + Sync
     + SubAssign
     + Sub<Output = Self>
     + TypeName
+    + Uniform
     + Zero
 {
 }

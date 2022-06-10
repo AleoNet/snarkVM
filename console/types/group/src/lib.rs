@@ -36,7 +36,7 @@ pub struct Group<E: Environment> {
     group: E::Projective,
 }
 
-impl<'a, E: Environment> GroupTrait<'a, Scalar<E>> for Group<E> {}
+impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Group<E> {
     /// Initializes a new group.

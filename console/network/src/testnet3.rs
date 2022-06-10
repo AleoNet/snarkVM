@@ -16,7 +16,7 @@
 
 use super::*;
 use snarkvm_console_algorithms::{
-    traits::*,
+    algorithms::*,
     Blake2Xs,
     Pedersen128,
     Pedersen64,

@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use snarkvm_console_algorithms::{Poseidon, BHP};
+use snarkvm_console_types::prelude::*;
 
-use snarkvm_console_algorithms::{Hash, Poseidon, BHP};
-use snarkvm_curves::AffineCurve;
-use snarkvm_fields::Zero;
-use snarkvm_utilities::ToBits;
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// A trait for a Merkle path hash function.
 pub trait PathHash: Clone + Send + Sync {
-    type Hash: PrimeField;
+    type Hash: FieldTrait;
 
     /// Returns the empty hash.
     fn hash_empty(&self) -> Result<Self::Hash> {
@@ -43,11 +42,8 @@ pub trait PathHash: Clone + Send + Sync {
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-where
-    G::BaseField: PrimeField,
-{
-    type Hash = G::BaseField;
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> PathHash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    type Hash = Field<E>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {
@@ -60,8 +56,8 @@ where
     }
 }
 
-impl<F: PrimeField, const RATE: usize> PathHash for Poseidon<F, RATE> {
-    type Hash = F;
+impl<E: Environment, const RATE: usize> PathHash for Poseidon<E, RATE> {
+    type Hash = Field<E>;
 
     /// Returns the hash of the given child nodes.
     fn hash_children(&self, left: &Self::Hash, right: &Self::Hash) -> Result<Self::Hash> {

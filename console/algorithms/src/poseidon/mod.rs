@@ -22,7 +22,7 @@ mod hash_to_group;
 mod hash_to_scalar;
 mod prf;
 
-use crate::{poseidon::helpers::*, Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
+use crate::{poseidon::helpers::*, Elligator2};
 use snarkvm_console_types::prelude::*;
 use snarkvm_fields::{PoseidonDefaultField, PoseidonParameters};
 

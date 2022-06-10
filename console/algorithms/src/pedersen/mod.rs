@@ -19,7 +19,7 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
+use crate::Blake2Xs;
 use snarkvm_console_types::prelude::*;
 
 use std::{borrow::Cow, sync::Arc};

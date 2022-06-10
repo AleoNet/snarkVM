@@ -22,7 +22,6 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_console_types::prelude::*;
 
 use std::sync::Arc;

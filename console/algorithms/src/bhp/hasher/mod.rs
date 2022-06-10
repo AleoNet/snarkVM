@@ -16,9 +16,9 @@
 
 mod hash_uncompressed;
 
-use crate::{Blake2Xs, HashUncompressed};
+use crate::Blake2Xs;
 use snarkvm_console_types::prelude::*;
-use snarkvm_utilities::{cfg_iter, BigInteger};
+use snarkvm_utilities::BigInteger;
 
 use std::sync::Arc;
 

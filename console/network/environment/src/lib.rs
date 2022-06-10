@@ -32,6 +32,8 @@ pub mod prelude {
     pub use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     pub use snarkvm_fields::{Field as _, PrimeField as _, SquareRootField as _, Zero as _};
     pub use snarkvm_utilities::{
+        cfg_iter,
+        cfg_iter_mut,
         error,
         io::{Read, Result as IoResult, Write},
         test_crypto_rng,
@@ -48,7 +50,7 @@ pub mod prelude {
     pub use core::{
         cmp::Ordering,
         fmt::{self, Debug, Display, Formatter},
-        hash::Hash,
+        hash::Hash as _,
         iter::{Product, Sum},
         ops::{
             Add,
