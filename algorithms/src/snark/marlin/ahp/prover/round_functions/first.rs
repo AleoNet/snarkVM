@@ -79,31 +79,43 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert_eq!(z_b.len(), batch_size);
         assert_eq!(private_variables.len(), batch_size);
         let mut r_b_s = Vec::with_capacity(batch_size);
+        let s_m = state.s_m.clone();
+        let s_l = state.s_l.clone();
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
         let state_ref = &state;
-        for (i, (z_a, z_b, private_variables, x_poly)) in
-            itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
+        for (i, (z_a, z_b, private_variables, x_poly, s_m, s_l)) in
+            itertools::izip!(z_a, z_b, private_variables, &state.x_poly, s_m, s_l).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
+            let z_a_clone = z_a.clone();
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a_clone, false, state_ref, None));
             let r_b = F::rand(rng);
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b, true, state_ref, Some(r_b)));
+            let z_b_clone = z_b.clone();
+            job_pool
+                .add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b_clone, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
+            let s_l_clone = s_l.clone();
+            job_pool.add_job(move || Self::calculate_f(witness_label("f", i), z_a, z_b, s_l_clone, state_ref));
+            job_pool.add_job(move || Self::calculate_selector(witness_label("s_m", i), s_m, state_ref));
+            job_pool.add_job(move || Self::calculate_selector(witness_label("s_l", i), s_l, state_ref));
         }
 
         let batches = job_pool
             .execute_all()
             .into_iter()
             .tuples()
-            .map(|(w, z_a, z_b)| {
+            .map(|(w, z_a, z_b, f, s_m, s_l)| {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
+                let f_poly = f.query().unwrap();
+                let s_m_poly = s_m.selector().unwrap();
+                let s_l_poly = s_l.selector().unwrap();
 
-                prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
+                prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly, s_m_poly, s_l_poly, f_poly }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
@@ -238,12 +250,61 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         PoolResult::MatrixPoly(poly_for_opening, poly_for_committing)
     }
+
+    fn calculate_f<'a>(
+        label: impl ToString,
+        z_a: Vec<F>,
+        z_b: Vec<F>,
+        s_l: Vec<F>,
+        state: &prover::State<'a, F, MM>,
+    ) -> PoolResult<'a, F> {
+        let constraint_domain = state.constraint_domain;
+        // let v_H = constraint_domain.vanishing_polynomial();
+        // let should_randomize = MM::ZK && will_be_evaluated;
+        let label = label.to_string();
+        // let poly_time = start_timer!(|| format!("Computing {label}"));
+
+        let evaluations = z_a
+            .iter()
+            .zip(z_b.iter())
+            .zip(s_l.iter())
+            .map(
+                |((a, b), s)| {
+                    if s.is_zero() { F::zero() } else { *a + state.zeta * *b + (state.zeta.square() * *a * *b) }
+                },
+            )
+            .collect::<Vec<F>>();
+
+        let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
+
+        let poly = evals.interpolate();
+        PoolResult::Query(LabeledPolynomial::new(label, poly, None, None))
+    }
+
+    fn calculate_selector<'a>(
+        label: impl ToString,
+        selector_evals: Vec<F>,
+        state: &prover::State<'a, F, MM>,
+    ) -> PoolResult<'a, F> {
+        let constraint_domain = state.constraint_domain;
+        // let v_H = constraint_domain.vanishing_polynomial();
+        // let should_randomize = MM::ZK && will_be_evaluated;
+        let label = label.to_string();
+        // let poly_time = start_timer!(|| format!("Computing {label}"));
+
+        let evals = EvaluationsOnDomain::from_vec_and_domain(selector_evals, constraint_domain);
+
+        let poly = evals.interpolate();
+        PoolResult::Selector(LabeledPolynomial::new(label, poly, None, None))
+    }
 }
 
 #[derive(Debug)]
 pub enum PoolResult<'a, F: PrimeField> {
     Witness(LabeledPolynomial<F>),
     MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
+    Query(LabeledPolynomial<F>),
+    Selector(LabeledPolynomial<F>),
 }
 
 impl<'a, F: PrimeField> PoolResult<'a, F> {
@@ -257,6 +318,20 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
     fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)> {
         match self {
             Self::MatrixPoly(p1, p2) => Some((p1, p2)),
+            _ => None,
+        }
+    }
+
+    fn query(self) -> Option<LabeledPolynomial<F>> {
+        match self {
+            Self::Query(poly) => Some(poly),
+            _ => None,
+        }
+    }
+
+    fn selector(self) -> Option<LabeledPolynomial<F>> {
+        match self {
+            Self::Selector(poly) => Some(poly),
             _ => None,
         }
     }

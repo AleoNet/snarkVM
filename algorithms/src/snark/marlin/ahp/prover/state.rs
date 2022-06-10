@@ -68,6 +68,18 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The length of this list must be equal to the batch size.
     pub(super) z_b: Option<Vec<Vec<F>>>,
 
+    /// The list of multiplication selector vectors for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
+    pub(super) s_m: Vec<Vec<F>>,
+
+    /// The list of lookup selector vectors for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
+    pub(super) s_l: Vec<Vec<F>>,
+
+    /// Lookup challenge
+    /// compression factor
+    pub(super) zeta: F,
+
     /// A list of polynomials corresponding to the interpolation of the public input.
     /// The length of this list must be equal to the batch size.
     pub(super) x_poly: Vec<DensePolynomial<F>>,
@@ -131,6 +143,9 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             private_variables,
             z_a: None,
             z_b: None,
+            s_m: vec![],
+            s_l: vec![],
+            zeta: F::rand(&mut rand::thread_rng()),
             first_round_oracles: None,
             mz_poly_randomizer: None,
             verifier_first_message: None,

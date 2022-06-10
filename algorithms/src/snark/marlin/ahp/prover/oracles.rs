@@ -61,6 +61,12 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) z_a_poly: LabeledPolynomial<F>,
     /// The LDE of `Bz`.
     pub(super) z_b_poly: LabeledPolynomial<F>,
+    /// The multiplication constraint selector polynomial.
+    pub(super) s_m_poly: LabeledPolynomial<F>,
+    /// The lookup constraint selector polynomial.
+    pub(super) s_l_poly: LabeledPolynomial<F>,
+    /// The query vector polynomial.
+    pub(super) f_poly: LabeledPolynomial<F>,
 }
 
 impl<'a, F: PrimeField> SingleEntry<'a, F> {

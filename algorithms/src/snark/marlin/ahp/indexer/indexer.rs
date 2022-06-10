@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
+    fft::{EvaluationDomain, Evaluations},
     polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
@@ -125,7 +125,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         )
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
-
         end_timer!(index_time);
         Ok(Circuit {
             index_info,
@@ -137,6 +136,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
+            s_m: ics.s_mul,
+            s_l: ics.s_lookup,
             mode: PhantomData,
         })
     }

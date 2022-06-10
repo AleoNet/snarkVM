@@ -176,12 +176,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let first_msg = state.first_round_oracles.as_ref().unwrap();
         let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
         let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
+        let zeta_2 = state.zeta.square();
         job_pool.add_job(|| {
             cfg_iter!(first_msg.batches)
                 .zip_eq(batch_combiners)
                 .map(|(entry, combiner)| {
                     let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
-                    let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
+                    let z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
+                    let s_m = entry.s_m_poly.polynomial().as_dense().unwrap();
+                    let s_l = entry.s_l_poly.polynomial().as_dense().unwrap();
+                    let f = entry.f_poly.polynomial().as_dense().unwrap();
                     assert!(z_a.degree() < constraint_domain.size());
                     if MM::ZK {
                         assert_eq!(z_b.degree(), constraint_domain.size());
@@ -193,7 +197,25 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
                     // This is better since it reduces the number of required
                     // multiplications by `constraint_domain.size()`.
+                    //
+                    // LOOKUPS
+                    // morph this into r_i * ((s_m * z_a + s_l * z_a) + eta_b * (s_m * z_b + s_l *
+                    // zeta * z_b) + eta_c * (s_m * z_a * z_b + s_l * zeta^2 * z_a * z_b) + s_l * f)
+                    // this needs to be optimized
                     let mut summed_z_m = {
+                        let first_term = &(s_m * z_a) + &(s_l * z_a);
+                        let mut zeta_z_b = z_b.clone();
+                        cfg_iter_mut!(zeta_z_b.coeffs).for_each(|b| *b *= state.zeta);
+                        let mut second_term = &(s_m * &z_b) + &(s_l * &zeta_z_b);
+                        cfg_iter_mut!(second_term).for_each(|b| *b *= eta_b);
+                        let z_a_z_b = z_a * &z_b;
+                        let mut zeta_2_z_a_z_b = z_a_z_b.clone();
+                        cfg_iter_mut!(zeta_2_z_a_z_b.coeffs).for_each(|b| *b *= zeta_2);
+                        let mut third_term = &(s_m * &z_a_z_b) + &(s_l * &zeta_2_z_a_z_b);
+                        cfg_iter_mut!(third_term).for_each(|b| *b *= eta_c);
+                        let s_l_f = s_l * f;
+                        &(&(&first_term + &second_term) + &third_term) + &s_l_f
+                        /*
                         // Mutate z_b in place to compute eta_c * z_b + 1
                         // This saves us an additional memory allocation.
                         cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
@@ -206,14 +228,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         // Start undoing in place mutation, by first subtracting the 1 that we added...
                         z_b.coeffs[0] -= F::one();
                         result
+                            */
                     };
                     // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
                     cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
+                    // Now, add lookup argument to this polynomial sum
+
                     // Multiply by linear combination coefficient.
                     cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
 
-                    assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
+                    // assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
                     end_timer!(summed_z_m_poly_time);
                     summed_z_m
                 })

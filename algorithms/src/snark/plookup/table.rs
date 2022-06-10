@@ -19,6 +19,18 @@ use snarkvm_fields::Field;
 pub struct LookupTable<F: Field>(Vec<Vec<F>>);
 
 impl<F: Field> LookupTable<F> {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self(vec![vec![F::zero(); cols]; rows])
+    }
+
+    pub fn push(&mut self, row: usize, col: usize, element: F) {
+        self[row][col] = element;
+    }
+
+    pub fn lookup(&self, row: F) -> F {
+
+
+
     pub fn compress(&self, zeta: F) -> Vec<F> {
         self.0
             .iter()

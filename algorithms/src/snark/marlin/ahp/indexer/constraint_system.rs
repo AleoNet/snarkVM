@@ -16,7 +16,14 @@
 
 use crate::snark::marlin::ahp::matrices::{make_matrices_square, padded_matrix_dim, to_matrix_helper};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
+use snarkvm_r1cs::{
+    errors::SynthesisError,
+    ConstraintSystem as CS,
+    Index as VarIndex,
+    LinearCombination,
+    LookupTable,
+    Variable,
+};
 use snarkvm_utilities::serialize::*;
 
 /// Stores constraints during index generation.
@@ -27,6 +34,9 @@ pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) num_public_variables: usize,
     pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
+    pub(crate) lookup_table: Option<LookupTable<F>>,
+    pub(crate) s_mul: Vec<F>,
+    pub(crate) s_lookup: Vec<F>,
 }
 
 impl<F: Field> ConstraintSystem<F> {
@@ -39,6 +49,9 @@ impl<F: Field> ConstraintSystem<F> {
             num_public_variables: 1,
             num_private_variables: 0,
             num_constraints: 0,
+            lookup_table: None,
+            s_mul: vec![],
+            s_lookup: vec![],
         }
     }
 
@@ -74,10 +87,23 @@ impl<F: Field> ConstraintSystem<F> {
     fn make_row(l: &LinearCombination<F>) -> Vec<(F, VarIndex)> {
         l.as_ref().iter().map(|(var, coeff)| (*coeff, var.get_unchecked())).collect()
     }
+
+    fn lookup(&mut self, val: &LinearCombination<F>) -> Result<F, SynthesisError> {
+        if let Some(lookup_table) = &self.lookup_table {
+            Ok(*lookup_table.lookup(val).ok_or_else(|| SynthesisError::LookupValueMissing)?)
+        } else {
+            Err(SynthesisError::LookupTableMissing)
+        }
+    }
 }
 
 impl<F: Field> CS<F> for ConstraintSystem<F> {
     type Root = Self;
+
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
+        self.lookup_table = Some(lookup_table);
+        Ok(())
+    }
 
     #[inline]
     fn alloc<Fn, A, AR>(&mut self, _: A, _: Fn) -> Result<Variable, SynthesisError>
@@ -124,6 +150,21 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         self.c.push(Self::make_row(&c(LinearCombination::zero())));
 
         self.num_constraints += 1;
+        self.s_mul.push(F::one());
+        self.s_lookup.push(F::zero());
+    }
+
+    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
+        let res = self.lookup(&val)?;
+
+        let res = self.alloc(|| "lookup_table", || Ok(res))?;
+        self.a.push(Self::make_row(&val));
+        self.b.push(Self::make_row(&LinearCombination::zero()));
+        self.c.push(Self::make_row(&LinearCombination::from(res)));
+        self.num_constraints += 1;
+        self.s_mul.push(F::zero());
+        self.s_lookup.push(F::one());
+        Ok(res)
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)
