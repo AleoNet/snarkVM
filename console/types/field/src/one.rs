@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> One for Field<N> {
+impl<E: Environment> One for Field<E> {
     /// Returns the `1` element of the field.
     fn one() -> Self {
-        Self::new(N::Field::one())
+        Self::new(E::Field::one())
     }
 
     /// Returns `true` if the element is one.
@@ -31,15 +31,15 @@ impl<N: Network> One for Field<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_one() {
-        let one = Field::<CurrentNetwork>::one();
+        let one = Field::<CurrentEnvironment>::one();
 
         for (index, bit) in one.to_bits_le().iter().enumerate() {
             match index == 0 {
@@ -51,11 +51,11 @@ mod tests {
 
     #[test]
     fn test_is_one() {
-        assert!(Field::<CurrentNetwork>::one().is_one());
+        assert!(Field::<CurrentEnvironment>::one().is_one());
 
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let field: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let field: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!field.is_one());
         }
     }

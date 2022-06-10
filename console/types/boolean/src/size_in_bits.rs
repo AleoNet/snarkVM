@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Boolean<N> {
+impl<E: Environment> Boolean<E> {
     /// Returns the field size in bits.
     #[inline]
     pub const fn size_in_bits() -> usize {

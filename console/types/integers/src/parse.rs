@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, I: IntegerType> Parser for Integer<N, I> {
+impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
     /// Parses a string into a integer circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -33,7 +33,7 @@ impl<N: Network, I: IntegerType> Parser for Integer<N, I> {
     }
 }
 
-impl<N: Network, I: IntegerType> FromStr for Integer<N, I> {
+impl<E: Environment, I: IntegerType> FromStr for Integer<E, I> {
     type Err = Error;
 
     /// Parses a string into an integer.
@@ -51,13 +51,13 @@ impl<N: Network, I: IntegerType> FromStr for Integer<N, I> {
     }
 }
 
-impl<N: Network, I: IntegerType> Debug for Integer<N, I> {
+impl<E: Environment, I: IntegerType> Debug for Integer<E, I> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, I: IntegerType> Display for Integer<N, I> {
+impl<E: Environment, I: IntegerType> Display for Integer<E, I> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}{}", self.integer, Self::type_name())
     }
@@ -66,9 +66,9 @@ impl<N: Network, I: IntegerType> Display for Integer<N, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 10_000;
 
@@ -77,15 +77,15 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Integer::<CurrentNetwork, i8>::parse(&Integer::<CurrentNetwork, i8>::type_name()).is_err());
-        assert!(Integer::<CurrentNetwork, i8>::parse("").is_err());
+        assert!(Integer::<CurrentEnvironment, i8>::parse(&Integer::<CurrentEnvironment, i8>::type_name()).is_err());
+        assert!(Integer::<CurrentEnvironment, i8>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
             let integer: i8 = Uniform::rand(rng);
 
-            let expected = format!("{}{}", integer, Integer::<CurrentNetwork, i8>::type_name());
-            let (remainder, candidate) = Integer::<CurrentNetwork, i8>::parse(&expected).unwrap();
+            let expected = format!("{}{}", integer, Integer::<CurrentEnvironment, i8>::type_name());
+            let (remainder, candidate) = Integer::<CurrentEnvironment, i8>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
@@ -96,36 +96,36 @@ mod tests {
     fn test_display() {
         /// Attempts to construct a integer from the given element,
         /// format it in display mode, and recover a integer from it.
-        fn check_display<N: Network, I: IntegerType>() {
+        fn check_display<E: Environment, I: IntegerType>() {
             for _ in 0..ITERATIONS {
                 let element = Uniform::rand(&mut test_rng());
 
-                let candidate = Integer::<N, I>::new(element);
-                assert_eq!(format!("{element}{}", Integer::<N, I>::type_name()), format!("{candidate}"));
+                let candidate = Integer::<E, I>::new(element);
+                assert_eq!(format!("{element}{}", Integer::<E, I>::type_name()), format!("{candidate}"));
 
-                let candidate_recovered = Integer::<N, I>::from_str(&format!("{candidate}")).unwrap();
+                let candidate_recovered = Integer::<E, I>::from_str(&format!("{candidate}")).unwrap();
                 assert_eq!(candidate, candidate_recovered);
             }
         }
 
-        check_display::<CurrentNetwork, u8>();
-        check_display::<CurrentNetwork, u16>();
-        check_display::<CurrentNetwork, u32>();
-        check_display::<CurrentNetwork, u64>();
-        check_display::<CurrentNetwork, u128>();
+        check_display::<CurrentEnvironment, u8>();
+        check_display::<CurrentEnvironment, u16>();
+        check_display::<CurrentEnvironment, u32>();
+        check_display::<CurrentEnvironment, u64>();
+        check_display::<CurrentEnvironment, u128>();
 
-        check_display::<CurrentNetwork, i8>();
-        check_display::<CurrentNetwork, i16>();
-        check_display::<CurrentNetwork, i32>();
-        check_display::<CurrentNetwork, i64>();
-        check_display::<CurrentNetwork, i128>();
+        check_display::<CurrentEnvironment, i8>();
+        check_display::<CurrentEnvironment, i16>();
+        check_display::<CurrentEnvironment, i32>();
+        check_display::<CurrentEnvironment, i64>();
+        check_display::<CurrentEnvironment, i128>();
     }
 
     #[test]
     fn test_display_zero() {
         let zero = i8::zero();
 
-        let candidate = Integer::<CurrentNetwork, i8>::new(zero);
+        let candidate = Integer::<CurrentEnvironment, i8>::new(zero);
         assert_eq!("0i8", &format!("{}", candidate));
     }
 
@@ -133,7 +133,7 @@ mod tests {
     fn test_display_one() {
         let one = i8::one();
 
-        let candidate = Integer::<CurrentNetwork, i8>::new(one);
+        let candidate = Integer::<CurrentEnvironment, i8>::new(one);
         assert_eq!("1i8", &format!("{}", candidate));
     }
 
@@ -142,7 +142,7 @@ mod tests {
         let one = i8::one();
         let two = one + one;
 
-        let candidate = Integer::<CurrentNetwork, i8>::new(two);
+        let candidate = Integer::<CurrentEnvironment, i8>::new(two);
         assert_eq!("2i8", &format!("{}", candidate));
     }
 }

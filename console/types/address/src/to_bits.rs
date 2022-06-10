@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Address<N> {
+impl<E: Environment> ToBits for Address<E> {
     /// Outputs the little-endian bit representation of `self.to_x_coordinate()` *without* trailing zeros.
     fn to_bits_le(&self) -> Vec<bool> {
         self.address.to_x_coordinate().to_bits_le()
@@ -31,9 +31,9 @@ impl<N: Network> ToBits for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 10_000;
 
@@ -41,11 +41,11 @@ mod tests {
     fn test_to_bits_le() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let address = Address::new(group);
             let candidate = address.to_bits_le();
-            assert_eq!(Address::<CurrentNetwork>::size_in_bits(), candidate.len());
+            assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), candidate.len());
 
             for (expected, candidate) in (*address).to_affine().to_x_coordinate().to_bits_le().iter().zip_eq(&candidate)
             {
@@ -58,11 +58,11 @@ mod tests {
     fn test_to_bits_be() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let address = Address::new(group);
             let candidate = address.to_bits_be();
-            assert_eq!(Address::<CurrentNetwork>::size_in_bits(), candidate.len());
+            assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), candidate.len());
 
             for (expected, candidate) in (*address).to_affine().to_x_coordinate().to_bits_be().iter().zip_eq(&candidate)
             {

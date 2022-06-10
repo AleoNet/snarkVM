@@ -26,33 +26,33 @@ mod to_x_coordinate;
 mod to_y_coordinate;
 mod zero;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_scalar::Scalar;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Group<N: Network> {
+pub struct Group<E: Environment> {
     /// The underlying group element.
-    group: N::Projective,
+    group: E::Projective,
 }
 
-impl<N: Network> GroupTrait<Scalar<N>> for Group<N> {}
+impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
-impl<N: Network> Group<N> {
+impl<E: Environment> Group<E> {
     /// Initializes a new group.
-    pub fn new(group: N::Affine) -> Self {
+    pub fn new(group: E::Affine) -> Self {
         Self { group: group.into() }
     }
 }
 
-impl<N: Network> Group<N> {
+impl<E: Environment> Group<E> {
     /// This internal function initializes a group element from projective coordinates.
-    const fn from_projective(group: N::Projective) -> Self {
+    const fn from_projective(group: E::Projective) -> Self {
         Self { group }
     }
 }
 
-impl<N: Network> TypeName for Group<N> {
+impl<E: Environment> TypeName for Group<E> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -60,8 +60,8 @@ impl<N: Network> TypeName for Group<N> {
     }
 }
 
-impl<N: Network> Deref for Group<N> {
-    type Target = N::Projective;
+impl<E: Environment> Deref for Group<E> {
+    type Target = E::Projective;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

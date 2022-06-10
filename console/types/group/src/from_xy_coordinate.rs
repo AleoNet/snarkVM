@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<N: Network> Group<N> {
+impl<E: Environment> Group<E> {
     /// Initializes a new group from the `(x, y)` affine coordinates.
-    pub fn from_xy_coordinates((x, y): (Field<N>, Field<N>)) -> Self {
-        Self { group: N::Affine::from_coordinates((*x, *y)).into() }
+    pub fn from_xy_coordinates((x, y): (Field<E>, Field<E>)) -> Self {
+        Self { group: E::Affine::from_coordinates((*x, *y)).into() }
     }
 }

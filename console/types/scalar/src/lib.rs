@@ -24,24 +24,24 @@ mod size_in_bits;
 mod to_bits;
 mod zero;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Scalar<N: Network> {
+pub struct Scalar<E: Environment> {
     /// The underlying scalar element.
-    scalar: N::Scalar,
+    scalar: E::Scalar,
 }
 
-impl<N: Network> ScalarTrait for Scalar<N> {}
+impl<E: Environment> ScalarTrait for Scalar<E> {}
 
-impl<N: Network> Scalar<N> {
+impl<E: Environment> Scalar<E> {
     /// Initializes a new scalar.
-    pub const fn new(scalar: N::Scalar) -> Self {
+    pub const fn new(scalar: E::Scalar) -> Self {
         Self { scalar }
     }
 }
 
-impl<N: Network> TypeName for Scalar<N> {
+impl<E: Environment> TypeName for Scalar<E> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -49,8 +49,8 @@ impl<N: Network> TypeName for Scalar<N> {
     }
 }
 
-impl<N: Network> Deref for Scalar<N> {
-    type Target = N::Scalar;
+impl<E: Environment> Deref for Scalar<E> {
+    type Target = E::Scalar;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

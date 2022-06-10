@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<N: Network> Field<N> {
+impl<E: Environment> Field<E> {
     /// Returns the field size in bits.
     #[inline]
     pub const fn size_in_bits() -> usize {
-        N::Field::SIZE_IN_BITS
+        E::Field::SIZE_IN_BITS
     }
 
     /// Returns the field capacity for data bits.
     #[inline]
     pub const fn size_in_data_bits() -> usize {
-        N::Field::SIZE_IN_DATA_BITS
+        E::Field::SIZE_IN_DATA_BITS
     }
 }

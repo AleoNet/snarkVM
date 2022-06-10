@@ -24,24 +24,24 @@ mod size_in_bits;
 mod to_bits;
 mod zero;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Field<N: Network> {
+pub struct Field<E: Environment> {
     /// The underlying field element.
-    field: N::Field,
+    field: E::Field,
 }
 
-impl<N: Network> FieldTrait for Field<N> {}
+impl<E: Environment> FieldTrait for Field<E> {}
 
-impl<N: Network> Field<N> {
+impl<E: Environment> Field<E> {
     /// Initializes a new field.
-    pub const fn new(field: N::Field) -> Self {
+    pub const fn new(field: E::Field) -> Self {
         Self { field }
     }
 }
 
-impl<N: Network> TypeName for Field<N> {
+impl<E: Environment> TypeName for Field<E> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -49,8 +49,8 @@ impl<N: Network> TypeName for Field<N> {
     }
 }
 
-impl<N: Network> Deref for Field<N> {
-    type Target = N::Field;
+impl<E: Environment> Deref for Field<E> {
+    type Target = E::Field;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

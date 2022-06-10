@@ -16,14 +16,14 @@
 
 use super::*;
 
-impl<N: Network> FromBits for Scalar<N> {
+impl<E: Environment> FromBits for Scalar<E> {
     /// Initializes a new scalar from a list of **little-endian** bits.
-    ///   - If `bits_le` is longer than `N::Scalar::size_in_bits()`, the excess bits are enforced to be `0`s.
-    ///   - If `bits_le` is shorter than `N::Scalar::size_in_bits()`, it is padded with `0`s up to scalar size.
+    ///   - If `bits_le` is longer than `E::Scalar::size_in_bits()`, the excess bits are enforced to be `0`s.
+    ///   - If `bits_le` is shorter than `E::Scalar::size_in_bits()`, it is padded with `0`s up to scalar size.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         // Retrieve the data and scalar size.
-        let size_in_data_bits = N::Scalar::size_in_data_bits();
-        let size_in_bits = N::Scalar::size_in_bits();
+        let size_in_data_bits = Scalar::<E>::size_in_data_bits();
+        let size_in_bits = Scalar::<E>::size_in_bits();
 
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
@@ -38,25 +38,25 @@ impl<N: Network> FromBits for Scalar<N> {
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) Scalar::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = N::Scalar::modulus();
+            let modulus_minus_one = E::Scalar::modulus();
 
             // Recover the scalar as a `BigInteger` for comparison.
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
-            let scalar = N::BigInteger::from_bits_le(&bits_le[..size_in_bits])?;
+            let scalar = E::BigInteger::from_bits_le(&bits_le[..size_in_bits])?;
 
             // Ensure the scalar is less than `Scalar::MODULUS`.
             ensure!(scalar < modulus_minus_one, "The scalar is greater than or equal to the modulus.");
 
             // Return the scalar.
-            Ok(Scalar { scalar: N::Scalar::from_repr(scalar).ok_or_else(|| anyhow!("Invalid scalar from bits"))? })
+            Ok(Scalar { scalar: E::Scalar::from_repr(scalar).ok_or_else(|| anyhow!("Invalid scalar from bits"))? })
         } else {
             // Construct the sanitized list of bits, resizing up if necessary.
             let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
             bits_le.resize(size_in_bits, false);
 
             // Recover the native scalar.
-            let scalar = N::Scalar::from_repr(N::BigInteger::from_bits_le(&bits_le)?)
+            let scalar = E::Scalar::from_repr(E::BigInteger::from_bits_le(&bits_le)?)
                 .ok_or_else(|| anyhow!("Invalid scalar from bits"))?;
 
             // Return the scalar.
@@ -78,28 +78,28 @@ impl<N: Network> FromBits for Scalar<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le() -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let expected: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let given_bits = expected.to_bits_le();
-            assert_eq!(Scalar::<CurrentNetwork>::size_in_bits(), given_bits.len());
+            assert_eq!(Scalar::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
-            let candidate = Scalar::<CurrentNetwork>::from_bits_le(&given_bits)?;
+            let candidate = Scalar::<CurrentEnvironment>::from_bits_le(&given_bits)?;
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![false; i as usize]].concat();
 
-            let candidate = Scalar::<CurrentNetwork>::from_bits_le(&candidate)?;
+            let candidate = Scalar::<CurrentEnvironment>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
-            assert_eq!(Scalar::<CurrentNetwork>::size_in_bits(), candidate.to_bits_le().len());
+            assert_eq!(Scalar::<CurrentEnvironment>::size_in_bits(), candidate.to_bits_le().len());
         }
         Ok(())
     }
@@ -107,19 +107,19 @@ mod tests {
     fn check_from_bits_be() -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let expected: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let given_bits = expected.to_bits_be();
-            assert_eq!(Scalar::<CurrentNetwork>::size_in_bits(), given_bits.len());
+            assert_eq!(Scalar::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
-            let candidate = Scalar::<CurrentNetwork>::from_bits_be(&given_bits)?;
+            let candidate = Scalar::<CurrentEnvironment>::from_bits_be(&given_bits)?;
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![vec![false; i as usize], given_bits].concat();
 
-            let candidate = Scalar::<CurrentNetwork>::from_bits_be(&candidate)?;
+            let candidate = Scalar::<CurrentEnvironment>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);
-            assert_eq!(Scalar::<CurrentNetwork>::size_in_bits(), candidate.to_bits_be().len());
+            assert_eq!(Scalar::<CurrentEnvironment>::size_in_bits(), candidate.to_bits_be().len());
         }
         Ok(())
     }

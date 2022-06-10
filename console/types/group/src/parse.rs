@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Group<N> {
+impl<E: Environment> Parser for Group<E> {
     /// Parses a string into a group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -38,7 +38,7 @@ impl<N: Network> Parser for Group<N> {
     }
 }
 
-impl<N: Network> FromStr for Group<N> {
+impl<E: Environment> FromStr for Group<E> {
     type Err = Error;
 
     /// Parses a string into a group.
@@ -56,13 +56,13 @@ impl<N: Network> FromStr for Group<N> {
     }
 }
 
-impl<N: Network> Debug for Group<N> {
+impl<E: Environment> Debug for Group<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Group<N> {
+impl<E: Environment> Display for Group<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}{}", self.group.to_affine().to_x_coordinate(), Self::type_name())
     }
@@ -71,9 +71,9 @@ impl<N: Network> Display for Group<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 1_000;
 
@@ -82,15 +82,15 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Group::<CurrentNetwork>::parse(&Group::<CurrentNetwork>::type_name()).is_err());
-        assert!(Group::<CurrentNetwork>::parse("").is_err());
+        assert!(Group::<CurrentEnvironment>::parse(&Group::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Group::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let group: <CurrentNetwork as Network>::Affine = Uniform::rand(rng);
+            let group: <CurrentEnvironment as Environment>::Affine = Uniform::rand(rng);
 
-            let expected = format!("{}{}", group.to_x_coordinate(), Group::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Group::<CurrentNetwork>::parse(&expected).unwrap();
+            let expected = format!("{}{}", group.to_x_coordinate(), Group::<CurrentEnvironment>::type_name());
+            let (remainder, candidate) = Group::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
@@ -101,26 +101,26 @@ mod tests {
     fn test_display() {
         /// Attempts to construct a group from the given element,
         /// format it in display mode, and recover a group from it.
-        fn check_display<N: Network>(element: N::Affine) {
-            let candidate = Group::<N>::new(element);
-            assert_eq!(format!("{}{}", element.to_x_coordinate(), Group::<N>::type_name()), format!("{candidate}"));
+        fn check_display<E: Environment>(element: E::Affine) {
+            let candidate = Group::<E>::new(element);
+            assert_eq!(format!("{}{}", element.to_x_coordinate(), Group::<E>::type_name()), format!("{candidate}"));
 
-            let candidate_recovered = Group::<N>::from_str(&format!("{candidate}")).unwrap();
+            let candidate_recovered = Group::<E>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
 
         for _ in 0..ITERATIONS {
             let element = Uniform::rand(&mut test_rng());
 
-            check_display::<CurrentNetwork>(element);
+            check_display::<CurrentEnvironment>(element);
         }
     }
 
     #[test]
     fn test_display_zero() {
-        let zero = <CurrentNetwork as Network>::Affine::zero();
+        let zero = <CurrentEnvironment as Environment>::Affine::zero();
 
-        let candidate = Group::<CurrentNetwork>::new(zero);
+        let candidate = Group::<CurrentEnvironment>::new(zero);
         assert_eq!("0group", &format!("{}", candidate));
     }
 }

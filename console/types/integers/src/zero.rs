@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, I: IntegerType> Zero for Integer<N, I> {
+impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
     /// Returns the `0` element of the integer.
     fn zero() -> Self {
         Self::new(I::zero())

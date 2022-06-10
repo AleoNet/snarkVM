@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<N: Network> Scalar<N> {
+impl<E: Environment> Scalar<E> {
     /// Returns the scalar size in bits.
     #[inline]
     pub const fn size_in_bits() -> usize {
-        N::Scalar::SIZE_IN_BITS
+        E::Scalar::SIZE_IN_BITS
     }
 
     /// Returns the scalar capacity for data bits.
     #[inline]
     pub const fn size_in_data_bits() -> usize {
-        N::Scalar::SIZE_IN_DATA_BITS
+        E::Scalar::SIZE_IN_DATA_BITS
     }
 }

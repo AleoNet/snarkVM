@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Scalar<N> {
+impl<E: Environment> Parser for Scalar<E> {
     /// Parses a string into a scalar circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -25,7 +25,7 @@ impl<N: Network> Parser for Scalar<N> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value): (&str, N::Scalar) =
+        let (string, value): (&str, E::Scalar) =
             map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Negate the value if the negative sign was present.
         let value = match negation {
@@ -37,7 +37,7 @@ impl<N: Network> Parser for Scalar<N> {
     }
 }
 
-impl<N: Network> FromStr for Scalar<N> {
+impl<E: Environment> FromStr for Scalar<E> {
     type Err = Error;
 
     /// Parses a string into a scalar.
@@ -55,13 +55,13 @@ impl<N: Network> FromStr for Scalar<N> {
     }
 }
 
-impl<N: Network> Debug for Scalar<N> {
+impl<E: Environment> Debug for Scalar<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Scalar<N> {
+impl<E: Environment> Display for Scalar<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}{}", self.scalar, Self::type_name())
     }
@@ -70,9 +70,9 @@ impl<N: Network> Display for Scalar<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 10_000;
 
@@ -81,15 +81,15 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Scalar::<CurrentNetwork>::parse(&Scalar::<CurrentNetwork>::type_name()).is_err());
-        assert!(Scalar::<CurrentNetwork>::parse("").is_err());
+        assert!(Scalar::<CurrentEnvironment>::parse(&Scalar::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Scalar::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let scalar: <CurrentNetwork as Network>::Scalar = Uniform::rand(rng);
+            let scalar: <CurrentEnvironment as Environment>::Scalar = Uniform::rand(rng);
 
-            let expected = format!("{}{}", scalar, Scalar::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Scalar::<CurrentNetwork>::parse(&expected).unwrap();
+            let expected = format!("{}{}", scalar, Scalar::<CurrentEnvironment>::type_name());
+            let (remainder, candidate) = Scalar::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
@@ -100,43 +100,43 @@ mod tests {
     fn test_display() {
         /// Attempts to construct a scalar from the given element,
         /// format it in display mode, and recover a scalar from it.
-        fn check_display<N: Network>(element: N::Scalar) {
-            let candidate = Scalar::<N>::new(element);
-            assert_eq!(format!("{element}{}", Scalar::<N>::type_name()), format!("{candidate}"));
+        fn check_display<E: Environment>(element: E::Scalar) {
+            let candidate = Scalar::<E>::new(element);
+            assert_eq!(format!("{element}{}", Scalar::<E>::type_name()), format!("{candidate}"));
 
-            let candidate_recovered = Scalar::<N>::from_str(&format!("{candidate}")).unwrap();
+            let candidate_recovered = Scalar::<E>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
 
         for _ in 0..ITERATIONS {
             let element = Uniform::rand(&mut test_rng());
 
-            check_display::<CurrentNetwork>(element);
+            check_display::<CurrentEnvironment>(element);
         }
     }
 
     #[test]
     fn test_display_zero() {
-        let zero = <CurrentNetwork as Network>::Scalar::zero();
+        let zero = <CurrentEnvironment as Environment>::Scalar::zero();
 
-        let candidate = Scalar::<CurrentNetwork>::new(zero);
+        let candidate = Scalar::<CurrentEnvironment>::new(zero);
         assert_eq!("0scalar", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_one() {
-        let one = <CurrentNetwork as Network>::Scalar::one();
+        let one = <CurrentEnvironment as Environment>::Scalar::one();
 
-        let candidate = Scalar::<CurrentNetwork>::new(one);
+        let candidate = Scalar::<CurrentEnvironment>::new(one);
         assert_eq!("1scalar", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_two() {
-        let one = <CurrentNetwork as Network>::Scalar::one();
+        let one = <CurrentEnvironment as Environment>::Scalar::one();
         let two = one + one;
 
-        let candidate = Scalar::<CurrentNetwork>::new(two);
+        let candidate = Scalar::<CurrentEnvironment>::new(two);
         assert_eq!("2scalar", &format!("{}", candidate));
     }
 }

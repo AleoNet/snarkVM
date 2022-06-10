@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> One for Scalar<N> {
+impl<E: Environment> One for Scalar<E> {
     /// Returns the `1` element of the scalar.
     fn one() -> Self {
-        Self::new(N::Scalar::one())
+        Self::new(E::Scalar::one())
     }
 
     /// Returns `true` if the element is one.
@@ -31,15 +31,15 @@ impl<N: Network> One for Scalar<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_one() {
-        let one = Scalar::<CurrentNetwork>::one();
+        let one = Scalar::<CurrentEnvironment>::one();
 
         for (index, bit) in one.to_bits_le().iter().enumerate() {
             match index == 0 {
@@ -51,11 +51,11 @@ mod tests {
 
     #[test]
     fn test_is_one() {
-        assert!(Scalar::<CurrentNetwork>::one().is_one());
+        assert!(Scalar::<CurrentEnvironment>::one().is_one());
 
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let scalar: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!scalar.is_one());
         }
     }

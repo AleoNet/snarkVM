@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Boolean<N> {
+impl<E: Environment> ToBits for Boolean<E> {
     /// Outputs `self` in a vector.
     fn to_bits_le(&self) -> Vec<bool> {
         vec![**self]
@@ -31,9 +31,9 @@ impl<N: Network> ToBits for Boolean<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 10_000;
 
@@ -41,11 +41,11 @@ mod tests {
     fn test_to_bits_le() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let boolean: Boolean<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let boolean: Boolean<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let candidate = boolean.to_bits_le();
             assert_eq!(vec![*boolean], candidate);
-            assert_eq!(Boolean::<CurrentNetwork>::size_in_bits(), candidate.len());
+            assert_eq!(Boolean::<CurrentEnvironment>::size_in_bits(), candidate.len());
         }
     }
 
@@ -53,11 +53,11 @@ mod tests {
     fn test_to_bits_be() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let boolean: Boolean<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let boolean: Boolean<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let candidate = boolean.to_bits_be();
             assert_eq!(vec![*boolean], candidate);
-            assert_eq!(Boolean::<CurrentNetwork>::size_in_bits(), candidate.len());
+            assert_eq!(Boolean::<CurrentEnvironment>::size_in_bits(), candidate.len());
         }
     }
 }

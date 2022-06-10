@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<N: Network> Group<N> {
+impl<E: Environment> Group<E> {
     /// Returns the group size in bits.
     #[inline]
     pub const fn size_in_bits() -> usize {
         // As we serialize into the affine **x-coordinate**, we only require `Field::size_in_bits()`.
-        Field::<N>::size_in_bits()
+        Field::<E>::size_in_bits()
     }
 }

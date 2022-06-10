@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Not for Boolean<N> {
-    type Output = Boolean<N>;
+impl<E: Environment> Not for Boolean<E> {
+    type Output = Boolean<E>;
 
     /// Returns the `negation` of `self`.
     #[inline]
@@ -26,8 +26,8 @@ impl<N: Network> Not for Boolean<N> {
     }
 }
 
-impl<N: Network> BitAnd for Boolean<N> {
-    type Output = Boolean<N>;
+impl<E: Environment> BitAnd for Boolean<E> {
+    type Output = Boolean<E>;
 
     /// Returns the bitwise `AND`` of `self` and `other`.
     #[inline]
@@ -36,7 +36,7 @@ impl<N: Network> BitAnd for Boolean<N> {
     }
 }
 
-impl<N: Network> BitAndAssign for Boolean<N> {
+impl<E: Environment> BitAndAssign for Boolean<E> {
     /// Sets `self` as the bitwise `AND` of `self` and `other`.
     #[inline]
     fn bitand_assign(&mut self, other: Self) {
@@ -44,8 +44,8 @@ impl<N: Network> BitAndAssign for Boolean<N> {
     }
 }
 
-impl<N: Network> BitOr for Boolean<N> {
-    type Output = Boolean<N>;
+impl<E: Environment> BitOr for Boolean<E> {
+    type Output = Boolean<E>;
 
     /// Returns the bitwise `OR` of `self` and `other`.
     #[inline]
@@ -54,7 +54,7 @@ impl<N: Network> BitOr for Boolean<N> {
     }
 }
 
-impl<N: Network> BitOrAssign for Boolean<N> {
+impl<E: Environment> BitOrAssign for Boolean<E> {
     /// Sets `self` as the bitwise `OR` of `self` and `other`.
     #[inline]
     fn bitor_assign(&mut self, other: Self) {
@@ -62,8 +62,8 @@ impl<N: Network> BitOrAssign for Boolean<N> {
     }
 }
 
-impl<N: Network> BitXor for Boolean<N> {
-    type Output = Boolean<N>;
+impl<E: Environment> BitXor for Boolean<E> {
+    type Output = Boolean<E>;
 
     /// Returns the bitwise `XOR` of `self` and `other`.
     #[inline]
@@ -72,7 +72,7 @@ impl<N: Network> BitXor for Boolean<N> {
     }
 }
 
-impl<N: Network> BitXorAssign for Boolean<N> {
+impl<E: Environment> BitXorAssign for Boolean<E> {
     /// Sets `self` as the bitwise `XOR` of `self` and `other`.
     #[inline]
     fn bitxor_assign(&mut self, other: Self) {
@@ -80,8 +80,8 @@ impl<N: Network> BitXorAssign for Boolean<N> {
     }
 }
 
-impl<N: Network> Nand for Boolean<N> {
-    type Output = Boolean<N>;
+impl<E: Environment> Nand for Boolean<E> {
+    type Output = Boolean<E>;
 
     /// Returns the bitwise `NAND` of `self` and `other`.
     #[inline]
@@ -90,8 +90,8 @@ impl<N: Network> Nand for Boolean<N> {
     }
 }
 
-impl<N: Network> Nor for Boolean<N> {
-    type Output = Boolean<N>;
+impl<E: Environment> Nor for Boolean<E> {
+    type Output = Boolean<E>;
 
     /// Returns the bitwise `NOR` of `self` and `other`.
     #[inline]

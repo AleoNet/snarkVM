@@ -24,7 +24,9 @@ use snarkvm_curves::{
 use snarkvm_fields::{PrimeField, SquareRootField};
 use snarkvm_utilities::BigInteger;
 
-pub trait Environment: 'static + Copy + Clone {
+use core::hash::Hash;
+
+pub trait Environment: 'static + Copy + Clone + PartialEq + Eq + Hash {
     type Affine: AffineCurve<
         Projective = Self::Projective,
         BaseField = Self::Field,
@@ -39,7 +41,7 @@ pub trait Environment: 'static + Copy + Clone {
     type BigInteger: BigInteger;
 
     /// The maximum number of bytes allowed in a string.
-    const NUM_STRING_BYTES: u32;
+    const MAX_STRING_BYTES: u32 = u8::MAX as u32;
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
@@ -47,7 +49,7 @@ pub trait Environment: 'static + Copy + Clone {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Console;
 
 impl Environment for Console {
@@ -57,7 +59,4 @@ impl Environment for Console {
     type Field = <Self::Affine as AffineCurve>::BaseField;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
-
-    /// The maximum number of bytes allowed in a string.
-    const NUM_STRING_BYTES: u32 = 32;
 }

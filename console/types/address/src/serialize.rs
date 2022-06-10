@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Address<N> {
+impl<E: Environment> Serialize for Address<E> {
     /// Serializes an account address into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
@@ -26,7 +26,7 @@ impl<N: Network> Serialize for Address<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Address<N> {
+impl<'de, E: Environment> Deserialize<'de> for Address<E> {
     /// Deserializes an account address from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
@@ -34,7 +34,7 @@ impl<'de, N: Network> Deserialize<'de> for Address<N> {
             false => FromBytesDeserializer::<Self>::deserialize(
                 deserializer,
                 "address",
-                (Field::<N>::size_in_bits() + 7) / 8,
+                (Field::<E>::size_in_bits() + 7) / 8,
             ),
         }
     }
@@ -43,9 +43,9 @@ impl<'de, N: Network> Deserialize<'de> for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 1000;
 
@@ -53,7 +53,7 @@ mod tests {
     fn test_serde_json() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
             let expected = Address::try_from(private_key)?;
 
             // Serialize
@@ -72,7 +72,7 @@ mod tests {
     fn test_bincode() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
             let expected = Address::try_from(private_key)?;
 
             // Serialize

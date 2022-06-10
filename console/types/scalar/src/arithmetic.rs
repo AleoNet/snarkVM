@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Neg for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Neg for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `negation` of `self`.
     #[inline]
@@ -26,90 +26,90 @@ impl<N: Network> Neg for Scalar<N> {
     }
 }
 
-impl<N: Network> Add<Scalar<N>> for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Add<Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `sum` of `self` and `other`.
     #[inline]
-    fn add(self, other: Scalar<N>) -> Self::Output {
+    fn add(self, other: Scalar<E>) -> Self::Output {
         Scalar::new(self.scalar + other.scalar)
     }
 }
 
-impl<N: Network> AddAssign<Scalar<N>> for Scalar<N> {
+impl<E: Environment> AddAssign<Scalar<E>> for Scalar<E> {
     /// Adds `other` to `self`.
     #[inline]
-    fn add_assign(&mut self, other: Scalar<N>) {
+    fn add_assign(&mut self, other: Scalar<E>) {
         self.scalar += other.scalar;
     }
 }
 
-impl<N: Network> Sub<Scalar<N>> for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Sub<Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `difference` of `self` and `other`.
     #[inline]
-    fn sub(self, other: Scalar<N>) -> Self::Output {
+    fn sub(self, other: Scalar<E>) -> Self::Output {
         Scalar::new(self.scalar - other.scalar)
     }
 }
 
-impl<N: Network> SubAssign<Scalar<N>> for Scalar<N> {
+impl<E: Environment> SubAssign<Scalar<E>> for Scalar<E> {
     /// Subtracts `other` from `self`.
     #[inline]
-    fn sub_assign(&mut self, other: Scalar<N>) {
+    fn sub_assign(&mut self, other: Scalar<E>) {
         self.scalar -= other.scalar;
     }
 }
 
-impl<N: Network> Mul<Scalar<N>> for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Mul<Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `product` of `self` and `other`.
     #[inline]
-    fn mul(self, other: Scalar<N>) -> Self::Output {
+    fn mul(self, other: Scalar<E>) -> Self::Output {
         Scalar::new(self.scalar * other.scalar)
     }
 }
 
-impl<N: Network> MulAssign<Scalar<N>> for Scalar<N> {
+impl<E: Environment> MulAssign<Scalar<E>> for Scalar<E> {
     /// Multiplies `self` by `other`.
     #[inline]
-    fn mul_assign(&mut self, other: Scalar<N>) {
+    fn mul_assign(&mut self, other: Scalar<E>) {
         self.scalar *= other.scalar;
     }
 }
 
-impl<N: Network> Div<Scalar<N>> for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Div<Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
-    fn div(self, other: Scalar<N>) -> Self::Output {
+    fn div(self, other: Scalar<E>) -> Self::Output {
         Scalar::new(self.scalar / other.scalar)
     }
 }
 
-impl<N: Network> DivAssign<Scalar<N>> for Scalar<N> {
+impl<E: Environment> DivAssign<Scalar<E>> for Scalar<E> {
     /// Divides `self` by `other`.
     #[inline]
-    fn div_assign(&mut self, other: Scalar<N>) {
+    fn div_assign(&mut self, other: Scalar<E>) {
         self.scalar /= other.scalar;
     }
 }
 
-impl<N: Network> Pow<Scalar<N>> for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Pow<Scalar<E>> for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
-    fn pow(self, other: Scalar<N>) -> Self::Output {
+    fn pow(self, other: Scalar<E>) -> Self::Output {
         Scalar::new(self.scalar.pow(other.scalar.to_repr()))
     }
 }
 
-impl<N: Network> Double for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Double for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `double` of `self`.
     #[inline]
@@ -118,8 +118,8 @@ impl<N: Network> Double for Scalar<N> {
     }
 }
 
-impl<N: Network> Inverse for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Inverse for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `inverse` of `self`.
     #[inline]
@@ -131,8 +131,8 @@ impl<N: Network> Inverse for Scalar<N> {
     }
 }
 
-impl<N: Network> Square for Scalar<N> {
-    type Output = Scalar<N>;
+impl<E: Environment> Square for Scalar<E> {
+    type Output = Scalar<E>;
 
     /// Returns the `square` of `self`.
     #[inline]

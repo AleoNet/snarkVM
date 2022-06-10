@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> Zero for Scalar<N> {
+impl<E: Environment> Zero for Scalar<E> {
     /// Returns the `0` element of the scalar.
     fn zero() -> Self {
-        Self::new(N::Scalar::zero())
+        Self::new(E::Scalar::zero())
     }
 
     /// Returns `true` if the element is zero.
@@ -31,15 +31,15 @@ impl<N: Network> Zero for Scalar<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_zero() {
-        let zero = Scalar::<CurrentNetwork>::zero();
+        let zero = Scalar::<CurrentEnvironment>::zero();
 
         for bit in zero.to_bits_le().iter() {
             assert!(!bit)
@@ -48,11 +48,11 @@ mod tests {
 
     #[test]
     fn test_is_zero() {
-        assert!(Scalar::<CurrentNetwork>::zero().is_zero());
+        assert!(Scalar::<CurrentEnvironment>::zero().is_zero());
 
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let scalar: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!scalar.is_zero());
         }
     }

@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> Zero for Field<N> {
+impl<E: Environment> Zero for Field<E> {
     /// Returns the `0` element of the field.
     fn zero() -> Self {
-        Self::new(N::Field::zero())
+        Self::new(E::Field::zero())
     }
 
     /// Returns `true` if the element is zero.
@@ -31,15 +31,15 @@ impl<N: Network> Zero for Field<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_zero() {
-        let zero = Field::<CurrentNetwork>::zero();
+        let zero = Field::<CurrentEnvironment>::zero();
 
         for bit in zero.to_bits_le().iter() {
             assert!(!bit)
@@ -48,11 +48,11 @@ mod tests {
 
     #[test]
     fn test_is_zero() {
-        assert!(Field::<CurrentNetwork>::zero().is_zero());
+        assert!(Field::<CurrentEnvironment>::zero().is_zero());
 
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let field: Field<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let field: Field<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!field.is_zero());
         }
     }

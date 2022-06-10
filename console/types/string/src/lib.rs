@@ -16,35 +16,35 @@
 
 mod parse;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_integers::Integer;
 
 use core::marker::PhantomData;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct StringType<N: Network> {
+pub struct StringType<E: Environment> {
     /// The underlying string.
     string: String,
     /// PhantomData
-    _phantom: PhantomData<N>,
+    _phantom: PhantomData<E>,
 }
 
-impl<N: Network> StringTrait for StringType<N> {}
+impl<E: Environment> StringTrait for StringType<E> {}
 
-impl<N: Network> StringType<N> {
+impl<E: Environment> StringType<E> {
     /// Initializes a new string.
     pub fn new(string: &str) -> Self {
         // Ensure the string is within the allowed capacity.
         let num_bytes = string.len();
-        match num_bytes <= N::MAX_STRING_BYTES as usize {
+        match num_bytes <= E::MAX_STRING_BYTES as usize {
             true => Self { string: string.to_string(), _phantom: PhantomData },
-            false => N::halt(format!("Attempted to allocate a string of size {num_bytes}")),
+            false => E::halt(format!("Attempted to allocate a string of size {num_bytes}")),
         }
     }
 }
 
-impl<N: Network> TypeName for StringType<N> {
+impl<E: Environment> TypeName for StringType<E> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -52,7 +52,7 @@ impl<N: Network> TypeName for StringType<N> {
     }
 }
 
-impl<N: Network> Deref for StringType<N> {
+impl<E: Environment> Deref for StringType<E> {
     type Target = str;
 
     #[inline]

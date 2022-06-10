@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for StringType<N> {
+impl<E: Environment> Parser for StringType<E> {
     /// Parses a string into a string type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -27,7 +27,7 @@ impl<N: Network> Parser for StringType<N> {
     }
 }
 
-impl<N: Network> FromStr for StringType<N> {
+impl<E: Environment> FromStr for StringType<E> {
     type Err = Error;
 
     /// Parses a string into a string type.
@@ -45,13 +45,13 @@ impl<N: Network> FromStr for StringType<N> {
     }
 }
 
-impl<N: Network> Debug for StringType<N> {
+impl<E: Environment> Debug for StringType<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for StringType<N> {
+impl<E: Environment> Display for StringType<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "\"{}\"", self.string)
     }
@@ -60,33 +60,34 @@ impl<N: Network> Display for StringType<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u32 = 100;
 
     #[test]
     fn test_display() -> Result<()> {
         // Ensure type and empty value fails.
-        assert!(StringType::<CurrentNetwork>::parse(&StringType::<CurrentNetwork>::type_name()).is_err());
-        assert!(StringType::<CurrentNetwork>::parse("").is_err());
+        assert!(StringType::<CurrentEnvironment>::parse(&StringType::<CurrentEnvironment>::type_name()).is_err());
+        assert!(StringType::<CurrentEnvironment>::parse("").is_err());
 
         // Ensure empty string succeeds.
-        assert!(StringType::<CurrentNetwork>::parse("\"\"").is_ok());
+        assert!(StringType::<CurrentEnvironment>::parse("\"\"").is_ok());
 
         let rng = &mut test_rng();
 
         for i in 0..ITERATIONS {
             // Sample a random string. Take 1/4th to ensure we fit for all code points.
-            let expected: String = (0..(CurrentNetwork::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
+            let expected: String =
+                (0..(CurrentEnvironment::MAX_STRING_BYTES - i) / 4).map(|_| rng.gen::<char>()).collect();
             let expected_num_bytes = expected.len();
-            assert!(expected_num_bytes <= CurrentNetwork::MAX_STRING_BYTES as usize);
+            assert!(expected_num_bytes <= CurrentEnvironment::MAX_STRING_BYTES as usize);
 
-            let candidate = StringType::<CurrentNetwork>::new(&expected);
+            let candidate = StringType::<CurrentEnvironment>::new(&expected);
             assert_eq!(format!("\"{expected}\""), format!("{candidate}"));
 
-            let candidate_recovered = StringType::<CurrentNetwork>::from_str(&format!("{candidate}")).unwrap();
+            let candidate_recovered = StringType::<CurrentEnvironment>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
         Ok(())

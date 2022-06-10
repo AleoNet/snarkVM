@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Field<N> {
+impl<E: Environment> Parser for Field<E> {
     /// Parses a string into a field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -25,7 +25,7 @@ impl<N: Network> Parser for Field<N> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value): (&str, N::Field) =
+        let (string, value): (&str, E::Field) =
             map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Negate the value if the negative sign was present.
         let value = match negation {
@@ -37,7 +37,7 @@ impl<N: Network> Parser for Field<N> {
     }
 }
 
-impl<N: Network> FromStr for Field<N> {
+impl<E: Environment> FromStr for Field<E> {
     type Err = Error;
 
     /// Parses a string into a field.
@@ -55,13 +55,13 @@ impl<N: Network> FromStr for Field<N> {
     }
 }
 
-impl<N: Network> Debug for Field<N> {
+impl<E: Environment> Debug for Field<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Field<N> {
+impl<E: Environment> Display for Field<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}{}", self.field, Self::type_name())
     }
@@ -70,9 +70,9 @@ impl<N: Network> Display for Field<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 10_000;
 
@@ -81,15 +81,15 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Field::<CurrentNetwork>::parse(&Field::<CurrentNetwork>::type_name()).is_err());
-        assert!(Field::<CurrentNetwork>::parse("").is_err());
+        assert!(Field::<CurrentEnvironment>::parse(&Field::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Field::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let field: <CurrentNetwork as Network>::Field = Uniform::rand(rng);
+            let field: <CurrentEnvironment as Environment>::Field = Uniform::rand(rng);
 
-            let expected = format!("{}{}", field, Field::<CurrentNetwork>::type_name());
-            let (remainder, candidate) = Field::<CurrentNetwork>::parse(&expected).unwrap();
+            let expected = format!("{}{}", field, Field::<CurrentEnvironment>::type_name());
+            let (remainder, candidate) = Field::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
@@ -100,43 +100,43 @@ mod tests {
     fn test_display() {
         /// Attempts to construct a field from the given element,
         /// format it in display mode, and recover a field from it.
-        fn check_display<N: Network>(element: N::Field) {
-            let candidate = Field::<N>::new(element);
-            assert_eq!(format!("{element}{}", Field::<N>::type_name()), format!("{candidate}"));
+        fn check_display<E: Environment>(element: E::Field) {
+            let candidate = Field::<E>::new(element);
+            assert_eq!(format!("{element}{}", Field::<E>::type_name()), format!("{candidate}"));
 
-            let candidate_recovered = Field::<N>::from_str(&format!("{candidate}")).unwrap();
+            let candidate_recovered = Field::<E>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
 
         for _ in 0..ITERATIONS {
             let element = Uniform::rand(&mut test_rng());
 
-            check_display::<CurrentNetwork>(element);
+            check_display::<CurrentEnvironment>(element);
         }
     }
 
     #[test]
     fn test_display_zero() {
-        let zero = <CurrentNetwork as Network>::Field::zero();
+        let zero = <CurrentEnvironment as Environment>::Field::zero();
 
-        let candidate = Field::<CurrentNetwork>::new(zero);
+        let candidate = Field::<CurrentEnvironment>::new(zero);
         assert_eq!("0field", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_one() {
-        let one = <CurrentNetwork as Network>::Field::one();
+        let one = <CurrentEnvironment as Environment>::Field::one();
 
-        let candidate = Field::<CurrentNetwork>::new(one);
+        let candidate = Field::<CurrentEnvironment>::new(one);
         assert_eq!("1field", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_two() {
-        let one = <CurrentNetwork as Network>::Field::one();
+        let one = <CurrentEnvironment as Environment>::Field::one();
         let two = one + one;
 
-        let candidate = Field::<CurrentNetwork>::new(two);
+        let candidate = Field::<CurrentEnvironment>::new(two);
         assert_eq!("2field", &format!("{}", candidate));
     }
 }

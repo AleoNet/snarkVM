@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, I: IntegerType> Ord for Integer<N, I> {
+impl<E: Environment, I: IntegerType> Ord for Integer<E, I> {
     /// Returns the lexicographic ordering of `self` and `other`.
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -24,7 +24,7 @@ impl<N: Network, I: IntegerType> Ord for Integer<N, I> {
     }
 }
 
-impl<N: Network, I: IntegerType> PartialOrd for Integer<N, I> {
+impl<E: Environment, I: IntegerType> PartialOrd for Integer<E, I> {
     /// Returns the lexicographic ordering of `self` and `other`.
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

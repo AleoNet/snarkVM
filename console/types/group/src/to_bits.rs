@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> ToBits for Group<N> {
+impl<E: Environment> ToBits for Group<E> {
     /// Outputs the little-endian bit representation of `self.to_x_coordinate()` *without* trailing zeros.
     fn to_bits_le(&self) -> Vec<bool> {
         self.to_x_coordinate().to_bits_le()
@@ -31,9 +31,9 @@ impl<N: Network> ToBits for Group<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 10_000;
 
@@ -41,10 +41,10 @@ mod tests {
     fn test_to_bits_le() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let candidate = group.to_bits_le();
-            assert_eq!(Group::<CurrentNetwork>::size_in_bits(), candidate.len());
+            assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), candidate.len());
 
             for (expected, candidate) in (*group).to_affine().to_x_coordinate().to_bits_le().iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);
@@ -56,10 +56,10 @@ mod tests {
     fn test_to_bits_be() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
 
             let candidate = group.to_bits_be();
-            assert_eq!(Group::<CurrentNetwork>::size_in_bits(), candidate.len());
+            assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), candidate.len());
 
             for (expected, candidate) in (*group).to_affine().to_x_coordinate().to_bits_be().iter().zip_eq(&candidate) {
                 assert_eq!(expected, candidate);

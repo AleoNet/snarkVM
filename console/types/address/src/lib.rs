@@ -21,26 +21,26 @@ mod serialize;
 mod size_in_bits;
 mod to_bits;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_group::Group;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Address<N: Network> {
+pub struct Address<E: Environment> {
     /// The underlying address.
-    address: Group<N>,
+    address: Group<E>,
 }
 
-impl<N: Network> AddressTrait for Address<N> {}
+impl<E: Environment> AddressTrait for Address<E> {}
 
-impl<N: Network> Address<N> {
+impl<E: Environment> Address<E> {
     /// Initializes an address from a group element.
-    pub const fn new(group: Group<N>) -> Self {
+    pub const fn new(group: Group<E>) -> Self {
         Self { address: group }
     }
 }
 
-impl<N: Network> TypeName for Address<N> {
+impl<E: Environment> TypeName for Address<E> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -48,8 +48,8 @@ impl<N: Network> TypeName for Address<N> {
     }
 }
 
-impl<N: Network> Deref for Address<N> {
-    type Target = Group<N>;
+impl<E: Environment> Deref for Address<E> {
+    type Target = Group<E>;
 
     /// Returns the address as a group element.
     #[inline]
@@ -61,9 +61,9 @@ impl<N: Network> Deref for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 1000;
 
@@ -71,7 +71,7 @@ mod tests {
     fn test_deref() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
             let expected = Address::try_from(private_key)?;
 
             // Check the group representation.

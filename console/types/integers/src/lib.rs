@@ -22,37 +22,37 @@ mod parse;
 mod random;
 mod zero;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 
-use snarkvm_console_network::traits::integers::*;
+use snarkvm_console_network_environment::traits::integers::*;
 
 use core::marker::PhantomData;
 
-pub type I8<N> = Integer<N, i8>;
-pub type I16<N> = Integer<N, i16>;
-pub type I32<N> = Integer<N, i32>;
-pub type I64<N> = Integer<N, i64>;
-pub type I128<N> = Integer<N, i128>;
+pub type I8<E> = Integer<E, i8>;
+pub type I16<E> = Integer<E, i16>;
+pub type I32<E> = Integer<E, i32>;
+pub type I64<E> = Integer<E, i64>;
+pub type I128<E> = Integer<E, i128>;
 
-pub type U8<N> = Integer<N, u8>;
-pub type U16<N> = Integer<N, u16>;
-pub type U32<N> = Integer<N, u32>;
-pub type U64<N> = Integer<N, u64>;
-pub type U128<N> = Integer<N, u128>;
+pub type U8<E> = Integer<E, u8>;
+pub type U16<E> = Integer<E, u16>;
+pub type U32<E> = Integer<E, u32>;
+pub type U64<E> = Integer<E, u64>;
+pub type U128<E> = Integer<E, u128>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Integer<N: Network, I: IntegerType> {
+pub struct Integer<E: Environment, I: IntegerType> {
     /// The underlying integer value.
     integer: I,
     /// PhantomData.
-    _phantom: PhantomData<N>,
+    _phantom: PhantomData<E>,
 }
 
-impl<N: Network, I: IntegerType> IntegerTrait<I, U8<N>, U16<N>, U32<N>> for Integer<N, I> {}
+impl<E: Environment, I: IntegerType> IntegerTrait<I, U8<E>, U16<E>, U32<E>> for Integer<E, I> {}
 
-impl<N: Network, I: IntegerType> IntegerCore<I> for Integer<N, I> {}
+impl<E: Environment, I: IntegerType> IntegerCore<I> for Integer<E, I> {}
 
-impl<N: Network, I: IntegerType> Integer<N, I> {
+impl<E: Environment, I: IntegerType> Integer<E, I> {
     pub const MAX: Self = Self::new(I::MAX);
     pub const MIN: Self = Self::new(I::MIN);
 
@@ -62,7 +62,7 @@ impl<N: Network, I: IntegerType> Integer<N, I> {
     }
 }
 
-impl<N: Network, I: IntegerType> TypeName for Integer<N, I> {
+impl<E: Environment, I: IntegerType> TypeName for Integer<E, I> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -70,7 +70,7 @@ impl<N: Network, I: IntegerType> TypeName for Integer<N, I> {
     }
 }
 
-impl<N: Network, I: IntegerType> Deref for Integer<N, I> {
+impl<E: Environment, I: IntegerType> Deref for Integer<E, I> {
     type Target = I;
 
     #[inline]

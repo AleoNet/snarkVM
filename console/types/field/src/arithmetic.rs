@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Neg for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Neg for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `negation` of `self`.
     #[inline]
@@ -26,90 +26,90 @@ impl<N: Network> Neg for Field<N> {
     }
 }
 
-impl<N: Network> Add<Field<N>> for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Add<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `sum` of `self` and `other`.
     #[inline]
-    fn add(self, other: Field<N>) -> Self::Output {
+    fn add(self, other: Field<E>) -> Self::Output {
         Field::new(self.field + other.field)
     }
 }
 
-impl<N: Network> AddAssign<Field<N>> for Field<N> {
+impl<E: Environment> AddAssign<Field<E>> for Field<E> {
     /// Adds `other` to `self`.
     #[inline]
-    fn add_assign(&mut self, other: Field<N>) {
+    fn add_assign(&mut self, other: Field<E>) {
         self.field += other.field;
     }
 }
 
-impl<N: Network> Sub<Field<N>> for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Sub<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `difference` of `self` and `other`.
     #[inline]
-    fn sub(self, other: Field<N>) -> Self::Output {
+    fn sub(self, other: Field<E>) -> Self::Output {
         Field::new(self.field - other.field)
     }
 }
 
-impl<N: Network> SubAssign<Field<N>> for Field<N> {
+impl<E: Environment> SubAssign<Field<E>> for Field<E> {
     /// Subtracts `other` from `self`.
     #[inline]
-    fn sub_assign(&mut self, other: Field<N>) {
+    fn sub_assign(&mut self, other: Field<E>) {
         self.field -= other.field;
     }
 }
 
-impl<N: Network> Mul<Field<N>> for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Mul<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `product` of `self` and `other`.
     #[inline]
-    fn mul(self, other: Field<N>) -> Self::Output {
+    fn mul(self, other: Field<E>) -> Self::Output {
         Field::new(self.field * other.field)
     }
 }
 
-impl<N: Network> MulAssign<Field<N>> for Field<N> {
+impl<E: Environment> MulAssign<Field<E>> for Field<E> {
     /// Multiplies `self` by `other`.
     #[inline]
-    fn mul_assign(&mut self, other: Field<N>) {
+    fn mul_assign(&mut self, other: Field<E>) {
         self.field *= other.field;
     }
 }
 
-impl<N: Network> Div<Field<N>> for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Div<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
-    fn div(self, other: Field<N>) -> Self::Output {
+    fn div(self, other: Field<E>) -> Self::Output {
         Field::new(self.field / other.field)
     }
 }
 
-impl<N: Network> DivAssign<Field<N>> for Field<N> {
+impl<E: Environment> DivAssign<Field<E>> for Field<E> {
     /// Divides `self` by `other`.
     #[inline]
-    fn div_assign(&mut self, other: Field<N>) {
+    fn div_assign(&mut self, other: Field<E>) {
         self.field /= other.field;
     }
 }
 
-impl<N: Network> Pow<Field<N>> for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Pow<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `power` of `self` to the power of `other`.
     #[inline]
-    fn pow(self, other: Field<N>) -> Self::Output {
+    fn pow(self, other: Field<E>) -> Self::Output {
         Field::new(self.field.pow(other.field.to_repr()))
     }
 }
 
-impl<N: Network> Double for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Double for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `double` of `self`.
     #[inline]
@@ -118,8 +118,8 @@ impl<N: Network> Double for Field<N> {
     }
 }
 
-impl<N: Network> Inverse for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Inverse for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `inverse` of `self`.
     #[inline]
@@ -131,8 +131,8 @@ impl<N: Network> Inverse for Field<N> {
     }
 }
 
-impl<N: Network> Square for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> Square for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `square` of `self`.
     #[inline]
@@ -141,8 +141,8 @@ impl<N: Network> Square for Field<N> {
     }
 }
 
-impl<N: Network> SquareRoot for Field<N> {
-    type Output = Field<N>;
+impl<E: Environment> SquareRoot for Field<E> {
+    type Output = Field<E>;
 
     /// Returns the `square_root` of `self`.
     #[inline]

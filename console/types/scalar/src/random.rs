@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<N: Network> Distribution<Scalar<N>> for Standard {
+impl<E: Environment> Distribution<Scalar<E>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Scalar<N> {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Scalar<E> {
         Scalar::new(Uniform::rand(rng))
     }
 }
@@ -26,11 +26,11 @@ impl<N: Network> Distribution<Scalar<N>> for Standard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
     use std::collections::HashSet;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
@@ -42,7 +42,7 @@ mod tests {
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let scalar: Scalar<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let scalar: Scalar<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!set.contains(&scalar));
 
             // Add the new random value to the set.

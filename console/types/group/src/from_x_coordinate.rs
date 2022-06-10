@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<N: Network> Group<N> {
+impl<E: Environment> Group<E> {
     /// Attempts to recover an affine group element from a given x-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve and in the correct subgroup.
-    pub fn from_x_coordinate(x_coordinate: Field<N>) -> Result<Self> {
-        if let Some(point) = N::Affine::from_x_coordinate(*x_coordinate, true) {
+    pub fn from_x_coordinate(x_coordinate: Field<E>) -> Result<Self> {
+        if let Some(point) = E::Affine::from_x_coordinate(*x_coordinate, true) {
             if point.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(Self::new(point));
             }
         }
-        if let Some(point) = N::Affine::from_x_coordinate(*x_coordinate, false) {
+        if let Some(point) = E::Affine::from_x_coordinate(*x_coordinate, false) {
             if point.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(Self::new(point));
             }

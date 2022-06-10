@@ -21,28 +21,28 @@ mod random;
 mod size_in_bits;
 mod to_bits;
 
-pub use snarkvm_console_network::prelude::*;
+pub use snarkvm_console_network_environment::prelude::*;
 
 use core::marker::PhantomData;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Boolean<N: Network> {
+pub struct Boolean<E: Environment> {
     /// The underlying boolean.
     boolean: bool,
     /// PhantomData.
-    _phantom: PhantomData<N>,
+    _phantom: PhantomData<E>,
 }
 
-impl<N: Network> BooleanTrait for Boolean<N> {}
+impl<E: Environment> BooleanTrait for Boolean<E> {}
 
-impl<N: Network> Boolean<N> {
+impl<E: Environment> Boolean<E> {
     /// Initializes a new boolean.
     pub const fn new(boolean: bool) -> Self {
         Self { boolean, _phantom: PhantomData }
     }
 }
 
-impl<N: Network> TypeName for Boolean<N> {
+impl<E: Environment> TypeName for Boolean<E> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -50,7 +50,7 @@ impl<N: Network> TypeName for Boolean<N> {
     }
 }
 
-impl<N: Network> Deref for Boolean<N> {
+impl<E: Environment> Deref for Boolean<E> {
     type Target = bool;
 
     #[inline]

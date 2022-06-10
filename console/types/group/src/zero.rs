@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> Zero for Group<N> {
+impl<E: Environment> Zero for Group<E> {
     /// Returns the `0` element of the group.
     fn zero() -> Self {
-        Self::from_projective(N::Projective::zero())
+        Self::from_projective(E::Projective::zero())
     }
 
     /// Returns `true` if the element is zero.
@@ -31,15 +31,15 @@ impl<N: Network> Zero for Group<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     #[test]
     fn test_zero() {
-        let zero = Group::<CurrentNetwork>::zero();
+        let zero = Group::<CurrentEnvironment>::zero();
 
         for bit in zero.to_bits_le().iter() {
             assert!(!bit)
@@ -48,11 +48,11 @@ mod tests {
 
     #[test]
     fn test_is_zero() {
-        assert!(Group::<CurrentNetwork>::zero().is_zero());
+        assert!(Group::<CurrentEnvironment>::zero().is_zero());
 
         // Note: This test technically has a `1 / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             assert!(!group.is_zero());
         }
     }

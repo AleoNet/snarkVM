@@ -18,7 +18,7 @@ use super::*;
 
 static ADDRESS_PREFIX: &str = "aleo";
 
-impl<N: Network> Parser for Address<N> {
+impl<E: Environment> Parser for Address<E> {
     /// Parses a string into an address.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -35,7 +35,7 @@ impl<N: Network> Parser for Address<N> {
     }
 }
 
-impl<N: Network> FromStr for Address<N> {
+impl<E: Environment> FromStr for Address<E> {
     type Err = Error;
 
     /// Reads in an account address string.
@@ -58,13 +58,13 @@ impl<N: Network> FromStr for Address<N> {
     }
 }
 
-impl<N: Network> Debug for Address<N> {
+impl<E: Environment> Debug for Address<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Address<N> {
+impl<E: Environment> Display for Address<E> {
     /// Writes an account address as a bech32m string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Convert the address to bytes.
@@ -80,25 +80,25 @@ impl<N: Network> Display for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 1_000;
 
     #[test]
     fn test_parse() -> Result<()> {
         // Ensure type and empty value fails.
-        assert!(Address::<CurrentNetwork>::parse(&Address::<CurrentNetwork>::type_name()).is_err());
-        assert!(Address::<CurrentNetwork>::parse("").is_err());
+        assert!(Address::<CurrentEnvironment>::parse(&Address::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Address::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
             let address = Address::try_from(private_key)?;
 
             let expected = format!("{address}");
-            let (remainder, candidate) = Address::<CurrentNetwork>::parse(&expected).unwrap();
+            let (remainder, candidate) = Address::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
             assert_eq!("", remainder);
@@ -110,7 +110,7 @@ mod tests {
     fn test_string() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
             let expected = Address::try_from(private_key)?;
 
             // Check the string representation.
@@ -125,14 +125,14 @@ mod tests {
     fn test_display() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
-            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentEnvironment>::new(&mut test_crypto_rng())?;
             let address = Address::try_from(private_key)?;
 
             let candidate = address.to_string();
             assert_eq!(format!("{address}"), candidate);
             assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
 
-            let candidate_recovered = Address::<CurrentNetwork>::from_str(&format!("{candidate}"))?;
+            let candidate_recovered = Address::<CurrentEnvironment>::from_str(&format!("{candidate}"))?;
             assert_eq!(candidate, candidate_recovered);
         }
         Ok(())

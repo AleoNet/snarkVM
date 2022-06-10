@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<N: Network> Group<N> {
+impl<E: Environment> Group<E> {
     /// Returns the *y-coordinate* in the affine coordinates of the group.
-    pub fn to_y_coordinate(&self) -> Field<N> {
+    pub fn to_y_coordinate(&self) -> Field<E> {
         Field::new(self.group.to_affine().to_y_coordinate())
     }
 }

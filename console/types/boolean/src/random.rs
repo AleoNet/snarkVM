@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<N: Network> Distribution<Boolean<N>> for Standard {
+impl<E: Environment> Distribution<Boolean<E>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Boolean<N> {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Boolean<E> {
         Boolean::new(Uniform::rand(rng))
     }
 }

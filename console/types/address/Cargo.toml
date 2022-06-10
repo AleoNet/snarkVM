@@ -6,8 +6,8 @@ description = "Type operations for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-console-network]
-path = "../../network"
+[dependencies.snarkvm-console-network-environment]
+path = "../../network/environment"
 version = "0.7.5"
 
 [dependencies.snarkvm-console-types-field]

@@ -2389,7 +2389,7 @@ name = "snarkvm-console-types-address"
 version = "0.7.5"
 dependencies = [
  "snarkvm-console-account",
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
  "snarkvm-console-types-field",
  "snarkvm-console-types-group",
 ]
@@ -2398,21 +2398,21 @@ dependencies = [
 name = "snarkvm-console-types-boolean"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
 ]
 
 [[package]]
 name = "snarkvm-console-types-field"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
 ]
 
 [[package]]
 name = "snarkvm-console-types-group"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
  "snarkvm-console-types-field",
  "snarkvm-console-types-scalar",
 ]
@@ -2421,21 +2421,21 @@ dependencies = [
 name = "snarkvm-console-types-integers"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
 ]
 
 [[package]]
 name = "snarkvm-console-types-scalar"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
 ]
 
 [[package]]
 name = "snarkvm-console-types-string"
 version = "0.7.5"
 dependencies = [
- "snarkvm-console-network",
+ "snarkvm-console-network-environment",
  "snarkvm-console-types-field",
  "snarkvm-console-types-integers",
 ]

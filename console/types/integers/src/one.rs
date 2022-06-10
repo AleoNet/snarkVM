@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, I: IntegerType> One for Integer<N, I> {
+impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     /// Returns the `1` element of the integer.
     fn one() -> Self {
         Self::new(I::one())

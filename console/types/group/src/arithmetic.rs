@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Neg for Group<N> {
-    type Output = Group<N>;
+impl<E: Environment> Neg for Group<E> {
+    type Output = Group<E>;
 
     /// Returns the `negation` of `self`.
     #[inline]
@@ -26,62 +26,62 @@ impl<N: Network> Neg for Group<N> {
     }
 }
 
-impl<N: Network> Add<Group<N>> for Group<N> {
-    type Output = Group<N>;
+impl<E: Environment> Add<Group<E>> for Group<E> {
+    type Output = Group<E>;
 
     /// Returns the `sum` of `self` and `other`.
     #[inline]
-    fn add(self, other: Group<N>) -> Self::Output {
+    fn add(self, other: Group<E>) -> Self::Output {
         Group::from_projective(self.group + other.group)
     }
 }
 
-impl<N: Network> AddAssign<Group<N>> for Group<N> {
+impl<E: Environment> AddAssign<Group<E>> for Group<E> {
     /// Adds `other` to `self`.
     #[inline]
-    fn add_assign(&mut self, other: Group<N>) {
+    fn add_assign(&mut self, other: Group<E>) {
         self.group += other.group;
     }
 }
 
-impl<N: Network> Sub<Group<N>> for Group<N> {
-    type Output = Group<N>;
+impl<E: Environment> Sub<Group<E>> for Group<E> {
+    type Output = Group<E>;
 
     /// Returns the `difference` of `self` and `other`.
     #[inline]
-    fn sub(self, other: Group<N>) -> Self::Output {
+    fn sub(self, other: Group<E>) -> Self::Output {
         Group::from_projective(self.group - other.group)
     }
 }
 
-impl<N: Network> SubAssign<Group<N>> for Group<N> {
+impl<E: Environment> SubAssign<Group<E>> for Group<E> {
     /// Subtracts `other` from `self`.
     #[inline]
-    fn sub_assign(&mut self, other: Group<N>) {
+    fn sub_assign(&mut self, other: Group<E>) {
         self.group -= other.group;
     }
 }
 
-impl<N: Network> Mul<Scalar<N>> for Group<N> {
-    type Output = Group<N>;
+impl<E: Environment> Mul<Scalar<E>> for Group<E> {
+    type Output = Group<E>;
 
     /// Returns the `product` of `self` and `other`.
     #[inline]
-    fn mul(self, other: Scalar<N>) -> Self::Output {
+    fn mul(self, other: Scalar<E>) -> Self::Output {
         Group::from_projective(self.group * *other)
     }
 }
 
-impl<N: Network> MulAssign<Scalar<N>> for Group<N> {
+impl<E: Environment> MulAssign<Scalar<E>> for Group<E> {
     /// Multiplies `self` by `other`.
     #[inline]
-    fn mul_assign(&mut self, other: Scalar<N>) {
+    fn mul_assign(&mut self, other: Scalar<E>) {
         self.group *= *other;
     }
 }
 
-impl<N: Network> Double for Group<N> {
-    type Output = Group<N>;
+impl<E: Environment> Double for Group<E> {
+    type Output = Group<E>;
 
     /// Returns the `double` of `self`.
     #[inline]

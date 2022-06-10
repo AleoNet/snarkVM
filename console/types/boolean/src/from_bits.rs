@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> FromBits for Boolean<N> {
+impl<E: Environment> FromBits for Boolean<E> {
     /// Initializes a new boolean by extracting the first bit from a list of length 1.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         match bits_le.len().is_one() {
@@ -37,25 +37,25 @@ impl<N: Network> FromBits for Boolean<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le() -> Result<()> {
         for i in 1..ITERATIONS {
             // Sample a random element.
-            let expected: Boolean<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let expected: Boolean<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let given_bits = expected.to_bits_le();
-            assert_eq!(Boolean::<CurrentNetwork>::size_in_bits(), given_bits.len());
+            assert_eq!(Boolean::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
-            let candidate = Boolean::<CurrentNetwork>::from_bits_le(&given_bits)?;
+            let candidate = Boolean::<CurrentEnvironment>::from_bits_le(&given_bits)?;
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![false; i as usize]].concat();
-            assert!(Boolean::<CurrentNetwork>::from_bits_le(&candidate).is_err());
+            assert!(Boolean::<CurrentEnvironment>::from_bits_le(&candidate).is_err());
         }
         Ok(())
     }
@@ -63,16 +63,16 @@ mod tests {
     fn check_from_bits_be() -> Result<()> {
         for i in 1..ITERATIONS {
             // Sample a random element.
-            let expected: Boolean<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let expected: Boolean<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let given_bits = expected.to_bits_be();
-            assert_eq!(Boolean::<CurrentNetwork>::size_in_bits(), given_bits.len());
+            assert_eq!(Boolean::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
-            let candidate = Boolean::<CurrentNetwork>::from_bits_be(&given_bits)?;
+            let candidate = Boolean::<CurrentEnvironment>::from_bits_be(&given_bits)?;
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![vec![false; i as usize], given_bits].concat();
-            assert!(Boolean::<CurrentNetwork>::from_bits_be(&candidate).is_err());
+            assert!(Boolean::<CurrentEnvironment>::from_bits_be(&candidate).is_err());
         }
         Ok(())
     }

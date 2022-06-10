@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Boolean<N> {
+impl<E: Environment> Parser for Boolean<E> {
     /// Parses a string into a boolean.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -27,7 +27,7 @@ impl<N: Network> Parser for Boolean<N> {
     }
 }
 
-impl<N: Network> FromStr for Boolean<N> {
+impl<E: Environment> FromStr for Boolean<E> {
     type Err = Error;
 
     /// Parses a string into a boolean.
@@ -45,13 +45,13 @@ impl<N: Network> FromStr for Boolean<N> {
     }
 }
 
-impl<N: Network> Debug for Boolean<N> {
+impl<E: Environment> Debug for Boolean<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Boolean<N> {
+impl<E: Environment> Display for Boolean<E> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.boolean)
     }
@@ -60,19 +60,19 @@ impl<N: Network> Display for Boolean<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     #[test]
     fn test_parse() -> Result<()> {
         // Ensure type and empty value fails.
-        assert!(Boolean::<CurrentNetwork>::parse(&Boolean::<CurrentNetwork>::type_name()).is_err());
-        assert!(Boolean::<CurrentNetwork>::parse("").is_err());
+        assert!(Boolean::<CurrentEnvironment>::parse(&Boolean::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Boolean::<CurrentEnvironment>::parse("").is_err());
 
         for boolean in &[true, false] {
             let expected = format!("{}", boolean);
-            let (remainder, candidate) = Boolean::<CurrentNetwork>::parse(&expected).unwrap();
+            let (remainder, candidate) = Boolean::<CurrentEnvironment>::parse(&expected).unwrap();
             assert_eq!(format!("{expected}"), candidate.to_string());
             assert_eq!("", remainder);
         }
@@ -83,29 +83,29 @@ mod tests {
     fn test_display() {
         /// Attempts to construct a boolean from the given element,
         /// format it in display mode, and recover a boolean from it.
-        fn check_display<N: Network>(element: bool) {
-            let candidate = Boolean::<N>::new(element);
+        fn check_display<E: Environment>(element: bool) {
+            let candidate = Boolean::<E>::new(element);
             assert_eq!(format!("{element}"), format!("{candidate}"));
 
-            let candidate_recovered = Boolean::<N>::from_str(&format!("{candidate}")).unwrap();
+            let candidate_recovered = Boolean::<E>::from_str(&format!("{candidate}")).unwrap();
             assert_eq!(candidate, candidate_recovered);
         }
 
-        check_display::<CurrentNetwork>(false);
-        check_display::<CurrentNetwork>(true);
+        check_display::<CurrentEnvironment>(false);
+        check_display::<CurrentEnvironment>(true);
     }
 
     #[test]
     fn test_display_false() {
         // Constant
-        let candidate = Boolean::<CurrentNetwork>::new(false);
+        let candidate = Boolean::<CurrentEnvironment>::new(false);
         assert_eq!("false", &format!("{}", candidate));
     }
 
     #[test]
     fn test_display_true() {
         // Constant
-        let candidate = Boolean::<CurrentNetwork>::new(true);
+        let candidate = Boolean::<CurrentEnvironment>::new(true);
         assert_eq!("true", &format!("{}", candidate));
     }
 }

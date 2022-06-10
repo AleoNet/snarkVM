@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> FromBits for Address<N> {
+impl<E: Environment> FromBits for Address<E> {
     /// Initializes a new address by recovering the **x-coordinate** of an affine group from a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         Ok(Address::new(Group::from_bits_le(bits_le)?))
@@ -31,30 +31,30 @@ impl<N: Network> FromBits for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_console_network::Testnet3;
+    use snarkvm_console_network_environment::Console;
 
-    type CurrentNetwork = Testnet3;
+    type CurrentEnvironment = Console;
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le() -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let address = Address::new(group);
 
             let given_bits = address.to_bits_le();
-            assert_eq!(Address::<CurrentNetwork>::size_in_bits(), given_bits.len());
+            assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
-            let candidate = Address::<CurrentNetwork>::from_bits_le(&given_bits)?;
+            let candidate = Address::<CurrentEnvironment>::from_bits_le(&given_bits)?;
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![given_bits, vec![false; i as usize]].concat();
 
-            let candidate = Group::<CurrentNetwork>::from_bits_le(&candidate)?;
+            let candidate = Group::<CurrentEnvironment>::from_bits_le(&candidate)?;
             assert_eq!(expected, candidate);
-            assert_eq!(Group::<CurrentNetwork>::size_in_bits(), candidate.to_bits_le().len());
+            assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), candidate.to_bits_le().len());
         }
         Ok(())
     }
@@ -62,21 +62,21 @@ mod tests {
     fn check_from_bits_be() -> Result<()> {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let group: Group<CurrentNetwork> = Uniform::rand(&mut test_rng());
+            let group: Group<CurrentEnvironment> = Uniform::rand(&mut test_rng());
             let address = Address::new(group);
 
             let given_bits = address.to_bits_be();
-            assert_eq!(Address::<CurrentNetwork>::size_in_bits(), given_bits.len());
+            assert_eq!(Address::<CurrentEnvironment>::size_in_bits(), given_bits.len());
 
-            let candidate = Address::<CurrentNetwork>::from_bits_be(&given_bits)?;
+            let candidate = Address::<CurrentEnvironment>::from_bits_be(&given_bits)?;
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
             let candidate = vec![vec![false; i as usize], given_bits].concat();
 
-            let candidate = Group::<CurrentNetwork>::from_bits_be(&candidate)?;
+            let candidate = Group::<CurrentEnvironment>::from_bits_be(&candidate)?;
             assert_eq!(expected, candidate);
-            assert_eq!(Group::<CurrentNetwork>::size_in_bits(), candidate.to_bits_be().len());
+            assert_eq!(Group::<CurrentEnvironment>::size_in_bits(), candidate.to_bits_be().len());
         }
         Ok(())
     }

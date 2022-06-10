@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Ord for Scalar<N> {
+impl<E: Environment> Ord for Scalar<E> {
     /// Returns the lexicographic ordering of `self` and `other`.
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
@@ -24,7 +24,7 @@ impl<N: Network> Ord for Scalar<N> {
     }
 }
 
-impl<N: Network> PartialOrd for Scalar<N> {
+impl<E: Environment> PartialOrd for Scalar<E> {
     /// Returns the lexicographic ordering of `self` and `other`.
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
