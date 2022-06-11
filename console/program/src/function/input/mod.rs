@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{function::Register, Sanitizer, ValueType};
+use crate::{Register, Sanitizer, ValueType};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -25,7 +25,7 @@ use snarkvm_utilities::{
 
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {value_type}`.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.
     register: Register<N>,
@@ -36,13 +36,13 @@ pub struct Input<N: Network> {
 impl<N: Network> Input<N> {
     /// Returns the input register.
     #[inline]
-    pub fn register(&self) -> &Register<N> {
+    pub const fn register(&self) -> &Register<N> {
         &self.register
     }
 
     /// Returns the input value type.
     #[inline]
-    pub fn value_type(&self) -> &ValueType<N> {
+    pub const fn value_type(&self) -> &ValueType<N> {
         &self.value_type
     }
 }
@@ -106,9 +106,16 @@ impl<N: Network> FromStr for Input<N> {
     }
 }
 
-impl<N: Network> fmt::Display for Input<N> {
+impl<N: Network> Debug for Input<N> {
+    /// Prints the input as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Input<N> {
     /// Prints the input statement as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
             "{type_} {register} as {value_type};",

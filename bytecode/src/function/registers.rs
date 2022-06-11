@@ -66,7 +66,7 @@ impl<P: Program> Registers<P> {
     /// # Errors
     /// This method will halt if the register locators are not monotonically increasing.
     /// This method will halt if any registers are assigned.
-    /// This method wil halt if the register is a register member.
+    /// This method will halt if the register is a register member.
     /// This method will halt if the register is already defined.
     #[inline]
     pub fn define(&self, register: &Register<P>) {

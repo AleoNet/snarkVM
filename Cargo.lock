@@ -2339,6 +2339,7 @@ dependencies = [
  "bincode",
  "enum_index",
  "enum_index_derive",
+ "indexmap",
  "once_cell",
  "serde_json",
  "snarkvm-console-account",

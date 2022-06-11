@@ -36,9 +36,21 @@ pub enum Register<N: Network> {
 }
 
 impl<N: Network> Register<N> {
+    /// Returns `true` if the register is a locator.
+    #[inline]
+    pub const fn is_locator(&self) -> bool {
+        matches!(self, Register::Locator(_))
+    }
+
+    /// Returns `true` if the register is a member.
+    #[inline]
+    pub const fn is_member(&self) -> bool {
+        matches!(self, Register::Member(_, _))
+    }
+
     /// Returns the locator of the register.
     #[inline]
-    pub fn locator(&self) -> u64 {
+    pub const fn locator(&self) -> u64 {
         match self {
             Self::Locator(locator) => *locator,
             Self::Member(locator, _) => *locator,
@@ -93,6 +105,7 @@ impl<N: Network> FromStr for Register<N> {
 }
 
 impl<N: Network> Debug for Register<N> {
+    /// Prints the register as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
