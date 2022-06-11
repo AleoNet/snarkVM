@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod parse;
 
 use snarkvm_console_network::prelude::*;
@@ -25,9 +26,10 @@ use snarkvm_utilities::{
 };
 
 use core::fmt::{self, Debug, Display};
-use enum_index::{EnumIndex, IndexEnum};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex, IndexEnum)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum LiteralType {
     /// The Aleo address type.
     Address,
@@ -84,18 +86,5 @@ impl LiteralType {
             Self::Scalar => "scalar",
             Self::String => "string",
         }
-    }
-}
-
-impl FromBytes for LiteralType {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index = u16::read_le(&mut reader)?;
-        Self::index_enum(index as usize).ok_or(error(format!("Failed to deserialize literal type variant {index}")))
-    }
-}
-
-impl ToBytes for LiteralType {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.enum_index() as u16).write_le(&mut writer)
     }
 }

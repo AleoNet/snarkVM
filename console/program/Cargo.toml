@@ -31,6 +31,12 @@ version = "0.2"
 [dependencies.indexmap]
 version = "1.8"
 
+[dependencies.num-derive]
+version = "0.3"
+
+[dependencies.num-traits]
+version = "0.2"
+
 [dependencies.once_cell]
 version = "1.10.0"
 

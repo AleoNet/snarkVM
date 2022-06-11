@@ -17,13 +17,14 @@
 mod literal_type;
 pub use literal_type::LiteralType;
 
-mod parse;
-
 mod plaintext_type;
 pub use plaintext_type::PlaintextType;
 
 mod value_type;
 pub use value_type::ValueType;
+
+mod bytes;
+mod parse;
 
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
@@ -44,13 +45,6 @@ pub struct RecordType<N: Network> {
     entries: Vec<(Identifier<N>, ValueType<N>)>,
 }
 
-impl<N: Network> TypeName for RecordType<N> {
-    /// Returns the type name.
-    fn type_name() -> &'static str {
-        "record"
-    }
-}
-
 impl<N: Network> TryFrom<(Identifier<N>, Vec<(Identifier<N>, ValueType<N>)>)> for RecordType<N> {
     type Error = Error;
 
@@ -64,95 +58,9 @@ impl<N: Network> TryFrom<(Identifier<N>, Vec<(Identifier<N>, ValueType<N>)>)> fo
     }
 }
 
-impl<N: Network> FromBytes for RecordType<N> {
-    /// Reads a record type from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the name of the record type.
-        let name = Identifier::read_le(&mut reader)?;
-
-        // Read the number of entries.
-        let num_entries = u16::read_le(&mut reader)?;
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
-        if num_entries as usize > N::MAX_DATA_ENTRIES {
-            return Err(error(format!(
-                "RecordType exceeds size: expected <= {}, found {num_entries}",
-                N::MAX_DATA_ENTRIES
-            )));
-        }
-        // Read the entries.
-        let mut entries = Vec::with_capacity(num_entries as usize);
-        for _ in 0..num_entries {
-            // Read the identifier.
-            let identifier = Identifier::read_le(&mut reader)?;
-            // Read the entry.
-            let entry = ValueType::read_le(&mut reader)?;
-            // Append the entry.
-            entries.push((identifier, entry));
-        }
-
-        // Ensure the entries has no duplicate names.
-        if has_duplicates(entries.iter().map(|(name, ..)| name)) {
-            return Err(error(format!("Duplicate entry in record '{name}'")));
-        }
-        Ok(Self { name, entries })
-    }
-}
-
-impl<N: Network> ToBytes for RecordType<N> {
-    /// Writes the record type to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
-        if self.entries.len() > N::MAX_DATA_ENTRIES {
-            return Err(error("Failed to serialize record: too many entries"));
-        }
-        // Ensure the entries has no duplicate names.
-        if has_duplicates(self.entries.iter().map(|(name, ..)| name)) {
-            return Err(error(format!("Duplicate entry in record '{}'", self.name)));
-        }
-
-        // Write the name of the record type.
-        self.name.write_le(&mut writer)?;
-
-        // Write the number of entries.
-        (self.entries.len() as u16).write_le(&mut writer)?;
-        // Write the entries as bytes.
-        for (identifier, value_type) in &self.entries {
-            // Write the identifier.
-            identifier.write_le(&mut writer)?;
-            // Write the value type to the buffer.
-            value_type.write_le(&mut writer)?;
-        }
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_console_network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
-
-    #[test]
-    fn test_bytes() -> Result<()> {
-        let expected = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    first as field.constant;\n    second as field.public;",
-        )?;
-        let candidate = RecordType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
-        assert_eq!(expected, candidate);
-        Ok(())
-    }
-
-    #[test]
-    fn test_bytes_fails() -> Result<()> {
-        let expected = RecordType::<CurrentNetwork> {
-            name: Identifier::from_str("message")?,
-            entries: vec![
-                (Identifier::from_str("first")?, ValueType::from_str("field.public")?),
-                (Identifier::from_str("first")?, ValueType::from_str("boolean.private")?),
-            ],
-        };
-        assert!(expected.to_bytes_le().is_err());
-        Ok(())
+impl<N: Network> TypeName for RecordType<N> {
+    /// Returns the type name.
+    fn type_name() -> &'static str {
+        "record"
     }
 }

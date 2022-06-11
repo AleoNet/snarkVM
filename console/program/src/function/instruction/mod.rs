@@ -507,7 +507,7 @@ mod tests {
                 Literal::U128(U128::rand($rng)),
                 Literal::Scalar(Scalar::rand($rng)),
                 Literal::String(StringType::new(
-                    &(0..<$network as Environment>::MAX_STRING_BYTES / 4)
+                    &(0..<$network as Environment>::MAX_STRING_BYTES / 8)
                         .map(|_| $rng.gen::<char>())
                         .collect::<String>(),
                 )),

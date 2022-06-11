@@ -14,24 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[macro_use]
-extern crate enum_index_derive;
-#[macro_use]
-extern crate num_derive;
+impl FromBytes for LiteralType {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let index = u16::read_le(&mut reader)?;
+        FromPrimitive::from_u16(index).ok_or(error(format!("Failed to deserialize literal type variant {index}")))
+    }
+}
 
-pub use snarkvm_console_types::prelude::*;
-
-mod data;
-pub use data::*;
-
-mod function;
-pub use function::{Function, Register, Registers};
-
-mod interface;
-pub use interface::Interface;
-
-mod record_type;
-pub use record_type::*;
+impl ToBytes for LiteralType {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (*self as u16).write_le(&mut writer)
+    }
+}

@@ -14,24 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[macro_use]
-extern crate enum_index_derive;
-#[macro_use]
-extern crate num_derive;
+impl<N: Network> FromBytes for Input<N> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let register = FromBytes::read_le(&mut reader)?;
+        let value_type = FromBytes::read_le(&mut reader)?;
+        Ok(Self { register, value_type })
+    }
+}
 
-pub use snarkvm_console_types::prelude::*;
-
-mod data;
-pub use data::*;
-
-mod function;
-pub use function::{Function, Register, Registers};
-
-mod interface;
-pub use interface::Interface;
-
-mod record_type;
-pub use record_type::*;
+impl<N: Network> ToBytes for Input<N> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.register.write_le(&mut writer)?;
+        self.value_type.write_le(&mut writer)
+    }
+}

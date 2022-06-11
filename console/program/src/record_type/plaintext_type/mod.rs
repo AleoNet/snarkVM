@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod parse;
 
 use crate::{Identifier, LiteralType};
@@ -47,34 +48,6 @@ impl<N: Network> PlaintextType<N> {
     /// Returns `false` if the type is a literal.
     pub fn is_interface(&self) -> bool {
         matches!(self, PlaintextType::Interface(..))
-    }
-}
-
-impl<N: Network> FromBytes for PlaintextType<N> {
-    /// Reads a plaintext type from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let variant = u8::read_le(&mut reader)?;
-        match variant {
-            0 => Ok(Self::Literal(LiteralType::read_le(&mut reader)?)),
-            1 => Ok(Self::Interface(Identifier::read_le(&mut reader)?)),
-            2.. => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
-        }
-    }
-}
-
-impl<N: Network> ToBytes for PlaintextType<N> {
-    /// Writes a plaintext type to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Literal(literal_type) => {
-                u8::write_le(&0u8, &mut writer)?;
-                literal_type.write_le(&mut writer)
-            }
-            Self::Interface(identifier) => {
-                u8::write_le(&1u8, &mut writer)?;
-                identifier.write_le(&mut writer)
-            }
-        }
     }
 }
 

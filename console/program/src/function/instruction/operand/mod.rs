@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
+mod parse;
+
 use crate::{Literal, Register, Value};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
@@ -79,81 +82,6 @@ impl<N: Network> Operand<N> {
     }
 }
 
-impl<N: Network> Parser for Operand<N> {
-    /// Parses a string into a operand.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse to determine the operand (order matters).
-        alt((
-            map(Literal::parse, |literal| Self::Literal(literal)),
-            map(Register::parse, |register| Self::Register(register)),
-        ))(string)
-    }
-}
-
-impl<N: Network> FromStr for Operand<N> {
-    type Err = Error;
-
-    /// Parses a string into an operand.
-    #[inline]
-    fn from_str(string: &str) -> Result<Self> {
-        match Self::parse(string) {
-            Ok((remainder, object)) => {
-                // Ensure the remainder is empty.
-                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
-                // Return the object.
-                Ok(object)
-            }
-            Err(error) => bail!("Failed to parse string. {error}"),
-        }
-    }
-}
-
-impl<N: Network> Debug for Operand<N> {
-    /// Prints the operand as a string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for Operand<N> {
-    /// Prints the operand as a string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            // Prints the literal, i.e. 10field.private
-            Self::Literal(literal) => Display::fmt(literal, f),
-            // Prints the register, i.e. r0 or r0.owner
-            Self::Register(register) => Display::fmt(register, f),
-        }
-    }
-}
-
-impl<N: Network> FromBytes for Operand<N> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        match u8::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Literal(Literal::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
-            Ok(variant) => Err(error(format!("Failed to deserialize operand variant {variant}"))),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-impl<N: Network> ToBytes for Operand<N> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Literal(literal) => {
-                u8::write_le(&0u8, &mut writer)?;
-                literal.write_le(&mut writer)
-            }
-            Self::Register(register) => {
-                u8::write_le(&1u8, &mut writer)?;
-                register.write_le(&mut writer)
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,49 +122,6 @@ mod tests {
         assert_eq!(expected, operand);
         assert!(!operand.is_literal());
         assert!(operand.is_register());
-        Ok(())
-    }
-
-    #[test]
-    fn test_operand_parse() -> Result<()> {
-        let operand = Operand::<CurrentNetwork>::parse("1field").unwrap().1;
-        assert_eq!(Operand::Literal(Literal::from_str("1field")?), operand);
-        assert!(operand.is_literal());
-        assert!(!operand.is_register());
-
-        let operand = Operand::<CurrentNetwork>::parse("r0").unwrap().1;
-        assert_eq!(Operand::Register(Register::from_str("r0")?), operand);
-        assert!(!operand.is_literal());
-        assert!(operand.is_register());
-
-        let operand = Operand::<CurrentNetwork>::parse("r0.owner").unwrap().1;
-        assert_eq!(Operand::Register(Register::from_str("r0.owner")?), operand);
-        assert!(!operand.is_literal());
-        assert!(operand.is_register());
-
-        // Sanity check a failure case.
-        let (remainder, operand) = Operand::<CurrentNetwork>::parse("1field.private").unwrap();
-        assert_eq!(Operand::Literal(Literal::from_str("1field")?), operand);
-        assert_eq!(".private", remainder);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_operand_display() {
-        let operand = Operand::<CurrentNetwork>::parse("1field").unwrap().1;
-        assert_eq!(format!("{operand}"), "1field");
-
-        let operand = Operand::<CurrentNetwork>::parse("r0").unwrap().1;
-        assert_eq!(format!("{operand}"), "r0");
-
-        let operand = Operand::<CurrentNetwork>::parse("r0.owner").unwrap().1;
-        assert_eq!(format!("{operand}"), "r0.owner");
-    }
-
-    #[test]
-    fn test_operand_from_str_fails() -> Result<()> {
-        assert!(Operand::<CurrentNetwork>::from_str("1field.private").is_err());
         Ok(())
     }
 }
