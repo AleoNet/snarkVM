@@ -125,8 +125,6 @@ impl<P: Program> Metrics<Self> for Add<P> {
 }
 
 impl<P: Program> Parser for Add<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'add' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

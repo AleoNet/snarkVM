@@ -116,8 +116,6 @@ impl<P: Program> Metrics<Self> for AddWrapped<P> {
 }
 
 impl<P: Program> Parser for AddWrapped<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'add.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

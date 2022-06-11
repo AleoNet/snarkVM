@@ -156,8 +156,6 @@ impl<P: Program> From<&Literal<P::Aleo>> for LiteralType<P> {
 
 #[allow(clippy::let_and_return)]
 impl<P: Program> Parser for LiteralType<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

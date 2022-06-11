@@ -51,8 +51,6 @@ impl<P: Program> BinaryOperation<P> {
 }
 
 impl<P: Program> Parser for BinaryOperation<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

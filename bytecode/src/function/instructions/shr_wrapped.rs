@@ -98,8 +98,6 @@ impl<P: Program> Operation<P> for ShrWrapped<P> {
 }
 
 impl<P: Program> Parser for ShrWrapped<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'shr.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

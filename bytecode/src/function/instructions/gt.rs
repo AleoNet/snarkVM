@@ -80,8 +80,6 @@ impl<P: Program> Operation<P> for GreaterThan<P> {
 }
 
 impl<P: Program> Parser for GreaterThan<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'gt' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

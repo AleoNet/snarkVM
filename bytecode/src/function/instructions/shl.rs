@@ -98,8 +98,6 @@ impl<P: Program> Operation<P> for Shl<P> {
 }
 
 impl<P: Program> Parser for Shl<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'shl' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

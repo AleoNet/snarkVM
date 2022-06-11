@@ -54,8 +54,6 @@ impl<P: Program> TypeName for Input<P> {
 }
 
 impl<P: Program> Parser for Input<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an input statement.
     /// The input statement is of the form `input {register} as {annotation};`.
     ///

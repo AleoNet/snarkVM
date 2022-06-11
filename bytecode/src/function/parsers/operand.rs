@@ -111,8 +111,6 @@ impl<P: Program> Operand<P> {
 }
 
 impl<P: Program> Parser for Operand<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a operand.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -165,7 +163,7 @@ impl<P: Program> ToBytes for Operand<P> {
 mod tests {
     use super::*;
     use crate::{Process, Value};
-    use snarkvm_circuit::{environment::Parser, Literal};
+    use snarkvm_circuit::Literal;
 
     type P = Process;
 

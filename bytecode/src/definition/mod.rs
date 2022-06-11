@@ -94,8 +94,6 @@ impl<P: Program> Definition<P> {
 }
 
 impl<P: Program> Parser for Definition<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a definition.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

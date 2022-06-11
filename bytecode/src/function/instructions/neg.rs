@@ -109,8 +109,6 @@ impl<P: Program> Metrics<Self> for Neg<P> {
 }
 
 impl<P: Program> Parser for Neg<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'neg' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

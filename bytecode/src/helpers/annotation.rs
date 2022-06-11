@@ -49,8 +49,6 @@ impl<P: Program> Annotation<P> {
 }
 
 impl<P: Program> Parser for Annotation<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an annotation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

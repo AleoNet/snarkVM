@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Parser for DataType<N> {
-    /// Parses a data type as:
+impl<N: Network> Parser for RecordType<N> {
+    /// Parses a record type as:
     /// ```text
     ///   record message:
     ///       owner as address.private;
@@ -26,19 +26,19 @@ impl<N: Network> Parser for DataType<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a string into a tuple.
-        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Entry<N>)> {
+        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, ValueType<N>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
             // Parse the " as " from the string.
             let (string, _) = tag(" as ")(string)?;
-            // Parse the entry from the string.
-            let (string, entry) = Entry::parse(string)?;
+            // Parse the value type from the string.
+            let (string, value_type) = ValueType::parse(string)?;
             // Parse the semicolon ';' keyword from the string.
             let (string, _) = tag(";")(string)?;
-            // Return the identifier and entry.
-            Ok((string, (identifier, entry)))
+            // Return the identifier and value type.
+            Ok((string, (identifier, value_type)))
         }
 
         // Parse the whitespace and comments from the string.
@@ -63,15 +63,15 @@ impl<N: Network> Parser for DataType<N> {
             }
             Ok(entries)
         })(string)?;
-        // Return the record.
+        // Return the record type.
         Ok((string, Self { name, entries }))
     }
 }
 
-impl<N: Network> FromStr for DataType<N> {
+impl<N: Network> FromStr for RecordType<N> {
     type Err = Error;
 
-    /// Returns an record from a string literal.
+    /// Returns an record type from a string literal.
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
             Ok((remainder, object)) => {
@@ -85,20 +85,20 @@ impl<N: Network> FromStr for DataType<N> {
     }
 }
 
-impl<N: Network> Debug for DataType<N> {
-    /// Prints the record as a string.
+impl<N: Network> Debug for RecordType<N> {
+    /// Prints the record type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 #[allow(clippy::format_push_string)]
-impl<N: Network> Display for DataType<N> {
-    /// Prints the record as a string.
+impl<N: Network> Display for RecordType<N> {
+    /// Prints the record type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut output = format!("{} {}:\n", Self::type_name(), self.name);
-        for (identifier, entry) in &self.entries {
-            output += &format!("    {identifier} as {entry};\n");
+        for (identifier, value_type) in &self.entries {
+            output += &format!("    {identifier} as {value_type};\n");
         }
         output.pop(); // trailing newline
         write!(f, "{}", output)
@@ -114,15 +114,15 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        let expected = DataType::<CurrentNetwork> {
+        let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             entries: vec![
-                (Identifier::from_str("sender")?, Entry::from_str("address.private")?),
-                (Identifier::from_str("amount")?, Entry::from_str("u64.public")?),
+                (Identifier::from_str("sender")?, ValueType::from_str("address.private")?),
+                (Identifier::from_str("amount")?, ValueType::from_str("u64.public")?),
             ],
         };
 
-        let (remainder, candidate) = DataType::<CurrentNetwork>::parse(
+        let (remainder, candidate) = RecordType::<CurrentNetwork>::parse(
             r"
 record message:
     sender as address.private;
@@ -137,52 +137,52 @@ record message:
     #[test]
     fn test_parse_fails() {
         // Must be non-empty.
-        assert!(DataType::<CurrentNetwork>::parse("").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("record message:").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("record message:").is_err());
 
         // Invalid characters.
-        assert!(DataType::<CurrentNetwork>::parse("{}").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("_").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("__").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("___").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("-").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("--").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("---").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("*").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("**").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("***").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("{}").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("_").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("__").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("___").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("-").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("--").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("---").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("*").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("**").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("***").is_err());
 
         // Must not start with a number.
-        assert!(DataType::<CurrentNetwork>::parse("1").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("2").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("3").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("1foo").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("12").is_err());
-        assert!(DataType::<CurrentNetwork>::parse("111").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("1").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("2").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("3").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("1foo").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("12").is_err());
+        assert!(RecordType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
         let record =
-            DataType::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+            RecordType::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(record.is_err());
     }
 
     #[test]
     fn test_display() {
         let expected = "record message:\n    first as field.private;\n    second as field.constant;";
-        let message = DataType::<CurrentNetwork>::parse(expected).unwrap().1;
+        let message = RecordType::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
     }
 
     #[test]
     fn test_display_fails() {
         // Duplicate identifier.
-        let candidate = DataType::<CurrentNetwork>::parse(
+        let candidate = RecordType::<CurrentNetwork>::parse(
             "record message:\n    first as field.public;\n    first as field.constant;",
         );
         assert!(candidate.is_err());
         // Visibility is missing in entry.
         let candidate =
-            DataType::<CurrentNetwork>::parse("record message:\n    first as field;\n    first as field.private;");
+            RecordType::<CurrentNetwork>::parse("record message:\n    first as field;\n    first as field.private;");
         assert!(candidate.is_err());
     }
 

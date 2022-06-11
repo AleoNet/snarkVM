@@ -79,8 +79,6 @@ impl<P: Program> Operation<P> for Xor<P> {
 }
 
 impl<P: Program> Parser for Xor<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'xor' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

@@ -16,7 +16,7 @@
 
 mod parse;
 
-use crate::{Identifier, ValueType};
+use crate::{Identifier, PlaintextType};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -31,7 +31,7 @@ pub struct Interface<N: Network> {
     /// The name of the interface.
     name: Identifier<N>,
     /// The name and type for the members of the interface.
-    members: Vec<(Identifier<N>, ValueType<N>)>,
+    members: Vec<(Identifier<N>, PlaintextType<N>)>,
 }
 
 impl<N: Network> TypeName for Interface<N> {
@@ -61,10 +61,10 @@ impl<N: Network> FromBytes for Interface<N> {
         for _ in 0..num_members {
             // Read the identifier.
             let identifier = Identifier::read_le(&mut reader)?;
-            // Read the value type.
-            let value_type = ValueType::read_le(&mut reader)?;
+            // Read the plaintext type.
+            let plaintext_type = PlaintextType::read_le(&mut reader)?;
             // Append the member.
-            members.push((identifier, value_type));
+            members.push((identifier, plaintext_type));
         }
 
         // Ensure the members has no duplicate names.
@@ -93,11 +93,11 @@ impl<N: Network> ToBytes for Interface<N> {
         // Write the number of members.
         (self.members.len() as u16).write_le(&mut writer)?;
         // Write the members as bytes.
-        for (identifier, value_type) in &self.members {
+        for (identifier, plaintext_type) in &self.members {
             // Write the identifier.
             identifier.write_le(&mut writer)?;
-            // Write the value type to the buffer.
-            value_type.write_le(&mut writer)?;
+            // Write the plaintext type to the buffer.
+            plaintext_type.write_le(&mut writer)?;
         }
         Ok(())
     }
@@ -124,8 +124,8 @@ mod tests {
         let expected = Interface::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             members: vec![
-                (Identifier::from_str("first")?, ValueType::from_str("field")?),
-                (Identifier::from_str("first")?, ValueType::from_str("boolean")?),
+                (Identifier::from_str("first")?, PlaintextType::from_str("field")?),
+                (Identifier::from_str("first")?, PlaintextType::from_str("boolean")?),
             ],
         };
         assert!(expected.to_bytes_le().is_err());

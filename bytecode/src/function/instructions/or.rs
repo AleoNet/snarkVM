@@ -79,8 +79,6 @@ impl<P: Program> Operation<P> for Or<P> {
 }
 
 impl<P: Program> Parser for Or<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'or' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

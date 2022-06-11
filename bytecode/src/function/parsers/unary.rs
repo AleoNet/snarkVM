@@ -45,8 +45,6 @@ impl<P: Program> UnaryOperation<P> {
 }
 
 impl<P: Program> Parser for UnaryOperation<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

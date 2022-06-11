@@ -83,8 +83,6 @@ impl<P: Program> Operation<P> for NotEqual<P> {
 }
 
 impl<P: Program> Parser for NotEqual<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'eq' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

@@ -123,8 +123,6 @@ impl<P: Program> Metrics<Self> for Sub<P> {
 }
 
 impl<P: Program> Parser for Sub<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'sub' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

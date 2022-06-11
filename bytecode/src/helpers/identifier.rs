@@ -129,8 +129,6 @@ impl<P: Program> ToField for Identifier<P> {
 }
 
 impl<P: Program> Parser for Identifier<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an identifier.
     ///
     /// # Requirements

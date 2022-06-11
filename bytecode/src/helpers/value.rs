@@ -71,8 +71,6 @@ impl<P: Program> Value<P> {
 }
 
 impl<P: Program> Parser for Value<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

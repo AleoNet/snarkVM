@@ -46,8 +46,6 @@ impl<P: Program> Member<P> {
 }
 
 impl<P: Program> Parser for Member<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an member.
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.

@@ -145,8 +145,6 @@ impl<P: Program, Op: HashOpcode> fmt::Display for Hash<P, Op> {
 }
 
 impl<P: Program, Op: HashOpcode> Parser for Hash<P, Op> {
-    type Environment = P::Environment;
-
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         map(UnaryOperation::parse, |operation| Self { operation, _phantom: PhantomData })(string)

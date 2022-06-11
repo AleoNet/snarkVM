@@ -69,8 +69,6 @@ impl<P: Program> Operation<P> for Nand<P> {
 }
 
 impl<P: Program> Parser for Nand<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'nand' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

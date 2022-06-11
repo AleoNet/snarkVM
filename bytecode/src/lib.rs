@@ -19,23 +19,24 @@
 #[macro_use]
 extern crate enum_index_derive;
 
-pub mod definition;
-pub use definition::*;
+// pub mod definition;
+// pub use definition::*;
 
 pub mod function;
 pub use function::*;
 
-pub mod helpers;
-pub use helpers::*;
+// pub mod helpers;
+// pub use helpers::*;
 
 pub mod process;
 pub use process::*;
 
-use snarkvm_circuit::{Aleo, Environment, Parser};
+use snarkvm_circuit::{Aleo, Environment};
+use snarkvm_console::prelude::Parser;
 
 use core::{fmt::Debug, hash::Hash};
 
-pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environment = Self::Aleo> {
+pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser {
     type Aleo: Aleo;
 
     /// The maximum lookup/reference depth for a value, register, or definition.

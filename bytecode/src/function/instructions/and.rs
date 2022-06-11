@@ -79,8 +79,6 @@ impl<P: Program> Operation<P> for And<P> {
 }
 
 impl<P: Program> Parser for And<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'and' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

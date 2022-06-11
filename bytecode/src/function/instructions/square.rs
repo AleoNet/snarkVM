@@ -68,8 +68,6 @@ impl<P: Program> Operation<P> for Square<P> {
 }
 
 impl<P: Program> Parser for Square<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'square' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

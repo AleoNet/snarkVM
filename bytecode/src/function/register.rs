@@ -48,8 +48,6 @@ impl<P: Program> Register<P> {
 }
 
 impl<P: Program> Parser for Register<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a register.
     /// The register is of the form `r{locator}` or `r{locator}.{identifier}`.
     #[inline]

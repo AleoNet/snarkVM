@@ -130,8 +130,6 @@ impl<P: Program, Op: PRFOpcode> fmt::Display for PRF<P, Op> {
 }
 
 impl<P: Program, Op: PRFOpcode> Parser for PRF<P, Op> {
-    type Environment = P::Environment;
-
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         map(BinaryOperation::parse, |operation| Self { operation, _phantom: PhantomData })(string)

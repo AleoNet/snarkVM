@@ -98,8 +98,6 @@ impl<P: Program> Operation<P> for PowWrapped<P> {
 }
 
 impl<P: Program> Parser for PowWrapped<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'pow.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

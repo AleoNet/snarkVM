@@ -27,7 +27,7 @@ use snarkvm_utilities::{
 
 /// A `ValueType` defines the type parameter for an entry in an `Interface`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ValueType<N: Network> {
+pub enum PlaintextType<N: Network> {
     /// A literal type contains its type name.
     /// The format of the type is `<type_name>`.
     Literal(LiteralType),
@@ -36,22 +36,22 @@ pub enum ValueType<N: Network> {
     Interface(Identifier<N>),
 }
 
-impl<N: Network> ValueType<N> {
+impl<N: Network> PlaintextType<N> {
     /// Returns `true` if the type is a literal.
     /// Returns `false` if the type is an interface.
     pub fn is_literal(&self) -> bool {
-        matches!(self, ValueType::Literal(..))
+        matches!(self, PlaintextType::Literal(..))
     }
 
     /// Returns `true` if the type is an interface.
     /// Returns `false` if the type is a literal.
     pub fn is_interface(&self) -> bool {
-        matches!(self, ValueType::Interface(..))
+        matches!(self, PlaintextType::Interface(..))
     }
 }
 
-impl<N: Network> FromBytes for ValueType<N> {
-    /// Reads a value type from a buffer.
+impl<N: Network> FromBytes for PlaintextType<N> {
+    /// Reads a plaintext type from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
@@ -62,8 +62,8 @@ impl<N: Network> FromBytes for ValueType<N> {
     }
 }
 
-impl<N: Network> ToBytes for ValueType<N> {
-    /// Writes a value type to a buffer.
+impl<N: Network> ToBytes for PlaintextType<N> {
+    /// Writes a plaintext type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Literal(literal_type) => {
@@ -87,15 +87,15 @@ mod tests {
 
     #[test]
     fn test_is_literal() -> Result<()> {
-        assert!(ValueType::<CurrentNetwork>::Literal(LiteralType::Field).is_literal());
-        assert!(!ValueType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).is_literal());
+        assert!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).is_literal());
+        assert!(!PlaintextType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).is_literal());
         Ok(())
     }
 
     #[test]
     fn test_is_interface() -> Result<()> {
-        assert!(!ValueType::<CurrentNetwork>::Literal(LiteralType::Field).is_interface());
-        assert!(ValueType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).is_interface());
+        assert!(!PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).is_interface());
+        assert!(PlaintextType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).is_interface());
         Ok(())
     }
 }

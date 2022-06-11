@@ -119,8 +119,6 @@ impl<P: Program> Metrics<Self> for Div<P> {
 }
 
 impl<P: Program> Parser for Div<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'div' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

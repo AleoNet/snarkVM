@@ -130,8 +130,6 @@ impl<P: Program> Operation<P> for Ternary<P> {
 }
 
 impl<P: Program> Parser for Ternary<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'ter' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

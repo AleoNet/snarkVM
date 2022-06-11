@@ -105,8 +105,6 @@ impl<P: Program, Op: CommitOpcode> fmt::Display for Commit<P, Op> {
 }
 
 impl<P: Program, Op: CommitOpcode> Parser for Commit<P, Op> {
-    type Environment = P::Environment;
-
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         map(BinaryOperation::parse, |operation| Self { operation, _phantom: PhantomData })(string)

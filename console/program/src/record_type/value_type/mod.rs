@@ -16,7 +16,7 @@
 
 mod parse;
 
-use crate::ValueType;
+use crate::PlaintextType;
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -28,36 +28,36 @@ use snarkvm_utilities::{
 use enum_index::EnumIndex;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum Entry<N: Network> {
+pub enum ValueType<N: Network> {
     /// A constant value.
-    Constant(ValueType<N>),
+    Constant(PlaintextType<N>),
     /// A publicly-visible value.
-    Public(ValueType<N>),
+    Public(PlaintextType<N>),
     /// A private value decrypted with the account owner's address.
-    Private(ValueType<N>),
+    Private(PlaintextType<N>),
 }
 
-impl<N: Network> ToBytes for Entry<N> {
-    /// Writes an entry to a buffer.
+impl<N: Network> ToBytes for ValueType<N> {
+    /// Writes an value type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.enum_index() as u8).write_le(&mut writer)?;
         match self {
-            Entry::Constant(value_type) => value_type.write_le(&mut writer),
-            Entry::Public(value_type) => value_type.write_le(&mut writer),
-            Entry::Private(value_type) => value_type.write_le(&mut writer),
+            ValueType::Constant(plaintext_type) => plaintext_type.write_le(&mut writer),
+            ValueType::Public(plaintext_type) => plaintext_type.write_le(&mut writer),
+            ValueType::Private(plaintext_type) => plaintext_type.write_le(&mut writer),
         }
     }
 }
 
-impl<N: Network> FromBytes for Entry<N> {
-    /// Reads an entry from a buffer.
+impl<N: Network> FromBytes for ValueType<N> {
+    /// Reads an value type from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
-            0 => Ok(Entry::Constant(ValueType::read_le(&mut reader)?)),
-            1 => Ok(Entry::Public(ValueType::read_le(&mut reader)?)),
-            2 => Ok(Entry::Private(ValueType::read_le(&mut reader)?)),
-            _ => Err(error(format!("Failed to deserialize entry variant {}", variant))),
+            0 => Ok(ValueType::Constant(PlaintextType::read_le(&mut reader)?)),
+            1 => Ok(ValueType::Public(PlaintextType::read_le(&mut reader)?)),
+            2 => Ok(ValueType::Private(PlaintextType::read_le(&mut reader)?)),
+            _ => Err(error(format!("Failed to deserialize value type variant {}", variant))),
         }
     }
 }

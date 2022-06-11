@@ -68,8 +68,6 @@ impl<P: Program> Operation<P> for Inv<P> {
 }
 
 impl<P: Program> Parser for Inv<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'inv' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

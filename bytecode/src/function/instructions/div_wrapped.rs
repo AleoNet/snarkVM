@@ -116,8 +116,6 @@ impl<P: Program> Metrics<Self> for DivWrapped<P> {
 }
 
 impl<P: Program> Parser for DivWrapped<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'div.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

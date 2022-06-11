@@ -252,7 +252,7 @@ impl<P: Program> Function<P> {
             let value = self.registers.load(register);
 
             // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-            // Ensure the output value type matches the annotation.
+            // Ensure the output plaintext type matches the annotation.
             if &value.annotation() != output.annotation() {
                 P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
             }
@@ -349,8 +349,6 @@ impl<P: Program> Function<P> {
 }
 
 impl<P: Program> Parser for Function<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a function.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

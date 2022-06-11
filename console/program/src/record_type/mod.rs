@@ -14,23 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod entry;
-pub use entry::Entry;
-
-mod interface;
-pub use interface::Interface;
-
 mod literal_type;
 pub use literal_type::LiteralType;
+
+mod parse;
+
+mod plaintext_type;
+pub use plaintext_type::PlaintextType;
 
 mod value_type;
 pub use value_type::ValueType;
 
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
-
-mod parse;
-
 use snarkvm_utilities::{
     error,
     has_duplicates,
@@ -41,25 +37,25 @@ use snarkvm_utilities::{
 
 /// The declared layout for program data.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct DataType<N: Network> {
-    /// The name of the data type.
+pub struct RecordType<N: Network> {
+    /// The name of the record type.
     name: Identifier<N>,
-    /// The name and type for the entries in data.
-    entries: Vec<(Identifier<N>, Entry<N>)>,
+    /// The name and value type for the entries in data.
+    entries: Vec<(Identifier<N>, ValueType<N>)>,
 }
 
-impl<N: Network> TypeName for DataType<N> {
+impl<N: Network> TypeName for RecordType<N> {
     /// Returns the type name.
     fn type_name() -> &'static str {
         "record"
     }
 }
 
-impl<N: Network> TryFrom<(Identifier<N>, Vec<(Identifier<N>, Entry<N>)>)> for DataType<N> {
+impl<N: Network> TryFrom<(Identifier<N>, Vec<(Identifier<N>, ValueType<N>)>)> for RecordType<N> {
     type Error = Error;
 
-    /// Initializes a new `DataType` from a vector of `(Identifier, Entry)` pairs.
-    fn try_from((name, entries): (Identifier<N>, Vec<(Identifier<N>, Entry<N>)>)) -> Result<Self> {
+    /// Initializes a new `RecordType` from a vector of `(Identifier, ValueType)` pairs.
+    fn try_from((name, entries): (Identifier<N>, Vec<(Identifier<N>, ValueType<N>)>)) -> Result<Self> {
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
         match entries.len() <= N::MAX_DATA_ENTRIES {
             true => Ok(Self { name, entries }),
@@ -68,10 +64,10 @@ impl<N: Network> TryFrom<(Identifier<N>, Vec<(Identifier<N>, Entry<N>)>)> for Da
     }
 }
 
-impl<N: Network> FromBytes for DataType<N> {
-    /// Reads a data type from a buffer.
+impl<N: Network> FromBytes for RecordType<N> {
+    /// Reads a record type from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the name of the data type.
+        // Read the name of the record type.
         let name = Identifier::read_le(&mut reader)?;
 
         // Read the number of entries.
@@ -79,7 +75,7 @@ impl<N: Network> FromBytes for DataType<N> {
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
         if num_entries as usize > N::MAX_DATA_ENTRIES {
             return Err(error(format!(
-                "DataType exceeds size: expected <= {}, found {num_entries}",
+                "RecordType exceeds size: expected <= {}, found {num_entries}",
                 N::MAX_DATA_ENTRIES
             )));
         }
@@ -89,7 +85,7 @@ impl<N: Network> FromBytes for DataType<N> {
             // Read the identifier.
             let identifier = Identifier::read_le(&mut reader)?;
             // Read the entry.
-            let entry = Entry::read_le(&mut reader)?;
+            let entry = ValueType::read_le(&mut reader)?;
             // Append the entry.
             entries.push((identifier, entry));
         }
@@ -102,8 +98,8 @@ impl<N: Network> FromBytes for DataType<N> {
     }
 }
 
-impl<N: Network> ToBytes for DataType<N> {
-    /// Writes the data type to a buffer.
+impl<N: Network> ToBytes for RecordType<N> {
+    /// Writes the record type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
         if self.entries.len() > N::MAX_DATA_ENTRIES {
@@ -114,17 +110,17 @@ impl<N: Network> ToBytes for DataType<N> {
             return Err(error(format!("Duplicate entry in record '{}'", self.name)));
         }
 
-        // Write the name of the data type.
+        // Write the name of the record type.
         self.name.write_le(&mut writer)?;
 
         // Write the number of entries.
         (self.entries.len() as u16).write_le(&mut writer)?;
         // Write the entries as bytes.
-        for (identifier, entry) in &self.entries {
+        for (identifier, value_type) in &self.entries {
             // Write the identifier.
             identifier.write_le(&mut writer)?;
-            // Write the entry to the buffer.
-            entry.write_le(&mut writer)?;
+            // Write the value type to the buffer.
+            value_type.write_le(&mut writer)?;
         }
         Ok(())
     }
@@ -139,21 +135,21 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let expected = DataType::<CurrentNetwork>::from_str(
+        let expected = RecordType::<CurrentNetwork>::from_str(
             "record message:\n    first as field.constant;\n    second as field.public;",
         )?;
-        let candidate = DataType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+        let candidate = RecordType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
         Ok(())
     }
 
     #[test]
     fn test_bytes_fails() -> Result<()> {
-        let expected = DataType::<CurrentNetwork> {
+        let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             entries: vec![
-                (Identifier::from_str("first")?, Entry::from_str("field.public")?),
-                (Identifier::from_str("first")?, Entry::from_str("boolean.private")?),
+                (Identifier::from_str("first")?, ValueType::from_str("field.public")?),
+                (Identifier::from_str("first")?, ValueType::from_str("boolean.private")?),
             ],
         };
         assert!(expected.to_bytes_le().is_err());

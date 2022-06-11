@@ -123,8 +123,6 @@ impl<P: Program> Metrics<Self> for Mul<P> {
 }
 
 impl<P: Program> Parser for Mul<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'mul' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

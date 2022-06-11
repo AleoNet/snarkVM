@@ -116,8 +116,6 @@ impl<P: Program> Metrics<Self> for MulWrapped<P> {
 }
 
 impl<P: Program> Parser for MulWrapped<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into a 'mul.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

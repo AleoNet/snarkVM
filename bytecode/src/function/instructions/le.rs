@@ -80,8 +80,6 @@ impl<P: Program> Operation<P> for LessThanOrEqual<P> {
 }
 
 impl<P: Program> Parser for LessThanOrEqual<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an 'le' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

@@ -20,11 +20,20 @@ impl<N: Network> Parser for ValueType<N> {
     /// Parses a string into a value type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse to determine the value type (order matters).
-        alt((
-            map(LiteralType::parse, |type_| Self::Literal(type_)),
-            map(Identifier::parse, |identifier| Self::Interface(identifier)),
-        ))(string)
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the plaintext type from the string.
+        let (string, plaintext_type) = PlaintextType::parse(string)?;
+        // Parse the "." from the string.
+        let (string, _) = tag(".")(string)?;
+        // Parse the mode from the string.
+        let (string, value_type) = alt((
+            map(tag("constant"), move |_| Self::Constant(plaintext_type)),
+            map(tag("public"), move |_| Self::Public(plaintext_type)),
+            map(tag("private"), move |_| Self::Private(plaintext_type)),
+        ))(string)?;
+        // Return the value type.
+        Ok((string, value_type))
     }
 }
 
@@ -56,10 +65,9 @@ impl<N: Network> Display for ValueType<N> {
     /// Prints the value type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            // Prints the literal, i.e. field
-            Self::Literal(literal) => Display::fmt(literal, f),
-            // Prints the interface, i.e. signature
-            Self::Interface(interface) => Display::fmt(interface, f),
+            Self::Constant(plaintext_type) => write!(f, "{plaintext_type}.constant"),
+            Self::Public(plaintext_type) => write!(f, "{plaintext_type}.public"),
+            Self::Private(plaintext_type) => write!(f, "{plaintext_type}.private"),
         }
     }
 }
@@ -73,49 +81,49 @@ mod tests {
 
     #[test]
     fn test_parse() -> Result<()> {
-        assert_eq!(ValueType::parse("field"), Ok(("", ValueType::<CurrentNetwork>::Literal(LiteralType::Field))));
+        // Literal type.
         assert_eq!(
-            ValueType::parse("signature"),
-            Ok(("", ValueType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?)))
+            Ok(("", ValueType::<CurrentNetwork>::from_str("field.constant")?)),
+            ValueType::<CurrentNetwork>::parse("field.constant")
         );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("field.public")?)),
+            ValueType::<CurrentNetwork>::parse("field.public")
+        );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("field.private")?)),
+            ValueType::<CurrentNetwork>::parse("field.private")
+        );
+
+        // Interface type.
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("signature.constant")?)),
+            ValueType::<CurrentNetwork>::parse("signature.constant")
+        );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("signature.public")?)),
+            ValueType::<CurrentNetwork>::parse("signature.public")
+        );
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("signature.private")?)),
+            ValueType::<CurrentNetwork>::parse("signature.private")
+        );
+
         Ok(())
     }
 
     #[test]
     fn test_parse_fails() -> Result<()> {
-        // Literal type must not contain visibility.
-        assert_eq!(
-            Ok((".constant", ValueType::<CurrentNetwork>::from_str("field")?)),
-            ValueType::<CurrentNetwork>::parse("field.constant")
-        );
-        assert_eq!(
-            Ok((".public", ValueType::<CurrentNetwork>::from_str("field")?)),
-            ValueType::<CurrentNetwork>::parse("field.public")
-        );
-        assert_eq!(
-            Ok((".private", ValueType::<CurrentNetwork>::from_str("field")?)),
-            ValueType::<CurrentNetwork>::parse("field.private")
-        );
-
-        // Interface type must not contain visibility.
-        assert_eq!(
-            Ok((".constant", Identifier::<CurrentNetwork>::from_str("signature")?)),
-            Identifier::<CurrentNetwork>::parse("signature.constant")
-        );
-        assert_eq!(
-            Ok((".public", Identifier::<CurrentNetwork>::from_str("signature")?)),
-            Identifier::<CurrentNetwork>::parse("signature.public")
-        );
-        assert_eq!(
-            Ok((".private", Identifier::<CurrentNetwork>::from_str("signature")?)),
-            Identifier::<CurrentNetwork>::parse("signature.private")
-        );
+        // Literal type must contain visibility.
+        assert!(ValueType::<CurrentNetwork>::parse("field").is_err());
+        // Interface type must contain visibility.
+        assert!(ValueType::<CurrentNetwork>::parse("signature").is_err());
 
         // Must be non-empty.
         assert!(ValueType::<CurrentNetwork>::parse("").is_err());
-        assert!(ValueType::<CurrentNetwork>::parse("{}").is_err());
 
         // Invalid characters.
+        assert!(ValueType::<CurrentNetwork>::parse("{}").is_err());
         assert!(ValueType::<CurrentNetwork>::parse("_").is_err());
         assert!(ValueType::<CurrentNetwork>::parse("__").is_err());
         assert!(ValueType::<CurrentNetwork>::parse("___").is_err());
@@ -135,8 +143,9 @@ mod tests {
         assert!(ValueType::<CurrentNetwork>::parse("111").is_err());
 
         // Must fit within the data capacity of a base field element.
-        let interface =
-            ValueType::<CurrentNetwork>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        let interface = ValueType::<CurrentNetwork>::parse(
+            "foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy.private",
+        );
         assert!(interface.is_err());
 
         Ok(())
@@ -144,8 +153,14 @@ mod tests {
 
     #[test]
     fn test_display() -> Result<()> {
-        assert_eq!(ValueType::<CurrentNetwork>::Literal(LiteralType::Field).to_string(), "field");
-        assert_eq!(ValueType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).to_string(), "signature");
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("field.constant")?.to_string(), "field.constant");
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("field.public")?.to_string(), "field.public");
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("field.private")?.to_string(), "field.private");
+
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.constant")?.to_string(), "signature.constant");
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.public")?.to_string(), "signature.public");
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.private")?.to_string(), "signature.private");
+
         Ok(())
     }
 }

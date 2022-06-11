@@ -26,19 +26,19 @@ impl<N: Network> Parser for Interface<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a string into a tuple.
-        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, ValueType<N>)> {
+        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, PlaintextType<N>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
             // Parse the " as " from the string.
             let (string, _) = tag(" as ")(string)?;
-            // Parse the value type from the string.
-            let (string, value_type) = ValueType::parse(string)?;
+            // Parse the plaintext type from the string.
+            let (string, plaintext_type) = PlaintextType::parse(string)?;
             // Parse the semicolon ';' keyword from the string.
             let (string, _) = tag(";")(string)?;
-            // Return the identifier and value type.
-            Ok((string, (identifier, value_type)))
+            // Return the identifier and plaintext type.
+            Ok((string, (identifier, plaintext_type)))
         }
 
         // Parse the whitespace and comments from the string.
@@ -97,8 +97,8 @@ impl<N: Network> Display for Interface<N> {
     /// Prints the interface as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut output = format!("{} {}:\n", Self::type_name(), self.name);
-        for (identifier, value_type) in &self.members {
-            output += &format!("    {identifier} as {value_type};\n");
+        for (identifier, plaintext_type) in &self.members {
+            output += &format!("    {identifier} as {plaintext_type};\n");
         }
         output.pop(); // trailing newline
         write!(f, "{}", output)
@@ -117,8 +117,8 @@ mod tests {
         let expected = Interface::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
             members: vec![
-                (Identifier::from_str("sender")?, ValueType::from_str("address")?),
-                (Identifier::from_str("amount")?, ValueType::from_str("u64")?),
+                (Identifier::from_str("sender")?, PlaintextType::from_str("address")?),
+                (Identifier::from_str("amount")?, PlaintextType::from_str("u64")?),
             ],
         };
 
@@ -179,7 +179,7 @@ interface message:
         let candidate =
             Interface::<CurrentNetwork>::parse("interface message:\n    first as field;\n    first as field;");
         assert!(candidate.is_err());
-        // Visibility in value type.
+        // Visibility in plaintext type.
         let candidate = Interface::<CurrentNetwork>::parse(
             "interface message:\n    first as field.public;\n    first as field.private;",
         );

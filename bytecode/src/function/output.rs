@@ -55,8 +55,6 @@ impl<P: Program> TypeName for Output<P> {
 }
 
 impl<P: Program> Parser for Output<P> {
-    type Environment = P::Environment;
-
     /// Parses a string into an output statement.
     /// The output statement is of the form `output {register} as {annotation};`.
     #[inline]

@@ -25,5 +25,11 @@ pub use snarkvm_console_types::prelude::*;
 mod data;
 pub use data::*;
 
-mod data_type;
-pub use data_type::*;
+mod function;
+pub use function::Function;
+
+mod interface;
+pub use interface::Interface;
+
+mod record_type;
+pub use record_type::*;
