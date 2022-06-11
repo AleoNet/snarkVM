@@ -26,7 +26,7 @@ mod data;
 pub use data::*;
 
 mod function;
-pub use function::{Function, Register};
+pub use function::{Function, Register, Registers};
 
 mod interface;
 pub use interface::Interface;

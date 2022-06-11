@@ -17,14 +17,17 @@
 mod input;
 use input::*;
 
-mod operand;
-use operand::*;
+mod instruction;
+use instruction::*;
 
 mod output;
 use output::*;
 
 mod register;
 pub use register::Register;
+
+mod registers;
+pub use registers::Registers;
 
 pub struct Function;
 
@@ -39,15 +42,7 @@ pub struct Function;
 //
 // use indexmap::{IndexMap, IndexSet};
 // use std::{cell::RefCell, rc::Rc};
-//
-// pub trait Opcode {}
-//
-// pub enum Instruction<N: Network, O: Opcode> {
-//     Unary { operand: Operand<N> },
-// }
-//
-// impl<N: Network, O: Opcode> Instruction<N, O> {}
-//
+
 // enum RegisterType {
 //     Input,
 //     Destination,
