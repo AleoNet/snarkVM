@@ -54,11 +54,11 @@ pub mod program {
     impl<A: Aleo> Public<A> {
         /// Initializes the public inputs for the program circuit.
         pub fn from(
-            serial_numbers: Vec<A::BaseField>,
+            serial_numbers: Vec<console::types::Field<A::Network>>,
             output_records: Vec<console::transition::Record<A::Network>>,
             output_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
-            tcm: A::BaseField,
-            tpk: A::Affine,
+            tcm: console::types::Field<A::Network>,
+            tpk: console::types::Group<A::Network>,
         ) -> Self {
             Self {
                 serial_numbers: Inject::new(Mode::Public, serial_numbers),
@@ -87,10 +87,10 @@ pub mod program {
         /// Initializes the private inputs for the program circuit.
         pub fn from(
             caller: console::account::Address<A::Network>,
-            record_view_keys: Vec<A::BaseField>,
+            record_view_keys: Vec<console::types::Field<A::Network>>,
             input_records: Vec<console::transition::Record<A::Network>>,
             input_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
-            r_tcm: A::BaseField,
+            r_tcm: console::types::Field<A::Network>,
         ) -> Self {
             Self {
                 caller: Address::new(Mode::Private, caller),

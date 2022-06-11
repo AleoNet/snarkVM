@@ -59,12 +59,12 @@ pub mod input {
     impl<A: Aleo> Public<A> {
         /// Initializes the public inputs for the input circuit.
         pub fn from(
-            root: A::BaseField,
-            serial_number: A::BaseField,
-            bcm: A::Affine,
-            fcm: A::Affine,
-            tcm: A::BaseField,
-            tpk: A::Affine,
+            root: console::types::Field<A::Network>,
+            serial_number: console::types::Field<A::Network>,
+            bcm: console::types::Group<A::Network>,
+            fcm: console::types::Group<A::Network>,
+            tcm: console::types::Field<A::Network>,
+            tpk: console::types::Group<A::Network>,
         ) -> Self {
             Self {
                 root: Field::new(Mode::Public, root),
@@ -95,12 +95,12 @@ pub mod input {
     impl<A: Aleo> Private<A> {
         /// Initializes the private inputs for the input circuit.
         pub fn from(
-            record_view_key: A::BaseField,
+            record_view_key: console::types::Field<A::Network>,
             record: console::transition::Record<A::Network>,
-            merkle_path: console::collections::merkle_tree::MerklePath<A::BaseField, 32>,
+            merkle_path: console::collections::merkle_tree::MerklePath<A::Network, 32>,
             serial_number: console::transition::SerialNumber<A::Network>,
-            r_fcm: A::ScalarField,
-            r_tcm: A::BaseField,
+            r_fcm: console::types::Scalar<A::Network>,
+            r_tcm: console::types::Field<A::Network>,
         ) -> Self {
             Self {
                 record_view_key: Field::new(Mode::Private, record_view_key),
@@ -229,12 +229,12 @@ pub mod output {
         pub fn from(
             index: u16,
             record: console::transition::Record<A::Network>,
-            fcm: A::Affine,
-            tcm: A::BaseField,
-            tpk: A::Affine,
+            fcm: console::types::Group<A::Network>,
+            tcm: console::types::Field<A::Network>,
+            tpk: console::types::Group<A::Network>,
         ) -> Self {
             Self {
-                index: U16::new(Mode::Public, index),
+                index: U16::new(Mode::Public, console::types::U16::new(index)),
                 record: Record::new(Mode::Public, record),
                 fcm: Group::new(Mode::Public, fcm),
                 tcm: Field::new(Mode::Public, tcm),
@@ -259,8 +259,8 @@ pub mod output {
         pub fn from(
             caller: console::account::Address<A::Network>,
             state: console::transition::State<A::Network>,
-            r_fcm: A::ScalarField,
-            r_tcm: A::BaseField,
+            r_fcm: console::types::Scalar<A::Network>,
+            r_tcm: console::types::Field<A::Network>,
         ) -> Self {
             Self {
                 caller: Address::new(Mode::Private, caller),

@@ -2101,6 +2101,7 @@ dependencies = [
  "snarkvm-circuit",
  "snarkvm-circuit-environment-witness",
  "snarkvm-console-network",
+ "snarkvm-console-types",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-r1cs",

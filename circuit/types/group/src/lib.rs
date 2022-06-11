@@ -28,10 +28,11 @@ pub mod sub;
 pub mod ternary;
 
 #[cfg(test)]
-use console::{test_rng, AffineCurve, Uniform};
+use console::{test_rng, Uniform};
 #[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
+use console::AffineCurve;
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;

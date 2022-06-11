@@ -15,18 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use console::{
-    account::{Address, PrivateKey, ViewKey},
-    network::Network,
+    account::{Address, ComputeKey, PrivateKey, ViewKey},
+    network::{prelude::*, Network},
     transition::{Record, State},
+    types::{Field, Group, Scalar, U64},
 };
 use snarkvm_algorithms::snark::marlin::Proof;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_experimental::{input, output, snark};
-use snarkvm_fields::Zero;
-use snarkvm_utilities::{CryptoRng, Rng, ToBits, Uniform};
 
-use anyhow::{bail, Error, Result};
-use console::account::ComputeKey;
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;
 use std::time::Instant;
@@ -40,24 +36,24 @@ use std::time::Instant;
 
 struct Input<N: Network> {
     /// The serial number of the input record.
-    serial_number: N::Field,
+    serial_number: Field<N>,
     /// The re-randomized balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
-    bcm: N::Affine,
+    bcm: Group<N>,
 }
 
 impl<N: Network> Input<N> {
     /// Initializes a new `Input` for a transition.
-    pub const fn new(serial_number: N::Field, bcm: N::Affine) -> Self {
+    pub const fn new(serial_number: Field<N>, bcm: Group<N>) -> Self {
         Self { serial_number, bcm }
     }
 
     /// Returns the serial number of the input record.
-    pub const fn serial_number(&self) -> N::Field {
+    pub const fn serial_number(&self) -> Field<N> {
         self.serial_number
     }
 
     /// Returns the balance commitment for the input record.
-    pub const fn bcm(&self) -> N::Affine {
+    pub const fn bcm(&self) -> Group<N> {
         self.bcm
     }
 }
@@ -81,12 +77,12 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns the balance commitment for the output record.
-    pub const fn bcm(&self) -> N::Affine {
+    pub const fn bcm(&self) -> Group<N> {
         self.record.bcm()
     }
 
     /// Returns the output commitment.
-    pub fn to_commitment(&self) -> Result<N::Field> {
+    pub fn to_commitment(&self) -> Result<Field<N>> {
         self.record.to_commitment()
     }
 }
@@ -94,9 +90,9 @@ impl<N: Network> Output<N> {
 #[allow(dead_code)]
 pub struct Transition<N: Network> {
     /// The program ID of the transition.
-    program: N::Field,
+    program: Field<N>,
     /// The process ID of the transition.
-    process: N::Field,
+    process: Field<N>,
     // /// The function that was executed.
     // function: Function<N>,
     /// The transition inputs.
@@ -108,9 +104,9 @@ pub struct Transition<N: Network> {
     /// The transition output proofs.
     output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
     /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
-    tcm: N::Field,
+    tcm: Field<N>,
     /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
-    tpk: N::Affine,
+    tpk: Group<N>,
     /// The fee (i.e. `fee := Σ balance_in - Σ balance_out`).
     fee: i64,
 }
@@ -126,30 +122,30 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the serial numbers in the transition.
-    pub fn serial_numbers(&self) -> Vec<N::Field> {
+    pub fn serial_numbers(&self) -> Vec<Field<N>> {
         self.inputs.iter().map(Input::serial_number).collect::<Vec<_>>()
     }
 
     /// Returns the commitments in the transition.
-    pub fn to_commitments(&self) -> Result<Vec<N::Field>> {
+    pub fn to_commitments(&self) -> Result<Vec<Field<N>>> {
         self.outputs.iter().map(Output::to_commitment).collect::<Result<Vec<_>>>()
     }
 
     /// Returns the fee commitment of this transition, where:
     ///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
-    pub fn fcm(&self) -> Result<N::Affine> {
-        let mut fcm = N::Projective::zero();
+    pub fn fcm(&self) -> Result<Group<N>> {
+        let mut fcm = Group::<N>::zero();
         // Add the input balance commitments.
-        self.inputs.iter().for_each(|input| fcm += input.bcm().to_projective());
+        self.inputs.iter().for_each(|input| fcm += input.bcm());
         // Subtract the output balance commitments.
-        self.outputs.iter().for_each(|output| fcm -= output.bcm().to_projective());
+        self.outputs.iter().for_each(|output| fcm -= output.bcm());
         // Subtract the fee to get the fee commitment.
         let fcm = match self.fee.is_positive() {
-            true => fcm - N::commit_ped64(&self.fee.abs().to_bits_le(), &N::Scalar::zero())?.to_projective(),
-            false => fcm + N::commit_ped64(&self.fee.abs().to_bits_le(), &N::Scalar::zero())?.to_projective(),
+            true => fcm - N::commit_ped64(&self.fee.abs().to_bits_le(), &Scalar::zero())?,
+            false => fcm + N::commit_ped64(&self.fee.abs().to_bits_le(), &Scalar::zero())?,
         };
         // Return the fee commitment.
-        Ok(fcm.to_affine())
+        Ok(fcm)
     }
 }
 
@@ -195,7 +191,10 @@ impl<N: Network> Transaction<N> {
 }
 
 /// Returns the re-randomized balance commitment as `bcm := Commit(balance, r_bcm + r_bcm')`.
-fn bcm<A: circuit::Aleo>(balance: u64, record_view_key: A::BaseField) -> Result<(A::Affine, A::ScalarField)> {
+fn bcm<A: circuit::Aleo>(
+    balance: U64<A::Network>,
+    record_view_key: Field<A::Network>,
+) -> Result<(Group<A::Network>, Scalar<A::Network>)> {
     // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key)).
     let mut r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
     // Compute the re-randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key)).
@@ -209,9 +208,12 @@ fn bcm<A: circuit::Aleo>(balance: u64, record_view_key: A::BaseField) -> Result<
 /// Returns the fee commitment `fcm` and fee randomizer `r_fcm`, where:
 ///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
 ///   - `r_fcm := Σ r_in - Σ r_out`.
-fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> Result<(A::Affine, A::ScalarField)> {
+fn fcm<A: circuit::Aleo>(
+    r_in: &[Scalar<A::Network>],
+    r_out: &[Scalar<A::Network>],
+) -> Result<(Group<A::Network>, Scalar<A::Network>)> {
     // Compute the fee randomizer.
-    let mut r_fcm = A::ScalarField::zero();
+    let mut r_fcm = Scalar::<A::Network>::zero();
     r_in.iter().for_each(|r| r_fcm += r);
     r_out.iter().for_each(|r| r_fcm -= r);
     // Compute the fee commitment.
@@ -224,7 +226,7 @@ fn fcm<A: circuit::Aleo>(r_in: &[A::ScalarField], r_out: &[A::ScalarField]) -> R
 fn tcm<A: circuit::Aleo, R: Rng + CryptoRng>(
     caller: &Address<A::Network>,
     rng: &mut R,
-) -> Result<(A::BaseField, A::Affine, A::BaseField, A::Affine)> {
+) -> Result<(Field<A::Network>, Group<A::Network>, Field<A::Network>, Group<A::Network>)> {
     // Sample a random nonce.
     let r_tcm = Uniform::rand(rng);
     // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
@@ -232,9 +234,9 @@ fn tcm<A: circuit::Aleo, R: Rng + CryptoRng>(
     // let tsk = A::Network::hash_to_scalar_psd2(&[A::Network::tvk_domain(), r_tcm])?;
     let tsk = A::Network::hash_to_scalar_psd2(&[r_tcm])?;
     // Compute the transition public key `tpk` as `tsk * G`.
-    let tpk = A::Network::g_scalar_multiply(&tsk).to_affine();
+    let tpk = A::Network::g_scalar_multiply(&tsk);
     // Compute the transition view key `tvk` as `tsk * caller`.
-    let tvk = (**caller * tsk).to_affine();
+    let tvk = **caller * tsk;
     // Compute the transition view key commitment `tcm` := `Hash(tvk)`.
     // TODO (howardwu): Domain separator.
     // Compute the transition view key commitment `tcm` as `Hash(caller, tpk, tvk)`.
@@ -251,6 +253,8 @@ fn mint<A: circuit::Aleo, R: Rng + CryptoRng>(
 where
     A::BaseField: UnwindSafe + RefUnwindSafe,
     A::ScalarField: UnwindSafe + RefUnwindSafe,
+    A::Network: UnwindSafe + RefUnwindSafe,
+    <A::Network as Environment>::Projective: UnwindSafe + RefUnwindSafe,
     A::Affine: UnwindSafe + RefUnwindSafe,
 {
     // Set the output index to 0.
@@ -260,13 +264,12 @@ where
     let (tcm, tpk, r_tcm, tvk) = tcm::<A, R>(caller, rng)?;
 
     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-    let randomizer =
-        A::Network::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), A::BaseField::from(output_index as u128)])?;
+    let randomizer = A::Network::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), Field::from_u16(output_index)])?;
 
     // Initialize th empty data.
-    let data = A::BaseField::zero(); // TODO: Hardcode this option in the Network trait.
+    let data = Field::zero(); // TODO: Hardcode this option in the Network trait.
     // Compute the program state nonce.
-    let nonce = A::Network::g_scalar_multiply(&randomizer).to_affine();
+    let nonce = A::Network::g_scalar_multiply(&randomizer);
     // Initialize a coinbase.
     let state = State::new(*caller, amount, data, nonce);
 
@@ -274,7 +277,7 @@ where
     let record = state.encrypt(&randomizer)?;
 
     // Compute the record view key as `randomizer * address`.
-    let record_view_key = (**caller * randomizer).to_affine().to_x_coordinate();
+    let record_view_key = (**caller * randomizer).to_x_coordinate();
     // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
     let r_bcm = A::Network::hash_to_scalar_psd2(&[A::Network::bcm_domain(), record_view_key])?;
     // Compute the fee commitment.
@@ -297,8 +300,8 @@ where
 
         let proof = snark::execute(assignment)?;
         let transition = Transition {
-            program: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
-            process: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
+            program: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
+            process: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
             inputs: vec![],
             outputs: vec![Output::new(record)],
             input_proofs: vec![],
@@ -332,6 +335,8 @@ where
     A::BaseField: UnwindSafe + RefUnwindSafe,
     A::ScalarField: UnwindSafe + RefUnwindSafe,
     A::Affine: UnwindSafe + RefUnwindSafe,
+    <A::Network as Environment>::Projective: UnwindSafe + RefUnwindSafe,
+    A::Network: UnwindSafe + RefUnwindSafe,
 {
     // Initialize the caller compute key, view key, and address.
     let caller_compute_key = ComputeKey::try_from(caller_private_key)?;
@@ -358,7 +363,7 @@ where
 
     // Decrypt the record into program state.
     let state = record.decrypt_symmetric(&record_view_key)?;
-    let fee = state.balance() as i64;
+    let fee = *state.balance() as i64;
 
     // Compute the balance commitment.
     let (bcm, r_bcm) = bcm::<A>(state.balance(), record_view_key)?;
@@ -391,8 +396,8 @@ where
 
         let proof = snark::execute(assignment)?;
         let transition = Transition {
-            program: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
-            process: A::BaseField::zero(), // TODO: Hardcode this option in the Network trait.
+            program: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
+            process: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
             inputs: vec![Input::new(*serial_number.value(), bcm)],
             outputs: vec![],
             input_proofs: vec![proof],
