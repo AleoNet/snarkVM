@@ -18,8 +18,10 @@ mod from_bits;
 mod parse;
 mod size_in_bits;
 mod to_bits;
+mod to_type;
 mod variant;
 
+use crate::LiteralType;
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 use snarkvm_utilities::{

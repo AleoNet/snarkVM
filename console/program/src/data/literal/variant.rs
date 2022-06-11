@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Literal<N> {
-    /// Returns the type name of the literal.
+    /// Returns the variant of the literal.
     pub fn variant(&self) -> u8 {
         match self {
             Self::Address(..) => 0,
