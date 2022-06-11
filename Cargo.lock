@@ -2341,6 +2341,7 @@ dependencies = [
  "enum_index_derive",
  "indexmap",
  "once_cell",
+ "paste",
  "serde_json",
  "snarkvm-console-account",
  "snarkvm-console-network",

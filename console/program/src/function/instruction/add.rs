@@ -53,10 +53,10 @@ impl<N: Network> Operation for AddOp<N> {
         };
 
         // Prepare the operator.
-        use core::ops::Add as AddOperator;
+        use core::ops::Add as Operator;
 
         // Perform the operation.
-        let output = crate::evaluate!(match AddOperator::add(first, second) {
+        let output = crate::evaluate!(match Operator::add(first, second) {
             (Field, Field) => Field,
             (Group, Group) => Group,
             (I8, I8) => I8,
@@ -96,6 +96,252 @@ impl<N: Network> Operation for AddOp<N> {
             (Scalar, Scalar) => Scalar,
         }))
     }
+}
+
+#[cfg(test)]
+mod tests_rename {
+    /// Creates a test of the given operation for each given case of inputs and outputs.
+    ///
+    /// ## Example
+    /// ```ignore
+    /// ```text
+    ///     test_evaluate!(
+    ///         Operator::add == AddOp::evaluate {
+    ///             (Field, Field) => Field,
+    ///             (Group, Group) => Group,
+    ///             (I8, I8) => I8,
+    ///             (I16, I16) => I16,
+    ///             (I32, I32) => I32,
+    ///             (I64, I64) => I64,
+    ///             (I128, I128) => I128,
+    ///             (U8, U8) => U8,
+    ///             (U16, U16) => U16,
+    ///             (U32, U32) => U32,
+    ///             (U64, U64) => U64,
+    ///             (U128, U128) => U128,
+    ///             (Scalar, Scalar) => Scalar,
+    ///         }
+    ///     );
+    /// ```
+    #[macro_export]
+    macro_rules! test_evaluate {
+        // Case 1: Binary operation.
+        ($operator:tt::$operation:ident == $opcode:tt::$op:ident { $( ($input_a:ident, $input_b:ident) => $output:ident $(($condition:tt))?, )+ }) => {
+            // Invokes `Case 1A` or `Case 1B` (see below) for each given case of inputs and outputs.
+            $( crate::test_evaluate!{$operator::$operation == $opcode::$op for ($input_a, $input_b) => $output $(($condition))?} )+
+        };
+
+        ////////////////////
+        // Private Macros //
+        ////////////////////
+
+        // Case 1A: Binary operation.
+        ($operator:tt::$operation:ident == $opcode:tt::$op:ident for ($input_a:ident, $input_b:ident) => $output:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
+                    use snarkvm_console_types::*;
+
+                    type CurrentNetwork = snarkvm_console_network::Testnet3;
+
+                    // Ensure the expected output type is correct.
+                    assert_eq!(LiteralType::$output, $opcode::<CurrentNetwork>::output_type((LiteralType::$input_a, LiteralType::$input_b))?);
+
+                    // Check the operation on randomly-sampled values.
+                    for _ in 0..1_000 {
+                        // Sample the first and second value.
+                        let a = $input_a::rand(&mut test_rng());
+                        let b = $input_b::rand(&mut test_rng());
+
+                        // Initialize the operands.
+                        let first = Plaintext::from_str(&format!("{a}"))?;
+                        let second = Plaintext::from_str(&format!("{b}"))?;
+
+                        // Compute the outputs.
+                        let expected = Plaintext::from(Literal::$output($operator::$operation(a, b)));
+                        let candidate = $opcode::<CurrentNetwork>::$op((first, second))?;
+
+                        // Ensure the outputs match.
+                        assert_eq!(expected, candidate);
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
+        // Case 1B: Binary operation, where the sampled values are halved (divided by 2) to prevent overflows.
+        ($operator:tt::$operation:ident == $opcode:tt::$op:ident for ($input_a:ident, $input_b:ident) => $output:ident ("skip overflows")) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
+                    use snarkvm_console_types::*;
+
+                    type CurrentNetwork = snarkvm_console_network::Testnet3;
+
+                    // Ensure the expected output type is correct.
+                    assert_eq!(LiteralType::$output, $opcode::<CurrentNetwork>::output_type((LiteralType::$input_a, LiteralType::$input_b))?);
+
+                    // Check the operation on randomly-sampled values.
+                    for _ in 0..1_000 {
+                        // Sample the first and second value.
+                        let a = $input_a::rand(&mut test_rng()) / ($input_a::one() + $input_a::one());
+                        let b = $input_b::rand(&mut test_rng()) / ($input_b::one() + $input_b::one());
+
+                        // Initialize the operands.
+                        let first = Plaintext::from_str(&format!("{a}"))?;
+                        let second = Plaintext::from_str(&format!("{b}"))?;
+
+                        // Compute the outputs.
+                        let expected = Plaintext::from(Literal::$output($operator::$operation(a, b)));
+                        let candidate = $opcode::<CurrentNetwork>::$op((first, second))?;
+
+                        // Ensure the outputs match.
+                        assert_eq!(expected, candidate);
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
+        // Case 1C: Binary operation, where the sampled values are invalid operands, and checked to halt.
+        ($operator:tt::$operation:ident == $opcode:tt::$op:ident for ($input_a:ident, $input_b:ident) => $output:ident ("ensure invalid operands halt")) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower _ halts _ on _ invalid _ operands>]() -> Result<()> {
+                    use snarkvm_console_types::*;
+
+                    type CurrentNetwork = snarkvm_console_network::Testnet3;
+
+                    // Check the operation on randomly-sampled values.
+                    for i in 0..1_000 {
+                        // Sample the first and second value.
+                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+
+                        // Initialize the operands.
+                        let first = Plaintext::from_str(&format!("{a}"))?;
+                        let second = Plaintext::from_str(&format!("{b}"))?;
+
+                        // Attempt to compute the overflow case.
+                        let result = std::panic::catch_unwind(|| $opcode::<CurrentNetwork>::$op((first, second)));
+
+                        // Ensure the computation halted.
+                        assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not halt: {a} {b}");
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
+        // Case 1D: Binary operation, where the sampled values are guaranteed to be overflow cases, and checked to halt.
+        ($operator:tt::$operation:ident == $opcode:tt::$op:ident for ($input_a:ident, $input_b:ident) => $output:ident ("ensure overflows halt")) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower _ halts _ on _ overflows>]() -> Result<()> {
+                    use snarkvm_console_types::*;
+
+                    type CurrentNetwork = snarkvm_console_network::Testnet3;
+
+                    // Check the operation on randomly-sampled values.
+                    for i in 0..1_000 {
+                        // Sample the first and second value.
+                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+
+                        // Skip this iteration, if this is **not** an overflow case.
+                        if (*a).[< checked _ $operation >](*b).is_some() {
+                            // This case does not overflow, so skip it.
+                            continue;
+                        }
+
+                        // Initialize the operands.
+                        let first = Plaintext::from_str(&format!("{a}"))?;
+                        let second = Plaintext::from_str(&format!("{b}"))?;
+
+                        // Attempt to compute the overflow case.
+                        let result = std::panic::catch_unwind(|| $opcode::<CurrentNetwork>::$op((first, second)));
+
+                        // Ensure the computation halted.
+                        assert!(result.is_err(), "Overflow case (on iteration {i}) did not halt: {a} {b}");
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Declare the operator to check.
+    use core::ops::Add as Operator;
+
+    // Declare the opcode to check.
+    use super::AddOp as Opcode;
+
+    // For each declared case, this macro samples random values and checks that
+    // the output of the operator (LHS) matches the output of the opcode (RHS).
+    crate::test_evaluate!(
+        Operator::add == Opcode::evaluate {
+            (Field, Field) => Field,
+            (Group, Group) => Group,
+            (I8, I8) => I8 ("skip overflows"),
+            (I16, I16) => I16 ("skip overflows"),
+            (I32, I32) => I32 ("skip overflows"),
+            (I64, I64) => I64 ("skip overflows"),
+            (I128, I128) => I128 ("skip overflows"),
+            (U8, U8) => U8 ("skip overflows"),
+            (U16, U16) => U16 ("skip overflows"),
+            (U32, U32) => U32 ("skip overflows"),
+            (U64, U64) => U64 ("skip overflows"),
+            (U128, U128) => U128 ("skip overflows"),
+            (Scalar, Scalar) => Scalar,
+        }
+    );
+
+    // For each declared case, this macro samples random values and checks that
+    // the output of the operator (LHS) matches the output of the opcode (RHS).
+    crate::test_evaluate!(
+        Operator::add == Opcode::evaluate {
+            (I8, I8) => I8 ("ensure overflows halt"),
+            (I16, I16) => I16 ("ensure overflows halt"),
+            (I32, I32) => I32 ("ensure overflows halt"),
+            (I64, I64) => I64 ("ensure overflows halt"),
+            (I128, I128) => I128 ("ensure overflows halt"),
+            (U8, U8) => U8 ("ensure overflows halt"),
+            (U16, U16) => U16 ("ensure overflows halt"),
+            (U32, U32) => U32 ("ensure overflows halt"),
+            (U64, U64) => U64 ("ensure overflows halt"),
+            (U128, U128) => U128 ("ensure overflows halt"),
+        }
+    );
+
+    // // For each declared case, this macro samples random values and checks that
+    // // the output of the operator (LHS) matches the output of the opcode (RHS).
+    // // Ensure invalid operands halt.
+    // crate::test_evaluate!(
+    //     Opcode::evaluate {
+    //         (Field, Field) => Field,
+    //         (Group, Group) => Group,
+    //         (I8, I8) => I8,
+    //         (I16, I16) => I16,
+    //         (I32, I32) => I32,
+    //         (I64, I64) => I64,
+    //         (I128, I128) => I128,
+    //         (U8, U8) => U8,
+    //         (U16, U16) => U16,
+    //         (U32, U32) => U32,
+    //         (U64, U64) => U64,
+    //         (U128, U128) => U128,
+    //         (Scalar, Scalar) => Scalar,
+    //     }
+    // );
 }
 
 // #[cfg(test)]
