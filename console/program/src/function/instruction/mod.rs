@@ -317,18 +317,18 @@ impl<N: Network> Instruction<N> {
     // pub(crate) fn opcode(&self) -> &'static str {
     //     instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
     // }
-    //
-    // /// Returns the operands of the instruction.
-    // #[inline]
-    // pub(crate) fn operands(&self) -> Vec<Operand<N>> {
-    //     instruction!(self, |instruction| instruction.operands())
-    // }
-    //
-    // /// Returns the destination register of the instruction.
-    // #[inline]
-    // pub(crate) fn destination(&self) -> &Register<N> {
-    //     instruction!(self, |instruction| instruction.destination())
-    // }
+
+    /// Returns the operands of the instruction.
+    #[inline]
+    pub(crate) fn operands(&self) -> &[Operand<N>] {
+        instruction!(self, |instruction| instruction.operands())
+    }
+
+    /// Returns the destination register of the instruction.
+    #[inline]
+    pub(crate) fn destination(&self) -> &Register<N> {
+        instruction!(self, |instruction| instruction.destination())
+    }
 
     /// Evaluates the instruction.
     #[inline]
@@ -491,22 +491,22 @@ mod tests {
     macro_rules! sample_literals {
         ($network:ident, $rng:expr) => {
             [
-                Literal::<$network>::Address(Address::new(Uniform::rand($rng))),
-                Literal::Boolean(Boolean::rand($rng)),
-                Literal::Field(Field::rand($rng)),
-                Literal::Group(Group::rand($rng)),
-                Literal::I8(I8::rand($rng)),
-                Literal::I16(I16::rand($rng)),
-                Literal::I32(I32::rand($rng)),
-                Literal::I64(I64::rand($rng)),
-                Literal::I128(I128::rand($rng)),
-                Literal::U8(U8::rand($rng)),
-                Literal::U16(U16::rand($rng)),
-                Literal::U32(U32::rand($rng)),
-                Literal::U64(U64::rand($rng)),
-                Literal::U128(U128::rand($rng)),
-                Literal::Scalar(Scalar::rand($rng)),
-                Literal::String(StringType::new(
+                $crate::Literal::<$network>::Address(Address::new(Uniform::rand($rng))),
+                $crate::Literal::Boolean(Boolean::rand($rng)),
+                $crate::Literal::Field(Field::rand($rng)),
+                $crate::Literal::Group(Group::rand($rng)),
+                $crate::Literal::I8(I8::rand($rng)),
+                $crate::Literal::I16(I16::rand($rng)),
+                $crate::Literal::I32(I32::rand($rng)),
+                $crate::Literal::I64(I64::rand($rng)),
+                $crate::Literal::I128(I128::rand($rng)),
+                $crate::Literal::U8(U8::rand($rng)),
+                $crate::Literal::U16(U16::rand($rng)),
+                $crate::Literal::U32(U32::rand($rng)),
+                $crate::Literal::U64(U64::rand($rng)),
+                $crate::Literal::U128(U128::rand($rng)),
+                $crate::Literal::Scalar(Scalar::rand($rng)),
+                $crate::Literal::String(StringType::new(
                     &(0..<$network as Environment>::MAX_STRING_BYTES / 8)
                         .map(|_| $rng.gen::<char>())
                         .collect::<String>(),
@@ -543,7 +543,7 @@ mod tests {
         // Case 1: Binary operation.
         ($operator:tt::$operation:tt == $opcode:tt::$evaluate:tt { $( ($input_a:ident, $input_b:ident) => $output:ident $(($condition:tt))?, )+ }) => {
             // For each given case of inputs and outputs, invoke `Case 1A` or `Case 1B` (see below).
-            $( crate::test_evaluate!{$operator::$operation == $opcode::$evaluate for ($input_a, $input_b) => $output $(($condition))?} )+
+            $( $crate::test_evaluate!{$operator::$operation == $opcode::$evaluate for ($input_a, $input_b) => $output $(($condition))?} )+
 
             // For each non-existent case of inputs and outputs, invoke `Case 1C`.
             paste::paste! {
@@ -554,22 +554,22 @@ mod tests {
                     type CurrentNetwork = snarkvm_console_network::Testnet3;
 
                     for i in 0..100 {
-                        for literal_a in crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                            for literal_b in crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                            for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                                 // Retrieve the types of the literals.
                                 let (type_a, type_b) = (literal_a.to_type(), literal_b.to_type());
 
                                 // Skip this iteration, if this is **not** an invalid operand case.
-                                $(if type_a == LiteralType::$input_a && type_b == LiteralType::$input_b {
+                                $(if type_a == $crate::LiteralType::$input_a && type_b == $crate::LiteralType::$input_b {
                                     continue;
                                 })+
 
                                 // Initialize the operands.
-                                let first = Plaintext::from_str(&format!("{literal_a}"))?;
-                                let second = Plaintext::from_str(&format!("{literal_b}"))?;
+                                let first = $crate::Literal::from_str(&format!("{literal_a}"))?;
+                                let second = $crate::Literal::from_str(&format!("{literal_b}"))?;
 
                                 // Attempt to compute the invalid operand case.
-                                let result = $opcode::<CurrentNetwork>::$evaluate((first, second));
+                                let result = $opcode::<CurrentNetwork>::$evaluate(&[first, second]);
 
                                 // Ensure the computation failed.
                                 assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
@@ -595,7 +595,10 @@ mod tests {
                     type CurrentNetwork = snarkvm_console_network::Testnet3;
 
                     // Ensure the expected output type is correct.
-                    assert_eq!(LiteralType::$output, $opcode::<CurrentNetwork>::output_type((LiteralType::$input_a, LiteralType::$input_b))?);
+                    assert_eq!(
+                        $crate::LiteralType::from($crate::LiteralType::$output),
+                        $opcode::<CurrentNetwork>::output_type(&[$crate::LiteralType::$input_a.into(), $crate::LiteralType::$input_b.into()])?
+                    );
 
                     // Check the operation on randomly-sampled values.
                     for _ in 0..1_000 {
@@ -604,12 +607,12 @@ mod tests {
                         let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
 
                         // Initialize the operands.
-                        let first = Plaintext::from_str(&format!("{a}"))?;
-                        let second = Plaintext::from_str(&format!("{b}"))?;
+                        let first = $crate::Literal::from_str(&format!("{a}"))?;
+                        let second = $crate::Literal::from_str(&format!("{b}"))?;
 
                         // Compute the outputs.
-                        let expected = Plaintext::from(Literal::$output(a.$operation(&b)));
-                        let candidate = $opcode::<CurrentNetwork>::$evaluate((first, second))?;
+                        let expected = Literal::$output(a.$operation(&b));
+                        let candidate = $opcode::<CurrentNetwork>::$evaluate(&[first, second])?;
 
                         // Ensure the outputs match.
                         assert_eq!(expected, candidate);
@@ -638,23 +641,23 @@ mod tests {
                         let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
 
                         // Initialize the operands.
-                        let first = Plaintext::from_str(&format!("{a}"))?;
-                        let second = Plaintext::from_str(&format!("{b}"))?;
+                        let first = $crate::Literal::from_str(&format!("{a}"))?;
+                        let second = $crate::Literal::from_str(&format!("{b}"))?;
 
                         // Skip this iteration, if this is **not** an overflow case.
                         match (*a).[< checked _ $operation >](*b).is_some() {
                             // If the sampled values **do not** overflow on evaluation, ensure it succeeds.
                             true => {
                                 // Compute the outputs.
-                                let expected = Plaintext::from(Literal::$output(a.$operation(&b)));
-                                let candidate = $opcode::<CurrentNetwork>::$evaluate((first, second))?;
+                                let expected = $crate::Literal::from(Literal::$output(a.$operation(&b)));
+                                let candidate = $opcode::<CurrentNetwork>::$evaluate(&[first, second])?;
                                 // Ensure the outputs match.
                                 assert_eq!(expected, candidate);
                             },
                             // If the sampled values overflow on evaluation, ensure it halts.
                             false => {
                                 // Attempt to compute the overflow case.
-                                let result = std::panic::catch_unwind(|| $opcode::<CurrentNetwork>::$evaluate((first, second)));
+                                let result = std::panic::catch_unwind(|| $opcode::<CurrentNetwork>::$evaluate(&[first, second]));
                                 // Ensure the computation halted.
                                 assert!(result.is_err(), "Overflow case (on iteration {i}) did not halt: {a} {b}");
                             }

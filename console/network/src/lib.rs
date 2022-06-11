@@ -47,6 +47,11 @@ pub trait Network:
     /// The maximum number of values and/or entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
 
+    /// The maximum number of operands in an instruction.
+    const MAX_OPERANDS: usize = Self::MAX_DATA_ENTRIES;
+    /// The maximum number of instructions in a function.
+    const MAX_INSTRUCTIONS: usize = 65536;
+
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 8;
     /// The maximum number of outputs per transition.
@@ -175,9 +180,4 @@ pub trait Network:
 
     /// Returns the Poseidon PRF with an input rate of 8.
     fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
-
-    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
-    fn halt<S: Into<String>, T>(message: S) -> T {
-        panic!("{}", message.into())
-    }
 }

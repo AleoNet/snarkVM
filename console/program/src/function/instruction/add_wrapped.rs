@@ -15,42 +15,31 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::instruction::{Binary, Operation},
+    function::instruction::{BinaryLiteral, Operation},
     Literal,
     LiteralType,
-    Plaintext,
 };
 use snarkvm_console_network::prelude::*;
 
 use core::marker::PhantomData;
 
+/// The number of operands for the operation.
+const NUM_OPERANDS: usize = 2;
+
 /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-pub type AddWrapped<N> = Binary<N, AddWrappedOp<N>>;
+pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOp<N>>;
 
 pub struct AddWrappedOp<N: Network>(PhantomData<N>);
 
-impl<N: Network> Operation for AddWrappedOp<N> {
-    type InputTypes = (LiteralType, LiteralType);
-    type Inputs = (Plaintext<N>, Plaintext<N>);
-    type Output = Plaintext<N>;
-
+impl<N: Network> Operation<N, Literal<N>, LiteralType, NUM_OPERANDS> for AddWrappedOp<N> {
     /// The opcode of the operation.
     const OPCODE: &'static str = "add.w";
 
     /// Returns the result of evaluating the operation on the given inputs.
     #[inline]
-    fn evaluate((first, second): Self::Inputs) -> Result<Self::Output> {
-        // Load the first literal.
-        let first = match first {
-            Plaintext::Literal(literal, ..) => literal,
-            _ => bail!("Instruction '{}' expects a literal in the first operand.", Self::OPCODE),
-        };
-
-        // Load the second literal.
-        let second = match second {
-            Plaintext::Literal(literal, ..) => literal,
-            _ => bail!("Instruction '{}' expects a literal in the second operand.", Self::OPCODE),
-        };
+    fn evaluate(inputs: &[Literal<N>; NUM_OPERANDS]) -> Result<Literal<N>> {
+        // Retrieve the first and second operands.
+        let [first, second] = inputs;
 
         // Prepare the operator.
         use snarkvm_console_network::AddWrapped as Operator;
@@ -70,12 +59,15 @@ impl<N: Network> Operation for AddWrappedOp<N> {
         });
 
         // Return the output.
-        Ok(Plaintext::from(output))
+        Ok(output)
     }
 
     /// Returns the output type from the given input types.
     #[inline]
-    fn output_type((first, second): Self::InputTypes) -> Result<LiteralType> {
+    fn output_type(inputs: &[LiteralType; NUM_OPERANDS]) -> Result<LiteralType> {
+        // Retrieve the first and second operands.
+        let [first, second] = inputs;
+
         // Compute the output type.
         Ok(crate::output_type!(match (first, second) {
             (I8, I8) => I8,

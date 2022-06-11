@@ -15,42 +15,31 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::instruction::{Binary, Operation},
+    function::instruction::{BinaryLiteral, Operation},
     Literal,
     LiteralType,
-    Plaintext,
 };
 use snarkvm_console_network::prelude::*;
 
 use core::marker::PhantomData;
 
+/// The number of operands for the operation.
+const NUM_OPERANDS: usize = 2;
+
 /// Adds `first` with `second`, storing the outcome in `destination`.
-pub type Add<N> = Binary<N, AddOp<N>>;
+pub type Add<N> = BinaryLiteral<N, AddOp<N>>;
 
 pub struct AddOp<N: Network>(PhantomData<N>);
 
-impl<N: Network> Operation for AddOp<N> {
-    type InputTypes = (LiteralType, LiteralType);
-    type Inputs = (Plaintext<N>, Plaintext<N>);
-    type Output = Plaintext<N>;
-
+impl<N: Network> Operation<N, Literal<N>, LiteralType, NUM_OPERANDS> for AddOp<N> {
     /// The opcode of the operation.
     const OPCODE: &'static str = "add";
 
     /// Returns the result of evaluating the operation on the given inputs.
     #[inline]
-    fn evaluate((first, second): Self::Inputs) -> Result<Self::Output> {
-        // Load the first literal.
-        let first = match first {
-            Plaintext::Literal(literal, ..) => literal,
-            _ => bail!("Instruction '{}' expects a literal in the first operand.", Self::OPCODE),
-        };
-
-        // Load the second literal.
-        let second = match second {
-            Plaintext::Literal(literal, ..) => literal,
-            _ => bail!("Instruction '{}' expects a literal in the second operand.", Self::OPCODE),
-        };
+    fn evaluate(inputs: &[Literal<N>; NUM_OPERANDS]) -> Result<Literal<N>> {
+        // Retrieve the first and second operands.
+        let [first, second] = inputs;
 
         // Prepare the operator.
         use core::ops::Add as Operator;
@@ -73,12 +62,15 @@ impl<N: Network> Operation for AddOp<N> {
         });
 
         // Return the output.
-        Ok(Plaintext::from(output))
+        Ok(output)
     }
 
     /// Returns the output type from the given input types.
     #[inline]
-    fn output_type((first, second): Self::InputTypes) -> Result<LiteralType> {
+    fn output_type(inputs: &[LiteralType; NUM_OPERANDS]) -> Result<LiteralType> {
+        // Retrieve the first and second operands.
+        let [first, second] = inputs;
+
         // Compute the output type.
         Ok(crate::output_type!(match (first, second) {
             (Field, Field) => Field,

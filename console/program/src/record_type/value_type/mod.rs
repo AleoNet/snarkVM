@@ -37,3 +37,15 @@ pub enum ValueType<N: Network> {
     /// A private value decrypted with the account owner's address.
     Private(PlaintextType<N>),
 }
+
+impl<N: Network> ValueType<N> {
+    /// Returns the value type as a plaintext type.
+    #[inline]
+    pub fn to_plaintext_type(&self) -> PlaintextType<N> {
+        match self {
+            ValueType::Constant(plaintext_type) => *plaintext_type,
+            ValueType::Public(plaintext_type) => *plaintext_type,
+            ValueType::Private(plaintext_type) => *plaintext_type,
+        }
+    }
+}

@@ -35,6 +35,40 @@ impl<N: Network> Registers<N> {
         Self { registers: IndexMap::new(), num_assigned: 0 }
     }
 
+    /// Assigns the given literal to the given register, assuming the register is not already assigned.
+    ///
+    /// # Errors
+    /// This method will halt if the given register is a register member.
+    /// This method will halt if the register was previously stored.
+    #[inline]
+    pub fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
+        // Ensure the register assignments are monotonically increasing.
+        ensure!(
+            self.num_assigned == register.locator(),
+            "Expected \'{}\', found \'{register}\'",
+            Register::<N>::Locator(self.num_assigned)
+        );
+
+        // Store the literal in the register.
+        let previous = match register {
+            // Store the literal for a register.
+            Register::Locator(locator) => self.registers.insert(*locator, Some(Plaintext::from(literal))),
+            // Store the literal for a register member.
+            Register::Member(..) => bail!("Cannot store directly to \'{register}\'"),
+        };
+
+        // Ensure the register has not been previously stored.
+        match previous {
+            // Halt if the register was previously stored.
+            Some(Some(..)) => bail!("Register \'{register}\' was previously assigned"),
+            // Increment the number of assigned registers.
+            Some(None) => self.num_assigned += 1,
+            // Halt if the register was not previously defined.
+            None => bail!("Register \'{register}\' was not defined before assignment"),
+        }
+        Ok(())
+    }
+
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors

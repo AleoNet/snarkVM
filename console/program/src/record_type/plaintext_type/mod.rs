@@ -37,6 +37,20 @@ pub enum PlaintextType<N: Network> {
     Interface(Identifier<N>),
 }
 
+impl<N: Network> From<LiteralType> for PlaintextType<N> {
+    /// Initializes a plaintext type from a literal type.
+    fn from(literal: LiteralType) -> Self {
+        PlaintextType::Literal(literal)
+    }
+}
+
+impl<N: Network> From<Identifier<N>> for PlaintextType<N> {
+    /// Initializes a plaintext type from an interface type.
+    fn from(interface: Identifier<N>) -> Self {
+        PlaintextType::Interface(interface)
+    }
+}
+
 impl<N: Network> PlaintextType<N> {
     /// Returns `true` if the type is a literal.
     /// Returns `false` if the type is an interface.

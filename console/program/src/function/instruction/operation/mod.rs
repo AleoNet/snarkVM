@@ -14,14 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod binary;
-pub(crate) use binary::*;
+mod literal_operation;
+pub(crate) use literal_operation::*;
 
-mod ternary;
-pub(crate) use ternary::*;
-
-use crate::LiteralType;
+use crate::{Plaintext, PlaintextType};
 use snarkvm_console_network::prelude::*;
+
+pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
+    /// The opcode of the operation.
+    const OPCODE: &'static str;
+
+    /// Returns the result of evaluating the operation on the given inputs.
+    fn evaluate(inputs: &[Value; NUM_OPERANDS]) -> Result<Value>;
+
+    /// Returns the output type from the given input types.
+    fn output_type(inputs: &[ValueType; NUM_OPERANDS]) -> Result<ValueType>;
+}
 
 /// Creates a match statement that evaluates the operation.
 ///
@@ -47,7 +55,7 @@ macro_rules! evaluate {
     // Binary operation.
     (match $first:ident.$operation:tt($second:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
         match ($first, $second) {
-            $((Literal::$input_a(first), Literal::$input_b(second)) => Literal::$output(first.$operation(&second)),)+
+            $(($crate::Literal::$input_a(first), $crate::Literal::$input_b(second)) => $crate::Literal::$output(first.$operation(second)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -77,23 +85,8 @@ macro_rules! output_type {
     // Binary operation.
     (match ($first:expr, $second:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
         match ($first, $second) {
-            $((LiteralType::$input_a, LiteralType::$input_b) => LiteralType::$output,)+
+            $(($crate::LiteralType::$input_a, $crate::LiteralType::$input_b) => $crate::LiteralType::$output,)+
             _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
         }
     }};
-}
-
-pub trait Operation {
-    type InputTypes;
-    type Inputs;
-    type Output;
-
-    /// The opcode of the operation.
-    const OPCODE: &'static str;
-
-    /// Returns the result of evaluating the operation on the given inputs.
-    fn evaluate(inputs: Self::Inputs) -> Result<Self::Output>;
-
-    /// Returns the output type from the given input types.
-    fn output_type(inputs: Self::InputTypes) -> Result<LiteralType>;
 }

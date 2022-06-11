@@ -31,7 +31,15 @@ pub use registers::Registers;
 
 pub struct Function;
 
-// use crate::{Annotation, Identifier, Input, Output, Program, Sanitizer, Value};
+// use crate::{
+//     function::{Input, Output},
+//     Identifier,
+//     LiteralType,
+//     PlaintextType,
+//     Sanitizer,
+//     Value,
+//     ValueType,
+// };
 // use snarkvm_console_network::prelude::*;
 // use snarkvm_utilities::{
 //     error,
@@ -42,10 +50,10 @@ pub struct Function;
 //
 // use indexmap::{IndexMap, IndexSet};
 // use std::{cell::RefCell, rc::Rc};
-
-// enum RegisterType {
-//     Input,
-//     Destination,
+//
+// enum RegisterType<N: Network> {
+//     Input(ValueType<N>),
+//     Destination(PlaintextType<N>),
 // }
 //
 // #[derive(Clone)]
@@ -57,7 +65,7 @@ pub struct Function;
 //     // /// When input assignments are added, the entry is updated to `(locator, Some(value))`.
 //     // /// No changes occur to `registers` when output statements are added.
 //     // registers: Registers<N>,
-//     registers: IndexMap<u64, RegisterType>,
+//     registers: IndexMap<u64, RegisterType<N>>,
 //     /// The input statements, added in order of the input registers.
 //     /// Input assignments are ensured to match the ordering of the input statements.
 //     inputs: IndexSet<Input<N>>,
@@ -70,14 +78,14 @@ pub struct Function;
 //
 // impl<N: Network> Function<N> {
 //     /// Initializes a new function with the given name.
-//     pub fn new(name: &str) -> Self {
-//         Self {
-//             name: Identifier::from_str(name),
+//     pub fn new(name: &str) -> Result<Self> {
+//         Ok(Self {
+//             name: Identifier::from_str(name)?,
 //             registers: Registers::new(),
 //             inputs: IndexSet::new(),
 //             instructions: Vec::new(),
 //             outputs: IndexSet::new(),
-//         }
+//         })
 //     }
 //
 //     /// Returns the name of the function.
@@ -113,7 +121,7 @@ pub struct Function;
 //         // Retrieve the input register.
 //         let register = input.register();
 //         // Ensure the input register is a locator (and does not reference a member).
-//         ensure!(register.is_locator(), "Input registers must be locators and cannot reference members");
+//         ensure!(register.is_locator(), "Input register {register} must be a locator and cannot reference a member");
 //         // Ensure the input register is new.
 //         ensure!(!self.registers.contains_key(&register), "Input register {register} already exists");
 //
@@ -125,7 +133,7 @@ pub struct Function;
 //         // }
 //
 //         // Insert the input register.
-//         self.registers.insert(register, RegisterType::Input);
+//         self.registers.insert(register, RegisterType::Input(*input.value_type()));
 //         // Insert the input statement.
 //         self.inputs.insert(input);
 //
@@ -143,7 +151,6 @@ pub struct Function;
 //     /// This method will halt if the destination register already exists in memory.
 //     /// This method will halt if the destination register locator does not monotonically increase.
 //     /// This method will halt if any operand register does not already exist in memory.
-//     /// This method will halt if any registers are already set.
 //     #[inline]
 //     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
 //         // Ensure there are input statements in memory.
@@ -156,21 +163,54 @@ pub struct Function;
 //             N::MAX_INSTRUCTIONS
 //         );
 //
-//         // // Iterate over the operand registers.
-//         // for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
-//         //     // Ensure the operand registers are defined.
-//         //     if !self.registers.is_defined(register) {
-//         //         P::halt(format!("Operand register {register} does not exist"))
-//         //     }
-//         //
-//         //     // Ensure the operand registers are not already assigned.
-//         //     if self.registers.is_assigned(register) {
-//         //         P::halt(format!("Register {register} is already assigned"))
-//         //     }
-//         // }
+//         // Retrieve the operands.
+//         let operands = instruction.operands();
+//
+//         // Initialize a vector to store the plaintext types of the operands.
+//         let mut plaintext_types = Vec::with_capacity(operands.len());
+//
+//         // Iterate over the operands, and retrieve the plaintext type of each operand.
+//         for operand in &operands {
+//             // Retrieve and append the plaintext type.
+//             plaintext_types.push(match operand {
+//                 Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
+//                 Operand::Register(register) => {
+//                     match self.registers.get(register) {
+//                         // Retrieve the plaintext type from the value type.
+//                         Some(RegisterType::Input(value_type)) => value_type.to_plaintext_type(),
+//                         // Retrieve the plaintext type.
+//                         Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
+//                         // Ensure the operand register is defined.
+//                         None => bail!("Instruction register {register} does not exist")
+//                     }
+//                 }
+//             });
+//         }
+//
+//         // Retrieve the destination register.
+//         let destination = instruction.destination();
+//
+//         // Ensure the destination register is a locator (and does not reference a member).
+//         ensure!(destination.is_locator(), "Destination {destination} must be a locator and cannot reference a member");
+//         // Ensure the destination register does not already exist.
+//         ensure!(!self.registers.contains_key(destination), "Destination {destination} already exists");
+//
+//         // Compute the destination register type.
+//
+//
+//         // Retrieve the destination register type.
+//         for operand in &operands {
+//             match operand {
+//                 Operand::Literal(..) => continue,
+//                 Operand::Register(register) => {
+//                     ensure!(self.registers.contains_key(register), "Instruction register {register} does not exist")
+//                 }
+//             }
+//         }
+//
 //
 //         // Insert the destination register.
-//         self.registers.insert(instruction.destination(), RegisterType::Destination);
+//         self.registers.insert(destination.locator(), RegisterType::Destination());
 //         // Insert the instruction.
 //         self.instructions.push(instruction);
 //
@@ -379,9 +419,9 @@ pub struct Function;
 //
 //         // Initialize a new function.
 //         let function = Self::new(name.as_str());
-//         inputs.into_iter().for_each(|input| function.add_input(input));
-//         instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
-//         outputs.into_iter().for_each(|output| function.add_output(output));
+//         inputs.into_iter().try_for_each(|input| function.add_input(input));
+//         instructions.into_iter().try_for_each(|instruction| function.add_instruction(instruction));
+//         outputs.into_iter().try_for_each(|output| function.add_output(output));
 //
 //         Ok((string, function))
 //     }
@@ -400,9 +440,9 @@ pub struct Function;
 //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //         // Write the function to a string.
 //         let mut function = format!("{} {}:\n", Self::type_name(), self.name);
-//         self.inputs.iter().for_each(|input| function.push_str(&format!("    {}\n", input)));
-//         self.instructions.iter().for_each(|instruction| function.push_str(&format!("    {}\n", instruction)));
-//         self.outputs.iter().for_each(|output| function.push_str(&format!("    {}\n", output)));
+//         self.inputs.iter().try_for_each(|input| function.push_str(&format!("    {}\n", input)));
+//         self.instructions.iter().try_for_each(|instruction| function.push_str(&format!("    {}\n", instruction)));
+//         self.outputs.iter().try_for_each(|output| function.push_str(&format!("    {}\n", output)));
 //         function.pop(); // trailing newline
 //
 //         write!(f, "{}", function)
@@ -438,9 +478,9 @@ pub struct Function;
 //
 //         // Initialize a new function.
 //         let function = Self::new(name.as_str());
-//         inputs.into_iter().for_each(|input| function.add_input(input));
-//         instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
-//         outputs.into_iter().for_each(|output| function.add_output(output));
+//         inputs.into_iter().try_for_each(|input| function.add_input(input));
+//         instructions.into_iter().try_for_each(|instruction| function.add_instruction(instruction));
+//         outputs.into_iter().try_for_each(|output| function.add_output(output));
 //
 //         Ok(function)
 //     }
@@ -454,7 +494,7 @@ pub struct Function;
 //
 //         // Write the number of inputs for the function.
 //         let num_inputs = self.inputs.len();
-//         match num_inputs <= P::NUM_INPUTS {
+//         match num_inputs <= N::MAX_INPUTS {
 //             true => (num_inputs as u16).write_le(&mut writer)?,
 //             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
 //         }
@@ -466,7 +506,7 @@ pub struct Function;
 //
 //         // Write the number of instructions for the function.
 //         let num_instructions = self.instructions.len();
-//         match num_instructions <= P::NUM_INPUTS {
+//         match num_instructions <= N::MAX_OUTPUTS {
 //             true => (num_instructions as u32).write_le(&mut writer)?,
 //             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
 //         }
@@ -478,7 +518,7 @@ pub struct Function;
 //
 //         // Write the number of outputs for the function.
 //         let num_outputs = self.outputs.len();
-//         match num_outputs <= P::NUM_INPUTS {
+//         match num_outputs <= N::MAX_INSTRUCTIONS {
 //             true => (num_outputs as u16).write_le(&mut writer)?,
 //             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
 //         }
