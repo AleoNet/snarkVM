@@ -23,6 +23,9 @@ use operation::*;
 mod add;
 use add::*;
 
+mod add_wrapped;
+use add_wrapped::*;
+
 use crate::{Register, Registers, Sanitizer};
 use snarkvm_console_network::{
     prelude::{
@@ -85,7 +88,7 @@ macro_rules! instruction {
             // Abs,
             // AbsWrapped,
             Add,
-            // AddWrapped,
+            AddWrapped,
             // And,
             // CommitBHP256,
             // CommitBHP512,
@@ -192,8 +195,8 @@ pub enum Instruction<N: Network> {
     // AbsWrapped(AbsWrapped<N>),
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<N>),
-    // /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    // AddWrapped(AddWrapped<N>),
+    /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    AddWrapped(AddWrapped<N>),
     // /// Performs a bitwise AND operation on `first` and `second`, storing the outcome in `destination`.
     // And(And<N>),
     // /// Performs a BHP commitment taking a 256-bit value as input.
@@ -538,14 +541,14 @@ mod tests {
     #[macro_export]
     macro_rules! test_evaluate {
         // Case 1: Binary operation.
-        ($operator:tt::$operation:tt == $opcode:tt::$op:tt { $( ($input_a:ident, $input_b:ident) => $output:ident $(($condition:tt))?, )+ }) => {
+        ($operator:tt::$operation:tt == $opcode:tt::$evaluate:tt { $( ($input_a:ident, $input_b:ident) => $output:ident $(($condition:tt))?, )+ }) => {
             // For each given case of inputs and outputs, invoke `Case 1A` or `Case 1B` (see below).
-            $( crate::test_evaluate!{$operator::$operation == $opcode::$op for ($input_a, $input_b) => $output $(($condition))?} )+
+            $( crate::test_evaluate!{$operator::$operation == $opcode::$evaluate for ($input_a, $input_b) => $output $(($condition))?} )+
 
             // For each non-existent case of inputs and outputs, invoke `Case 1C`.
             paste::paste! {
                 #[test]
-                fn [<test _ $op _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                fn [<test _ $operation _ fails _ on _ invalid _ operands>]() -> Result<()> {
                     use snarkvm_console_types::*;
 
                     type CurrentNetwork = snarkvm_console_network::Testnet3;
@@ -566,7 +569,7 @@ mod tests {
                                 let second = Plaintext::from_str(&format!("{literal_b}"))?;
 
                                 // Attempt to compute the invalid operand case.
-                                let result = $opcode::<CurrentNetwork>::$op((first, second));
+                                let result = $opcode::<CurrentNetwork>::$evaluate((first, second));
 
                                 // Ensure the computation failed.
                                 assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
@@ -583,7 +586,7 @@ mod tests {
         ////////////////////
 
         // Case 1A: Binary operation.
-        ($operator:tt::$operation:tt == $opcode:tt::$op:tt for ($input_a:ident, $input_b:ident) => $output:ident) => {
+        ($operator:tt::$operation:tt == $opcode:tt::$evaluate:tt for ($input_a:ident, $input_b:ident) => $output:ident) => {
             paste::paste! {
                 #[test]
                 fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
@@ -597,16 +600,16 @@ mod tests {
                     // Check the operation on randomly-sampled values.
                     for _ in 0..1_000 {
                         // Sample the first and second value.
-                        let a = $input_a::rand(&mut test_rng());
-                        let b = $input_b::rand(&mut test_rng());
+                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
 
                         // Initialize the operands.
                         let first = Plaintext::from_str(&format!("{a}"))?;
                         let second = Plaintext::from_str(&format!("{b}"))?;
 
                         // Compute the outputs.
-                        let expected = Plaintext::from(Literal::$output($operator::$operation(a, b)));
-                        let candidate = $opcode::<CurrentNetwork>::$op((first, second))?;
+                        let expected = Plaintext::from(Literal::$output(a.$operation(&b)));
+                        let candidate = $opcode::<CurrentNetwork>::$evaluate((first, second))?;
 
                         // Ensure the outputs match.
                         assert_eq!(expected, candidate);
@@ -620,7 +623,7 @@ mod tests {
         // Case 1B: Binary operation, where:
         //   1. If the sampled values overflow on evaluation, ensure it halts.
         //   2. If the sampled values **do not** overflow on evaluation, ensure it succeeds.
-        ($operator:tt::$operation:tt == $opcode:tt::$op:tt for ($input_a:ident, $input_b:ident) => $output:ident ("ensure overflows halt")) => {
+        ($operator:tt::$operation:tt == $opcode:tt::$evaluate:tt for ($input_a:ident, $input_b:ident) => $output:ident ("ensure overflows halt")) => {
             paste::paste! {
                 #[test]
                 fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower _ halts _ on _ overflows>]() -> Result<()> {
@@ -643,15 +646,15 @@ mod tests {
                             // If the sampled values **do not** overflow on evaluation, ensure it succeeds.
                             true => {
                                 // Compute the outputs.
-                                let expected = Plaintext::from(Literal::$output($operator::$operation(a, b)));
-                                let candidate = $opcode::<CurrentNetwork>::$op((first, second))?;
+                                let expected = Plaintext::from(Literal::$output(a.$operation(&b)));
+                                let candidate = $opcode::<CurrentNetwork>::$evaluate((first, second))?;
                                 // Ensure the outputs match.
                                 assert_eq!(expected, candidate);
                             },
                             // If the sampled values overflow on evaluation, ensure it halts.
                             false => {
                                 // Attempt to compute the overflow case.
-                                let result = std::panic::catch_unwind(|| $opcode::<CurrentNetwork>::$op((first, second)));
+                                let result = std::panic::catch_unwind(|| $opcode::<CurrentNetwork>::$evaluate((first, second)));
                                 // Ensure the computation halted.
                                 assert!(result.is_err(), "Overflow case (on iteration {i}) did not halt: {a} {b}");
                             }

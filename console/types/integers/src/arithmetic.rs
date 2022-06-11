@@ -45,10 +45,44 @@ impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Add<&Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn add(self, other: &Integer<E, I>) -> Self::Output {
+        match self.integer.checked_add(&other.integer) {
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer addition failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> AddWrapped<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `sum` of `self` and `other`.
+    #[inline]
+    fn add_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
+        Integer::new(self.integer.wrapping_add(&other.integer))
+    }
+}
+
 impl<E: Environment, I: IntegerType> AddAssign<Integer<E, I>> for Integer<E, I> {
     /// Adds `other` to `self`.
     #[inline]
     fn add_assign(&mut self, other: Integer<E, I>) {
+        match self.integer.checked_add(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer addition failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> AddAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Adds `other` to `self`.
+    #[inline]
+    fn add_assign(&mut self, other: &Integer<E, I>) {
         match self.integer.checked_add(&other.integer) {
             Some(integer) => self.integer = integer,
             None => E::halt(format!("Integer addition failed on: {} and {}", self.integer, other.integer)),
@@ -69,10 +103,44 @@ impl<E: Environment, I: IntegerType> Sub<Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Sub<&Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `difference` of `self` and `other`.
+    #[inline]
+    fn sub(self, other: &Integer<E, I>) -> Self::Output {
+        match self.integer.checked_sub(&other.integer) {
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer subtraction failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> SubWrapped<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `difference` of `self` and `other`.
+    #[inline]
+    fn sub_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
+        Integer::new(self.integer.wrapping_sub(&other.integer))
+    }
+}
+
 impl<E: Environment, I: IntegerType> SubAssign<Integer<E, I>> for Integer<E, I> {
     /// Subtracts `other` from `self`.
     #[inline]
     fn sub_assign(&mut self, other: Integer<E, I>) {
+        match self.integer.checked_sub(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer subtraction failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> SubAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Subtracts `other` from `self`.
+    #[inline]
+    fn sub_assign(&mut self, other: &Integer<E, I>) {
         match self.integer.checked_sub(&other.integer) {
             Some(integer) => self.integer = integer,
             None => E::halt(format!("Integer subtraction failed on: {} and {}", self.integer, other.integer)),
@@ -93,10 +161,44 @@ impl<E: Environment, I: IntegerType> Mul<Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Mul<&Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn mul(self, other: &Integer<E, I>) -> Self::Output {
+        match self.integer.checked_mul(&other.integer) {
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer multiplication failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> MulWrapped<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn mul_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
+        Integer::new(self.integer.wrapping_mul(&other.integer))
+    }
+}
+
 impl<E: Environment, I: IntegerType> MulAssign<Integer<E, I>> for Integer<E, I> {
     /// Multiplies `self` by `other`.
     #[inline]
     fn mul_assign(&mut self, other: Integer<E, I>) {
+        match self.integer.checked_mul(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer multiplication failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> MulAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Multiplies `self` by `other`.
+    #[inline]
+    fn mul_assign(&mut self, other: &Integer<E, I>) {
         match self.integer.checked_mul(&other.integer) {
             Some(integer) => self.integer = integer,
             None => E::halt(format!("Integer multiplication failed on: {} and {}", self.integer, other.integer)),
@@ -117,10 +219,44 @@ impl<E: Environment, I: IntegerType> Div<Integer<E, I>> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Div<&Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `quotient` of `self` and `other`.
+    #[inline]
+    fn div(self, other: &Integer<E, I>) -> Self::Output {
+        match self.integer.checked_div(&other.integer) {
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer division failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> DivWrapped<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `quotient` of `self` and `other`.
+    #[inline]
+    fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
+        Integer::new(self.integer.wrapping_div(&other.integer))
+    }
+}
+
 impl<E: Environment, I: IntegerType> DivAssign<Integer<E, I>> for Integer<E, I> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: Integer<E, I>) {
+        match self.integer.checked_div(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer division failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Divides `self` by `other`.
+    #[inline]
+    fn div_assign(&mut self, other: &Integer<E, I>) {
         match self.integer.checked_div(&other.integer) {
             Some(integer) => self.integer = integer,
             None => E::halt(format!("Integer division failed on: {} and {}", self.integer, other.integer)),
@@ -139,6 +275,30 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Pow<Integer<E, M>> for Intege
             Some(integer) => Integer::new(integer),
             None => E::halt(format!("Integer power failed on: {} and {}", self.integer, other.integer)),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> Pow<&Integer<E, M>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: &Integer<E, M>) -> Self::Output {
+        match self.integer.checked_pow(&other.integer.to_u32().unwrap()) {
+            // Unwrap is safe as we only cast up.
+            Some(integer) => Integer::new(integer),
+            None => E::halt(format!("Integer power failed on: {} and {}", self.integer, other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> PowWrapped<Integer<E, M>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow_wrapped(&self, other: &Integer<E, M>) -> Self::Output {
+        Integer::new(self.integer.wrapping_pow(&other.integer.to_u32().unwrap()))
     }
 }
 

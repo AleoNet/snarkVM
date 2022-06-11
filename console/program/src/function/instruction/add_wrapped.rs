@@ -24,18 +24,18 @@ use snarkvm_console_network::prelude::*;
 
 use core::marker::PhantomData;
 
-/// Adds `first` with `second`, storing the outcome in `destination`.
-pub type Add<N> = Binary<N, AddOp<N>>;
+/// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+pub type AddWrapped<N> = Binary<N, AddWrappedOp<N>>;
 
-pub struct AddOp<N: Network>(PhantomData<N>);
+pub struct AddWrappedOp<N: Network>(PhantomData<N>);
 
-impl<N: Network> Operation for AddOp<N> {
+impl<N: Network> Operation for AddWrappedOp<N> {
     type InputTypes = (LiteralType, LiteralType);
     type Inputs = (Plaintext<N>, Plaintext<N>);
     type Output = Plaintext<N>;
 
     /// The opcode of the operation.
-    const OPCODE: &'static str = "add";
+    const OPCODE: &'static str = "add.w";
 
     /// Returns the result of evaluating the operation on the given inputs.
     #[inline]
@@ -53,12 +53,10 @@ impl<N: Network> Operation for AddOp<N> {
         };
 
         // Prepare the operator.
-        use core::ops::Add as Operator;
+        use snarkvm_console_network::AddWrapped as Operator;
 
         // Perform the operation.
-        let output = crate::evaluate!(match first.add(second) {
-            (Field, Field) => Field,
-            (Group, Group) => Group,
+        let output = crate::evaluate!(match first.add_wrapped(second) {
             (I8, I8) => I8,
             (I16, I16) => I16,
             (I32, I32) => I32,
@@ -69,7 +67,6 @@ impl<N: Network> Operation for AddOp<N> {
             (U32, U32) => U32,
             (U64, U64) => U64,
             (U128, U128) => U128,
-            (Scalar, Scalar) => Scalar,
         });
 
         // Return the output.
@@ -81,8 +78,6 @@ impl<N: Network> Operation for AddOp<N> {
     fn output_type((first, second): Self::InputTypes) -> Result<LiteralType> {
         // Compute the output type.
         Ok(crate::output_type!(match (first, second) {
-            (Field, Field) => Field,
-            (Group, Group) => Group,
             (I8, I8) => I8,
             (I16, I16) => I16,
             (I32, I32) => I32,
@@ -93,7 +88,6 @@ impl<N: Network> Operation for AddOp<N> {
             (U32, U32) => U32,
             (U64, U64) => U64,
             (U128, U128) => U128,
-            (Scalar, Scalar) => Scalar,
         }))
     }
 }
@@ -103,30 +97,27 @@ mod tests {
     use super::*;
 
     // Declare the operator to check.
-    use core::ops::Add as Operator;
+    use snarkvm_console_network::AddWrapped as Operator;
 
     // Declare the opcode to check.
-    use super::AddOp as Opcode;
+    use super::AddWrappedOp as Opcode;
 
     // For each declared case, this macro samples random values and checks that
     // the output of the operator (LHS) matches the output of the opcode (RHS).
     // In addition, this macro ensures all combinations of literal types that
     // do **not** match these declared cases fail on evaluation.
     crate::test_evaluate!(
-        Operator::add == Opcode::evaluate {
-            (Field, Field) => Field,
-            (Group, Group) => Group,
-            (I8, I8) => I8 ("ensure overflows halt"),
-            (I16, I16) => I16 ("ensure overflows halt"),
-            (I32, I32) => I32 ("ensure overflows halt"),
-            (I64, I64) => I64 ("ensure overflows halt"),
-            (I128, I128) => I128 ("ensure overflows halt"),
-            (U8, U8) => U8 ("ensure overflows halt"),
-            (U16, U16) => U16 ("ensure overflows halt"),
-            (U32, U32) => U32 ("ensure overflows halt"),
-            (U64, U64) => U64 ("ensure overflows halt"),
-            (U128, U128) => U128 ("ensure overflows halt"),
-            (Scalar, Scalar) => Scalar,
+        Operator::add_wrapped == Opcode::evaluate {
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
         }
     );
 }

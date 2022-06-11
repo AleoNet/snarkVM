@@ -28,7 +28,7 @@ use snarkvm_console_network::prelude::*;
 /// ## Example
 /// ```ignore
 /// evaluate!(
-///     match Add::add(first, second) {
+///     match first.add(second) {
 ///         (I8, I8) => I8,
 ///         (I16, I16) => I16,
 ///         (I32, I32) => I32,
@@ -45,9 +45,9 @@ use snarkvm_console_network::prelude::*;
 #[macro_export]
 macro_rules! evaluate {
     // Binary operation.
-    (match $operator:tt::$operation:tt($first:expr, $second:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
+    (match $first:ident.$operation:tt($second:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
         match ($first, $second) {
-            $((Literal::$input_a(first), Literal::$input_b(second)) => Literal::$output($operator::$operation(first, second)),)+
+            $((Literal::$input_a(first), Literal::$input_b(second)) => Literal::$output(first.$operation(&second)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};

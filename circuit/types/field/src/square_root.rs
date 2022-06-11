@@ -20,21 +20,13 @@ impl<E: Environment> SquareRoot for Field<E> {
     type Output = Self;
 
     fn square_root(&self) -> Self::Output {
-        (&self).square_root()
-    }
-}
-
-impl<E: Environment> SquareRoot for &Field<E> {
-    type Output = Field<E>;
-
-    fn square_root(&self) -> Self::Output {
         let square_root = witness!(|self| match self.square_root() {
             Ok(square_root) => square_root,
             _ => console::Field::zero(),
         });
 
         // Ensure `square_root` * `square_root` == `self`.
-        E::enforce(|| (&square_root, &square_root, *self));
+        E::enforce(|| (&square_root, &square_root, self));
 
         square_root
     }

@@ -19,15 +19,7 @@ use super::*;
 impl<E: Environment> Double for Field<E> {
     type Output = Field<E>;
 
-    fn double(self) -> Self::Output {
-        (&self).double()
-    }
-}
-
-impl<E: Environment> Double for &Field<E> {
-    type Output = Field<E>;
-
-    fn double(self) -> Self::Output {
+    fn double(&self) -> Self::Output {
         self + self
     }
 }

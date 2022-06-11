@@ -20,15 +20,7 @@ impl<E: Environment> Square for Field<E> {
     type Output = Field<E>;
 
     fn square(&self) -> Self::Output {
-        (&self).square()
-    }
-}
-
-impl<E: Environment> Square for &Field<E> {
-    type Output = Field<E>;
-
-    fn square(&self) -> Self::Output {
-        *self * *self
+        self * self
     }
 }
 

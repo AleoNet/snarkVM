@@ -14,37 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod algorithms;
+pub mod algorithms;
 pub use algorithms::*;
 
-mod arithmetic;
+pub mod arithmetic;
 pub use arithmetic::*;
 
-mod bitwise;
+pub mod bitwise;
 pub use bitwise::*;
 
-mod from_bits;
+pub mod from_bits;
 pub use from_bits::*;
 
-mod from_field;
+pub mod from_field;
 pub use from_field::*;
 
-mod parse;
+pub mod parse;
 pub use parse::*;
 
-mod string;
+pub mod string;
 pub use string::string_parser;
 
-mod to_bits;
+pub mod to_bits;
 pub use to_bits::*;
 
-mod to_field;
+pub mod to_field;
 pub use to_field::*;
 
-mod type_name;
+pub mod type_name;
 pub use type_name::*;
 
-mod types;
+pub mod types;
 pub use types::*;
 
 pub mod integers {

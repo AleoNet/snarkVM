@@ -77,6 +77,8 @@ pub trait FieldTrait:
     + Sync
     + Square<Output = Self>
     + SquareRoot<Output = Self>
+    + Sub<Self, Output = Self>
+    + for<'a> Sub<&'a Self, Output = Self>
     + SubAssign<Self>
     + for<'a> SubAssign<&'a Self>
     + Sum<Self>
@@ -151,6 +153,8 @@ pub trait ScalarTrait:
     + Send
     + Sync
     + Square<Output = Self>
+    + Sub<Self, Output = Self>
+    + for<'a> Sub<&'a Self, Output = Self>
     + SubAssign<Self>
     + for<'a> SubAssign<&'a Self>
     + Sum<Self>
@@ -186,8 +190,11 @@ pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: I
 }
 
 pub trait IntegerCore<I: integer_type::IntegerType>:
-    AddAssign
-    + Add<Output = Self>
+    'static
+    + Add<Self, Output = Self>
+    + for<'a> Add<&'a Self, Output = Self>
+    + AddAssign<Self>
+    + for<'a> AddAssign<&'a Self>
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -198,19 +205,25 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + Clone
     + Debug
     + Deref
-    + DivAssign
-    + Div<Output = Self>
+    + Div<Self, Output = Self>
+    + for<'a> Div<&'a Self, Output = Self>
+    + DivAssign<Self>
+    + for<'a> DivAssign<&'a Self>
     + Eq
-    + MulAssign
-    + Mul<Output = Self>
+    + Mul<Self, Output = Self>
+    + for<'a> Mul<&'a Self, Output = Self>
+    + MulAssign<Self>
+    + for<'a> MulAssign<&'a Self>
     + Neg<Output = Self>
     + Not<Output = Self>
     + One
     + Parser
     + Send
     + Sync
-    + SubAssign
-    + Sub<Output = Self>
+    + Sub<Self, Output = Self>
+    + for<'a> Sub<&'a Self, Output = Self>
+    + SubAssign<Self>
+    + for<'a> SubAssign<&'a Self>
     + TypeName
     + Uniform
     + Zero

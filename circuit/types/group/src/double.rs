@@ -19,15 +19,7 @@ use super::*;
 impl<E: Environment> Double for Group<E> {
     type Output = Group<E>;
 
-    fn double(self) -> Self::Output {
-        (&self).double()
-    }
-}
-
-impl<E: Environment> Double for &Group<E> {
-    type Output = Group<E>;
-
-    fn double(self) -> Self::Output {
+    fn double(&self) -> Self::Output {
         // If `self` is constant *and* `self` is zero, then return `self`.
         if self.is_constant() && self.eject_value().is_zero() {
             self.clone()

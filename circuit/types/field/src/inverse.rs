@@ -35,15 +35,7 @@ impl<E: Environment> Inv for &Field<E> {
 impl<E: Environment> Inverse for Field<E> {
     type Output = Field<E>;
 
-    fn inverse(self) -> Self::Output {
-        (&self).inverse()
-    }
-}
-
-impl<E: Environment> Inverse for &Field<E> {
-    type Output = Field<E>;
-
-    fn inverse(self) -> Self::Output {
+    fn inverse(&self) -> Self::Output {
         let inverse = witness!(|self| match self.inverse() {
             Ok(inverse) => inverse,
             _ => console::Field::zero(),
