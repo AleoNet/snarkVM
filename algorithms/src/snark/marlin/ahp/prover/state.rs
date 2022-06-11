@@ -68,6 +68,10 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The length of this list must be equal to the batch size.
     pub(super) z_b: Option<Vec<Vec<F>>>,
 
+    /// The list of Cz vectors for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
+    pub(super) z_c: Option<Vec<Vec<F>>>,
+
     /// The list of multiplication selector vectors for each instance in the batch.
     /// The length of this list must be equal to the batch size.
     pub(super) s_m: Vec<Vec<F>>,
@@ -143,6 +147,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             private_variables,
             z_a: None,
             z_b: None,
+            z_c: None,
             s_m: vec![],
             s_l: vec![],
             zeta: F::rand(&mut rand::thread_rng()),

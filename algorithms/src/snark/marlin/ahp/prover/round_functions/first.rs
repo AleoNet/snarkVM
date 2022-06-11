@@ -74,6 +74,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
+        let z_c = state.z_c.take().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
         assert_eq!(z_a.len(), batch_size);
         assert_eq!(z_b.len(), batch_size);
@@ -84,8 +85,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
         let state_ref = &state;
-        for (i, (z_a, z_b, private_variables, x_poly, s_m, s_l)) in
-            itertools::izip!(z_a, z_b, private_variables, &state.x_poly, s_m, s_l).enumerate()
+        for (i, (z_a, z_b, z_c, private_variables, x_poly, s_m, s_l)) in
+            itertools::izip!(z_a, z_b, z_c, private_variables, &state.x_poly, s_m, s_l).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
             let z_a_clone = z_a.clone();
@@ -97,6 +98,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 r_b_s.push(r_b);
             }
+            let z_c_clone = z_c.clone();
+            job_pool
+                .add_job(move || Self::calculate_z_m(witness_label("z_c", i), z_c_clone, true, state_ref, Some(r_b)));
             let s_l_clone = s_l.clone();
             job_pool.add_job(move || Self::calculate_f(witness_label("f", i), z_a, z_b, s_l_clone, state_ref));
             job_pool.add_job(move || Self::calculate_selector(witness_label("s_m", i), s_m, state_ref));
@@ -107,15 +111,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .execute_all()
             .into_iter()
             .tuples()
-            .map(|(w, z_a, z_b, f, s_m, s_l)| {
+            .map(|(w, z_a, z_b, z_c, f, s_m, s_l)| {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
+                let (z_c_poly, z_c) = z_c.z_m().unwrap();
                 let f_poly = f.query().unwrap();
                 let s_m_poly = s_m.selector().unwrap();
                 let s_l_poly = s_l.selector().unwrap();
 
-                prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly, s_m_poly, s_l_poly, f_poly }
+                prover::SingleEntry { z_a, z_b, z_c, w_poly, z_a_poly, z_b_poly, z_c_poly, s_m_poly, s_l_poly, f_poly }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
@@ -277,7 +282,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
 
-        let poly = evals.interpolate();
+        let poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
         PoolResult::Query(LabeledPolynomial::new(label, poly, None, None))
     }
 
@@ -294,7 +299,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let evals = EvaluationsOnDomain::from_vec_and_domain(selector_evals, constraint_domain);
 
-        let poly = evals.interpolate();
+        let poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
         PoolResult::Selector(LabeledPolynomial::new(label, poly, None, None))
     }
 }

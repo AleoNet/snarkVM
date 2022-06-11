@@ -44,7 +44,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         // Perform matrix multiplications.
-        let (padded_public_variables, private_variables, z_a, z_b, s_m, s_l) = cfg_iter!(circuits)
+        let (padded_public_variables, private_variables, z_a, z_b, z_c, s_m, s_l) = cfg_iter!(circuits)
             .map(|circuit| {
                 let constraint_time = start_timer!(|| "Generating constraints and witnesses");
                 let mut pcs = prover::ConstraintSystem::new();
@@ -101,8 +101,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
                     .collect();
                 end_timer!(eval_z_b_time);
+
+                let eval_z_c_time = start_timer!(|| "Evaluating z_C");
+                let z_c = cfg_iter!(index.c)
+                    .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
+                    .collect();
+                end_timer!(eval_z_c_time);
                 end_timer!(init_time);
-                Ok((padded_public_variables, private_variables, z_a, z_b, index.s_m.clone(), index.s_l.clone()))
+                Ok((padded_public_variables, private_variables, z_a, z_b, z_c, index.s_m.clone(), index.s_l.clone()))
             })
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
@@ -111,6 +117,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut state = prover::State::initialize(padded_public_variables, private_variables, index)?;
         state.z_a = Some(z_a);
         state.z_b = Some(z_b);
+        state.z_c = Some(z_c);
         state.s_m = s_m;
         state.s_l = s_l;
 

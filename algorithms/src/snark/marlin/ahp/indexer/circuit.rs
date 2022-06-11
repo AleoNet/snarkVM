@@ -19,7 +19,6 @@ use core::marker::PhantomData;
 use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
-        DensePolynomial,
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,

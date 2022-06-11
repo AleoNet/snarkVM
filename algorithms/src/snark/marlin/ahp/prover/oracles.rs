@@ -55,12 +55,16 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) z_a: LabeledPolynomialWithBasis<'a, F>,
     /// The evaluations of `Bz`.
     pub(super) z_b: LabeledPolynomialWithBasis<'a, F>,
+    /// The evaluations of `Cz`.
+    pub(super) z_c: LabeledPolynomialWithBasis<'a, F>,
     /// The LDE of `w`.
     pub(super) w_poly: LabeledPolynomial<F>,
     /// The LDE of `Az`.
     pub(super) z_a_poly: LabeledPolynomial<F>,
     /// The LDE of `Bz`.
     pub(super) z_b_poly: LabeledPolynomial<F>,
+    /// The LDE of `Cz`.
+    pub(super) z_c_poly: LabeledPolynomial<F>,
     /// The multiplication constraint selector polynomial.
     pub(super) s_m_poly: LabeledPolynomial<F>,
     /// The lookup constraint selector polynomial.
@@ -80,21 +84,26 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
 
         let z_b = self.z_b.clone();
         self.z_b = LabeledPolynomialWithBasis { polynomial: vec![], info: z_b.info().clone() };
-        [w_poly.into(), z_a, z_b].into_iter()
+
+        let z_c = self.z_c.clone();
+        self.z_c = LabeledPolynomialWithBasis { polynomial: vec![], info: z_c.info().clone() };
+        [w_poly.into(), z_a, z_b, z_c].into_iter()
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
     pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [(&self.w_poly), &self.z_a_poly, &self.z_b_poly].into_iter()
+        [(&self.w_poly), &self.z_a_poly, &self.z_b_poly, &self.z_c_poly].into_iter()
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
         Some(self.w_poly.info()) == info.get(self.w_poly.label())
             && Some(self.z_a.info()) == info.get(self.z_a.label())
             && Some(self.z_b.info()) == info.get(self.z_b.label())
+            && Some(self.z_c.info()) == info.get(self.z_c.label())
             && Some(self.z_a_poly.info()) == info.get(self.z_a_poly.label())
             && Some(self.z_b_poly.info()) == info.get(self.z_b_poly.label())
+            && Some(self.z_c_poly.info()) == info.get(self.z_c_poly.label())
     }
 }
 
