@@ -69,14 +69,14 @@ pub struct Function<N: Network> {
 
 impl<N: Network> Function<N> {
     /// Initializes a new function with the given name.
-    pub fn new(name: &str) -> Result<Self> {
-        Ok(Self {
-            name: Identifier::from_str(name)?,
+    pub fn new(name: Identifier<N>) -> Self {
+        Self {
+            name,
             registers: IndexMap::new(),
             inputs: IndexSet::new(),
             instructions: Vec::new(),
             outputs: IndexSet::new(),
-        })
+        }
     }
 
     /// Returns the name of the function.
@@ -385,110 +385,113 @@ impl<N: Network> TypeName for Function<N> {
 //         }
 //     }
 // }
-//
-// impl<N: Network> Debug for Function<N> {
-//     /// Prints the function as a string.
-//     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-//         Display::fmt(self, f)
-//     }
-// }
-//
-// impl<N: Network> Display for Function<N> {
-//     /// Prints the function as a string.
-//     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-//         // Write the function to a string.
-//         write!(f, "{} {}:\n", Self::type_name(), self.name)?;
-//         self.inputs.iter().try_for_each(|input| write!(f, "    {}\n", input))?;
-//         self.instructions.iter().try_for_each(|instruction| write!(f, "    {}\n", instruction))?;
-//         self.outputs.iter().try_for_each(|output| write!(f, "    {}\n", output))
-//     }
-// }
-//
-// impl<N: Network> FromBytes for Function<N> {
-//     /// Reads the function from a buffer.
-//     #[inline]
-//     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-//         // Read the function name.
-//         let name = Identifier::<N>::read_le(&mut reader)?;
-//
-//         // Read the inputs.
-//         let num_inputs = u16::read_le(&mut reader)?;
-//         let mut inputs = Vec::with_capacity(num_inputs as usize);
-//         for _ in 0..num_inputs {
-//             inputs.push(Input::read_le(&mut reader)?);
-//         }
-//
-//         // Read the instructions.
-//         let num_instructions = u32::read_le(&mut reader)?;
-//         let mut instructions = Vec::with_capacity(num_instructions as usize);
-//         for _ in 0..num_instructions {
-//             instructions.push(Instruction::read_le(&mut reader)?);
-//         }
-//
-//         // Read the outputs.
-//         let num_outputs = u16::read_le(&mut reader)?;
-//         let mut outputs = Vec::with_capacity(num_outputs as usize);
-//         for _ in 0..num_outputs {
-//             outputs.push(Output::read_le(&mut reader)?);
-//         }
-//
-//         // Initialize a new function.
-//         let function = Self::new(name.as_str());
-//         inputs.into_iter().try_for_each(|input| function.add_input(input));
-//         instructions.into_iter().try_for_each(|instruction| function.add_instruction(instruction));
-//         outputs.into_iter().try_for_each(|output| function.add_output(output));
-//
-//         Ok(function)
-//     }
-// }
-//
-// impl<N: Network> ToBytes for Function<N> {
-//     /// Writes the function to a buffer.
-//     #[inline]
-//     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-//         // Write the function name.
-//         self.name.write_le(&mut writer)?;
-//
-//         // Write the number of inputs for the function.
-//         let num_inputs = self.inputs.len();
-//         match num_inputs <= N::MAX_INPUTS {
-//             true => (num_inputs as u16).write_le(&mut writer)?,
-//             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
-//         }
-//
-//         // Write the inputs.
-//         for input in self.inputs.iter() {
-//             input.write_le(&mut writer)?;
-//         }
-//
-//         // Write the number of instructions for the function.
-//         let num_instructions = self.instructions.len();
-//         match num_instructions <= N::MAX_OUTPUTS {
-//             true => (num_instructions as u32).write_le(&mut writer)?,
-//             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
-//         }
-//
-//         // Write the instructions.
-//         for instruction in self.instructions.iter() {
-//             instruction.write_le(&mut writer)?;
-//         }
-//
-//         // Write the number of outputs for the function.
-//         let num_outputs = self.outputs.len();
-//         match num_outputs <= N::MAX_INSTRUCTIONS {
-//             true => (num_outputs as u16).write_le(&mut writer)?,
-//             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
-//         }
-//
-//         // Write the outputs.
-//         for output in self.outputs.iter() {
-//             output.write_le(&mut writer)?;
-//         }
-//
-//         Ok(())
-//     }
-// }
-//
+
+impl<N: Network> Debug for Function<N> {
+    /// Prints the function as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Function<N> {
+    /// Prints the function as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // Write the function to a string.
+        write!(f, "{} {}:\n", Self::type_name(), self.name)?;
+        self.inputs.iter().try_for_each(|input| write!(f, "    {}\n", input))?;
+        self.instructions.iter().try_for_each(|instruction| write!(f, "    {}\n", instruction))?;
+        self.outputs.iter().try_for_each(|output| write!(f, "    {}\n", output))
+    }
+}
+
+impl<N: Network> FromBytes for Function<N> {
+    /// Reads the function from a buffer.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the function name.
+        let name = Identifier::<N>::read_le(&mut reader)?;
+
+        // Read the inputs.
+        let num_inputs = u16::read_le(&mut reader)?;
+        let mut inputs = Vec::with_capacity(num_inputs as usize);
+        for _ in 0..num_inputs {
+            inputs.push(Input::read_le(&mut reader)?);
+        }
+
+        // Read the instructions.
+        let num_instructions = u32::read_le(&mut reader)?;
+        let mut instructions = Vec::with_capacity(num_instructions as usize);
+        for _ in 0..num_instructions {
+            instructions.push(Instruction::read_le(&mut reader)?);
+        }
+
+        // Read the outputs.
+        let num_outputs = u16::read_le(&mut reader)?;
+        let mut outputs = Vec::with_capacity(num_outputs as usize);
+        for _ in 0..num_outputs {
+            outputs.push(Output::read_le(&mut reader)?);
+        }
+
+        // Initialize a new function.
+        let mut function = Self::new(name);
+        inputs.into_iter().try_for_each(|input| function.add_input(input)).map_err(|e| error(e.to_string()))?;
+        instructions
+            .into_iter()
+            .try_for_each(|instruction| function.add_instruction(instruction))
+            .map_err(|e| error(e.to_string()))?;
+        outputs.into_iter().try_for_each(|output| function.add_output(output)).map_err(|e| error(e.to_string()))?;
+
+        Ok(function)
+    }
+}
+
+impl<N: Network> ToBytes for Function<N> {
+    /// Writes the function to a buffer.
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the function name.
+        self.name.write_le(&mut writer)?;
+
+        // Write the number of inputs for the function.
+        let num_inputs = self.inputs.len();
+        match num_inputs <= N::MAX_INPUTS {
+            true => (num_inputs as u16).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
+        }
+
+        // Write the inputs.
+        for input in self.inputs.iter() {
+            input.write_le(&mut writer)?;
+        }
+
+        // Write the number of instructions for the function.
+        let num_instructions = self.instructions.len();
+        match num_instructions <= N::MAX_OUTPUTS {
+            true => (num_instructions as u32).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
+        }
+
+        // Write the instructions.
+        for instruction in self.instructions.iter() {
+            instruction.write_le(&mut writer)?;
+        }
+
+        // Write the number of outputs for the function.
+        let num_outputs = self.outputs.len();
+        match num_outputs <= N::MAX_INSTRUCTIONS {
+            true => (num_outputs as u16).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
+        }
+
+        // Write the outputs.
+        for output in self.outputs.iter() {
+            output.write_le(&mut writer)?;
+        }
+
+        Ok(())
+    }
+}
+
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
