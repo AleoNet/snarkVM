@@ -19,8 +19,6 @@
 
 #[macro_use]
 extern crate enum_index_derive;
-#[macro_use]
-extern crate num_derive;
 
 pub use snarkvm_console_types::prelude::*;
 

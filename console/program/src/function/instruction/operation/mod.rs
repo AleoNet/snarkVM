@@ -17,7 +17,9 @@
 mod literal_operation;
 pub(crate) use literal_operation::*;
 
-use crate::{Plaintext, PlaintextType};
+mod macros;
+use macros::*;
+
 use snarkvm_console_network::prelude::*;
 
 pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
@@ -31,62 +33,158 @@ pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const
     fn output_type(inputs: &[ValueType; NUM_OPERANDS]) -> Result<ValueType>;
 }
 
-/// Creates a match statement that evaluates the operation.
-///
-/// ## Example
-/// ```ignore
-/// evaluate!(
-///     match first.add(second) {
-///         (I8, I8) => I8,
-///         (I16, I16) => I16,
-///         (I32, I32) => I32,
-///         (I64, I64) => I64,
-///         (I128, I128) => I128,
-///         (U8, U8) => U8,
-///         (U16, U16) => U16,
-///         (U32, U32) => U32,
-///         (U64, U64) => U64,
-///         (U128, U128) => U128,
-///     }
-/// )
-/// ```
-#[macro_export]
-macro_rules! evaluate {
-    // Binary operation.
-    (match $first:ident.$operation:tt($second:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
-        match ($first, $second) {
-            $(($crate::Literal::$input_a(first), $crate::Literal::$input_b(second)) => $crate::Literal::$output(first.$operation(second)),)+
-            _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
-        }
-    }};
-}
+/// Adds `first` with `second`, storing the outcome in `destination`.
+pub type Add<N> = BinaryLiteral<N, AddOperation<N>>;
 
-/// Creates a match statement that returns the output type given the input types.
-///
-/// ## Example
-/// ```ignore
-/// output_type!(
-///     match (first, second) {
-///         (I8, I8) => I8,
-///         (I16, I16) => I16,
-///         (I32, I32) => I32,
-///         (I64, I64) => I64,
-///         (I128, I128) => I128,
-///         (U8, U8) => U8,
-///         (U16, U16) => U16,
-///         (U32, U32) => U32,
-///         (U64, U64) => U64,
-///         (U128, U128) => U128,
-///     }
-/// )
-/// ```
-#[macro_export]
-macro_rules! output_type {
-    // Binary operation.
-    (match ($first:expr, $second:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
-        match ($first, $second) {
-            $(($crate::LiteralType::$input_a, $crate::LiteralType::$input_b) => $crate::LiteralType::$output,)+
-            _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
-        }
-    }};
-}
+crate::operation!(
+    pub struct AddOperation<core::ops::Add, add, "add"> {
+        (Field, Field) => Field,
+        (Group, Group) => Group,
+        (I8, I8) => I8 ("ensure overflows halt"),
+        (I16, I16) => I16 ("ensure overflows halt"),
+        (I32, I32) => I32 ("ensure overflows halt"),
+        (I64, I64) => I64 ("ensure overflows halt"),
+        (I128, I128) => I128 ("ensure overflows halt"),
+        (U8, U8) => U8 ("ensure overflows halt"),
+        (U16, U16) => U16 ("ensure overflows halt"),
+        (U32, U32) => U32 ("ensure overflows halt"),
+        (U64, U64) => U64 ("ensure overflows halt"),
+        (U128, U128) => U128 ("ensure overflows halt"),
+        (Scalar, Scalar) => Scalar,
+    }
+);
+
+/// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOperation<N>>;
+
+crate::operation!(
+    pub struct AddWrappedOperation<snarkvm_console_network::AddWrapped, add_wrapped, "add.w"> {
+        (I8, I8) => I8,
+        (I16, I16) => I16,
+        (I32, I32) => I32,
+        (I64, I64) => I64,
+        (I128, I128) => I128,
+        (U8, U8) => U8,
+        (U16, U16) => U16,
+        (U32, U32) => U32,
+        (U64, U64) => U64,
+        (U128, U128) => U128,
+    }
+);
+
+/// Divides `first` by `second`, storing the outcome in `destination`.
+pub type Div<N> = BinaryLiteral<N, DivOperation<N>>;
+
+crate::operation!(
+    pub struct DivOperation<core::ops::Div, div, "div"> {
+        (Field, Field) => Field,
+        (I8, I8) => I8 ("ensure overflows halt"),
+        (I16, I16) => I16 ("ensure overflows halt"),
+        (I32, I32) => I32 ("ensure overflows halt"),
+        (I64, I64) => I64 ("ensure overflows halt"),
+        (I128, I128) => I128 ("ensure overflows halt"),
+        (U8, U8) => U8 ("ensure overflows halt"),
+        (U16, U16) => U16 ("ensure overflows halt"),
+        (U32, U32) => U32 ("ensure overflows halt"),
+        (U64, U64) => U64 ("ensure overflows halt"),
+        (U128, U128) => U128 ("ensure overflows halt"),
+        (Scalar, Scalar) => Scalar,
+    }
+);
+
+/// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
+pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
+
+crate::operation!(
+    pub struct DivWrappedOperation<snarkvm_console_network::DivWrapped, div_wrapped, "div.w"> {
+        (I8, I8) => I8 ("ensure divide by zero halts"),
+        (I16, I16) => I16 ("ensure divide by zero halts"),
+        (I32, I32) => I32 ("ensure divide by zero halts"),
+        (I64, I64) => I64 ("ensure divide by zero halts"),
+        (I128, I128) => I128 ("ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure divide by zero halts"),
+    }
+);
+
+/// Multiplies `first` and `second`, storing the outcome in `destination`.
+pub type Mul<N> = BinaryLiteral<N, MulOperation<N>>;
+
+crate::operation!(
+    pub struct MulOperation<core::ops::Mul, mul, "mul"> {
+        (Field, Field) => Field,
+        (Group, Scalar) => Group,
+        (Scalar, Group) => Group,
+        (I8, I8) => I8 ("ensure overflows halt"),
+        (I16, I16) => I16 ("ensure overflows halt"),
+        (I32, I32) => I32 ("ensure overflows halt"),
+        (I64, I64) => I64 ("ensure overflows halt"),
+        (I128, I128) => I128 ("ensure overflows halt"),
+        (U8, U8) => U8 ("ensure overflows halt"),
+        (U16, U16) => U16 ("ensure overflows halt"),
+        (U32, U32) => U32 ("ensure overflows halt"),
+        (U64, U64) => U64 ("ensure overflows halt"),
+        (U128, U128) => U128 ("ensure overflows halt"),
+        (Scalar, Scalar) => Scalar,
+    }
+);
+
+/// Multiplies `first` and `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
+pub type MulWrapped<N> = BinaryLiteral<N, MulWrappedOperation<N>>;
+
+crate::operation!(
+    pub struct MulWrappedOperation<snarkvm_console_network::MulWrapped, mul_wrapped, "mul.w"> {
+        (I8, I8) => I8,
+        (I16, I16) => I16,
+        (I32, I32) => I32,
+        (I64, I64) => I64,
+        (I128, I128) => I128,
+        (U8, U8) => U8,
+        (U16, U16) => U16,
+        (U32, U32) => U32,
+        (U64, U64) => U64,
+        (U128, U128) => U128,
+    }
+);
+
+/// Computes `first - second`, storing the outcome in `destination`.
+pub type Sub<N> = BinaryLiteral<N, SubOperation<N>>;
+
+crate::operation!(
+    pub struct SubOperation<core::ops::Sub, sub, "sub"> {
+        (Field, Field) => Field,
+        (Group, Group) => Group,
+        (I8, I8) => I8 ("ensure overflows halt"),
+        (I16, I16) => I16 ("ensure overflows halt"),
+        (I32, I32) => I32 ("ensure overflows halt"),
+        (I64, I64) => I64 ("ensure overflows halt"),
+        (I128, I128) => I128 ("ensure overflows halt"),
+        (U8, U8) => U8 ("ensure overflows halt"),
+        (U16, U16) => U16 ("ensure overflows halt"),
+        (U32, U32) => U32 ("ensure overflows halt"),
+        (U64, U64) => U64 ("ensure overflows halt"),
+        (U128, U128) => U128 ("ensure overflows halt"),
+        (Scalar, Scalar) => Scalar,
+    }
+);
+
+/// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+pub type SubWrapped<N> = BinaryLiteral<N, SubWrappedOperation<N>>;
+
+crate::operation!(
+    pub struct SubWrappedOperation<snarkvm_console_network::SubWrapped, sub_wrapped, "sub.w"> {
+        (I8, I8) => I8,
+        (I16, I16) => I16,
+        (I32, I32) => I32,
+        (I64, I64) => I64,
+        (I128, I128) => I128,
+        (U8, U8) => U8,
+        (U16, U16) => U16,
+        (U32, U32) => U32,
+        (U64, U64) => U64,
+        (U128, U128) => U128,
+    }
+);

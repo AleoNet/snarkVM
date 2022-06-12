@@ -118,6 +118,26 @@ impl<E: Environment> Mul<&Scalar<E>> for Group<E> {
     }
 }
 
+impl<E: Environment> Mul<Group<E>> for Scalar<E> {
+    type Output = Group<E>;
+
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn mul(self, other: Group<E>) -> Self::Output {
+        Group::from_projective(other.group * *self)
+    }
+}
+
+impl<E: Environment> Mul<&Group<E>> for Scalar<E> {
+    type Output = Group<E>;
+
+    /// Returns the `product` of `self` and `other`.
+    #[inline]
+    fn mul(self, other: &Group<E>) -> Self::Output {
+        Group::from_projective(other.group * *self)
+    }
+}
+
 impl<E: Environment> MulAssign<Scalar<E>> for Group<E> {
     /// Multiplies `self` by `other`.
     #[inline]
