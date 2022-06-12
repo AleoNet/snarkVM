@@ -24,16 +24,14 @@ mod output;
 use output::*;
 
 mod register;
-pub use register::Register;
-
-mod registers;
-use registers::{RegisterType, Registers};
+pub(crate) use register::Register;
 
 mod bytes;
 mod parse;
 
 use crate::{
     function::{Input, Output},
+    program::Stack,
     Identifier,
     LiteralType,
     Plaintext,
@@ -51,7 +49,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Function<N: Network> {
@@ -162,93 +160,19 @@ impl<N: Network> Function<N> {
         Ok(())
     }
 
-    // /// Evaluates the function on the given inputs.
-    // ///
-    // /// # Errors
-    // /// This method will halt if there are no input statements or instructions in memory.
-    // /// This method will halt if any registers are already assigned.
-    // /// This method will halt if the given inputs are not the same length as the input statements.
-    // #[inline]
-    // pub fn evaluate(&self, program: &Program<N>, inputs: &[Plaintext<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
-    //     // Ensure there are input statements and instructions in memory.
-    //     ensure!(!self.inputs.is_empty(), "Cannot evaluate a function without input statements");
-    //     ensure!(!self.instructions.is_empty(), "Cannot evaluate a function without instructions");
-    //
-    //     // Ensure the number of inputs matches the number of input statements.
-    //     ensure!(self.inputs.len() == inputs.len(), "Expected {} inputs, but given {}", self.inputs.len(), inputs.len());
-    //
-    //     // Initialize a registers map to store the values for destination registers.
-    //     let mut registers = Registers::<N>::new(self.registers.clone(), inputs)?;
-    //
-    //     // Assign the inputs and ensure they matches the input statements.
-    //     self.assign_inputs(inputs);
-    //
-    //     // Evaluate the instructions.
-    //     for instruction in self.instructions.iter() {
-    //         instruction.evaluate(&self.registers);
-    //     }
-    //
-    //     // Load the outputs.
-    //     let mut outputs = Vec::with_capacity(self.outputs.len());
-    //     for output in self.outputs.iter() {
-    //         // Load the value from the output register.
-    //         let register = output.register();
-    //         let value = self.registers.load(register);
-    //
-    //         // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-    //         // Ensure the output plaintext type matches the annotation.
-    //         if &value.annotation() != output.annotation() {
-    //             P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
-    //         }
-    //
-    //         // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-    //         // If the output annotation is a definition, ensure the output value matches the definition.
-    //         if let Annotation::Definition(definition_name) = output.annotation() {
-    //             // Retrieve the definition from the program.
-    //             match P::get_definition(definition_name) {
-    //                 // Ensure the value matches its expected definition.
-    //                 Some(definition) => {
-    //                     if !definition.matches(&value) {
-    //                         P::halt(format!("Output \'{register}\' does not match \'{definition_name}\'"))
-    //                     }
-    //                 }
-    //                 None => P::halt("Output \'{register}\' references a non-existent definition"),
-    //             }
-    //         }
-    //
-    //         // TODO (howardwu): Add encryption against the caller's address for all private literals,
-    //         //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-    //         //  For constant outputs, add an assert_eq on the register value - if it's constant,
-    //         //  the constraint will automatically be discarded, and if it's not, the constraint will
-    //         //  ensure the output register's value matches the newly-assigned hardcoded constant.
-    //         // // If the value contains any public literals, assign a new public variable for the public literal,
-    //         // // and add a constraint to enforce equality of the value.
-    //         // match &value {
-    //         //     Value::Literal(literal) => {
-    //         //         if literal.is_public() {
-    //         //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-    //         //             P::Environment::assert_eq(literal, public_literal);
-    //         //         }
-    //         //     }
-    //         //     Value::Definition(_, members) => {
-    //         //         for member in members.iter() {
-    //         //             if member.is_public() {
-    //         //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-    //         //                 P::Environment::assert_eq(member, public_literal);
-    //         //             }
-    //         //         }
-    //         //     }
-    //         // }
-    //
-    //         // Insert the value into the outputs.
-    //         outputs.push(value);
-    //     }
-    //
-    //     // Clear the register assignments.
-    //     self.registers.clear_assignments();
-    //
-    //     outputs
-    // }
+    /// Evaluates the function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if there are no input statements or instructions in memory.
+    #[inline]
+    pub fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+        // Ensure there are input statements and instructions in memory.
+        ensure!(!self.inputs.is_empty(), "Cannot evaluate a function without input statements");
+        ensure!(!self.instructions.is_empty(), "Cannot evaluate a function without instructions");
+
+        // Evaluate the instructions.
+        self.instructions.iter().try_for_each(|instruction| instruction.evaluate(stack))
+    }
 }
 
 impl<N: Network> TypeName for Function<N> {

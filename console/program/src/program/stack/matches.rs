@@ -16,25 +16,30 @@
 
 use super::*;
 
-impl<N: Network> Plaintext<N> {
-    /// Checks that `self` matches the layout of the plaintext type for the given program.
+impl<N: Network> Stack<N> {
+    /// Checks that `self` matches the layout of the plaintext type.
     /// Note: Ordering does **not** matter, as long as all defined members are present.
-    pub fn matches(&self, program: &Program<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
-        self.matches_internal(program, plaintext_type, 0)
+    pub fn matches(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
+        self.matches_internal(plaintext, plaintext_type, 0)
     }
 
-    /// Checks that `self` matches the layout of the plaintext type for the given program.
+    /// Checks that `self` matches the layout of the plaintext type.
     /// Note: Ordering does **not** matter, as long as all defined members are present.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
-    fn matches_internal(&self, program: &Program<N>, plaintext_type: &PlaintextType<N>, depth: usize) -> Result<()> {
+    fn matches_internal(
+        &self,
+        plaintext: &Plaintext<N>,
+        plaintext_type: &PlaintextType<N>,
+        depth: usize,
+    ) -> Result<()> {
         // If the depth exceeds the maximum depth, then the plaintext type is invalid.
         ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
 
         // Ensure the plaintext matches the plaintext definition in the program.
         match plaintext_type {
-            PlaintextType::Literal(literal_type) => match self {
-                // If `self` is a literal, it must match the literal type.
+            PlaintextType::Literal(literal_type) => match plaintext {
+                // If `plaintext` is a literal, it must match the literal type.
                 Plaintext::Literal(literal, ..) => {
                     // Ensure the literal type matches.
                     match literal.to_type() == *literal_type {
@@ -42,17 +47,20 @@ impl<N: Network> Plaintext<N> {
                         false => bail!("'{plaintext_type}' is invalid: expected {literal_type}, found {literal}"),
                     }
                 }
-                // If `self` is an interface, this is a mismatch.
+                // If `plaintext` is an interface, this is a mismatch.
                 Plaintext::Interface(..) => bail!("'{plaintext_type}' is invalid: expected literal, found interface"),
             },
             PlaintextType::Interface(interface_name) => {
                 // Ensure the interface name is valid.
-                ensure!(!program.is_reserved_name(interface_name), "Interface name '{interface_name}' is reserved");
+                ensure!(
+                    !self.program.is_reserved_name(interface_name),
+                    "Interface name '{interface_name}' is reserved"
+                );
 
                 // Retrieve the interface from the program.
-                let interface = match program.get_interface(interface_name) {
-                    Some(interface) => interface,
-                    None => bail!("Interface '{interface_name}' is not defined in the program"),
+                let interface = match self.program.get_interface(interface_name) {
+                    Ok(interface) => interface,
+                    Err(..) => bail!("Interface '{interface_name}' is not defined in the program"),
                 };
 
                 // Ensure the interface name matches.
@@ -61,7 +69,7 @@ impl<N: Network> Plaintext<N> {
                 }
 
                 // Retrieve the interface members.
-                let members = match self {
+                let members = match plaintext {
                     Plaintext::Literal(..) => bail!("'{interface_name}' is invalid: expected interface, found literal"),
                     Plaintext::Interface(members, ..) => members,
                 };
@@ -87,9 +95,12 @@ impl<N: Network> Plaintext<N> {
                         // Ensure the member type matches.
                         Some((member_name, member_plaintext)) => {
                             // Ensure the member name is valid.
-                            ensure!(!program.is_reserved_name(member_name), "Member name '{member_name}' is reserved");
+                            ensure!(
+                                !self.program.is_reserved_name(member_name),
+                                "Member name '{member_name}' is reserved"
+                            );
                             // Ensure the member plaintext matches (recursive call).
-                            member_plaintext.matches_internal(program, expected_type, depth + 1)?
+                            self.matches_internal(member_plaintext, expected_type, depth + 1)?
                         }
                         None => bail!("'{interface_name}' is missing member '{expected_name}'",),
                     }

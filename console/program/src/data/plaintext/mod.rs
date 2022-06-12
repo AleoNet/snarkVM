@@ -16,13 +16,12 @@
 
 mod from_bits;
 mod from_fields;
-mod matches;
 mod parse;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Identifier, Literal, PlaintextType, Program, Visibility};
+use crate::{Identifier, Literal, Visibility};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 use snarkvm_utilities::{error, has_duplicates};

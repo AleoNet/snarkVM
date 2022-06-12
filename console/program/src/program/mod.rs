@@ -14,7 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{function::Operand, Function, Identifier, Interface, PlaintextType, RecordType, Register, ValueType};
+mod registers;
+pub(crate) use registers::*;
+
+mod stack;
+pub(crate) use stack::*;
+
+use crate::{
+    function::Operand,
+    Function,
+    Identifier,
+    Interface,
+    Plaintext,
+    PlaintextType,
+    RecordType,
+    Register,
+    Value,
+    ValueType,
+};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
@@ -29,115 +46,6 @@ enum ProgramDefinition {
     Function,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-enum RegisterType<N: Network> {
-    /// An input register type contains a plaintext type with visibility.
-    Input(ValueType<N>),
-    /// A destination register type contains a plaintext type from an instruction.
-    Destination(PlaintextType<N>),
-}
-
-#[derive(Clone, PartialEq, Eq)]
-struct Registers<N: Network> {
-    register_types: IndexMap<u64, RegisterType<N>>,
-}
-
-impl<N: Network> Registers<N> {
-    /// Initializes a new instance of `Registers`.
-    pub fn new() -> Self {
-        Self { register_types: IndexMap::new() }
-    }
-
-    /// Returns `true` if the given register exists.
-    pub fn contains(&self, register: &Register<N>) -> bool {
-        self.register_types.contains_key(&register.locator())
-    }
-
-    /// Returns `true` if the given register corresponds to an input register.
-    pub fn is_input(&self, register: &Register<N>) -> bool {
-        self.register_types
-            .get(&register.locator())
-            .map(|register_type| matches!(*register_type, RegisterType::Input(..)))
-            .unwrap_or(false)
-    }
-
-    /// Inserts the given register and type into the registers.
-    /// Note: The given register must be a `Register::Locator`.
-    pub fn insert(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
-        // Check the register.
-        match register {
-            Register::Locator(locator) => {
-                // Ensure the registers are monotonically increasing.
-                ensure!(self.register_types.len() as u64 == locator, "Register '{register}' is out of order");
-            }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
-        }
-        // Insert the register and type.
-        match self.register_types.insert(register.locator(), register_type) {
-            // If the register already exists, throw an error.
-            Some(..) => bail!("Register '{register}' already exists"),
-            // If the register does not exist, return success.
-            None => Ok(()),
-        }
-    }
-
-    /// Returns the plaintext type of the given register.
-    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<PlaintextType<N>> {
-        // Retrieve the (starting) plaintext type.
-        let plaintext_type = match self.register_types.get(&register.locator()) {
-            // Retrieve the plaintext type from the value type.
-            Some(RegisterType::Input(value_type)) => {
-                // Output the plaintext type.
-                value_type.to_plaintext_type()
-            }
-            // Retrieve the plaintext type.
-            Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
-            // Ensure the register is defined.
-            None => bail!("Register '{register}' does not exist"),
-        };
-
-        match &register {
-            // If the register is a locator, then output the register type.
-            Register::Locator(..) => Ok(plaintext_type),
-            // If the register is a member, then traverse the member path to output the register type.
-            Register::Member(_, path) => {
-                // Ensure the member path is valid.
-                ensure!(path.len() > 0, "Register '{register}' references no members.");
-
-                // Initialize a tracker for the plaintext type.
-                let mut plaintext_type = plaintext_type;
-                // Traverse the member path to find the register type.
-                for (i, member_name) in path.iter().enumerate() {
-                    match plaintext_type {
-                        // Ensure the plaintext type is not a literal, as the register references a member.
-                        PlaintextType::Literal(..) => bail!("Register '{register}' references a literal."),
-                        // Traverse the member path to output the register type.
-                        PlaintextType::Interface(interface_name) => {
-                            // Retrieve the interface.
-                            match program.get_interface(&interface_name) {
-                                // Retrieve the member type from the interface.
-                                Some(interface) => match interface.members().get(member_name) {
-                                    // Update the plaintext type.
-                                    Some(member_type) => plaintext_type = *member_type,
-                                    None => {
-                                        bail!("Member '{member_name}' does not exist in '{interface_name}'")
-                                    }
-                                },
-                                None => {
-                                    bail!("'{register}' references a missing interface '{interface_name}'.")
-                                }
-                            }
-                        }
-                    }
-                }
-                // Output the member type.
-                Ok(plaintext_type)
-            }
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct Program<N: Network> {
     /// A map of identifiers to their program declaration.
@@ -148,6 +56,104 @@ pub struct Program<N: Network> {
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared functions for the program.
     functions: IndexMap<Identifier<N>, Function<N>>,
+    /// A map of the declared register types for each function.
+    function_registers: IndexMap<Identifier<N>, RegisterTypes<N>>,
+}
+
+impl<N: Network> Program<N> {
+    /// Evaluates a program function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn evaluate(
+        &self,
+        function_name: &Identifier<N>,
+        inputs: &[Plaintext<N>],
+    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Retrieve the function from the program.
+        let function = self.get_function(function_name)?;
+
+        // Ensure the number of inputs matches the number of input statements.
+        ensure!(
+            function.inputs().len() == inputs.len(),
+            "Expected {} inputs, found {}",
+            function.inputs().len(),
+            inputs.len()
+        );
+
+        // Retrieve the registers for the function.
+        let register_types = self
+            .function_registers
+            .get(function_name)
+            .ok_or_else(|| anyhow!("Function {function_name} is missing its function registers"))?;
+
+        // Initialize the stack.
+        let mut stack = Stack::new(self.clone(), register_types.clone(), inputs)?;
+
+        // Evaluate the function.
+        function.evaluate(&mut stack)?;
+
+        // Initialize a vector to store the outputs.
+        let mut outputs = Vec::with_capacity(function.outputs().len());
+
+        // Load the outputs.
+        // for output in self.outputs.iter() {
+        //     // Load the value from the output register.
+        //     let register = output.register();
+        //     let value = self.registers.load(register);
+        //
+        //     // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
+        //     // Ensure the output plaintext type matches the annotation.
+        //     if &value.annotation() != output.annotation() {
+        //         P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
+        //     }
+        //
+        //     // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
+        //     // If the output annotation is a definition, ensure the output value matches the definition.
+        //     if let Annotation::Definition(definition_name) = output.annotation() {
+        //         // Retrieve the definition from the program.
+        //         match P::get_definition(definition_name) {
+        //             // Ensure the value matches its expected definition.
+        //             Some(definition) => {
+        //                 if !definition.matches(&value) {
+        //                     P::halt(format!("Output \'{register}\' does not match \'{definition_name}\'"))
+        //                 }
+        //             }
+        //             None => P::halt("Output \'{register}\' references a non-existent definition"),
+        //         }
+        //     }
+        //
+        //     // TODO (howardwu): Add encryption against the caller's address for all private literals,
+        //     //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
+        //     //  For constant outputs, add an assert_eq on the register value - if it's constant,
+        //     //  the constraint will automatically be discarded, and if it's not, the constraint will
+        //     //  ensure the output register's value matches the newly-assigned hardcoded constant.
+        //     // // If the value contains any public literals, assign a new public variable for the public literal,
+        //     // // and add a constraint to enforce equality of the value.
+        //     // match &value {
+        //     //     Value::Literal(literal) => {
+        //     //         if literal.is_public() {
+        //     //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
+        //     //             P::Environment::assert_eq(literal, public_literal);
+        //     //         }
+        //     //     }
+        //     //     Value::Definition(_, members) => {
+        //     //         for member in members.iter() {
+        //     //             if member.is_public() {
+        //     //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
+        //     //                 P::Environment::assert_eq(member, public_literal);
+        //     //             }
+        //     //         }
+        //     //     }
+        //     // }
+        //
+        //     // Insert the value into the outputs.
+        //     outputs.push(value);
+        // }
+
+        Ok(outputs)
+    }
 }
 
 impl<N: Network> Program<N> {
@@ -159,6 +165,7 @@ impl<N: Network> Program<N> {
             interfaces: IndexMap::new(),
             records: IndexMap::new(),
             functions: IndexMap::new(),
+            function_registers: IndexMap::new(),
         }
     }
 
@@ -272,7 +279,7 @@ impl<N: Network> Program<N> {
         ensure!(!self.is_reserved_name(&function_name), "'{}' is a reserved keyword.", function_name);
 
         // Initialize a map of registers to their types.
-        let mut registers = Registers::new();
+        let mut registers = RegisterTypes::new();
 
         // Step 1. Check the function inputs are well-formed.
         for input in function.inputs() {
@@ -373,6 +380,10 @@ impl<N: Network> Program<N> {
         if self.functions.insert(function_name.clone(), function).is_some() {
             bail!("'{}' already exists in the program.", function_name)
         }
+        // Add the function registers to the program.
+        if self.function_registers.insert(function_name.clone(), registers).is_some() {
+            bail!("'{}' already exists in the program.", function_name)
+        }
         Ok(())
     }
 
@@ -392,18 +403,18 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the interface with the given name.
-    pub fn get_interface(&self, name: &Identifier<N>) -> Option<Interface<N>> {
-        self.interfaces.get(name).cloned()
+    pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
+        self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))
     }
 
     /// Returns the record with the given name.
-    pub fn get_record(&self, name: &Identifier<N>) -> Option<RecordType<N>> {
-        self.records.get(name).cloned()
+    pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
+        self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))
     }
 
     /// Returns the function with the given name.
-    pub fn get_function(&self, name: &Identifier<N>) -> Option<Function<N>> {
-        self.functions.get(name).cloned()
+    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
+        self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))
     }
 }
 
@@ -586,7 +597,30 @@ interface message:
         // Ensure the interface was added.
         assert!(program.contains_interface(&Identifier::from_str("message")?));
         // Ensure the retrieved interface matches.
-        assert_eq!(Some(interface), program.get_interface(&Identifier::from_str("message")?));
+        assert_eq!(interface, program.get_interface(&Identifier::from_str("message")?)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_program_record() -> Result<()> {
+        // Create a new record.
+        let record = RecordType::<CurrentNetwork>::from_str(
+            r"
+record foo:
+    first as field.private;
+    second as field.public;",
+        )?;
+
+        // Initialize a new program.
+        let mut program = Program::<CurrentNetwork>::new();
+
+        // Add the record to the program.
+        program.add_record(record.clone())?;
+        // Ensure the record was added.
+        assert!(program.contains_record(&Identifier::from_str("foo")?));
+        // Ensure the retrieved record matches.
+        assert_eq!(record, program.get_record(&Identifier::from_str("foo")?)?);
 
         Ok(())
     }
@@ -611,7 +645,7 @@ function compute:
         // Ensure the function was added.
         assert!(program.contains_function(&Identifier::from_str("compute")?));
         // Ensure the retrieved function matches.
-        assert_eq!(Some(function), program.get_function(&Identifier::from_str("compute")?));
+        assert_eq!(function, program.get_function(&Identifier::from_str("compute")?)?);
 
         Ok(())
     }
@@ -639,7 +673,7 @@ function compute:
         assert!(program.contains_function(&Identifier::from_str("compute")?));
 
         // Retrieve the `compute` function.
-        let compute = program.get_function(&Identifier::from_str("compute")?).unwrap();
+        let compute = program.get_function(&Identifier::from_str("compute")?)?;
 
         // // Declare the input value.
         // let input = Value::from_str("{ 2field.public, 3field.private }");

@@ -15,14 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::{
-        instruction::{Operand, Operation},
-        registers::Registers,
-    },
+    function::instruction::{Operand, Operation},
+    program::Stack,
     Literal,
     LiteralType,
     PlaintextType,
-    Program,
     Register,
 };
 use snarkvm_console_network::prelude::*;
@@ -76,7 +73,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::function) fn evaluate(&self, registers: &mut Registers<N>, program: &Program<N>) -> Result<()> {
+    pub(in crate::function) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         // Ensure the number of operands is correct.
         ensure!(
             self.operands.len() == NUM_OPERANDS,
@@ -94,7 +91,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         // Load the operands **as literals & literal types**.
         self.operands.iter().try_for_each(|operand| {
             // Load the literal.
-            let literal = registers.load_literal(program, operand)?;
+            let literal = stack.load_literal(operand)?;
             // Compute the literal type.
             let literal_type = literal.to_type();
             // Store the literal.
@@ -119,7 +116,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         );
 
         // Evaluate the operation and store the output.
-        registers.store_literal(program, &self.destination, output)
+        stack.store_literal(&self.destination, output)
     }
 
     /// Returns the output type from the given input types.

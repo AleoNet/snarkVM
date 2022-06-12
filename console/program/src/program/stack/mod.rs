@@ -14,7 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{function::instruction::Operand, Literal, Plaintext, PlaintextType, Program, Register, Value, ValueType};
+mod matches;
+
+use crate::{
+    function::Operand,
+    program::{RegisterType, RegisterTypes},
+    Literal,
+    Plaintext,
+    PlaintextType,
+    Program,
+    Register,
+    Value,
+    ValueType,
+};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
@@ -27,122 +39,100 @@ enum RegisterValue<N: Network> {
     Destination(Plaintext<N>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub(in crate::function) enum RegisterType<N: Network> {
-    /// An input register contains a plaintext value with visibility.
-    Input(ValueType<N>),
-    /// A destination register contains a plaintext value from an instruction.
-    Destination(PlaintextType<N>),
-}
-
-/// The registers contains a mapping of the registers to their corresponding values in a function.
 #[derive(Clone)]
-pub(in crate::function) struct Registers<N: Network> {
+pub struct Stack<N: Network> {
+    /// The program this stack belongs to.
+    program: Program<N>,
     /// The mapping of all registers to their defined types.
-    register_types: IndexMap<u64, RegisterType<N>>,
+    register_types: RegisterTypes<N>,
     /// The mapping of assigned registers to their values.
     registers: IndexMap<u64, RegisterValue<N>>,
 }
 
-impl<N: Network> Registers<N> {
-    /// Initializes a new instance of the registers, given:
-    ///   1. The register types as defined by the function.
-    ///   2. The input register values.
+impl<N: Network> Stack<N> {
+    /// Initializes a new stack with:
+    ///   1. The program.
+    ///   2. The register types for the function being executed.
+    ///   3. The input register values.
     ///
     /// # Errors
     /// This method will halt if any input type does not match the register type.
     #[inline]
-    pub(in crate::function) fn new(
-        program: &Program<N>,
-        register_types: IndexMap<u64, RegisterType<N>>,
-        inputs: &[Plaintext<N>],
-    ) -> Result<Self> {
+    pub fn new(program: Program<N>, register_types: RegisterTypes<N>, inputs: &[Plaintext<N>]) -> Result<Self> {
         // Initialize the registers.
-        let mut registers = Self { register_types, registers: IndexMap::new() };
+        let mut stack = Self { program, register_types, registers: IndexMap::new() };
 
         // Determine the visibility of the inputs.
-        for ((locator, register), input) in registers.register_types.iter().zip_eq(inputs.iter()) {
+        for ((register, register_type), input) in stack.register_types.to_inputs().zip_eq(inputs.iter()) {
             // Ensure the register is an input register.
-            match register {
+            match register_type {
                 RegisterType::Input(value_type) => {
                     // Ensure the plaintext type of the input matches what is declared in the register.
-                    input.matches(program, &value_type.to_plaintext_type())?;
+                    stack.matches(input, &value_type.to_plaintext_type())?;
 
-                    // Construct a value out of the plaintext input.
-                    let value = match value_type {
-                        ValueType::Constant(..) => Value::Constant(input.clone()),
-                        ValueType::Public(..) => Value::Public(input.clone()),
-                        ValueType::Private(..) => Value::Private(input.clone()),
+                    // Construct the register value with the plaintext input.
+                    let register_value = match value_type {
+                        ValueType::Constant(..) => RegisterValue::Input(Value::Constant(input.clone())),
+                        ValueType::Public(..) => RegisterValue::Input(Value::Public(input.clone())),
+                        ValueType::Private(..) => RegisterValue::Input(Value::Private(input.clone())),
                     };
 
                     // Assign the input value to the register.
-                    registers.registers.insert(*locator, RegisterValue::Input(value));
+                    stack.registers.insert(register.locator(), register_value);
                 }
-                RegisterType::Destination(..) => bail!("Register {locator} is not an input register"),
+                RegisterType::Destination(..) => bail!("'{register}' is not an input register"),
             }
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         }
 
-        Ok(registers)
+        Ok(stack)
     }
 
     /// Assigns the given literal to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
     /// This method will halt if the given register is a register member.
-    /// This method will halt if the register was previously stored.
+    /// This method will halt if the given register is an input register.
+    /// This method will halt if the register is already used.
     #[inline]
-    pub(in crate::function) fn store_literal(
-        &mut self,
-        program: &Program<N>,
-        register: &Register<N>,
-        literal: Literal<N>,
-    ) -> Result<()> {
-        self.store(program, register, Plaintext::from(literal))
+    pub fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
+        self.store(register, Plaintext::from(literal))
     }
 
     /// Assigns the given value to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
     /// This method will halt if the given register is a register member.
-    /// This method will halt if the register was previously stored.
+    /// This method will halt if the given register is an input register.
+    /// This method will halt if the register is already used.
     #[inline]
-    pub(in crate::function) fn store(
-        &mut self,
-        program: &Program<N>,
-        register: &Register<N>,
-        plaintext: Plaintext<N>,
-    ) -> Result<()> {
-        // Ensure the register assignments are monotonically increasing.
-        let expected_register = Register::Locator(self.registers.len() as u64);
-        ensure!(expected_register == *register, "Expected '{expected_register}', found '{register}'");
+    pub fn store(&mut self, register: &Register<N>, plaintext: Plaintext<N>) -> Result<()> {
+        match register {
+            Register::Locator(locator) => {
+                // Ensure the register assignments are monotonically increasing.
+                ensure!(self.registers.len() as u64 == *locator, "Out-of-order write operation at '{register}'");
+                // Ensure the register type is not an input register.
+                ensure!(!self.register_types.is_input(register), "Cannot write to input register '{register}'");
 
-        // Retrieve the register type.
-        let register_type = match self.register_types.get(&register.locator()) {
-            Some(register_type) => register_type,
-            None => bail!("Register {register} is not a member of the function"),
-        };
+                // Retrieve the register type.
+                match self.register_types.get_type(&self.program, register) {
+                    // Ensure the plaintext type matches the register type.
+                    Ok(plaintext_type) => self.matches(&plaintext, &plaintext_type)?,
+                    // Ensure the register is defined.
+                    Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+                };
 
-        // Ensure the register type is not an input register.
-        match register_type {
-            RegisterType::Input(..) => bail!("Cannot store to input '{register}', expected a destination register"),
-            // Ensure the plaintext type is the expected type.
-            RegisterType::Destination(plaintext_type) => plaintext.matches(program, &plaintext_type)?,
-        }
-
-        // Store the plaintext in the register.
-        let previous = match register {
-            // Store the plaintext for a register.
-            Register::Locator(locator) => self.registers.insert(*locator, RegisterValue::Destination(plaintext)),
-            // Store the plaintext for a register member.
-            Register::Member(..) => bail!("Cannot store directly to \'{register}\'"),
-        };
-
-        // Ensure the register has not been previously stored.
-        match previous {
-            Some(..) => bail!("Register \'{register}\' was previously assigned"),
-            None => Ok(()),
+                // Store the plaintext in the register.
+                match self.registers.insert(*locator, RegisterValue::Destination(plaintext)) {
+                    // Return on success.
+                    Some(..) => Ok(()),
+                    // Ensure the register has not been previously stored.
+                    None => bail!("Attempted to write to register '{register}' again"),
+                }
+            }
+            // Ensure the register is not a register member.
+            Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
         }
     }
 
@@ -153,8 +143,8 @@ impl<N: Network> Registers<N> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub(in crate::function) fn load_literal(&self, program: &Program<N>, operand: &Operand<N>) -> Result<Literal<N>> {
-        match self.load(program, operand)? {
+    pub fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
+        match self.load(operand)? {
             Plaintext::Literal(literal, ..) => Ok(literal),
             Plaintext::Interface(..) => bail!("Operand must be a literal"),
         }
@@ -166,7 +156,7 @@ impl<N: Network> Registers<N> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub(in crate::function) fn load(&self, program: &Program<N>, operand: &Operand<N>) -> Result<Plaintext<N>> {
+    pub fn load(&self, operand: &Operand<N>) -> Result<Plaintext<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
