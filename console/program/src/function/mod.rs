@@ -182,36 +182,3 @@ impl<N: Network> TypeName for Function<N> {
         "function"
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_console_network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
-
-    //     #[test]
-    //     fn test_function_evaluate() {
-    //         let function = Function::<CurrentNetwork>::from_str(
-    //             r"
-    // function foo:
-    //     input r0 as field.public;
-    //     input r1 as field.private;
-    //     add r0 r1 into r2;
-    //     output r2 as field.private;
-    // ",
-    //         );
-    //         let first = Value::<CurrentNetwork>::from_str("2field.public");
-    //         let second = Value::from_str("3field.private");
-    //
-    //         // Run the function.
-    //         let expected = Value::<CurrentNetwork>::from_str("5field.private");
-    //         let candidate = function.evaluate(&[first.clone(), second.clone()]);
-    //         assert_eq!(expected.to_string(), candidate[0].to_string());
-    //
-    //         // Re-run to ensure state continues to work.
-    //         let expected = Value::<CurrentNetwork>::from_str("5field.private");
-    //         let candidate = function.evaluate(&[first, second]);
-    //         assert_eq!(expected.to_string(), candidate[0].to_string());
-    //     }
-}

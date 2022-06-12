@@ -125,10 +125,10 @@ impl<N: Network> Stack<N> {
 
                 // Store the plaintext in the register.
                 match self.registers.insert(*locator, RegisterValue::Destination(plaintext)) {
-                    // Return on success.
-                    Some(..) => Ok(()),
                     // Ensure the register has not been previously stored.
-                    None => bail!("Attempted to write to register '{register}' again"),
+                    Some(..) => bail!("Attempted to write to register '{register}' again"),
+                    // Return on success.
+                    None => Ok(()),
                 }
             }
             // Ensure the register is not a register member.

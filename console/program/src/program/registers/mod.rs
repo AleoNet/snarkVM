@@ -31,12 +31,14 @@ pub enum RegisterType<N: Network> {
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all registers to their defined types.
     register_types: IndexMap<u64, RegisterType<N>>,
+    /// The mapping of all output registers to their defined types.
+    output_registers: IndexMap<Register<N>, ValueType<N>>,
 }
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes`.
     pub fn new() -> Self {
-        Self { register_types: IndexMap::new() }
+        Self { register_types: IndexMap::new(), output_registers: IndexMap::new() }
     }
 
     /// Returns `true` if the given register exists.
@@ -52,12 +54,22 @@ impl<N: Network> RegisterTypes<N> {
             .unwrap_or(false)
     }
 
+    /// Returns `true` if the given register corresponds to an output register.
+    pub fn is_output(&self, register: &Register<N>) -> bool {
+        self.output_registers.contains_key(register)
+    }
+
     /// Returns an iterator over all input registers.
     pub fn to_inputs(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
         self.register_types
             .iter()
             .filter(|(_, register_type)| matches!(*register_type, RegisterType::Input(..)))
             .map(|(locator, register_type)| (Register::Locator(*locator), *register_type))
+    }
+
+    /// Returns an iterator over all output registers.
+    pub fn to_outputs(&self) -> impl '_ + Iterator<Item = (&Register<N>, &ValueType<N>)> {
+        self.output_registers.iter()
     }
 
     /// Inserts the given register and type into the registers.
@@ -74,6 +86,19 @@ impl<N: Network> RegisterTypes<N> {
         }
         // Insert the register and type.
         match self.register_types.insert(register.locator(), register_type) {
+            // If the register already exists, throw an error.
+            Some(..) => bail!("Register '{register}' already exists"),
+            // If the register does not exist, return success.
+            None => Ok(()),
+        }
+    }
+
+    /// Inserts the given register as an output register with the associated value type.
+    pub fn add_output(&mut self, register: &Register<N>, value_type: ValueType<N>) -> Result<()> {
+        // Ensure the given register already exists.
+        ensure!(self.contains(register), "Register '{register}' does not exist");
+        // Insert the output register and type.
+        match self.output_registers.insert(register.clone(), value_type) {
             // If the register already exists, throw an error.
             Some(..) => bail!("Register '{register}' already exists"),
             // If the register does not exist, return success.

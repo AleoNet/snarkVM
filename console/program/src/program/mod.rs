@@ -98,59 +98,41 @@ impl<N: Network> Program<N> {
         let mut outputs = Vec::with_capacity(function.outputs().len());
 
         // Load the outputs.
-        // for output in self.outputs.iter() {
-        //     // Load the value from the output register.
-        //     let register = output.register();
-        //     let value = self.registers.load(register);
-        //
-        //     // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-        //     // Ensure the output plaintext type matches the annotation.
-        //     if &value.annotation() != output.annotation() {
-        //         P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
-        //     }
-        //
-        //     // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-        //     // If the output annotation is a definition, ensure the output value matches the definition.
-        //     if let Annotation::Definition(definition_name) = output.annotation() {
-        //         // Retrieve the definition from the program.
-        //         match P::get_definition(definition_name) {
-        //             // Ensure the value matches its expected definition.
-        //             Some(definition) => {
-        //                 if !definition.matches(&value) {
-        //                     P::halt(format!("Output \'{register}\' does not match \'{definition_name}\'"))
-        //                 }
-        //             }
-        //             None => P::halt("Output \'{register}\' references a non-existent definition"),
-        //         }
-        //     }
-        //
-        //     // TODO (howardwu): Add encryption against the caller's address for all private literals,
-        //     //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-        //     //  For constant outputs, add an assert_eq on the register value - if it's constant,
-        //     //  the constraint will automatically be discarded, and if it's not, the constraint will
-        //     //  ensure the output register's value matches the newly-assigned hardcoded constant.
-        //     // // If the value contains any public literals, assign a new public variable for the public literal,
-        //     // // and add a constraint to enforce equality of the value.
-        //     // match &value {
-        //     //     Value::Literal(literal) => {
-        //     //         if literal.is_public() {
-        //     //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-        //     //             P::Environment::assert_eq(literal, public_literal);
-        //     //         }
-        //     //     }
-        //     //     Value::Definition(_, members) => {
-        //     //         for member in members.iter() {
-        //     //             if member.is_public() {
-        //     //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-        //     //                 P::Environment::assert_eq(member, public_literal);
-        //     //             }
-        //     //         }
-        //     //     }
-        //     // }
-        //
-        //     // Insert the value into the outputs.
-        //     outputs.push(value);
-        // }
+        for (register, value_type) in register_types.to_outputs() {
+            // Retrieve the plaintext value from the register.
+            let plaintext = stack.load(&Operand::Register(register.clone()))?;
+            // Ensure the plaintext type matches the register type.
+            stack.matches(&plaintext, &value_type.to_plaintext_type())?;
+            // Insert the value into the outputs.
+            match value_type {
+                ValueType::Constant(..) => outputs.push(Value::Constant(plaintext)),
+                ValueType::Public(..) => outputs.push(Value::Public(plaintext)),
+                ValueType::Private(..) => outputs.push(Value::Private(plaintext)),
+            };
+            // TODO (howardwu): Add encryption against the caller's address for all private literals,
+            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
+            //  For constant outputs, add an assert_eq on the register value - if it's constant,
+            //  the constraint will automatically be discarded, and if it's not, the constraint will
+            //  ensure the output register's value matches the newly-assigned hardcoded constant.
+            // // If the value contains any public literals, assign a new public variable for the public literal,
+            // // and add a constraint to enforce equality of the value.
+            // match &value {
+            //     Value::Literal(literal) => {
+            //         if literal.is_public() {
+            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
+            //             P::Environment::assert_eq(literal, public_literal);
+            //         }
+            //     }
+            //     Value::Definition(_, members) => {
+            //         for member in members.iter() {
+            //             if member.is_public() {
+            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
+            //                 P::Environment::assert_eq(member, public_literal);
+            //             }
+            //         }
+            //     }
+            // }
+        }
 
         Ok(outputs)
     }
@@ -370,6 +352,9 @@ impl<N: Network> Program<N> {
 
             // Ensure the register type and the output type match.
             ensure!(register_type == *plaintext_type, "Output '{register}' has the wrong type.");
+
+            // Insert the output register.
+            registers.add_output(output.register(), *output.value_type())?;
         }
 
         // Add the function name to the identifiers.
@@ -651,6 +636,72 @@ function compute:
     }
 
     #[test]
+    fn test_program_evaluate_function() {
+        let program = Program::<CurrentNetwork>::from_str(
+            r"
+    function foo:
+        input r0 as field.public;
+        input r1 as field.private;
+        add r0 r1 into r2;
+        output r2 as field.private;
+    ",
+        )
+        .unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("foo").unwrap();
+        // Declare the function arguments.
+        let arguments =
+            vec![Plaintext::<CurrentNetwork>::from_str("2field").unwrap(), Plaintext::from_str("3field").unwrap()];
+
+        // Run the function.
+        let expected = Value::Private(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
+        let candidate = program.evaluate(&function_name, &arguments).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+
+        // Re-run to ensure state continues to work.
+        let candidate = program.evaluate(&function_name, &arguments).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+    }
+
+    #[test]
+    fn test_program_evaluate_interface_and_function() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+interface message:
+    first as field;
+    second as field;
+
+function compute:
+    input r0 as message.private;
+    add r0.first r0.second into r1;
+    output r1 as field.private;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+        // Declare the input value.
+        let input = Plaintext::from_str("{ first: 2field, second: 3field }").unwrap();
+        // Declare the expected output value.
+        let expected = Value::Private(Plaintext::from_str("5field").unwrap());
+
+        // Compute the output value.
+        let candidate = program.evaluate(&function_name, &[input.clone()]).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+
+        // Re-run to ensure state continues to work.
+        let candidate = program.evaluate(&function_name, &[input]).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+    }
+
+    #[test]
     fn test_program_parse() -> Result<()> {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
@@ -672,19 +723,6 @@ function compute:
         // Ensure the program contains the function.
         assert!(program.contains_function(&Identifier::from_str("compute")?));
 
-        // Retrieve the `compute` function.
-        let compute = program.get_function(&Identifier::from_str("compute")?)?;
-
-        // // Declare the input value.
-        // let input = Value::from_str("{ 2field.public, 3field.private }");
-        //
-        // // Declare the expected output value.
-        // let expected = Value::from_str("5field.private");
-        //
-        // // Compute the output value.
-        // let output = compute.evaluate(&[input]);
-        // assert_eq!(1, output.len());
-        // assert_eq!(expected, output[0]);
         Ok(())
     }
 
