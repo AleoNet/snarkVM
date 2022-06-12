@@ -38,7 +38,7 @@
 /// ```
 #[macro_export]
 macro_rules! operation {
-    ($vis:vis struct $name:ident<$operator:path, $operation:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $(($condition:tt))?, )+ }) => {
+    ($vis:vis struct $name:ident<$operator:path, $operation:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
@@ -71,7 +71,7 @@ macro_rules! operation {
                 // Prepare the operator.
                 use $operator as Operator;
                 // Create the test cases for the operation.
-                $crate::test_evaluate!(Operator::$operation == $name::evaluate { $( ($input_a, $input_b) => $output $(($condition))?, )+ });
+                $crate::test_evaluate!(Operator::$operation == $name::evaluate { $( ($input_a, $input_b) => $output $( ($($condition),+) )?, )+ });
             }
         }
     };
@@ -166,8 +166,10 @@ mod tests {
                 $crate::Literal::U128(U128::rand($rng)),
                 $crate::Literal::Scalar(Scalar::rand($rng)),
                 $crate::Literal::String(StringType::new(
-                    &(0..<$network as Environment>::MAX_STRING_BYTES / 8)
-                        .map(|_| $rng.gen::<char>())
+                    &$rng
+                        .sample_iter(&Alphanumeric)
+                        .take((<$network as Environment>::MAX_STRING_BYTES / 4) as usize)
+                        .map(char::from)
                         .collect::<String>(),
                 )),
             ]
@@ -206,11 +208,11 @@ mod tests {
     #[macro_export]
     macro_rules! test_evaluate {
         // Case 1: Binary operation.
-        ($operator:tt::$operation:tt == $opcode:tt::evaluate { $( ($input_a:ident, $input_b:ident) => $output:ident $(($condition:tt))?, )+ }) => {
+        ($operator:tt::$operation:tt == $opcode:tt::evaluate { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
             // For each given case of inputs and outputs, invoke `Case 1A` or `Case 1B` (see below).
-            $( $crate::test_evaluate!{$operator::$operation == $opcode::evaluate for ($input_a, $input_b) => $output $(($condition))?} )+
+            $( $crate::test_evaluate!{$operator::$operation == $opcode::evaluate for ($input_a, $input_b) => $output $( ($($condition),+) )?} )+
 
-            // For each non-existent case of inputs and outputs, invoke `Case 1C`.
+            // For each non-existent case of inputs and outputs, invoke the following test to ensure the operation **fails**.
             paste::paste! {
                 #[test]
                 fn [<test _ $operation _ fails _ on _ invalid _ operands>]() -> Result<()> {
@@ -251,7 +253,14 @@ mod tests {
         ////////////////////
 
         // Case 1A: Binary operation.
-        ($operator:tt::$operation:tt == $opcode:tt::evaluate for ($input_a:ident, $input_b:ident) => $output:ident) => {
+        // Case 1B: Binary operation, where:
+        //   1. "ensure overflow halts"
+        //     - If the sampled values overflow on evaluation, ensure it halts.
+        //     - If the sampled values **do not** overflow on evaluation, ensure it succeeds.
+        //   2. "ensure divide by zero halts"
+        //     - If the sampled divisor is zero, ensure it halts.
+        //     - If the sampled divisor is **not** zero, ensure it succeeds.
+        ($operator:tt::$operation:tt == $opcode:tt::evaluate for ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?) => {
             paste::paste! {
                 #[test]
                 fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
@@ -266,40 +275,6 @@ mod tests {
                     );
 
                     // Check the operation on randomly-sampled values.
-                    for _ in 0..1_000 {
-                        // Sample the first and second value.
-                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
-
-                        // Initialize the operands.
-                        let first = $crate::Literal::from_str(&format!("{a}"))?;
-                        let second = $crate::Literal::from_str(&format!("{b}"))?;
-
-                        // Compute the outputs.
-                        let expected = $crate::Literal::$output(a.$operation(&b));
-                        let candidate = <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
-
-                        // Ensure the outputs match.
-                        assert_eq!(expected, candidate);
-                    }
-
-                    Ok(())
-                }
-            }
-        };
-
-        // Case 1B: Binary operation, where:
-        //   1. If the sampled values overflow on evaluation, ensure it halts.
-        //   2. If the sampled values **do not** overflow on evaluation, ensure it succeeds.
-        ($operator:tt::$operation:tt == $opcode:tt::evaluate for ($input_a:ident, $input_b:ident) => $output:ident ("ensure overflows halt")) => {
-            paste::paste! {
-                #[test]
-                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower _ halts _ on _ overflows>]() -> Result<()> {
-                    use snarkvm_console_types::*;
-
-                    type CurrentNetwork = snarkvm_console_network::Testnet3;
-
-                    // Check the operation on randomly-sampled values.
                     for i in 0..1_000 {
                         // Sample the first and second value.
                         let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
@@ -309,54 +284,26 @@ mod tests {
                         let first = $crate::Literal::from_str(&format!("{a}"))?;
                         let second = $crate::Literal::from_str(&format!("{b}"))?;
 
-                        // Skip this iteration, if this is **not** an overflow case.
-                        match (*a).[< checked _ $operation >](*b).is_some() {
-                            // If the sampled values **do not** overflow on evaluation, ensure it succeeds.
-                            true => {
-                                // Compute the outputs.
-                                let expected = $crate::Literal::from($crate::Literal::$output(a.$operation(&b)));
-                                let candidate = <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
-                                // Ensure the outputs match.
-                                assert_eq!(expected, candidate);
-                            },
-                            // If the sampled values overflow on evaluation, ensure it halts.
-                            false => {
-                                // Attempt to compute the overflow case.
-                                let result = std::panic::catch_unwind(|| <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
-                                // Ensure the computation halted.
-                                assert!(result.is_err(), "Overflow case (on iteration {i}) did not halt: {a} {b}");
+                        // Initialize an indicator whether the operation should succeed or not.
+                        #[allow(unused_mut)]
+                        let mut should_succeed = true;
+                        $( $({
+                            if $condition == "ensure overflows halt" {
+                                match <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::OPCODE {
+                                    "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
+                                    "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
+                                    "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
+                                    "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::OPCODE),
+                                }
                             }
-                        }
-                    }
-
-                    Ok(())
-                }
-            }
-        };
-
-        // Case 1C: Binary operation, where:
-        //   1. If the sampled divisor is zero, ensure it halts.
-        //   2. If the sampled divisor is **not** zero, ensure it succeeds.
-        ($operator:tt::$operation:tt == $opcode:tt::evaluate for ($input_a:ident, $input_b:ident) => $output:ident ("ensure divide by zero halts")) => {
-            paste::paste! {
-                #[test]
-                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower _ halts _ on _ divide _ by _ zero>]() -> Result<()> {
-                    use snarkvm_console_types::*;
-
-                    type CurrentNetwork = snarkvm_console_network::Testnet3;
-
-                    // Check the operation on randomly-sampled values.
-                    for i in 0..1_000 {
-                        // Sample the first and second value.
-                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
-
-                        // Initialize the operands.
-                        let first = $crate::Literal::from_str(&format!("{a}"))?;
-                        let second = $crate::Literal::from_str(&format!("{b}"))?;
+                            if $condition == "ensure divide by zero halts" {
+                                should_succeed &= (*a).checked_div(*b).is_some();
+                            }
+                        })+ )?
 
                         // Skip this iteration, if this is **not** an overflow case.
-                        match (*a).checked_div(*b).is_some() {
+                        match should_succeed {
                             // If the sampled values **do not** overflow on evaluation, ensure it succeeds.
                             true => {
                                 // Compute the outputs.
