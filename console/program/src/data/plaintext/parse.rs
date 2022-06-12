@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Parser for Plaintext<N> {
-    /// Parses a string into an identifier.
+    /// Parses a string into a plaintext value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a plaintext as `{ identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
@@ -42,6 +42,10 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, _) = tag("{")(string)?;
             // Parse the members.
             let (string, members) = map_res(separated_list1(tag(","), parse_interface_tuple), |members: Vec<_>| {
+                // Ensure the members has no duplicate names.
+                if has_duplicates(members.iter().map(|(name, ..)| name)) {
+                    return Err(error(format!("Duplicate member in interface")));
+                }
                 // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
                 match members.len() <= N::MAX_DATA_ENTRIES {
                     true => Ok(members),
@@ -53,7 +57,7 @@ impl<N: Network> Parser for Plaintext<N> {
             // Parse the '}' from the string.
             let (string, _) = tag("}")(string)?;
             // Output the plaintext.
-            Ok((string, Plaintext::Interface(members, Default::default())))
+            Ok((string, Plaintext::Interface(IndexMap::from_iter(members.into_iter()), Default::default())))
         }
 
         // Parse the whitespace from the string.

@@ -76,18 +76,12 @@ mod tests {
     fn test_operand_parse() -> Result<()> {
         let operand = Operand::<CurrentNetwork>::parse("1field").unwrap().1;
         assert_eq!(Operand::Literal(Literal::from_str("1field")?), operand);
-        assert!(operand.is_literal());
-        assert!(!operand.is_register());
 
         let operand = Operand::<CurrentNetwork>::parse("r0").unwrap().1;
         assert_eq!(Operand::Register(Register::from_str("r0")?), operand);
-        assert!(!operand.is_literal());
-        assert!(operand.is_register());
 
         let operand = Operand::<CurrentNetwork>::parse("r0.owner").unwrap().1;
         assert_eq!(Operand::Register(Register::from_str("r0.owner")?), operand);
-        assert!(!operand.is_literal());
-        assert!(operand.is_register());
 
         // Sanity check a failure case.
         let (remainder, operand) = Operand::<CurrentNetwork>::parse("1field.private").unwrap();

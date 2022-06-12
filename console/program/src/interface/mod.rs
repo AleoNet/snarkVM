@@ -27,12 +27,28 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+use indexmap::IndexMap;
+
+#[derive(Clone, PartialEq, Eq)]
 pub struct Interface<N: Network> {
     /// The name of the interface.
     name: Identifier<N>,
     /// The name and type for the members of the interface.
-    members: Vec<(Identifier<N>, PlaintextType<N>)>,
+    members: IndexMap<Identifier<N>, PlaintextType<N>>,
+}
+
+impl<N: Network> Interface<N> {
+    /// Returns the name of the interface.
+    #[inline]
+    pub const fn name(&self) -> &Identifier<N> {
+        &self.name
+    }
+
+    /// Returns the members of the interface.
+    #[inline]
+    pub const fn members(&self) -> &IndexMap<Identifier<N>, PlaintextType<N>> {
+        &self.members
+    }
 }
 
 impl<N: Network> TypeName for Interface<N> {

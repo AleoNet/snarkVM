@@ -36,20 +36,36 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use indexmap::IndexMap;
+
 /// The declared layout for program data.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RecordType<N: Network> {
     /// The name of the record type.
     name: Identifier<N>,
     /// The name and value type for the entries in data.
-    entries: Vec<(Identifier<N>, ValueType<N>)>,
+    entries: IndexMap<Identifier<N>, ValueType<N>>,
 }
 
-impl<N: Network> TryFrom<(Identifier<N>, Vec<(Identifier<N>, ValueType<N>)>)> for RecordType<N> {
+impl<N: Network> RecordType<N> {
+    /// Returns the name of the record type.
+    #[inline]
+    pub const fn name(&self) -> &Identifier<N> {
+        &self.name
+    }
+
+    /// Returns the entries of the record type.
+    #[inline]
+    pub const fn entries(&self) -> &IndexMap<Identifier<N>, ValueType<N>> {
+        &self.entries
+    }
+}
+
+impl<N: Network> TryFrom<(Identifier<N>, IndexMap<Identifier<N>, ValueType<N>>)> for RecordType<N> {
     type Error = Error;
 
-    /// Initializes a new `RecordType` from a vector of `(Identifier, ValueType)` pairs.
-    fn try_from((name, entries): (Identifier<N>, Vec<(Identifier<N>, ValueType<N>)>)) -> Result<Self> {
+    /// Initializes a new `RecordType` from a map of `(Identifier, ValueType)` pairs.
+    fn try_from((name, entries): (Identifier<N>, IndexMap<Identifier<N>, ValueType<N>>)) -> Result<Self> {
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
         match entries.len() <= N::MAX_DATA_ENTRIES {
             true => Ok(Self { name, entries }),

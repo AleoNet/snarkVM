@@ -40,7 +40,7 @@
 macro_rules! operation {
     ($vis:vis struct $name:ident<$operator:path, $operation:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
-        #[derive(Clone)]
+        #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
         impl<N: Network> $crate::function::instruction::Operation<N, $crate::Literal<N>, $crate::LiteralType, 2> for $name<N> {
@@ -318,7 +318,7 @@ mod tests {
                                 // Attempt to compute the overflow case.
                                 let result = std::panic::catch_unwind(|| <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
                                 // Ensure the computation halted.
-                                assert!(result.is_err(), "Overflow case (on iteration {i}) did not halt: {a} {b}");
+                                assert!(result.is_err(), "Failure case (on iteration {i}) did not halt: {a} {b}");
                             }
                         }
                     }

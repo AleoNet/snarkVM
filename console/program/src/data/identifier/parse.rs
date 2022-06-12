@@ -44,8 +44,8 @@ impl<N: Network> FromStr for Identifier<N> {
         }
 
         // Ensure the identifier is alphanumeric and underscores.
-        if !identifier.chars().all(|character| character.is_alphanumeric() || character == '_') {
-            bail!("Identifier must be alphanumeric and underscores")
+        if identifier.chars().any(|character| !character.is_alphanumeric() && character != '_') {
+            bail!("Identifier '{identifier}' must be alphanumeric and underscores")
         }
 
         // Ensure the identifier is not solely underscores.

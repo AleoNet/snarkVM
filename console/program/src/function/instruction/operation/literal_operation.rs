@@ -21,8 +21,8 @@ use crate::{
     },
     Literal,
     LiteralType,
-    Plaintext,
     PlaintextType,
+    Program,
     Register,
 };
 use snarkvm_console_network::prelude::*;
@@ -76,7 +76,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::function) fn evaluate(&self, registers: &mut Registers<N>) -> Result<()> {
+    pub(in crate::function) fn evaluate(&self, registers: &mut Registers<N>, program: &Program<N>) -> Result<()> {
         // Ensure the number of operands is correct.
         ensure!(
             self.operands.len() == NUM_OPERANDS,
@@ -94,7 +94,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         // Load the operands **as literals & literal types**.
         self.operands.iter().try_for_each(|operand| {
             // Load the literal.
-            let literal = registers.load_literal(operand)?;
+            let literal = registers.load_literal(program, operand)?;
             // Compute the literal type.
             let literal_type = literal.to_type();
             // Store the literal.
@@ -119,7 +119,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         );
 
         // Evaluate the operation and store the output.
-        registers.store_literal(&self.destination, output)
+        registers.store_literal(program, &self.destination, output)
     }
 
     /// Returns the output type from the given input types.
@@ -254,8 +254,14 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         if NUM_OPERANDS > N::MAX_OPERANDS {
             return Err(error(format!("The number of operands must be <= {}", N::MAX_OPERANDS)));
         }
+
+        // Initialize the vector for the operands.
+        let mut operands = Vec::with_capacity(NUM_OPERANDS);
         // Read the operands.
-        let operands = vec![Operand::read_le(&mut reader)?; NUM_OPERANDS];
+        for _ in 0..NUM_OPERANDS {
+            operands.push(Operand::read_le(&mut reader)?);
+        }
+
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
         // Return the operation.

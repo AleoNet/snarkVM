@@ -47,7 +47,7 @@ impl<N: Network> FromBits for Plaintext<N> {
             let num_members = u8::from_bits_le(&bits_le[counter..counter + 8])?;
             counter += 8;
 
-            let mut members = Vec::with_capacity(num_members as usize);
+            let mut members = IndexMap::with_capacity(num_members as usize);
             for _ in 0..num_members {
                 let identifier_size = u8::from_bits_le(&bits_le[counter..counter + 8])?;
                 counter += 8;
@@ -61,7 +61,9 @@ impl<N: Network> FromBits for Plaintext<N> {
                 let value = Plaintext::from_bits_le(&bits_le[counter..counter + member_size as usize])?;
                 counter += member_size as usize;
 
-                members.push((identifier, value));
+                if members.insert(identifier, value).is_some() {
+                    bail!("Duplicate identifier in interface.");
+                }
             }
 
             // Store the plaintext bits in the cache.
@@ -104,7 +106,7 @@ impl<N: Network> FromBits for Plaintext<N> {
             let num_members = u8::from_bits_be(&bits_be[counter..counter + 8])?;
             counter += 8;
 
-            let mut members = Vec::with_capacity(num_members as usize);
+            let mut members = IndexMap::with_capacity(num_members as usize);
             for _ in 0..num_members {
                 let identifier_size = u8::from_bits_be(&bits_be[counter..counter + 8])?;
                 counter += 8;
@@ -118,7 +120,9 @@ impl<N: Network> FromBits for Plaintext<N> {
                 let value = Plaintext::from_bits_be(&bits_be[counter..counter + member_size as usize])?;
                 counter += member_size as usize;
 
-                members.push((identifier, value));
+                if members.insert(identifier, value).is_some() {
+                    bail!("Duplicate identifier in interface.");
+                }
             }
 
             // Store the plaintext bits in the cache.

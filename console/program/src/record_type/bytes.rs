@@ -32,20 +32,18 @@ impl<N: Network> FromBytes for RecordType<N> {
             )));
         }
         // Read the entries.
-        let mut entries = Vec::with_capacity(num_entries as usize);
+        let mut entries = IndexMap::with_capacity(num_entries as usize);
         for _ in 0..num_entries {
             // Read the identifier.
             let identifier = Identifier::read_le(&mut reader)?;
             // Read the entry.
             let entry = ValueType::read_le(&mut reader)?;
-            // Append the entry.
-            entries.push((identifier, entry));
+            // Insert the entry, and ensure the entries has no duplicate names.
+            if entries.insert(identifier, entry).is_some() {
+                return Err(error(format!("Duplicate identifier in record '{name}'")));
+            };
         }
 
-        // Ensure the entries has no duplicate names.
-        if has_duplicates(entries.iter().map(|(name, ..)| name)) {
-            return Err(error(format!("Duplicate entry in record '{name}'")));
-        }
         Ok(Self { name, entries })
     }
 }
@@ -56,10 +54,6 @@ impl<N: Network> ToBytes for RecordType<N> {
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
         if self.entries.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to serialize record: too many entries"));
-        }
-        // Ensure the entries has no duplicate names.
-        if has_duplicates(self.entries.iter().map(|(name, ..)| name)) {
-            return Err(error(format!("Duplicate entry in record '{}'", self.name)));
         }
 
         // Write the name of the record type.
@@ -92,19 +86,6 @@ mod tests {
         )?;
         let candidate = RecordType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
-        Ok(())
-    }
-
-    #[test]
-    fn test_bytes_fails() -> Result<()> {
-        let expected = RecordType::<CurrentNetwork> {
-            name: Identifier::from_str("message")?,
-            entries: vec![
-                (Identifier::from_str("first")?, ValueType::from_str("field.public")?),
-                (Identifier::from_str("first")?, ValueType::from_str("boolean.private")?),
-            ],
-        };
-        assert!(expected.to_bytes_le().is_err());
         Ok(())
     }
 }

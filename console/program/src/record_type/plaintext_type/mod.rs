@@ -50,39 +50,3 @@ impl<N: Network> From<Identifier<N>> for PlaintextType<N> {
         PlaintextType::Interface(interface)
     }
 }
-
-impl<N: Network> PlaintextType<N> {
-    /// Returns `true` if the type is a literal.
-    /// Returns `false` if the type is an interface.
-    pub fn is_literal(&self) -> bool {
-        matches!(self, PlaintextType::Literal(..))
-    }
-
-    /// Returns `true` if the type is an interface.
-    /// Returns `false` if the type is a literal.
-    pub fn is_interface(&self) -> bool {
-        matches!(self, PlaintextType::Interface(..))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use snarkvm_console_network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
-
-    #[test]
-    fn test_is_literal() -> Result<()> {
-        assert!(PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).is_literal());
-        assert!(!PlaintextType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).is_literal());
-        Ok(())
-    }
-
-    #[test]
-    fn test_is_interface() -> Result<()> {
-        assert!(!PlaintextType::<CurrentNetwork>::Literal(LiteralType::Field).is_interface());
-        assert!(PlaintextType::<CurrentNetwork>::Interface(Identifier::from_str("signature")?).is_interface());
-        Ok(())
-    }
-}

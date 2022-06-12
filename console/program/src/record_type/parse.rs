@@ -64,7 +64,7 @@ impl<N: Network> Parser for RecordType<N> {
             Ok(entries)
         })(string)?;
         // Return the record type.
-        Ok((string, Self { name, entries }))
+        Ok((string, Self { name, entries: IndexMap::from_iter(entries.into_iter()) }))
     }
 }
 
@@ -116,10 +116,13 @@ mod tests {
     fn test_parse() -> Result<()> {
         let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
-            entries: vec![
-                (Identifier::from_str("sender")?, ValueType::from_str("address.private")?),
-                (Identifier::from_str("amount")?, ValueType::from_str("u64.public")?),
-            ],
+            entries: IndexMap::from_iter(
+                vec![
+                    (Identifier::from_str("sender")?, ValueType::from_str("address.private")?),
+                    (Identifier::from_str("amount")?, ValueType::from_str("u64.public")?),
+                ]
+                .into_iter(),
+            ),
         };
 
         let (remainder, candidate) = RecordType::<CurrentNetwork>::parse(
@@ -185,19 +188,4 @@ record message:
             RecordType::<CurrentNetwork>::parse("record message:\n    first as field;\n    first as field.private;");
         assert!(candidate.is_err());
     }
-
-    // #[test]
-    // fn test_matches() {
-    //     // Test a struct.
-    //     let message =
-    //         Definition::<CurrentNetwork>::from_str("record message:\n    first as field.public;\n    second as field.private;");
-    //     let message_value = Value::from_str("message { 2field.public, 3field.private }");
-    //     let message_value_fails_1 = Value::from_str("message { 2field.public }");
-    //     let message_value_fails_2 = Value::from_str("message { 2field.private, 3field.private }");
-    //     let message_value_fails_3 = Value::from_str("message { 2field.public, 3field.private, 2field.public }");
-    //     assert!(message.matches(&message_value));
-    //     assert!(!message.matches(&message_value_fails_1));
-    //     assert!(!message.matches(&message_value_fails_2));
-    //     assert!(!message.matches(&message_value_fails_3));
-    // }
 }

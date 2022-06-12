@@ -32,20 +32,18 @@ impl<N: Network> FromBytes for Interface<N> {
             )));
         }
         // Read the members.
-        let mut members = Vec::with_capacity(num_members as usize);
+        let mut members = IndexMap::with_capacity(num_members as usize);
         for _ in 0..num_members {
             // Read the identifier.
             let identifier = Identifier::read_le(&mut reader)?;
             // Read the plaintext type.
             let plaintext_type = PlaintextType::read_le(&mut reader)?;
-            // Append the member.
-            members.push((identifier, plaintext_type));
+            // Insert the member, and ensure the member has no duplicate names.
+            if members.insert(identifier, plaintext_type).is_some() {
+                return Err(error(format!("Duplicate identifier in interface '{name}'")));
+            };
         }
 
-        // Ensure the members has no duplicate names.
-        if has_duplicates(members.iter().map(|(name, ..)| name)) {
-            return Err(error(format!("Duplicate member in interface '{name}'")));
-        }
         Ok(Self { name, members })
     }
 }
@@ -56,10 +54,6 @@ impl<N: Network> ToBytes for Interface<N> {
         // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
         if self.members.len() > N::MAX_DATA_ENTRIES {
             return Err(error("Failed to serialize interface: too many members"));
-        }
-        // Ensure the members has no duplicate names.
-        if has_duplicates(self.members.iter().map(|(name, ..)| name)) {
-            return Err(error(format!("Duplicate member in interface '{}'", self.name)));
         }
 
         // Write the name of the interface.
@@ -91,19 +85,6 @@ mod tests {
             Interface::<CurrentNetwork>::from_str("interface message:\n    first as field;\n    second as field;")?;
         let candidate = Interface::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);
-        Ok(())
-    }
-
-    #[test]
-    fn test_bytes_fails() -> Result<()> {
-        let expected = Interface::<CurrentNetwork> {
-            name: Identifier::from_str("message")?,
-            members: vec![
-                (Identifier::from_str("first")?, PlaintextType::from_str("field")?),
-                (Identifier::from_str("first")?, PlaintextType::from_str("boolean")?),
-            ],
-        };
-        assert!(expected.to_bytes_le().is_err());
         Ok(())
     }
 }

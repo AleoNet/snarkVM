@@ -18,7 +18,6 @@ mod literal_operation;
 pub(crate) use literal_operation::*;
 
 mod macros;
-use macros::*;
 
 use snarkvm_console_network::prelude::*;
 

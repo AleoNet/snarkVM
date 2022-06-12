@@ -64,7 +64,7 @@ impl<N: Network> Parser for Interface<N> {
             Ok(members)
         })(string)?;
         // Return the interface.
-        Ok((string, Self { name, members }))
+        Ok((string, Self { name, members: IndexMap::from_iter(members.into_iter()) }))
     }
 }
 
@@ -116,10 +116,13 @@ mod tests {
     fn test_parse() -> Result<()> {
         let expected = Interface::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
-            members: vec![
-                (Identifier::from_str("sender")?, PlaintextType::from_str("address")?),
-                (Identifier::from_str("amount")?, PlaintextType::from_str("u64")?),
-            ],
+            members: IndexMap::from_iter(
+                vec![
+                    (Identifier::from_str("sender")?, PlaintextType::from_str("address")?),
+                    (Identifier::from_str("amount")?, PlaintextType::from_str("u64")?),
+                ]
+                .into_iter(),
+            ),
         };
 
         let (remainder, candidate) = Interface::<CurrentNetwork>::parse(

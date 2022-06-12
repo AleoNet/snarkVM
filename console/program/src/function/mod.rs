@@ -29,14 +29,13 @@ pub use register::Register;
 mod registers;
 use registers::{RegisterType, Registers};
 
-// pub struct Function;
-
 use crate::{
     function::{Input, Output},
     Identifier,
     LiteralType,
     Plaintext,
     PlaintextType,
+    Program,
     Sanitizer,
     Value,
     ValueType,
@@ -51,7 +50,7 @@ use snarkvm_utilities::{
 
 use indexmap::{IndexMap, IndexSet};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Function<N: Network> {
     /// The name of the function.
     name: Identifier<N>,
@@ -87,7 +86,7 @@ impl<N: Network> Function<N> {
     /// Adds the input statement to the function.
     /// This method is called before a function is run.
     /// This method is only called before `new_instruction` is ever called.
-    /// If the given input annotation is for a definition, then the definition must be added before this method is called.
+    /// If the given input type is an interface, then the interface must be added before this method is called.
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements in memory already.
@@ -95,9 +94,9 @@ impl<N: Network> Function<N> {
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the input statement was previously added.
     /// This method will halt if the given input register is not new.
-    /// This method will halt if the given input register has a previously saved annotation in memory.
-    /// This method will halt if the given inputs are not incrementing monotonically.
-    /// This method will halt if the given input annotation references a non-existent definition.
+    /// This method will halt if the given input register has a previously-saved type in memory.
+    /// This method will halt if the given input registers are not incrementing monotonically.
+    /// This method will halt if the given input type references a non-existent definition.
     #[inline]
     pub fn add_input(&mut self, input: Input<N>) -> Result<()> {
         // Ensure there are no instructions or output statements in memory.
@@ -105,7 +104,7 @@ impl<N: Network> Function<N> {
         ensure!(self.outputs.is_empty(), "Cannot add inputs after outputs have been added");
 
         // Ensure the maximum number of inputs has not been exceeded.
-        ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
+        ensure!(self.inputs.len() <= N::MAX_FUNCTION_INPUTS, "Cannot add more than {} inputs", N::MAX_FUNCTION_INPUTS);
         // Ensure the input statement was not previously added.
         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
 
@@ -115,6 +114,10 @@ impl<N: Network> Function<N> {
         ensure!(register.is_locator(), "Input register {register} must be a locator and cannot reference a member");
         // Ensure the input register is new.
         ensure!(!self.registers.contains_key(&register.locator()), "Input register {register} already exists");
+
+        // Ensure the register assignments are monotonically increasing.
+        let expected_register = Register::Locator(self.registers.len() as u64);
+        ensure!(expected_register == *register, "Expected '{expected_register}', found '{register}'");
 
         // // If the input annotation is a definition, ensure the input is referencing a valid definition.
         // if let Annotation::Definition(definition) = input.value_type() {
@@ -131,7 +134,6 @@ impl<N: Network> Function<N> {
         Ok(())
     }
 
-    // TODO (howardwu): Instructions should have annotations, and we should check them here.
     /// Adds the given instruction to the function.
     /// This method is called before a function is run.
     ///
@@ -149,9 +151,9 @@ impl<N: Network> Function<N> {
 
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
-            self.instructions.len() <= N::MAX_INSTRUCTIONS,
+            self.instructions.len() <= N::MAX_FUNCTION_INSTRUCTIONS,
             "Cannot add more than {} instructions",
-            N::MAX_INSTRUCTIONS
+            N::MAX_FUNCTION_INSTRUCTIONS
         );
 
         // Retrieve the operands.
@@ -166,13 +168,25 @@ impl<N: Network> Function<N> {
             operand_types.push(match operand {
                 Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
                 Operand::Register(register) => {
-                    match self.registers.get(&register.locator()) {
+                    // Retrieve the plaintext type of the register.
+                    let plaintext_type = match self.registers.get(&register.locator()) {
                         // Retrieve the plaintext type from the value type.
                         Some(RegisterType::Input(value_type)) => value_type.to_plaintext_type(),
                         // Retrieve the plaintext type.
                         Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
                         // Ensure the operand register is defined.
                         None => bail!("Instruction register {register} does not exist"),
+                    };
+                    // Output the plaintext type.
+                    match register {
+                        // If the register is a locator, return the root-level plaintext type.
+                        Register::Locator(..) => plaintext_type,
+                        // If the register is a member, traverse the path to the member plaintext type.
+                        Register::Member(_, path) => {
+                            // TODO (howardwu): We need access to `Program` in order to look up the member type.
+                            //  For now, we return the (incorrect) root-level plaintext type.
+                            plaintext_type
+                        }
                     }
                 }
             });
@@ -185,6 +199,10 @@ impl<N: Network> Function<N> {
         ensure!(destination.is_locator(), "Destination {destination} must be a locator and cannot reference a member");
         // Ensure the destination register does not already exist.
         ensure!(!self.registers.contains_key(&destination.locator()), "Destination {destination} already exists");
+
+        // Ensure the register assignments are monotonically increasing.
+        let expected_register = Register::Locator(self.registers.len() as u64);
+        ensure!(expected_register == *destination, "Expected '{expected_register}', found '{destination}'");
 
         // Compute the destination register type.
         let destination_type = instruction.output_type(&operand_types)?;
@@ -206,7 +224,7 @@ impl<N: Network> Function<N> {
     /// This method will halt if the maximum number of outputs has been reached.
     /// This method will halt if the given output register is new.
     /// This method will halt if the given output register is already set.
-    /// This method will halt if the given output annotation references a non-existent definition.
+    /// This method will halt if the given output type references a non-existent definition.
     #[inline]
     pub fn add_output(&mut self, output: Output<N>) -> Result<()> {
         // Ensure there are input statements and instructions in memory.
@@ -214,7 +232,11 @@ impl<N: Network> Function<N> {
         ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
 
         // Ensure the maximum number of outputs has not been exceeded.
-        ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
+        ensure!(
+            self.outputs.len() <= N::MAX_FUNCTION_OUTPUTS,
+            "Cannot add more than {} outputs",
+            N::MAX_FUNCTION_OUTPUTS
+        );
 
         // Retrieve the output register.
         let register = output.register();
@@ -247,7 +269,7 @@ impl<N: Network> Function<N> {
     // /// This method will halt if any registers are already assigned.
     // /// This method will halt if the given inputs are not the same length as the input statements.
     // #[inline]
-    // pub fn evaluate(&self, inputs: &[Plaintext<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    // pub fn evaluate(&self, program: &Program<N>, inputs: &[Plaintext<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
     //     // Ensure there are input statements and instructions in memory.
     //     ensure!(!self.inputs.is_empty(), "Cannot evaluate a function without input statements");
     //     ensure!(!self.instructions.is_empty(), "Cannot evaluate a function without instructions");
@@ -337,54 +359,55 @@ impl<N: Network> TypeName for Function<N> {
     }
 }
 
-// impl<N: Network> Parser for Function<N> {
-//     /// Parses a string into a function.
-//     #[inline]
-//     fn parse(string: &str) -> ParserResult<Self> {
-//         // Parse the whitespace and comments from the string.
-//         let (string, _) = Sanitizer::parse(string)?;
-//         // Parse the 'function' keyword from the string.
-//         let (string, _) = tag(Self::type_name())(string)?;
-//         // Parse the space from the string.
-//         let (string, _) = tag(" ")(string)?;
-//         // Parse the function name from the string.
-//         let (string, name) = Identifier::<N>::parse(string)?;
-//         // Parse the colon ':' keyword from the string.
-//         let (string, _) = tag(":")(string)?;
-//
-//         // Parse the inputs from the string.
-//         let (string, inputs) = many1(Input::parse)(string)?;
-//         // Parse the instructions from the string.
-//         let (string, instructions) = many1(Instruction::parse)(string)?;
-//         // Parse the outputs from the string.
-//         let (string, outputs) = many0(Output::parse)(string)?;
-//
-//         // Initialize a new function.
-//         let mut function = Self::new(name.as_str())?;
-//         inputs.into_iter().try_for_each(|input| function.add_input(input))?;
-//         instructions.into_iter().try_for_each(|instruction| function.add_instruction(instruction))?;
-//         outputs.into_iter().try_for_each(|output| function.add_output(output))?;
-//
-//         Ok((string, function))
-//     }
-// }
-//
-// impl<N: Network> FromStr for Function<N> {
-//     type Err = Error;
-//
-//     /// Returns a function from a string literal.
-//     fn from_str(string: &str) -> Result<Self> {
-//         match Self::parse(string) {
-//             Ok((remainder, object)) => {
-//                 // Ensure the remainder is empty.
-//                 ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
-//                 // Return the object.
-//                 Ok(object)
-//             }
-//             Err(error) => bail!("Failed to parse string. {error}"),
-//         }
-//     }
-// }
+impl<N: Network> Parser for Function<N> {
+    /// Parses a string into a function.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the 'function' keyword from the string.
+        let (string, _) = tag(Self::type_name())(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
+        // Parse the function name from the string.
+        let (string, name) = Identifier::<N>::parse(string)?;
+        // Parse the colon ':' keyword from the string.
+        let (string, _) = tag(":")(string)?;
+
+        // Parse the inputs from the string.
+        let (string, inputs) = many1(Input::parse)(string)?;
+        // Parse the instructions from the string.
+        let (string, instructions) = many1(Instruction::parse)(string)?;
+        // Parse the outputs from the string.
+        let (string, outputs) = many0(Output::parse)(string)?;
+
+        map_res(take(0usize), move |_| {
+            // Initialize a new function.
+            let mut function = Self::new(name);
+            inputs.iter().cloned().try_for_each(|input| function.add_input(input))?;
+            instructions.iter().cloned().try_for_each(|instruction| function.add_instruction(instruction))?;
+            outputs.iter().cloned().try_for_each(|output| function.add_output(output))?;
+            Ok::<_, Error>(function)
+        })(string)
+    }
+}
+
+impl<N: Network> FromStr for Function<N> {
+    type Err = Error;
+
+    /// Returns a function from a string literal.
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
 
 impl<N: Network> Debug for Function<N> {
     /// Prints the function as a string.
@@ -397,10 +420,10 @@ impl<N: Network> Display for Function<N> {
     /// Prints the function as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the function to a string.
-        write!(f, "{} {}:\n", Self::type_name(), self.name)?;
-        self.inputs.iter().try_for_each(|input| write!(f, "    {}\n", input))?;
-        self.instructions.iter().try_for_each(|instruction| write!(f, "    {}\n", instruction))?;
-        self.outputs.iter().try_for_each(|output| write!(f, "    {}\n", output))
+        write!(f, "{} {}:", Self::type_name(), self.name)?;
+        self.inputs.iter().try_for_each(|input| write!(f, "\n    {}", input))?;
+        self.instructions.iter().try_for_each(|instruction| write!(f, "\n    {}", instruction))?;
+        self.outputs.iter().try_for_each(|output| write!(f, "\n    {}", output))
     }
 }
 
@@ -454,7 +477,7 @@ impl<N: Network> ToBytes for Function<N> {
 
         // Write the number of inputs for the function.
         let num_inputs = self.inputs.len();
-        match num_inputs <= N::MAX_INPUTS {
+        match num_inputs <= N::MAX_FUNCTION_INPUTS {
             true => (num_inputs as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
@@ -466,7 +489,7 @@ impl<N: Network> ToBytes for Function<N> {
 
         // Write the number of instructions for the function.
         let num_instructions = self.instructions.len();
-        match num_instructions <= N::MAX_OUTPUTS {
+        match num_instructions <= N::MAX_FUNCTION_OUTPUTS {
             true => (num_instructions as u32).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }
@@ -478,7 +501,7 @@ impl<N: Network> ToBytes for Function<N> {
 
         // Write the number of outputs for the function.
         let num_outputs = self.outputs.len();
-        match num_outputs <= N::MAX_INSTRUCTIONS {
+        match num_outputs <= N::MAX_FUNCTION_INSTRUCTIONS {
             true => (num_outputs as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
         }
@@ -492,94 +515,92 @@ impl<N: Network> ToBytes for Function<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use snarkvm_console_network::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//
-//     #[test]
-//     fn test_function_evaluate() {
-//         let function = Function::<CurrentNetwork>::from_str(
-//             r"
-// function foo:
-//     input r0 as field.public;
-//     input r1 as field.private;
-//     add r0 r1 into r2;
-//     output r2 as field.private;
-// ",
-//         );
-//         let first = Value::<CurrentNetwork>::from_str("2field.public");
-//         let second = Value::from_str("3field.private");
-//
-//         // Run the function.
-//         let expected = Value::<CurrentNetwork>::from_str("5field.private");
-//         let candidate = function.evaluate(&[first.clone(), second.clone()]);
-//         assert_eq!(expected.to_string(), candidate[0].to_string());
-//
-//         // Re-run to ensure state continues to work.
-//         let expected = Value::<CurrentNetwork>::from_str("5field.private");
-//         let candidate = function.evaluate(&[first, second]);
-//         assert_eq!(expected.to_string(), candidate[0].to_string());
-//     }
-//
-//     #[test]
-//     fn test_function_parse() {
-//         let function = Function::<CurrentNetwork>::parse(
-//             r"
-// function foo:
-//     input r0 as field.public;
-//     input r1 as field.private;
-//     add r0 r1 into r2;
-//     output r2 as field.private;
-// ",
-//         )
-//         .unwrap()
-//         .1;
-//         assert_eq!("foo", function.name().to_string());
-//         assert_eq!(2, function.inputs.len());
-//         assert_eq!(1, function.instructions.len());
-//         assert_eq!(1, function.outputs.len());
-//     }
-//
-//     #[test]
-//     fn test_function_display() {
-//         let expected = r"function foo:
-//     input r0 as field.public;
-//     input r1 as field.private;
-//     add r0 r1 into r2;
-//     output r2 as field.private;
-// ";
-//         let function = Function::<CurrentNetwork>::parse(expected).unwrap().1;
-//         assert_eq!(expected, format!("{function}"),);
-//     }
-//
-//     #[test]
-//     fn test_function_bytes() {
-//         let function_string = r"
-// function main:
-//     input r0 as field.public;
-//     input r1 as field.private;
-//     add r0 r1 into r2;
-//     add r0 r1 into r3;
-//     add r0 r1 into r4;
-//     add r0 r1 into r5;
-//     add r0 r1 into r6;
-//     add r0 r1 into r7;
-//     add r0 r1 into r8;
-//     add r0 r1 into r9;
-//     add r0 r1 into r10;
-//     add r0 r1 into r11;
-//     output r11 as field.private;
-// ";
-//
-//         let expected = Function::<CurrentNetwork>::from_str(function_string);
-//         let expected_bytes = expected.to_bytes_le().unwrap();
-//         println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), expected_bytes.len());
-//
-//         let candidate = Function::<CurrentNetwork>::from_bytes_le(&expected_bytes).unwrap();
-//         assert_eq!(expected.to_string(), candidate.to_string());
-//         assert_eq!(expected_bytes, candidate.to_bytes_le().unwrap());
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    //     #[test]
+    //     fn test_function_evaluate() {
+    //         let function = Function::<CurrentNetwork>::from_str(
+    //             r"
+    // function foo:
+    //     input r0 as field.public;
+    //     input r1 as field.private;
+    //     add r0 r1 into r2;
+    //     output r2 as field.private;
+    // ",
+    //         );
+    //         let first = Value::<CurrentNetwork>::from_str("2field.public");
+    //         let second = Value::from_str("3field.private");
+    //
+    //         // Run the function.
+    //         let expected = Value::<CurrentNetwork>::from_str("5field.private");
+    //         let candidate = function.evaluate(&[first.clone(), second.clone()]);
+    //         assert_eq!(expected.to_string(), candidate[0].to_string());
+    //
+    //         // Re-run to ensure state continues to work.
+    //         let expected = Value::<CurrentNetwork>::from_str("5field.private");
+    //         let candidate = function.evaluate(&[first, second]);
+    //         assert_eq!(expected.to_string(), candidate[0].to_string());
+    //     }
+
+    #[test]
+    fn test_function_parse() {
+        let function = Function::<CurrentNetwork>::parse(
+            r"
+function foo:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    output r2 as field.private;",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("foo", function.name().to_string());
+        assert_eq!(2, function.inputs.len());
+        assert_eq!(1, function.instructions.len());
+        assert_eq!(1, function.outputs.len());
+    }
+
+    #[test]
+    fn test_function_display() {
+        let expected = r"function foo:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    output r2 as field.private;";
+        let function = Function::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(expected, format!("{function}"),);
+    }
+
+    #[test]
+    fn test_function_bytes() -> Result<()> {
+        let function_string = r"
+function main:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    add r0 r1 into r3;
+    add r0 r1 into r4;
+    add r0 r1 into r5;
+    add r0 r1 into r6;
+    add r0 r1 into r7;
+    add r0 r1 into r8;
+    add r0 r1 into r9;
+    add r0 r1 into r10;
+    add r0 r1 into r11;
+    output r11 as field.private;";
+
+        let expected = Function::<CurrentNetwork>::from_str(function_string)?;
+        let expected_bytes = expected.to_bytes_le()?;
+        println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), expected_bytes.len());
+
+        let candidate = Function::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
+        assert_eq!(expected.to_string(), candidate.to_string());
+        assert_eq!(expected_bytes, candidate.to_bytes_le()?);
+        Ok(())
+    }
+}

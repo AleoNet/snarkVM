@@ -49,8 +49,12 @@ pub trait Network:
 
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_DATA_ENTRIES;
+    /// The maximum number of inputs in a function.
+    const MAX_FUNCTION_INPUTS: usize = u16::MAX as usize;
     /// The maximum number of instructions in a function.
-    const MAX_INSTRUCTIONS: usize = 65536;
+    const MAX_FUNCTION_INSTRUCTIONS: usize = u16::MAX as usize;
+    /// The maximum number of outputs in a function.
+    const MAX_FUNCTION_OUTPUTS: usize = u16::MAX as usize;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 8;
@@ -59,7 +63,7 @@ pub trait Network:
     /// The maximum number of transitions per transaction.
     const MAX_TRANSITIONS: usize = 16;
     /// The maximum number of transactions per block.
-    const MAX_TRANSACTIONS: usize = 65536;
+    const MAX_TRANSACTIONS: usize = u16::MAX as usize;
 
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::size_in_data_bits()) as u32;

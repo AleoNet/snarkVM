@@ -70,7 +70,7 @@ pub use bech32::{self, FromBase32, ToBase32};
 pub use itertools::Itertools;
 pub use nom::{
     branch::alt,
-    bytes::complete::tag,
+    bytes::{complete::tag, streaming::take},
     character::complete::{alpha1, alphanumeric1, char, one_of},
     combinator::{map, map_res, opt, recognize},
     multi::{many0, many1, separated_list1},

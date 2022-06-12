@@ -24,7 +24,7 @@ impl<N: Network> Parser for Literal<N> {
             map(Address::<N>::parse, |literal| Self::Address(literal)),
             map(Boolean::<N>::parse, |literal| Self::Boolean(literal)),
             map(Field::<N>::parse, |literal| Self::Field(literal)),
-            map(Group::<N>::parse, |literal: Group<N>| Self::Group(literal)),
+            map(Group::<N>::parse, |literal| Self::Group(literal)),
             map(I8::<N>::parse, |literal| Self::I8(literal)),
             map(I16::<N>::parse, |literal| Self::I16(literal)),
             map(I32::<N>::parse, |literal| Self::I32(literal)),

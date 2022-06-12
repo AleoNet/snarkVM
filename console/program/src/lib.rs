@@ -31,5 +31,8 @@ pub use function::{Function, Register};
 mod interface;
 pub use interface::Interface;
 
+mod program;
+pub use program::Program;
+
 mod record_type;
 pub use record_type::*;

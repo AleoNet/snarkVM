@@ -14,44 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{function::instruction::Operand, Literal, Plaintext, PlaintextType, Register, Value, ValueType};
+use crate::{function::instruction::Operand, Literal, Plaintext, PlaintextType, Program, Register, Value, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
 enum RegisterValue<N: Network> {
+    /// An input value is a user-defined input that takes the visibility defined by the program.
     Input(Value<N, Plaintext<N>>),
+    /// A destination value is the output of executing an instruction.
     Destination(Plaintext<N>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(in crate::function) enum RegisterType<N: Network> {
+    /// An input register contains a plaintext value with visibility.
     Input(ValueType<N>),
+    /// A destination register contains a plaintext value from an instruction.
     Destination(PlaintextType<N>),
-}
-
-impl<N: Network> RegisterType<N> {
-    /// Returns `true` if `self` is an input register.
-    pub(in crate::function) const fn is_input(&self) -> bool {
-        matches!(self, Self::Input(..))
-    }
-
-    /// Returns `true` if `self` is a destination register.
-    pub(in crate::function) const fn is_destination(&self) -> bool {
-        matches!(self, Self::Destination(..))
-    }
 }
 
 /// The registers contains a mapping of the registers to their corresponding values in a function.
 #[derive(Clone)]
 pub(in crate::function) struct Registers<N: Network> {
-    /// The mapping of registers to their types.
+    /// The mapping of all registers to their defined types.
     register_types: IndexMap<u64, RegisterType<N>>,
-    /// The mapping of registers to their values.
+    /// The mapping of assigned registers to their values.
     registers: IndexMap<u64, RegisterValue<N>>,
-    /// The number of registers assigned in the function.
-    num_assigned: u64,
 }
 
 impl<N: Network> Registers<N> {
@@ -63,26 +53,26 @@ impl<N: Network> Registers<N> {
     /// This method will halt if any input type does not match the register type.
     #[inline]
     pub(in crate::function) fn new(
+        program: &Program<N>,
         register_types: IndexMap<u64, RegisterType<N>>,
         inputs: &[Plaintext<N>],
     ) -> Result<Self> {
         // Initialize the registers.
-        let mut registers = Self { register_types, registers: IndexMap::new(), num_assigned: 0 };
+        let mut registers = Self { register_types, registers: IndexMap::new() };
 
         // Determine the visibility of the inputs.
         for ((locator, register), input) in registers.register_types.iter().zip_eq(inputs.iter()) {
             // Ensure the register is an input register.
-
             match register {
                 RegisterType::Input(value_type) => {
                     // Ensure the plaintext type of the input matches what is declared in the register.
-                    // ensure!(input.to_type() == value_type.to_plaintext_type(), "Input register type does not match");
+                    input.matches(program, &value_type.to_plaintext_type())?;
 
                     // Construct a value out of the plaintext input.
                     let value = match value_type {
-                        ValueType::Constant(plaintext_type) => Value::Constant(input.clone()),
-                        ValueType::Public(plaintext_type) => Value::Public(input.clone()),
-                        ValueType::Private(plaintext_type) => Value::Private(input.clone()),
+                        ValueType::Constant(..) => Value::Constant(input.clone()),
+                        ValueType::Public(..) => Value::Public(input.clone()),
+                        ValueType::Private(..) => Value::Private(input.clone()),
                     };
 
                     // Assign the input value to the register.
@@ -90,20 +80,6 @@ impl<N: Network> Registers<N> {
                 }
                 RegisterType::Destination(..) => bail!("Register {locator} is not an input register"),
             }
-
-            // // If the input annotation is a definition, ensure the input value matches the definition.
-            // if let Annotation::Definition(definition_name) = input.annotation() {
-            //     // Retrieve the definition from the program.
-            //     match P::get_definition(definition_name) {
-            //         // Ensure the value matches its expected definition.
-            //         Some(definition) => {
-            //             if !definition.matches(value) {
-            //                 P::halt(format!("Input \'{register}\' does not match \'{definition_name}\'"))
-            //             }
-            //         }
-            //         None => P::halt("Input \'{register}\' references a non-existent definition"),
-            //     }
-            // }
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         }
@@ -117,40 +93,13 @@ impl<N: Network> Registers<N> {
     /// This method will halt if the given register is a register member.
     /// This method will halt if the register was previously stored.
     #[inline]
-    pub(in crate::function) fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
-        // Ensure the register assignments are monotonically increasing.
-        ensure!(
-            self.num_assigned == register.locator(),
-            "Expected \'{}\', found \'{register}\'",
-            Register::<N>::Locator(self.num_assigned)
-        );
-
-        // Retrieve the register type.
-        let register_type = self
-            .register_types
-            .get(&register.locator())
-            .ok_or_else(|| anyhow!("Register {} is not a member of the function", register.locator()))?;
-        // Ensure the register type is not an input register.
-        ensure!(register_type.is_destination(), "Cannot store to input {register}, expected a destination register");
-
-        // Store the literal in the register.
-        let previous = match register {
-            // Store the literal for a register.
-            Register::Locator(locator) => {
-                self.registers.insert(*locator, RegisterValue::Destination(Plaintext::from(literal)))
-            }
-            // Store the literal for a register member.
-            Register::Member(..) => bail!("Cannot store directly to \'{register}\'"),
-        };
-
-        // Ensure the register has not been previously stored.
-        match previous {
-            // Halt if the register was previously stored.
-            Some(..) => bail!("Register \'{register}\' was previously assigned"),
-            // Increment the number of assigned registers.
-            None => self.num_assigned += 1,
-        }
-        Ok(())
+    pub(in crate::function) fn store_literal(
+        &mut self,
+        program: &Program<N>,
+        register: &Register<N>,
+        literal: Literal<N>,
+    ) -> Result<()> {
+        self.store(program, register, Plaintext::from(literal))
     }
 
     /// Assigns the given value to the given register, assuming the register is not already assigned.
@@ -159,21 +108,28 @@ impl<N: Network> Registers<N> {
     /// This method will halt if the given register is a register member.
     /// This method will halt if the register was previously stored.
     #[inline]
-    pub(in crate::function) fn store(&mut self, register: &Register<N>, plaintext: Plaintext<N>) -> Result<()> {
+    pub(in crate::function) fn store(
+        &mut self,
+        program: &Program<N>,
+        register: &Register<N>,
+        plaintext: Plaintext<N>,
+    ) -> Result<()> {
         // Ensure the register assignments are monotonically increasing.
-        ensure!(
-            self.num_assigned == register.locator(),
-            "Expected \'{}\', found \'{register}\'",
-            Register::<N>::Locator(self.num_assigned)
-        );
+        let expected_register = Register::Locator(self.registers.len() as u64);
+        ensure!(expected_register == *register, "Expected '{expected_register}', found '{register}'");
 
         // Retrieve the register type.
-        let register_type = self
-            .register_types
-            .get(&register.locator())
-            .ok_or_else(|| anyhow!("Register {} is not a member of the function", register.locator()))?;
+        let register_type = match self.register_types.get(&register.locator()) {
+            Some(register_type) => register_type,
+            None => bail!("Register {register} is not a member of the function"),
+        };
+
         // Ensure the register type is not an input register.
-        ensure!(register_type.is_destination(), "Cannot store to input {register}, expected a destination register");
+        match register_type {
+            RegisterType::Input(..) => bail!("Cannot store to input '{register}', expected a destination register"),
+            // Ensure the plaintext type is the expected type.
+            RegisterType::Destination(plaintext_type) => plaintext.matches(program, &plaintext_type)?,
+        }
 
         // Store the plaintext in the register.
         let previous = match register {
@@ -185,12 +141,9 @@ impl<N: Network> Registers<N> {
 
         // Ensure the register has not been previously stored.
         match previous {
-            // Halt if the register was previously stored.
             Some(..) => bail!("Register \'{register}\' was previously assigned"),
-            // Increment the number of assigned registers.
-            None => self.num_assigned += 1,
+            None => Ok(()),
         }
-        Ok(())
     }
 
     /// Loads the literal of a given operand from the registers.
@@ -200,8 +153,8 @@ impl<N: Network> Registers<N> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub(in crate::function) fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
-        match self.load(operand)? {
+    pub(in crate::function) fn load_literal(&self, program: &Program<N>, operand: &Operand<N>) -> Result<Literal<N>> {
+        match self.load(program, operand)? {
             Plaintext::Literal(literal, ..) => Ok(literal),
             Plaintext::Interface(..) => bail!("Operand must be a literal"),
         }
@@ -213,7 +166,7 @@ impl<N: Network> Registers<N> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub(in crate::function) fn load(&self, operand: &Operand<N>) -> Result<Plaintext<N>> {
+    pub(in crate::function) fn load(&self, program: &Program<N>, operand: &Operand<N>) -> Result<Plaintext<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
@@ -238,68 +191,51 @@ impl<N: Network> Registers<N> {
             // If the register is a locator, then return the plaintext value.
             Register::Locator(..) => Ok(plaintext.clone()),
             // If the register is a register member, then load the specific plaintext value.
-            Register::Member(_, ref identifiers) => {
-                unimplemented!("Register member loading is not yet implemented")
-                // match value {
-                // // Halts if the value is not an interface.
-                // Plaintext::Literal(..) => bail!("Cannot load a register member from a literal"),
-                // // Retrieve the value of the member (from the value).
-                // Plaintext::Interface(mut interface, mut member_values) => {
-                //     // Iterate through all of the identifiers to retrieve the value.
-                //     for (i, identifier) in identifiers.iter().enumerate() {
-                //         // Retrieve the member index and value type of the identifier (from the interface).
-                //         let (member_index, member_value_type) = match P::get_interface(&interface) {
-                //             Some(interface) => interface
-                //                 .members()
-                //                 .iter()
-                //                 .enumerate()
-                //                 .filter_map(|(member_index, member)| match member.name() == identifier {
-                //                     true => Some((member_index, member.value_type().clone())),
-                //                     false => None,
-                //                 })
-                //                 .next()
-                //                 .unwrap_or_else(|| {
-                //                     bail!("Failed to locate '{register}': missing '{identifier}' in '{interface}'")
-                //                 }),
-                //             // Halts if the interface does not exist.
-                //             None => bail!("Failed to locate '{register}': missing '{interface}'"),
-                //         };
-                //
-                //         // For a standard round (that is not the last round), update the `interface` and `member_values` for the next round.
-                //         if i < identifiers.len() - 1 {
-                //             // Set the `interface`.
-                //             match member_value_type {
-                //                 // If the value type is a literal, then halt as this should not be possible since it is not the last round.
-                //                 PlaintextType::Literal(..) => bail!("Cannot load a literal from a register member"),
-                //                 // If the value type is a interface, update the `interface` to the next name.
-                //                 PlaintextType::Interface(name) => interface = name.clone(),
-                //             }
-                //
-                //             // Set the `member_values`.
-                //             match member_values.get(member_index) {
-                //                 Some(member_value) => match member_value {
-                //                     // If the value is a literal, then halt as this should not be possible since it is not the last round.
-                //                     Plaintext::Literal(..) => bail!("Cannot load a literal from a register member"),
-                //                     // If the value is a interface, update the `member_values` to the next list of member values.
-                //                     Plaintext::Interface(_, members) => member_values = (*members).clone(),
-                //                 },
-                //                 // Halts if the member does not exist.
-                //                 None => bail!("Failed to locate '{register}': invalid member index"),
-                //             }
-                //         }
-                //         // If this is the last round, then retrieve and return the value.
-                //         else {
-                //             // Return the value of the member.
-                //             match member_values.get(member_index) {
-                //                 Some(value) => return (*value).clone(),
-                //                 // Halts if the member does not exist.
-                //                 None => bail!("Failed to locate \'{register}\'"),
-                //             }
-                //         }
-                //     }
-                //
-                //     bail!("Failed to locate \'{register}\'")
-                // }
+            Register::Member(_, ref path) => {
+                match plaintext {
+                    // Halts if the value is not an interface.
+                    Plaintext::Literal(..) => bail!("Register '{register}' is not an interface"),
+                    // Retrieve the value of the member (from the value).
+                    Plaintext::Interface(members, ..) => {
+                        // Initialize the members starting from the top-level.
+                        let mut submembers = members;
+
+                        // Initialize the output.
+                        let mut output = None;
+
+                        // Iterate through the path to retrieve the value.
+                        for (i, identifier) in path.iter().enumerate() {
+                            // If this is not the last item in the path, ensure the value is an interface.
+                            if i != path.len() - 1 {
+                                match submembers.get(identifier) {
+                                    // Halts if the member does not exist.
+                                    None => bail!("Failed to locate member '{identifier}' in register '{register}'"),
+                                    // Halts if the member is not an interface.
+                                    Some(Plaintext::Literal(..)) => {
+                                        bail!("'{identifier}' in register '{register}' is not an interface")
+                                    }
+                                    // Retrieve the member and update `submembers` for the next iteration.
+                                    Some(Plaintext::Interface(members, ..)) => submembers = members,
+                                }
+                            }
+                            // Otherwise, return the final member.
+                            else {
+                                match submembers.get(identifier) {
+                                    // Return the plaintext member.
+                                    Some(plaintext) => output = Some(plaintext.clone()),
+                                    // Halts if the member does not exist.
+                                    None => bail!("Failed to locate member '{identifier}' in register '{register}'"),
+                                }
+                            }
+                        }
+
+                        // Return the output.
+                        match output {
+                            Some(output) => Ok(output),
+                            None => bail!("Failed to locate register '{register}'"),
+                        }
+                    }
+                }
             }
         }
     }

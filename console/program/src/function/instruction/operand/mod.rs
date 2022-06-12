@@ -17,7 +17,7 @@
 mod bytes;
 mod parse;
 
-use crate::{Literal, Register, Value};
+use crate::{Literal, Register};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -68,20 +68,6 @@ impl<N: Network> From<&Register<N>> for Operand<N> {
     }
 }
 
-impl<N: Network> Operand<N> {
-    /// Returns `true` if the operand is a literal.
-    #[inline]
-    pub const fn is_literal(&self) -> bool {
-        matches!(self, Operand::Literal(_))
-    }
-
-    /// Returns `true` if the operand is a register.
-    #[inline]
-    pub const fn is_register(&self) -> bool {
-        matches!(self, Operand::Register(_))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,8 +82,6 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::from(literal);
         assert_eq!(expected, operand);
-        assert!(operand.is_literal());
-        assert!(!operand.is_register());
         Ok(())
     }
 
@@ -108,8 +92,6 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::from(register);
         assert_eq!(expected, operand);
-        assert!(!operand.is_literal());
-        assert!(operand.is_register());
         Ok(())
     }
 
@@ -120,8 +102,6 @@ mod tests {
 
         let operand = Operand::<CurrentNetwork>::from(register);
         assert_eq!(expected, operand);
-        assert!(!operand.is_literal());
-        assert!(operand.is_register());
         Ok(())
     }
 }
