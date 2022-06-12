@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, Identifier, Interface, PlaintextType, RecordType};
+use crate::{function::Operand, Function, Identifier, Interface, PlaintextType, RecordType, Register, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
@@ -27,6 +27,115 @@ enum ProgramDefinition {
     Record,
     /// A program function.
     Function,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum RegisterType<N: Network> {
+    /// An input register type contains a plaintext type with visibility.
+    Input(ValueType<N>),
+    /// A destination register type contains a plaintext type from an instruction.
+    Destination(PlaintextType<N>),
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct Registers<N: Network> {
+    register_types: IndexMap<u64, RegisterType<N>>,
+}
+
+impl<N: Network> Registers<N> {
+    /// Initializes a new instance of `Registers`.
+    pub fn new() -> Self {
+        Self { register_types: IndexMap::new() }
+    }
+
+    /// Returns `true` if the given register exists.
+    pub fn contains(&self, register: &Register<N>) -> bool {
+        self.register_types.contains_key(&register.locator())
+    }
+
+    /// Returns `true` if the given register corresponds to an input register.
+    pub fn is_input(&self, register: &Register<N>) -> bool {
+        self.register_types
+            .get(&register.locator())
+            .map(|register_type| matches!(*register_type, RegisterType::Input(..)))
+            .unwrap_or(false)
+    }
+
+    /// Inserts the given register and type into the registers.
+    /// Note: The given register must be a `Register::Locator`.
+    pub fn insert(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+        // Check the register.
+        match register {
+            Register::Locator(locator) => {
+                // Ensure the registers are monotonically increasing.
+                ensure!(self.register_types.len() as u64 == locator, "Register '{register}' is out of order");
+            }
+            // Ensure the register is a locator, and not a member.
+            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+        }
+        // Insert the register and type.
+        match self.register_types.insert(register.locator(), register_type) {
+            // If the register already exists, throw an error.
+            Some(..) => bail!("Register '{register}' already exists"),
+            // If the register does not exist, return success.
+            None => Ok(()),
+        }
+    }
+
+    /// Returns the plaintext type of the given register.
+    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<PlaintextType<N>> {
+        // Retrieve the (starting) plaintext type.
+        let plaintext_type = match self.register_types.get(&register.locator()) {
+            // Retrieve the plaintext type from the value type.
+            Some(RegisterType::Input(value_type)) => {
+                // Output the plaintext type.
+                value_type.to_plaintext_type()
+            }
+            // Retrieve the plaintext type.
+            Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
+            // Ensure the register is defined.
+            None => bail!("Register '{register}' does not exist"),
+        };
+
+        match &register {
+            // If the register is a locator, then output the register type.
+            Register::Locator(..) => Ok(plaintext_type),
+            // If the register is a member, then traverse the member path to output the register type.
+            Register::Member(_, path) => {
+                // Ensure the member path is valid.
+                ensure!(path.len() > 0, "Register '{register}' references no members.");
+
+                // Initialize a tracker for the plaintext type.
+                let mut plaintext_type = plaintext_type;
+                // Traverse the member path to find the register type.
+                for (i, member_name) in path.iter().enumerate() {
+                    match plaintext_type {
+                        // Ensure the plaintext type is not a literal, as the register references a member.
+                        PlaintextType::Literal(..) => bail!("Register '{register}' references a literal."),
+                        // Traverse the member path to output the register type.
+                        PlaintextType::Interface(interface_name) => {
+                            // Retrieve the interface.
+                            match program.get_interface(&interface_name) {
+                                // Retrieve the member type from the interface.
+                                Some(interface) => match interface.members().get(member_name) {
+                                    // Update the plaintext type.
+                                    Some(member_type) => plaintext_type = *member_type,
+                                    None => {
+                                        bail!("Member '{member_name}' does not exist in '{interface_name}'")
+                                    }
+                                },
+                                None => {
+                                    bail!("'{register}' references a missing interface '{interface_name}'.")
+                                }
+                            }
+                        }
+                    }
+                }
+                // Output the member type.
+                Ok(plaintext_type)
+            }
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -77,9 +186,10 @@ impl<N: Network> Program<N> {
             // Ensure the member type is already defined in the program.
             match plaintext_type {
                 PlaintextType::Literal(..) => continue,
-                PlaintextType::Interface(identifier) => {
-                    if !self.interfaces.contains_key(identifier) {
-                        bail!("'{identifier}' in interface '{}' is not defined.", interface_name)
+                PlaintextType::Interface(member_identifier) => {
+                    // Ensure the member interface name exists in the program.
+                    if !self.interfaces.contains_key(member_identifier) {
+                        bail!("'{member_identifier}' in interface '{}' is not defined.", interface_name)
                     }
                 }
             }
@@ -144,6 +254,13 @@ impl<N: Network> Program<N> {
     /// # Errors
     /// This method will halt if the function was previously added.
     /// This method will halt if the function name is already in use in the program.
+    /// This method will halt if any registers are assigned more than once.
+    /// This method will halt if the registers are not incrementing monotonically.
+    /// This method will halt if an input type references a non-existent definition.
+    /// This method will halt if an operand register does not already exist in memory.
+    /// This method will halt if a destination register already exists in memory.
+    /// This method will halt if an output register does not already exist.
+    /// This method will halt if an output type references a non-existent definition.
     #[inline]
     fn add_function(&mut self, function: Function<N>) -> Result<()> {
         // Retrieve the function name.
@@ -154,21 +271,99 @@ impl<N: Network> Program<N> {
         // Ensure the function name is not a reserved keyword.
         ensure!(!self.is_reserved_name(&function_name), "'{}' is a reserved keyword.", function_name);
 
-        // // Ensure all interface members are well-formed.
-        // // Note: This design ensures cyclic references are not possible.
-        // for (identifier, plaintext_type) in function.members() {
-        //     // Ensure the member name is not a reserved keyword.
-        //     ensure!(self.is_reserved_name(identifier), "'{identifier}' is a reserved keyword.");
-        //     // Ensure the member type is already defined in the program.
-        //     match plaintext_type {
-        //         PlaintextType::Literal(..) => continue,
-        //         PlaintextType::Interface(identifier) => {
-        //             if !self.interfaces.contains_key(identifier) {
-        //                 bail!("'{identifier}' in interface '{}' is not defined.", interface_name)
-        //             }
-        //         }
-        //     }
-        // }
+        // Initialize a map of registers to their types.
+        let mut registers = Registers::new();
+
+        // Step 1. Check the function inputs are well-formed.
+        for input in function.inputs() {
+            // Retrieve the plaintext type from the input type.
+            let plaintext_type = match input.value_type() {
+                ValueType::Constant(plaintext_type) => {
+                    // TODO (howardwu): If the plaintext type is a record, ensure it cannot be a constant.
+                    plaintext_type
+                }
+                ValueType::Public(plaintext_type) => plaintext_type,
+                ValueType::Private(plaintext_type) => plaintext_type,
+            };
+
+            // Ensure the plaintext type is defined in the program.
+            match plaintext_type {
+                PlaintextType::Literal(..) => (),
+                PlaintextType::Interface(interface_name) => {
+                    // Ensure the interface name exists in the program.
+                    if !self.interfaces.contains_key(interface_name) {
+                        bail!("'{interface_name}' in function '{function_name}' is not defined.")
+                    }
+                }
+            }
+
+            // Insert the input register.
+            registers.insert(input.register().clone(), RegisterType::Input(*input.value_type()))?;
+        }
+
+        // Step 2. Check the function instructions are well-formed.
+        for instruction in function.instructions() {
+            // Initialize a vector to store the plaintext types of the operands.
+            let mut operand_types = Vec::with_capacity(instruction.operands().len());
+            // Iterate over the operands, and retrieve the plaintext type of each operand.
+            for operand in instruction.operands() {
+                // Retrieve and append the plaintext type.
+                operand_types.push(match operand {
+                    Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
+                    Operand::Register(register) => registers.get_type(&self, &register)?,
+                });
+            }
+
+            // Compute the destination register type.
+            let destination_type = RegisterType::Destination(instruction.output_type(&operand_types)?);
+
+            // Retrieve the destination register.
+            let destination = instruction.destination();
+            match destination {
+                // Insert the destination register.
+                Register::Locator(..) => registers.insert(destination.clone(), destination_type)?,
+                // Ensure the destination register is a locator (and does not reference a member).
+                Register::Member(..) => bail!("Destination register '{destination}' must be a locator."),
+            }
+        }
+
+        // Step 3. Check the function outputs are well-formed.
+        for output in function.outputs() {
+            // Retrieve the output register.
+            let register = output.register();
+            // Inform the user the output register is an input register, to ensure this is intended behavior.
+            if registers.is_input(register) {
+                eprintln!("Output {register} is an input register, ensure this is intended behavior");
+            }
+
+            // Retrieve the register type (as a plaintext type).
+            // Note: This serves as the expected output type, which we will compare against.
+            let register_type = registers.get_type(&self, &register)?;
+
+            // Retrieve the plaintext type from the output type.
+            let plaintext_type = match output.value_type() {
+                ValueType::Constant(plaintext_type) => {
+                    // TODO (howardwu): If the plaintext type is a record, ensure it cannot be a constant.
+                    plaintext_type
+                }
+                ValueType::Public(plaintext_type) => plaintext_type,
+                ValueType::Private(plaintext_type) => plaintext_type,
+            };
+
+            // Ensure the plaintext type is defined in the program.
+            match plaintext_type {
+                PlaintextType::Literal(..) => (),
+                PlaintextType::Interface(interface_name) => {
+                    // Ensure the interface name exists in the program.
+                    if !self.interfaces.contains_key(interface_name) {
+                        bail!("'{interface_name}' in function '{function_name}' is not defined.")
+                    }
+                }
+            }
+
+            // Ensure the register type and the output type match.
+            ensure!(register_type == *plaintext_type, "Output '{register}' has the wrong type.");
+        }
 
         // Add the function name to the identifiers.
         if self.identifiers.insert(function_name.clone(), ProgramDefinition::Function).is_some() {
@@ -214,7 +409,7 @@ impl<N: Network> Program<N> {
 
 impl<N: Network> Program<N> {
     /// Returns `true` if the given name does not already exist in the program.
-    fn is_unique_name(&self, name: &Identifier<N>) -> bool {
+    pub(crate) fn is_unique_name(&self, name: &Identifier<N>) -> bool {
         !self.identifiers.contains_key(name)
     }
 
@@ -468,7 +663,8 @@ function compute:
 function compute:
     input r0 as message.private;
     add r0.first r0.second into r1;
-    output r1 as field.private;";
+    output r1 as field.private;
+";
         // Parse a new program.
         let program = Program::<CurrentNetwork>::from_str(expected)?;
         // Ensure the program string matches.
