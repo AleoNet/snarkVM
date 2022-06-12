@@ -28,7 +28,7 @@ use snarkvm_utilities::{
 /// An output statement defines an output of a function, and may refer to the value
 /// in either a register or a register member. An output statement is of the form
 /// `output {register} as {value_type};`.
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output register.
     register: Register<N>,

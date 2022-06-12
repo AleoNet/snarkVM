@@ -40,6 +40,7 @@
 macro_rules! operation {
     ($vis:vis struct $name:ident<$operator:path, $operation:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
+        #[derive(Clone)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
         impl<N: Network> $crate::function::instruction::Operation<N, $crate::Literal<N>, $crate::LiteralType, 2> for $name<N> {

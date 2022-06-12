@@ -20,7 +20,7 @@ pub(crate) use operand::*;
 mod operation;
 use operation::*;
 
-use crate::{Register, Registers, Sanitizer};
+use crate::{function::registers::Registers, PlaintextType, Register, Sanitizer};
 use snarkvm_console_network::{
     prelude::{
         alt,
@@ -182,6 +182,7 @@ macro_rules! instruction {
     }};
 }
 
+#[derive(Clone)]
 pub enum Instruction<N: Network> {
     // /// Compute the absolute value of `first`, checking for overflow, and storing the outcome in `destination`.
     // Abs(Abs<N>),
@@ -326,8 +327,14 @@ impl<N: Network> Instruction<N> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub(crate) fn evaluate(&self, registers: &mut Registers<N>) -> Result<()> {
+    pub(in crate::function) fn evaluate(&self, registers: &mut Registers<N>) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(registers))
+    }
+
+    /// Returns the output type from the given input types.
+    #[inline]
+    pub(crate) fn output_type(&self, inputs: &[PlaintextType<N>]) -> Result<PlaintextType<N>> {
+        instruction!(self, |InstructionMember| InstructionMember::<N>::output_type(inputs))
     }
 }
 

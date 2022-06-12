@@ -14,22 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[macro_use]
-extern crate enum_index_derive;
-
-pub use snarkvm_console_types::prelude::*;
-
-mod data;
-pub use data::*;
-
-mod function;
-pub use function::{Function, Register};
-
-mod interface;
-pub use interface::Interface;
-
-mod record_type;
-pub use record_type::*;
+impl<N: Network> Value<N, Plaintext<N>> {
+    /// Returns this value as a plaintext value.
+    pub const fn to_plaintext(&self) -> &Plaintext<N> {
+        match self {
+            Self::Constant(plaintext) => plaintext,
+            Self::Public(plaintext) => plaintext,
+            Self::Private(plaintext) => plaintext,
+        }
+    }
+}

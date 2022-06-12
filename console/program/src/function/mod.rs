@@ -27,374 +27,316 @@ mod register;
 pub use register::Register;
 
 mod registers;
-pub use registers::Registers;
+use registers::{RegisterType, Registers};
 
-pub struct Function;
+// pub struct Function;
 
-// use crate::{
-//     function::{Input, Output},
-//     Identifier,
-//     LiteralType,
-//     PlaintextType,
-//     Sanitizer,
-//     Value,
-//     ValueType,
-// };
-// use snarkvm_console_network::prelude::*;
-// use snarkvm_utilities::{
-//     error,
-//     io::{Read, Result as IoResult, Write},
-//     FromBytes,
-//     ToBytes,
-// };
-//
-// use indexmap::{IndexMap, IndexSet};
-// use std::{cell::RefCell, rc::Rc};
-//
-// enum RegisterType<N: Network> {
-//     Input(ValueType<N>),
-//     Destination(PlaintextType<N>),
-// }
-//
-// #[derive(Clone)]
-// pub struct Function<N: Network> {
-//     /// The name of the function.
-//     name: Identifier<N>,
-//     // /// The map of register locators to their values.
-//     // /// When input statements are added, a new entry of `(locator, None)` is added to this map.
-//     // /// When input assignments are added, the entry is updated to `(locator, Some(value))`.
-//     // /// No changes occur to `registers` when output statements are added.
-//     // registers: Registers<N>,
-//     registers: IndexMap<u64, RegisterType<N>>,
-//     /// The input statements, added in order of the input registers.
-//     /// Input assignments are ensured to match the ordering of the input statements.
-//     inputs: IndexSet<Input<N>>,
-//     /// The instructions, in order of execution.
-//     instructions: Vec<Instruction<N>>,
-//     /// The output statements, in order of the desired output.
-//     /// There is no expectation that the output registers are in any ordering.
-//     outputs: IndexSet<Output<N>>,
-// }
-//
-// impl<N: Network> Function<N> {
-//     /// Initializes a new function with the given name.
-//     pub fn new(name: &str) -> Result<Self> {
-//         Ok(Self {
-//             name: Identifier::from_str(name)?,
-//             registers: Registers::new(),
-//             inputs: IndexSet::new(),
-//             instructions: Vec::new(),
-//             outputs: IndexSet::new(),
-//         })
-//     }
-//
-//     /// Returns the name of the function.
-//     pub fn name(&self) -> &Identifier<N> {
-//         &self.name
-//     }
-//
-//     /// Adds the input statement to the function.
-//     /// This method is called before a function is run.
-//     /// This method is only called before `new_instruction` is ever called.
-//     /// If the given input annotation is for a definition, then the definition must be added before this method is called.
-//     ///
-//     /// # Errors
-//     /// This method will halt if there are instructions or output statements in memory already.
-//     /// This method will halt if the maximum number of inputs has been reached.
-//     /// This method will halt if any registers are already assigned.
-//     /// This method will halt if the input statement was previously added.
-//     /// This method will halt if the given input register is not new.
-//     /// This method will halt if the given input register has a previously saved annotation in memory.
-//     /// This method will halt if the given inputs are not incrementing monotonically.
-//     /// This method will halt if the given input annotation references a non-existent definition.
-//     #[inline]
-//     pub fn add_input(&mut self, input: Input<N>) -> Result<()> {
-//         // Ensure there are no instructions or output statements in memory.
-//         ensure!(self.instructions.is_empty(), "Cannot add inputs after instructions have been added");
-//         ensure!(self.outputs.is_empty(), "Cannot add inputs after outputs have been added");
-//
-//         // Ensure the maximum number of inputs has not been exceeded.
-//         ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
-//         // Ensure the input statement was not previously added.
-//         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
-//
-//         // Retrieve the input register.
-//         let register = input.register();
-//         // Ensure the input register is a locator (and does not reference a member).
-//         ensure!(register.is_locator(), "Input register {register} must be a locator and cannot reference a member");
-//         // Ensure the input register is new.
-//         ensure!(!self.registers.contains_key(&register), "Input register {register} already exists");
-//
-//         // // If the input annotation is a definition, ensure the input is referencing a valid definition.
-//         // if let Annotation::Definition(definition) = input.value_type() {
-//         //     if !P::contains_definition(definition) {
-//         //         P::halt(format!("Input type \'{definition}\' does not exist"))
-//         //     }
-//         // }
-//
-//         // Insert the input register.
-//         self.registers.insert(register, RegisterType::Input(*input.value_type()));
-//         // Insert the input statement.
-//         self.inputs.insert(input);
-//
-//         Ok(())
-//     }
-//
-//     // TODO (howardwu): Instructions should have annotations, and we should check them here.
-//     /// Adds the given instruction to the function.
-//     /// This method is called before a function is run.
-//     ///
-//     /// # Errors
-//     /// This method will halt if there are no input statements in memory.
-//     /// This method will halt if the maximum number of instructions has been reached.
-//     /// This method will halt if any registers are already assigned.
-//     /// This method will halt if the destination register already exists in memory.
-//     /// This method will halt if the destination register locator does not monotonically increase.
-//     /// This method will halt if any operand register does not already exist in memory.
-//     #[inline]
-//     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
-//         // Ensure there are input statements in memory.
-//         ensure!(!self.inputs.is_empty(), "Cannot add instructions before inputs have been added");
-//
-//         // Ensure the maximum number of instructions has not been exceeded.
-//         ensure!(
-//             self.instructions.len() <= N::MAX_INSTRUCTIONS,
-//             "Cannot add more than {} instructions",
-//             N::MAX_INSTRUCTIONS
-//         );
-//
-//         // Retrieve the operands.
-//         let operands = instruction.operands();
-//
-//         // Initialize a vector to store the plaintext types of the operands.
-//         let mut plaintext_types = Vec::with_capacity(operands.len());
-//
-//         // Iterate over the operands, and retrieve the plaintext type of each operand.
-//         for operand in &operands {
-//             // Retrieve and append the plaintext type.
-//             plaintext_types.push(match operand {
-//                 Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
-//                 Operand::Register(register) => {
-//                     match self.registers.get(register) {
-//                         // Retrieve the plaintext type from the value type.
-//                         Some(RegisterType::Input(value_type)) => value_type.to_plaintext_type(),
-//                         // Retrieve the plaintext type.
-//                         Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
-//                         // Ensure the operand register is defined.
-//                         None => bail!("Instruction register {register} does not exist")
-//                     }
-//                 }
-//             });
-//         }
-//
-//         // Retrieve the destination register.
-//         let destination = instruction.destination();
-//
-//         // Ensure the destination register is a locator (and does not reference a member).
-//         ensure!(destination.is_locator(), "Destination {destination} must be a locator and cannot reference a member");
-//         // Ensure the destination register does not already exist.
-//         ensure!(!self.registers.contains_key(destination), "Destination {destination} already exists");
-//
-//         // Compute the destination register type.
-//
-//
-//         // Retrieve the destination register type.
-//         for operand in &operands {
-//             match operand {
-//                 Operand::Literal(..) => continue,
-//                 Operand::Register(register) => {
-//                     ensure!(self.registers.contains_key(register), "Instruction register {register} does not exist")
-//                 }
-//             }
-//         }
-//
-//
-//         // Insert the destination register.
-//         self.registers.insert(destination.locator(), RegisterType::Destination());
-//         // Insert the instruction.
-//         self.instructions.push(instruction);
-//
-//         Ok(())
-//     }
-//
-//     /// Adds the output statement into memory.
-//     /// This method is called before a function is run.
-//     /// If the given output is for a definition, then the definition must be added before this method is called.
-//     ///
-//     /// # Errors
-//     /// This method will halt if there are no input statements or instructions in memory.
-//     /// This method will halt if the maximum number of outputs has been reached.
-//     /// This method will halt if the given output register is new.
-//     /// This method will halt if the given output register is already set.
-//     /// This method will halt if the given output annotation references a non-existent definition.
-//     #[inline]
-//     pub fn add_output(&mut self, output: Output<N>) -> Result<()> {
-//         // Ensure there are input statements and instructions in memory.
-//         ensure!(!self.inputs.is_empty(), "Cannot add outputs before inputs have been added");
-//         ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
-//
-//         // Ensure the maximum number of outputs has not been exceeded.
-//         ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
-//
-//         // Retrieve the output register.
-//         let register = output.register();
-//         // Ensure the output exists in the registers.
-//         ensure!(self.registers.contains_key(&register), "Output register {register} does not exist");
-//
-//         // // If the output annotation is for a definition, ensure the output is referencing a valid definition.
-//         // if let Annotation::Definition(identifier) = output.annotation() {
-//         //     if !P::contains_definition(identifier) {
-//         //         P::halt("Output annotation references non-existent definition")
-//         //     }
-//         // }
-//
-//         // If the output register is an input register, inform the user to allow them to ensure this is intended behavior.
-//         if let Some(RegisterType::Input) = self.registers.get(&register) {
-//             // warn!("Output register {register} is an input register, and this is a passthrough value");
-//             eprintln!("Output register {register} is an input register, and this is a passthrough value");
-//         }
-//
-//         // Insert the output statement.
-//         self.outputs.insert(output);
-//
-//         Ok(())
-//     }
-//
-//     /// Evaluates the function on the given inputs.
-//     ///
-//     /// # Errors
-//     /// This method will halt if there are no input statements or instructions in memory.
-//     /// This method will halt if any registers are already assigned.
-//     /// This method will halt if the given inputs are not the same length as the input statements.
-//     #[inline]
-//     pub fn evaluate(&self, inputs: &[Value<N>]) -> Vec<Value<N>> {
-//         // Ensure there are input statements and instructions in memory.
-//         if self.inputs.is_empty() || self.instructions.is_empty() {
-//             P::halt("Cannot evaluate a function without input statements or instructions")
-//         }
-//
-//         // Ensure the function is not already evaluated.
-//         if self.registers.is_dirty() {
-//             P::halt("Registers cannot contain assignments prior to evaluation")
-//         }
-//
-//         // Ensure the number of inputs matches the number of input statements.
-//         if self.inputs.len() != inputs.len() {
-//             P::halt(format!("Expected {} inputs, but given {}", self.inputs.len(), inputs.len()))
-//         }
-//
-//         // Assign the inputs and ensure they matches the input statements.
-//         self.assign_inputs(inputs);
-//
-//         // Evaluate the instructions.
-//         for instruction in self.instructions.iter() {
-//             instruction.evaluate(&self.registers);
-//         }
-//
-//         // Load the outputs.
-//         let mut outputs = Vec::with_capacity(self.outputs.len());
-//         for output in self.outputs.iter() {
-//             // Load the value from the output register.
-//             let register = output.register();
-//             let value = self.registers.load(register);
-//
-//             // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-//             // Ensure the output plaintext type matches the annotation.
-//             if &value.annotation() != output.annotation() {
-//                 P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
-//             }
-//
-//             // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-//             // If the output annotation is a definition, ensure the output value matches the definition.
-//             if let Annotation::Definition(definition_name) = output.annotation() {
-//                 // Retrieve the definition from the program.
-//                 match P::get_definition(definition_name) {
-//                     // Ensure the value matches its expected definition.
-//                     Some(definition) => {
-//                         if !definition.matches(&value) {
-//                             P::halt(format!("Output \'{register}\' does not match \'{definition_name}\'"))
-//                         }
-//                     }
-//                     None => P::halt("Output \'{register}\' references a non-existent definition"),
-//                 }
-//             }
-//
-//             // TODO (howardwu): Add encryption against the caller's address for all private literals,
-//             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-//             //  For constant outputs, add an assert_eq on the register value - if it's constant,
-//             //  the constraint will automatically be discarded, and if it's not, the constraint will
-//             //  ensure the output register's value matches the newly-assigned hardcoded constant.
-//             // // If the value contains any public literals, assign a new public variable for the public literal,
-//             // // and add a constraint to enforce equality of the value.
-//             // match &value {
-//             //     Value::Literal(literal) => {
-//             //         if literal.is_public() {
-//             //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-//             //             P::Environment::assert_eq(literal, public_literal);
-//             //         }
-//             //     }
-//             //     Value::Definition(_, members) => {
-//             //         for member in members.iter() {
-//             //             if member.is_public() {
-//             //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-//             //                 P::Environment::assert_eq(member, public_literal);
-//             //             }
-//             //         }
-//             //     }
-//             // }
-//
-//             // Insert the value into the outputs.
-//             outputs.push(value);
-//         }
-//
-//         // Clear the register assignments.
-//         self.registers.clear_assignments();
-//
-//         outputs
-//     }
-// }
-//
-// impl<N: Network> Function<N> {
-//     /// Assigns the given input values to the corresponding registers in memory.
-//     /// This method is called before a function is run.
-//     ///
-//     /// # Errors
-//     /// This method will halt if the input register was previously stored.
-//     /// This method will halt if the input statement does not exist.
-//     /// This method will halt if the annotation does not match.
-//     #[inline]
-//     fn assign_inputs(&self, values: &[Value<N>]) {
-//         // Zip the input statements and input values together.
-//         for (input, value) in self.inputs.iter().zip_eq(values.iter()) {
-//             // Ensure the input value annotation matches the expected input annotation.
-//             let register = input.register();
-//             if &value.annotation() != input.annotation() {
-//                 P::halt(format!("Input \'{register}\' has an incorrect annotation of {}", value.annotation()))
-//             }
-//
-//             // If the input annotation is a definition, ensure the input value matches the definition.
-//             if let Annotation::Definition(definition_name) = input.annotation() {
-//                 // Retrieve the definition from the program.
-//                 match P::get_definition(definition_name) {
-//                     // Ensure the value matches its expected definition.
-//                     Some(definition) => {
-//                         if !definition.matches(value) {
-//                             P::halt(format!("Input \'{register}\' does not match \'{definition_name}\'"))
-//                         }
-//                     }
-//                     None => P::halt("Input \'{register}\' references a non-existent definition"),
-//                 }
-//             }
-//
-//             // Assign the input value to the register.
-//             // This call will halt if the register is a register member, or if the register is already assigned.
-//             self.registers.assign(register, value.clone());
-//
-//             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-//         }
-//     }
-// }
-//
+use crate::{
+    function::{Input, Output},
+    Identifier,
+    LiteralType,
+    Plaintext,
+    PlaintextType,
+    Sanitizer,
+    Value,
+    ValueType,
+};
+use snarkvm_console_network::prelude::*;
+use snarkvm_utilities::{
+    error,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    ToBytes,
+};
+
+use indexmap::{IndexMap, IndexSet};
+
+#[derive(Clone)]
+pub struct Function<N: Network> {
+    /// The name of the function.
+    name: Identifier<N>,
+    /// The register types of the function.
+    registers: IndexMap<u64, RegisterType<N>>,
+    /// The input statements, added in order of the input registers.
+    /// Input assignments are ensured to match the ordering of the input statements.
+    inputs: IndexSet<Input<N>>,
+    /// The instructions, in order of execution.
+    instructions: Vec<Instruction<N>>,
+    /// The output statements, in order of the desired output.
+    /// There is no expectation that the output registers are in any ordering.
+    outputs: IndexSet<Output<N>>,
+}
+
+impl<N: Network> Function<N> {
+    /// Initializes a new function with the given name.
+    pub fn new(name: &str) -> Result<Self> {
+        Ok(Self {
+            name: Identifier::from_str(name)?,
+            registers: IndexMap::new(),
+            inputs: IndexSet::new(),
+            instructions: Vec::new(),
+            outputs: IndexSet::new(),
+        })
+    }
+
+    /// Returns the name of the function.
+    pub fn name(&self) -> &Identifier<N> {
+        &self.name
+    }
+
+    /// Adds the input statement to the function.
+    /// This method is called before a function is run.
+    /// This method is only called before `new_instruction` is ever called.
+    /// If the given input annotation is for a definition, then the definition must be added before this method is called.
+    ///
+    /// # Errors
+    /// This method will halt if there are instructions or output statements in memory already.
+    /// This method will halt if the maximum number of inputs has been reached.
+    /// This method will halt if any registers are already assigned.
+    /// This method will halt if the input statement was previously added.
+    /// This method will halt if the given input register is not new.
+    /// This method will halt if the given input register has a previously saved annotation in memory.
+    /// This method will halt if the given inputs are not incrementing monotonically.
+    /// This method will halt if the given input annotation references a non-existent definition.
+    #[inline]
+    pub fn add_input(&mut self, input: Input<N>) -> Result<()> {
+        // Ensure there are no instructions or output statements in memory.
+        ensure!(self.instructions.is_empty(), "Cannot add inputs after instructions have been added");
+        ensure!(self.outputs.is_empty(), "Cannot add inputs after outputs have been added");
+
+        // Ensure the maximum number of inputs has not been exceeded.
+        ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
+        // Ensure the input statement was not previously added.
+        ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
+
+        // Retrieve the input register.
+        let register = input.register();
+        // Ensure the input register is a locator (and does not reference a member).
+        ensure!(register.is_locator(), "Input register {register} must be a locator and cannot reference a member");
+        // Ensure the input register is new.
+        ensure!(!self.registers.contains_key(&register.locator()), "Input register {register} already exists");
+
+        // // If the input annotation is a definition, ensure the input is referencing a valid definition.
+        // if let Annotation::Definition(definition) = input.value_type() {
+        //     if !P::contains_definition(definition) {
+        //         P::halt(format!("Input type \'{definition}\' does not exist"))
+        //     }
+        // }
+
+        // Insert the input register.
+        self.registers.insert(register.locator(), RegisterType::Input(*input.value_type()));
+        // Insert the input statement.
+        self.inputs.insert(input);
+
+        Ok(())
+    }
+
+    // TODO (howardwu): Instructions should have annotations, and we should check them here.
+    /// Adds the given instruction to the function.
+    /// This method is called before a function is run.
+    ///
+    /// # Errors
+    /// This method will halt if there are no input statements in memory.
+    /// This method will halt if the maximum number of instructions has been reached.
+    /// This method will halt if any registers are already assigned.
+    /// This method will halt if the destination register already exists in memory.
+    /// This method will halt if the destination register locator does not monotonically increase.
+    /// This method will halt if any operand register does not already exist in memory.
+    #[inline]
+    pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
+        // Ensure there are input statements in memory.
+        ensure!(!self.inputs.is_empty(), "Cannot add instructions before inputs have been added");
+
+        // Ensure the maximum number of instructions has not been exceeded.
+        ensure!(
+            self.instructions.len() <= N::MAX_INSTRUCTIONS,
+            "Cannot add more than {} instructions",
+            N::MAX_INSTRUCTIONS
+        );
+
+        // Retrieve the operands.
+        let operands = instruction.operands();
+
+        // Initialize a vector to store the plaintext types of the operands.
+        let mut operand_types = Vec::with_capacity(operands.len());
+
+        // Iterate over the operands, and retrieve the plaintext type of each operand.
+        for operand in operands {
+            // Retrieve and append the plaintext type.
+            operand_types.push(match operand {
+                Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
+                Operand::Register(register) => {
+                    match self.registers.get(&register.locator()) {
+                        // Retrieve the plaintext type from the value type.
+                        Some(RegisterType::Input(value_type)) => value_type.to_plaintext_type(),
+                        // Retrieve the plaintext type.
+                        Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
+                        // Ensure the operand register is defined.
+                        None => bail!("Instruction register {register} does not exist"),
+                    }
+                }
+            });
+        }
+
+        // Retrieve the destination register.
+        let destination = instruction.destination();
+
+        // Ensure the destination register is a locator (and does not reference a member).
+        ensure!(destination.is_locator(), "Destination {destination} must be a locator and cannot reference a member");
+        // Ensure the destination register does not already exist.
+        ensure!(!self.registers.contains_key(&destination.locator()), "Destination {destination} already exists");
+
+        // Compute the destination register type.
+        let destination_type = instruction.output_type(&operand_types)?;
+
+        // Insert the destination register.
+        self.registers.insert(destination.locator(), RegisterType::Destination(destination_type));
+        // Insert the instruction.
+        self.instructions.push(instruction);
+
+        Ok(())
+    }
+
+    /// Adds the output statement into memory.
+    /// This method is called before a function is run.
+    /// If the given output is for a definition, then the definition must be added before this method is called.
+    ///
+    /// # Errors
+    /// This method will halt if there are no input statements or instructions in memory.
+    /// This method will halt if the maximum number of outputs has been reached.
+    /// This method will halt if the given output register is new.
+    /// This method will halt if the given output register is already set.
+    /// This method will halt if the given output annotation references a non-existent definition.
+    #[inline]
+    pub fn add_output(&mut self, output: Output<N>) -> Result<()> {
+        // Ensure there are input statements and instructions in memory.
+        ensure!(!self.inputs.is_empty(), "Cannot add outputs before inputs have been added");
+        ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
+
+        // Ensure the maximum number of outputs has not been exceeded.
+        ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
+
+        // Retrieve the output register.
+        let register = output.register();
+        // Ensure the output exists in the registers.
+        ensure!(self.registers.contains_key(&register.locator()), "Output register {register} does not exist");
+
+        // // If the output annotation is for a definition, ensure the output is referencing a valid definition.
+        // if let Annotation::Definition(identifier) = output.annotation() {
+        //     if !P::contains_definition(identifier) {
+        //         P::halt("Output annotation references non-existent definition")
+        //     }
+        // }
+
+        // If the output register is an input register, inform the user to allow them to ensure this is intended behavior.
+        if let Some(RegisterType::Input(..)) = self.registers.get(&register.locator()) {
+            // warn!("Output register {register} is an input register, and this is a passthrough value");
+            eprintln!("Output register {register} is an input register, and this is a passthrough value");
+        }
+
+        // Insert the output statement.
+        self.outputs.insert(output);
+
+        Ok(())
+    }
+
+    // /// Evaluates the function on the given inputs.
+    // ///
+    // /// # Errors
+    // /// This method will halt if there are no input statements or instructions in memory.
+    // /// This method will halt if any registers are already assigned.
+    // /// This method will halt if the given inputs are not the same length as the input statements.
+    // #[inline]
+    // pub fn evaluate(&self, inputs: &[Plaintext<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    //     // Ensure there are input statements and instructions in memory.
+    //     ensure!(!self.inputs.is_empty(), "Cannot evaluate a function without input statements");
+    //     ensure!(!self.instructions.is_empty(), "Cannot evaluate a function without instructions");
+    //
+    //     // Ensure the number of inputs matches the number of input statements.
+    //     ensure!(self.inputs.len() == inputs.len(), "Expected {} inputs, but given {}", self.inputs.len(), inputs.len());
+    //
+    //     // Initialize a registers map to store the values for destination registers.
+    //     let mut registers = Registers::<N>::new(self.registers.clone(), inputs)?;
+    //
+    //     // Assign the inputs and ensure they matches the input statements.
+    //     self.assign_inputs(inputs);
+    //
+    //     // Evaluate the instructions.
+    //     for instruction in self.instructions.iter() {
+    //         instruction.evaluate(&self.registers);
+    //     }
+    //
+    //     // Load the outputs.
+    //     let mut outputs = Vec::with_capacity(self.outputs.len());
+    //     for output in self.outputs.iter() {
+    //         // Load the value from the output register.
+    //         let register = output.register();
+    //         let value = self.registers.load(register);
+    //
+    //         // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
+    //         // Ensure the output plaintext type matches the annotation.
+    //         if &value.annotation() != output.annotation() {
+    //             P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
+    //         }
+    //
+    //         // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
+    //         // If the output annotation is a definition, ensure the output value matches the definition.
+    //         if let Annotation::Definition(definition_name) = output.annotation() {
+    //             // Retrieve the definition from the program.
+    //             match P::get_definition(definition_name) {
+    //                 // Ensure the value matches its expected definition.
+    //                 Some(definition) => {
+    //                     if !definition.matches(&value) {
+    //                         P::halt(format!("Output \'{register}\' does not match \'{definition_name}\'"))
+    //                     }
+    //                 }
+    //                 None => P::halt("Output \'{register}\' references a non-existent definition"),
+    //             }
+    //         }
+    //
+    //         // TODO (howardwu): Add encryption against the caller's address for all private literals,
+    //         //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
+    //         //  For constant outputs, add an assert_eq on the register value - if it's constant,
+    //         //  the constraint will automatically be discarded, and if it's not, the constraint will
+    //         //  ensure the output register's value matches the newly-assigned hardcoded constant.
+    //         // // If the value contains any public literals, assign a new public variable for the public literal,
+    //         // // and add a constraint to enforce equality of the value.
+    //         // match &value {
+    //         //     Value::Literal(literal) => {
+    //         //         if literal.is_public() {
+    //         //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
+    //         //             P::Environment::assert_eq(literal, public_literal);
+    //         //         }
+    //         //     }
+    //         //     Value::Definition(_, members) => {
+    //         //         for member in members.iter() {
+    //         //             if member.is_public() {
+    //         //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
+    //         //                 P::Environment::assert_eq(member, public_literal);
+    //         //             }
+    //         //         }
+    //         //     }
+    //         // }
+    //
+    //         // Insert the value into the outputs.
+    //         outputs.push(value);
+    //     }
+    //
+    //     // Clear the register assignments.
+    //     self.registers.clear_assignments();
+    //
+    //     outputs
+    // }
+}
+
+impl<N: Network> TypeName for Function<N> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "function"
+    }
+}
+
 // impl<N: Network> Parser for Function<N> {
 //     /// Parses a string into a function.
 //     #[inline]
@@ -418,38 +360,52 @@ pub struct Function;
 //         let (string, outputs) = many0(Output::parse)(string)?;
 //
 //         // Initialize a new function.
-//         let function = Self::new(name.as_str());
-//         inputs.into_iter().try_for_each(|input| function.add_input(input));
-//         instructions.into_iter().try_for_each(|instruction| function.add_instruction(instruction));
-//         outputs.into_iter().try_for_each(|output| function.add_output(output));
+//         let mut function = Self::new(name.as_str())?;
+//         inputs.into_iter().try_for_each(|input| function.add_input(input))?;
+//         instructions.into_iter().try_for_each(|instruction| function.add_instruction(instruction))?;
+//         outputs.into_iter().try_for_each(|output| function.add_output(output))?;
 //
 //         Ok((string, function))
 //     }
 // }
 //
-// impl<N: Network> TypeName for Function<N> {
-//     /// Returns the type name as a string.
-//     #[inline]
-//     fn type_name() -> &'static str {
-//         "function"
+// impl<N: Network> FromStr for Function<N> {
+//     type Err = Error;
+//
+//     /// Returns a function from a string literal.
+//     fn from_str(string: &str) -> Result<Self> {
+//         match Self::parse(string) {
+//             Ok((remainder, object)) => {
+//                 // Ensure the remainder is empty.
+//                 ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+//                 // Return the object.
+//                 Ok(object)
+//             }
+//             Err(error) => bail!("Failed to parse string. {error}"),
+//         }
 //     }
 // }
 //
-// #[allow(clippy::format_push_string)]
-// impl<N: Network> fmt::Display for Function<N> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         // Write the function to a string.
-//         let mut function = format!("{} {}:\n", Self::type_name(), self.name);
-//         self.inputs.iter().try_for_each(|input| function.push_str(&format!("    {}\n", input)));
-//         self.instructions.iter().try_for_each(|instruction| function.push_str(&format!("    {}\n", instruction)));
-//         self.outputs.iter().try_for_each(|output| function.push_str(&format!("    {}\n", output)));
-//         function.pop(); // trailing newline
+// impl<N: Network> Debug for Function<N> {
+//     /// Prints the function as a string.
+//     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+//         Display::fmt(self, f)
+//     }
+// }
 //
-//         write!(f, "{}", function)
+// impl<N: Network> Display for Function<N> {
+//     /// Prints the function as a string.
+//     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+//         // Write the function to a string.
+//         write!(f, "{} {}:\n", Self::type_name(), self.name)?;
+//         self.inputs.iter().try_for_each(|input| write!(f, "    {}\n", input))?;
+//         self.instructions.iter().try_for_each(|instruction| write!(f, "    {}\n", instruction))?;
+//         self.outputs.iter().try_for_each(|output| write!(f, "    {}\n", output))
 //     }
 // }
 //
 // impl<N: Network> FromBytes for Function<N> {
+//     /// Reads the function from a buffer.
 //     #[inline]
 //     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
 //         // Read the function name.
@@ -487,6 +443,7 @@ pub struct Function;
 // }
 //
 // impl<N: Network> ToBytes for Function<N> {
+//     /// Writes the function to a buffer.
 //     #[inline]
 //     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
 //         // Write the function name.
@@ -547,7 +504,8 @@ pub struct Function;
 //     input r0 as field.public;
 //     input r1 as field.private;
 //     add r0 r1 into r2;
-//     output r2 as field.private;",
+//     output r2 as field.private;
+// ",
 //         );
 //         let first = Value::<CurrentNetwork>::from_str("2field.public");
 //         let second = Value::from_str("3field.private");
@@ -588,7 +546,8 @@ pub struct Function;
 //     input r0 as field.public;
 //     input r1 as field.private;
 //     add r0 r1 into r2;
-//     output r2 as field.private;";
+//     output r2 as field.private;
+// ";
 //         let function = Function::<CurrentNetwork>::parse(expected).unwrap().1;
 //         assert_eq!(expected, format!("{function}"),);
 //     }
@@ -609,7 +568,8 @@ pub struct Function;
 //     add r0 r1 into r9;
 //     add r0 r1 into r10;
 //     add r0 r1 into r11;
-//     output r11 as field.private;";
+//     output r11 as field.private;
+// ";
 //
 //         let expected = Function::<CurrentNetwork>::from_str(function_string);
 //         let expected_bytes = expected.to_bytes_le().unwrap();

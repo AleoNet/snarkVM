@@ -28,7 +28,7 @@ use snarkvm_utilities::{
 
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {value_type}`.
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.
     register: Register<N>,

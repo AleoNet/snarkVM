@@ -15,13 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::instruction::{Operand, Operation},
+    function::{
+        instruction::{Operand, Operation},
+        registers::Registers,
+    },
     Literal,
     LiteralType,
     Plaintext,
     PlaintextType,
     Register,
-    Registers,
 };
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
@@ -74,7 +76,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, registers: &mut Registers<N>) -> Result<()> {
+    pub(in crate::function) fn evaluate(&self, registers: &mut Registers<N>) -> Result<()> {
         // Ensure the number of operands is correct.
         ensure!(
             self.operands.len() == NUM_OPERANDS,
@@ -98,7 +100,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
             // Store the literal.
             inputs.push(literal);
             // Store the literal type.
-            input_types.push(literal_type);
+            input_types.push(PlaintextType::from(literal_type));
             // Move to the next iteration.
             Ok::<_, Error>(())
         })?;
@@ -107,7 +109,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output =
             O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands for evaluation"))?)?;
         // Compute the output type.
-        let output_type = output.to_type();
+        let output_type = PlaintextType::from(output.to_type());
 
         // Ensure the output type is correct.
         ensure!(
@@ -122,16 +124,30 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the output type from the given input types.
     #[inline]
-    fn output_type(inputs: &[LiteralType]) -> Result<LiteralType> {
+    pub fn output_type(input_types: &[PlaintextType<N>]) -> Result<PlaintextType<N>> {
         // Ensure the number of operands is correct.
         ensure!(
-            inputs.len() == NUM_OPERANDS,
+            input_types.len() == NUM_OPERANDS,
             "Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands",
             O::OPCODE,
-            inputs.len()
+            input_types.len()
         );
+
+        // Convert all input types into `LiteralType`s. If any are not a `LiteralType`, return an error.
+        let input_types = input_types
+            .into_iter()
+            .copied()
+            .map(|input_type| match input_type {
+                PlaintextType::Literal(literal_type) => Ok(literal_type),
+                PlaintextType::Interface(..) => Err(anyhow!("Expected literal type, found '{}'", input_type)),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Compute the output type.
+        let output = O::output_type(&input_types.try_into().map_err(|_| anyhow!("Failed to prepare operand types"))?)?;
+
         // Return the output type.
-        O::output_type(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operand types"))?)
+        Ok(PlaintextType::Literal(output))
     }
 }
 

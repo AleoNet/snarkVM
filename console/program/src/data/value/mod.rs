@@ -18,6 +18,7 @@ mod decrypt;
 mod encrypt;
 mod num_randomizers;
 mod to_bits;
+mod to_plaintext;
 
 use crate::{Ciphertext, Plaintext, Visibility};
 use snarkvm_console_network::Network;
