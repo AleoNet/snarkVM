@@ -18,51 +18,44 @@ use core::convert::TryInto;
 use std::collections::BTreeMap;
 
 use crate::{
+    fft,
     fft::{
-        domain::{FFTPrecomputation, IFFTPrecomputation},
+        domain::IFFTPrecomputation,
         polynomial::PolyMultiplier,
         DensePolynomial,
         EvaluationDomain,
-        Evaluations as EvaluationsOnDomain,
+        SparsePolynomial,
     },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS},
-        matrices::MatrixArithmetization,
+        ahp::{
+            indexer::{CircuitInfo, Matrix},
+            verifier,
+            AHPForR1CS,
+            UnnormalizedBivariateLagrangePoly,
+        },
         prover,
         MarlinMode,
     },
 };
-use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
+use itertools::Itertools;
 use rand_core::RngCore;
 
-#[cfg(not(feature = "parallel"))]
-use itertools::Itertools;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the third round.
     pub fn num_third_round_oracles() -> usize {
-        3
+        1
     }
 
-    /// Output the degree bounds of oracles in the first round.
+    /// Output the degree bounds of oracles in the third round.
     pub fn third_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_a).unwrap();
-        let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_b).unwrap();
-        let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_c).unwrap();
-
-        [
-            PolynomialInfo::new("g_a".into(), Some(non_zero_a_size - 2), None),
-            PolynomialInfo::new("g_b".into(), Some(non_zero_b_size - 2), None),
-            PolynomialInfo::new("g_c".into(), Some(non_zero_c_size - 2), None),
-        ]
-        .into_iter()
-        .map(|info| (info.label().into(), info))
-        .collect()
+        [PolynomialInfo::new("h_1".into(), None, None)].into_iter().map(|info| (info.label().into(), info)).collect()
     }
 
     /// Output the third round message and the next state.
@@ -70,166 +63,53 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::SecondMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<F>, prover::State<'a, F, MM>), AHPError> {
-        let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
+    ) -> (prover::ThirdOracles<F>, prover::State<'a, F, MM>) {
+        let constraint_domain = state.constraint_domain;
 
-        let verifier::FirstMessage { alpha, .. } = state
+        let delta = verifier_message.delta;
+
+        let verifier::FirstMessage { batch_combiners, .. } = state
             .verifier_first_message
             .as_ref()
-            .expect("prover::State should include verifier_first_msg when prover_third_round is called");
+            .expect("prover::State should include verifier_first_msg when prover_fourth_round is called");
 
-        let beta = verifier_message.beta;
+        let zeta_squared = state.zeta.square();
 
-        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
-        let v_H_at_beta = state.constraint_domain.evaluate_vanishing_polynomial(beta);
+        let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
+            .zip_eq(batch_combiners)
+            .map(|(b, combiner)| {
+                let mut row_check = {
+                    let z_a = b.z_a_poly.polynomial().as_dense().unwrap();
+                    let mut z_b = b.z_b_poly.polynomial().as_dense().unwrap().clone();
+                    let mut z_c = b.z_c_poly.polynomial().as_dense().unwrap().clone();
+                    let f = b.f_poly.polynomial().as_dense().unwrap();
+                    let s_m = b.s_m_poly.polynomial().as_dense().unwrap();
+                    let s_l = b.s_l_poly.polynomial().as_dense().unwrap();
+                    let mul_check = s_m * &(&(z_a * &z_b) - &z_c);
+                    cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.zeta);
+                    cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= zeta_squared);
+                    let lookup_check = s_l * &(&(&(z_a + &z_b) + &z_c) - &f);
+                    &mul_check + &lookup_check
+                };
 
-        let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
+                // Apply linear combination coefficient
+                cfg_iter_mut!(row_check.coeffs).for_each(|c| *c *= combiner);
+                row_check
+            })
+            .sum::<DensePolynomial<F>>();
 
-        let largest_non_zero_domain_size = Self::max_non_zero_domain(&state.index.index_info).size_as_field_element;
-        let mut pool = ExecutionPool::with_capacity(3);
-        pool.add_job(|| {
-            Self::matrix_sumcheck_helper(
-                "a",
-                state.non_zero_a_domain,
-                &state.index.a_arith,
-                *alpha,
-                beta,
-                v_H_alpha_v_H_beta,
-                largest_non_zero_domain_size,
-                state.fft_precomputation(),
-                state.ifft_precomputation(),
-            )
-        });
+        let mut lin = state.lin.as_ref().unwrap().clone();
+        cfg_iter_mut!(lin.coeffs).for_each(|c| *c *= delta);
+        let mut x_g_1 = state.x_g_1.as_ref().unwrap().clone();
+        cfg_iter_mut!(x_g_1.coeffs).for_each(|c| *c *= delta);
 
-        pool.add_job(|| {
-            Self::matrix_sumcheck_helper(
-                "b",
-                state.non_zero_b_domain,
-                &state.index.b_arith,
-                *alpha,
-                beta,
-                v_H_alpha_v_H_beta,
-                largest_non_zero_domain_size,
-                state.fft_precomputation(),
-                state.ifft_precomputation(),
-            )
-        });
+        let q_1 = &(&row + &lin) - &x_g_1;
+        let (h_1, rem) = q_1.divide_by_vanishing_poly(constraint_domain).unwrap();
+        // NOTE: maybe we need to check that rem is zero since there should be no remainer left
 
-        pool.add_job(|| {
-            Self::matrix_sumcheck_helper(
-                "c",
-                state.non_zero_c_domain,
-                &state.index.c_arith,
-                *alpha,
-                beta,
-                v_H_alpha_v_H_beta,
-                largest_non_zero_domain_size,
-                state.fft_precomputation(),
-                state.ifft_precomputation(),
-            )
-        });
-
-        let [(sum_a, lhs_a, g_a), (sum_b, lhs_b, g_b), (sum_c, lhs_c, g_c)]: [_; 3] =
-            pool.execute_all().try_into().unwrap();
-
-        let msg = prover::ThirdMessage { sum_a, sum_b, sum_c };
-        let oracles = prover::ThirdOracles { g_a, g_b, g_c };
-        state.lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
-        state.sums = Some([sum_a, sum_b, sum_c]);
+        let oracles = prover::ThirdOracles { h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None) };
         assert!(oracles.matches_info(&Self::third_round_polynomial_info(&state.index.index_info)));
 
-        end_timer!(round_time);
-
-        Ok((msg, oracles, state))
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn matrix_sumcheck_helper(
-        label: &str,
-        non_zero_domain: EvaluationDomain<F>,
-        arithmetization: &MatrixArithmetization<F>,
-        alpha: F,
-        beta: F,
-        v_H_alpha_v_H_beta: F,
-        largest_non_zero_domain_size: F,
-        fft_precomputation: &FFTPrecomputation<F>,
-        ifft_precomputation: &IFFTPrecomputation<F>,
-    ) -> (F, DensePolynomial<F>, LabeledPolynomial<F>) {
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
-        job_pool.add_job(|| {
-            let a_poly_time = start_timer!(|| "Computing a poly");
-            let a_poly = {
-                let coeffs = cfg_iter!(arithmetization.val.as_dense().unwrap().coeffs())
-                    .map(|a| v_H_alpha_v_H_beta * a)
-                    .collect();
-                DensePolynomial::from_coefficients_vec(coeffs)
-            };
-            end_timer!(a_poly_time);
-            a_poly
-        });
-
-        let (row_on_K, col_on_K, row_col_on_K) =
-            (&arithmetization.evals_on_K.row, &arithmetization.evals_on_K.col, &arithmetization.evals_on_K.row_col);
-
-        job_pool.add_job(|| {
-            let b_poly_time = start_timer!(|| "Computing b poly");
-            let alpha_beta = alpha * beta;
-            let b_poly = {
-                let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
-                    .zip_eq(&col_on_K.evaluations)
-                    .zip_eq(&row_col_on_K.evaluations)
-                    .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
-                    .collect();
-                EvaluationsOnDomain::from_vec_and_domain(evals, non_zero_domain)
-                    .interpolate_with_pc(ifft_precomputation)
-            };
-            end_timer!(b_poly_time);
-            b_poly
-        });
-        let [a_poly, b_poly]: [_; 2] = job_pool.execute_all().try_into().unwrap();
-
-        let f_evals_time = start_timer!(|| "Computing f evals on K");
-        let mut inverses: Vec<_> = cfg_iter!(row_on_K.evaluations)
-            .zip_eq(&col_on_K.evaluations)
-            .map(|(r, c)| (beta - r) * (alpha - c))
-            .collect();
-        batch_inversion_and_mul(&mut inverses, &v_H_alpha_v_H_beta);
-
-        cfg_iter_mut!(inverses).zip_eq(&arithmetization.evals_on_K.val.evaluations).for_each(|(inv, a)| *inv *= a);
-        let f_evals_on_K = inverses;
-        end_timer!(f_evals_time);
-
-        let f_poly_time = start_timer!(|| "Computing f poly");
-        let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain)
-            .interpolate_with_pc(ifft_precomputation);
-        end_timer!(f_poly_time);
-        let g = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
-        let h = &a_poly
-            - &{
-                let mut multiplier = PolyMultiplier::new();
-                multiplier.add_polynomial_ref(&b_poly, "b");
-                multiplier.add_polynomial_ref(&f, "f");
-                multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
-                multiplier.multiply().unwrap()
-            };
-        // Let K_max = largest_non_zero_domain;
-        // Let K = non_zero_domain;
-        // Let s := K_max.selector_polynomial(K) = (v_K_max / v_K) * (K.size() / K_max.size());
-        // Let v_K_max := K_max.vanishing_polynomial();
-        // Let v_K := K.vanishing_polynomial();
-
-        // Later on, we multiply `h` by s, and divide by v_K_max.
-        // Substituting in s, we get that h * s / v_K_max = h / v_K * (K.size() / K_max.size());
-        // That's what we're computing here.
-        let (mut h, remainder) = h.divide_by_vanishing_poly(non_zero_domain).unwrap();
-        assert!(remainder.is_zero());
-        let multiplier = non_zero_domain.size_as_field_element / largest_non_zero_domain_size;
-        cfg_iter_mut!(h.coeffs).for_each(|c| *c *= multiplier);
-
-        let g = LabeledPolynomial::new("g_".to_string() + label, g, Some(non_zero_domain.size() - 2), None);
-
-        assert!(h.degree() <= non_zero_domain.size() - 2);
-        assert!(g.degree() <= non_zero_domain.size() - 2);
-        (f.coeffs[0], h, g)
+        (oracles, state)
     }
 }

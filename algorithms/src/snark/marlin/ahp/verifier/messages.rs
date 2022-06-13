@@ -31,16 +31,23 @@ pub struct FirstMessage<F> {
     pub batch_combiners: Vec<F>,
 }
 
-/// Second verifier message.
+/// Second message of the verifier.
 #[derive(Copy, Clone, Debug)]
 pub struct SecondMessage<F> {
     /// Query for the second round of polynomials.
+    pub delta: F,
+}
+
+/// Third verifier message.
+#[derive(Copy, Clone, Debug)]
+pub struct ThirdMessage<F> {
+    /// Query for the third round of polynomials.
     pub beta: F,
 }
 
-/// Third message of the verifier.
+/// Fourth message of the verifier.
 #[derive(Copy, Clone, Debug)]
-pub struct ThirdMessage<F> {
+pub struct FourthMessage<F> {
     /// Randomizer for the h-polynomial for `B`.
     pub r_b: F,
     /// Randomizer for the h-polynomial for `C`.
@@ -63,7 +70,7 @@ pub struct QuerySet<F> {
 
 impl<F: PrimeField> QuerySet<F> {
     pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
-        let beta = state.second_round_message.unwrap().beta;
+        let beta = state.third_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
         // Lincheck sumcheck test:

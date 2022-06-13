@@ -147,7 +147,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_inputs: &[Vec<F>],
         evals: &E,
-        prover_third_message: &prover::ThirdMessage<F>,
+        prover_third_message: &prover::FourthMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
@@ -176,17 +176,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
         let batch_combiners = &first_round_msg.batch_combiners;
-        let prover::ThirdMessage { sum_a, sum_b, sum_c } = prover_third_message;
+        let prover::FourthMessage { sum_a, sum_b, sum_c } = prover_third_message;
 
         #[rustfmt::skip]
         let t_at_beta =
             eta_a * state.non_zero_a_domain.size_as_field_element * sum_a +
             eta_b * state.non_zero_b_domain.size_as_field_element * sum_b +
             eta_c * state.non_zero_c_domain.size_as_field_element * sum_c;
-        let r_b = state.third_round_message.as_ref().unwrap().r_b;
-        let r_c = state.third_round_message.as_ref().unwrap().r_c;
+        let r_b = state.fourth_round_message.as_ref().unwrap().r_b;
+        let r_c = state.fourth_round_message.as_ref().unwrap().r_c;
 
-        let beta = state.second_round_message.unwrap().beta;
+        let beta = state.third_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = BTreeMap::new();

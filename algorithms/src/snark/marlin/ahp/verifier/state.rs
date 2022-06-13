@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
-        ahp::verifier::{FirstMessage, SecondMessage, ThirdMessage},
+        ahp::verifier::{FirstMessage, FourthMessage, SecondMessage, ThirdMessage},
         MarlinMode,
     },
 };
@@ -37,6 +37,7 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
     pub(crate) first_round_message: Option<FirstMessage<F>>,
     pub(crate) second_round_message: Option<SecondMessage<F>>,
     pub(crate) third_round_message: Option<ThirdMessage<F>>,
+    pub(crate) fourth_round_message: Option<FourthMessage<F>>,
 
     pub(crate) gamma: Option<F>,
     pub(crate) mode: PhantomData<MM>,

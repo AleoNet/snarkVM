@@ -21,7 +21,7 @@ use crate::{
     snark::marlin::{
         ahp::{
             indexer::CircuitInfo,
-            verifier::{FirstMessage, QuerySet, SecondMessage, State, ThirdMessage},
+            verifier::{FirstMessage, FourthMessage, QuerySet, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
         },
@@ -73,6 +73,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             first_round_message: Some(message.clone()),
             second_round_message: None,
             third_round_message: None,
+            fourth_round_message: None,
             gamma: None,
             mode: PhantomData,
         };
@@ -86,10 +87,10 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         fs_rng: &mut R,
     ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
-        let beta = elems[0];
-        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
+        let delta = elems[0];
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(delta).is_zero());
 
-        let message = SecondMessage { beta };
+        let message = SecondMessage { delta };
         state.second_round_message = Some(message);
 
         Ok((message, state))
@@ -100,17 +101,32 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(2, OptimizationType::Weight)?;
-        let r_b = elems[0];
-        let r_c = elems[1];
-        let message = ThirdMessage { r_b, r_c };
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
+        let beta = elems[0];
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
+        let message = ThirdMessage { beta };
         state.third_round_message = Some(message);
+
         Ok((message, state))
     }
 
-    /// Output the third message and next round state.
+    /// Output the fourth message and next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: State<TargetField, MM>,
+        fs_rng: &mut R,
+    ) -> Result<(FourthMessage<TargetField>, State<TargetField, MM>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(2, OptimizationType::Weight)?;
+        let r_b = elems[0];
+        let r_c = elems[1];
+        let message = FourthMessage { r_b, r_c };
+
+        state.fourth_round_message = Some(message);
+        Ok((message, state))
+    }
+
+    /// Output the fifth message and next round state.
+    pub fn verifier_fifth_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<State<TargetField, MM>, AHPError> {

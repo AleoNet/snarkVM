@@ -224,7 +224,7 @@ pub struct Proof<E: PairingEngine> {
     pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c
-    pub msg: ahp::prover::ThirdMessage<E::Fr>,
+    pub msg: ahp::prover::FourthMessage<E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
@@ -236,7 +236,7 @@ impl<E: PairingEngine> Proof<E> {
         batch_size: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
-        msg: ahp::prover::ThirdMessage<E::Fr>,
+        msg: ahp::prover::FourthMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Self {
         Self { batch_size, commitments, evaluations, msg, pc_proof }

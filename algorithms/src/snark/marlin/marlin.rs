@@ -165,7 +165,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
     fn absorb_labeled_with_msg(
         comms: &[LabeledCommitment<Commitment<E>>],
-        message: &prover::ThirdMessage<E::Fr>,
+        message: &prover::FourthMessage<E::Fr>,
         sponge: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
@@ -181,7 +181,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         sponge.absorb_native_field_elements(commitments);
     }
 
-    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
+    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::FourthMessage<E::Fr>, sponge: &mut FS) {
         Self::absorb(commitments, sponge);
         sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
     }
@@ -309,8 +309,8 @@ where
 
         Self::terminate(terminator)?;
 
-        let (prover_third_message, third_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
+        let (third_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_third_round(&verifier_second_msg, prover_state, zk_rng);
         Self::terminate(terminator)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
@@ -322,7 +322,7 @@ where
         )?;
         end_timer!(third_round_comm_time);
 
-        Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
+        Self::absorb_labeled(&third_commitments, &mut sponge);
 
         let (verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
@@ -333,8 +333,8 @@ where
 
         Self::terminate(terminator)?;
 
-        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
+        let (prover_fourth_message, fourth_oracles, prover_state) =
+            AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
@@ -346,9 +346,33 @@ where
         )?;
         end_timer!(fourth_round_comm_time);
 
-        Self::absorb_labeled(&fourth_commitments, &mut sponge);
+        Self::absorb_labeled_with_msg(&fourth_commitments, &prover_fourth_message, &mut sponge);
 
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        let (verifier_fourth_msg, verifier_state) =
+            AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Fifth round
+
+        Self::terminate(terminator)?;
+
+        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
+        let fifth_oracles = AHPForR1CS::<_, MM>::prover_fifth_round(&verifier_fourth_msg, prover_state, zk_rng)?;
+        Self::terminate(terminator)?;
+
+        let fifth_round_comm_time = start_timer!(|| "Committing to fifth round polys");
+        let (fifth_commitments, fifth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
+            &circuit_proving_key.committer_key,
+            fifth_oracles.iter().map(Into::into),
+            terminator,
+            Some(zk_rng),
+        )?;
+        end_timer!(fifth_round_comm_time);
+
+        Self::absorb_labeled(&fifth_commitments, &mut sponge);
+
+        let verifier_state = AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         Self::terminate(terminator)?;
@@ -358,9 +382,10 @@ where
             .circuit
             .iter() // 12 items
             .chain(first_round_oracles.iter_for_open()) // 3 * batch_size + (MM::ZK as usize) items
-            .chain(second_oracles.iter())// 2 items
-            .chain(third_oracles.iter())// 3 items
-            .chain(fourth_oracles.iter())// 1 item
+            .chain(second_oracles.iter())// 1 item
+            .chain(third_oracles.iter())// 1 item
+            .chain(fourth_oracles.iter())// 3 items
+            .chain(fifth_oracles.iter())// 1 item
             .collect();
 
         Self::terminate(terminator)?;
@@ -401,6 +426,7 @@ where
             .chain(second_commitments.into_iter())
             .chain(third_commitments.into_iter())
             .chain(fourth_commitments.into_iter())
+            .chain(fifth_commitments.into_iter())
             .collect();
 
         // Gather commitment randomness together.
@@ -412,6 +438,7 @@ where
             .chain(second_commitment_randomnesses)
             .chain(third_commitment_randomnesses)
             .chain(fourth_commitment_randomnesses)
+            .chain(fifth_commitment_randomnesses)
             .collect();
 
         if !MM::ZK {
@@ -424,7 +451,7 @@ where
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &polynomials,
-            &prover_third_message,
+            &prover_fourth_message,
             &verifier_state,
         )?;
 
@@ -459,7 +486,7 @@ where
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof);
+        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_fourth_message, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         end_timer!(prover_time);
 
@@ -515,19 +542,19 @@ where
 
         let second_round_info =
             AHPForR1CS::<E::Fr, MM>::second_round_polynomial_info(&circuit_verifying_key.circuit_info);
-        let second_commitments = [
-            LabeledCommitment::new_with_info(&second_round_info["g_1"], comms.g_1),
-            LabeledCommitment::new_with_info(&second_round_info["h_1"], comms.h_1),
-        ];
+        let second_commitments = [LabeledCommitment::new_with_info(&second_round_info["g_1"], comms.g_1)];
         let third_round_info =
             AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(&circuit_verifying_key.circuit_info);
-        let third_commitments = [
-            LabeledCommitment::new_with_info(&third_round_info["g_a"], comms.g_a),
-            LabeledCommitment::new_with_info(&third_round_info["g_b"], comms.g_b),
-            LabeledCommitment::new_with_info(&third_round_info["g_c"], comms.g_c),
+        let third_commitments = [LabeledCommitment::new_with_info(&third_round_info["h_1"], comms.h_1)];
+        let fourth_round_info =
+            AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info(&circuit_verifying_key.circuit_info);
+        let fourth_commitments = [
+            LabeledCommitment::new_with_info(&fourth_round_info["g_a"], comms.g_a),
+            LabeledCommitment::new_with_info(&fourth_round_info["g_b"], comms.g_b),
+            LabeledCommitment::new_with_info(&fourth_round_info["g_c"], comms.g_c),
         ];
-        let fourth_round_info = AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info();
-        let fourth_commitments = [LabeledCommitment::new_with_info(&fourth_round_info["h_2"], comms.h_2)];
+        let fifth_round_info = AHPForR1CS::<E::Fr, MM>::fifth_round_polynomial_info();
+        let fifth_commitments = [LabeledCommitment::new_with_info(&fifth_round_info["h_2"], comms.h_2)];
 
         let input_domain =
             EvaluationDomain::<E::Fr>::new(circuit_verifying_key.circuit_info.num_public_inputs).unwrap();
@@ -567,14 +594,20 @@ where
 
         // --------------------------------------------------------------------
         // Third round
-        Self::absorb_labeled_with_msg(&third_commitments, &proof.msg, &mut sponge);
+        Self::absorb_labeled(&third_commitments, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Fourth round
-        Self::absorb_labeled(&fourth_commitments, &mut sponge);
-        let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        Self::absorb_labeled_with_msg(&fourth_commitments, &proof.msg, &mut sponge);
+        let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Fifth round
+        Self::absorb_labeled(&fifth_commitments, &mut sponge);
+        let verifier_state = AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // Collect degree bounds for commitments. Indexed polynomials have *no*

@@ -30,6 +30,7 @@ use snarkvm_utilities::println;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+mod fifth;
 mod first;
 mod fourth;
 mod second;

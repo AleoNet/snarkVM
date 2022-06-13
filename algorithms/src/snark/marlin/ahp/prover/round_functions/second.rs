@@ -50,19 +50,16 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the second round.
     pub fn num_second_round_oracles() -> usize {
-        2
+        1
     }
 
     /// Output the degree bounds of oracles in the first round.
     pub fn second_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
-        [
-            PolynomialInfo::new("g_1".into(), Some(constraint_domain_size - 2), Self::zk_bound()),
-            PolynomialInfo::new("h_1".into(), None, None),
-        ]
-        .into_iter()
-        .map(|info| (info.label().into(), info))
-        .collect()
+        [PolynomialInfo::new("g_1".into(), Some(constraint_domain_size - 2), Self::zk_bound())]
+            .into_iter()
+            .map(|info| (info.label().into(), info))
+            .collect()
     }
 
     /// Output the second round message and the next state.
@@ -98,22 +95,23 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let sumcheck_lhs = Self::calculate_lhs(&state, t, summed_z_m, z, *alpha);
 
-        assert!(
+        debug_assert!(
             sumcheck_lhs.evaluate_over_domain_by_ref(constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
         );
 
+        state.lin = Some(sumcheck_lhs.clone());
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
-        let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+        let (_h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+        state.x_g_1 = Some(x_g_1.clone());
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         drop(x_g_1);
         end_timer!(sumcheck_time);
 
         assert!(g_1.degree() <= constraint_domain.size() - 2);
-        assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
+        // assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
 
         let oracles = prover::SecondOracles {
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), zk_bound),
-            h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
         assert!(oracles.matches_info(&Self::second_round_polynomial_info(&state.index.index_info)));
 
