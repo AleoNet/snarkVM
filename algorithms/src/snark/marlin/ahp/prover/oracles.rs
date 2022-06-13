@@ -88,14 +88,25 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
         let z_c = self.z_c.clone();
         self.z_c = LabeledPolynomialWithBasis { polynomial: vec![], info: z_c.info().clone() };
 
+        let s_m_poly = self.s_m_poly.clone();
+        let s_l_poly = self.s_l_poly.clone();
         let f_poly = self.f_poly.clone();
-        [w_poly.into(), z_a, z_b, z_c, f_poly.into()].into_iter()
+        [w_poly.into(), z_a, z_b, z_c, s_m_poly.into(), s_l_poly.into(), f_poly.into()].into_iter()
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
     pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [(&self.w_poly), &self.z_a_poly, &self.z_b_poly, &self.z_c_poly, (&self.f_poly)].into_iter()
+        [
+            (&self.w_poly),
+            &self.z_a_poly,
+            &self.z_b_poly,
+            &self.z_c_poly,
+            (&self.s_m_poly),
+            (&self.s_l_poly),
+            (&self.f_poly),
+        ]
+        .into_iter()
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
@@ -106,6 +117,8 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
             && Some(self.z_a_poly.info()) == info.get(self.z_a_poly.label())
             && Some(self.z_b_poly.info()) == info.get(self.z_b_poly.label())
             && Some(self.z_c_poly.info()) == info.get(self.z_c_poly.label())
+            && Some(self.s_m_poly.info()) == info.get(self.s_m_poly.label())
+            && Some(self.s_l_poly.info()) == info.get(self.s_l_poly.label())
             && Some(self.f_poly.info()) == info.get(self.f_poly.label())
     }
 }

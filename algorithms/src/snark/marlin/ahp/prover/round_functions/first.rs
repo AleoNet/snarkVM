@@ -44,7 +44,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        3 * batch_size + (MM::ZK as usize)
+        7 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -55,6 +55,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("w", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_a", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("z_c", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("s_m", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("s_l", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("f", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
@@ -283,7 +287,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
 
         let poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
-        PoolResult::Query(LabeledPolynomial::new(label, poly, None, None))
+        PoolResult::Query(LabeledPolynomial::new(label, poly, None, Self::zk_bound()))
     }
 
     fn calculate_selector<'a>(
@@ -300,7 +304,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let evals = EvaluationsOnDomain::from_vec_and_domain(selector_evals, constraint_domain);
 
         let poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
-        PoolResult::Selector(LabeledPolynomial::new(label, poly, None, None))
+        PoolResult::Selector(LabeledPolynomial::new(label, poly, None, Self::zk_bound()))
     }
 }
 

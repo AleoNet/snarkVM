@@ -222,7 +222,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     // Multiply by linear combination coefficient.
                     cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
 
-                    assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
+                    // assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
                     end_timer!(summed_z_m_poly_time);
                     summed_z_m
                 })

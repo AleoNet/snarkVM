@@ -406,14 +406,15 @@ where
             mask_poly,
 
             g_1: *second_commitments[0].commitment(),
-            h_1: *second_commitments[1].commitment(),
+
+            h_1: *third_commitments[0].commitment(),
 
 
-            g_a: *third_commitments[0].commitment(),
-            g_b: *third_commitments[1].commitment(),
-            g_c: *third_commitments[2].commitment(),
+            g_a: *fourth_commitments[0].commitment(),
+            g_b: *fourth_commitments[1].commitment(),
+            g_c: *fourth_commitments[2].commitment(),
 
-            h_2: *fourth_commitments[0].commitment(),
+            h_2: *fifth_commitments[0].commitment(),
         };
 
         let labeled_commitments: Vec<_> = circuit_proving_key
@@ -520,12 +521,15 @@ where
 
         let batch_size = public_inputs.len();
 
+        println!("{batch_size}");
+        println!("{}", comms.witness_commitments.len());
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_size);
         let mut first_commitments = comms
             .witness_commitments
             .iter()
             .enumerate()
             .flat_map(|(i, c)| {
+                println!("{:?}", witness_label("w", i));
                 [
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("w", i)], c.w),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_a", i)], c.z_a),
