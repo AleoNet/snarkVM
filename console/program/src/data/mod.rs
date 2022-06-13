@@ -21,46 +21,13 @@ pub(super) mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
-pub use literal::Literal;
+pub use literal::{Literal, LiteralType};
 
 mod plaintext;
-pub use plaintext::Plaintext;
+pub use plaintext::{Plaintext, PlaintextType};
+
+mod record;
+pub use record::Record;
 
 mod value;
-pub use value::Value;
-
-mod decrypt;
-mod encrypt;
-mod to_bits;
-mod to_id;
-
-use snarkvm_console_account::{Address, ViewKey};
-use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Group, Scalar};
-
-use core::ops::Deref;
-
-pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> Result<u16>;
-}
-
-/// A value stored in program data.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Data<N: Network, Private: Visibility<N>>(Vec<(Identifier<N>, Value<N, Private>)>);
-
-impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Value<N, Private>)>> for Data<N, Private> {
-    /// Initializes a new `Data` value from a vector of `(Identifier, Value)` pairs.
-    fn from(entries: Vec<(Identifier<N>, Value<N, Private>)>) -> Self {
-        Self(entries)
-    }
-}
-
-impl<N: Network, Private: Visibility<N>> Deref for Data<N, Private> {
-    type Target = [(Identifier<N>, Value<N, Private>)];
-
-    /// Dereferences the data into a slice of `(Identifier, Value)` tuples.
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+pub use value::{Value, ValueType};

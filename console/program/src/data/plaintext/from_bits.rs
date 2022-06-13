@@ -21,11 +21,11 @@ impl<N: Network> FromBits for Plaintext<N> {
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
         let mut counter = 0;
 
-        let is_literal = !bits_le[counter];
-        counter += 1;
+        let variant = [bits_le[counter], bits_le[counter + 1]];
+        counter += 2;
 
         // Literal
-        if is_literal {
+        if variant == [false, false] {
             let literal_variant = u8::from_bits_le(&bits_le[counter..counter + 8])?;
             counter += 8;
 
@@ -43,7 +43,7 @@ impl<N: Network> FromBits for Plaintext<N> {
             }
         }
         // Interface
-        else {
+        else if variant == [false, true] {
             let num_members = u8::from_bits_le(&bits_le[counter..counter + 8])?;
             counter += 8;
 
@@ -74,17 +74,59 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
         }
+        // // Record
+        // else if variant == [true, false] {
+        //     let owner = Address::from_bits_le(&bits_le[counter..counter + Address::<N>::size_in_bits()])?;
+        //     counter += Address::<N>::size_in_bits();
+        //
+        //     let balance = U64::from_bits_le(&bits_le[counter..counter + U64::<N>::size_in_bits()])?;
+        //     counter += U64::<N>::size_in_bits();
+        //
+        //     let num_members = u8::from_bits_le(&bits_le[counter..counter + 8])?;
+        //     counter += 8;
+        //
+        //     let mut members = IndexMap::with_capacity(num_members as usize);
+        //     for _ in 0..num_members {
+        //         let identifier_size = u8::from_bits_le(&bits_le[counter..counter + 8])?;
+        //         counter += 8;
+        //
+        //         let identifier = Identifier::from_bits_le(&bits_le[counter..counter + identifier_size as usize])?;
+        //         counter += identifier_size as usize;
+        //
+        //         let member_size = u16::from_bits_le(&bits_le[counter..counter + 16])?;
+        //         counter += 16;
+        //
+        //         let value = Plaintext::from_bits_le(&bits_le[counter..counter + member_size as usize])?;
+        //         counter += member_size as usize;
+        //
+        //         if members.insert(identifier, value).is_some() {
+        //             bail!("Duplicate identifier in record.");
+        //         }
+        //     }
+        //
+        //     // Store the plaintext bits in the cache.
+        //     let cache = OnceCell::new();
+        //     match cache.set(bits_le.to_vec()) {
+        //         // Return the record.
+        //         Ok(_) => Ok(Self::Record(owner, balance, members, cache)),
+        //         Err(_) => bail!("Failed to store the plaintext bits in the cache."),
+        //     }
+        // }
+        // Unknown variant.
+        else {
+            bail!("Unknown plaintext variant.");
+        }
     }
 
     /// Initializes a new plaintext from a list of big-endian bits *without* trailing zeros.
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
         let mut counter = 0;
 
-        let is_literal = !bits_be[counter];
-        counter += 1;
+        let variant = [bits_be[counter], bits_be[counter + 1]];
+        counter += 2;
 
         // Literal
-        if is_literal {
+        if variant == [false, false] {
             let literal_variant = u8::from_bits_be(&bits_be[counter..counter + 8])?;
             counter += 8;
 
@@ -102,7 +144,7 @@ impl<N: Network> FromBits for Plaintext<N> {
             }
         }
         // Interface
-        else {
+        else if variant == [false, true] {
             let num_members = u8::from_bits_be(&bits_be[counter..counter + 8])?;
             counter += 8;
 
@@ -132,6 +174,48 @@ impl<N: Network> FromBits for Plaintext<N> {
                 Ok(_) => Ok(Self::Interface(members, cache)),
                 Err(_) => bail!("Failed to store the plaintext bits in the cache."),
             }
+        }
+        // // Record
+        // else if variant == [true, false] {
+        //     let owner = Address::from_bits_be(&bits_be[counter..counter + Address::<N>::size_in_bits()])?;
+        //     counter += Address::<N>::size_in_bits();
+        //
+        //     let balance = U64::from_bits_be(&bits_be[counter..counter + U64::<N>::size_in_bits()])?;
+        //     counter += U64::<N>::size_in_bits();
+        //
+        //     let num_members = u8::from_bits_be(&bits_be[counter..counter + 8])?;
+        //     counter += 8;
+        //
+        //     let mut members = IndexMap::with_capacity(num_members as usize);
+        //     for _ in 0..num_members {
+        //         let identifier_size = u8::from_bits_be(&bits_be[counter..counter + 8])?;
+        //         counter += 8;
+        //
+        //         let identifier = Identifier::from_bits_be(&bits_be[counter..counter + identifier_size as usize])?;
+        //         counter += identifier_size as usize;
+        //
+        //         let member_size = u16::from_bits_be(&bits_be[counter..counter + 16])?;
+        //         counter += 16;
+        //
+        //         let value = Plaintext::from_bits_be(&bits_be[counter..counter + member_size as usize])?;
+        //         counter += member_size as usize;
+        //
+        //         if members.insert(identifier, value).is_some() {
+        //             bail!("Duplicate identifier in record.");
+        //         }
+        //     }
+        //
+        //     // Store the plaintext bits in the cache.
+        //     let cache = OnceCell::new();
+        //     match cache.set(bits_be.to_vec()) {
+        //         // Return the record.
+        //         Ok(_) => Ok(Self::Record(owner, balance, members, cache)),
+        //         Err(_) => bail!("Failed to store the plaintext bits in the cache."),
+        //     }
+        // }
+        // Unknown variant.
+        else {
+            bail!("Unknown plaintext variant.");
         }
     }
 }

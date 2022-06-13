@@ -17,12 +17,13 @@
 use super::*;
 
 impl<N: Network> Value<N, Plaintext<N>> {
-    /// Returns this value as a plaintext value.
-    pub const fn to_plaintext(&self) -> &Plaintext<N> {
+    /// Returns the value from the given path.
+    pub fn find(&self, path: &[Identifier<N>]) -> Result<Value<N, Plaintext<N>>> {
         match self {
-            Self::Constant(plaintext) => plaintext,
-            Self::Public(plaintext) => plaintext,
-            Self::Private(plaintext) => plaintext,
+            Value::Constant(plaintext) => Ok(Value::Constant(plaintext.find(path)?)),
+            Value::Public(plaintext) => Ok(Value::Public(plaintext.find(path)?)),
+            Value::Private(plaintext) => Ok(Value::Private(plaintext.find(path)?)),
+            Value::Record(record) => record.find(path),
         }
     }
 }

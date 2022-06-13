@@ -17,7 +17,7 @@
 use crate::prelude::*;
 
 /// Representation of an address.
-pub trait AddressTrait: Copy + Clone + Debug + Deref + Eq + Parser + Send + Sync + TypeName {}
+pub trait AddressTrait: Copy + Clone + Debug + Deref + Eq + Parser + Send + Sync + TypeName + Visibility {}
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
@@ -117,6 +117,7 @@ pub trait GroupTrait<S: ScalarTrait>:
     + for<'a> Sum<&'a Self>
     + TypeName
     + Uniform
+    + Visibility
     + Zero
 {
 }
@@ -226,6 +227,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + for<'a> SubAssign<&'a Self>
     + TypeName
     + Uniform
+    + Visibility
     + Zero
 {
 }

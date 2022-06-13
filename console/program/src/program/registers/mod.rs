@@ -14,23 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{PlaintextType, Program, Register, ValueType};
+use crate::{Identifier, PlaintextType, Program, Register, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RegisterType<N: Network> {
-    /// An input register type contains a plaintext type with visibility.
-    Input(ValueType<N>),
-    /// A destination register type contains a plaintext type from an instruction.
-    Destination(PlaintextType<N>),
+    /// A plaintext type.
+    Plaintext(PlaintextType<N>),
+    /// A record name.
+    Record(Identifier<N>),
+}
+
+impl<N: Network> Display for RegisterType<N> {
+    /// Prints the register type as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            // Prints the plaintext type, i.e. signature
+            Self::Plaintext(plaintext_type) => write!(f, "{plaintext_type}"),
+            // Prints the record name, i.e. token.record
+            Self::Record(record_name) => write!(f, "{record_name}.record"),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {
-    /// The mapping of all registers to their defined types.
-    register_types: IndexMap<u64, RegisterType<N>>,
+    /// The mapping of all input registers to their defined types.
+    input_registers: IndexMap<u64, ValueType<N>>,
+    /// The mapping of all destination registers to their defined types.
+    destination_registers: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all output registers to their defined types.
     output_registers: IndexMap<Register<N>, ValueType<N>>,
 }
@@ -38,20 +52,24 @@ pub struct RegisterTypes<N: Network> {
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes`.
     pub fn new() -> Self {
-        Self { register_types: IndexMap::new(), output_registers: IndexMap::new() }
+        Self {
+            input_registers: IndexMap::new(),
+            destination_registers: IndexMap::new(),
+            output_registers: IndexMap::new(),
+        }
     }
 
     /// Returns `true` if the given register exists.
     pub fn contains(&self, register: &Register<N>) -> bool {
-        self.register_types.contains_key(&register.locator())
+        // The input and destination registers represent the full set of registers.
+        // The output registers represent the subset of registers that are returned by the function.
+        self.input_registers.contains_key(&register.locator())
+            || self.destination_registers.contains_key(&register.locator())
     }
 
     /// Returns `true` if the given register corresponds to an input register.
     pub fn is_input(&self, register: &Register<N>) -> bool {
-        self.register_types
-            .get(&register.locator())
-            .map(|register_type| matches!(*register_type, RegisterType::Input(..)))
-            .unwrap_or(false)
+        self.input_registers.contains_key(&register.locator())
     }
 
     /// Returns `true` if the given register corresponds to an output register.
@@ -60,11 +78,8 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns an iterator over all input registers.
-    pub fn to_inputs(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
-        self.register_types
-            .iter()
-            .filter(|(_, register_type)| matches!(*register_type, RegisterType::Input(..)))
-            .map(|(locator, register_type)| (Register::Locator(*locator), *register_type))
+    pub fn to_inputs(&self) -> impl '_ + Iterator<Item = (Register<N>, ValueType<N>)> {
+        self.input_registers.iter().map(|(locator, value_type)| (Register::Locator(*locator), *value_type))
     }
 
     /// Returns an iterator over all output registers.
@@ -72,22 +87,51 @@ impl<N: Network> RegisterTypes<N> {
         self.output_registers.iter()
     }
 
-    /// Inserts the given register and type into the registers.
-    /// Note: The given register must be a `Register::Locator`.
-    pub fn insert(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
-        // Check the register.
+    /// Inserts the given input register and type into the registers.
+    /// Note: The given input register must be a `Register::Locator`.
+    pub fn add_input(&mut self, register: Register<N>, value_type: ValueType<N>) -> Result<()> {
+        // Ensure there are no destination or output registers set yet.
+        ensure!(
+            self.destination_registers.is_empty(),
+            "Cannot add input register after destination registers have been set."
+        );
+        ensure!(self.output_registers.is_empty(), "Cannot add input register after output registers have been set.");
+
+        // Check the input register.
         match register {
             Register::Locator(locator) => {
                 // Ensure the registers are monotonically increasing.
-                ensure!(self.register_types.len() as u64 == locator, "Register '{register}' is out of order");
+                ensure!(self.input_registers.len() as u64 == locator, "Register '{register}' is out of order");
             }
             // Ensure the register is a locator, and not a member.
             Register::Member(..) => bail!("Register '{register}' must be a locator."),
         }
-        // Insert the register and type.
-        match self.register_types.insert(register.locator(), register_type) {
+        // Insert the input register and type.
+        match self.input_registers.insert(register.locator(), value_type) {
             // If the register already exists, throw an error.
-            Some(..) => bail!("Register '{register}' already exists"),
+            Some(..) => bail!("Input '{register}' already exists"),
+            // If the register does not exist, return success.
+            None => Ok(()),
+        }
+    }
+
+    /// Inserts the given destination register and type into the registers.
+    /// Note: The given destination register must be a `Register::Locator`.
+    pub fn add_destination(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
+        // Check the destination register.
+        match register {
+            Register::Locator(locator) => {
+                // Ensure the registers are monotonically increasing.
+                let expected_locator = (self.input_registers.len() as u64) + self.destination_registers.len() as u64;
+                ensure!(expected_locator == locator, "Register '{register}' is out of order");
+            }
+            // Ensure the register is a locator, and not a member.
+            Register::Member(..) => bail!("Register '{register}' must be a locator."),
+        }
+        // Insert the destination register and type.
+        match self.destination_registers.insert(register.locator(), register_type) {
+            // If the register already exists, throw an error.
+            Some(..) => bail!("Destination '{register}' already exists"),
             // If the register does not exist, return success.
             None => Ok(()),
         }
@@ -107,40 +151,48 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the plaintext type of the given register.
-    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<PlaintextType<N>> {
-        // Retrieve the (starting) plaintext type.
-        let plaintext_type = match self.register_types.get(&register.locator()) {
-            // Retrieve the plaintext type from the value type.
-            Some(RegisterType::Input(value_type)) => value_type.to_plaintext_type(),
-            // Retrieve the plaintext type.
-            Some(RegisterType::Destination(plaintext_type)) => *plaintext_type,
-            // Ensure the register is defined.
-            None => bail!("Register '{register}' does not exist"),
+    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<RegisterType<N>> {
+        // Determine if the register is an input register.
+        // Initialize a tracker for the register type.
+        let mut register_type = if self.is_input(register) {
+            // Retrieve the input value type as a register type.
+            match self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))? {
+                ValueType::Constant(plaintext_type)
+                | ValueType::Public(plaintext_type)
+                | ValueType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
+                ValueType::Record(record_name) => RegisterType::Record(*record_name),
+            }
+        } else {
+            // Retrieve the destination register type.
+            *self
+                .destination_registers
+                .get(&register.locator())
+                .ok_or_else(|| anyhow!("'{register}' does not exist"))?
         };
 
         match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => Ok(plaintext_type),
+            Register::Locator(..) => Ok(register_type),
             // If the register is a member, then traverse the member path to output the register type.
             Register::Member(_, path) => {
                 // Ensure the member path is valid.
                 ensure!(path.len() > 0, "Register '{register}' references no members.");
 
-                // Initialize a tracker for the plaintext type.
-                let mut plaintext_type = plaintext_type;
                 // Traverse the member path to find the register type.
                 for member_name in path.iter() {
-                    match plaintext_type {
+                    match &register_type {
                         // Ensure the plaintext type is not a literal, as the register references a member.
-                        PlaintextType::Literal(..) => bail!("Register '{register}' references a literal."),
+                        RegisterType::Plaintext(PlaintextType::Literal(..)) => {
+                            bail!("Register '{register}' references a literal.")
+                        }
                         // Traverse the member path to output the register type.
-                        PlaintextType::Interface(interface_name) => {
+                        RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                             // Retrieve the interface.
                             match program.get_interface(&interface_name) {
                                 // Retrieve the member type from the interface.
                                 Ok(interface) => match interface.members().get(member_name) {
-                                    // Update the plaintext type.
-                                    Some(member_type) => plaintext_type = *member_type,
+                                    // Update the member type.
+                                    Some(plaintext_type) => register_type = RegisterType::Plaintext(*plaintext_type),
                                     None => {
                                         bail!("Member '{member_name}' does not exist in '{interface_name}'")
                                     }
@@ -150,10 +202,35 @@ impl<N: Network> RegisterTypes<N> {
                                 }
                             }
                         }
+                        RegisterType::Record(record_name) => {
+                            // Retrieve the record.
+                            match program.get_record(&record_name) {
+                                // Retrieve the member type from the record.
+                                Ok(record_type) => match record_type.entries().get(member_name) {
+                                    // Update the member type.
+                                    Some(value_type) => {
+                                        register_type = match value_type {
+                                            ValueType::Constant(plaintext_type)
+                                            | ValueType::Public(plaintext_type)
+                                            | ValueType::Private(plaintext_type) => {
+                                                RegisterType::Plaintext(*plaintext_type)
+                                            }
+                                            ValueType::Record(record_name) => RegisterType::Record(*record_name),
+                                        }
+                                    }
+                                    None => {
+                                        bail!("Member '{member_name}' does not exist in '{record_name}'")
+                                    }
+                                },
+                                Err(..) => {
+                                    bail!("'{register}' references a missing record '{record_name}'.")
+                                }
+                            }
+                        }
                     }
                 }
                 // Output the member type.
-                Ok(plaintext_type)
+                Ok(register_type)
             }
         }
     }

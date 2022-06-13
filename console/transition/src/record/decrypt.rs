@@ -37,7 +37,7 @@ impl<N: Network> Record<N> {
         ensure!(self.mac == candidate_mac, "Failed to decrypt using the given record view key");
 
         // Compute the randomizers.
-        let randomizers = N::hash_many_psd2(&[N::encryption_domain(), *record_view_key], 3);
+        let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *record_view_key], 3);
 
         // Decrypt and recover the owner.
         let owner = Address::new(Group::from_x_coordinate(self.owner - randomizers[0])?);

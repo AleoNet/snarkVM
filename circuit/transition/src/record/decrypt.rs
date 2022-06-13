@@ -32,7 +32,7 @@ impl<A: Aleo> Record<A> {
     /// Returns the state corresponding to the record using the given record view key.
     pub fn decrypt_symmetric(&self, record_view_key: &Field<A>) -> State<A> {
         // Compute the randomizers.
-        let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);
+        let randomizers = A::hash_many_psd8(&[A::encryption_domain(), record_view_key.clone()], 2);
         // Decrypt and recover the owner.
         let owner = Address::from_field(&self.owner - &randomizers[0]);
         // Decrypt and recover the balance.

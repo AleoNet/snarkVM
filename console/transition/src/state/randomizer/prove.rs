@@ -31,11 +31,8 @@ impl<N: Network> Randomizer<N> {
         let serial_numbers_digest = N::hash_bhp1024(&serial_numbers.to_bits_le())?;
 
         // Compute the generator `H` as `HashToGroup([ Hash(serial_numbers) || output_index ])`.
-        let generator_h = N::hash_to_group_psd4(&[
-            N::randomizer_domain(),
-            serial_numbers_digest,
-            Field::<N>::from_u16(*output_index),
-        ])?;
+        let generator_h =
+            N::hash_to_group_psd4(&[N::randomizer_domain(), serial_numbers_digest, output_index.to_field()])?;
 
         // Compute `address` as `view_key * G`.
         let address = Address::try_from(view_key)?;

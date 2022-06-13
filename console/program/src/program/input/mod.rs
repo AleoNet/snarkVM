@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod parse;
+// mod bytes;
+// mod parse;
 
-use crate::PlaintextType;
+use crate::{Plaintext, Record};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -26,26 +26,10 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use enum_index::EnumIndex;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum ValueType<N: Network> {
-    /// A constant value.
-    Constant(PlaintextType<N>),
-    /// A publicly-visible value.
-    Public(PlaintextType<N>),
-    /// A private value decrypted with the account owner's address.
-    Private(PlaintextType<N>),
-}
-
-impl<N: Network> ValueType<N> {
-    /// Returns the value type as a plaintext type.
-    #[inline]
-    pub fn to_plaintext_type(&self) -> PlaintextType<N> {
-        match self {
-            ValueType::Constant(plaintext_type) => *plaintext_type,
-            ValueType::Public(plaintext_type) => *plaintext_type,
-            ValueType::Private(plaintext_type) => *plaintext_type,
-        }
-    }
+#[derive(Clone, PartialEq, Eq)]
+pub enum Input<N: Network> {
+    /// A plaintext value.
+    Plaintext(Plaintext<N>),
+    /// A record value.
+    Record(Record<N, Plaintext<N>>),
 }

@@ -22,6 +22,12 @@ impl<N: Network> FromBytes for RecordType<N> {
         // Read the name of the record type.
         let name = Identifier::read_le(&mut reader)?;
 
+        // Read the indicator for whether the owner `IsPrivate`.
+        let owner = u8::read_le(&mut reader)? == 1;
+
+        // Read the indicator for whether the balance `IsPrivate`.
+        let balance = u8::read_le(&mut reader)? == 1;
+
         // Read the number of entries.
         let num_entries = u16::read_le(&mut reader)?;
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
@@ -44,7 +50,7 @@ impl<N: Network> FromBytes for RecordType<N> {
             };
         }
 
-        Ok(Self { name, entries })
+        Ok(Self { name, owner, balance, entries })
     }
 }
 
@@ -58,6 +64,12 @@ impl<N: Network> ToBytes for RecordType<N> {
 
         // Write the name of the record type.
         self.name.write_le(&mut writer)?;
+
+        // Write the indicator for whether the owner `IsPrivate`.
+        (self.owner as u8).write_le(&mut writer)?;
+
+        // Write the indicator for whether the balance `IsPrivate`.
+        (self.balance as u8).write_le(&mut writer)?;
 
         // Write the number of entries.
         (self.entries.len() as u16).write_le(&mut writer)?;
@@ -82,7 +94,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let expected = RecordType::<CurrentNetwork>::from_str(
-            "record message:\n    first as field.constant;\n    second as field.public;",
+            "record message:\n    owner as address.public;\n    balance as u64.private;\n    first as field.constant;\n    second as field.public;",
         )?;
         let candidate = RecordType::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
         assert_eq!(expected, candidate);

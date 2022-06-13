@@ -18,14 +18,19 @@ mod arithmetic;
 mod bitwise;
 mod compare;
 mod from_bits;
+mod from_field;
+mod from_fields;
 mod one;
 mod parse;
 mod random;
 mod size_in_bits;
 mod to_bits;
+mod to_field;
+mod to_fields;
 mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;
+pub use snarkvm_console_types_field::Field;
 
 use snarkvm_console_network_environment::traits::integers::*;
 
@@ -54,6 +59,13 @@ pub struct Integer<E: Environment, I: IntegerType> {
 impl<E: Environment, I: IntegerType> IntegerTrait<I, U8<E>, U16<E>, U32<E>> for Integer<E, I> {}
 
 impl<E: Environment, I: IntegerType> IntegerCore<I> for Integer<E, I> {}
+
+impl<E: Environment, I: IntegerType> Visibility for Integer<E, I> {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16> {
+        Ok(1)
+    }
+}
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     pub const MAX: Self = Self::new(I::MAX);

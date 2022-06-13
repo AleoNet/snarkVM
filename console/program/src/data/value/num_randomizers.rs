@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, Private: Visibility<N>> Value<N, Private> {
+impl<N: Network, Private: Visibility> Value<N, Private> {
     /// Returns the number of field elements to encode `self`.
     pub(crate) fn num_randomizers(&self) -> Result<u16> {
         match self {
@@ -24,6 +24,8 @@ impl<N: Network, Private: Visibility<N>> Value<N, Private> {
             Self::Constant(..) | Self::Public(..) => Ok(0u16),
             // Private values need one randomizer per field element.
             Self::Private(private) => private.size_in_fields(),
+            // Record values can recursively determine the number of randomizers.
+            Self::Record(record) => record.num_randomizers(),
         }
     }
 }

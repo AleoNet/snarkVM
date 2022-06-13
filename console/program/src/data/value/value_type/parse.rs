@@ -22,18 +22,13 @@ impl<N: Network> Parser for ValueType<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
-        // Parse the plaintext type from the string.
-        let (string, plaintext_type) = PlaintextType::parse(string)?;
-        // Parse the "." from the string.
-        let (string, _) = tag(".")(string)?;
         // Parse the mode from the string.
-        let (string, value_type) = alt((
-            map(tag("constant"), move |_| Self::Constant(plaintext_type)),
-            map(tag("public"), move |_| Self::Public(plaintext_type)),
-            map(tag("private"), move |_| Self::Private(plaintext_type)),
-        ))(string)?;
-        // Return the value type.
-        Ok((string, value_type))
+        alt((
+            map(pair(PlaintextType::parse, tag(".constant")), |(plaintext_type, _)| Self::Constant(plaintext_type)),
+            map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Public(plaintext_type)),
+            map(pair(PlaintextType::parse, tag(".private")), |(plaintext_type, _)| Self::Private(plaintext_type)),
+            map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
+        ))(string)
     }
 }
 
@@ -68,6 +63,7 @@ impl<N: Network> Display for ValueType<N> {
             Self::Constant(plaintext_type) => write!(f, "{plaintext_type}.constant"),
             Self::Public(plaintext_type) => write!(f, "{plaintext_type}.public"),
             Self::Private(plaintext_type) => write!(f, "{plaintext_type}.private"),
+            Self::Record(identifier) => write!(f, "{identifier}.record"),
         }
     }
 }
@@ -109,6 +105,12 @@ mod tests {
             ValueType::<CurrentNetwork>::parse("signature.private")
         );
 
+        // Record type.
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("token.record")?)),
+            ValueType::<CurrentNetwork>::parse("token.record")
+        );
+
         Ok(())
     }
 
@@ -118,6 +120,8 @@ mod tests {
         assert!(ValueType::<CurrentNetwork>::parse("field").is_err());
         // Interface type must contain visibility.
         assert!(ValueType::<CurrentNetwork>::parse("signature").is_err());
+        // Record type must contain record keyword.
+        assert!(ValueType::<CurrentNetwork>::parse("token").is_err());
 
         // Must be non-empty.
         assert!(ValueType::<CurrentNetwork>::parse("").is_err());
@@ -160,6 +164,8 @@ mod tests {
         assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.constant")?.to_string(), "signature.constant");
         assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.public")?.to_string(), "signature.public");
         assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.private")?.to_string(), "signature.private");
+
+        assert_eq!(ValueType::<CurrentNetwork>::from_str("token.record")?.to_string(), "token.record");
 
         Ok(())
     }

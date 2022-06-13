@@ -14,39 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod decrypt;
-mod encrypt;
+mod value_type;
+pub use value_type::ValueType;
+
+mod find;
 mod num_randomizers;
 mod to_bits;
-mod to_plaintext;
 
-use crate::{Ciphertext, Plaintext, Visibility};
+use crate::{Ciphertext, Identifier, Plaintext, Record, Visibility};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
 /// A value stored in program data.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Value<N: Network, Private: Visibility<N>> {
+pub enum Value<N: Network, Private: Visibility> {
     /// A constant value.
     Constant(Plaintext<N>),
     /// A publicly-visible value.
     Public(Plaintext<N>),
     /// A private value encrypted under the account owner's address.
     Private(Private),
+    /// A record type inherits its visibility from its record definition.
+    Record(Record<N, Private>),
 }
-
-// impl<N: Network, Private: Visibility<N>>> Value<N, Private> {
-//     // /// Returns the recursive depth of this value.
-//     // /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
-//     // fn depth(&self, counter: usize) -> usize {
-//     //     match self {
-//     //         Self::Literal(..) => 1,
-//     //         Self::Composite(composite) => {
-//     //             // Determine the maximum depth of the composite.
-//     //             let max_depth = composite.iter().map(|(_, value)| value.depth(counter)).fold(0, |a, b| a.max(b));
-//     //             // Add `1` to the depth of the member with the largest depth.
-//     //             max_depth.saturating_add(1)
-//     //         }
-//     //     }
-//     // }
-// }

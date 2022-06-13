@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Visibility<N> for Plaintext<N> {
+impl<N: Network> Visibility for Plaintext<N> {
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         // Compute the number of bits.

@@ -23,17 +23,14 @@ impl<N: Network> Randomizer<N> {
         let (gamma, challenge, response) = self.proof;
 
         // Compute the generator `H` as `HashToGroup([ Hash(serial_numbers) || output_index ])`.
-        let generator_h = match N::hash_to_group_psd4(&[
-            N::randomizer_domain(),
-            serial_numbers_digest,
-            Field::<N>::from_u16(*output_index),
-        ]) {
-            Ok(generator_h) => generator_h,
-            Err(err) => {
-                eprintln!("Failed to compute the generator H: {err}");
-                return false;
-            }
-        };
+        let generator_h =
+            match N::hash_to_group_psd4(&[N::randomizer_domain(), serial_numbers_digest, output_index.to_field()]) {
+                Ok(generator_h) => generator_h,
+                Err(err) => {
+                    eprintln!("Failed to compute the generator H: {err}");
+                    return false;
+                }
+            };
 
         // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
         let u = (**address * challenge) + N::g_scalar_multiply(&response);

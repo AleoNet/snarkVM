@@ -2425,6 +2425,7 @@ name = "snarkvm-console-types-integers"
 version = "0.7.5"
 dependencies = [
  "snarkvm-console-network-environment",
+ "snarkvm-console-types-field",
 ]
 
 [[package]]

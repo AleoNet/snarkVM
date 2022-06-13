@@ -188,19 +188,4 @@ interface message:
         );
         assert!(candidate.is_err());
     }
-
-    // #[test]
-    // fn test_matches() {
-    //     // Test a struct.
-    //     let message =
-    //         Definition::<CurrentNetwork>::from_str("interface message:\n    first as field.public;\n    second as field.private;");
-    //     let message_value = Value::from_str("message { 2field.public, 3field.private }");
-    //     let message_value_fails_1 = Value::from_str("message { 2field.public }");
-    //     let message_value_fails_2 = Value::from_str("message { 2field.private, 3field.private }");
-    //     let message_value_fails_3 = Value::from_str("message { 2field.public, 3field.private, 2field.public }");
-    //     assert!(message.matches(&message_value));
-    //     assert!(!message.matches(&message_value_fails_1));
-    //     assert!(!message.matches(&message_value_fails_2));
-    //     assert!(!message.matches(&message_value_fails_3));
-    // }
 }

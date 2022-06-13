@@ -50,7 +50,7 @@ pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Value<A, Pr
 
 #[cfg(console)]
 impl<A: Aleo> Inject for Data<A, Plaintext<A>> {
-    type Primitive = console::Data<A::Network, console::Plaintext<A::Network>>;
+    type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
 
     /// Initializes plaintext data from a primitive.
     fn new(mode: Mode, data: Self::Primitive) -> Self {
@@ -61,7 +61,7 @@ impl<A: Aleo> Inject for Data<A, Plaintext<A>> {
 
 #[cfg(console)]
 impl<A: Aleo> Inject for Data<A, Ciphertext<A>> {
-    type Primitive = console::Data<A::Network, console::Ciphertext<A::Network>>;
+    type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
 
     /// Initializes ciphertext data from a primitive.
     fn new(mode: Mode, data: Self::Primitive) -> Self {
@@ -72,7 +72,7 @@ impl<A: Aleo> Inject for Data<A, Ciphertext<A>> {
 
 #[cfg(console)]
 impl<A: Aleo> Eject for Data<A, Plaintext<A>> {
-    type Primitive = console::Data<A::Network, console::Plaintext<A::Network>>;
+    type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
 
     /// Ejects the mode of the data.
     fn eject_mode(&self) -> Mode {
@@ -89,7 +89,7 @@ impl<A: Aleo> Eject for Data<A, Plaintext<A>> {
 
 #[cfg(console)]
 impl<A: Aleo> Eject for Data<A, Ciphertext<A>> {
-    type Primitive = console::Data<A::Network, console::Ciphertext<A::Network>>;
+    type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
 
     /// Ejects the mode of the data.
     fn eject_mode(&self) -> Mode {

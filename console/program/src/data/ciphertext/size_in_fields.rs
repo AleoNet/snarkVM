@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Visibility<N> for Ciphertext<N> {
+impl<N: Network> Visibility for Ciphertext<N> {
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         // Retrieve the number of field elements.

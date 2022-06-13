@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<N: Network> Data<N, Ciphertext<N>> {
-    /// Returns the data ID, as a hash over the **`Data<N, Ciphertext<N>>` variant**.
+impl<N: Network> Record<N, Ciphertext<N>> {
+    /// Returns the data ID, as a hash over the **`Record<N, Ciphertext<N>>` variant**.
     pub fn to_id(&self) -> Result<Field<N>> {
         // Compute the BHP hash of the flattened data.
         N::hash_bhp1024(&self.to_bits_le())
     }
 }
 
-impl<N: Network> Data<N, Plaintext<N>> {
-    /// Returns the data ID, as a hash over the **`Data<N, Plaintext<N>>` variant**.
+impl<N: Network> Record<N, Plaintext<N>> {
+    /// Returns the data ID, as a hash over the **`Record<N, Plaintext<N>>` variant**.
     pub fn to_id(&self) -> Result<Field<N>> {
         bail!("Illegal operation: Data::to_id() cannot be invoked on the `Plaintext` variant.")
     }

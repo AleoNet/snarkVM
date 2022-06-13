@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod input;
+pub(crate) use input::*;
+
 mod registers;
 pub(crate) use registers::*;
 
@@ -66,11 +69,7 @@ impl<N: Network> Program<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate(
-        &self,
-        function_name: &Identifier<N>,
-        inputs: &[Plaintext<N>],
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    pub fn evaluate(&self, function_name: &Identifier<N>, inputs: &[Input<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Retrieve the function from the program.
         let function = self.get_function(function_name)?;
 
@@ -99,16 +98,23 @@ impl<N: Network> Program<N> {
 
         // Load the outputs.
         for (register, value_type) in register_types.to_outputs() {
-            // Retrieve the plaintext value from the register.
-            let plaintext = stack.load(&Operand::Register(register.clone()))?;
-            // Ensure the plaintext type matches the register type.
-            stack.matches(&plaintext, &value_type.to_plaintext_type())?;
-            // Insert the value into the outputs.
-            match value_type {
-                ValueType::Constant(..) => outputs.push(Value::Constant(plaintext)),
-                ValueType::Public(..) => outputs.push(Value::Public(plaintext)),
-                ValueType::Private(..) => outputs.push(Value::Private(plaintext)),
+            // Retrieve the register value from the register.
+            let register_value = stack.load(&Operand::Register(register.clone()))?;
+
+            // Convert the register value to the output value type.
+            let output_value = match (register_value, value_type) {
+                (RegisterValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
+                (RegisterValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
+                (RegisterValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
+                (RegisterValue::Record(record), ValueType::Record(..)) => Value::Record(record),
+                _ => bail!("Register value does not match the expected output type"),
             };
+
+            // Ensure the output value matches the value type.
+            stack.matches_value(&output_value, &value_type)?;
+            // Insert the value into the outputs.
+            outputs.push(output_value);
+
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
             //  For constant outputs, add an assert_eq on the register value - if it's constant,
@@ -217,11 +223,22 @@ impl<N: Network> Program<N> {
             // Ensure the member name is not a reserved keyword.
             ensure!(!self.is_reserved_name(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
-            match value_type.to_plaintext_type() {
-                PlaintextType::Literal(..) => continue,
-                PlaintextType::Interface(identifier) => {
-                    if !self.interfaces.contains_key(&identifier) {
-                        bail!("'{identifier}' in record '{}' is not defined.", record_name)
+            match value_type {
+                // If the value type is a plaintext type, ensure the type is already defined.
+                ValueType::Constant(plaintext_type)
+                | ValueType::Public(plaintext_type)
+                | ValueType::Private(plaintext_type) => match plaintext_type {
+                    PlaintextType::Literal(..) => continue,
+                    PlaintextType::Interface(identifier) => {
+                        if !self.interfaces.contains_key(identifier) {
+                            bail!("Interface '{identifier}' in record '{}' is not defined.", record_name)
+                        }
+                    }
+                },
+                // If the value type is a record type, ensure the type is already defined.
+                ValueType::Record(member_record_name) => {
+                    if !self.records.contains_key(member_record_name) {
+                        bail!("'{member_record_name}' in record '{record_name}' is not defined.")
                     }
                 }
             }
@@ -265,29 +282,31 @@ impl<N: Network> Program<N> {
 
         // Step 1. Check the function inputs are well-formed.
         for input in function.inputs() {
-            // Retrieve the plaintext type from the input type.
-            let plaintext_type = match input.value_type() {
-                ValueType::Constant(plaintext_type) => {
-                    // TODO (howardwu): If the plaintext type is a record, ensure it cannot be a constant.
-                    plaintext_type
-                }
-                ValueType::Public(plaintext_type) => plaintext_type,
-                ValueType::Private(plaintext_type) => plaintext_type,
-            };
-
-            // Ensure the plaintext type is defined in the program.
-            match plaintext_type {
-                PlaintextType::Literal(..) => (),
-                PlaintextType::Interface(interface_name) => {
-                    // Ensure the interface name exists in the program.
-                    if !self.interfaces.contains_key(interface_name) {
-                        bail!("'{interface_name}' in function '{function_name}' is not defined.")
+            match input.value_type() {
+                ValueType::Constant(plaintext_type)
+                | ValueType::Public(plaintext_type)
+                | ValueType::Private(plaintext_type) => {
+                    // Ensure the plaintext type is defined in the program.
+                    match plaintext_type {
+                        PlaintextType::Literal(..) => (),
+                        PlaintextType::Interface(interface_name) => {
+                            // Ensure the interface name exists in the program.
+                            if !self.interfaces.contains_key(interface_name) {
+                                bail!("Interface '{interface_name}' in function '{function_name}' is not defined.")
+                            }
+                        }
                     }
                 }
-            }
+                ValueType::Record(identifier) => {
+                    // Ensure the record type is defined in the program.
+                    if !self.records.contains_key(identifier) {
+                        bail!("Record '{identifier}' in function '{function_name}' is not defined.")
+                    }
+                }
+            };
 
             // Insert the input register.
-            registers.insert(input.register().clone(), RegisterType::Input(*input.value_type()))?;
+            registers.add_input(input.register().clone(), *input.value_type())?;
         }
 
         // Step 2. Check the function instructions are well-formed.
@@ -298,19 +317,19 @@ impl<N: Network> Program<N> {
             for operand in instruction.operands() {
                 // Retrieve and append the plaintext type.
                 operand_types.push(match operand {
-                    Operand::Literal(literal) => PlaintextType::from(literal.to_type()),
+                    Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
                     Operand::Register(register) => registers.get_type(&self, &register)?,
                 });
             }
 
             // Compute the destination register type.
-            let destination_type = RegisterType::Destination(instruction.output_type(&operand_types)?);
+            let destination_type = instruction.output_type(&operand_types)?;
 
             // Retrieve the destination register.
             let destination = instruction.destination();
             match destination {
                 // Insert the destination register.
-                Register::Locator(..) => registers.insert(destination.clone(), destination_type)?,
+                Register::Locator(..) => registers.add_destination(destination.clone(), destination_type)?,
                 // Ensure the destination register is a locator (and does not reference a member).
                 Register::Member(..) => bail!("Destination register '{destination}' must be a locator."),
             }
@@ -329,29 +348,45 @@ impl<N: Network> Program<N> {
             // Note: This serves as the expected output type, which we will compare against.
             let register_type = registers.get_type(&self, &register)?;
 
-            // Retrieve the plaintext type from the output type.
-            let plaintext_type = match output.value_type() {
-                ValueType::Constant(plaintext_type) => {
-                    // TODO (howardwu): If the plaintext type is a record, ensure it cannot be a constant.
-                    plaintext_type
-                }
-                ValueType::Public(plaintext_type) => plaintext_type,
-                ValueType::Private(plaintext_type) => plaintext_type,
-            };
-
-            // Ensure the plaintext type is defined in the program.
-            match plaintext_type {
-                PlaintextType::Literal(..) => (),
-                PlaintextType::Interface(interface_name) => {
-                    // Ensure the interface name exists in the program.
-                    if !self.interfaces.contains_key(interface_name) {
-                        bail!("'{interface_name}' in function '{function_name}' is not defined.")
+            match output.value_type() {
+                ValueType::Constant(plaintext_type)
+                | ValueType::Public(plaintext_type)
+                | ValueType::Private(plaintext_type) => {
+                    // Ensure the plaintext type is defined in the program.
+                    match plaintext_type {
+                        PlaintextType::Literal(..) => (),
+                        PlaintextType::Interface(interface_name) => {
+                            // Ensure the interface name exists in the program.
+                            if !self.interfaces.contains_key(interface_name) {
+                                bail!("Interface '{interface_name}' in function '{function_name}' is not defined.")
+                            }
+                        }
                     }
                 }
-            }
+                ValueType::Record(identifier) => {
+                    // Ensure the record type is defined in the program.
+                    if !self.records.contains_key(identifier) {
+                        bail!("Record '{identifier}' in function '{function_name}' is not defined.")
+                    }
+                }
+            };
 
             // Ensure the register type and the output type match.
-            ensure!(register_type == *plaintext_type, "Output '{register}' has the wrong type.");
+            match (register_type, output.value_type()) {
+                (RegisterType::Plaintext(a), ValueType::Constant(b)) => {
+                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
+                }
+                (RegisterType::Plaintext(a), ValueType::Public(b)) => {
+                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
+                }
+                (RegisterType::Plaintext(a), ValueType::Private(b)) => {
+                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
+                }
+                (RegisterType::Record(a), ValueType::Record(b)) => {
+                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
+                }
+                _ => bail!("Output '{register}' does not match the expected output register type."),
+            }
 
             // Insert the output register.
             registers.add_output(output.register(), *output.value_type())?;
@@ -443,10 +478,32 @@ impl<N: Network> Program<N> {
             "output",
             "as",
             "into",
-            // Reserved (catch all)
+            // Program
             "function",
             "interface",
             "record",
+            "program",
+            "global",
+            // Reserved (catch all)
+            "return",
+            "break",
+            "assert",
+            "continue",
+            "let",
+            "if",
+            "else",
+            "while",
+            "for",
+            "switch",
+            "case",
+            "default",
+            "match",
+            "enum",
+            "struct",
+            "union",
+            "trait",
+            "impl",
+            "type",
         ];
         // Convert the given name to a string.
         let name = name.to_string();
@@ -593,6 +650,8 @@ interface message:
         let record = RecordType::<CurrentNetwork>::from_str(
             r"
 record foo:
+    owner as address.private;
+    balance as u64.private;
     first as field.private;
     second as field.public;",
         )?;
@@ -650,18 +709,20 @@ function compute:
 
         // Declare the function name.
         let function_name = Identifier::from_str("foo").unwrap();
-        // Declare the function arguments.
-        let arguments =
-            vec![Plaintext::<CurrentNetwork>::from_str("2field").unwrap(), Plaintext::from_str("3field").unwrap()];
+        // Declare the function inputs.
+        let inputs = vec![
+            Input::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
+            Input::Plaintext(Plaintext::from_str("3field").unwrap()),
+        ];
 
         // Run the function.
         let expected = Value::Private(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
-        let candidate = program.evaluate(&function_name, &arguments).unwrap();
+        let candidate = program.evaluate(&function_name, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = program.evaluate(&function_name, &arguments).unwrap();
+        let candidate = program.evaluate(&function_name, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -686,7 +747,8 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
-        let input = Plaintext::from_str("{ first: 2field, second: 3field }").unwrap();
+        let input =
+            Input::<CurrentNetwork>::Plaintext(Plaintext::from_str("{ first: 2field, second: 3field }").unwrap());
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("5field").unwrap());
 

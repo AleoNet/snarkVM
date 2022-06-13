@@ -14,19 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod literal_type;
-pub use literal_type::LiteralType;
-
-mod plaintext_type;
-pub use plaintext_type::PlaintextType;
-
-mod value_type;
-pub use value_type::ValueType;
-
 mod bytes;
 mod parse;
 
-use crate::Identifier;
+use crate::{Identifier, ValueType};
 use snarkvm_console_network::prelude::*;
 use snarkvm_utilities::{
     error,
@@ -38,11 +29,17 @@ use snarkvm_utilities::{
 
 use indexmap::IndexMap;
 
+type IsPrivate = bool;
+
 /// The declared layout for program data.
 #[derive(Clone, PartialEq, Eq)]
 pub struct RecordType<N: Network> {
     /// The name of the record type.
     name: Identifier<N>,
+    /// The visibility for the owner of the program record.
+    owner: IsPrivate,
+    /// The visibility for the balance of the program record.
+    balance: IsPrivate,
     /// The name and value type for the entries in data.
     entries: IndexMap<Identifier<N>, ValueType<N>>,
 }
@@ -58,19 +55,6 @@ impl<N: Network> RecordType<N> {
     #[inline]
     pub const fn entries(&self) -> &IndexMap<Identifier<N>, ValueType<N>> {
         &self.entries
-    }
-}
-
-impl<N: Network> TryFrom<(Identifier<N>, IndexMap<Identifier<N>, ValueType<N>>)> for RecordType<N> {
-    type Error = Error;
-
-    /// Initializes a new `RecordType` from a map of `(Identifier, ValueType)` pairs.
-    fn try_from((name, entries): (Identifier<N>, IndexMap<Identifier<N>, ValueType<N>>)) -> Result<Self> {
-        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
-        match entries.len() <= N::MAX_DATA_ENTRIES {
-            true => Ok(Self { name, entries }),
-            false => bail!("Data exceeds size: expected <= {}, found {}", N::MAX_DATA_ENTRIES, entries.len()),
-        }
     }
 }
 

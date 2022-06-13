@@ -20,7 +20,12 @@ pub(crate) use operand::*;
 mod operation;
 use operation::*;
 
-use crate::{program::Stack, PlaintextType, Register, Sanitizer};
+use crate::{
+    program::{RegisterType, Stack},
+    PlaintextType,
+    Register,
+    Sanitizer,
+};
 use snarkvm_console_network::{
     prelude::{
         alt,
@@ -333,7 +338,7 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub(crate) fn output_type(&self, inputs: &[PlaintextType<N>]) -> Result<PlaintextType<N>> {
+    pub(crate) fn output_type(&self, inputs: &[RegisterType<N>]) -> Result<RegisterType<N>> {
         instruction!(self, |InstructionMember| InstructionMember::<N>::output_type(inputs))
     }
 }

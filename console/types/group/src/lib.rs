@@ -16,12 +16,16 @@
 
 mod arithmetic;
 mod from_bits;
+mod from_field;
+mod from_fields;
 mod from_x_coordinate;
 mod from_xy_coordinate;
 mod parse;
 mod random;
 mod size_in_bits;
 mod to_bits;
+mod to_field;
+mod to_fields;
 mod to_x_coordinate;
 mod to_y_coordinate;
 mod zero;
@@ -37,6 +41,13 @@ pub struct Group<E: Environment> {
 }
 
 impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
+
+impl<E: Environment> Visibility for Group<E> {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16> {
+        Ok(1)
+    }
+}
 
 impl<E: Environment> Group<E> {
     /// The coefficient A for the twisted Edwards curve equation.

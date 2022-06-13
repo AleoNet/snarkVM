@@ -16,14 +16,9 @@
 
 use super::*;
 
-impl<N: Network, Private: Visibility<N>> ToBits for Data<N, Private> {
-    /// Returns this data as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
-        self.0.to_bits_le()
-    }
+use anyhow::Result;
 
-    /// Returns this data as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
-        self.0.to_bits_be()
-    }
+pub trait Visibility: ToBits + FromBits + ToFields + FromFields {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16>;
 }

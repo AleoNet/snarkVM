@@ -16,10 +16,14 @@
 
 mod bytes;
 mod from_bits;
+mod from_field;
+mod from_fields;
 mod parse;
 mod serialize;
 mod size_in_bits;
 mod to_bits;
+mod to_field;
+mod to_fields;
 
 pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_field::Field;
@@ -32,6 +36,13 @@ pub struct Address<E: Environment> {
 }
 
 impl<E: Environment> AddressTrait for Address<E> {}
+
+impl<E: Environment> Visibility for Address<E> {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> Result<u16> {
+        Ok(1)
+    }
+}
 
 impl<E: Environment> Address<E> {
     /// Initializes an address from a group element.

@@ -16,18 +16,20 @@
 
 use super::*;
 
-impl<N: Network, Private: Visibility<N>> ToBits for Value<N, Private> {
+impl<N: Network> ToBits for Value<N, Plaintext<N>> {
     /// Returns this value as a list of **little-endian** bits.
     fn to_bits_le(&self) -> Vec<bool> {
         let mut bits_le = match self {
             Self::Constant(..) => vec![false, false],
             Self::Public(..) => vec![false, true],
             Self::Private(..) => vec![true, false],
+            Self::Record(..) => vec![true, true],
         };
         match self {
             Self::Constant(value) => bits_le.extend(value.to_bits_le()),
             Self::Public(value) => bits_le.extend(value.to_bits_le()),
             Self::Private(value) => bits_le.extend(value.to_bits_le()),
+            Self::Record(record) => bits_le.extend(record.to_bits_le()),
         }
         bits_le
     }
@@ -38,11 +40,49 @@ impl<N: Network, Private: Visibility<N>> ToBits for Value<N, Private> {
             Self::Constant(..) => vec![false, false],
             Self::Public(..) => vec![false, true],
             Self::Private(..) => vec![true, false],
+            Self::Record(..) => vec![true, true],
         };
         match self {
             Self::Constant(value) => bits_be.extend(value.to_bits_be()),
             Self::Public(value) => bits_be.extend(value.to_bits_be()),
             Self::Private(value) => bits_be.extend(value.to_bits_be()),
+            Self::Record(record) => bits_be.extend(record.to_bits_be()),
+        }
+        bits_be
+    }
+}
+
+impl<N: Network> ToBits for Value<N, Ciphertext<N>> {
+    /// Returns this value as a list of **little-endian** bits.
+    fn to_bits_le(&self) -> Vec<bool> {
+        let mut bits_le = match self {
+            Self::Constant(..) => vec![false, false],
+            Self::Public(..) => vec![false, true],
+            Self::Private(..) => vec![true, false],
+            Self::Record(..) => vec![true, true],
+        };
+        match self {
+            Self::Constant(value) => bits_le.extend(value.to_bits_le()),
+            Self::Public(value) => bits_le.extend(value.to_bits_le()),
+            Self::Private(value) => bits_le.extend(value.to_bits_le()),
+            Self::Record(record) => bits_le.extend(record.to_bits_le()),
+        }
+        bits_le
+    }
+
+    /// Returns this value as a list of **big-endian** bits.
+    fn to_bits_be(&self) -> Vec<bool> {
+        let mut bits_be = match self {
+            Self::Constant(..) => vec![false, false],
+            Self::Public(..) => vec![false, true],
+            Self::Private(..) => vec![true, false],
+            Self::Record(..) => vec![true, true],
+        };
+        match self {
+            Self::Constant(value) => bits_be.extend(value.to_bits_be()),
+            Self::Public(value) => bits_be.extend(value.to_bits_be()),
+            Self::Private(value) => bits_be.extend(value.to_bits_be()),
+            Self::Record(record) => bits_be.extend(record.to_bits_be()),
         }
         bits_be
     }

@@ -17,17 +17,137 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
-    /// Checks that `self` matches the layout of the plaintext type.
-    /// Note: Ordering does **not** matter, as long as all defined members are present.
-    pub fn matches(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
-        self.matches_internal(plaintext, plaintext_type, 0)
+    /// Checks that the given input value matches the layout of the value type.
+    pub fn matches_input(&self, input: &Input<N>, value_type: &ValueType<N>) -> Result<()> {
+        // Ensure the input value matches the declared type in the register.
+        match (input, value_type) {
+            (Input::Plaintext(plaintext), ValueType::Constant(plaintext_type))
+            | (Input::Plaintext(plaintext), ValueType::Public(plaintext_type))
+            | (Input::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
+                self.matches_plaintext(plaintext, &plaintext_type)
+            }
+            (Input::Record(record), ValueType::Record(record_name)) => self.matches_record(record, &record_name),
+            _ => bail!("Input value does not match the input register type '{value_type}'"),
+        }
     }
 
-    /// Checks that `self` matches the layout of the plaintext type.
+    /// Checks that the given register value matches the layout of the register type.
+    pub fn matches_register(&self, register_value: &RegisterValue<N>, register_type: &RegisterType<N>) -> Result<()> {
+        match (register_value, register_type) {
+            (RegisterValue::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
+                self.matches_plaintext(plaintext, &plaintext_type)
+            }
+            (RegisterValue::Record(record), RegisterType::Record(record_name)) => {
+                self.matches_record(record, &record_name)
+            }
+            _ => bail!("Register value does not match the register type '{register_type}'"),
+        }
+    }
+
+    /// Checks that the given value matches the layout of the value type.
+    pub fn matches_value(&self, value: &Value<N, Plaintext<N>>, value_type: &ValueType<N>) -> Result<()> {
+        self.matches_value_internal(value, value_type, 0)
+    }
+
+    /// Checks that the given record matches the layout of the record type.
+    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// for record data does **not** matter, as long as all defined members are present.
+    pub fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
+        self.matches_record_internal(record, record_name, 0)
+    }
+
+    /// Checks that the given plaintext matches the layout of the plaintext type.
+    /// Note: Ordering does **not** matter, as long as all defined members are present.
+    pub fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
+        self.matches_plaintext_internal(plaintext, plaintext_type, 0)
+    }
+}
+
+impl<N: Network> Stack<N> {
+    /// Checks that the given value matches the layout of the value type.
+    ///
+    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
+    fn matches_value_internal(
+        &self,
+        value: &Value<N, Plaintext<N>>,
+        value_type: &ValueType<N>,
+        depth: usize,
+    ) -> Result<()> {
+        match (value, value_type) {
+            (Value::Constant(plaintext), ValueType::Constant(plaintext_type))
+            | (Value::Public(plaintext), ValueType::Public(plaintext_type))
+            | (Value::Private(plaintext), ValueType::Private(plaintext_type)) => {
+                self.matches_plaintext_internal(plaintext, plaintext_type, depth)
+            }
+            (Value::Record(record), ValueType::Record(record_name)) => {
+                self.matches_record_internal(record, record_name, depth)
+            }
+            _ => bail!("Invalid value: function expected '{value_type}'"),
+        }
+    }
+
+    /// Checks that the given record matches the layout of the record type.
+    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// for record data does **not** matter, as long as all defined members are present.
+    ///
+    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
+    fn matches_record_internal(
+        &self,
+        record: &Record<N, Plaintext<N>>,
+        record_name: &Identifier<N>,
+        depth: usize,
+    ) -> Result<()> {
+        // If the depth exceeds the maximum depth, then the plaintext type is invalid.
+        ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
+
+        // Ensure the record name is valid.
+        ensure!(!self.program.is_reserved_name(record_name), "Record name '{record_name}' is reserved");
+
+        // Retrieve the record type from the program.
+        let record_type = match self.program.get_record(record_name) {
+            Ok(record_type) => record_type,
+            Err(..) => bail!("Record '{record_name}' is not defined in the program"),
+        };
+
+        // Ensure the record name matches.
+        if record_type.name() != record_name {
+            bail!("Expected record '{record_name}', found record '{}'", record_type.name())
+        }
+
+        // Ensure the number of record members does not exceed the maximum.
+        let num_members = record.data().len();
+        ensure!(num_members <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
+
+        // Ensure the number of interface members match.
+        let num_expected_members = record_type.entries().len();
+        if num_expected_members != num_members {
+            bail!("'{record_name}' expected {num_expected_members} members, found {num_members} members")
+        }
+
+        // TODO (howardwu): Check that the record owner and balance visibility matches.
+
+        // Ensure the record data matches the defined type.
+        // Note: Ordering does **not** matter, as long as all defined members are present.
+        for (expected_name, expected_type) in record_type.entries() {
+            match record.data().iter().find(|(name, _)| *name == expected_name) {
+                // Ensure the member type matches.
+                Some((member_name, member_value)) => {
+                    // Ensure the member name is valid.
+                    ensure!(!self.program.is_reserved_name(member_name), "Member name '{member_name}' is reserved");
+                    // Ensure the member value matches (recursive call).
+                    self.matches_value_internal(member_value, expected_type, depth + 1)?
+                }
+                None => bail!("'{record_name}' is missing member '{expected_name}'",),
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the given plaintext matches the layout of the plaintext type.
     /// Note: Ordering does **not** matter, as long as all defined members are present.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
-    fn matches_internal(
+    fn matches_plaintext_internal(
         &self,
         plaintext: &Plaintext<N>,
         plaintext_type: &PlaintextType<N>,
@@ -100,7 +220,7 @@ impl<N: Network> Stack<N> {
                                 "Member name '{member_name}' is reserved"
                             );
                             // Ensure the member plaintext matches (recursive call).
-                            self.matches_internal(member_plaintext, expected_type, depth + 1)?
+                            self.matches_plaintext_internal(member_plaintext, expected_type, depth + 1)?
                         }
                         None => bail!("'{interface_name}' is missing member '{expected_name}'",),
                     }

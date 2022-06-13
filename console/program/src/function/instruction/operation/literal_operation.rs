@@ -29,6 +29,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use crate::program::RegisterType;
 use core::marker::PhantomData;
 
 /// A unary literal operation.
@@ -85,7 +86,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         // Initialize a vector to store the operand literals.
         let mut inputs = Vec::with_capacity(NUM_OPERANDS);
 
-        // Initialize a vector to store the operand literal types.
+        // Initialize a vector to store the operand register types.
         let mut input_types = Vec::with_capacity(NUM_OPERANDS);
 
         // Load the operands **as literals & literal types**.
@@ -97,7 +98,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
             // Store the literal.
             inputs.push(literal);
             // Store the literal type.
-            input_types.push(PlaintextType::from(literal_type));
+            input_types.push(RegisterType::Plaintext(PlaintextType::from(literal_type)));
             // Move to the next iteration.
             Ok::<_, Error>(())
         })?;
@@ -106,7 +107,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output =
             O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands for evaluation"))?)?;
         // Compute the output type.
-        let output_type = PlaintextType::from(output.to_type());
+        let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
         // Ensure the output type is correct.
         ensure!(
@@ -121,7 +122,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub fn output_type(input_types: &[PlaintextType<N>]) -> Result<PlaintextType<N>> {
+    pub fn output_type(input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == NUM_OPERANDS,
@@ -135,8 +136,11 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
             .into_iter()
             .copied()
             .map(|input_type| match input_type {
-                PlaintextType::Literal(literal_type) => Ok(literal_type),
-                PlaintextType::Interface(..) => Err(anyhow!("Expected literal type, found '{}'", input_type)),
+                RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(literal_type),
+                RegisterType::Plaintext(PlaintextType::Interface(..)) => {
+                    Err(anyhow!("Expected literal type, found '{input_type}'"))
+                }
+                RegisterType::Record(..) => Err(anyhow!("Expected literal type, found '{input_type}'")),
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -144,7 +148,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output = O::output_type(&input_types.try_into().map_err(|_| anyhow!("Failed to prepare operand types"))?)?;
 
         // Return the output type.
-        Ok(PlaintextType::Literal(output))
+        Ok(RegisterType::Plaintext(PlaintextType::Literal(output)))
     }
 }
 

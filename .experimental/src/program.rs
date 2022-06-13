@@ -56,7 +56,7 @@ pub mod program {
         pub fn from(
             serial_numbers: Vec<console::types::Field<A::Network>>,
             output_records: Vec<console::transition::Record<A::Network>>,
-            output_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
+            output_data: Vec<console::program::Record<A::Network, console::program::Ciphertext<A::Network>>>,
             tcm: console::types::Field<A::Network>,
             tpk: console::types::Group<A::Network>,
         ) -> Self {
@@ -89,7 +89,7 @@ pub mod program {
             caller: console::account::Address<A::Network>,
             record_view_keys: Vec<console::types::Field<A::Network>>,
             input_records: Vec<console::transition::Record<A::Network>>,
-            input_data: Vec<console::program::Data<A::Network, console::program::Ciphertext<A::Network>>>,
+            input_data: Vec<console::program::Record<A::Network, console::program::Ciphertext<A::Network>>>,
             r_tcm: console::types::Field<A::Network>,
         ) -> Self {
             Self {

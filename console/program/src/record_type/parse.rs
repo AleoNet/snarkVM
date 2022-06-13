@@ -51,6 +51,39 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, name) = Identifier::parse(string)?;
         // Parse the colon ':' keyword from the string.
         let (string, _) = tag(":")(string)?;
+
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the "owner" tag from the string.
+        let (string, _) = tag("owner")(string)?;
+        // Parse the " as " from the string.
+        let (string, _) = tag(" as ")(string)?;
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the owner visibility from the string.
+        let (string, is_owner_private) = alt((
+            map(tag("address.public"), |_| false), // IsPrivate = false
+            map(tag("address.private"), |_| true), // IsPrivate = true
+        ))(string)?;
+        // Parse the ";" from the string.
+        let (string, _) = tag(";")(string)?;
+
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the "balance" tag from the string.
+        let (string, _) = tag("balance")(string)?;
+        // Parse the " as " from the string.
+        let (string, _) = tag(" as ")(string)?;
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the balance visibility from the string.
+        let (string, is_balance_private) = alt((
+            map(tag("u64.public"), |_| false), // IsPrivate = false
+            map(tag("u64.private"), |_| true), // IsPrivate = true
+        ))(string)?;
+        // Parse the ";" from the string.
+        let (string, _) = tag(";")(string)?;
+
         // Parse the entries from the string.
         let (string, entries) = map_res(many1(parse_tuple), |entries| {
             // Ensure the entries has no duplicate names.
@@ -64,7 +97,12 @@ impl<N: Network> Parser for RecordType<N> {
             Ok(entries)
         })(string)?;
         // Return the record type.
-        Ok((string, Self { name, entries: IndexMap::from_iter(entries.into_iter()) }))
+        Ok((string, Self {
+            name,
+            owner: is_owner_private,
+            balance: is_balance_private,
+            entries: IndexMap::from_iter(entries.into_iter()),
+        }))
     }
 }
 
@@ -97,6 +135,10 @@ impl<N: Network> Display for RecordType<N> {
     /// Prints the record type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut output = format!("{} {}:\n", Self::type_name(), self.name);
+
+        output += &format!("    owner as address.{};\n", if self.owner { "private" } else { "public" });
+        output += &format!("    balance as u64.{};\n", if self.balance { "private" } else { "public" });
+
         for (identifier, value_type) in &self.entries {
             output += &format!("    {identifier} as {value_type};\n");
         }
@@ -116,20 +158,19 @@ mod tests {
     fn test_parse() -> Result<()> {
         let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
+            owner: true,
+            balance: false,
             entries: IndexMap::from_iter(
-                vec![
-                    (Identifier::from_str("sender")?, ValueType::from_str("address.private")?),
-                    (Identifier::from_str("amount")?, ValueType::from_str("u64.public")?),
-                ]
-                .into_iter(),
+                vec![(Identifier::from_str("first")?, ValueType::from_str("field.constant")?)].into_iter(),
             ),
         };
 
         let (remainder, candidate) = RecordType::<CurrentNetwork>::parse(
             r"
 record message:
-    sender as address.private;
-    amount as u64.public;
+    owner as address.private;
+    balance as u64.public;
+    first as field.constant;
 ",
         )?;
         assert_eq!("\n", remainder);
@@ -171,7 +212,7 @@ record message:
 
     #[test]
     fn test_display() {
-        let expected = "record message:\n    first as field.private;\n    second as field.constant;";
+        let expected = "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field.private;\n    second as field.constant;";
         let message = RecordType::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
     }
@@ -180,12 +221,13 @@ record message:
     fn test_display_fails() {
         // Duplicate identifier.
         let candidate = RecordType::<CurrentNetwork>::parse(
-            "record message:\n    first as field.public;\n    first as field.constant;",
+            "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field.public;\n    first as field.constant;",
         );
         assert!(candidate.is_err());
         // Visibility is missing in entry.
-        let candidate =
-            RecordType::<CurrentNetwork>::parse("record message:\n    first as field;\n    first as field.private;");
+        let candidate = RecordType::<CurrentNetwork>::parse(
+            "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field;\n    first as field.private;",
+        );
         assert!(candidate.is_err());
     }
 }

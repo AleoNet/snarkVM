@@ -47,6 +47,9 @@ pub use type_name::*;
 pub mod types;
 pub use types::*;
 
+pub mod visibility;
+pub use visibility::*;
+
 pub mod integers {
     pub use super::{
         integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},

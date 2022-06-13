@@ -22,7 +22,7 @@ impl<N: Network> Record<N> {
         // Ensure the balance is less than or equal to 2^52.
         ensure!(state.balance().to_bits_le()[52..].iter().all(|bit| !bit), "Attempted to encrypt an invalid balance");
         // Compute the randomizers.
-        let randomizers = N::hash_many_psd2(&[N::encryption_domain(), *record_view_key], 3);
+        let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *record_view_key], 3);
         // Encrypt the owner.
         let owner = state.owner().to_x_coordinate() + randomizers[0];
         // Encrypt the balance.
@@ -62,14 +62,14 @@ mod tests {
             let record_view_key = Uniform::rand(&mut test_rng());
             // Compute the randomizers.
             let randomizers =
-                CurrentNetwork::hash_many_psd2(&[CurrentNetwork::encryption_domain(), record_view_key], 2);
+                CurrentNetwork::hash_many_psd8(&[CurrentNetwork::encryption_domain(), record_view_key], 2);
             // Retrieve the first and second randomizers.
             let randomizer_0 = randomizers[0];
             let randomizer_1 = randomizers[1];
 
             for num_outputs in 2..50 {
                 // Compute the randomizers.
-                let randomizers = CurrentNetwork::hash_many_psd2(
+                let randomizers = CurrentNetwork::hash_many_psd8(
                     &[CurrentNetwork::encryption_domain(), record_view_key],
                     num_outputs,
                 );
