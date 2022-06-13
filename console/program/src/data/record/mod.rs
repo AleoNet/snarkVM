@@ -21,18 +21,20 @@ mod decrypt;
 mod encrypt;
 mod find;
 mod num_randomizers;
+mod parse;
 mod to_bits;
 mod to_id;
 
-use crate::{Ciphertext, Identifier, Plaintext, Value, Visibility};
+use crate::{Ciphertext, Identifier, Literal, Plaintext, Value, Visibility};
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Group, Scalar, U64};
+use snarkvm_utilities::has_duplicates;
 
 use indexmap::IndexMap;
 
 /// A value stored in program record.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Record<N: Network, Private: Visibility> {
     /// The owner of the program record.
     owner: Owner<N, Private>,

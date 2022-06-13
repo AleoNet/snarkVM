@@ -19,7 +19,7 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Field};
 
 /// A value stored in program data.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Owner<N: Network, Private: Visibility> {
     /// A publicly-visible value.
     Public(Address<N>),
@@ -164,5 +164,23 @@ impl<N: Network> ToBits for Owner<N, Ciphertext<N>> {
             }
         }
         bits_be
+    }
+}
+
+impl<N: Network> Debug for Owner<N, Plaintext<N>> {
+    /// Prints the owner as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Owner<N, Plaintext<N>> {
+    /// Prints the owner as a string, i.e. `aleo1xxx.public`.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Public(owner) => write!(f, "{owner}.public"),
+            Self::Private(Plaintext::Literal(Literal::Address(owner), ..)) => write!(f, "{owner}.private"),
+            _ => N::halt("Internal error: plaintext fmt corrupted in record owner"),
+        }
     }
 }

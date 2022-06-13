@@ -19,7 +19,7 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, U64};
 
 /// A value stored in program data.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Balance<N: Network, Private: Visibility> {
     /// A publicly-visible value.
     Public(U64<N>),
@@ -172,5 +172,23 @@ impl<N: Network> ToBits for Balance<N, Ciphertext<N>> {
             }
         }
         bits_be
+    }
+}
+
+impl<N: Network> Debug for Balance<N, Plaintext<N>> {
+    /// Prints the balance as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Balance<N, Plaintext<N>> {
+    /// Prints the balance as a string, i.e. `42u64.public`.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Public(balance) => write!(f, "{balance}.public"),
+            Self::Private(Plaintext::Literal(Literal::U64(balance), ..)) => write!(f, "{balance}.private"),
+            _ => N::halt("Internal error: plaintext fmt corrupted in record balance"),
+        }
     }
 }

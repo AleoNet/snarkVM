@@ -22,7 +22,6 @@ use operation::*;
 
 use crate::{
     program::{RegisterType, Stack},
-    PlaintextType,
     Register,
     Sanitizer,
 };

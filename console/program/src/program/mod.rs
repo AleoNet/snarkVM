@@ -617,6 +617,7 @@ impl<N: Network> Display for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Record;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -751,6 +752,43 @@ function compute:
             Input::<CurrentNetwork>::Plaintext(Plaintext::from_str("{ first: 2field, second: 3field }").unwrap());
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("5field").unwrap());
+
+        // Compute the output value.
+        let candidate = program.evaluate(&function_name, &[input.clone()]).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+
+        // Re-run to ensure state continues to work.
+        let candidate = program.evaluate(&function_name, &[input]).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+    }
+
+    #[test]
+    fn test_program_evaluate_record_and_function() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+record token:
+    owner as address.private;
+    balance as u64.private;
+    token_amount as u64.private;
+
+function compute:
+    input r0 as token.record;
+    add r0.token_amount r0.token_amount into r1;
+    output r1 as u64.private;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+        // Declare the input value.
+        let input =
+            Input::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+        // Declare the expected output value.
+        let expected = Value::Private(Plaintext::from_str("200u64").unwrap());
 
         // Compute the output value.
         let candidate = program.evaluate(&function_name, &[input.clone()]).unwrap();

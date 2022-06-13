@@ -14,27 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod value_type;
-pub use value_type::ValueType;
+use super::*;
 
-mod find;
-mod num_randomizers;
-mod parse;
-mod to_bits;
+impl<N: Network> Debug for Value<N, Plaintext<N>> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
 
-use crate::{Ciphertext, Identifier, Plaintext, Record, Visibility};
-use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
-
-/// A value stored in program data.
-#[derive(Clone, PartialEq, Eq)]
-pub enum Value<N: Network, Private: Visibility> {
-    /// A constant value.
-    Constant(Plaintext<N>),
-    /// A publicly-visible value.
-    Public(Plaintext<N>),
-    /// A private value encrypted under the account owner's address.
-    Private(Private),
-    /// A record type inherits its visibility from its record definition.
-    Record(Record<N, Private>),
+impl<N: Network> Display for Value<N, Plaintext<N>> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // TODO (howardwu): Handle how to print constant, public, and private visibility.
+        match self {
+            Value::Constant(constant) => write!(f, "{constant}"),
+            Value::Public(public) => write!(f, "{public}"),
+            Value::Private(private) => write!(f, "{private}"),
+            Value::Record(record) => write!(f, "{record}"),
+        }
+    }
 }
