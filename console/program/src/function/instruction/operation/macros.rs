@@ -38,14 +38,14 @@
 /// ```
 #[macro_export]
 macro_rules! operation {
-    ($vis:vis struct $name:ident<$operator:path, $operation:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+    ($vis:vis struct $name:ident<$operator:path, $operate:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
         #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
         impl<N: Network> $crate::function::instruction::Operation<N, $crate::Literal<N>, $crate::LiteralType, 2> for $name<N> {
             /// The opcode of the operation.
-            const OPCODE: &'static str = $opcode;
+            const OPCODE: $crate::function::instruction::Opcode = Opcode::Literal($opcode);
 
             /// Returns the result of evaluating the operation on the given inputs.
             #[inline]
@@ -53,7 +53,7 @@ macro_rules! operation {
                 // Prepare the operator.
                 use $operator as Operator;
                 // Compute the output.
-                Ok($crate::evaluate!(match Operator::$operation(inputs) { $( ($input_a, $input_b) => $output, )+ }))
+                Ok($crate::evaluate!(match Operator::$operate(inputs) { $( ($input_a, $input_b) => $output, )+ }))
             }
 
             /// Returns the output type from the given input types.
@@ -66,13 +66,13 @@ macro_rules! operation {
 
         paste::paste! {
             #[cfg(test)]
-            mod [<test _ $operation>] {
+            mod [<test _ $operate>] {
                 use super::$name;
                 use snarkvm_console_network::prelude::*;
                 // Prepare the operator.
                 use $operator as Operator;
                 // Create the test cases for the operation.
-                $crate::test_evaluate!(Operator::$operation == $name::evaluate { $( ($input_a, $input_b) => $output $( ($($condition),+) )?, )+ });
+                $crate::test_evaluate!(Operator::$operate == $name::evaluate { $( ($input_a, $input_b) => $output $( ($($condition),+) )?, )+ });
             }
         }
     };
@@ -100,12 +100,12 @@ macro_rules! operation {
 #[macro_export]
 macro_rules! evaluate {
     // Binary operation.
-    (match $operator:tt::$operation:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
+    (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
         // Retrieve the first and second operands.
         let [first, second] = $inputs;
         // Compute the output.
         match (first, second) {
-            $(($crate::Literal::$input_a(first), $crate::Literal::$input_b(second)) => $crate::Literal::$output(first.$operation(second)),)+
+            $(($crate::Literal::$input_a(first), $crate::Literal::$input_b(second)) => $crate::Literal::$output(first.$operate(second)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -181,7 +181,7 @@ mod tests {
     /// Creates a test of the given operation for each declared case.
     ///
     /// For each declared case, this macro samples random values and checks that
-    /// the output of the operator (LHS) matches the output of the opcode (RHS).
+    /// the output of the operator (LHS) matches the output of the operation (RHS).
     /// In addition, this macro ensures all combinations of literal types that
     /// do **not** match these declared cases fail on evaluation.
     ///
@@ -209,14 +209,14 @@ mod tests {
     #[macro_export]
     macro_rules! test_evaluate {
         // Case 1: Binary operation.
-        ($operator:tt::$operation:tt == $opcode:tt::evaluate { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+        ($operator:tt::$operate:tt == $operation:tt::evaluate { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
             // For each given case of inputs and outputs, invoke `Case 1A` or `Case 1B` (see below).
-            $( $crate::test_evaluate!{$operator::$operation == $opcode::evaluate for ($input_a, $input_b) => $output $( ($($condition),+) )?} )+
+            $( $crate::test_evaluate!{$operator::$operate == $operation::evaluate for ($input_a, $input_b) => $output $( ($($condition),+) )?} )+
 
             // For each non-existent case of inputs and outputs, invoke the following test to ensure the operation **fails**.
             paste::paste! {
                 #[test]
-                fn [<test _ $operation _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
                     use snarkvm_console_types::*;
 
                     type CurrentNetwork = snarkvm_console_network::Testnet3;
@@ -237,7 +237,7 @@ mod tests {
                                 let second = $crate::Literal::from_str(&format!("{literal_b}"))?;
 
                                 // Attempt to compute the invalid operand case.
-                                let result = <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]);
+                                let result = <$operation::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]);
 
                                 // Ensure the computation failed.
                                 assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
@@ -261,10 +261,10 @@ mod tests {
         //   2. "ensure divide by zero halts"
         //     - If the sampled divisor is zero, ensure it halts.
         //     - If the sampled divisor is **not** zero, ensure it succeeds.
-        ($operator:tt::$operation:tt == $opcode:tt::evaluate for ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?) => {
+        ($operator:tt::$operate:tt == $operation:tt::evaluate for ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?) => {
             paste::paste! {
                 #[test]
-                fn [<test _ $operation _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
+                fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
                     use snarkvm_console_types::*;
 
                     type CurrentNetwork = snarkvm_console_network::Testnet3;
@@ -272,7 +272,7 @@ mod tests {
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         $crate::LiteralType::from($crate::LiteralType::$output),
-                        <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::output_type(&[$crate::LiteralType::$input_a.into(), $crate::LiteralType::$input_b.into()])?
+                        <$operation::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::output_type(&[$crate::LiteralType::$input_a.into(), $crate::LiteralType::$input_b.into()])?
                     );
 
                     // Check the operation on randomly-sampled values.
@@ -290,12 +290,12 @@ mod tests {
                         let mut should_succeed = true;
                         $( $({
                             if $condition == "ensure overflows halt" {
-                                match <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::OPCODE {
+                                match *<$operation::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::OPCODE {
                                     "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
                                     "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
                                     "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
                                     "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
-                                    _ => panic!("Unsupported test enforcement for '{}'", <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::OPCODE),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::OPCODE),
                                 }
                             }
                             if $condition == "ensure divide by zero halts" {
@@ -308,15 +308,15 @@ mod tests {
                             // If the sampled values **do not** overflow on evaluation, ensure it succeeds.
                             true => {
                                 // Compute the outputs.
-                                let expected = $crate::Literal::from($crate::Literal::$output(a.$operation(&b)));
-                                let candidate = <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
+                                let expected = $crate::Literal::from($crate::Literal::$output(a.$operate(&b)));
+                                let candidate = <$operation::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
                                 // Ensure the outputs match.
                                 assert_eq!(expected, candidate);
                             },
                             // If the sampled values overflow on evaluation, ensure it halts.
                             false => {
                                 // Attempt to compute the overflow case.
-                                let result = std::panic::catch_unwind(|| <$opcode::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
+                                let result = std::panic::catch_unwind(|| <$operation::<CurrentNetwork> as $crate::function::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
                                 // Ensure the computation halted.
                                 assert!(result.is_err(), "Failure case (on iteration {i}) did not halt: {a} {b}");
                             }

@@ -16,15 +16,15 @@
 
 use crate::{
     function::instruction::{Operand, Operation},
-    program::Stack,
+    program::{RegisterType, Stack},
     Literal,
     LiteralType,
+    Opcode,
     PlaintextType,
     Register,
 };
 use snarkvm_console_network::prelude::*;
 
-use crate::program::RegisterType;
 use core::marker::PhantomData;
 
 /// A unary literal operation.
@@ -51,6 +51,12 @@ pub struct LiteralOperation<
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
     LiteralOperation<N, O, NUM_OPERANDS>
 {
+    /// Returns the opcode.
+    #[inline]
+    pub const fn opcode() -> Opcode {
+        O::OPCODE
+    }
+
     /// Returns the operands in the operation.
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
@@ -152,7 +158,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the opcode from the string.
-        let (string, _) = tag(O::OPCODE)(string)?;
+        let (string, _) = tag(*O::OPCODE)(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
 

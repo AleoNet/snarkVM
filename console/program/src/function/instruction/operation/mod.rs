@@ -19,11 +19,12 @@ pub(crate) use literal_operation::*;
 
 mod macros;
 
+use crate::Opcode;
 use snarkvm_console_network::prelude::*;
 
 pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
     /// The opcode of the operation.
-    const OPCODE: &'static str;
+    const OPCODE: Opcode;
 
     /// Returns the result of evaluating the operation on the given inputs.
     fn evaluate(inputs: &[Value; NUM_OPERANDS]) -> Result<Value>;

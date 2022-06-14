@@ -14,16 +14,46 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// use crate::{Literal, Register};
-// use snarkvm_console_network::prelude::*;
-//
-// /// The `Opcode` enum stores the mnemonic for the instruction.
-// #[derive(Clone, PartialEq, Eq, Hash)]
-// pub enum Opcode<N: Network> {
-//     /// The opcode is for a literal operation.
-//     Literal(&'static str),
-//     /// The opcode is for a record constructor.
-//     Record(&'static str),
-//     /// The opcode is for a function call.
-//     Call(&'static str),
-// }
+use snarkvm_console_network::prelude::*;
+
+/// The `Opcode` enum stores the mnemonic for the instruction.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Opcode {
+    /// The opcode is for a literal operation.
+    Literal(&'static str),
+    /// The opcode is for a record constructor.
+    Record(&'static str),
+    /// The opcode is for a function call.
+    Function(&'static str),
+}
+
+impl Deref for Opcode {
+    type Target = &'static str;
+
+    /// Returns the opcode as a string.
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Opcode::Literal(opcode) => opcode,
+            Opcode::Record(opcode) => opcode,
+            Opcode::Function(opcode) => opcode,
+        }
+    }
+}
+
+impl Debug for Opcode {
+    /// Prints the opcode as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl Display for Opcode {
+    /// Prints the opcode as a string, i.e. `add`.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Literal(opcode) => write!(f, "{opcode}"),
+            Self::Record(opcode) => write!(f, "{opcode}"),
+            Self::Function(opcode) => write!(f, "{opcode}"),
+        }
+    }
+}

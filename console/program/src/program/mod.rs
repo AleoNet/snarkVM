@@ -307,11 +307,11 @@ impl<N: Network> Program<N> {
 
         // Step 2. Check the function instructions are well-formed.
         for instruction in function.instructions() {
-            // Initialize a vector to store the plaintext types of the operands.
+            // Initialize a vector to store the register types of the operands.
             let mut operand_types = Vec::with_capacity(instruction.operands().len());
-            // Iterate over the operands, and retrieve the plaintext type of each operand.
+            // Iterate over the operands, and retrieve the register type of each operand.
             for operand in instruction.operands() {
-                // Retrieve and append the plaintext type.
+                // Retrieve and append the register type.
                 operand_types.push(match operand {
                     Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
                     Operand::Register(register) => registers.get_type(&self, &register)?,

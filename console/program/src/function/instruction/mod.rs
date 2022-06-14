@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod opcode;
+pub(crate) use opcode::*;
+
 mod operand;
 pub(crate) use operand::*;
 
@@ -300,11 +303,11 @@ macro_rules! derive_from_operation {
 instruction!(derive_from_operation, Instruction, |None| {});
 
 impl<N: Network> Instruction<N> {
-    // /// Returns the opcode of the instruction.
-    // #[inline]
-    // pub(crate) fn opcode(&self) -> &'static str {
-    //     instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
-    // }
+    /// Returns the opcode of the instruction.
+    #[inline]
+    pub(crate) fn opcode(&self) -> Opcode {
+        instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
+    }
 
     /// Returns the operands of the instruction.
     #[inline]
