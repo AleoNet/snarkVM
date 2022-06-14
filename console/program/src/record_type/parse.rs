@@ -26,7 +26,7 @@ impl<N: Network> Parser for RecordType<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a string into a tuple.
-        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, ValueType<N>)> {
+        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, EntryType<N>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
@@ -34,7 +34,7 @@ impl<N: Network> Parser for RecordType<N> {
             // Parse the " as " from the string.
             let (string, _) = tag(" as ")(string)?;
             // Parse the value type from the string.
-            let (string, value_type) = ValueType::parse(string)?;
+            let (string, value_type) = EntryType::parse(string)?;
             // Parse the semicolon ';' keyword from the string.
             let (string, _) = tag(";")(string)?;
             // Return the identifier and value type.
@@ -150,7 +150,7 @@ mod tests {
             owner: PublicOrPrivate::Private,
             balance: PublicOrPrivate::Public,
             entries: IndexMap::from_iter(
-                vec![(Identifier::from_str("first")?, ValueType::from_str("field.constant")?)].into_iter(),
+                vec![(Identifier::from_str("first")?, EntryType::from_str("field.constant")?)].into_iter(),
             ),
         };
 
@@ -213,9 +213,16 @@ record message:
             "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field.public;\n    first as field.constant;",
         );
         assert!(candidate.is_err());
+
         // Visibility is missing in entry.
         let candidate = RecordType::<CurrentNetwork>::parse(
             "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field;\n    first as field.private;",
+        );
+        assert!(candidate.is_err());
+
+        // Attempted to store another record inside.
+        let candidate = RecordType::<CurrentNetwork>::parse(
+            "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as token.record;",
         );
         assert!(candidate.is_err());
     }

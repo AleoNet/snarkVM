@@ -35,4 +35,4 @@ mod program;
 pub use program::Program;
 
 mod record_type;
-pub use record_type::*;
+pub use record_type::{EntryType, RecordType};

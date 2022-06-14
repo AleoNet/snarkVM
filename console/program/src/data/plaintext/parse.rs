@@ -26,6 +26,8 @@ impl<N: Network> Parser for Plaintext<N> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the ":" from the string.
             let (string, _) = tag(":")(string)?;
             // Parse the plaintext from the string.
@@ -66,8 +68,6 @@ impl<N: Network> Parser for Plaintext<N> {
         alt((
             // Parse a plaintext literal.
             map(Literal::parse, |literal| Self::Literal(literal, Default::default())),
-            // // Parse a plaintext record.
-            // parse_record,
             // Parse a plaintext interface.
             parse_interface,
         ))(string)
@@ -98,23 +98,59 @@ impl<N: Network> Debug for Plaintext<N> {
     }
 }
 
-#[allow(clippy::format_push_string)]
 impl<N: Network> Display for Plaintext<N> {
     /// Prints the plaintext as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.fmt_internal(f, 0)
+    }
+}
+
+impl<N: Network> Plaintext<N> {
+    /// Prints the plaintext with the given indentation depth.
+    fn fmt_internal(&self, f: &mut Formatter, depth: usize) -> fmt::Result {
+        /// The number of spaces to indent.
+        const INDENT: usize = 2;
+
         match self {
             // Prints the literal, i.e. 10field
-            Self::Literal(literal, ..) => Display::fmt(literal, f),
+            Self::Literal(literal, ..) => write!(f, "{:indent$}{literal}", "", indent = depth * INDENT),
             // Prints the interface, i.e. { first: 10i64, second: 198u64 }
             Self::Interface(interface, ..) => {
-                let mut output = format!("{{ ");
-                for (identifier, plaintext) in interface.iter() {
-                    output += &format!("{identifier}: {plaintext}, ");
-                }
-                output.pop(); // trailing space
-                output.pop(); // trailing comma
-                output += " }";
-                write!(f, "{output}")
+                // Print the opening brace.
+                write!(f, "{{")?;
+                // Print the members.
+                interface.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
+                    match plaintext {
+                        Self::Literal(literal, ..) => match i == interface.len() - 1 {
+                            true => {
+                                // Print the last member without a comma.
+                                write!(f, "\n{:indent$}{name}: {literal}", "", indent = (depth + 1) * INDENT)?;
+                                // Print the closing brace.
+                                match depth.is_zero() {
+                                    // Print the last closing brace without indentation.
+                                    true => write!(f, "\n}}"),
+                                    // Print the closing brace with indentation.
+                                    false => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
+                                }
+                            }
+                            // Print the member with a comma.
+                            false => write!(f, "\n{:indent$}{name}: {literal},", "", indent = (depth + 1) * INDENT),
+                        },
+                        Self::Interface(..) => {
+                            // Print the member name.
+                            write!(f, "\n{:indent$}{name}: ", "", indent = (depth + 1) * INDENT)?;
+                            // Print the member.
+                            plaintext.fmt_internal(f, depth + 1)?;
+                            // Print the closing brace.
+                            match i == interface.len() - 1 {
+                                // Print the last member without a comma.
+                                true => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
+                                // Print the member with a comma.
+                                false => write!(f, "\n{:indent$}}},", "", indent = depth * INDENT),
+                            }
+                        }
+                    }
+                })
             }
         }
     }
@@ -140,8 +176,43 @@ mod tests {
     #[test]
     fn test_parse_interface() -> Result<()> {
         // Sanity check.
+        let expected = r"{
+  foo: 5u8
+}";
         let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse("{ foo: 5u8 }")?;
-        assert_eq!("{ foo: 5u8 }", candidate.to_string());
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+
+        let expected = r"{
+  foo: 5u8,
+  bar: {
+    baz: 10field,
+    qux: {
+      quux: {
+        corge: {
+          grault: {
+            garply: {
+              waldo: {
+                fred: {
+                  plugh: {
+                    xyzzy: {
+                      thud: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}";
+        let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(
+            "{ foo: 5u8, bar: { baz: 10field, qux: {quux:{corge :{grault:  {garply:{waldo:{fred:{plugh:{xyzzy: { thud: true}} }}}  }}}}}}",
+        )?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
 
         Ok(())

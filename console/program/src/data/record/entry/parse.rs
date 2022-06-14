@@ -26,11 +26,33 @@ impl<N: Network> Debug for Entry<N, Plaintext<N>> {
 impl<N: Network> Display for Entry<N, Plaintext<N>> {
     /// Prints the entry as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // TODO (howardwu): Handle how to print constant, public, and private visibility.
+        /// Prints the plaintext with visibility on every literal.
+        fn fmt_plaintext_with_visibility<N: Network>(
+            f: &mut Formatter,
+            plaintext: &Plaintext<N>,
+            visibility: &str,
+        ) -> fmt::Result {
+            match plaintext {
+                // Prints the literal, i.e. 10field.public
+                Plaintext::Literal(literal, ..) => write!(f, "{literal}.{visibility}"),
+                // Prints the interface, i.e. { first: 10i64.private, second: 198u64.private }
+                Plaintext::Interface(interface, ..) => {
+                    let mut output = format!("{{ ");
+                    for (identifier, plaintext) in interface.iter() {
+                        output += &format!("{identifier}: {plaintext}.{visibility}, ");
+                    }
+                    output.pop(); // trailing space
+                    output.pop(); // trailing comma
+                    output += " }";
+                    write!(f, "{output}")
+                }
+            }
+        }
+
         match self {
-            Self::Constant(constant) => write!(f, "{constant}"),
-            Self::Public(public) => write!(f, "{public}"),
-            Self::Private(private) => write!(f, "{private}"),
+            Self::Constant(constant) => fmt_plaintext_with_visibility(f, constant, "constant"),
+            Self::Public(public) => fmt_plaintext_with_visibility(f, public, "public"),
+            Self::Private(private) => fmt_plaintext_with_visibility(f, private, "private"),
         }
     }
 }

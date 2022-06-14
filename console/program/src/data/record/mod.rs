@@ -48,13 +48,13 @@ pub struct Record<N: Network, Private: Visibility> {
 
 impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the owner of the program record.
-    pub fn owner(&self) -> Address<N> {
-        *self.owner
+    pub const fn owner(&self) -> &Owner<N, Plaintext<N>> {
+        &self.owner
     }
 
     /// Returns the balance of the program record.
-    pub fn balance(&self) -> U64<N> {
-        *self.balance
+    pub const fn balance(&self) -> &Balance<N, Plaintext<N>> {
+        &self.balance
     }
 }
 

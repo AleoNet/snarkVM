@@ -40,8 +40,8 @@ impl<N: Network> FromBytes for RecordType<N> {
         for _ in 0..num_entries {
             // Read the identifier.
             let identifier = Identifier::read_le(&mut reader)?;
-            // Read the entry.
-            let entry = ValueType::read_le(&mut reader)?;
+            // Read the entry type.
+            let entry = EntryType::read_le(&mut reader)?;
             // Insert the entry, and ensure the entries has no duplicate names.
             if entries.insert(identifier, entry).is_some() {
                 return Err(error(format!("Duplicate identifier in record '{name}'")));

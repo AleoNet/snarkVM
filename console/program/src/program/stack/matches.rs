@@ -126,7 +126,25 @@ impl<N: Network> Stack<N> {
             bail!("'{record_name}' expected {num_expected_members} members, found {num_members} members")
         }
 
-        // TODO (howardwu): Check that the record owner and balance visibility matches.
+        // Ensure the visibility of the record owner matches the visibility in the record type.
+        ensure!(
+            record.owner().is_public() == record_type.owner().is_public(),
+            "Record owner visibility does not match"
+        );
+        ensure!(
+            record.owner().is_private() == record_type.owner().is_private(),
+            "Record owner visibility does not match"
+        );
+
+        // Ensure the visibility of the record balance matches the visibility in the record type.
+        ensure!(
+            record.balance().is_public() == record_type.balance().is_public(),
+            "Record balance visibility does not match"
+        );
+        ensure!(
+            record.balance().is_private() == record_type.balance().is_private(),
+            "Record balance visibility does not match"
+        );
 
         // Ensure the record data matches the defined type.
         // Note: Ordering does **not** matter, as long as all defined members are present.
@@ -137,7 +155,11 @@ impl<N: Network> Stack<N> {
                     // Ensure the member name is valid.
                     ensure!(!self.program.is_reserved_name(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
-                    self.matches_value_internal(&Value::from(member_entry.clone()), expected_type, depth + 1)?
+                    self.matches_value_internal(
+                        &Value::from(member_entry.clone()),
+                        &ValueType::from(*expected_type),
+                        depth + 1,
+                    )?
                 }
                 None => bail!("'{record_name}' is missing member '{expected_name}'",),
             }

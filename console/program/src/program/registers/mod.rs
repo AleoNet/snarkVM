@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, PlaintextType, Program, Register, ValueType};
+use crate::{EntryType, Identifier, PlaintextType, Program, Register, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
@@ -61,10 +61,11 @@ impl<N: Network> RegisterTypes<N> {
 
     /// Returns `true` if the given register exists.
     pub fn contains(&self, register: &Register<N>) -> bool {
+        // Retrieve the register locator.
+        let locator = &register.locator();
         // The input and destination registers represent the full set of registers.
-        // The output registers represent the subset of registers that are returned by the function.
-        self.input_registers.contains_key(&register.locator())
-            || self.destination_registers.contains_key(&register.locator())
+        // The output registers represent a subset of registers that are returned by the function.
+        self.input_registers.contains_key(locator) || self.destination_registers.contains_key(locator)
     }
 
     /// Returns `true` if the given register corresponds to an input register.
@@ -91,11 +92,8 @@ impl<N: Network> RegisterTypes<N> {
     /// Note: The given input register must be a `Register::Locator`.
     pub fn add_input(&mut self, register: Register<N>, value_type: ValueType<N>) -> Result<()> {
         // Ensure there are no destination or output registers set yet.
-        ensure!(
-            self.destination_registers.is_empty(),
-            "Cannot add input register after destination registers have been set."
-        );
-        ensure!(self.output_registers.is_empty(), "Cannot add input register after output registers have been set.");
+        ensure!(self.destination_registers.is_empty(), "Cannot add input registers after destination registers.");
+        ensure!(self.output_registers.is_empty(), "Cannot add input registers after output registers.");
 
         // Check the input register.
         match register {
@@ -193,13 +191,9 @@ impl<N: Network> RegisterTypes<N> {
                                 Ok(interface) => match interface.members().get(member_name) {
                                     // Update the member type.
                                     Some(plaintext_type) => register_type = RegisterType::Plaintext(*plaintext_type),
-                                    None => {
-                                        bail!("Member '{member_name}' does not exist in '{interface_name}'")
-                                    }
+                                    None => bail!("Member '{member_name}' does not exist in '{interface_name}'"),
                                 },
-                                Err(..) => {
-                                    bail!("'{register}' references a missing interface '{interface_name}'.")
-                                }
+                                Err(..) => bail!("'{register}' references a missing interface '{interface_name}'."),
                             }
                         }
                         RegisterType::Record(record_name) => {
@@ -208,23 +202,18 @@ impl<N: Network> RegisterTypes<N> {
                                 // Retrieve the member type from the record.
                                 Ok(record_type) => match record_type.entries().get(member_name) {
                                     // Update the member type.
-                                    Some(value_type) => {
-                                        register_type = match value_type {
-                                            ValueType::Constant(plaintext_type)
-                                            | ValueType::Public(plaintext_type)
-                                            | ValueType::Private(plaintext_type) => {
+                                    Some(entry_type) => {
+                                        register_type = match entry_type {
+                                            EntryType::Constant(plaintext_type)
+                                            | EntryType::Public(plaintext_type)
+                                            | EntryType::Private(plaintext_type) => {
                                                 RegisterType::Plaintext(*plaintext_type)
                                             }
-                                            ValueType::Record(record_name) => RegisterType::Record(*record_name),
                                         }
                                     }
-                                    None => {
-                                        bail!("Member '{member_name}' does not exist in '{record_name}'")
-                                    }
+                                    None => bail!("Member '{member_name}' does not exist in '{record_name}'"),
                                 },
-                                Err(..) => {
-                                    bail!("'{register}' references a missing record '{record_name}'.")
-                                }
+                                Err(..) => bail!("'{register}' references a missing record '{record_name}'."),
                             }
                         }
                     }

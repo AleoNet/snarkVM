@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod entry_type;
+pub use entry_type::EntryType;
+
 mod helpers;
 use helpers::PublicOrPrivate;
 
 mod bytes;
 mod parse;
 
-use crate::{Identifier, ValueType};
+use crate::Identifier;
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
@@ -35,7 +38,7 @@ pub struct RecordType<N: Network> {
     /// The visibility for the balance of the program record.
     balance: PublicOrPrivate,
     /// The name and value type for the entries in data.
-    entries: IndexMap<Identifier<N>, ValueType<N>>,
+    entries: IndexMap<Identifier<N>, EntryType<N>>,
 }
 
 impl<N: Network> RecordType<N> {
@@ -55,7 +58,7 @@ impl<N: Network> RecordType<N> {
     }
 
     /// Returns the entries of the record type.
-    pub const fn entries(&self) -> &IndexMap<Identifier<N>, ValueType<N>> {
+    pub const fn entries(&self) -> &IndexMap<Identifier<N>, EntryType<N>> {
         &self.entries
     }
 }

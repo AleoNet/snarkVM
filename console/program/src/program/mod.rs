@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod input;
-pub(crate) use input::*;
-
 mod registers;
 pub(crate) use registers::*;
 
@@ -25,6 +22,7 @@ pub(crate) use stack::*;
 
 use crate::{
     function::Operand,
+    EntryType,
     Function,
     Identifier,
     Interface,
@@ -223,15 +221,15 @@ impl<N: Network> Program<N> {
 
         // Ensure all record entries are well-formed.
         // Note: This design ensures cyclic references are not possible.
-        for (identifier, value_type) in record.entries() {
+        for (identifier, entry_type) in record.entries() {
             // Ensure the member name is not a reserved keyword.
             ensure!(!self.is_reserved_name(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
-            match value_type {
-                // If the value type is a plaintext type, ensure the type is already defined.
-                ValueType::Constant(plaintext_type)
-                | ValueType::Public(plaintext_type)
-                | ValueType::Private(plaintext_type) => match plaintext_type {
+            match entry_type {
+                // Ensure the plaintext type is already defined.
+                EntryType::Constant(plaintext_type)
+                | EntryType::Public(plaintext_type)
+                | EntryType::Private(plaintext_type) => match plaintext_type {
                     PlaintextType::Literal(..) => continue,
                     PlaintextType::Interface(identifier) => {
                         if !self.interfaces.contains_key(identifier) {
@@ -239,12 +237,6 @@ impl<N: Network> Program<N> {
                         }
                     }
                 },
-                // If the value type is a record type, ensure the type is already defined.
-                ValueType::Record(member_record_name) => {
-                    if !self.records.contains_key(member_record_name) {
-                        bail!("'{member_record_name}' in record '{record_name}' is not defined.")
-                    }
-                }
             }
         }
 

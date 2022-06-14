@@ -44,7 +44,7 @@ pub enum RegisterValue<N: Network> {
 
 #[derive(Clone)]
 pub struct Stack<N: Network> {
-    /// The program this stack belongs to.
+    /// The program (record types, interfaces, functions).
     program: Program<N>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
