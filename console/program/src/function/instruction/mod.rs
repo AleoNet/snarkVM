@@ -54,10 +54,11 @@ use snarkvm_console_network::{
 /// Creates a match statement that applies the given operation for each instruction.
 ///
 /// ## Example
+/// This example will print the opcode and the instruction to the given stream.
 /// ```ignore
 /// instruction!(self, |instruction| write!(f, "{} {};", self.opcode(), instruction))
 /// ```
-/// The above example will print the opcode and the instruction to the given stream.
+/// The above example is equivalent to the following logic:
 /// ```ignore
 ///     match self {
 ///         Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -71,14 +72,10 @@ use snarkvm_console_network::{
 macro_rules! instruction {
     // A variant **with** curly braces:
     // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
-    ($object:expr, |$input:ident| $operation:block) => {{
-        instruction!(instruction, $object, |$input| $operation)
-    }};
+    ($object:expr, |$input:ident| $operation:block) => {{ instruction!(instruction, $object, |$input| $operation) }};
     // A variant **without** curly braces:
     // i.e. `instruction!(self, |instruction| operation(instruction))`.
-    ($object:expr, |$input:ident| $operation:expr) => {{
-        instruction!(instruction, $object, |$input| { $operation })
-    }};
+    ($object:expr, |$input:ident| $operation:expr) => {{ instruction!(instruction, $object, |$input| { $operation }) }};
     // A variant **with** curly braces:
     // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
     ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
@@ -138,14 +135,10 @@ macro_rules! instruction {
     };
     // A variant **without** curly braces:
     // i.e. `instruction!(custom_macro, self, |instruction| operation(instruction))`.
-    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{
-        instruction!($macro_, $object, |$input| { $operation })
-    }};
+    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{ instruction!($macro_, $object, |$input| { $operation }) }};
     // A variant invoking a macro internally:
     // i.e. `instruction!(instruction_to_bytes_le!(self, writer))`.
-    ($macro_:ident!($object:expr, $input:ident)) => {{
-        instruction!($macro_, $object, |$input| {})
-    }};
+    ($macro_:ident!($object:expr, $input:ident)) => {{ instruction!($macro_, $object, |$input| {}) }};
 
     ////////////////////
     // Private Macros //
@@ -156,14 +149,12 @@ macro_rules! instruction {
     ($object:expr, |InstructionMember| $operation:block, { $( $variant:ident, )+ }) => {{
         // Build the match cases.
         match $object {
-            $(
-                Self::$variant(..) => {{
-                    // Set the variant to be called `InstructionMember`.
-                    type InstructionMember<N> = $variant<N>;
-                    // Perform the operation.
-                    $operation
-                }}
-            ),+
+            $( Self::$variant(..) => {{
+                // Set the variant to be called `InstructionMember`.
+                type InstructionMember<N> = $variant<N>;
+                // Perform the operation.
+                $operation
+            }} ),+
         }
     }};
     // A static variant **without** curly braces:
@@ -175,9 +166,7 @@ macro_rules! instruction {
     // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
     ($object:expr, |$instruction:ident| $operation:block, { $( $variant:ident, )+ }) => {{
         // Build the match cases.
-        match $object {
-            $( Self::$variant($instruction) => { $operation } ),+
-        }
+        match $object { $( Self::$variant($instruction) => { $operation } ),+ }
     }};
     // A non-static variant **without** curly braces:
     // i.e. `instruction!(self, |instruction| operation(instruction))`.

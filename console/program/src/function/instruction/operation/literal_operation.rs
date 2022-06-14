@@ -80,7 +80,6 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
         // Initialize a vector to store the operand literals.
         let mut inputs = Vec::with_capacity(NUM_OPERANDS);
-
         // Initialize a vector to store the operand register types.
         let mut input_types = Vec::with_capacity(NUM_OPERANDS);
 
@@ -99,8 +98,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         })?;
 
         // Compute the operation.
-        let output =
-            O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands for evaluation"))?)?;
+        let output = O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
         // Compute the output type.
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 

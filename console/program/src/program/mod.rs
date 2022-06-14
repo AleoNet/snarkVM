@@ -369,13 +369,9 @@ impl<N: Network> Program<N> {
 
             // Ensure the register type and the output type match.
             match (register_type, output.value_type()) {
-                (RegisterType::Plaintext(a), ValueType::Constant(b)) => {
-                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
-                }
-                (RegisterType::Plaintext(a), ValueType::Public(b)) => {
-                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
-                }
-                (RegisterType::Plaintext(a), ValueType::Private(b)) => {
+                (RegisterType::Plaintext(a), ValueType::Constant(b))
+                | (RegisterType::Plaintext(a), ValueType::Public(b))
+                | (RegisterType::Plaintext(a), ValueType::Private(b)) => {
                     ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
                 }
                 (RegisterType::Record(a), ValueType::Record(b)) => {
