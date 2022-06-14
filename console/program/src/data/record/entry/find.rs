@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Plaintext, Record};
-use snarkvm_console_network::prelude::*;
+use super::*;
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum Input<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+impl<N: Network> Entry<N, Plaintext<N>> {
+    /// Returns the entry from the given path.
+    pub fn find(&self, path: &[Identifier<N>]) -> Result<Entry<N, Plaintext<N>>> {
+        match self {
+            Self::Constant(plaintext) => Ok(Self::Constant(plaintext.find(path)?)),
+            Self::Public(plaintext) => Ok(Self::Public(plaintext.find(path)?)),
+            Self::Private(plaintext) => Ok(Self::Private(plaintext.find(path)?)),
+        }
+    }
 }

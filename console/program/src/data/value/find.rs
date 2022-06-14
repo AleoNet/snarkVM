@@ -23,7 +23,7 @@ impl<N: Network> Value<N, Plaintext<N>> {
             Value::Constant(plaintext) => Ok(Value::Constant(plaintext.find(path)?)),
             Value::Public(plaintext) => Ok(Value::Public(plaintext.find(path)?)),
             Value::Private(plaintext) => Ok(Value::Private(plaintext.find(path)?)),
-            Value::Record(record) => record.find(path),
+            Value::Record(record) => Ok(Value::from(record.find(path)?)),
         }
     }
 }

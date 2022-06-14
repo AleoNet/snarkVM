@@ -19,12 +19,6 @@ mod parse;
 
 use crate::{Identifier, LiteralType};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 /// A `ValueType` defines the type parameter for an entry in an `Interface`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

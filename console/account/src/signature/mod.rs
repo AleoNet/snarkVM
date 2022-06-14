@@ -25,11 +25,6 @@ use crate::PrivateKey;
 use crate::Address;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
-use snarkvm_utilities::{
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
@@ -76,7 +71,6 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 

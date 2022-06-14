@@ -26,12 +26,6 @@ mod variant;
 
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 use enum_index::EnumIndex;
 

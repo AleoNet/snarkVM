@@ -14,13 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Plaintext, Record};
+mod bytes;
+mod parse;
+
+use crate::PlaintextType;
 use snarkvm_console_network::prelude::*;
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum Input<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+use enum_index::EnumIndex;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
+pub enum EntryType<N: Network> {
+    /// A constant type.
+    Constant(PlaintextType<N>),
+    /// A publicly-visible type.
+    Public(PlaintextType<N>),
+    /// A private type decrypted with the account owner's address.
+    Private(PlaintextType<N>),
 }

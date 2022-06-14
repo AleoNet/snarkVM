@@ -61,9 +61,9 @@ impl<N: Network> Parser for RecordType<N> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the owner visibility from the string.
-        let (string, is_owner_private) = alt((
-            map(tag("address.public"), |_| false), // IsPrivate = false
-            map(tag("address.private"), |_| true), // IsPrivate = true
+        let (string, owner) = alt((
+            map(tag("address.public"), |_| PublicOrPrivate::Public),
+            map(tag("address.private"), |_| PublicOrPrivate::Private),
         ))(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
@@ -77,9 +77,9 @@ impl<N: Network> Parser for RecordType<N> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the balance visibility from the string.
-        let (string, is_balance_private) = alt((
-            map(tag("u64.public"), |_| false), // IsPrivate = false
-            map(tag("u64.private"), |_| true), // IsPrivate = true
+        let (string, balance) = alt((
+            map(tag("u64.public"), |_| PublicOrPrivate::Public),
+            map(tag("u64.private"), |_| PublicOrPrivate::Private),
         ))(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
@@ -96,13 +96,9 @@ impl<N: Network> Parser for RecordType<N> {
             }
             Ok(entries)
         })(string)?;
+
         // Return the record type.
-        Ok((string, Self {
-            name,
-            owner: is_owner_private,
-            balance: is_balance_private,
-            entries: IndexMap::from_iter(entries.into_iter()),
-        }))
+        Ok((string, Self { name, owner, balance, entries: IndexMap::from_iter(entries.into_iter()) }))
     }
 }
 
@@ -130,20 +126,13 @@ impl<N: Network> Debug for RecordType<N> {
     }
 }
 
-#[allow(clippy::format_push_string)]
 impl<N: Network> Display for RecordType<N> {
     /// Prints the record type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut output = format!("{} {}:\n", Self::type_name(), self.name);
-
-        output += &format!("    owner as address.{};\n", if self.owner { "private" } else { "public" });
-        output += &format!("    balance as u64.{};\n", if self.balance { "private" } else { "public" });
-
-        for (identifier, value_type) in &self.entries {
-            output += &format!("    {identifier} as {value_type};\n");
-        }
-        output.pop(); // trailing newline
-        write!(f, "{}", output)
+        write!(f, "{} {}:", Self::type_name(), self.name)?;
+        write!(f, "\n    owner as address.{};", self.owner)?;
+        write!(f, "\n    balance as u64.{};", self.balance)?;
+        self.entries.iter().try_for_each(|(entry_name, entry_type)| write!(f, "\n    {entry_name} as {entry_type};"))
     }
 }
 
@@ -158,8 +147,8 @@ mod tests {
     fn test_parse() -> Result<()> {
         let expected = RecordType::<CurrentNetwork> {
             name: Identifier::from_str("message")?,
-            owner: true,
-            balance: false,
+            owner: PublicOrPrivate::Private,
+            balance: PublicOrPrivate::Public,
             entries: IndexMap::from_iter(
                 vec![(Identifier::from_str("first")?, ValueType::from_str("field.constant")?)].into_iter(),
             ),

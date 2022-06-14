@@ -19,12 +19,6 @@ mod parse;
 
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 /// A register contains the location data to a value in memory.
 #[derive(Clone, PartialEq, Eq, Hash)]

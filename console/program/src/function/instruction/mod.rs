@@ -38,17 +38,17 @@ use snarkvm_console_network::{
         Display,
         Error,
         Formatter,
+        FromBytes,
         FromStr,
+        IoResult,
         Parser,
         ParserResult,
+        Read,
         Result,
+        ToBytes,
+        Write,
     },
     Network,
-};
-use snarkvm_utilities::{
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
 };
 
 /// Creates a match statement that applies the given operation for each instruction.

@@ -14,13 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Plaintext, Record};
-use snarkvm_console_network::prelude::*;
+use super::*;
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum Input<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+impl<N: Network> Debug for Entry<N, Plaintext<N>> {
+    /// Prints the entry as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Entry<N, Plaintext<N>> {
+    /// Prints the entry as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // TODO (howardwu): Handle how to print constant, public, and private visibility.
+        match self {
+            Self::Constant(constant) => write!(f, "{constant}"),
+            Self::Public(public) => write!(f, "{public}"),
+            Self::Private(private) => write!(f, "{private}"),
+        }
+    }
 }

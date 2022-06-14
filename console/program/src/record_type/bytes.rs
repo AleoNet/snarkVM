@@ -21,12 +21,10 @@ impl<N: Network> FromBytes for RecordType<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the name of the record type.
         let name = Identifier::read_le(&mut reader)?;
-
-        // Read the indicator for whether the owner `IsPrivate`.
-        let owner = u8::read_le(&mut reader)? == 1;
-
-        // Read the indicator for whether the balance `IsPrivate`.
-        let balance = u8::read_le(&mut reader)? == 1;
+        // Read the visibility for the owner.
+        let owner = PublicOrPrivate::read_le(&mut reader)?;
+        // Read the visibility for the balance.
+        let balance = PublicOrPrivate::read_le(&mut reader)?;
 
         // Read the number of entries.
         let num_entries = u16::read_le(&mut reader)?;
@@ -64,12 +62,10 @@ impl<N: Network> ToBytes for RecordType<N> {
 
         // Write the name of the record type.
         self.name.write_le(&mut writer)?;
-
-        // Write the indicator for whether the owner `IsPrivate`.
-        (self.owner as u8).write_le(&mut writer)?;
-
-        // Write the indicator for whether the balance `IsPrivate`.
-        (self.balance as u8).write_le(&mut writer)?;
+        // Write the visibility for the owner.
+        self.owner.write_le(&mut writer)?;
+        // Write the visibility for the balance.
+        self.balance.write_le(&mut writer)?;
 
         // Write the number of entries.
         (self.entries.len() as u16).write_le(&mut writer)?;

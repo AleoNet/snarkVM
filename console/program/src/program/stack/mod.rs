@@ -18,7 +18,8 @@ mod matches;
 
 use crate::{
     function::Operand,
-    program::{Input, RegisterType, RegisterTypes},
+    program::{RegisterType, RegisterTypes},
+    Entry,
     Identifier,
     Literal,
     Plaintext,
@@ -55,14 +56,14 @@ pub struct Stack<N: Network> {
 
 impl<N: Network> Stack<N> {
     /// Initializes a new stack with:
-    ///   1. The program.
-    ///   2. The register types for the function being executed.
+    ///   1. The program (record types, interfaces, functions).
+    ///   2. The register types of the function.
     ///   3. The input register values.
     ///
     /// # Errors
     /// This method will halt if any input type does not match the register type.
     #[inline]
-    pub fn new(program: Program<N>, register_types: RegisterTypes<N>, inputs: &[Input<N>]) -> Result<Self> {
+    pub fn new(program: Program<N>, register_types: RegisterTypes<N>, inputs: &[RegisterValue<N>]) -> Result<Self> {
         // Initialize the stack.
         let mut stack =
             Self { program, register_types, input_registers: IndexMap::new(), destination_registers: IndexMap::new() };
@@ -76,19 +77,21 @@ impl<N: Network> Stack<N> {
 
             // Assign the input value to the register.
             stack.input_registers.insert(input_register.locator(), match (input.clone(), value_type) {
-                (Input::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-                (Input::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-                (Input::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-                (Input::Record(record), ValueType::Record(..)) => Value::Record(record),
+                (RegisterValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
+                (RegisterValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
+                (RegisterValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
+                (RegisterValue::Record(record), ValueType::Record(..)) => Value::Record(record),
                 _ => bail!("Input value does not match the input register type."),
             });
         }
 
         Ok(stack)
     }
+}
 
+impl<N: Network> Stack<N> {
     /// Returns `true` if the given register corresponds to an input register.
-    pub fn is_input(&self, register: &Register<N>) -> bool {
+    fn is_input(&self, register: &Register<N>) -> bool {
         self.input_registers.contains_key(&register.locator())
     }
 
@@ -99,7 +102,7 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
+    pub(crate) fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
         self.store(register, RegisterValue::Plaintext(Plaintext::from(literal)))
     }
 
@@ -110,7 +113,7 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store(&mut self, register: &Register<N>, register_value: RegisterValue<N>) -> Result<()> {
+    pub(crate) fn store(&mut self, register: &Register<N>, register_value: RegisterValue<N>) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
@@ -147,7 +150,7 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
+    pub(crate) fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
         match self.load(operand)? {
             RegisterValue::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
             RegisterValue::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
@@ -161,7 +164,7 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load(&self, operand: &Operand<N>) -> Result<RegisterValue<N>> {
+    pub(crate) fn load(&self, operand: &Operand<N>) -> Result<RegisterValue<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
@@ -198,10 +201,9 @@ impl<N: Network> Stack<N> {
                     RegisterValue::Plaintext(plaintext) => Ok(RegisterValue::Plaintext(plaintext.find(path)?)),
                     // Retrieve the record entry from the path.
                     RegisterValue::Record(record) => match record.find(path)? {
-                        Value::Constant(plaintext) | Value::Public(plaintext) | Value::Private(plaintext) => {
+                        Entry::Constant(plaintext) | Entry::Public(plaintext) | Entry::Private(plaintext) => {
                             Ok(RegisterValue::Plaintext(plaintext))
                         }
-                        Value::Record(record) => Ok(RegisterValue::Record(record)),
                     },
                 }
             }

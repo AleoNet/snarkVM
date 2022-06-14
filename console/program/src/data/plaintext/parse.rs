@@ -60,62 +60,6 @@ impl<N: Network> Parser for Plaintext<N> {
             Ok((string, Plaintext::Interface(IndexMap::from_iter(members.into_iter()), Default::default())))
         }
 
-        // /// Parses a plaintext as a record: `{ owner: address, balance: u64, identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
-        // fn parse_record<N: Network>(string: &str) -> ParserResult<Plaintext<N>> {
-        //     // Parse the whitespace and comments from the string.
-        //     let (string, _) = Sanitizer::parse(string)?;
-        //     // Parse the "{" from the string.
-        //     let (string, _) = tag("{")(string)?;
-        //
-        //     // Parse the whitespace and comments from the string.
-        //     let (string, _) = Sanitizer::parse(string)?;
-        //     // Parse the "owner" tag from the string.
-        //     let (string, _) = tag("owner")(string)?;
-        //     // Parse the ":" from the string.
-        //     let (string, _) = tag(":")(string)?;
-        //     // Parse the whitespace and comments from the string.
-        //     let (string, _) = Sanitizer::parse(string)?;
-        //     // Parse the owner from the string.
-        //     let (string, owner) = Address::parse(string)?;
-        //     // Parse the "," from the string.
-        //     let (string, _) = tag(",")(string)?;
-        //
-        //     // Parse the whitespace and comments from the string.
-        //     let (string, _) = Sanitizer::parse(string)?;
-        //     // Parse the "balance" tag from the string.
-        //     let (string, _) = tag("balance")(string)?;
-        //     // Parse the ":" from the string.
-        //     let (string, _) = tag(":")(string)?;
-        //     // Parse the whitespace and comments from the string.
-        //     let (string, _) = Sanitizer::parse(string)?;
-        //     // Parse the balance from the string.
-        //     let (string, balance) = U64::parse(string)?;
-        //     // Parse the "," from the string.
-        //     let (string, _) = tag(",")(string)?;
-        //
-        //     // Parse the members.
-        //     let (string, members) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
-        //         // Ensure the members has no duplicate names.
-        //         if has_duplicates(members.iter().map(|(name, ..)| name)) {
-        //             return Err(error(format!("Duplicate member in interface")));
-        //         }
-        //         // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
-        //         match members.len() <= N::MAX_DATA_ENTRIES {
-        //             true => Ok(members),
-        //             false => Err(error(format!("Found a plaintext that exceeds size ({})", members.len()))),
-        //         }
-        //     })(string)?;
-        //     // Parse the whitespace and comments from the string.
-        //     let (string, _) = Sanitizer::parse(string)?;
-        //     // Parse the '}' from the string.
-        //     let (string, _) = tag("}")(string)?;
-        //     // Output the plaintext.
-        //     Ok((
-        //         string,
-        //         Plaintext::Record(owner, balance, IndexMap::from_iter(members.into_iter()), Default::default()),
-        //     ))
-        // }
-
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse to determine the plaintext (order matters).
@@ -171,17 +115,7 @@ impl<N: Network> Display for Plaintext<N> {
                 output.pop(); // trailing comma
                 output += " }";
                 write!(f, "{output}")
-            } // // Prints the record, i.e. { owner: aleo1xxx, balance: 10u64, first: 10i64 }
-              // Self::Record(owner, balance, data, ..) => {
-              //     let mut output = format!("{{ owner: {owner}, balance: {balance}, ");
-              //     for (identifier, plaintext) in data.iter() {
-              //         output += &format!("{identifier}: {plaintext}, ");
-              //     }
-              //     output.pop(); // trailing space
-              //     output.pop(); // trailing comma
-              //     output += " }";
-              //     write!(f, "{output}")
-              // }
+            }
         }
     }
 }
@@ -212,53 +146,6 @@ mod tests {
 
         Ok(())
     }
-
-    // #[test]
-    // fn test_parse_record() -> Result<()> {
-    //     // Sanity check.
-    //     let expected = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, balance: 99u64 }";
-    //     let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected)?;
-    //     assert_eq!(expected, candidate.to_string());
-    //     assert_eq!("", remainder);
-    //
-    //     let expected =
-    //         "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah, balance: 99u64, foo: 5u8 }";
-    //     let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected)?;
-    //     assert_eq!(expected, candidate.to_string());
-    //     assert_eq!("", remainder);
-    //
-    //     Ok(())
-    // }
-    //
-    // #[test]
-    // fn test_parse_invalid_record_becomes_interface() -> Result<()> {
-    //     // Missing owner.
-    //     let expected = "{ balance: 99u64, foo: 5u8 }";
-    //     let (remainder, candidate) = Plaintext::<CurrentNetwork>::parse(expected)?;
-    //     assert_eq!(expected, candidate.to_string());
-    //     assert_eq!("", remainder);
-    //     assert_eq!(
-    //         Plaintext::Interface(
-    //             IndexMap::from_iter(
-    //                 vec![
-    //                     (
-    //                         Identifier::from_str("balance")?,
-    //                         Plaintext::Literal(Literal::from_str("99u64")?, Default::default())
-    //                     ),
-    //                     (
-    //                         Identifier::from_str("foo")?,
-    //                         Plaintext::Literal(Literal::from_str("5u8")?, Default::default())
-    //                     ),
-    //                 ]
-    //                 .into_iter()
-    //             ),
-    //             Default::default(),
-    //         ),
-    //         candidate
-    //     );
-    //
-    //     Ok(())
-    // }
 
     #[test]
     fn test_parse_fails() {

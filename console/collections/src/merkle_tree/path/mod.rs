@@ -15,14 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MerklePath<E: Environment, const DEPTH: u8> {

@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Returns the data ID, as a hash over the **`Record<N, Ciphertext<N>>` variant**.
+    /// Returns the record ID, as a hash over the **`Record<N, Ciphertext<N>>` variant**.
     pub fn to_id(&self) -> Result<Field<N>> {
         // Compute the BHP hash of the flattened data.
         N::hash_bhp1024(&self.to_bits_le())
@@ -25,8 +25,8 @@ impl<N: Network> Record<N, Ciphertext<N>> {
 }
 
 impl<N: Network> Record<N, Plaintext<N>> {
-    /// Returns the data ID, as a hash over the **`Record<N, Plaintext<N>>` variant**.
+    /// Returns the record ID, as a hash over the **`Record<N, Plaintext<N>>` variant**.
     pub fn to_id(&self) -> Result<Field<N>> {
-        bail!("Illegal operation: Data::to_id() cannot be invoked on the `Plaintext` variant.")
+        bail!("Illegal operation: Record::to_id() cannot be invoked on the `Plaintext` variant.")
     }
 }

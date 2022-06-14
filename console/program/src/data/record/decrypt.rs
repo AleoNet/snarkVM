@@ -64,29 +64,28 @@ impl<N: Network> Record<N, Ciphertext<N>> {
 
         // Decrypt the program data.
         let mut decrypted_data = IndexMap::with_capacity(self.data.len());
-        for (id, value, num_randomizers) in self.data.iter().map(|(id, value)| (id, value, value.num_randomizers())) {
+        for (id, entry, num_randomizers) in self.data.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
             // Retrieve the result for `num_randomizers`.
             let num_randomizers = num_randomizers? as usize;
-            // Retrieve the randomizers for this value.
+            // Retrieve the randomizers for this entry.
             let randomizers = &randomizers[index..index + num_randomizers];
-            // Decrypt the value.
-            let value = match value {
-                // Constant values do not need to be decrypted.
-                Value::Constant(plaintext) => Value::Constant(plaintext.clone()),
-                // Public values do not need to be decrypted.
-                Value::Public(plaintext) => Value::Public(plaintext.clone()),
-                // Private values are decrypted with the given randomizers.
-                Value::Private(private) => Value::Private(Plaintext::from_fields(
+            // Decrypt the entry.
+            let entry = match entry {
+                // Constant entries do not need to be decrypted.
+                Entry::Constant(plaintext) => Entry::Constant(plaintext.clone()),
+                // Public entries do not need to be decrypted.
+                Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
+                // Private entries are decrypted with the given randomizers.
+                Entry::Private(private) => Entry::Private(Plaintext::from_fields(
                     &*private
                         .iter()
                         .zip_eq(randomizers)
                         .map(|(ciphertext, randomizer)| *ciphertext - randomizer)
                         .collect::<Vec<_>>(),
                 )?),
-                Value::Record(record) => Value::Record(record.decrypt_with_randomizers(randomizers)?),
             };
-            // Insert the decrypted value.
-            if decrypted_data.insert(id.clone(), value).is_some() {
+            // Insert the decrypted entry.
+            if decrypted_data.insert(id.clone(), entry).is_some() {
                 bail!("Duplicate identifier in record: {}", id);
             }
             // Increment the index.
@@ -124,11 +123,11 @@ mod tests {
                 vec![
                     (
                         Identifier::from_str("a")?,
-                        Value::Private(Plaintext::from(Literal::Field(Field::rand(&mut test_rng())))),
+                        Entry::Private(Plaintext::from(Literal::Field(Field::rand(&mut test_rng())))),
                     ),
                     (
                         Identifier::from_str("b")?,
-                        Value::Private(Plaintext::from(Literal::Scalar(Scalar::rand(&mut test_rng())))),
+                        Entry::Private(Plaintext::from(Literal::Scalar(Scalar::rand(&mut test_rng())))),
                     ),
                 ]
                 .into_iter(),

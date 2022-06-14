@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Plaintext, Record};
-use snarkvm_console_network::prelude::*;
+use super::*;
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum Input<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+impl<N: Network, Private: Visibility> Entry<N, Private> {
+    /// Returns the number of field elements to encode `self`.
+    pub(crate) fn num_randomizers(&self) -> Result<u16> {
+        match self {
+            // Constant and public entries do not need to be encrypted.
+            Self::Constant(..) | Self::Public(..) => Ok(0u16),
+            // Private entries need one randomizer per field element.
+            Self::Private(private) => private.size_in_fields(),
+        }
+    }
 }

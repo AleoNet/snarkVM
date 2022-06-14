@@ -19,12 +19,6 @@ mod parse;
 
 use crate::{Literal, Register};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 /// The `Operand` enum represents the options for an operand in an instruction.
 /// This enum is designed to for instructions such as `add {Register} {Literal} into {Register}`.

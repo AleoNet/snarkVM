@@ -23,16 +23,6 @@ use crate::PrivateKey;
 
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Group, Scalar};
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
-
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 static _COMPUTE_KEY_PREFIX: [u8; 10] = [109, 249, 98, 224, 36, 15, 213, 187, 79, 190]; // AComputeKey1
 

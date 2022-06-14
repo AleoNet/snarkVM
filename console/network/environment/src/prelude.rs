@@ -22,6 +22,7 @@ pub use snarkvm_utilities::{
     cfg_iter,
     cfg_iter_mut,
     error,
+    has_duplicates,
     io::{Read, Result as IoResult, Write},
     test_crypto_rng,
     test_rng,

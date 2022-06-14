@@ -17,26 +17,25 @@
 use super::*;
 
 impl<N: Network> Parser for Record<N, Plaintext<N>> {
-    /// Parses a string as a record: `{ owner: address, balance: u64, identifier_0: plaintext_0, ..., identifier_n: plaintext_n }`.
+    /// Parses a string as a record: `{ owner: address, balance: u64, identifier_0: entry_0, ..., identifier_n: entry_n }`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        /// Parses a sanitized pair: `identifier: value`.
-        fn parse_pair<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Value<N, Plaintext<N>>)> {
+        /// Parses a sanitized pair: `identifier: entry`.
+        fn parse_pair<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Entry<N, Plaintext<N>>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
             // Parse the ":" from the string.
             let (string, _) = tag(":")(string)?;
-            // Parse the value from the string.
-            let (string, value) = alt((
-                map(pair(Plaintext::parse, tag(".constant")), |(plaintext, _)| Value::Constant(plaintext)),
-                map(pair(Plaintext::parse, tag(".public")), |(plaintext, _)| Value::Public(plaintext)),
-                map(pair(Plaintext::parse, tag(".private")), |(plaintext, _)| Value::Private(plaintext)),
-                map(Record::parse, |record| Value::Record(record)),
+            // Parse the entry from the string.
+            let (string, entry) = alt((
+                map(pair(Plaintext::parse, tag(".constant")), |(plaintext, _)| Entry::Constant(plaintext)),
+                map(pair(Plaintext::parse, tag(".public")), |(plaintext, _)| Entry::Public(plaintext)),
+                map(pair(Plaintext::parse, tag(".private")), |(plaintext, _)| Entry::Private(plaintext)),
             ))(string)?;
-            // Return the identifier and value.
-            Ok((string, (identifier, value)))
+            // Return the identifier and entry.
+            Ok((string, (identifier, entry)))
         }
 
         // Parse the whitespace and comments from the string.
@@ -136,8 +135,8 @@ impl<N: Network> Display for Record<N, Plaintext<N>> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Prints the record, i.e. { owner: aleo1xxx, balance: 10u64, first: 10i64 }
         let mut output = format!("{{ owner: {}, balance: {}, ", self.owner, self.balance);
-        for (identifier, value) in self.data.iter() {
-            output += &format!("{identifier}: {value}, ");
+        for (identifier, entry) in self.data.iter() {
+            output += &format!("{identifier}: {entry}, ");
         }
         output.pop(); // trailing space
         output.pop(); // trailing comma
@@ -162,11 +161,10 @@ mod tests {
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
 
-        // let expected =
-        //     "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, balance: 99u64.private, foo: 5u8.constant }";
-        // let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
-        // assert_eq!(expected, candidate.to_string());
-        // assert_eq!("", remainder);
+        let expected = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, balance: 99u64.private, foo: 5u8.constant }";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
 
         Ok(())
     }

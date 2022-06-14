@@ -99,7 +99,6 @@ mod tests {
     use super::*;
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 

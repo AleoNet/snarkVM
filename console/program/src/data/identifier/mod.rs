@@ -25,14 +25,6 @@ mod to_field;
 
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Field};
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
 
 /// An identifier is an **immutable** UTF-8 string,
 /// represented as a **constant** field element in the CurrentNetwork.

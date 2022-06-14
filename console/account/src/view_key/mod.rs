@@ -26,16 +26,8 @@ use crate::PrivateKey;
 
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Scalar;
-use snarkvm_utilities::{
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
 
 use base58::{FromBase58, ToBase58};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// The account view key used to decrypt records and ciphertext.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

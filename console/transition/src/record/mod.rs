@@ -29,7 +29,6 @@ use crate::State;
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
-use snarkvm_utilities::ToBytes;
 
 /// A program record is a set of **ciphertext** variables used by a program.
 /// Note: `Record` is the **encrypted** form of `State`.

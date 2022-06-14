@@ -18,12 +18,6 @@ mod bytes;
 mod parse;
 
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 use core::fmt::{self, Debug, Display};
 use num_derive::FromPrimitive;

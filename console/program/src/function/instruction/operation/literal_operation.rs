@@ -23,11 +23,6 @@ use crate::{
     Register,
 };
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 use crate::program::RegisterType;
 use core::marker::PhantomData;

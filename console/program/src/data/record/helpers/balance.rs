@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Ciphertext, Literal, Plaintext, Value};
+use crate::{Ciphertext, Entry, Literal, Plaintext};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, U64};
 
@@ -40,11 +40,11 @@ impl<N: Network, Private: Visibility> Balance<N, Private> {
 }
 
 impl<N: Network> Balance<N, Plaintext<N>> {
-    /// Returns the balance as a `Value`.
-    pub fn to_value(&self) -> Value<N, Plaintext<N>> {
+    /// Returns the balance as an `Entry`.
+    pub fn to_entry(&self) -> Entry<N, Plaintext<N>> {
         match self {
-            Self::Public(balance) => Value::Public(Plaintext::from(Literal::U64(*balance))),
-            Self::Private(plaintext, ..) => Value::Private(plaintext.clone()),
+            Self::Public(balance) => Entry::Public(Plaintext::from(Literal::U64(*balance))),
+            Self::Private(plaintext, ..) => Entry::Private(plaintext.clone()),
         }
     }
 }

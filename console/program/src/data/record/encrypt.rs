@@ -64,19 +64,19 @@ impl<N: Network> Record<N, Plaintext<N>> {
 
         // Encrypt the data.
         let mut encrypted_data = IndexMap::with_capacity(self.data.len());
-        for (id, value, num_randomizers) in self.data.iter().map(|(id, value)| (id, value, value.num_randomizers())) {
+        for (id, entry, num_randomizers) in self.data.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
             // Retrieve the result for `num_randomizers`.
             let num_randomizers = num_randomizers? as usize;
-            // Retrieve the randomizers for this value.
+            // Retrieve the randomizers for this entry.
             let randomizers = &randomizers[index..index + num_randomizers];
-            // Encrypt the value.
-            let value = match value {
-                // Constant values do not need to be encrypted.
-                Value::Constant(plaintext) => Value::Constant(plaintext.clone()),
-                // Public values do not need to be encrypted.
-                Value::Public(plaintext) => Value::Public(plaintext.clone()),
-                // Private values are encrypted with the given randomizers.
-                Value::Private(private) => Value::Private(Ciphertext::try_from(
+            // Encrypt the entry.
+            let entry = match entry {
+                // Constant entries do not need to be encrypted.
+                Entry::Constant(plaintext) => Entry::Constant(plaintext.clone()),
+                // Public entries do not need to be encrypted.
+                Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
+                // Private entries are encrypted with the given randomizers.
+                Entry::Private(private) => Entry::Private(Ciphertext::try_from(
                     private
                         .to_fields()?
                         .iter()
@@ -84,11 +84,9 @@ impl<N: Network> Record<N, Plaintext<N>> {
                         .map(|(plaintext, randomizer)| *plaintext + randomizer)
                         .collect::<Vec<_>>(),
                 )?),
-                // Record values recursively encrypt their fields.
-                Value::Record(record) => Value::Record(record.encrypt_with_randomizers(randomizers)?),
             };
-            // Insert the encrypted value.
-            if encrypted_data.insert(id.clone(), value).is_some() {
+            // Insert the encrypted entry.
+            if encrypted_data.insert(id.clone(), entry).is_some() {
                 bail!("Duplicate identifier in record: {}", id);
             }
             // Increment the index.

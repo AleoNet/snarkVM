@@ -17,7 +17,7 @@
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-pub(super) mod identifier;
+mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
@@ -27,7 +27,7 @@ mod plaintext;
 pub use plaintext::{Plaintext, PlaintextType};
 
 mod record;
-pub use record::Record;
+pub use record::{Entry, Record};
 
 mod value;
 pub use value::{Value, ValueType};

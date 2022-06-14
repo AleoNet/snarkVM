@@ -47,7 +47,6 @@ impl<N: Network> Record<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, Uniform};
 
     type CurrentNetwork = Testnet3;
 

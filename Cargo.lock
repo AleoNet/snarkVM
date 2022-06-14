@@ -2274,11 +2274,9 @@ version = "0.7.5"
 dependencies = [
  "base58",
  "bincode",
- "serde",
  "serde_json",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2307,7 +2305,6 @@ dependencies = [
  "snarkvm-console-algorithms",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2359,7 +2356,6 @@ dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2369,7 +2365,6 @@ dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-utilities",
 ]
 
 [[package]]

@@ -43,23 +43,6 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_le
                 })
                 .clone(),
-            //     Self::Record(owner, balance, data, bits_le) => bits_le
-            //         .get_or_init(|| {
-            //             let mut bits_le = vec![true, false]; // Variant bits.
-            //             bits_le.extend(owner.to_bits_le());
-            //             bits_le.extend(balance.to_bits_le());
-            //
-            //             bits_le.extend((data.len() as u8).to_bits_le());
-            //             for (identifier, value) in data {
-            //                 let value_bits = value.to_bits_le();
-            //                 bits_le.extend(identifier.size_in_bits().to_bits_le());
-            //                 bits_le.extend(identifier.to_bits_le());
-            //                 bits_le.extend((value_bits.len() as u16).to_bits_le());
-            //                 bits_le.extend(value_bits);
-            //             }
-            //             bits_le
-            //         })
-            //         .clone(),
         }
     }
 
@@ -89,23 +72,6 @@ impl<N: Network> ToBits for Plaintext<N> {
                     bits_be
                 })
                 .clone(),
-            // Self::Record(owner, balance, data, bits_be) => bits_be
-            //     .get_or_init(|| {
-            //         let mut bits_be = vec![true, false]; // Variant bits.
-            //         bits_be.extend(owner.to_bits_be());
-            //         bits_be.extend(balance.to_bits_be());
-            //
-            //         bits_be.extend((data.len() as u8).to_bits_be());
-            //         for (identifier, value) in data {
-            //             let value_bits = value.to_bits_be();
-            //             bits_be.extend(identifier.size_in_bits().to_bits_be());
-            //             bits_be.extend(identifier.to_bits_be());
-            //             bits_be.extend((value_bits.len() as u16).to_bits_be());
-            //             bits_be.extend(value_bits);
-            //         }
-            //         bits_be
-            //     })
-            //     .clone(),
         }
     }
 }

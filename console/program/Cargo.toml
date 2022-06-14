@@ -18,10 +18,6 @@ version = "0.7.5"
 path = "../types"
 version = "0.7.5"
 
-[dependencies.snarkvm-utilities]
-path = "../../utilities"
-version = "0.7.5"
-
 [dependencies.enum_index]
 version = "0.2"
 

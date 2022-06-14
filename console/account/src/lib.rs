@@ -46,8 +46,6 @@ pub use view_key::*;
 // mod tests {
 //     use crate::{testnet2::Testnet2, Account, Address, Network, PrivateKey, ViewKey};
 //     use snarkvm_algorithms::prelude::*;
-//     use snarkvm_curves::AffineCurve;
-//     use snarkvm_utilities::{FromBytes, ToBits, ToBytes};
 //
 //     use rand::{thread_rng, Rng, SeedableRng};
 //     use rand_chacha::ChaChaRng;

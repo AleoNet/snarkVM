@@ -19,11 +19,6 @@ mod parse;
 
 use crate::{Register, Sanitizer, ValueType};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 /// An output statement defines an output of a function, and may refer to the value
 /// in either a register or a register member. An output statement is of the form

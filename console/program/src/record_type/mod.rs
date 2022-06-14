@@ -14,22 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod helpers;
+use helpers::PublicOrPrivate;
+
 mod bytes;
 mod parse;
 
 use crate::{Identifier, ValueType};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    has_duplicates,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 use indexmap::IndexMap;
-
-type IsPrivate = bool;
 
 /// The declared layout for program data.
 #[derive(Clone, PartialEq, Eq)]
@@ -37,22 +31,30 @@ pub struct RecordType<N: Network> {
     /// The name of the record type.
     name: Identifier<N>,
     /// The visibility for the owner of the program record.
-    owner: IsPrivate,
+    owner: PublicOrPrivate,
     /// The visibility for the balance of the program record.
-    balance: IsPrivate,
+    balance: PublicOrPrivate,
     /// The name and value type for the entries in data.
     entries: IndexMap<Identifier<N>, ValueType<N>>,
 }
 
 impl<N: Network> RecordType<N> {
     /// Returns the name of the record type.
-    #[inline]
     pub const fn name(&self) -> &Identifier<N> {
         &self.name
     }
 
+    /// Returns the visibility of the record owner.
+    pub const fn owner(&self) -> PublicOrPrivate {
+        self.owner
+    }
+
+    /// Returns the visibility of the record balance.
+    pub const fn balance(&self) -> PublicOrPrivate {
+        self.balance
+    }
+
     /// Returns the entries of the record type.
-    #[inline]
     pub const fn entries(&self) -> &IndexMap<Identifier<N>, ValueType<N>> {
         &self.entries
     }

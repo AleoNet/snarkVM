@@ -28,7 +28,6 @@ mod to_fields;
 use crate::{Identifier, Literal, Visibility};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
-use snarkvm_utilities::{error, has_duplicates};
 
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;

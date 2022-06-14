@@ -14,13 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Plaintext, Record};
-use snarkvm_console_network::prelude::*;
+mod entry_type;
+pub use entry_type::EntryType;
 
+mod find;
+mod num_randomizers;
+mod parse;
+mod to_bits;
+
+use crate::{Ciphertext, Identifier, Plaintext, Visibility};
+use snarkvm_console_network::Network;
+use snarkvm_console_types::prelude::*;
+
+/// An entry stored in program data.
 #[derive(Clone, PartialEq, Eq)]
-pub enum Input<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+pub enum Entry<N: Network, Private: Visibility> {
+    /// A constant entry.
+    Constant(Plaintext<N>),
+    /// A publicly-visible entry.
+    Public(Plaintext<N>),
+    /// A private entry encrypted under the address of the record owner.
+    Private(Private),
 }

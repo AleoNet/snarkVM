@@ -21,17 +21,8 @@ mod try_from;
 
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
 
 use base58::{FromBase58, ToBase58};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PrivateKey<N: Network> {

@@ -19,12 +19,6 @@ mod parse;
 
 use crate::{Identifier, PlaintextType};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 use enum_index::EnumIndex;
 

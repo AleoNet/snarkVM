@@ -22,7 +22,7 @@ mod num_randomizers;
 mod parse;
 mod to_bits;
 
-use crate::{Ciphertext, Identifier, Plaintext, Record, Visibility};
+use crate::{Ciphertext, Entry, Identifier, Plaintext, Record, Visibility};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -33,8 +33,18 @@ pub enum Value<N: Network, Private: Visibility> {
     Constant(Plaintext<N>),
     /// A publicly-visible value.
     Public(Plaintext<N>),
-    /// A private value encrypted under the account owner's address.
+    /// A private value encrypted under the address of the record owner.
     Private(Private),
-    /// A record type inherits its visibility from its record definition.
+    /// A record value inherits its visibility from its record definition.
     Record(Record<N, Private>),
+}
+
+impl<N: Network, Private: Visibility> From<Entry<N, Private>> for Value<N, Private> {
+    fn from(entry: Entry<N, Private>) -> Self {
+        match entry {
+            Entry::Constant(plaintext) => Value::Constant(plaintext),
+            Entry::Public(plaintext) => Value::Public(plaintext),
+            Entry::Private(private) => Value::Private(private),
+        }
+    }
 }

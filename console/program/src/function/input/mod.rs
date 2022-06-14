@@ -19,12 +19,6 @@ mod parse;
 
 use crate::{Register, Sanitizer, ValueType};
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {value_type}`.

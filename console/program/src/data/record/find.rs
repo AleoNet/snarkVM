@@ -17,14 +17,14 @@
 use super::*;
 
 impl<N: Network> Record<N, Plaintext<N>> {
-    /// Returns the entry value from the given path.
-    pub fn find(&self, path: &[Identifier<N>]) -> Result<Value<N, Plaintext<N>>> {
+    /// Returns the entry from the given path.
+    pub fn find(&self, path: &[Identifier<N>]) -> Result<Entry<N, Plaintext<N>>> {
         // If the path is of length one, check if the path is requesting the `owner` or `balance`.
         if path.len() == 1 {
             if path[0] == Identifier::from_str("owner")? {
-                return Ok(self.owner.to_value());
+                return Ok(self.owner.to_entry());
             } else if path[0] == Identifier::from_str("balance")? {
-                return Ok(self.balance.to_value());
+                return Ok(self.balance.to_entry());
             }
         }
 
@@ -32,11 +32,11 @@ impl<N: Network> Record<N, Plaintext<N>> {
         if let Some((first, rest)) = path.split_first() {
             // Retrieve the top-level entry.
             match self.data.get(first) {
-                Some(value) => match rest.is_empty() {
+                Some(entry) => match rest.is_empty() {
                     // If the remaining path is empty, return the top-level entry.
-                    true => Ok(value.clone()),
+                    true => Ok(entry.clone()),
                     // Otherwise, recursively call `find` on the top-level entry.
-                    false => value.find(rest),
+                    false => entry.find(rest),
                 },
                 None => bail!("Record entry `{first}` not found."),
             }

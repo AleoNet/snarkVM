@@ -32,7 +32,7 @@ impl<N: Network> Randomizer<N> {
 
         // Compute the generator `H` as `HashToGroup([ Hash(serial_numbers) || output_index ])`.
         let generator_h =
-            N::hash_to_group_psd4(&[N::randomizer_domain(), serial_numbers_digest, output_index.to_field()])?;
+            N::hash_to_group_psd4(&[N::randomizer_domain(), serial_numbers_digest, output_index.to_field()?])?;
 
         // Compute `address` as `view_key * G`.
         let address = Address::try_from(view_key)?;

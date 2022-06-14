@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod entry;
+pub use entry::Entry;
+
 mod helpers;
-use helpers::*;
+use helpers::{Balance, Owner};
 
 mod decrypt;
 mod encrypt;
@@ -25,11 +28,10 @@ mod parse;
 mod to_bits;
 mod to_id;
 
-use crate::{Ciphertext, Identifier, Literal, Plaintext, Value, Visibility};
+use crate::{Ciphertext, Identifier, Literal, Plaintext, Visibility};
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Group, Scalar, U64};
-use snarkvm_utilities::has_duplicates;
 
 use indexmap::IndexMap;
 
@@ -41,7 +43,7 @@ pub struct Record<N: Network, Private: Visibility> {
     /// The balance of the program record.
     balance: Balance<N, Private>,
     /// The program data.
-    data: IndexMap<Identifier<N>, Value<N, Private>>,
+    data: IndexMap<Identifier<N>, Entry<N, Private>>,
 }
 
 impl<N: Network> Record<N, Plaintext<N>> {
@@ -58,7 +60,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
 
 impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the program data.
-    pub const fn data(&self) -> &IndexMap<Identifier<N>, Value<N, Private>> {
+    pub const fn data(&self) -> &IndexMap<Identifier<N>, Entry<N, Private>> {
         &self.data
     }
 }

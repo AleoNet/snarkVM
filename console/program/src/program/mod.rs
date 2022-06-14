@@ -69,7 +69,11 @@ impl<N: Network> Program<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate(&self, function_name: &Identifier<N>, inputs: &[Input<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    pub fn evaluate(
+        &self,
+        function_name: &Identifier<N>,
+        inputs: &[RegisterValue<N>],
+    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Retrieve the function from the program.
         let function = self.get_function(function_name)?;
 
@@ -712,8 +716,8 @@ function compute:
         let function_name = Identifier::from_str("foo").unwrap();
         // Declare the function inputs.
         let inputs = vec![
-            Input::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
-            Input::Plaintext(Plaintext::from_str("3field").unwrap()),
+            RegisterValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
+            RegisterValue::Plaintext(Plaintext::from_str("3field").unwrap()),
         ];
 
         // Run the function.
@@ -748,8 +752,9 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
-        let input =
-            Input::<CurrentNetwork>::Plaintext(Plaintext::from_str("{ first: 2field, second: 3field }").unwrap());
+        let input = RegisterValue::<CurrentNetwork>::Plaintext(
+            Plaintext::from_str("{ first: 2field, second: 3field }").unwrap(),
+        );
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("5field").unwrap());
 
@@ -786,7 +791,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
         let input =
-            Input::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            RegisterValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("200u64").unwrap());
 

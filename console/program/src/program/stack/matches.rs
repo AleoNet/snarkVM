@@ -18,15 +18,17 @@ use super::*;
 
 impl<N: Network> Stack<N> {
     /// Checks that the given input value matches the layout of the value type.
-    pub fn matches_input(&self, input: &Input<N>, value_type: &ValueType<N>) -> Result<()> {
+    pub fn matches_input(&self, input: &RegisterValue<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the input value matches the declared type in the register.
         match (input, value_type) {
-            (Input::Plaintext(plaintext), ValueType::Constant(plaintext_type))
-            | (Input::Plaintext(plaintext), ValueType::Public(plaintext_type))
-            | (Input::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
+            (RegisterValue::Plaintext(plaintext), ValueType::Constant(plaintext_type))
+            | (RegisterValue::Plaintext(plaintext), ValueType::Public(plaintext_type))
+            | (RegisterValue::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
                 self.matches_plaintext(plaintext, &plaintext_type)
             }
-            (Input::Record(record), ValueType::Record(record_name)) => self.matches_record(record, &record_name),
+            (RegisterValue::Record(record), ValueType::Record(record_name)) => {
+                self.matches_record(record, &record_name)
+            }
             _ => bail!("Input value does not match the input register type '{value_type}'"),
         }
     }
@@ -131,11 +133,11 @@ impl<N: Network> Stack<N> {
         for (expected_name, expected_type) in record_type.entries() {
             match record.data().iter().find(|(name, _)| *name == expected_name) {
                 // Ensure the member type matches.
-                Some((member_name, member_value)) => {
+                Some((member_name, member_entry)) => {
                     // Ensure the member name is valid.
                     ensure!(!self.program.is_reserved_name(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
-                    self.matches_value_internal(member_value, expected_type, depth + 1)?
+                    self.matches_value_internal(&Value::from(member_entry.clone()), expected_type, depth + 1)?
                 }
                 None => bail!("'{record_name}' is missing member '{expected_name}'",),
             }

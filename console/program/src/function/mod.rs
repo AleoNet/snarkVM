@@ -36,12 +36,6 @@ use crate::{
     Sanitizer,
 };
 use snarkvm_console_network::prelude::*;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    ToBytes,
-};
 
 use indexmap::IndexSet;
 
@@ -66,7 +60,7 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the name of the function.
-    pub fn name(&self) -> &Identifier<N> {
+    pub const fn name(&self) -> &Identifier<N> {
         &self.name
     }
 
