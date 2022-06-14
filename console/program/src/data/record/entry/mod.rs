@@ -19,9 +19,11 @@ mod num_randomizers;
 mod parse;
 mod to_bits;
 
-use crate::{Ciphertext, Identifier, Plaintext, Visibility};
+use crate::{Ciphertext, Identifier, Literal, Plaintext, Visibility};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
+
+use indexmap::IndexMap;
 
 /// An entry stored in program data.
 #[derive(Clone, PartialEq, Eq)]
