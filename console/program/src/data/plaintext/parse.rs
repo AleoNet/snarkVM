@@ -126,12 +126,7 @@ impl<N: Network> Plaintext<N> {
                                 // Print the last member without a comma.
                                 write!(f, "\n{:indent$}{name}: {literal}", "", indent = (depth + 1) * INDENT)?;
                                 // Print the closing brace.
-                                match depth.is_zero() {
-                                    // Print the last closing brace without indentation.
-                                    true => write!(f, "\n}}"),
-                                    // Print the closing brace with indentation.
-                                    false => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
-                                }
+                                write!(f, "\n{:indent$}}}", "", indent = depth * INDENT)
                             }
                             // Print the member with a comma.
                             false => write!(f, "\n{:indent$}{name}: {literal},", "", indent = (depth + 1) * INDENT),

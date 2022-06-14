@@ -146,7 +146,7 @@ impl<N: Network> Display for Entry<N, Plaintext<N>> {
 
 impl<N: Network> Entry<N, Plaintext<N>> {
     /// Prints the entry with the given indentation depth.
-    fn fmt_internal(&self, f: &mut Formatter, depth: usize) -> fmt::Result {
+    pub(in crate::data::record) fn fmt_internal(&self, f: &mut Formatter, depth: usize) -> fmt::Result {
         /// The number of spaces to indent.
         const INDENT: usize = 2;
 
@@ -168,30 +168,16 @@ impl<N: Network> Entry<N, Plaintext<N>> {
                 // Print the members.
                 interface.iter().enumerate().try_for_each(|(i, (name, plaintext))| {
                     match plaintext {
+                        #[rustfmt::skip]
                         Plaintext::Literal(literal, ..) => match i == interface.len() - 1 {
                             true => {
                                 // Print the last member without a comma.
-                                write!(
-                                    f,
-                                    "\n{:indent$}{name}: {literal}.{visibility}",
-                                    "",
-                                    indent = (depth + 1) * INDENT
-                                )?;
+                                write!(f, "\n{:indent$}{name}: {literal}.{visibility}", "", indent = (depth + 1) * INDENT)?;
                                 // Print the closing brace.
-                                match depth.is_zero() {
-                                    // Print the last closing brace without indentation.
-                                    true => write!(f, "\n}}"),
-                                    // Print the closing brace with indentation.
-                                    false => write!(f, "\n{:indent$}}}", "", indent = depth * INDENT),
-                                }
+                                write!(f, "\n{:indent$}}}", "", indent = depth * INDENT)
                             }
                             // Print the member with a comma.
-                            false => write!(
-                                f,
-                                "\n{:indent$}{name}: {literal}.{visibility},",
-                                "",
-                                indent = (depth + 1) * INDENT
-                            ),
+                            false => write!(f, "\n{:indent$}{name}: {literal}.{visibility},", "", indent = (depth + 1) * INDENT),
                         },
                         Plaintext::Interface(..) => {
                             // Print the member name.

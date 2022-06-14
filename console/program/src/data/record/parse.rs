@@ -29,11 +29,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             // Parse the ":" from the string.
             let (string, _) = tag(":")(string)?;
             // Parse the entry from the string.
-            let (string, entry) = alt((
-                map(pair(Plaintext::parse, tag(".constant")), |(plaintext, _)| Entry::Constant(plaintext)),
-                map(pair(Plaintext::parse, tag(".public")), |(plaintext, _)| Entry::Public(plaintext)),
-                map(pair(Plaintext::parse, tag(".private")), |(plaintext, _)| Entry::Private(plaintext)),
-            ))(string)?;
+            let (string, entry) = Entry::parse(string)?;
             // Return the identifier and entry.
             Ok((string, (identifier, entry)))
         }
@@ -129,19 +125,52 @@ impl<N: Network> Debug for Record<N, Plaintext<N>> {
     }
 }
 
-#[allow(clippy::format_push_string)]
 impl<N: Network> Display for Record<N, Plaintext<N>> {
     /// Prints the record as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Prints the record, i.e. { owner: aleo1xxx, balance: 10u64, first: 10i64 }
-        let mut output = format!("{{ owner: {}, balance: {}, ", self.owner, self.balance);
-        for (identifier, entry) in self.data.iter() {
-            output += &format!("{identifier}: {entry}, ");
+        self.fmt_internal(f, 0)
+    }
+}
+
+impl<N: Network> Record<N, Plaintext<N>> {
+    /// Prints the record with the given indentation depth.
+    fn fmt_internal(&self, f: &mut Formatter, depth: usize) -> fmt::Result {
+        /// The number of spaces to indent.
+        const INDENT: usize = 2;
+
+        // Print the opening brace.
+        write!(f, "{{")?;
+        // Print the owner with a comma.
+        write!(f, "\n{:indent$}owner: {},", "", self.owner, indent = (depth + 1) * INDENT)?;
+        // Print the balance with a comma.
+        match self.data.is_empty() {
+            // If the record data is empty, print the balance without a comma.
+            true => write!(f, "\n{:indent$}balance: {}", "", self.balance, indent = (depth + 1) * INDENT)?,
+            // If the record data is not empty, print the balance with a comma.
+            false => write!(f, "\n{:indent$}balance: {},", "", self.balance, indent = (depth + 1) * INDENT)?,
         }
-        output.pop(); // trailing space
-        output.pop(); // trailing comma
-        output += " }";
-        write!(f, "{output}")
+        // Print the data without a comma.
+        for (i, (identifier, entry)) in self.data.iter().enumerate() {
+            // Print the identifier.
+            write!(f, "\n{:indent$}{identifier}: ", "", indent = (depth + 1) * INDENT)?;
+            // Print the entry.
+            match entry {
+                // If the entry is a literal, print the entry without indentation.
+                Entry::Constant(Plaintext::Literal(..))
+                | Entry::Public(Plaintext::Literal(..))
+                | Entry::Private(Plaintext::Literal(..)) => write!(f, "{entry}")?,
+                // If the entry is an interface, print the entry with indentation.
+                Entry::Constant(Plaintext::Interface(..))
+                | Entry::Public(Plaintext::Interface(..))
+                | Entry::Private(Plaintext::Interface(..)) => entry.fmt_internal(f, depth + 1)?,
+            }
+            // Print the comma, if this is not the last entry.
+            if i != self.data.len() - 1 {
+                write!(f, ",")?;
+            }
+        }
+        // Print the closing brace.
+        write!(f, "\n{:indent$}}}", "", indent = depth * INDENT)
     }
 }
 
@@ -153,16 +182,60 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_parse() -> Result<()> {
+    fn test_parse_without_data_entries() -> Result<()> {
         // Sanity check.
-        let expected =
+        let expected = r"{
+  owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private,
+  balance: 99u64.public
+}";
+        let given =
             "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 99u64.public }";
-        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(given)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
+        Ok(())
+    }
 
-        let expected = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, balance: 99u64.private, foo: 5u8.constant }";
+    #[test]
+    fn test_parse_with_literal_entry() -> Result<()> {
+        let expected = r"{
+  owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public,
+  balance: 99u64.private,
+  foo: 5u8.constant
+}";
+        let given = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, balance: 99u64.private, foo: 5u8.constant }";
+        let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(given)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
+        assert_eq!(expected, candidate.to_string());
+        assert_eq!("", remainder);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_with_interface_entry() -> Result<()> {
+        let expected = r"{
+  owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public,
+  balance: 99u64.private,
+  foo: 5u8.public,
+  bar: {
+    baz: 6u8.constant,
+    qux: 7u8.constant
+  },
+  quux: 8u8.private,
+  corge: {
+    grault: 9u8.constant,
+    garply: {
+      waldo: 10u8.constant,
+      fred: 11u8.constant
+    }
+  },
+  xyzzy: {
+    thud: 12u8.public
+  }
+}";
         let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
+        println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
         assert_eq!("", remainder);
 
