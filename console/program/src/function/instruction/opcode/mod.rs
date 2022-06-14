@@ -21,6 +21,8 @@ use snarkvm_console_network::prelude::*;
 pub enum Opcode {
     /// The opcode is for a literal operation.
     Literal(&'static str),
+    /// The opcode is for an interface constructor.
+    Interface(&'static str),
     /// The opcode is for a record constructor.
     Record(&'static str),
     /// The opcode is for a function call.
@@ -34,6 +36,7 @@ impl Deref for Opcode {
     fn deref(&self) -> &Self::Target {
         match self {
             Opcode::Literal(opcode) => opcode,
+            Opcode::Interface(opcode) => opcode,
             Opcode::Record(opcode) => opcode,
             Opcode::Function(opcode) => opcode,
         }
@@ -52,6 +55,7 @@ impl Display for Opcode {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Literal(opcode) => write!(f, "{opcode}"),
+            Self::Interface(opcode) => write!(f, "{opcode}"),
             Self::Record(opcode) => write!(f, "{opcode}"),
             Self::Function(opcode) => write!(f, "{opcode}"),
         }

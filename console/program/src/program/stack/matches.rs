@@ -103,7 +103,7 @@ impl<N: Network> Stack<N> {
         ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
 
         // Ensure the record name is valid.
-        ensure!(!self.program.is_reserved_name(record_name), "Record name '{record_name}' is reserved");
+        ensure!(!self.program.is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Retrieve the record type from the program.
         let record_type = match self.program.get_record(record_name) {
@@ -153,7 +153,7 @@ impl<N: Network> Stack<N> {
                 // Ensure the member type matches.
                 Some((member_name, member_entry)) => {
                     // Ensure the member name is valid.
-                    ensure!(!self.program.is_reserved_name(member_name), "Member name '{member_name}' is reserved");
+                    ensure!(!self.program.is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
                     self.matches_value_internal(
                         &Value::from(member_entry.clone()),
@@ -161,7 +161,7 @@ impl<N: Network> Stack<N> {
                         depth + 1,
                     )?
                 }
-                None => bail!("'{record_name}' is missing member '{expected_name}'",),
+                None => bail!("'{record_name}' is missing member '{expected_name}'"),
             }
         }
         Ok(())
@@ -196,10 +196,7 @@ impl<N: Network> Stack<N> {
             },
             PlaintextType::Interface(interface_name) => {
                 // Ensure the interface name is valid.
-                ensure!(
-                    !self.program.is_reserved_name(interface_name),
-                    "Interface name '{interface_name}' is reserved"
-                );
+                ensure!(!self.program.is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
 
                 // Retrieve the interface from the program.
                 let interface = match self.program.get_interface(interface_name) {
@@ -240,13 +237,13 @@ impl<N: Network> Stack<N> {
                         Some((member_name, member_plaintext)) => {
                             // Ensure the member name is valid.
                             ensure!(
-                                !self.program.is_reserved_name(member_name),
-                                "Member name '{member_name}' is reserved"
+                                !self.program.is_reserved_keyword(member_name),
+                                "Member '{member_name}' is reserved"
                             );
                             // Ensure the member plaintext matches (recursive call).
                             self.matches_plaintext_internal(member_plaintext, expected_type, depth + 1)?
                         }
-                        None => bail!("'{interface_name}' is missing member '{expected_name}'",),
+                        None => bail!("'{interface_name}' is missing member '{expected_name}'"),
                     }
                 }
                 Ok(())

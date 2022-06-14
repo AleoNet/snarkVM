@@ -25,7 +25,9 @@ use crate::{
     EntryType,
     Function,
     Identifier,
+    Instruction,
     Interface,
+    Opcode,
     Plaintext,
     PlaintextType,
     RecordType,
@@ -164,6 +166,7 @@ impl<N: Network> Program<N> {
     /// # Errors
     /// This method will halt if the interface was previously added.
     /// This method will halt if the interface name is already in use in the program.
+    /// This method will halt if the interface name is a reserved opcode or keyword.
     /// This method will halt if any interfaces in the interface's members are not already defined.
     #[inline]
     fn add_interface(&mut self, interface: Interface<N>) -> Result<()> {
@@ -171,15 +174,17 @@ impl<N: Network> Program<N> {
         let interface_name = interface.name().clone();
 
         // Ensure the interface name is new.
-        ensure!(self.is_unique_name(&interface_name), "'{}' is already in use.", interface_name);
+        ensure!(self.is_unique_name(&interface_name), "'{interface_name}' is already in use.");
+        // Ensure the interface name is not a reserved opcode.
+        ensure!(!self.is_reserved_opcode(&interface_name), "'{interface_name}' is a reserved opcode.");
         // Ensure the interface name is not a reserved keyword.
-        ensure!(!self.is_reserved_name(&interface_name), "'{}' is a reserved keyword.", interface_name);
+        ensure!(!self.is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
 
         // Ensure all interface members are well-formed.
         // Note: This design ensures cyclic references are not possible.
         for (identifier, plaintext_type) in interface.members() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!self.is_reserved_name(identifier), "'{identifier}' is a reserved keyword.");
+            ensure!(!self.is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
                 PlaintextType::Literal(..) => continue,
@@ -208,6 +213,7 @@ impl<N: Network> Program<N> {
     /// # Errors
     /// This method will halt if the record was previously added.
     /// This method will halt if the record name is already in use in the program.
+    /// This method will halt if the record name is a reserved opcode or keyword.
     /// This method will halt if any records in the record's members are not already defined.
     #[inline]
     fn add_record(&mut self, record: RecordType<N>) -> Result<()> {
@@ -215,15 +221,17 @@ impl<N: Network> Program<N> {
         let record_name = record.name().clone();
 
         // Ensure the record name is new.
-        ensure!(self.is_unique_name(&record_name), "'{}' is already in use.", record_name);
+        ensure!(self.is_unique_name(&record_name), "'{record_name}' is already in use.");
+        // Ensure the record name is not a reserved opcode.
+        ensure!(!self.is_reserved_opcode(&record_name), "'{record_name}' is a reserved opcode.");
         // Ensure the record name is not a reserved keyword.
-        ensure!(!self.is_reserved_name(&record_name), "'{}' is a reserved keyword.", record_name);
+        ensure!(!self.is_reserved_keyword(&record_name), "'{record_name}' is a reserved keyword.");
 
         // Ensure all record entries are well-formed.
         // Note: This design ensures cyclic references are not possible.
         for (identifier, entry_type) in record.entries() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!self.is_reserved_name(identifier), "'{identifier}' is a reserved keyword.");
+            ensure!(!self.is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match entry_type {
                 // Ensure the plaintext type is already defined.
@@ -233,7 +241,7 @@ impl<N: Network> Program<N> {
                     PlaintextType::Literal(..) => continue,
                     PlaintextType::Interface(identifier) => {
                         if !self.interfaces.contains_key(identifier) {
-                            bail!("Interface '{identifier}' in record '{}' is not defined.", record_name)
+                            bail!("Interface '{identifier}' in record '{record_name}' is not defined.")
                         }
                     }
                 },
@@ -242,11 +250,11 @@ impl<N: Network> Program<N> {
 
         // Add the record name to the identifiers.
         if self.identifiers.insert(record_name.clone(), ProgramDefinition::Record).is_some() {
-            bail!("'{}' already exists in the program.", record_name)
+            bail!("'{record_name}' already exists in the program.")
         }
         // Add the record to the program.
         if self.records.insert(record_name.clone(), record).is_some() {
-            bail!("'{}' already exists in the program.", record_name)
+            bail!("'{record_name}' already exists in the program.")
         }
         Ok(())
     }
@@ -256,6 +264,7 @@ impl<N: Network> Program<N> {
     /// # Errors
     /// This method will halt if the function was previously added.
     /// This method will halt if the function name is already in use in the program.
+    /// This method will halt if the function name is a reserved opcode or keyword.
     /// This method will halt if any registers are assigned more than once.
     /// This method will halt if the registers are not incrementing monotonically.
     /// This method will halt if an input type references a non-existent definition.
@@ -269,9 +278,11 @@ impl<N: Network> Program<N> {
         let function_name = function.name().clone();
 
         // Ensure the function name is new.
-        ensure!(self.is_unique_name(&function_name), "'{}' is already in use.", function_name);
+        ensure!(self.is_unique_name(&function_name), "'{function_name}' is already in use.");
+        // Ensure the function name is not a reserved opcode.
+        ensure!(!self.is_reserved_opcode(&function_name), "'{function_name}' is a reserved opcode.");
         // Ensure the function name is not a reserved keyword.
-        ensure!(!self.is_reserved_name(&function_name), "'{}' is a reserved keyword.", function_name);
+        ensure!(!self.is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
         // Initialize a map of registers to their types.
         let mut registers = RegisterTypes::new();
@@ -307,6 +318,29 @@ impl<N: Network> Program<N> {
 
         // Step 2. Check the function instructions are well-formed.
         for instruction in function.instructions() {
+            // Ensure the opcode is defined.
+            match instruction.opcode() {
+                Opcode::Literal(..) => (),
+                Opcode::Interface(opcode) => {
+                    // Ensure the interface name exists in the program.
+                    if !self.interfaces.contains_key(&Identifier::from_str(opcode)?) {
+                        bail!("Opcode '{opcode}' in function '{function_name}' is not defined.")
+                    }
+                }
+                Opcode::Record(opcode) => {
+                    // Ensure the record name exists in the program.
+                    if !self.records.contains_key(&Identifier::from_str(opcode)?) {
+                        bail!("Opcode '{opcode}' in function '{function_name}' is not defined.")
+                    }
+                }
+                Opcode::Function(opcode) => {
+                    // Ensure the function name exists in the program.
+                    if !self.functions.contains_key(&Identifier::from_str(opcode)?) {
+                        bail!("Opcode '{opcode}' in function '{function_name}' is not defined.")
+                    }
+                }
+            }
+
             // Initialize a vector to store the register types of the operands.
             let mut operand_types = Vec::with_capacity(instruction.operands().len());
             // Iterate over the operands, and retrieve the register type of each operand.
@@ -436,8 +470,16 @@ impl<N: Network> Program<N> {
         !self.identifiers.contains_key(name)
     }
 
+    /// Returns `true` if the given name is a reserved opcode.
+    pub(crate) fn is_reserved_opcode(&self, name: &Identifier<N>) -> bool {
+        // Convert the name to a string.
+        let name = name.to_string();
+        // Check if it matches root of any opcode.
+        Instruction::<N>::OPCODES.into_iter().any(|opcode| (**opcode).splitn(2, '.').next() == Some(&name))
+    }
+
     /// Returns `true` if the given name uses a reserved keyword.
-    pub(crate) fn is_reserved_name(&self, name: &Identifier<N>) -> bool {
+    pub(crate) fn is_reserved_keyword(&self, name: &Identifier<N>) -> bool {
         #[rustfmt::skip]
         const KEYWORDS: &[&str] = &[
             // Mode

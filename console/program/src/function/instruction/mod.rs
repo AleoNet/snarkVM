@@ -302,10 +302,27 @@ macro_rules! derive_from_operation {
 }
 instruction!(derive_from_operation, Instruction, |None| {});
 
+/// Returns a slice of all instruction opcodes.
+///
+/// ## Example
+/// ```ignore
+/// opcodes!(Instruction, |None| {}, { Add, Sub, Mul, Div })
+/// ```
+macro_rules! opcodes {
+    ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {
+        [$( $variant::<N>::opcode() ),+]
+    }
+}
+
+impl<N: Network> Instruction<N> {
+    /// The list of all instruction opcodes.
+    pub(crate) const OPCODES: &'static [Opcode] = &instruction!(opcodes, Instruction, |None| {});
+}
+
 impl<N: Network> Instruction<N> {
     /// Returns the opcode of the instruction.
     #[inline]
-    pub(crate) fn opcode(&self) -> Opcode {
+    pub(crate) const fn opcode(&self) -> Opcode {
         instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
     }
 
@@ -317,7 +334,7 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the destination register of the instruction.
     #[inline]
-    pub(crate) fn destination(&self) -> &Register<N> {
+    pub(crate) const fn destination(&self) -> &Register<N> {
         instruction!(self, |instruction| instruction.destination())
     }
 
@@ -425,15 +442,15 @@ impl<N: Network> FromBytes for Instruction<N> {
         macro_rules! instruction_from_bytes_le {
             ($object:expr, |$reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
                 // A list of instruction enum variants.
-                const INSTRUCTION_VARIANTS: &[&'static str] = &[ $( stringify!($variant), )+];
+                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
                 // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_VARIANTS.len() <= u16::MAX as usize);
+                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
 
                 // Read the enum variant index.
                 let variant = u16::read_le(&mut $reader)?;
 
                 // Build the cases for all instructions.
-                $(if INSTRUCTION_VARIANTS[variant as usize] == stringify!($variant) {
+                $(if INSTRUCTION_ENUMS[variant as usize] == stringify!($variant) {
                     // Read the instruction.
                     let instruction = $variant::read_le(&mut $reader)?;
                     // Return the instruction.
@@ -458,16 +475,16 @@ impl<N: Network> ToBytes for Instruction<N> {
         macro_rules! instruction_to_bytes_le {
             ($object:expr, |$writer:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
                 // A list of instruction enum variants.
-                const INSTRUCTION_VARIANTS: &[&'static str] = &[ $( stringify!($variant), )+];
+                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
                 // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_VARIANTS.len() <= u16::MAX as usize);
+                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
 
                 // Build the match cases.
                 match $object {
                     $(Self::$variant(instruction) => {
                         // Retrieve the enum variant index.
                         // Note: This unwrap is guaranteed to succeed because the enum variant is known to exist.
-                        let variant = INSTRUCTION_VARIANTS.iter().position(|&name| stringify!($variant) == name).unwrap();
+                        let variant = INSTRUCTION_ENUMS.iter().position(|&name| stringify!($variant) == name).unwrap();
 
                         // Serialize the instruction.
                         u16::write_le(&(variant as u16),&mut $writer)?;
@@ -478,5 +495,19 @@ impl<N: Network> ToBytes for Instruction<N> {
             }};
         }
         instruction!(instruction_to_bytes_le!(self, writer))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_opcodes() {
+        // Sanity check the number of instructions is unchanged.
+        assert_eq!(8, Instruction::<CurrentNetwork>::OPCODES.len(), "Update me if the number of instructions changes.");
     }
 }

@@ -201,7 +201,7 @@ pub fn lagrange_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
                 "Failed with {} polynomials, num_points_in_query_set: {:?}",
                 num_polynomials, num_points_in_query_set
             );
-            println!("Degree of polynomials:",);
+            println!("Degree of polynomials:");
             for poly in polynomials {
                 println!("Degree: {:?}", poly.degree());
             }
@@ -322,7 +322,7 @@ where
                 "Failed with {} polynomials, num_points_in_query_set: {:?}",
                 num_polynomials, num_points_in_query_set
             );
-            println!("Degree of polynomials:",);
+            println!("Degree of polynomials:");
             for poly in polynomials {
                 println!("Degree: {:?}", poly.degree());
             }
@@ -491,7 +491,7 @@ fn equation_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
                 "Failed with {} polynomials, num_points_in_query_set: {:?}",
                 num_polynomials, num_points_in_query_set
             );
-            println!("Degree of polynomials:",);
+            println!("Degree of polynomials:");
             for poly in polynomials {
                 println!("Degree: {:?}", poly.degree());
             }
