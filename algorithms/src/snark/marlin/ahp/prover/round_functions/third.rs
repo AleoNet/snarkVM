@@ -105,7 +105,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let q_1 = &(&row + &lin) - &x_g_1;
         let (h_1, rem) = q_1.divide_by_vanishing_poly(constraint_domain).unwrap();
-        // NOTE: maybe we need to check that rem is zero since there should be no remainer left
+        assert!(rem.is_zero());
 
         let oracles = prover::ThirdOracles { h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None) };
         assert!(oracles.matches_info(&Self::third_round_polynomial_info(&state.index.index_info)));

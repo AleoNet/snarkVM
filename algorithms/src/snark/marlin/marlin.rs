@@ -391,13 +391,17 @@ where
         Self::terminate(terminator)?;
 
         // Gather commitments in one vector.
-        let witness_commitments = first_commitments.chunks_exact(3);
+        let witness_commitments = first_commitments.chunks_exact(7);
         let mask_poly = MM::ZK.then(|| *witness_commitments.remainder()[0].commitment());
         let witness_commitments = witness_commitments
             .map(|c| proof::WitnessCommitments {
                 w: *c[0].commitment(),
                 z_a: *c[1].commitment(),
                 z_b: *c[2].commitment(),
+                z_c: *c[3].commitment(),
+                s_m: *c[4].commitment(),
+                s_l: *c[5].commitment(),
+                f: *c[6].commitment(),
             })
             .collect();
         #[rustfmt::skip]
@@ -521,19 +525,20 @@ where
 
         let batch_size = public_inputs.len();
 
-        println!("{batch_size}");
-        println!("{}", comms.witness_commitments.len());
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_size);
         let mut first_commitments = comms
             .witness_commitments
             .iter()
             .enumerate()
             .flat_map(|(i, c)| {
-                println!("{:?}", witness_label("w", i));
                 [
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("w", i)], c.w),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_a", i)], c.z_a),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_b", i)], c.z_b),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_c", i)], c.z_c),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("s_m", i)], c.s_m),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("s_l", i)], c.s_l),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("f", i)], c.f),
                 ]
             })
             .collect::<Vec<_>>();
@@ -628,6 +633,7 @@ where
             .chain(second_commitments)
             .chain(third_commitments)
             .chain(fourth_commitments)
+            .chain(fifth_commitments)
             .collect();
 
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);

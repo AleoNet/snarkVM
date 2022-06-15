@@ -186,6 +186,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let r_b = state.fourth_round_message.as_ref().unwrap().r_b;
         let r_c = state.fourth_round_message.as_ref().unwrap().r_c;
 
+        let delta = state.second_round_message.unwrap().delta;
         let beta = state.third_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
