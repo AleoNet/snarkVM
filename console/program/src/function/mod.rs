@@ -49,7 +49,6 @@ pub struct Function<N: Network> {
     /// The instructions, in order of execution.
     instructions: Vec<Instruction<N>>,
     /// The output statements, in order of the desired output.
-    /// There is no expectation that the output registers are in any ordering.
     outputs: IndexSet<Output<N>>,
 }
 

@@ -320,7 +320,10 @@ impl<N: Network> Program<N> {
         for instruction in function.instructions() {
             // Ensure the opcode is defined.
             match instruction.opcode() {
-                Opcode::Literal(..) => (),
+                Opcode::Literal(opcode) => {
+                    // Ensure the opcode **is** a reserved opcode.
+                    ensure!(self.is_reserved_opcode(opcode), "'{opcode}' is not an opcode.")
+                }
                 Opcode::Interface(opcode) => {
                     // Ensure the interface name exists in the program.
                     if !self.interfaces.contains_key(&Identifier::from_str(opcode)?) {
