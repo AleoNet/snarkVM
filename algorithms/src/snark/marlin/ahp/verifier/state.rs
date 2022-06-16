@@ -40,5 +40,6 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
     pub(crate) fourth_round_message: Option<FourthMessage<F>>,
 
     pub(crate) gamma: Option<F>,
+    pub(crate) zeta: Option<F>,
     pub(crate) mode: PhantomData<MM>,
 }

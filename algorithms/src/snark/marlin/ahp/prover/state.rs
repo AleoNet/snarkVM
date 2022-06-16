@@ -156,7 +156,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             z_c: None,
             s_m: vec![],
             s_l: vec![],
-            zeta: F::rand(&mut rand::thread_rng()),
+            zeta: F::one(),
             first_round_oracles: None,
             mz_poly_randomizer: None,
             verifier_first_message: None,

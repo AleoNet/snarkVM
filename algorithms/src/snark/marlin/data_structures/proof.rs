@@ -121,8 +121,18 @@ pub struct WitnessCommitments<E: PairingEngine> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evaluations<F: PrimeField> {
+    /// Evaluation of `z_a_i`'s at `beta`.
+    pub z_a_evals: Vec<F>,
     /// Evaluation of `z_b_i`'s at `beta`.
     pub z_b_evals: Vec<F>,
+    /// Evaluation of `z_c_i`'s at `beta`.
+    pub z_c_evals: Vec<F>,
+    /// Evaluation of `s_m_i`'s at `beta`.
+    pub s_m_evals: Vec<F>,
+    /// Evaluation of `s_l_i`'s at `beta`.
+    pub s_l_evals: Vec<F>,
+    /// Evaluation of `f_i`'s at `beta`.
+    pub f_evals: Vec<F>,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a` at `beta`.
@@ -165,12 +175,37 @@ impl<F: PrimeField> Evaluations<F> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
+        let mut z_a_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            z_a_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
         let mut z_b_evals = Vec::with_capacity(batch_size);
         for _ in 0..batch_size {
             z_b_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
+        let mut z_c_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            z_c_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut s_m_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_m_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut s_l_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_l_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut f_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            f_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
         Ok(Evaluations {
+            z_a_evals,
             z_b_evals,
+            z_c_evals,
+            s_m_evals,
+            s_l_evals,
+            f_evals,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_b_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -181,14 +216,46 @@ impl<F: PrimeField> Evaluations<F> {
 
 impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
+        let z_a_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_a_").then(|| *v)).collect::<Vec<_>>();
         let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then(|| *v)).collect::<Vec<_>>();
+        let z_c_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_c_").then(|| *v)).collect::<Vec<_>>();
+        let s_m_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_m_").then(|| *v)).collect::<Vec<_>>();
+        let s_l_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_l_").then(|| *v)).collect::<Vec<_>>();
+        let f_evals = map.iter().filter_map(|(k, v)| k.starts_with("f_").then(|| *v)).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_size);
-        Self { z_b_evals, g_1_eval: map["g_1"], g_a_eval: map["g_a"], g_b_eval: map["g_b"], g_c_eval: map["g_c"] }
+        Self {
+            z_a_evals,
+            z_b_evals,
+            z_c_evals,
+            s_m_evals,
+            s_l_evals,
+            f_evals,
+            g_1_eval: map["g_1"],
+            g_a_eval: map["g_a"],
+            g_b_eval: map["g_b"],
+            g_c_eval: map["g_c"],
+        }
     }
 
     pub(crate) fn get(&self, label: &str) -> Option<F> {
-        if let Some(index) = label.strip_prefix("z_b_") {
+        if label.starts_with("z_a_") {
+            let index = label.strip_prefix("z_a_").expect("should be able to strip identified prefix");
             self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("z_b_") {
+            let index = label.strip_prefix("z_b_").expect("should be able to strip identified prefix");
+            self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("z_c_") {
+            let index = label.strip_prefix("z_c_").expect("should be able to strip identified prefix");
+            self.z_c_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("s_m_") {
+            let index = label.strip_prefix("s_m_").expect("should be able to strip identified prefix");
+            self.s_m_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("s_l_") {
+            let index = label.strip_prefix("s_l_").expect("should be able to strip identified prefix");
+            self.s_l_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("f_") {
+            let index = label.strip_prefix("f_").expect("should be able to strip identified prefix");
+            self.f_evals.get(index.parse::<usize>().unwrap()).copied()
         } else {
             match label {
                 "g_1" => Some(self.g_1_eval),
@@ -203,7 +270,12 @@ impl<F: PrimeField> Evaluations<F> {
 
 impl<F: PrimeField> Valid for Evaluations<F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
+        self.z_a_evals.check()?;
         self.z_b_evals.check()?;
+        self.z_c_evals.check()?;
+        self.s_m_evals.check()?;
+        self.s_l_evals.check()?;
+        self.f_evals.check()?;
         self.g_1_eval.check()?;
         self.g_a_eval.check()?;
         self.g_b_eval.check()?;

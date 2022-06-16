@@ -59,7 +59,12 @@ pub struct FourthMessage<F> {
 pub struct QuerySet<F> {
     pub batch_size: usize,
     pub g_1_query: (String, F),
+    pub z_a_query: (String, F),
     pub z_b_query: (String, F),
+    pub z_c_query: (String, F),
+    pub s_m_query: (String, F),
+    pub s_l_query: (String, F),
+    pub f_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
 
     pub g_a_query: (String, F),
@@ -83,7 +88,12 @@ impl<F: PrimeField> QuerySet<F> {
         Self {
             batch_size: state.batch_size,
             g_1_query: ("beta".into(), beta),
+            z_a_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
+            z_c_query: ("beta".into(), beta),
+            s_m_query: ("beta".into(), beta),
+            s_l_query: ("beta".into(), beta),
+            f_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
 
             g_a_query: ("gamma".into(), gamma),
@@ -98,7 +108,22 @@ impl<F: PrimeField> QuerySet<F> {
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         for i in 0..self.batch_size {
+            query_set.insert((witness_label("z_a", i), self.z_a_query.clone()));
+        }
+        for i in 0..self.batch_size {
             query_set.insert((witness_label("z_b", i), self.z_b_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("z_c", i), self.z_c_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("s_m", i), self.s_m_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("s_l", i), self.s_l_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("f", i), self.f_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
