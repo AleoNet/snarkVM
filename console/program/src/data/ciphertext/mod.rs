@@ -20,7 +20,6 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::Visibility;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 

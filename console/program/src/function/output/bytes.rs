@@ -17,6 +17,7 @@
 use super::*;
 
 impl<N: Network> FromBytes for Output<N> {
+    /// Reads the output from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let register = FromBytes::read_le(&mut reader)?;
         let value_type = FromBytes::read_le(&mut reader)?;
@@ -25,6 +26,7 @@ impl<N: Network> FromBytes for Output<N> {
 }
 
 impl<N: Network> ToBytes for Output<N> {
+    /// Writes the output to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.register.write_le(&mut writer)?;
         self.value_type.write_le(&mut writer)

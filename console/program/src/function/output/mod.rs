@@ -17,7 +17,7 @@
 mod bytes;
 mod parse;
 
-use crate::{Register, Sanitizer, ValueType};
+use crate::{Register, ValueType};
 use snarkvm_console_network::prelude::*;
 
 /// An output statement defines an output of a function, and may refer to the value

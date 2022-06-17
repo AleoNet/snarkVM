@@ -17,7 +17,7 @@
 mod bytes;
 mod parse;
 
-use crate::{Register, Sanitizer, ValueType};
+use crate::{Register, ValueType};
 use snarkvm_console_network::prelude::*;
 
 /// An input statement defines an input argument to a function, and is of the form

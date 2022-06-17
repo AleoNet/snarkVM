@@ -26,7 +26,6 @@ use operation::*;
 use crate::{
     program::{Program, RegisterType, Stack},
     Register,
-    Sanitizer,
 };
 use snarkvm_console_network::{
     prelude::{
@@ -48,6 +47,7 @@ use snarkvm_console_network::{
         ParserResult,
         Read,
         Result,
+        Sanitizer,
         ToBytes,
         Write,
     },

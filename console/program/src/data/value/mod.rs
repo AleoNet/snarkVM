@@ -19,7 +19,7 @@ mod num_randomizers;
 mod parse;
 mod to_bits;
 
-use crate::{Ciphertext, Entry, Identifier, Plaintext, Record, Visibility};
+use crate::{Ciphertext, Entry, Identifier, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 

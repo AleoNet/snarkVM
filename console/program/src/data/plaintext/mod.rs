@@ -22,7 +22,7 @@ mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::{Identifier, Literal, Visibility};
+use crate::{Identifier, Literal};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 

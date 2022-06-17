@@ -28,7 +28,7 @@ mod parse;
 mod to_bits;
 mod to_id;
 
-use crate::{Ciphertext, Identifier, Literal, Plaintext, Visibility};
+use crate::{Ciphertext, Identifier, Literal, Plaintext};
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Group, Scalar, U64};

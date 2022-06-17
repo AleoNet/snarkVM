@@ -33,7 +33,6 @@ use crate::{
     function::{Input, Output},
     program::Stack,
     Identifier,
-    Sanitizer,
 };
 use snarkvm_console_network::prelude::*;
 

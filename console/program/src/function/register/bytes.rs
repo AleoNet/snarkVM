@@ -17,6 +17,7 @@
 use super::*;
 
 impl<N: Network> FromBytes for Register<N> {
+    /// Reads the register from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         let locator = read_variable_length_integer(&mut reader)?;
@@ -38,6 +39,7 @@ impl<N: Network> FromBytes for Register<N> {
 }
 
 impl<N: Network> ToBytes for Register<N> {
+    /// Writes the register to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Locator(locator) => {
