@@ -156,8 +156,8 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the opcode from the string.
         let (string, _) = tag(*O::OPCODE)(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
         // Ensure the number of operands is within the bounds.
         if NUM_OPERANDS > N::MAX_OPERANDS {
@@ -172,8 +172,8 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         for _ in 0..NUM_OPERANDS {
             // Parse the operand from the string.
             let (string, operand) = Operand::parse(string_tracker)?;
-            // Parse the space from the string.
-            let (string, _) = tag(" ")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Add the operand to the vector.
             operands.push(operand);
             // Update the string tracker.
@@ -183,7 +183,9 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let string = string_tracker;
 
         // Parse the "into " from the string.
-        let (string, _) = tag("into ")(string)?;
+        let (string, _) = tag("into")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
 

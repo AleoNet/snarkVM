@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{EntryType, Identifier, PlaintextType, Program, Register, ValueType};
+use crate::{EntryType, Identifier, LiteralType, PlaintextType, Program, Register, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
@@ -186,7 +186,7 @@ impl<N: Network> RegisterTypes<N> {
                 ensure!(path.len() > 0, "Register '{register}' references no members.");
 
                 // Traverse the member path to find the register type.
-                for member_name in path.iter() {
+                for path_name in path.iter() {
                     match &register_type {
                         // Ensure the plaintext type is not a literal, as the register references a member.
                         RegisterType::Plaintext(PlaintextType::Literal(..)) => {
@@ -197,10 +197,10 @@ impl<N: Network> RegisterTypes<N> {
                             // Retrieve the interface.
                             match program.get_interface(&interface_name) {
                                 // Retrieve the member type from the interface.
-                                Ok(interface) => match interface.members().get(member_name) {
+                                Ok(interface) => match interface.members().get(path_name) {
                                     // Update the member type.
                                     Some(plaintext_type) => register_type = RegisterType::Plaintext(*plaintext_type),
-                                    None => bail!("Member '{member_name}' does not exist in '{interface_name}'"),
+                                    None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
                                 },
                                 Err(..) => bail!("'{register}' references a missing interface '{interface_name}'."),
                             }
@@ -208,20 +208,32 @@ impl<N: Network> RegisterTypes<N> {
                         RegisterType::Record(record_name) => {
                             // Retrieve the record.
                             match program.get_record(&record_name) {
-                                // Retrieve the member type from the record.
-                                Ok(record_type) => match record_type.entries().get(member_name) {
-                                    // Update the member type.
-                                    Some(entry_type) => {
-                                        register_type = match entry_type {
-                                            EntryType::Constant(plaintext_type)
-                                            | EntryType::Public(plaintext_type)
-                                            | EntryType::Private(plaintext_type) => {
-                                                RegisterType::Plaintext(*plaintext_type)
+                                // Retrieve the entry type from the record.
+                                Ok(record_type) => {
+                                    if path_name == &Identifier::from_str("owner")? {
+                                        // If the member is the owner, then output the address type.
+                                        register_type =
+                                            RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                                    } else if path_name == &Identifier::from_str("balance")? {
+                                        // If the member is the balance, then output the u64 type.
+                                        register_type =
+                                            RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64));
+                                    } else {
+                                        match record_type.entries().get(path_name) {
+                                            // Update the entry type.
+                                            Some(entry_type) => {
+                                                register_type = match entry_type {
+                                                    EntryType::Constant(plaintext_type)
+                                                    | EntryType::Public(plaintext_type)
+                                                    | EntryType::Private(plaintext_type) => {
+                                                        RegisterType::Plaintext(*plaintext_type)
+                                                    }
+                                                }
                                             }
+                                            None => bail!("'{path_name}' does not exist in record '{record_name}'"),
                                         }
                                     }
-                                    None => bail!("Member '{member_name}' does not exist in '{record_name}'"),
-                                },
+                                }
                                 Err(..) => bail!("'{register}' references a missing record '{record_name}'."),
                             }
                         }

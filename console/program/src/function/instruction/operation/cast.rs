@@ -21,6 +21,7 @@ use crate::{
     Entry,
     EntryType,
     Literal,
+    LiteralType,
     Opcode,
     Owner,
     Plaintext,
@@ -92,8 +93,8 @@ impl<N: Network> Cast<N> {
                 match plaintext_type {
                     PlaintextType::Literal(..) => bail!("Casting to literal is currently unsupported"),
                     PlaintextType::Interface(interface_name) => {
-                        // Ensure the inputs is not empty.
-                        ensure!(!inputs.is_empty(), "Casting to an interface requires at least one input");
+                        // Ensure the operands is not empty.
+                        ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
 
                         // Retrieve the interface and ensure it is defined in the program.
                         let interface = stack.program().get_interface(&interface_name)?;
@@ -128,8 +129,8 @@ impl<N: Network> Cast<N> {
                 }
             }
             ValueType::Record(record_name) => {
-                // Ensure the inputs length is at least 2.
-                ensure!(inputs.len() >= 2, "Casting to record requires at least two inputs");
+                // Ensure the operands length is at least 2.
+                ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
 
                 // Retrieve the interface and ensure it is defined in the program.
                 let record_type = stack.program().get_record(&record_name)?;
@@ -170,7 +171,7 @@ impl<N: Network> Cast<N> {
 
                 // Initialize the record entries.
                 let mut entries = IndexMap::new();
-                for (entry, (entry_name, entry_type)) in inputs.iter().zip_eq(record_type.entries()) {
+                for (entry, (entry_name, entry_type)) in inputs.iter().skip(2).zip_eq(record_type.entries()) {
                     // Compute the register type.
                     let register_type = RegisterType::from(ValueType::from(*entry_type));
                     // Retrieve the plaintext value from the entry.
@@ -246,8 +247,22 @@ impl<N: Network> Cast<N> {
             ValueType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
                 let record = program.get_record(&record_name)?;
+
+                // Ensure the input types length is at least 2.
+                ensure!(input_types.len() >= 2, "Casting to a record requires at least two operands");
+                // Ensure the first input type is an address.
+                ensure!(
+                    input_types[0] == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+                    "Casting to a record requires the first operand to be an address"
+                );
+                // Ensure the second input type is a u64.
+                ensure!(
+                    input_types[1] == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
+                    "Casting to a record requires the second operand to be a u64"
+                );
+
                 // Ensure the input types match the record.
-                for ((_, entry_type), input_type) in record.entries().iter().zip_eq(input_types) {
+                for (input_type, (_, entry_type)) in input_types.iter().skip(2).zip_eq(record.entries()) {
                     match input_type {
                         // Ensure the plaintext type matches the entry type.
                         RegisterType::Plaintext(plaintext_type) => match entry_type {
@@ -287,8 +302,6 @@ impl<N: Network> Parser for Cast<N> {
 
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the operands from the string.
         let (string, operands) = map_res(many1(parse_operand), |operands: Vec<Operand<N>>| {
             // Ensure the number of operands is within the bounds.
@@ -403,5 +416,43 @@ impl<N: Network> ToBytes for Cast<N> {
         self.destination.write_le(&mut writer)?;
         // Write the casted value type.
         self.value_type.write_le(&mut writer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Identifier;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_parse() {
+        let (string, cast) =
+            Cast::<CurrentNetwork>::parse("cast r0.owner r0.balance r0.token_amount into r1 as token.record").unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(cast.operands.len(), 3, "The number of operands is incorrect");
+        assert_eq!(
+            cast.operands[0],
+            Operand::Register(Register::Member(0, vec![Identifier::from_str("owner").unwrap()])),
+            "The first operand is incorrect"
+        );
+        assert_eq!(
+            cast.operands[1],
+            Operand::Register(Register::Member(0, vec![Identifier::from_str("balance").unwrap()])),
+            "The second operand is incorrect"
+        );
+        assert_eq!(
+            cast.operands[2],
+            Operand::Register(Register::Member(0, vec![Identifier::from_str("token_amount").unwrap()])),
+            "The third operand is incorrect"
+        );
+        assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");
+        assert_eq!(
+            cast.value_type,
+            ValueType::Record(Identifier::from_str("token").unwrap()),
+            "The value type is incorrect"
+        );
     }
 }

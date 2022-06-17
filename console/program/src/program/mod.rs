@@ -29,6 +29,7 @@ use crate::{
     Identifier,
     Instruction,
     Interface,
+    LiteralType,
     Opcode,
     Plaintext,
     PlaintextType,
@@ -355,11 +356,17 @@ impl<N: Network> Program<N> {
                                         )
                                     }
 
+                                    // Ensure the operands is not empty.
+                                    ensure!(
+                                        !instruction.operands().is_empty(),
+                                        "Casting to an interface requires at least one operand"
+                                    );
+
                                     // Retrieve the interface.
                                     let interface = self.get_interface(&interface_name)?;
                                     // Ensure the operand types match the interface.
                                     for (operand, (_, member_type)) in
-                                        instruction.operands().iter().zip(interface.members().iter())
+                                        instruction.operands().iter().zip(interface.members())
                                     {
                                         match operand {
                                             // Ensure the literal type matches the member type.
@@ -389,10 +396,94 @@ impl<N: Network> Program<N> {
                                 }
                             }
                         }
-                        ValueType::Record(identifier) => {
+                        ValueType::Record(record_name) => {
                             // Ensure the record type is defined in the program.
-                            if !self.records.contains_key(identifier) {
-                                bail!("Record '{identifier}' in function '{function_name}' is not defined.")
+                            if !self.records.contains_key(record_name) {
+                                bail!("Record '{record_name}' in function '{function_name}' is not defined.")
+                            }
+
+                            // Ensure the operands length is at least 2.
+                            ensure!(
+                                instruction.operands().len() >= 2,
+                                "Casting to a record requires at least two operands"
+                            );
+
+                            // Ensure the first input type is an address.
+                            match &instruction.operands()[0] {
+                                Operand::Literal(literal) => {
+                                    ensure!(
+                                        literal.to_type() == LiteralType::Address,
+                                        "Casting to a record requires the first operand to be an address"
+                                    )
+                                }
+                                Operand::Register(register) => {
+                                    // Retrieve the register type.
+                                    let register_type = register_types.get_type(&self, register)?;
+                                    // Ensure the register type is an address.
+                                    ensure!(
+                                        register_type
+                                            == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+                                        "Casting to a record requires the first operand to be an address"
+                                    );
+                                }
+                            }
+
+                            // Ensure the second input type is a u64.
+                            match &instruction.operands()[1] {
+                                Operand::Literal(literal) => {
+                                    ensure!(
+                                        literal.to_type() == LiteralType::U64,
+                                        "Casting to a record requires the second operand to be a u64"
+                                    )
+                                }
+                                Operand::Register(register) => {
+                                    // Retrieve the register type.
+                                    let register_type = register_types.get_type(&self, register)?;
+                                    // Ensure the register type is a u64.
+                                    ensure!(
+                                        register_type
+                                            == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
+                                        "Casting to a record requires the second operand to be a u64"
+                                    )
+                                }
+                            }
+
+                            // Retrieve the record type.
+                            let record_type = self.get_record(&record_name)?;
+                            // Ensure the operand types match the record entry types.
+                            for (operand, (_, entry_type)) in
+                                instruction.operands().iter().skip(2).zip(record_type.entries())
+                            {
+                                match entry_type {
+                                    EntryType::Constant(plaintext_type)
+                                    | EntryType::Public(plaintext_type)
+                                    | EntryType::Private(plaintext_type) => {
+                                        match operand {
+                                            // Ensure the literal type matches the member type.
+                                            Operand::Literal(literal) => {
+                                                ensure!(
+                                                    PlaintextType::Literal(literal.to_type()) == *plaintext_type,
+                                                    "Literal '{literal}' in function '{function_name}' does not match record '{record_name}'."
+                                                )
+                                            }
+                                            // Ensure the register type matches the member type.
+                                            Operand::Register(register) => {
+                                                // Retrieve the register type.
+                                                let register_type = register_types.get_type(&self, &register)?;
+                                                // Ensure the register type is not a record.
+                                                ensure!(
+                                                    !matches!(register_type, RegisterType::Record(..)),
+                                                    "Casting a record into a record entry in function '{function_name}' is illegal"
+                                                );
+                                                // Ensure the register type matches the entry type.
+                                                ensure!(
+                                                    register_type == RegisterType::Plaintext(*plaintext_type),
+                                                    "Register '{register}' in function '{function_name}' does not match record '{record_name}'."
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -632,10 +723,18 @@ impl<N: Network> Parser for Program<N> {
             let mut program = Program::<N>::new();
             // Construct the program with the parsed components.
             for component in components.iter() {
-                match component {
-                    P::I(interface) => program.add_interface(interface.clone())?,
-                    P::R(record) => program.add_record(record.clone())?,
-                    P::F(function) => program.add_function(function.clone())?,
+                let result = match component {
+                    P::I(interface) => program.add_interface(interface.clone()),
+                    P::R(record) => program.add_record(record.clone()),
+                    P::F(function) => program.add_function(function.clone()),
+                };
+
+                match result {
+                    Ok(_) => (),
+                    Err(error) => {
+                        eprintln!("{error}");
+                        return Err(error);
+                    }
                 }
             }
             // Output the program.
@@ -881,6 +980,43 @@ function compute:
             StackValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("200u64").unwrap());
+
+        // Compute the output value.
+        let candidate = program.evaluate(&function_name, &[input.clone()]).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+
+        // Re-run to ensure state continues to work.
+        let candidate = program.evaluate(&function_name, &[input]).unwrap();
+        assert_eq!(1, candidate.len());
+        assert_eq!(expected, candidate[0]);
+    }
+
+    #[test]
+    fn test_program_evaluate_cast() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+record token:
+    owner as address.private;
+    balance as u64.private;
+    token_amount as u64.private;
+
+function compute:
+    input r0 as token.record;
+    cast r0.owner r0.balance r0.token_amount into r1 as token.record;
+    output r1 as token.record;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+        // Declare the input value.
+        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap();
+        let input = StackValue::<CurrentNetwork>::Record(input_record.clone());
+        // Declare the expected output value.
+        let expected = Value::Record(input_record);
 
         // Compute the output value.
         let candidate = program.evaluate(&function_name, &[input.clone()]).unwrap();

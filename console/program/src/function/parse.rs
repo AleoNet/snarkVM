@@ -110,6 +110,23 @@ function foo:
     }
 
     #[test]
+    fn test_function_parse_cast() {
+        let function = Function::<CurrentNetwork>::parse(
+            r"
+function foo:
+    input r0 as token.record;
+    cast r0.owner r0.balance r0.token_amount into r1 as token.record;
+    output r1 as token.record;",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("foo", function.name().to_string());
+        assert_eq!(1, function.inputs.len());
+        assert_eq!(1, function.instructions.len());
+        assert_eq!(1, function.outputs.len());
+    }
+
+    #[test]
     fn test_function_display() {
         let expected = r"function foo:
     input r0 as field.public;

@@ -54,7 +54,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
         data: IndexMap<Identifier<N>, Entry<N, Plaintext<N>>>,
     ) -> Result<Self> {
         // Ensure the members has no duplicate names.
-        ensure!(has_duplicates(data.iter().map(|(name, ..)| name)), "Duplicate data entry in record");
+        ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
         // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
