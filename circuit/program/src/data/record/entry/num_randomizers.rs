@@ -16,16 +16,14 @@
 
 use super::*;
 
-impl<A: Aleo, Private: Visibility<A>> Value<A, Private> {
+impl<A: Aleo, Private: Visibility<A>> Entry<A, Private> {
     /// Returns the number of field elements to encode `self`.
     pub(crate) fn num_randomizers(&self) -> u16 {
         match self {
-            // Constant and public values do not need to be encrypted.
+            // Constant and public entries do not need to be encrypted.
             Self::Constant(..) | Self::Public(..) => 0u16,
-            // Private values need one randomizer per field element.
+            // Private entries need one randomizer per field element.
             Self::Private(private) => private.size_in_fields(),
-            // Record values can recursively determine the number of randomizers.
-            Self::Record(record) => record.num_randomizers(),
         }
     }
 }

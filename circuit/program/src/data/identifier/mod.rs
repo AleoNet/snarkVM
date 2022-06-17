@@ -63,7 +63,10 @@ impl<A: Aleo> Eject for Identifier<A> {
 
     /// Ejects the mode of the identifier.
     fn eject_mode(&self) -> Mode {
-        self.0.eject_mode()
+        match self.0.eject_mode() == Mode::Constant {
+            true => Mode::Constant,
+            false => A::halt("Identifier::eject_mode: Identifier mode is not constant."),
+        }
     }
 
     /// Ejects the identifier as a string.
@@ -107,10 +110,33 @@ impl<A: Aleo> FromStr for Identifier<A> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> fmt::Display for Identifier<A> {
+impl<A: Aleo> Debug for Identifier<A> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Display for Identifier<A> {
     /// Prints the identifier as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
+    }
+}
+
+impl<A: Aleo> Eq for Identifier<A> {}
+
+impl<A: Aleo> PartialEq for Identifier<A> {
+    /// Implements the `Eq` trait for the identifier.
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eject_value() == other.0.eject_value()
+    }
+}
+
+impl<A: Aleo> core::hash::Hash for Identifier<A> {
+    /// Implements the `Hash` trait for the identifier.
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.0.eject_value().hash(state);
     }
 }
 

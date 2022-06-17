@@ -65,9 +65,15 @@ impl<N: Network> FromStr for Identifier<N> {
     }
 }
 
-impl<N: Network> fmt::Display for Identifier<N> {
+impl<N: Network> Debug for Identifier<N> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Identifier<N> {
     /// Prints the identifier as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Convert the identifier to bits.
         let bits_le = self.0.to_bits_le();
 

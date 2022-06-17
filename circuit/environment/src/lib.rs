@@ -53,7 +53,7 @@ pub mod prelude {
         Variable,
     };
     pub use console::{
-        prelude::{bail, ensure, fmt, Debug, Display, Error, FromStr, One as _, Result, Zero as _},
+        prelude::{bail, ensure, fmt, Debug, Display, Error, Formatter, FromStr, One as _, Result, Zero as _},
         traits::{
             integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
             string_parser,
@@ -83,6 +83,7 @@ pub mod prelude {
         BitOrAssign,
         BitXor,
         BitXorAssign,
+        Deref,
         Div,
         DivAssign,
         Mul,
@@ -96,6 +97,7 @@ pub mod prelude {
         Sub,
         SubAssign,
     };
+    pub use indexmap::IndexMap;
     pub use itertools::Itertools;
     pub use nom::{
         branch::alt,

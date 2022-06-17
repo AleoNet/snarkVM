@@ -31,11 +31,11 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     bits_le
                 })
                 .clone(),
-            Self::Composite(composite, bits_le) => bits_le
+            Self::Interface(members, bits_le) => bits_le
                 .get_or_init(|| {
                     let mut bits_le = vec![Boolean::constant(true)]; // Variant bit.
-                    bits_le.extend(U8::constant(console::U8::new(composite.len() as u8)).to_bits_le());
-                    for (identifier, value) in composite {
+                    bits_le.extend(U8::constant(console::U8::new(members.len() as u8)).to_bits_le());
+                    for (identifier, value) in members {
                         let value_bits = value.to_bits_le();
                         bits_le.extend(identifier.size_in_bits().to_bits_le());
                         bits_le.extend(identifier.to_bits_le());
@@ -60,11 +60,11 @@ impl<A: Aleo> ToBits for Plaintext<A> {
                     bits_be
                 })
                 .clone(),
-            Self::Composite(composite, bits_be) => bits_be
+            Self::Interface(members, bits_be) => bits_be
                 .get_or_init(|| {
                     let mut bits_be = vec![Boolean::constant(true)]; // Variant bit.
-                    bits_be.extend(U8::constant(console::U8::new(composite.len() as u8)).to_bits_be());
-                    for (identifier, value) in composite {
+                    bits_be.extend(U8::constant(console::U8::new(members.len() as u8)).to_bits_be());
+                    for (identifier, value) in members {
                         let value_bits = value.to_bits_be();
                         bits_be.extend(identifier.size_in_bits().to_bits_be());
                         bits_be.extend(identifier.to_bits_be());

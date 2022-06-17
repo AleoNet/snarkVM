@@ -21,7 +21,6 @@ pub mod program {
         Address,
         Aleo,
         Ciphertext,
-        Data,
         Eject,
         Field,
         Group,
@@ -44,7 +43,7 @@ pub mod program {
         /// The output records.
         output_records: Vec<Record<A>>,
         /// The output data.
-        output_data: Vec<Data<A, Ciphertext<A>>>,
+        output_data: Vec<Record<A, Ciphertext<A>>>,
         /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
         tcm: Field<A>,
         /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
@@ -78,7 +77,7 @@ pub mod program {
         /// The input records.
         input_records: Vec<Record<A>>,
         /// The input data.
-        input_data: Vec<Data<A, Ciphertext<A>>>,
+        input_data: Vec<Record<A, Ciphertext<A>>>,
         /// The transition view key commitment randomizer.
         r_tcm: Field<A>,
     }

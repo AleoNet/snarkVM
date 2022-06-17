@@ -37,6 +37,21 @@ pub trait Inject {
 }
 
 /********************/
+/***** IndexMap *****/
+/********************/
+
+impl<C0: Eq + core::hash::Hash + Inject<Primitive = P0>, C1: Inject<Primitive = P1>, P0, P1> Inject
+    for indexmap::IndexMap<C0, C1>
+{
+    type Primitive = indexmap::IndexMap<P0, P1>;
+
+    #[inline]
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        value.into_iter().map(|(v0, v1)| (C0::new(mode, v0), C1::new(mode, v1))).collect()
+    }
+}
+
+/********************/
 /****** Arrays ******/
 /********************/
 

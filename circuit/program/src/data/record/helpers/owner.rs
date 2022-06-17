@@ -14,128 +14,142 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Ciphertext, Entry, Literal, Plaintext};
-use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Address, Field};
+use crate::{Ciphertext, Entry, Literal, Plaintext, Visibility};
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field};
 
 /// A value stored in program data.
-#[derive(Clone, PartialEq, Eq)]
-pub enum Owner<N: Network, Private: Visibility> {
+#[derive(Clone)]
+pub enum Owner<A: Aleo, Private: Visibility<A>> {
     /// A publicly-visible value.
-    Public(Address<N>),
+    Public(Address<A>),
     /// A private value is encrypted under the account owner's address.
     Private(Private),
 }
 
-impl<N: Network, Private: Visibility> Owner<N, Private> {
+impl<A: Aleo, Private: Visibility<A>> Owner<A, Private> {
     /// Returns `true` if `self` is public.
-    pub const fn is_public(&self) -> bool {
-        matches!(self, Self::Public(..))
+    pub fn is_public(&self) -> Boolean<A> {
+        Boolean::constant(matches!(self, Self::Public(..)))
     }
 
     /// Returns `true` if `self` is private.
-    pub const fn is_private(&self) -> bool {
-        matches!(self, Self::Private(..))
+    pub fn is_private(&self) -> Boolean<A> {
+        Boolean::constant(matches!(self, Self::Private(..)))
     }
 }
 
-impl<N: Network> Owner<N, Plaintext<N>> {
+impl<A: Aleo> Owner<A, Plaintext<A>> {
     /// Returns the balance as an `Entry`.
-    pub fn to_entry(&self) -> Entry<N, Plaintext<N>> {
+    pub fn to_entry(&self) -> Entry<A, Plaintext<A>> {
         match self {
-            Self::Public(owner) => Entry::Public(Plaintext::from(Literal::Address(*owner))),
+            Self::Public(owner) => Entry::Public(Plaintext::from(Literal::Address(owner.clone()))),
             Self::Private(plaintext, ..) => Entry::Private(plaintext.clone()),
         }
     }
 }
 
-impl<N: Network> Deref for Owner<N, Plaintext<N>> {
-    type Target = Address<N>;
+impl<A: Aleo> Deref for Owner<A, Plaintext<A>> {
+    type Target = Address<A>;
 
     /// Returns the address of the owner.
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Public(public) => public,
             Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address,
-            _ => N::halt("Internal error: plaintext deref corrupted in record owner"),
+            _ => A::halt("Internal error: plaintext deref corrupted in record owner"),
         }
     }
 }
 
-impl<N: Network> Owner<N, Plaintext<N>> {
+impl<A: Aleo> Owner<A, Plaintext<A>> {
     /// Encrypts `self` under the given randomizer.
-    pub fn encrypt(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Ciphertext<N>>> {
+    pub fn encrypt(&self, randomizer: &[Field<A>]) -> Owner<A, Ciphertext<A>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.
-                ensure!(randomizer.is_empty(), "Expected 0 randomizers, found {}", randomizer.len());
+                if randomizer.is_empty() {
+                    A::halt(format!("Expected 0 randomizers, found {}", randomizer.len()))
+                }
                 // Return the owner.
-                Ok(Owner::Public(*public))
+                Owner::Public(public.clone())
             }
             Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => {
                 // Ensure there is exactly one randomizer.
-                ensure!(randomizer.len() == 1, "Expected 1 randomizer, found {}", randomizer.len());
+                if randomizer.len() == 1 {
+                    A::halt(format!("Expected 1 randomizer, found {}", randomizer.len()))
+                }
                 // Encrypt the owner.
-                let ciphertext = address.to_field()? + randomizer[0];
+                let ciphertext = address.to_field() + &randomizer[0];
                 // Return the encrypted owner.
-                Ok(Owner::Private(Ciphertext::from_fields(&[ciphertext])?))
+                Owner::Private(Ciphertext::from_fields(&[ciphertext]))
             }
-            _ => bail!("Internal error: plaintext encryption corrupted in record owner"),
+            _ => A::halt("Internal error: plaintext encryption corrupted in record owner"),
         }
     }
 }
 
-impl<N: Network> Owner<N, Ciphertext<N>> {
+impl<A: Aleo> Owner<A, Ciphertext<A>> {
     /// Decrypts the owner under the given randomizer.
-    pub fn decrypt(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Plaintext<N>>> {
+    pub fn decrypt(&self, randomizer: &[Field<A>]) -> Owner<A, Plaintext<A>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.
-                ensure!(randomizer.is_empty(), "Expected 0 randomizers, found {}", randomizer.len());
+                if randomizer.is_empty() {
+                    A::halt(format!("Expected 0 randomizers, found {}", randomizer.len()))
+                }
                 // Return the owner.
-                Ok(Owner::Public(*public))
+                Owner::Public(public.clone())
             }
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one randomizer.
-                ensure!(randomizer.len() == 1, "Expected 1 randomizer, found {}", randomizer.len());
+                if randomizer.len() == 1 {
+                    A::halt(format!("Expected 1 randomizer, found {}", randomizer.len()))
+                }
                 // Ensure there is exactly one field element in the ciphertext.
-                ensure!(ciphertext.len() == 1, "Expected 1 ciphertext, found {}", ciphertext.len());
+                if ciphertext.len() == 1 {
+                    A::halt(format!("Expected 1 ciphertext, found {}", ciphertext.len()))
+                }
                 // Decrypt the owner.
-                let owner = Address::from_field(&(ciphertext[0] - randomizer[0]))?;
+                let owner = Address::from_field(&ciphertext[0] - &randomizer[0]);
                 // Return the owner.
-                Ok(Owner::Private(Plaintext::from(Literal::Address(owner))))
+                Owner::Private(Plaintext::from(Literal::Address(owner)))
             }
         }
     }
 }
 
-impl<N: Network> ToBits for Owner<N, Plaintext<N>> {
+impl<A: Aleo> ToBits for Owner<A, Plaintext<A>> {
+    type Boolean = Boolean<A>;
+
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
         let mut bits_le = vec![self.is_private()];
         match self {
             Self::Public(public) => bits_le.extend(public.to_bits_le()),
             Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_le.extend(address.to_bits_le()),
-            _ => N::halt("Internal error: plaintext to_bits_le corrupted in record owner"),
+            _ => A::halt("Internal error: plaintext to_bits_le corrupted in record owner"),
         }
         bits_le
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be(&self) -> Vec<Boolean<A>> {
         let mut bits_be = vec![self.is_private()];
         match self {
             Self::Public(public) => bits_be.extend(public.to_bits_be()),
             Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => bits_be.extend(address.to_bits_be()),
-            _ => N::halt("Internal error: plaintext to_bits_be corrupted in record owner"),
+            _ => A::halt("Internal error: plaintext to_bits_be corrupted in record owner"),
         }
         bits_be
     }
 }
 
-impl<N: Network> ToBits for Owner<N, Ciphertext<N>> {
+impl<A: Aleo> ToBits for Owner<A, Ciphertext<A>> {
+    type Boolean = Boolean<A>;
+
     /// Returns `self` as a boolean vector in little-endian order.
-    fn to_bits_le(&self) -> Vec<bool> {
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
         let mut bits_le = vec![self.is_private()];
         match self {
             Self::Public(public) => bits_le.extend(public.to_bits_le()),
@@ -143,7 +157,7 @@ impl<N: Network> ToBits for Owner<N, Ciphertext<N>> {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
                     true => bits_le.extend(ciphertext[0].to_bits_le()),
-                    false => N::halt("Internal error: ciphertext to_bits_le corrupted in record owner"),
+                    false => A::halt("Internal error: ciphertext to_bits_le corrupted in record owner"),
                 }
             }
         }
@@ -151,7 +165,7 @@ impl<N: Network> ToBits for Owner<N, Ciphertext<N>> {
     }
 
     /// Returns `self` as a boolean vector in big-endian order.
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_bits_be(&self) -> Vec<Boolean<A>> {
         let mut bits_be = vec![self.is_private()];
         match self {
             Self::Public(public) => bits_be.extend(public.to_bits_be()),
@@ -159,28 +173,10 @@ impl<N: Network> ToBits for Owner<N, Ciphertext<N>> {
                 // Ensure there is exactly one field element in the ciphertext.
                 match ciphertext.len() == 1 {
                     true => bits_be.extend(ciphertext[0].to_bits_be()),
-                    false => N::halt("Internal error: ciphertext to_bits_be corrupted in record owner"),
+                    false => A::halt("Internal error: ciphertext to_bits_be corrupted in record owner"),
                 }
             }
         }
         bits_be
-    }
-}
-
-impl<N: Network> Debug for Owner<N, Plaintext<N>> {
-    /// Prints the owner as a string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for Owner<N, Plaintext<N>> {
-    /// Prints the owner as a string, i.e. `aleo1xxx.public`.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Self::Public(owner) => write!(f, "{owner}.public"),
-            Self::Private(Plaintext::Literal(Literal::Address(owner), ..)) => write!(f, "{owner}.private"),
-            _ => N::halt("Internal error: plaintext fmt corrupted in record owner"),
-        }
     }
 }

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod find;
 mod from_bits;
 mod from_fields;
 mod size_in_fields;
@@ -28,8 +29,8 @@ use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U16, U8};
 pub enum Plaintext<A: Aleo> {
     /// A plaintext literal.
     Literal(Literal<A>, OnceCell<Vec<Boolean<A>>>),
-    /// A plaintext composite.
-    Composite(Vec<(Identifier<A>, Plaintext<A>)>, OnceCell<Vec<Boolean<A>>>),
+    /// A plaintext interface.
+    Interface(IndexMap<Identifier<A>, Plaintext<A>>, OnceCell<Vec<Boolean<A>>>),
 }
 
 #[cfg(console)]
@@ -40,8 +41,8 @@ impl<A: Aleo> Inject for Plaintext<A> {
     fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
         match plaintext {
             Self::Primitive::Literal(literal, _) => Self::Literal(Literal::new(mode, literal), Default::default()),
-            Self::Primitive::Interface(composite, _) => {
-                Self::Composite(Inject::new(mode, composite), Default::default())
+            Self::Primitive::Interface(interface, _) => {
+                Self::Interface(Inject::new(mode, interface), Default::default())
             }
         }
     }
@@ -55,7 +56,7 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_mode(&self) -> Mode {
         match self {
             Self::Literal(literal, _) => literal.eject_mode(),
-            Self::Composite(composite, _) => composite
+            Self::Interface(interface, _) => interface
                 .iter()
                 .map(|(identifier, value)| (identifier, value).eject_mode())
                 .collect::<Vec<_>>()
@@ -67,8 +68,8 @@ impl<A: Aleo> Eject for Plaintext<A> {
     fn eject_value(&self) -> Self::Primitive {
         match self {
             Self::Literal(literal, _) => console::Plaintext::Literal(literal.eject_value(), Default::default()),
-            Self::Composite(composite, _) => console::Plaintext::Interface(
-                composite.iter().map(|pair| pair.eject_value()).collect(),
+            Self::Interface(interface, _) => console::Plaintext::Interface(
+                interface.iter().map(|pair| pair.eject_value()).collect(),
                 Default::default(),
             ),
         }
@@ -114,7 +115,7 @@ mod tests {
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Plaintext::<Circuit>::Composite(
+        let value = Plaintext::<Circuit>::Interface(
             vec![
                 (
                     Identifier::new(Mode::Private, "a".try_into()?),
@@ -135,7 +136,7 @@ mod tests {
             Plaintext::<Circuit>::from_bits_le(&value.to_bits_le()).to_bits_le().eject()
         );
 
-        let value = Plaintext::<Circuit>::Composite(
+        let value = Plaintext::<Circuit>::Interface(
             vec![
                 (
                     Identifier::new(Mode::Private, "a".try_into()?),
@@ -143,7 +144,7 @@ mod tests {
                 ),
                 (
                     Identifier::new(Mode::Private, "b".try_into()?),
-                    Plaintext::<Circuit>::Composite(
+                    Plaintext::<Circuit>::Interface(
                         vec![
                             (
                                 Identifier::new(Mode::Private, "c".try_into()?),
@@ -154,7 +155,7 @@ mod tests {
                             ),
                             (
                                 Identifier::new(Mode::Private, "d".try_into()?),
-                                Plaintext::<Circuit>::Composite(
+                                Plaintext::<Circuit>::Interface(
                                     vec![
                                         (
                                             Identifier::new(Mode::Private, "e".try_into()?),

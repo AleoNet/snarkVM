@@ -16,59 +16,57 @@
 
 use super::*;
 
-impl<N: Network> Record<N, Plaintext<N>> {
+impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Encrypts `self` under the given Aleo address and randomizer.
-    pub fn encrypt(&self, address: Address<N>, randomizer: Scalar<N>) -> Result<Record<N, Ciphertext<N>>> {
+    pub fn encrypt(&self, address: &Address<A>, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
         // Compute the data view key.
-        let record_view_key = (*address * randomizer).to_x_coordinate();
+        let record_view_key = (address.to_group() * randomizer).to_x_coordinate();
         // Encrypt the data.
-        self.encrypt_symmetric(&record_view_key)
+        self.encrypt_symmetric(record_view_key)
     }
 
     /// Encrypts `self` under the given record view key.
-    pub fn encrypt_symmetric(&self, record_view_key: &Field<N>) -> Result<Record<N, Ciphertext<N>>> {
+    pub fn encrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Ciphertext<A>> {
         // Determine the number of randomizers needed to encrypt the data.
-        let num_randomizers = self.num_randomizers()?;
+        let num_randomizers = self.num_randomizers();
         // Prepare a randomizer for each field element.
-        let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *record_view_key], num_randomizers);
+        let randomizers = A::hash_many_psd8(&[A::encryption_domain(), record_view_key], num_randomizers);
         // Encrypt the data.
         self.encrypt_with_randomizers(&randomizers)
     }
 
     /// Encrypts `self` under the given randomizers.
-    fn encrypt_with_randomizers(&self, randomizers: &[Field<N>]) -> Result<Record<N, Ciphertext<N>>> {
+    fn encrypt_with_randomizers(&self, randomizers: &[Field<A>]) -> Record<A, Ciphertext<A>> {
         // Initialize an index to keep track of the randomizer index.
         let mut index: usize = 0;
 
         // Encrypt the owner.
-        let owner = match self.owner.is_public() {
-            true => self.owner.encrypt(&[])?,
-            false => self.owner.encrypt(&[randomizers[index]])?,
+        let owner = match self.owner.is_public().eject_value() {
+            true => self.owner.encrypt(&[]),
+            false => self.owner.encrypt(&[randomizers[index].clone()]),
         };
 
         // Increment the index if the owner is private.
-        if owner.is_private() {
+        if owner.is_private().eject_value() {
             index += 1;
         }
 
         // Encrypt the balance.
-        let balance = match self.balance.is_public() {
-            true => self.balance.encrypt(&[])?,
-            false => self.balance.encrypt(&[randomizers[index]])?,
+        let balance = match self.balance.is_public().eject_value() {
+            true => self.balance.encrypt(&[]),
+            false => self.balance.encrypt(&[randomizers[index].clone()]),
         };
 
         // Increment the index if the balance is private.
-        if balance.is_private() {
+        if balance.is_private().eject_value() {
             index += 1;
         }
 
         // Encrypt the data.
         let mut encrypted_data = IndexMap::with_capacity(self.data.len());
         for (id, entry, num_randomizers) in self.data.iter().map(|(id, entry)| (id, entry, entry.num_randomizers())) {
-            // Retrieve the result for `num_randomizers`.
-            let num_randomizers = num_randomizers? as usize;
             // Retrieve the randomizers for this entry.
-            let randomizers = &randomizers[index..index + num_randomizers];
+            let randomizers = &randomizers[index..index + num_randomizers as usize];
             // Encrypt the entry.
             let entry = match entry {
                 // Constant entries do not need to be encrypted.
@@ -76,24 +74,24 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 // Public entries do not need to be encrypted.
                 Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
                 // Private entries are encrypted with the given randomizers.
-                Entry::Private(private) => Entry::Private(Ciphertext::try_from(
-                    private
-                        .to_fields()?
+                Entry::Private(private) => Entry::Private(Ciphertext::from_fields(
+                    &private
+                        .to_fields()
                         .iter()
                         .zip_eq(randomizers)
-                        .map(|(plaintext, randomizer)| *plaintext + randomizer)
+                        .map(|(plaintext, randomizer)| plaintext + randomizer)
                         .collect::<Vec<_>>(),
-                )?),
+                )),
             };
             // Insert the encrypted entry.
             if encrypted_data.insert(id.clone(), entry).is_some() {
-                bail!("Duplicate identifier in record: {}", id);
+                A::halt(format!("Duplicate identifier in record: {}", id))
             }
             // Increment the index.
-            index += num_randomizers;
+            index += num_randomizers as usize;
         }
 
         // Return the encrypted record.
-        Ok(Record { owner, balance, data: encrypted_data })
+        Record { owner, balance, data: encrypted_data }
     }
 }

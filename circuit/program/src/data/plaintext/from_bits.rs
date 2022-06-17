@@ -44,33 +44,33 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Composite
+        // Interface
         else {
-            let num_composites = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
+            let num_members = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
             counter += 8;
 
-            let mut composites = Vec::with_capacity(*num_composites as usize);
-            for _ in 0..*num_composites {
+            let mut members = IndexMap::with_capacity(*num_members as usize);
+            for _ in 0..*num_members {
                 let identifier_size = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
                 counter += 8;
 
                 let identifier = Identifier::from_bits_le(&bits_le[counter..counter + *identifier_size as usize]);
                 counter += *identifier_size as usize;
 
-                let composite_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
+                let member_size = U16::from_bits_le(&bits_le[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let value = Plaintext::from_bits_le(&bits_le[counter..counter + *composite_size as usize]);
-                counter += *composite_size as usize;
+                let value = Plaintext::from_bits_le(&bits_le[counter..counter + *member_size as usize]);
+                counter += *member_size as usize;
 
-                composites.push((identifier, value));
+                members.insert(identifier, value);
             }
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_le.to_vec()) {
-                // Return the composite.
-                Ok(_) => Self::Composite(composites, cache),
+                // Return the member.
+                Ok(_) => Self::Interface(members, cache),
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
@@ -101,33 +101,33 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
-        // Composite
+        // Interface
         else {
-            let num_composites = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
+            let num_members = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
             counter += 8;
 
-            let mut composites = Vec::with_capacity(*num_composites as usize);
-            for _ in 0..*num_composites {
+            let mut members = IndexMap::with_capacity(*num_members as usize);
+            for _ in 0..*num_members {
                 let identifier_size = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
                 counter += 8;
 
                 let identifier = Identifier::from_bits_be(&bits_be[counter..counter + *identifier_size as usize]);
                 counter += *identifier_size as usize;
 
-                let composite_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
+                let member_size = U16::from_bits_be(&bits_be[counter..counter + 16]).eject_value();
                 counter += 16;
 
-                let value = Plaintext::from_bits_be(&bits_be[counter..counter + *composite_size as usize]);
-                counter += *composite_size as usize;
+                let value = Plaintext::from_bits_be(&bits_be[counter..counter + *member_size as usize]);
+                counter += *member_size as usize;
 
-                composites.push((identifier, value));
+                members.insert(identifier, value);
             }
 
             // Store the plaintext bits in the cache.
             let cache = OnceCell::new();
             match cache.set(bits_be.to_vec()) {
-                // Return the composite.
-                Ok(_) => Self::Composite(composites, cache),
+                // Return the member.
+                Ok(_) => Self::Interface(members, cache),
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }

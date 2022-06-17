@@ -73,8 +73,8 @@ impl Eject for Vec<Mode> {
         // Retrieve the mode of the first circuit.
         match self.get(0) {
             Some(first) => Mode::combine(*first, self.iter().copied().skip(1)),
-            None => Mode::Constant,
-            // None => panic!("Attempted to eject the mode on an empty circuit"),
+            // None => Mode::Constant,
+            None => panic!("Attempted to eject the mode on an empty circuit"),
         }
     }
 

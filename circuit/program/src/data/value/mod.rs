@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod decrypt;
-mod encrypt;
+mod find;
 mod num_randomizers;
 mod to_bits;
 
-use crate::{Ciphertext, Plaintext, Visibility};
+use crate::{Ciphertext, Entry, Identifier, Plaintext, Record, Visibility};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean};
 
 /// A value stored in program data.
 #[derive(Clone)]
@@ -32,6 +31,8 @@ pub enum Value<A: Aleo, Private: Visibility<A>> {
     Public(Plaintext<A>),
     /// A private value encrypted under the account owner's address.
     Private(Private),
+    /// A record value inherits its visibility from its record definition.
+    Record(Record<A, Private>),
 }
 
 #[cfg(console)]
@@ -44,6 +45,7 @@ impl<A: Aleo> Inject for Value<A, Plaintext<A>> {
             Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
             Self::Primitive::Public(plaintext) => Self::Public(Plaintext::new(mode, plaintext)),
             Self::Primitive::Private(plaintext) => Self::Private(Plaintext::new(mode, plaintext)),
+            Self::Primitive::Record(record) => Self::Record(Record::new(mode, record)),
         }
     }
 }
@@ -58,6 +60,7 @@ impl<A: Aleo> Inject for Value<A, Ciphertext<A>> {
             Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
             Self::Primitive::Public(plaintext) => Self::Public(Plaintext::new(mode, plaintext)),
             Self::Primitive::Private(ciphertext) => Self::Private(Ciphertext::new(mode, ciphertext)),
+            Self::Primitive::Record(record) => Self::Record(Record::new(mode, record)),
         }
     }
 }
@@ -72,6 +75,7 @@ impl<A: Aleo> Eject for Value<A, Plaintext<A>> {
             Value::Constant(_) => Mode::Constant,
             Value::Public(_) => Mode::Public,
             Value::Private(_) => Mode::Private,
+            Value::Record(record) => record.eject_mode(),
         }
     }
 
@@ -81,6 +85,7 @@ impl<A: Aleo> Eject for Value<A, Plaintext<A>> {
             Value::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
             Value::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
             Value::Private(plaintext) => Self::Primitive::Private(plaintext.eject_value()),
+            Value::Record(record) => Self::Primitive::Record(record.eject_value()),
         }
     }
 }
@@ -95,6 +100,7 @@ impl<A: Aleo> Eject for Value<A, Ciphertext<A>> {
             Value::Constant(_) => Mode::Constant,
             Value::Public(_) => Mode::Public,
             Value::Private(_) => Mode::Private,
+            Value::Record(record) => record.eject_mode(),
         }
     }
 
@@ -104,6 +110,17 @@ impl<A: Aleo> Eject for Value<A, Ciphertext<A>> {
             Value::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
             Value::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
             Value::Private(ciphertext) => Self::Primitive::Private(ciphertext.eject_value()),
+            Value::Record(record) => Self::Primitive::Record(record.eject_value()),
+        }
+    }
+}
+
+impl<A: Aleo, Private: Visibility<A>> From<Entry<A, Private>> for Value<A, Private> {
+    fn from(entry: Entry<A, Private>) -> Self {
+        match entry {
+            Entry::Constant(plaintext) => Value::Constant(plaintext),
+            Entry::Public(plaintext) => Value::Public(plaintext),
+            Entry::Private(private) => Value::Private(private),
         }
     }
 }

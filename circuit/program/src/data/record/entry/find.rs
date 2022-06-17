@@ -16,16 +16,13 @@
 
 use super::*;
 
-impl<A: Aleo, Private: Visibility<A>> ToBits for Data<A, Private> {
-    type Boolean = Boolean<A>;
-
-    /// Returns this data as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_le()
-    }
-
-    /// Returns this data as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        self.0.to_bits_be()
+impl<A: Aleo> Entry<A, Plaintext<A>> {
+    /// Returns the entry from the given path.
+    pub fn find(&self, path: &[Identifier<A>]) -> Result<Entry<A, Plaintext<A>>> {
+        match self {
+            Self::Constant(plaintext) => Ok(Self::Constant(plaintext.find(path)?)),
+            Self::Public(plaintext) => Ok(Self::Public(plaintext.find(path)?)),
+            Self::Private(plaintext) => Ok(Self::Private(plaintext.find(path)?)),
+        }
     }
 }

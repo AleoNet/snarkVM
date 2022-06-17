@@ -14,18 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+mod balance;
+pub use balance::*;
 
-impl<A: Aleo, Private: Visibility<A>> Value<A, Private> {
-    /// Returns the number of field elements to encode `self`.
-    pub(crate) fn num_randomizers(&self) -> u16 {
-        match self {
-            // Constant and public values do not need to be encrypted.
-            Self::Constant(..) | Self::Public(..) => 0u16,
-            // Private values need one randomizer per field element.
-            Self::Private(private) => private.size_in_fields(),
-            // Record values can recursively determine the number of randomizers.
-            Self::Record(record) => record.num_randomizers(),
-        }
-    }
-}
+mod owner;
+pub use owner::*;

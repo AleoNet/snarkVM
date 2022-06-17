@@ -21,4 +21,12 @@
 use snarkvm_circuit_network::AleoV0 as Circuit;
 
 mod data;
-pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
+pub use data::*;
+
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Boolean};
+
+pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {
+    /// Returns the number of field elements to encode `self`.
+    fn size_in_fields(&self) -> u16;
+}

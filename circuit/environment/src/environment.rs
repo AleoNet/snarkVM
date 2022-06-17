@@ -129,7 +129,7 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
-        <Self::Network as console::Network>::halt(message)
+        <Self::Network as console::Environment>::halt(message)
     }
 
     /// Clears and initializes an empty environment.

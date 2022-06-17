@@ -29,84 +29,8 @@ pub use literal::Literal;
 mod plaintext;
 pub use plaintext::Plaintext;
 
+mod record;
+pub use record::{Entry, Record};
+
 mod value;
 pub use value::Value;
-
-mod decrypt;
-mod encrypt;
-mod to_bits;
-mod to_id;
-
-use snarkvm_circuit_account::ViewKey;
-use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
-
-pub trait Visibility<A: Aleo>: ToBits<Boolean = Boolean<A>> + FromBits + ToFields + FromFields {
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> u16;
-}
-
-pub struct Data<A: Aleo, Private: Visibility<A>>(Vec<(Identifier<A>, Value<A, Private>)>);
-
-#[cfg(console)]
-impl<A: Aleo> Inject for Data<A, Plaintext<A>> {
-    type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
-
-    /// Initializes plaintext data from a primitive.
-    fn new(mode: Mode, data: Self::Primitive) -> Self {
-        // TODO (howardwu): Enforce the maximum number of data values.
-        Self(Inject::new(mode, (*data).to_vec()))
-    }
-}
-
-#[cfg(console)]
-impl<A: Aleo> Inject for Data<A, Ciphertext<A>> {
-    type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
-
-    /// Initializes ciphertext data from a primitive.
-    fn new(mode: Mode, data: Self::Primitive) -> Self {
-        // TODO (howardwu): Enforce the maximum number of data values.
-        Self(Inject::new(mode, (*data).to_vec()))
-    }
-}
-
-#[cfg(console)]
-impl<A: Aleo> Eject for Data<A, Plaintext<A>> {
-    type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
-
-    /// Ejects the mode of the data.
-    fn eject_mode(&self) -> Mode {
-        self.0.iter().map(|(identifier, value)| (identifier, value).eject_mode()).collect::<Vec<_>>().eject_mode()
-    }
-
-    /// Ejects the data.
-    fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from(
-            self.0.iter().map(|(identifier, value)| (identifier, value).eject_value()).collect::<Vec<_>>(),
-        )
-    }
-}
-
-#[cfg(console)]
-impl<A: Aleo> Eject for Data<A, Ciphertext<A>> {
-    type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
-
-    /// Ejects the mode of the data.
-    fn eject_mode(&self) -> Mode {
-        self.0.iter().map(|(identifier, value)| (identifier, value).eject_mode()).collect::<Vec<_>>().eject_mode()
-    }
-
-    /// Ejects the data.
-    fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from(
-            self.0.iter().map(|(identifier, value)| (identifier, value).eject_value()).collect::<Vec<_>>(),
-        )
-    }
-}
-
-#[cfg(console)]
-impl<A: Aleo, Private: Visibility<A>> TypeName for Data<A, Private> {
-    fn type_name() -> &'static str {
-        "data"
-    }
-}

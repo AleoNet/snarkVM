@@ -196,7 +196,7 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Construct the record.
-                let record = Record::new(owner, balance, entries)?;
+                let record = Record::from_plaintext(owner, balance, entries)?;
                 // Store the record.
                 stack.store(&self.destination, StackValue::Record(record))
             }
