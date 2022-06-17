@@ -27,7 +27,7 @@ mod plaintext;
 pub use plaintext::{Plaintext, PlaintextType};
 
 mod record;
-pub use record::{Entry, Record};
+pub use record::{Balance, Entry, Owner, Record};
 
 mod value;
 pub use value::{Value, ValueType};

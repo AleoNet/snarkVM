@@ -274,7 +274,7 @@ impl<P: Program> Function<P> {
 
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-            //  For constant outputs, add an assert_eq on the register value - if it's constant,
+            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
             //  the constraint will automatically be discarded, and if it's not, the constraint will
             //  ensure the output register's value matches the newly-assigned hardcoded constant.
             // // If the value contains any public literals, assign a new public variable for the public literal,

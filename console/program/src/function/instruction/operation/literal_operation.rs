@@ -16,7 +16,7 @@
 
 use crate::{
     function::instruction::{Operand, Operation},
-    program::{RegisterType, Stack},
+    program::{Program, RegisterType, Stack},
     Literal,
     LiteralType,
     Opcode,
@@ -109,19 +109,16 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
         // Ensure the output type is correct.
-        ensure!(
-            Self::output_type(&input_types)? == output_type,
-            "Output type mismatch: expected {}, found {output_type}",
-            Self::output_type(&input_types)?
-        );
+        let expected_type = self.output_type(stack.program(), &input_types)?;
+        ensure!(expected_type == output_type, "Output type mismatch: expected {expected_type}, found {output_type}",);
 
         // Evaluate the operation and store the output.
         stack.store_literal(&self.destination, output)
     }
 
-    /// Returns the output type from the given input types.
+    /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_type(input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
+    pub fn output_type(&self, _program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == NUM_OPERANDS,
@@ -137,9 +134,9 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
             .map(|input_type| match input_type {
                 RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(literal_type),
                 RegisterType::Plaintext(PlaintextType::Interface(..)) => {
-                    Err(anyhow!("Expected literal type, found '{input_type}'"))
+                    bail!("Expected literal type, found '{input_type}'")
                 }
-                RegisterType::Record(..) => Err(anyhow!("Expected literal type, found '{input_type}'")),
+                RegisterType::Record(..) => bail!("Expected literal type, found '{input_type}'"),
             })
             .collect::<Result<Vec<_>>>()?;
 

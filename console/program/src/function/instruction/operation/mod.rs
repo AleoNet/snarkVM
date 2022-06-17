@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod cast;
+pub(crate) use cast::*;
+
 mod literal_operation;
 pub(crate) use literal_operation::*;
 

@@ -16,33 +16,31 @@
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network> Program<N> {
     /// Checks that the given input value matches the layout of the value type.
-    pub fn matches_input(&self, input: &RegisterValue<N>, value_type: &ValueType<N>) -> Result<()> {
+    pub fn matches_input(&self, input: &StackValue<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the input value matches the declared type in the register.
         match (input, value_type) {
-            (RegisterValue::Plaintext(plaintext), ValueType::Constant(plaintext_type))
-            | (RegisterValue::Plaintext(plaintext), ValueType::Public(plaintext_type))
-            | (RegisterValue::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
+            (StackValue::Plaintext(plaintext), ValueType::Constant(plaintext_type))
+            | (StackValue::Plaintext(plaintext), ValueType::Public(plaintext_type))
+            | (StackValue::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
                 self.matches_plaintext(plaintext, &plaintext_type)
             }
-            (RegisterValue::Record(record), ValueType::Record(record_name)) => {
-                self.matches_record(record, &record_name)
-            }
+            (StackValue::Record(record), ValueType::Record(record_name)) => self.matches_record(record, &record_name),
             _ => bail!("Input value does not match the input register type '{value_type}'"),
         }
     }
 
-    /// Checks that the given register value matches the layout of the register type.
-    pub fn matches_register(&self, register_value: &RegisterValue<N>, register_type: &RegisterType<N>) -> Result<()> {
-        match (register_value, register_type) {
-            (RegisterValue::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
+    /// Checks that the given stack value matches the layout of the register type.
+    pub fn matches_register(&self, stack_value: &StackValue<N>, register_type: &RegisterType<N>) -> Result<()> {
+        match (stack_value, register_type) {
+            (StackValue::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
                 self.matches_plaintext(plaintext, &plaintext_type)
             }
-            (RegisterValue::Record(record), RegisterType::Record(record_name)) => {
+            (StackValue::Record(record), RegisterType::Record(record_name)) => {
                 self.matches_record(record, &record_name)
             }
-            _ => bail!("Register value does not match the register type '{register_type}'"),
+            _ => bail!("Stack value does not match the register type '{register_type}'"),
         }
     }
 
@@ -65,7 +63,7 @@ impl<N: Network> Stack<N> {
     }
 }
 
-impl<N: Network> Stack<N> {
+impl<N: Network> Program<N> {
     /// Checks that the given value matches the layout of the value type.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
@@ -103,10 +101,10 @@ impl<N: Network> Stack<N> {
         ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
 
         // Ensure the record name is valid.
-        ensure!(!self.program.is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
+        ensure!(!self.is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Retrieve the record type from the program.
-        let record_type = match self.program.get_record(record_name) {
+        let record_type = match self.get_record(record_name) {
             Ok(record_type) => record_type,
             Err(..) => bail!("Record '{record_name}' is not defined in the program"),
         };
@@ -153,7 +151,7 @@ impl<N: Network> Stack<N> {
                 // Ensure the member type matches.
                 Some((member_name, member_entry)) => {
                     // Ensure the member name is valid.
-                    ensure!(!self.program.is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
+                    ensure!(!self.is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
                     self.matches_value_internal(
                         &Value::from(member_entry.clone()),
@@ -196,10 +194,10 @@ impl<N: Network> Stack<N> {
             },
             PlaintextType::Interface(interface_name) => {
                 // Ensure the interface name is valid.
-                ensure!(!self.program.is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
+                ensure!(!self.is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
 
                 // Retrieve the interface from the program.
-                let interface = match self.program.get_interface(interface_name) {
+                let interface = match self.get_interface(interface_name) {
                     Ok(interface) => interface,
                     Err(..) => bail!("Interface '{interface_name}' is not defined in the program"),
                 };
@@ -236,10 +234,7 @@ impl<N: Network> Stack<N> {
                         // Ensure the member type matches.
                         Some((member_name, member_plaintext)) => {
                             // Ensure the member name is valid.
-                            ensure!(
-                                !self.program.is_reserved_keyword(member_name),
-                                "Member '{member_name}' is reserved"
-                            );
+                            ensure!(!self.is_reserved_keyword(member_name), "Member '{member_name}' is reserved");
                             // Ensure the member plaintext matches (recursive call).
                             self.matches_plaintext_internal(member_plaintext, expected_type, depth + 1)?
                         }

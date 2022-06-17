@@ -27,6 +27,18 @@ pub enum RegisterType<N: Network> {
     Record(Identifier<N>),
 }
 
+impl<N: Network> From<ValueType<N>> for RegisterType<N> {
+    /// Converts a value type to a register type.
+    fn from(value: ValueType<N>) -> Self {
+        match value {
+            ValueType::Constant(plaintext_type)
+            | ValueType::Public(plaintext_type)
+            | ValueType::Private(plaintext_type) => RegisterType::Plaintext(plaintext_type),
+            ValueType::Record(record_name) => RegisterType::Record(record_name),
+        }
+    }
+}
+
 impl<N: Network> Display for RegisterType<N> {
     /// Prints the register type as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -154,12 +166,9 @@ impl<N: Network> RegisterTypes<N> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            match self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))? {
-                ValueType::Constant(plaintext_type)
-                | ValueType::Public(plaintext_type)
-                | ValueType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                ValueType::Record(record_name) => RegisterType::Record(*record_name),
-            }
+            RegisterType::from(
+                *self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?,
+            )
         } else {
             // Retrieve the destination register type.
             *self

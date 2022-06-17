@@ -18,7 +18,7 @@ mod entry;
 pub use entry::Entry;
 
 mod helpers;
-use helpers::{Balance, Owner};
+pub use helpers::{Balance, Owner};
 
 mod decrypt;
 mod encrypt;
@@ -47,6 +47,20 @@ pub struct Record<N: Network, Private: Visibility> {
 }
 
 impl<N: Network> Record<N, Plaintext<N>> {
+    /// Initializes a new record.
+    pub fn new(
+        owner: Owner<N, Plaintext<N>>,
+        balance: Balance<N, Plaintext<N>>,
+        data: IndexMap<Identifier<N>, Entry<N, Plaintext<N>>>,
+    ) -> Result<Self> {
+        // Ensure the members has no duplicate names.
+        ensure!(has_duplicates(data.iter().map(|(name, ..)| name)), "Duplicate data entry in record");
+        // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
+        ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
+        // Return the record.
+        Ok(Self { owner, balance, data })
+    }
+
     /// Returns the owner of the program record.
     pub const fn owner(&self) -> &Owner<N, Plaintext<N>> {
         &self.owner

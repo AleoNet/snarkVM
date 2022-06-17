@@ -20,6 +20,8 @@ pub(crate) use registers::*;
 mod stack;
 pub(crate) use stack::*;
 
+mod matches;
+
 use crate::{
     function::Operand,
     EntryType,
@@ -30,6 +32,7 @@ use crate::{
     Opcode,
     Plaintext,
     PlaintextType,
+    Record,
     RecordType,
     Register,
     Value,
@@ -72,7 +75,7 @@ impl<N: Network> Program<N> {
     pub fn evaluate(
         &self,
         function_name: &Identifier<N>,
-        inputs: &[RegisterValue<N>],
+        inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Retrieve the function from the program.
         let function = self.get_function(function_name)?;
@@ -102,26 +105,26 @@ impl<N: Network> Program<N> {
 
         // Load the outputs.
         for (register, value_type) in register_types.to_outputs() {
-            // Retrieve the register value from the register.
+            // Retrieve the stack value from the register.
             let register_value = stack.load(&Operand::Register(register.clone()))?;
 
-            // Convert the register value to the output value type.
+            // Convert the stack value to the output value type.
             let output_value = match (register_value, value_type) {
-                (RegisterValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-                (RegisterValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-                (RegisterValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-                (RegisterValue::Record(record), ValueType::Record(..)) => Value::Record(record),
-                _ => bail!("Register value does not match the expected output type"),
+                (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
+                (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
+                (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
+                (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
+                _ => bail!("Stack value does not match the expected output type"),
             };
 
             // Ensure the output value matches the value type.
-            stack.matches_value(&output_value, &value_type)?;
+            self.matches_value(&output_value, &value_type)?;
             // Insert the value into the outputs.
             outputs.push(output_value);
 
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-            //  For constant outputs, add an assert_eq on the register value - if it's constant,
+            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
             //  the constraint will automatically be discarded, and if it's not, the constraint will
             //  ensure the output register's value matches the newly-assigned hardcoded constant.
             // // If the value contains any public literals, assign a new public variable for the public literal,
@@ -285,7 +288,7 @@ impl<N: Network> Program<N> {
         ensure!(!self.is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
         // Initialize a map of registers to their types.
-        let mut registers = RegisterTypes::new();
+        let mut register_types = RegisterTypes::new();
 
         // Step 1. Check the function inputs are well-formed.
         for input in function.inputs() {
@@ -313,7 +316,7 @@ impl<N: Network> Program<N> {
             };
 
             // Insert the input register.
-            registers.add_input(input.register().clone(), *input.value_type())?;
+            register_types.add_input(input.register().clone(), *input.value_type())?;
         }
 
         // Step 2. Check the function instructions are well-formed.
@@ -322,24 +325,76 @@ impl<N: Network> Program<N> {
             match instruction.opcode() {
                 Opcode::Literal(opcode) => {
                     // Ensure the opcode **is** a reserved opcode.
-                    ensure!(self.is_reserved_opcode(opcode), "'{opcode}' is not an opcode.")
+                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                    // Ensure the instruction is not the cast operation.
+                    ensure!(
+                        !matches!(instruction, Instruction::Cast(..)),
+                        "Instruction '{instruction}' is a cast operation."
+                    );
                 }
-                Opcode::Interface(opcode) => {
-                    // Ensure the interface name exists in the program.
-                    if !self.interfaces.contains_key(&Identifier::from_str(opcode)?) {
-                        bail!("Opcode '{opcode}' in function '{function_name}' is not defined.")
-                    }
-                }
-                Opcode::Record(opcode) => {
-                    // Ensure the record name exists in the program.
-                    if !self.records.contains_key(&Identifier::from_str(opcode)?) {
-                        bail!("Opcode '{opcode}' in function '{function_name}' is not defined.")
-                    }
-                }
-                Opcode::Function(opcode) => {
-                    // Ensure the function name exists in the program.
-                    if !self.functions.contains_key(&Identifier::from_str(opcode)?) {
-                        bail!("Opcode '{opcode}' in function '{function_name}' is not defined.")
+                Opcode::Cast => {
+                    // Retrieve the cast operation.
+                    let operation = match instruction {
+                        Instruction::Cast(operation) => operation,
+                        _ => bail!("Instruction '{instruction}' is not a cast operation."),
+                    };
+
+                    // Ensure the casted value type is defined.
+                    match operation.value_type() {
+                        ValueType::Constant(plaintext_type)
+                        | ValueType::Public(plaintext_type)
+                        | ValueType::Private(plaintext_type) => {
+                            // Ensure the plaintext type is defined in the program.
+                            match plaintext_type {
+                                PlaintextType::Literal(..) => (),
+                                PlaintextType::Interface(interface_name) => {
+                                    // Ensure the interface name exists in the program.
+                                    if !self.interfaces.contains_key(interface_name) {
+                                        bail!(
+                                            "Interface '{interface_name}' in function '{function_name}' is not defined."
+                                        )
+                                    }
+
+                                    // Retrieve the interface.
+                                    let interface = self.get_interface(&interface_name)?;
+                                    // Ensure the operand types match the interface.
+                                    for (operand, (_, member_type)) in
+                                        instruction.operands().iter().zip(interface.members().iter())
+                                    {
+                                        match operand {
+                                            // Ensure the literal type matches the member type.
+                                            Operand::Literal(literal) => {
+                                                ensure!(
+                                                    PlaintextType::Literal(literal.to_type()) == *member_type,
+                                                    "Literal '{literal}' in function '{function_name}' does not match interface '{interface_name}'."
+                                                )
+                                            }
+                                            // Ensure the register type matches the member type.
+                                            Operand::Register(register) => {
+                                                // Retrieve the register type.
+                                                let register_type = register_types.get_type(&self, &register)?;
+                                                // Ensure the register type is not a record.
+                                                ensure!(
+                                                    !matches!(register_type, RegisterType::Record(..)),
+                                                    "Casting a record into an interface in function '{function_name}' is illegal"
+                                                );
+                                                // Ensure the register type matches the member type.
+                                                ensure!(
+                                                    register_type == RegisterType::Plaintext(*member_type),
+                                                    "Register '{register}' in function '{function_name}' does not match interface '{interface_name}'."
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ValueType::Record(identifier) => {
+                            // Ensure the record type is defined in the program.
+                            if !self.records.contains_key(identifier) {
+                                bail!("Record '{identifier}' in function '{function_name}' is not defined.")
+                            }
+                        }
                     }
                 }
             }
@@ -351,18 +406,18 @@ impl<N: Network> Program<N> {
                 // Retrieve and append the register type.
                 operand_types.push(match operand {
                     Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                    Operand::Register(register) => registers.get_type(&self, &register)?,
+                    Operand::Register(register) => register_types.get_type(&self, &register)?,
                 });
             }
 
             // Compute the destination register type.
-            let destination_type = instruction.output_type(&operand_types)?;
+            let destination_type = instruction.output_type(&self, &operand_types)?;
 
             // Retrieve the destination register.
             let destination = instruction.destination();
             match destination {
                 // Insert the destination register.
-                Register::Locator(..) => registers.add_destination(destination.clone(), destination_type)?,
+                Register::Locator(..) => register_types.add_destination(destination.clone(), destination_type)?,
                 // Ensure the destination register is a locator (and does not reference a member).
                 Register::Member(..) => bail!("Destination register '{destination}' must be a locator."),
             }
@@ -373,13 +428,13 @@ impl<N: Network> Program<N> {
             // Retrieve the output register.
             let register = output.register();
             // Inform the user the output register is an input register, to ensure this is intended behavior.
-            if registers.is_input(register) {
+            if register_types.is_input(register) {
                 eprintln!("Output {register} is an input register, ensure this is intended behavior");
             }
 
             // Retrieve the register type (as a plaintext type).
             // Note: This serves as the expected output type, which we will compare against.
-            let register_type = registers.get_type(&self, &register)?;
+            let register_type = register_types.get_type(&self, &register)?;
 
             match output.value_type() {
                 ValueType::Constant(plaintext_type)
@@ -418,7 +473,7 @@ impl<N: Network> Program<N> {
             }
 
             // Insert the output register.
-            registers.add_output(output.register(), *output.value_type())?;
+            register_types.add_output(output.register(), *output.value_type())?;
         }
 
         // Add the function name to the identifiers.
@@ -430,7 +485,7 @@ impl<N: Network> Program<N> {
             bail!("'{}' already exists in the program.", function_name)
         }
         // Add the function registers to the program.
-        if self.function_registers.insert(function_name.clone(), registers).is_some() {
+        if self.function_registers.insert(function_name.clone(), register_types).is_some() {
             bail!("'{}' already exists in the program.", function_name)
         }
         Ok(())
@@ -749,8 +804,8 @@ function compute:
         let function_name = Identifier::from_str("foo").unwrap();
         // Declare the function inputs.
         let inputs = vec![
-            RegisterValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
-            RegisterValue::Plaintext(Plaintext::from_str("3field").unwrap()),
+            StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("2field").unwrap()),
+            StackValue::Plaintext(Plaintext::from_str("3field").unwrap()),
         ];
 
         // Run the function.
@@ -785,9 +840,8 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
-        let input = RegisterValue::<CurrentNetwork>::Plaintext(
-            Plaintext::from_str("{ first: 2field, second: 3field }").unwrap(),
-        );
+        let input =
+            StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("{ first: 2field, second: 3field }").unwrap());
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("5field").unwrap());
 
@@ -824,7 +878,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
         let input =
-            RegisterValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            StackValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
         // Declare the expected output value.
         let expected = Value::Private(Plaintext::from_str("200u64").unwrap());
 

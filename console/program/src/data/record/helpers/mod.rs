@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod balance;
-pub(super) use balance::*;
+pub use balance::*;
 
 mod owner;
-pub(super) use owner::*;
+pub use owner::*;
