@@ -116,19 +116,25 @@ mod tests {
         );
 
         let value = Plaintext::<Circuit>::Interface(
-            vec![
-                (
-                    Identifier::new(Mode::Private, "a".try_into()?),
-                    Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new()),
-                ),
-                (
-                    Identifier::new(Mode::Private, "b".try_into()?),
-                    Plaintext::<Circuit>::Literal(
-                        Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
-                        OnceCell::new(),
+            IndexMap::from_iter(
+                vec![
+                    (
+                        Identifier::new(Mode::Private, "a".try_into()?),
+                        Plaintext::<Circuit>::Literal(
+                            Literal::Boolean(Boolean::new(Mode::Private, true)),
+                            OnceCell::new(),
+                        ),
                     ),
-                ),
-            ],
+                    (
+                        Identifier::new(Mode::Private, "b".try_into()?),
+                        Plaintext::<Circuit>::Literal(
+                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+                            OnceCell::new(),
+                        ),
+                    ),
+                ]
+                .into_iter(),
+            ),
             OnceCell::new(),
         );
         assert_eq!(
@@ -137,66 +143,78 @@ mod tests {
         );
 
         let value = Plaintext::<Circuit>::Interface(
-            vec![
-                (
-                    Identifier::new(Mode::Private, "a".try_into()?),
-                    Plaintext::<Circuit>::Literal(Literal::Boolean(Boolean::new(Mode::Private, true)), OnceCell::new()),
-                ),
-                (
-                    Identifier::new(Mode::Private, "b".try_into()?),
-                    Plaintext::<Circuit>::Interface(
-                        vec![
-                            (
-                                Identifier::new(Mode::Private, "c".try_into()?),
-                                Plaintext::<Circuit>::Literal(
-                                    Literal::Boolean(Boolean::new(Mode::Private, true)),
-                                    OnceCell::new(),
-                                ),
-                            ),
-                            (
-                                Identifier::new(Mode::Private, "d".try_into()?),
-                                Plaintext::<Circuit>::Interface(
-                                    vec![
-                                        (
-                                            Identifier::new(Mode::Private, "e".try_into()?),
-                                            Plaintext::<Circuit>::Literal(
-                                                Literal::Boolean(Boolean::new(Mode::Private, true)),
-                                                OnceCell::new(),
-                                            ),
-                                        ),
-                                        (
-                                            Identifier::new(Mode::Private, "f".try_into()?),
-                                            Plaintext::<Circuit>::Literal(
-                                                Literal::Field(Field::new(
-                                                    Mode::Private,
-                                                    Uniform::rand(&mut test_rng()),
-                                                )),
-                                                OnceCell::new(),
-                                            ),
-                                        ),
-                                    ],
-                                    OnceCell::new(),
-                                ),
-                            ),
-                            (
-                                Identifier::new(Mode::Private, "g".try_into()?),
-                                Plaintext::<Circuit>::Literal(
-                                    Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
-                                    OnceCell::new(),
-                                ),
-                            ),
-                        ],
-                        OnceCell::new(),
+            IndexMap::from_iter(
+                vec![
+                    (
+                        Identifier::new(Mode::Private, "a".try_into()?),
+                        Plaintext::<Circuit>::Literal(
+                            Literal::Boolean(Boolean::new(Mode::Private, true)),
+                            OnceCell::new(),
+                        ),
                     ),
-                ),
-                (
-                    Identifier::new(Mode::Private, "h".try_into()?),
-                    Plaintext::<Circuit>::Literal(
-                        Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
-                        OnceCell::new(),
+                    (
+                        Identifier::new(Mode::Private, "b".try_into()?),
+                        Plaintext::<Circuit>::Interface(
+                            IndexMap::from_iter(
+                                vec![
+                                    (
+                                        Identifier::new(Mode::Private, "c".try_into()?),
+                                        Plaintext::<Circuit>::Literal(
+                                            Literal::Boolean(Boolean::new(Mode::Private, true)),
+                                            OnceCell::new(),
+                                        ),
+                                    ),
+                                    (
+                                        Identifier::new(Mode::Private, "d".try_into()?),
+                                        Plaintext::<Circuit>::Interface(
+                                            IndexMap::from_iter(
+                                                vec![
+                                                    (
+                                                        Identifier::new(Mode::Private, "e".try_into()?),
+                                                        Plaintext::<Circuit>::Literal(
+                                                            Literal::Boolean(Boolean::new(Mode::Private, true)),
+                                                            OnceCell::new(),
+                                                        ),
+                                                    ),
+                                                    (
+                                                        Identifier::new(Mode::Private, "f".try_into()?),
+                                                        Plaintext::<Circuit>::Literal(
+                                                            Literal::Field(Field::new(
+                                                                Mode::Private,
+                                                                Uniform::rand(&mut test_rng()),
+                                                            )),
+                                                            OnceCell::new(),
+                                                        ),
+                                                    ),
+                                                ]
+                                                .into_iter(),
+                                            ),
+                                            OnceCell::new(),
+                                        ),
+                                    ),
+                                    (
+                                        Identifier::new(Mode::Private, "g".try_into()?),
+                                        Plaintext::<Circuit>::Literal(
+                                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+                                            OnceCell::new(),
+                                        ),
+                                    ),
+                                ]
+                                .into_iter(),
+                            ),
+                            OnceCell::new(),
+                        ),
                     ),
-                ),
-            ],
+                    (
+                        Identifier::new(Mode::Private, "h".try_into()?),
+                        Plaintext::<Circuit>::Literal(
+                            Literal::Field(Field::new(Mode::Private, Uniform::rand(&mut test_rng()))),
+                            OnceCell::new(),
+                        ),
+                    ),
+                ]
+                .into_iter(),
+            ),
             OnceCell::new(),
         );
         assert_eq!(

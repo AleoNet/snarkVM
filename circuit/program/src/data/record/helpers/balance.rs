@@ -27,6 +27,35 @@ pub enum Balance<A: Aleo, Private: Visibility<A>> {
     Private(Private),
 }
 
+#[cfg(console)]
+impl<A: Aleo> Inject for Balance<A, Plaintext<A>> {
+    type Primitive = console::Balance<A::Network, console::Plaintext<A::Network>>;
+
+    /// Initializes plaintext balance from a primitive.
+    fn new(_: Mode, owner: Self::Primitive) -> Self {
+        match owner {
+            console::Balance::Public(balance) => Self::Public(U64::new(Mode::Public, balance)),
+            console::Balance::Private(console::Plaintext::Literal(console::Literal::U64(balance), ..)) => {
+                Self::Private(Plaintext::Literal(Literal::U64(U64::new(Mode::Private, balance)), Default::default()))
+            }
+            _ => A::halt("Balance::<Plaintext>::new: Invalid primitive type for balance"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Inject for Balance<A, Ciphertext<A>> {
+    type Primitive = console::Balance<A::Network, console::Ciphertext<A::Network>>;
+
+    /// Initializes ciphertext balance from a primitive.
+    fn new(_: Mode, owner: Self::Primitive) -> Self {
+        match owner {
+            console::Balance::Public(balance) => Self::Public(U64::new(Mode::Public, balance)),
+            console::Balance::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext.clone())),
+        }
+    }
+}
+
 impl<A: Aleo, Private: Visibility<A>> Balance<A, Private> {
     /// Returns `true` if `self` is public.
     pub fn is_public(&self) -> Boolean<A> {
@@ -68,7 +97,7 @@ impl<A: Aleo> Balance<A, Plaintext<A>> {
         match self {
             Self::Public(balance) => {
                 // Ensure there is exactly zero randomizers.
-                if randomizer.is_empty() {
+                if !randomizer.is_empty() {
                     A::halt(format!("Expected 0 randomizers, found {}", randomizer.len()))
                 }
                 // Ensure the balance is less than or equal to 2^52.
@@ -78,7 +107,7 @@ impl<A: Aleo> Balance<A, Plaintext<A>> {
             }
             Self::Private(Plaintext::Literal(Literal::U64(balance), ..)) => {
                 // Ensure there is exactly one randomizer.
-                if randomizer.len() == 1 {
+                if randomizer.len() != 1 {
                     A::halt(format!("Expected 1 randomizer, found {}", randomizer.len()))
                 }
                 // Ensure the balance is less than or equal to 2^52.
@@ -99,7 +128,7 @@ impl<A: Aleo> Balance<A, Ciphertext<A>> {
         match self {
             Self::Public(balance) => {
                 // Ensure there is exactly zero randomizers.
-                if randomizer.is_empty() {
+                if !randomizer.is_empty() {
                     A::halt(format!("Expected 0 randomizers, found {}", randomizer.len()))
                 }
                 // Ensure the balance is less than or equal to 2^52.
@@ -109,11 +138,11 @@ impl<A: Aleo> Balance<A, Ciphertext<A>> {
             }
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one randomizer.
-                if randomizer.len() == 1 {
+                if randomizer.len() != 1 {
                     A::halt(format!("Expected 1 randomizer, found {}", randomizer.len()))
                 }
                 // Ensure there is exactly one field element in the ciphertext.
-                if ciphertext.len() == 1 {
+                if ciphertext.len() != 1 {
                     A::halt(format!("Expected 1 ciphertext, found {}", ciphertext.len()))
                 }
                 // Decrypt the balance.

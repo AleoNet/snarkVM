@@ -52,26 +52,8 @@ impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
     /// Initializes plaintext record from a primitive.
     fn new(mode: Mode, record: Self::Primitive) -> Self {
         Self {
-            owner: match record.owner() {
-                console::Owner::Public(owner) => Owner::Public(Address::new(Mode::Public, *owner)),
-                console::Owner::Private(console::Plaintext::Literal(console::Literal::Address(owner), ..)) => {
-                    Owner::Private(Plaintext::Literal(
-                        Literal::Address(Address::new(Mode::Private, *owner)),
-                        Default::default(),
-                    ))
-                }
-                _ => A::halt("Record::<Plaintext>::new: Invalid primitive type for owner"),
-            },
-            balance: match record.balance() {
-                console::Balance::Public(balance) => Balance::Public(U64::new(Mode::Public, *balance)),
-                console::Balance::Private(console::Plaintext::Literal(console::Literal::U64(balance), ..)) => {
-                    Balance::Private(Plaintext::Literal(
-                        Literal::U64(U64::new(Mode::Private, *balance)),
-                        Default::default(),
-                    ))
-                }
-                _ => A::halt("Record::<Plaintext>::new: Invalid primitive type for balance"),
-            },
+            owner: Owner::new(mode, record.owner().clone()),
+            balance: Balance::new(mode, record.balance().clone()),
             data: Inject::new(mode, record.data().clone()),
         }
     }
@@ -84,18 +66,8 @@ impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
     /// Initializes ciphertext record from a primitive.
     fn new(mode: Mode, record: Self::Primitive) -> Self {
         Self {
-            owner: match record.owner() {
-                console::Owner::Public(owner) => Owner::Public(Address::new(Mode::Public, *owner)),
-                console::Owner::Private(ciphertext) => {
-                    Owner::Private(Ciphertext::new(Mode::Private, ciphertext.clone()))
-                }
-            },
-            balance: match record.balance() {
-                console::Balance::Public(balance) => Balance::Public(U64::new(Mode::Public, *balance)),
-                console::Balance::Private(ciphertext) => {
-                    Balance::Private(Ciphertext::new(Mode::Private, ciphertext.clone()))
-                }
-            },
+            owner: Owner::new(mode, record.owner().clone()),
+            balance: Balance::new(mode, record.balance().clone()),
             data: Inject::new(mode, record.data().clone()),
         }
     }

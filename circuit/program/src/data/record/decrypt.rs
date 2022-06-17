@@ -25,26 +25,6 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
         self.decrypt_symmetric(data_view_key)
     }
 
-    // /// Decrypts `self` into plaintext using the given data view key.
-    // pub fn decrypt_symmetric(&self, data_view_key: Field<A>) -> Record<A, Plaintext<A>> {
-    //     // Determine the number of randomizers needed to encrypt the data.
-    //     let num_randomizers = self.0.iter().map(|(_, value)| value.num_randomizers()).sum();
-    //     // Prepare a randomizer for each field element.
-    //     let randomizers = A::hash_many_psd8(&[A::encryption_domain(), data_view_key], num_randomizers);
-    //     // Decrypt the data.
-    //     let mut index: usize = 0;
-    //     let mut decrypted_data = IndexMap::with_capacity(self.0.len());
-    //     for (id, value, num_randomizers) in self.0.iter().map(|(id, value)| (id, value, value.num_randomizers())) {
-    //         // Retrieve the randomizers for this value.
-    //         let randomizers = &randomizers[index..index + num_randomizers as usize];
-    //         // Decrypt the value, and add the value.
-    //         decrypted_data.insert(id.clone(), value.decrypt(randomizers));
-    //         // Increment the index.
-    //         index += num_randomizers as usize;
-    //     }
-    //     Record(decrypted_data)
-    // }
-
     /// Decrypts `self` into plaintext using the given record view key.
     pub fn decrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Plaintext<A>> {
         // Determine the number of randomizers needed to encrypt the record.
@@ -120,11 +100,51 @@ mod tests {
     use super::*;
     use crate::{Circuit, Literal};
     use snarkvm_circuit_types::Field;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::{test_crypto_rng, test_rng, Uniform};
 
     use anyhow::Result;
 
     const ITERATIONS: u64 = 100;
+
+    fn check_encrypt_and_decrypt<A: Aleo>(
+        address: &Address<A>,
+        view_key: &ViewKey<A>,
+        owner: Owner<A, Plaintext<A>>,
+        balance: Balance<A, Plaintext<A>>,
+    ) -> Result<()> {
+        // Prepare the record.
+        let record = Record {
+            owner,
+            balance,
+            data: IndexMap::from_iter(
+                vec![
+                    (
+                        Identifier::from_str("a")?,
+                        Entry::Private(Plaintext::from(Literal::Field(Field::new(
+                            Mode::Private,
+                            Uniform::rand(&mut test_rng()),
+                        )))),
+                    ),
+                    (
+                        Identifier::from_str("b")?,
+                        Entry::Private(Plaintext::from(Literal::Scalar(Scalar::new(
+                            Mode::Private,
+                            Uniform::rand(&mut test_rng()),
+                        )))),
+                    ),
+                ]
+                .into_iter(),
+            ),
+        };
+
+        // Encrypt the record.
+        let randomizer = Scalar::new(Mode::Private, Uniform::rand(&mut test_rng()));
+        let ciphertext = record.encrypt(address, &randomizer);
+        // Decrypt the record.
+        let nonce = A::g_scalar_multiply(&randomizer);
+        assert_eq!(record.eject(), ciphertext.decrypt(view_key, &nonce).eject());
+        Ok(())
+    }
 
     #[test]
     fn test_encrypt_and_decrypt() -> Result<()> {
@@ -138,36 +158,46 @@ mod tests {
 
             // Initialize a view key and address.
             let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
-            let address = Address::<Circuit>::new(Mode::Private, address);
+            let owner = address;
+            let address = Address::<Circuit>::new(Mode::Public, address);
 
-            let record = Record(vec![(
-                Identifier::from_str("a")?,
-                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
-            )]);
+            // Public owner and public balance.
+            {
+                let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
+                let balance =
+                    Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut test_rng()) >> 12)));
+                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+            }
 
-            let randomizer = Scalar::new(Mode::Private, Uniform::rand(rng));
-            let ciphertext = record.encrypt(&address, &randomizer);
+            // Private owner and public balance.
+            {
+                let owner =
+                    Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
+                let balance =
+                    Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut test_rng()) >> 12)));
+                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+            }
 
-            let nonce = <Circuit as Aleo>::g_scalar_multiply(&randomizer);
-            assert_eq!(record.eject(), ciphertext.decrypt(&view_key, &nonce).eject());
-        }
-        Ok(())
-    }
+            // Public owner and private balance.
+            {
+                let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
+                let balance = Balance::Private(Plaintext::from(Literal::U64(U64::new(
+                    Mode::Private,
+                    console::U64::new(u64::rand(&mut test_rng()) >> 12),
+                ))));
+                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+            }
 
-    #[test]
-    fn test_encrypt_symmetric_and_decrypt_symmetric() -> Result<()> {
-        let rng = &mut test_crypto_rng();
-
-        for _ in 0..ITERATIONS {
-            // Sample a random symmetric key and data.
-            let symmetric_key = Field::<Circuit>::new(Mode::Private, Uniform::rand(rng));
-            let record = Record(vec![(
-                Identifier::from_str("a")?,
-                Value::Private(Plaintext::from(Literal::Field(Field::new(Mode::Private, Uniform::rand(rng))))),
-            )]);
-
-            let ciphertext = record.encrypt_symmetric(symmetric_key.clone());
-            assert_eq!(record.eject(), ciphertext.decrypt_symmetric(symmetric_key).eject());
+            // Private owner and private balance.
+            {
+                let owner =
+                    Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
+                let balance = Balance::Private(Plaintext::from(Literal::U64(U64::new(
+                    Mode::Private,
+                    console::U64::new(u64::rand(&mut test_rng()) >> 12),
+                ))));
+                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+            }
         }
         Ok(())
     }

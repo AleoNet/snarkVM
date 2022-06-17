@@ -27,6 +27,38 @@ pub enum Owner<A: Aleo, Private: Visibility<A>> {
     Private(Private),
 }
 
+#[cfg(console)]
+impl<A: Aleo> Inject for Owner<A, Plaintext<A>> {
+    type Primitive = console::Owner<A::Network, console::Plaintext<A::Network>>;
+
+    /// Initializes plaintext owner from a primitive.
+    fn new(_: Mode, owner: Self::Primitive) -> Self {
+        match owner {
+            console::Owner::Public(owner) => Self::Public(Address::new(Mode::Public, owner)),
+            console::Owner::Private(console::Plaintext::Literal(console::Literal::Address(owner), ..)) => {
+                Self::Private(Plaintext::Literal(
+                    Literal::Address(Address::new(Mode::Private, owner)),
+                    Default::default(),
+                ))
+            }
+            _ => A::halt("Owner::<Plaintext>::new: Invalid primitive type for owner"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Inject for Owner<A, Ciphertext<A>> {
+    type Primitive = console::Owner<A::Network, console::Ciphertext<A::Network>>;
+
+    /// Initializes ciphertext owner from a primitive.
+    fn new(_: Mode, owner: Self::Primitive) -> Self {
+        match owner {
+            console::Owner::Public(owner) => Self::Public(Address::new(Mode::Public, owner)),
+            console::Owner::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext.clone())),
+        }
+    }
+}
+
 impl<A: Aleo, Private: Visibility<A>> Owner<A, Private> {
     /// Returns `true` if `self` is public.
     pub fn is_public(&self) -> Boolean<A> {
@@ -68,7 +100,7 @@ impl<A: Aleo> Owner<A, Plaintext<A>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.
-                if randomizer.is_empty() {
+                if !randomizer.is_empty() {
                     A::halt(format!("Expected 0 randomizers, found {}", randomizer.len()))
                 }
                 // Return the owner.
@@ -76,7 +108,7 @@ impl<A: Aleo> Owner<A, Plaintext<A>> {
             }
             Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => {
                 // Ensure there is exactly one randomizer.
-                if randomizer.len() == 1 {
+                if randomizer.len() != 1 {
                     A::halt(format!("Expected 1 randomizer, found {}", randomizer.len()))
                 }
                 // Encrypt the owner.
@@ -95,7 +127,7 @@ impl<A: Aleo> Owner<A, Ciphertext<A>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.
-                if randomizer.is_empty() {
+                if !randomizer.is_empty() {
                     A::halt(format!("Expected 0 randomizers, found {}", randomizer.len()))
                 }
                 // Return the owner.
@@ -103,11 +135,11 @@ impl<A: Aleo> Owner<A, Ciphertext<A>> {
             }
             Self::Private(ciphertext) => {
                 // Ensure there is exactly one randomizer.
-                if randomizer.len() == 1 {
+                if randomizer.len() != 1 {
                     A::halt(format!("Expected 1 randomizer, found {}", randomizer.len()))
                 }
                 // Ensure there is exactly one field element in the ciphertext.
-                if ciphertext.len() == 1 {
+                if ciphertext.len() != 1 {
                     A::halt(format!("Expected 1 ciphertext, found {}", ciphertext.len()))
                 }
                 // Decrypt the owner.
