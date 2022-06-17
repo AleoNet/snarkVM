@@ -21,13 +21,13 @@ mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
-pub use literal::{Literal, LiteralType};
+pub use literal::Literal;
 
 mod plaintext;
-pub use plaintext::{Plaintext, PlaintextType};
+pub use plaintext::Plaintext;
 
 mod record;
 pub use record::{Balance, Entry, Owner, Record};
 
 mod value;
-pub use value::{Value, ValueType};
+pub use value::Value;

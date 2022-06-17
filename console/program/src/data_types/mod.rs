@@ -14,22 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+mod interface;
+pub use interface::Interface;
 
-#[macro_use]
-extern crate enum_index_derive;
+mod literal_type;
+pub use literal_type::LiteralType;
 
-pub use snarkvm_console_types::prelude::*;
+mod plaintext_type;
+pub use plaintext_type::PlaintextType;
 
-mod data;
-pub use data::*;
+mod record_type;
+pub use record_type::{EntryType, RecordType};
 
-mod data_types;
-pub use data_types::*;
-
-mod function;
-pub use function::*;
-
-mod program;
-pub use program::Program;
+mod value_type;
+pub use value_type::ValueType;

@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod literal_type;
-pub use literal_type::LiteralType;
-
 mod from_bits;
 mod parse;
 mod size_in_bits;
@@ -24,6 +21,7 @@ mod to_bits;
 mod to_type;
 mod variant;
 
+use crate::LiteralType;
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 

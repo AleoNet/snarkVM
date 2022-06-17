@@ -30,10 +30,10 @@ mod num_randomizers;
 mod to_bits;
 mod to_id;
 
-use crate::{Ciphertext, Identifier, Literal, Plaintext, Visibility};
+use crate::{Ciphertext, Identifier, Plaintext, Visibility};
 use snarkvm_circuit_account::ViewKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U32, U64};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U32};
 
 #[derive(Clone)]
 pub struct Record<A: Aleo, Private: Visibility<A>> {

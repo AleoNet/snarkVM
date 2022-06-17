@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod value_type;
-pub use value_type::ValueType;
-
 mod find;
 mod num_randomizers;
 mod parse;
