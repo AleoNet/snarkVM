@@ -16,16 +16,12 @@
 
 use crate::{
     function::Operand,
-    program::{RegisterType, RegisterTypes},
+    program::RegisterTypes,
     Entry,
-    Function,
-    Identifier,
-    Interface,
     Literal,
     Plaintext,
     Program,
     Record,
-    RecordType,
     Register,
     Value,
     ValueType,
@@ -86,26 +82,6 @@ impl<N: Network> Stack<N> {
         }
 
         Ok(stack)
-    }
-
-    /// Returns the interface with the given name.
-    pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
-        self.program.get_interface(name)
-    }
-
-    /// Returns the record with the given name.
-    pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
-        self.program.get_record(name)
-    }
-
-    /// Returns the function with the given name.
-    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
-        self.program.get_function(name)
-    }
-
-    /// Checks that the given stack value matches the layout of the register type.
-    pub fn matches_register(&self, stack_value: &StackValue<N>, register_type: &RegisterType<N>) -> Result<()> {
-        self.program.matches_register(stack_value, register_type)
     }
 
     /// Returns the program.

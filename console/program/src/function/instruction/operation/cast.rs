@@ -96,7 +96,7 @@ impl<N: Network> Cast<N> {
                         ensure!(!inputs.is_empty(), "Casting to an interface requires at least one input");
 
                         // Retrieve the interface and ensure it is defined in the program.
-                        let interface = stack.get_interface(&interface_name)?;
+                        let interface = stack.program().get_interface(&interface_name)?;
 
                         // Initialize the interface members.
                         let mut members = IndexMap::new();
@@ -108,6 +108,7 @@ impl<N: Network> Cast<N> {
                                 StackValue::Plaintext(plaintext) => {
                                     // Ensure the member matches the register type.
                                     stack
+                                        .program()
                                         .matches_register(&StackValue::Plaintext(plaintext.clone()), &register_type)?;
                                     // Output the plaintext.
                                     plaintext.clone()
@@ -131,7 +132,7 @@ impl<N: Network> Cast<N> {
                 ensure!(inputs.len() >= 2, "Casting to record requires at least two inputs");
 
                 // Retrieve the interface and ensure it is defined in the program.
-                let record_type = stack.get_record(&record_name)?;
+                let record_type = stack.program().get_record(&record_name)?;
 
                 // Initialize the record owner.
                 let owner: Owner<N, Plaintext<N>> = match &inputs[0] {
@@ -176,7 +177,9 @@ impl<N: Network> Cast<N> {
                     let plaintext = match entry {
                         StackValue::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.matches_register(&StackValue::Plaintext(plaintext.clone()), &register_type)?;
+                            stack
+                                .program()
+                                .matches_register(&StackValue::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
