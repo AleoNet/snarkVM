@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod instruction;
+pub(crate) use instruction::*;
+
 mod load;
 mod store;
 
 use crate::{
-    function::Operand,
     program::RegisterTypes,
     Entry,
     Identifier,
@@ -103,7 +105,14 @@ impl<N: Network> Stack<N> {
         }
 
         // Evaluate the function.
-        function.evaluate(&mut stack)?;
+        {
+            // Ensure there are input statements and instructions in memory.
+            ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
+            ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+
+            // Evaluate the instructions.
+            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
+        }
 
         // Initialize a vector to store the outputs.
         let mut outputs = Vec::with_capacity(function.outputs().len());

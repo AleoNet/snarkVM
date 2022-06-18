@@ -26,8 +26,8 @@ pub use data::*;
 mod data_types;
 pub use data_types::*;
 
-mod function;
-pub use function::*;
-
 mod program;
-pub use program::Program;
+pub use program::*;
+
+mod stack;
+pub(crate) use stack::*;

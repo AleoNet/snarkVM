@@ -21,11 +21,12 @@ mod operand;
 pub(crate) use operand::*;
 
 mod operation;
-use operation::*;
+pub(crate) use operation::*;
 
 use crate::{
-    program::{Program, RegisterType, Stack},
+    program::{Program, RegisterType},
     Register,
+    Stack,
 };
 use snarkvm_console_network::{
     prelude::{
@@ -343,7 +344,7 @@ impl<N: Network> Instruction<N> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::function) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(stack))
     }
 

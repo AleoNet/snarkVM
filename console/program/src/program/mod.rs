@@ -14,28 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod register_types;
-pub(crate) use register_types::*;
+mod function;
+pub use function::*;
 
-mod stack;
-pub(crate) use stack::*;
+mod register;
+pub use register::Register;
+
+mod register_type;
+pub use register_type::*;
+
+mod register_types;
+pub use register_types::*;
 
 mod matches;
 
 use crate::{
-    function::Operand,
     EntryType,
-    Function,
     Identifier,
     Instruction,
     Interface,
     LiteralType,
     Opcode,
+    Operand,
     Plaintext,
     PlaintextType,
     Record,
     RecordType,
-    Register,
+    Stack,
+    StackValue,
     Value,
     ValueType,
 };

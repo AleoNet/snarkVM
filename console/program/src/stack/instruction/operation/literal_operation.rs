@@ -15,13 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::instruction::{Operand, Operation},
-    program::{Program, RegisterType, Stack},
+    program::{Program, RegisterType},
+    stack::{Operand, Operation},
     Literal,
     LiteralType,
     Opcode,
     PlaintextType,
     Register,
+    Stack,
 };
 use snarkvm_console_network::prelude::*;
 
@@ -75,7 +76,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::function) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         // Ensure the number of operands is correct.
         ensure!(
             self.operands.len() == NUM_OPERANDS,

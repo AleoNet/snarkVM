@@ -17,23 +17,13 @@
 mod input;
 use input::*;
 
-mod instruction;
-pub(crate) use instruction::*;
-
 mod output;
 use output::*;
-
-mod register;
-pub(crate) use register::Register;
 
 mod bytes;
 mod parse;
 
-use crate::{
-    function::{Input, Output},
-    program::Stack,
-    Identifier,
-};
+use crate::{Identifier, Instruction};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexSet;
@@ -144,20 +134,6 @@ impl<N: Network> Function<N> {
         // Insert the output statement.
         self.outputs.insert(output);
         Ok(())
-    }
-
-    /// Evaluates the function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if there are no input statements or instructions in memory.
-    #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
-        // Ensure there are input statements and instructions in memory.
-        ensure!(!self.inputs.is_empty(), "Cannot evaluate a function without input statements");
-        ensure!(!self.instructions.is_empty(), "Cannot evaluate a function without instructions");
-
-        // Evaluate the instructions.
-        self.instructions.iter().try_for_each(|instruction| instruction.evaluate(stack))
     }
 }
 
