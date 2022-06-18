@@ -311,63 +311,54 @@ impl<N: Network> Program<N> {
                         _ => bail!("Instruction '{instruction}' is not a cast operation."),
                     };
 
-                    // Ensure the casted value type is defined.
-                    match operation.value_type() {
-                        ValueType::Constant(plaintext_type)
-                        | ValueType::Public(plaintext_type)
-                        | ValueType::Private(plaintext_type) => {
-                            // Ensure the plaintext type is defined in the program.
-                            match plaintext_type {
-                                PlaintextType::Literal(..) => (),
-                                PlaintextType::Interface(interface_name) => {
-                                    // Ensure the interface name exists in the program.
-                                    if !self.interfaces.contains_key(interface_name) {
-                                        bail!(
-                                            "Interface '{interface_name}' in function '{function_name}' is not defined."
+                    // Ensure the casted register type is defined.
+                    match operation.register_type() {
+                        RegisterType::Plaintext(PlaintextType::Literal(..)) => {
+                            bail!("Casting to literal is currently unsupported")
+                        }
+                        RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                            // Ensure the interface name exists in the program.
+                            if !self.interfaces.contains_key(interface_name) {
+                                bail!("Interface '{interface_name}' in function '{function_name}' is not defined.")
+                            }
+
+                            // Ensure the operands is not empty.
+                            ensure!(
+                                !instruction.operands().is_empty(),
+                                "Casting to an interface requires at least one operand"
+                            );
+
+                            // Retrieve the interface.
+                            let interface = self.get_interface(&interface_name)?;
+                            // Ensure the operand types match the interface.
+                            for (operand, (_, member_type)) in instruction.operands().iter().zip(interface.members()) {
+                                match operand {
+                                    // Ensure the literal type matches the member type.
+                                    Operand::Literal(literal) => {
+                                        ensure!(
+                                            PlaintextType::Literal(literal.to_type()) == *member_type,
+                                            "Literal '{literal}' in function '{function_name}' does not match interface '{interface_name}'."
                                         )
                                     }
-
-                                    // Ensure the operands is not empty.
-                                    ensure!(
-                                        !instruction.operands().is_empty(),
-                                        "Casting to an interface requires at least one operand"
-                                    );
-
-                                    // Retrieve the interface.
-                                    let interface = self.get_interface(&interface_name)?;
-                                    // Ensure the operand types match the interface.
-                                    for (operand, (_, member_type)) in
-                                        instruction.operands().iter().zip(interface.members())
-                                    {
-                                        match operand {
-                                            // Ensure the literal type matches the member type.
-                                            Operand::Literal(literal) => {
-                                                ensure!(
-                                                    PlaintextType::Literal(literal.to_type()) == *member_type,
-                                                    "Literal '{literal}' in function '{function_name}' does not match interface '{interface_name}'."
-                                                )
-                                            }
-                                            // Ensure the register type matches the member type.
-                                            Operand::Register(register) => {
-                                                // Retrieve the register type.
-                                                let register_type = register_types.get_type(&self, &register)?;
-                                                // Ensure the register type is not a record.
-                                                ensure!(
-                                                    !matches!(register_type, RegisterType::Record(..)),
-                                                    "Casting a record into an interface in function '{function_name}' is illegal"
-                                                );
-                                                // Ensure the register type matches the member type.
-                                                ensure!(
-                                                    register_type == RegisterType::Plaintext(*member_type),
-                                                    "Register '{register}' in function '{function_name}' does not match interface '{interface_name}'."
-                                                )
-                                            }
-                                        }
+                                    // Ensure the register type matches the member type.
+                                    Operand::Register(register) => {
+                                        // Retrieve the register type.
+                                        let register_type = register_types.get_type(&self, &register)?;
+                                        // Ensure the register type is not a record.
+                                        ensure!(
+                                            !matches!(register_type, RegisterType::Record(..)),
+                                            "Casting a record into an interface in function '{function_name}' is illegal"
+                                        );
+                                        // Ensure the register type matches the member type.
+                                        ensure!(
+                                            register_type == RegisterType::Plaintext(*member_type),
+                                            "Register '{register}' in function '{function_name}' does not match interface '{interface_name}'."
+                                        )
                                     }
                                 }
                             }
                         }
-                        ValueType::Record(record_name) => {
+                        RegisterType::Record(record_name) => {
                             // Ensure the record type is defined in the program.
                             if !self.records.contains_key(record_name) {
                                 bail!("Record '{record_name}' in function '{function_name}' is not defined.")

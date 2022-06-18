@@ -44,8 +44,8 @@ pub struct Cast<N: Network> {
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
-    /// The casted value type.
-    value_type: ValueType<N>,
+    /// The casted register type.
+    register_type: RegisterType<N>,
 }
 
 impl<N: Network> Cast<N> {
@@ -67,10 +67,10 @@ impl<N: Network> Cast<N> {
         &self.destination
     }
 
-    /// Returns the casted value type.
+    /// Returns the casted register type.
     #[inline]
-    pub const fn value_type(&self) -> &ValueType<N> {
-        &self.value_type
+    pub const fn register_type(&self) -> &RegisterType<N> {
+        &self.register_type
     }
 }
 
@@ -89,49 +89,43 @@ impl<N: Network> Cast<N> {
             Ok::<_, Error>(())
         })?;
 
-        match self.value_type {
-            ValueType::Constant(plaintext_type)
-            | ValueType::Public(plaintext_type)
-            | ValueType::Private(plaintext_type) => {
-                match plaintext_type {
-                    PlaintextType::Literal(..) => bail!("Casting to literal is currently unsupported"),
-                    PlaintextType::Interface(interface_name) => {
-                        // Ensure the operands is not empty.
-                        ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
+        match self.register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
+            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                // Ensure the operands is not empty.
+                ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
 
-                        // Retrieve the interface and ensure it is defined in the program.
-                        let interface = stack.program().get_interface(&interface_name)?;
+                // Retrieve the interface and ensure it is defined in the program.
+                let interface = stack.program().get_interface(&interface_name)?;
 
-                        // Initialize the interface members.
-                        let mut members = IndexMap::new();
-                        for (member, (member_name, member_type)) in inputs.iter().zip_eq(interface.members()) {
-                            // Compute the register type.
-                            let register_type = RegisterType::Plaintext(*member_type);
-                            // Retrieve the plaintext value from the entry.
-                            let plaintext = match member {
-                                StackValue::Plaintext(plaintext) => {
-                                    // Ensure the member matches the register type.
-                                    stack
-                                        .program()
-                                        .matches_register(&StackValue::Plaintext(plaintext.clone()), &register_type)?;
-                                    // Output the plaintext.
-                                    plaintext.clone()
-                                }
-                                // Ensure the interface member is not a record.
-                                StackValue::Record(..) => bail!("Casting a record into an interface member is illegal"),
-                            };
-                            // Append the member to the interface members.
-                            members.insert(*member_name, plaintext);
+                // Initialize the interface members.
+                let mut members = IndexMap::new();
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(interface.members()) {
+                    // Compute the register type.
+                    let register_type = RegisterType::Plaintext(*member_type);
+                    // Retrieve the plaintext value from the entry.
+                    let plaintext = match member {
+                        StackValue::Plaintext(plaintext) => {
+                            // Ensure the member matches the register type.
+                            stack
+                                .program()
+                                .matches_register(&StackValue::Plaintext(plaintext.clone()), &register_type)?;
+                            // Output the plaintext.
+                            plaintext.clone()
                         }
-
-                        // Construct the interface.
-                        let interface = Plaintext::Interface(members, Default::default());
-                        // Store the interface.
-                        stack.store(&self.destination, StackValue::Plaintext(interface))
-                    }
+                        // Ensure the interface member is not a record.
+                        StackValue::Record(..) => bail!("Casting a record into an interface member is illegal"),
+                    };
+                    // Append the member to the interface members.
+                    members.insert(*member_name, plaintext);
                 }
+
+                // Construct the interface.
+                let interface = Plaintext::Interface(members, Default::default());
+                // Store the interface.
+                stack.store(&self.destination, StackValue::Plaintext(interface))
             }
-            ValueType::Record(record_name) => {
+            RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
                 ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
 
@@ -219,35 +213,29 @@ impl<N: Network> Cast<N> {
         );
 
         // Ensure the output type is defined in the program.
-        match self.value_type {
-            ValueType::Constant(plaintext_type)
-            | ValueType::Public(plaintext_type)
-            | ValueType::Private(plaintext_type) => {
-                match plaintext_type {
-                    PlaintextType::Literal(..) => bail!("Casting to literal is currently unsupported"),
-                    PlaintextType::Interface(interface_name) => {
-                        // Retrieve the interface and ensure it is defined in the program.
-                        let interface = program.get_interface(&interface_name)?;
-                        // Ensure the input types match the interface.
-                        for ((_, member_type), input_type) in interface.members().iter().zip_eq(input_types) {
-                            match input_type {
-                                // Ensure the plaintext type matches the member type.
-                                RegisterType::Plaintext(plaintext_type) => {
-                                    ensure!(
-                                        member_type == plaintext_type,
-                                        "Interface '{interface_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
-                                    )
-                                }
-                                // Ensure the input type cannot be a record (this is unsupported behavior).
-                                RegisterType::Record(record_name) => bail!(
-                                    "Interface '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
-                                ),
-                            }
+        match self.register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
+            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                // Retrieve the interface and ensure it is defined in the program.
+                let interface = program.get_interface(&interface_name)?;
+                // Ensure the input types match the interface.
+                for ((_, member_type), input_type) in interface.members().iter().zip_eq(input_types) {
+                    match input_type {
+                        // Ensure the plaintext type matches the member type.
+                        RegisterType::Plaintext(plaintext_type) => {
+                            ensure!(
+                                member_type == plaintext_type,
+                                "Interface '{interface_name}' member type mismatch: expected '{member_type}', found '{plaintext_type}'"
+                            )
                         }
+                        // Ensure the input type cannot be a record (this is unsupported behavior).
+                        RegisterType::Record(record_name) => bail!(
+                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
+                        ),
                     }
                 }
             }
-            ValueType::Record(record_name) => {
+            RegisterType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
                 let record = program.get_record(&record_name)?;
 
@@ -287,7 +275,7 @@ impl<N: Network> Cast<N> {
             }
         }
 
-        Ok(RegisterType::from(self.value_type.clone()))
+        Ok(self.register_type.clone())
     }
 }
 
@@ -327,10 +315,10 @@ impl<N: Network> Parser for Cast<N> {
         let (string, _) = tag("as")(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the value type from the string.
-        let (string, value_type) = ValueType::parse(string)?;
+        // Parse the register type from the string.
+        let (string, register_type) = RegisterType::parse(string)?;
 
-        Ok((string, Self { operands, destination, value_type }))
+        Ok((string, Self { operands, destination, register_type }))
     }
 }
 
@@ -370,7 +358,7 @@ impl<N: Network> Display for Cast<N> {
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
         self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
-        write!(f, "into {} as {}", self.destination, self.value_type)
+        write!(f, "into {} as {}", self.destination, self.register_type)
     }
 }
 
@@ -395,11 +383,11 @@ impl<N: Network> FromBytes for Cast<N> {
         // Read the destination register.
         let destination = Register::read_le(&mut reader)?;
 
-        // Read the casted value type.
-        let value_type = ValueType::read_le(&mut reader)?;
+        // Read the casted register type.
+        let register_type = RegisterType::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination, value_type })
+        Ok(Self { operands, destination, register_type })
     }
 }
 
@@ -417,8 +405,8 @@ impl<N: Network> ToBytes for Cast<N> {
         self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
         // Write the destination register.
         self.destination.write_le(&mut writer)?;
-        // Write the casted value type.
-        self.value_type.write_le(&mut writer)
+        // Write the casted register type.
+        self.register_type.write_le(&mut writer)
     }
 }
 
@@ -453,8 +441,8 @@ mod tests {
         );
         assert_eq!(cast.destination, Register::Locator(1), "The destination register is incorrect");
         assert_eq!(
-            cast.value_type,
-            ValueType::Record(Identifier::from_str("token").unwrap()),
+            cast.register_type,
+            RegisterType::Record(Identifier::from_str("token").unwrap()),
             "The value type is incorrect"
         );
     }
