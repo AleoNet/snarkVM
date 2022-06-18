@@ -67,8 +67,8 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the destination register.
     #[inline]
-    pub const fn destination(&self) -> &Register<N> {
-        &self.destination
+    pub fn destinations(&self) -> Vec<Register<N>> {
+        vec![self.destination.clone()]
     }
 }
 
@@ -110,8 +110,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         // Compute the output type.
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
+        // Retrieve the expected output type.
+        let expected_types = self.output_types(stack.program(), &input_types)?;
+        ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
+
         // Ensure the output type is correct.
-        let expected_type = self.output_type(stack.program(), &input_types)?;
+        let expected_type = expected_types[0];
         ensure!(expected_type == output_type, "Output type mismatch: expected {expected_type}, found {output_type}",);
 
         // Evaluate the operation and store the output.
@@ -120,7 +124,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_type(&self, _program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
+    pub fn output_types(&self, _program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == NUM_OPERANDS,
@@ -146,7 +150,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output = O::output_type(&input_types.try_into().map_err(|_| anyhow!("Failed to prepare operand types"))?)?;
 
         // Return the output type.
-        Ok(RegisterType::Plaintext(PlaintextType::Literal(output)))
+        Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(output))])
     }
 }
 

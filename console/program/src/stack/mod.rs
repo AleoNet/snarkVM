@@ -29,6 +29,7 @@ use crate::{
     Program,
     Record,
     Register,
+    RegisterType,
     Value,
     ValueType,
 };
@@ -51,12 +52,33 @@ pub struct Stack<N: Network> {
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned input registers to their values.
-    input_registers: IndexMap<u64, Value<N, Plaintext<N>>>,
+    input_registers: IndexMap<u64, StackValue<N>>,
     /// The mapping of assigned destination registers to their values.
     destination_registers: IndexMap<u64, StackValue<N>>,
 }
 
 impl<N: Network> Stack<N> {
+    /// Initializes a new stack, given the program and register types.
+    #[inline]
+    pub(crate) fn new(program: Program<N>, register_types: RegisterTypes<N>) -> Result<Self> {
+        // Ensure the input registers are locators.
+        for (register, _) in register_types.to_input_types() {
+            ensure!(matches!(register, Register::Locator(_)), "Expected locator, found {register}");
+        }
+
+        Ok(Self { program, register_types, input_registers: IndexMap::new(), destination_registers: IndexMap::new() })
+    }
+
+    /// Returns an iterator over all input register types.
+    pub fn to_input_types(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
+        self.register_types.to_input_types()
+    }
+
+    /// Returns an iterator over all output register types.
+    pub fn to_output_types(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
+        self.register_types.to_output_types()
+    }
+
     /// Returns the program.
     #[inline]
     pub const fn program(&self) -> &Program<N> {
@@ -79,60 +101,53 @@ impl<N: Network> Stack<N> {
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
+        // Ensure there are input statements in the function.
+        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
+        // Ensure there are instructions in the function.
+        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
 
         // Retrieve the register types.
         let register_types = program.get_function_registers(function_name)?;
 
         // Initialize the stack.
-        let mut stack =
-            Self { program, register_types, input_registers: IndexMap::new(), destination_registers: IndexMap::new() };
+        let mut stack = Self::new(program, register_types)?;
 
         // Initialize the input registers.
-        for (((input_register, register_type), input), value_type) in stack
-            .register_types
-            .to_inputs()
-            .zip_eq(inputs.iter())
-            .zip_eq(function.inputs().iter().map(|i| i.value_type()))
+        for (((register, register_type), input), value_type) in
+            stack.register_types.to_input_types().zip_eq(inputs.iter()).zip_eq(function.inputs().iter().map(|i| i.value_type()))
         {
-            // Ensure the input register is a locator.
-            ensure!(matches!(input_register, Register::Locator(_)), "Expected locator, found {input_register}");
             // Ensure the input value matches the declared type in the register.
             stack.program.matches_input(input, &value_type)?;
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
 
-            // Assign the input value to the register.
-            stack.input_registers.insert(input_register.locator(), match (input.clone(), value_type) {
-                (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-                (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
-                _ => bail!("Input value does not match the input register type."),
-            });
+            // TODO (howardwu): In circuit, allocate using the value type.
+            // stack.input_registers.insert(register.locator(), match (input.clone(), value_type) {
+            //     (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
+            //     (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
+            //     (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
+            //     (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
+            //     _ => bail!("Input value does not match the input register type."),
+            // });
+
+            // Assign the input to the register.
+            stack.input_registers.insert(register.locator(), input.clone());
         }
 
-        // Evaluate the function.
-        {
-            // Ensure there are input statements and instructions in memory.
-            ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
-            ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
-
-            // Evaluate the instructions.
-            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
-        }
+        // Evaluate the instructions.
+        function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
 
         // Initialize a vector to store the outputs.
         let mut outputs = Vec::with_capacity(function.outputs().len());
-
         // Load the outputs.
         for ((register, register_type), value_type) in
-            stack.register_types.to_outputs().zip_eq(function.outputs().iter().map(|o| o.value_type()))
+            stack.to_output_types().zip_eq(function.outputs().iter().map(|o| o.value_type()))
         {
             // Retrieve the stack value from the register.
-            let register_value = stack.load(&Operand::Register(register.clone()))?;
+            let output = stack.load(&Operand::Register(register.clone()))?;
 
             // Convert the stack value to the output value type.
-            let output_value = match (register_value, value_type) {
+            let output = match (output, value_type) {
                 (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
                 (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
                 (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
@@ -141,9 +156,9 @@ impl<N: Network> Stack<N> {
             };
 
             // Ensure the output value matches the value type.
-            stack.program.matches_value(&output_value, &value_type)?;
+            stack.program.matches_value(&output, &value_type)?;
             // Insert the value into the outputs.
-            outputs.push(output_value);
+            outputs.push(output);
 
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.

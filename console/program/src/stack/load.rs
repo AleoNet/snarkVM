@@ -53,16 +53,11 @@ impl<N: Network> Stack<N> {
         // Retrieve the stack value.
         let stack_value = match is_input_register {
             // Retrieve the input value.
-            true => match self
+            true => self
                 .input_registers
                 .get(&register.locator())
                 .ok_or_else(|| anyhow!("'{register}' does not exist"))?
-            {
-                Value::Constant(plaintext) | Value::Public(plaintext) | Value::Private(plaintext) => {
-                    StackValue::Plaintext(plaintext.clone())
-                }
-                Value::Record(record) => StackValue::Record(record.clone()),
-            },
+                .clone(),
             // Retrieve the destination register value.
             false => self
                 .destination_registers

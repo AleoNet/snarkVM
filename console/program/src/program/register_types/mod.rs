@@ -71,13 +71,13 @@ impl<N: Network> RegisterTypes<N> {
         self.output_registers.contains_key(register)
     }
 
-    /// Returns an iterator over all input registers.
-    pub fn to_inputs(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
+    /// Returns an iterator over all input register types.
+    pub fn to_input_types(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
         self.input_registers.iter().map(|(locator, register_type)| (Register::Locator(*locator), *register_type))
     }
 
-    /// Returns an iterator over all output registers.
-    pub fn to_outputs(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
+    /// Returns an iterator over all output register types.
+    pub fn to_output_types(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
         self.output_registers.iter()
     }
 

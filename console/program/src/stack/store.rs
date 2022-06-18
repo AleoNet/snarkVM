@@ -35,7 +35,7 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub(crate) fn store(&mut self, register: &Register<N>, register_value: StackValue<N>) -> Result<()> {
+    pub(crate) fn store(&mut self, register: &Register<N>, stack_value: StackValue<N>) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
@@ -49,13 +49,13 @@ impl<N: Network> Stack<N> {
                 // Retrieve the register type.
                 match self.register_types.get_type(&self.program, register) {
                     // Ensure the stack value matches the register type.
-                    Ok(register_type) => self.program.matches_register(&register_value, &register_type)?,
+                    Ok(register_type) => self.program.matches_register(&stack_value, &register_type)?,
                     // Ensure the register is defined.
                     Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
                 };
 
                 // Store the stack value.
-                match self.destination_registers.insert(*locator, register_value) {
+                match self.destination_registers.insert(*locator, stack_value) {
                     // Ensure the register has not been previously stored.
                     Some(..) => bail!("Attempted to write to register '{register}' again"),
                     // Return on success.

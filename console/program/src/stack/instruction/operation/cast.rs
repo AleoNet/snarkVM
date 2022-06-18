@@ -63,8 +63,8 @@ impl<N: Network> Cast<N> {
 
     /// Returns the destination register.
     #[inline]
-    pub const fn destination(&self) -> &Register<N> {
-        &self.destination
+    pub fn destinations(&self) -> Vec<Register<N>> {
+        vec![self.destination.clone()]
     }
 
     /// Returns the casted register type.
@@ -78,10 +78,10 @@ impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
     pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
-        // Initialize a vector to store the operand literals.
+        // Initialize a vector to store the operand values.
         let mut inputs = Vec::with_capacity(self.operands.len());
 
-        // Load the operands **as literals & literal types**.
+        // Load the operands values.
         self.operands.iter().try_for_each(|operand| {
             // Load and append the value.
             inputs.push(stack.load(operand)?);
@@ -202,7 +202,7 @@ impl<N: Network> Cast<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_type(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
+    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -275,7 +275,7 @@ impl<N: Network> Cast<N> {
             }
         }
 
-        Ok(self.register_type.clone())
+        Ok(vec![self.register_type.clone()])
     }
 }
 

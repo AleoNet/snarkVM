@@ -85,6 +85,7 @@ macro_rules! instruction {
             Add,
             AddWrapped,
             // And,
+            Call,
             Cast,
             // CommitBHP256,
             // CommitBHP512,
@@ -188,6 +189,8 @@ pub enum Instruction<N: Network> {
     AddWrapped(AddWrapped<N>),
     // /// Performs a bitwise AND operation on `first` and `second`, storing the outcome in `destination`.
     // And(And<N>),
+    /// Calls a closure on the operands.
+    Call(Call<N>),
     /// Casts the operands into the declared type.
     Cast(Cast<N>),
     // /// Performs a BHP commitment taking a 256-bit value as input.
@@ -334,8 +337,8 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the destination register of the instruction.
     #[inline]
-    pub(crate) const fn destination(&self) -> &Register<N> {
-        instruction!(self, |instruction| instruction.destination())
+    pub(crate) fn destinations(&self) -> Vec<Register<N>> {
+        instruction!(self, |instruction| instruction.destinations())
     }
 
     /// Evaluates the instruction.
@@ -346,8 +349,12 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub(crate) fn output_type(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
-        instruction!(self, |instruction| instruction.output_type(program, input_types))
+    pub(crate) fn output_types(
+        &self,
+        program: &Program<N>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
+        instruction!(self, |instruction| instruction.output_types(program, input_types))
     }
 }
 
@@ -510,6 +517,6 @@ mod tests {
     #[test]
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
-        assert_eq!(9, Instruction::<CurrentNetwork>::OPCODES.len(), "Update me if the number of instructions changes.");
+        assert_eq!(10, Instruction::<CurrentNetwork>::OPCODES.len(), "Update me if the number of instructions changes.");
     }
 }

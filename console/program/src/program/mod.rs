@@ -144,6 +144,11 @@ impl<N: Network> Program<N> {
         self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))
     }
 
+    /// Returns the closure registers with the given name.
+    pub fn get_closure_registers(&self, name: &Identifier<N>) -> Result<RegisterTypes<N>> {
+        self.closure_registers.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is missing registers."))
+    }
+
     /// Returns the function with the given name.
     pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
         self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))
@@ -316,6 +321,25 @@ impl<N: Network> Program<N> {
                     ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                     // Ensure the instruction is not the cast operation.
                     ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
+                    // Ensure the instruction has one destination register.
+                    ensure!(
+                        instruction.destinations().len() == 1,
+                        "Instruction '{instruction}' has multiple destinations."
+                    );
+                }
+                Opcode::Call => {
+                    // Retrieve the call operation.
+                    let operation = match instruction {
+                        Instruction::Call(operation) => operation,
+                        _ => bail!("Instruction '{instruction}' is not a call operation."),
+                    };
+
+                    // Retrieve the closure name.
+                    let closure_name = operation.name();
+                    // Ensure the operation is defined.
+                    if !self.closures.contains_key(closure_name) {
+                        bail!("Closure '{closure_name}' is not defined.")
+                    }
                 }
                 Opcode::Cast => {
                     // Retrieve the cast operation.
@@ -323,6 +347,12 @@ impl<N: Network> Program<N> {
                         Instruction::Cast(operation) => operation,
                         _ => bail!("Instruction '{instruction}' is not a cast operation."),
                     };
+
+                    // Ensure the instruction has one destination register.
+                    ensure!(
+                        instruction.destinations().len() == 1,
+                        "Instruction '{instruction}' has multiple destinations."
+                    );
 
                     // Ensure the casted register type is defined.
                     match operation.register_type() {
@@ -353,13 +383,6 @@ impl<N: Network> Program<N> {
                 }
             }
 
-            // Ensure the destination register is a locator (and does not reference a member).
-            let destination = instruction.destination();
-            ensure!(
-                matches!(destination, Register::Locator(..)),
-                "Destination register '{destination}' must be a locator."
-            );
-
             // Initialize a vector to store the register types of the operands.
             let mut operand_types = Vec::with_capacity(instruction.operands().len());
             // Iterate over the operands, and retrieve the register type of each operand.
@@ -371,10 +394,16 @@ impl<N: Network> Program<N> {
                 });
             }
 
-            // Compute the destination register type.
-            let destination_type = instruction.output_type(&self, &operand_types)?;
+            // Compute the destination register types.
+            let destination_types = instruction.output_types(&self, &operand_types)?;
+
             // Insert the destination register.
-            register_types.add_destination(destination.clone(), destination_type)?;
+            for (destination, destination_type) in instruction.destinations().iter().zip_eq(destination_types.into_iter()) {
+                // Ensure the destination register is a locator (and does not reference a member).
+                ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+                // Insert the destination register.
+                register_types.add_destination(destination.clone(), destination_type)?;
+            }
         }
 
         // Step 3. Check the function outputs are well-formed.
@@ -501,6 +530,25 @@ impl<N: Network> Program<N> {
                     ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                     // Ensure the instruction is not the cast operation.
                     ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
+                    // Ensure the instruction has one destination register.
+                    ensure!(
+                        instruction.destinations().len() == 1,
+                        "Instruction '{instruction}' has multiple destinations."
+                    );
+                }
+                Opcode::Call => {
+                    // Retrieve the call operation.
+                    let operation = match instruction {
+                        Instruction::Call(operation) => operation,
+                        _ => bail!("Instruction '{instruction}' is not a call operation."),
+                    };
+
+                    // Retrieve the closure name.
+                    let closure_name = operation.name();
+                    // Ensure the operation is defined.
+                    if !self.closures.contains_key(closure_name) {
+                        bail!("Closure '{closure_name}' is not defined.")
+                    }
                 }
                 Opcode::Cast => {
                     // Retrieve the cast operation.
@@ -508,6 +556,12 @@ impl<N: Network> Program<N> {
                         Instruction::Cast(operation) => operation,
                         _ => bail!("Instruction '{instruction}' is not a cast operation."),
                     };
+
+                    // Ensure the instruction has one destination register.
+                    ensure!(
+                        instruction.destinations().len() == 1,
+                        "Instruction '{instruction}' has multiple destinations."
+                    );
 
                     // Ensure the casted register type is defined.
                     match operation.register_type() {
@@ -549,16 +603,15 @@ impl<N: Network> Program<N> {
                 });
             }
 
-            // Compute the destination register type.
-            let destination_type = instruction.output_type(&self, &operand_types)?;
+            // Compute the destination register types.
+            let destination_types = instruction.output_types(&self, &operand_types)?;
 
-            // Retrieve the destination register.
-            let destination = instruction.destination();
-            match destination {
-                // Insert the destination register.
-                Register::Locator(..) => register_types.add_destination(destination.clone(), destination_type)?,
+            // Insert the destination register.
+            for (destination, destination_type) in instruction.destinations().iter().zip_eq(destination_types.into_iter()) {
                 // Ensure the destination register is a locator (and does not reference a member).
-                Register::Member(..) => bail!("Destination register '{destination}' must be a locator."),
+                ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+                // Insert the destination register.
+                register_types.add_destination(destination.clone(), destination_type)?;
             }
         }
 

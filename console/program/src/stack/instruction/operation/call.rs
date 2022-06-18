@@ -19,16 +19,14 @@ use crate::{
     Identifier,
     Opcode,
     Program,
-    Record,
     Register,
     RegisterType,
     Stack,
-    StackValue,
-    ValueType,
 };
 use snarkvm_console_network::prelude::*;
 
 /// Calls the operands into the declared type.
+/// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Call<N: Network> {
     /// The name of the closure.
@@ -60,44 +58,103 @@ impl<N: Network> Call<N> {
 
     /// Returns the destination registers.
     #[inline]
-    pub fn destinations(&self) -> &[Register<N>] {
-        &self.destinations
+    pub fn destinations(&self) -> Vec<Register<N>> {
+        self.destinations.clone()
     }
 }
 
-// impl<N: Network> Call<N> {
-//     /// Evaluates the instruction.
-//     #[inline]
-//     pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
-//         // Initialize a vector to store the operand literals.
-//         let mut inputs = Vec::with_capacity(self.operands.len());
-//
-//         // Load the operands **as literals & literal types**.
-//         self.operands.iter().try_for_each(|operand| {
-//             // Load and append the value.
-//             inputs.push(stack.load(operand)?);
-//             // Move to the next iteration.
-//             Ok::<_, Error>(())
-//         })?;
-//
-//
-//     }
-//
-//     /// Returns the output type from the given program and input types.
-//     #[inline]
-//     pub fn output_type(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<RegisterType<N>> {
-//         // Ensure the number of operands is correct.
-//         ensure!(
-//             input_types.len() == self.operands.len(),
-//             "Instruction '{}' expects {} operands, found {} operands",
-//             Self::opcode(),
-//             input_types.len(),
-//             self.operands.len(),
-//         );
-//
-//         Ok(self.register_type.clone())
-//     }
-// }
+impl<N: Network> Call<N> {
+    /// Evaluates the instruction.
+    #[inline]
+    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+        // Initialize a vector to store the operand values.
+        let mut inputs = Vec::with_capacity(self.operands.len());
+        // Load the operands values.
+        self.operands.iter().try_for_each(|operand| {
+            // Load and append the value.
+            inputs.push(stack.load(operand)?);
+            // Move to the next iteration.
+            Ok::<_, Error>(())
+        })?;
+
+        // Retrieve the closure from the program.
+        let closure = stack.program().get_closure(&self.name)?;
+        // Ensure the number of inputs matches the number of input statements.
+        if closure.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
+        }
+        // Ensure there are input statements in the closure.
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        // Ensure there are instructions in the closure.
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+
+        // Retrieve the register types.
+        let register_types = stack.program().get_closure_registers(&self.name)?;
+
+        // Initialize the stack.
+        let mut closure_stack = Stack::new(stack.program().clone(), register_types.clone())?;
+
+        // Ensure the inputs match the expected closure inputs.
+        for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
+            // Ensure the input matches the declared type in the register.
+            closure_stack.program().matches_register(input, &register_type)?;
+            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
+            // TODO (howardwu): OR if input is a record, forbid and error.
+            // Assign the input value to the register.
+            closure_stack.input_registers.insert(register.locator(), input.clone());
+        }
+
+        // Evaluate the instructions.
+        closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut closure_stack))?;
+
+        // Initialize a vector to store the outputs.
+        let mut outputs = Vec::with_capacity(closure.outputs().len());
+        // Load the outputs.
+        for (register, register_type) in closure_stack.to_output_types() {
+            // Retrieve the output from the register.
+            let output = closure_stack.load(&Operand::Register(register.clone()))?;
+            // Ensure the output matches the declared type in the register.
+            closure_stack.program().matches_register(&output, &register_type)?;
+            // Insert the output into the outputs.
+            outputs.push(output);
+        }
+
+        // Assign the outputs to the destination registers.
+        for (output, register) in outputs.iter().zip_eq(self.destinations.iter()) {
+            // Assign the output to the register.
+            stack.store(register, output.clone())?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns the output type from the given program and input types.
+    #[inline]
+    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+        // Retrieve the closure.
+        let closure = program.get_closure(&self.name)?;
+        // Ensure there are input statements in the closure.
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        // Ensure there are instructions in the closure.
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+
+        // Ensure the number of operands matches the number of input statements.
+        if closure.inputs().len() != self.operands.len() {
+            bail!("Expected {} inputs, found {}", closure.inputs().len(), self.operands.len())
+        }
+        // Ensure the number of inputs matches the number of input statements.
+        if closure.inputs().len() != input_types.len() {
+            bail!("Expected {} inputs, found {}", closure.inputs().len(), input_types.len())
+        }
+        // Ensure the number of destinations matches the number of output statements.
+        if closure.outputs().len() != self.destinations.len() {
+            bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
+        }
+
+        // Return the output register types.
+        Ok(closure.outputs().iter().map(|output| *output.register_type()).collect())
+    }
+}
 
 impl<N: Network> Parser for Call<N> {
     /// Parses a string into an operation.
