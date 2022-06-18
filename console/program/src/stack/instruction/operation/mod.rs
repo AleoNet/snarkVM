@@ -20,8 +20,8 @@ pub(crate) use call::*;
 mod cast;
 pub(crate) use cast::*;
 
-mod literal_operation;
-pub(crate) use literal_operation::*;
+mod literals;
+pub(crate) use literals::*;
 
 mod macros;
 

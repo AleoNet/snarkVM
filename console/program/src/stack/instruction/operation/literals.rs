@@ -30,18 +30,14 @@ use snarkvm_console_network::prelude::*;
 use core::marker::PhantomData;
 
 /// A unary literal operation.
-pub type UnaryLiteral<N, O> = LiteralOperation<N, O, 1>;
+pub type UnaryLiteral<N, O> = Literals<N, O, 1>;
 /// A binary literal operation.
-pub type BinaryLiteral<N, O> = LiteralOperation<N, O, 2>;
+pub type BinaryLiteral<N, O> = Literals<N, O, 2>;
 /// A ternary literal operation.
-pub type TernaryLiteral<N, O> = LiteralOperation<N, O, 3>;
+pub type TernaryLiteral<N, O> = Literals<N, O, 3>;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct LiteralOperation<
-    N: Network,
-    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
-    const NUM_OPERANDS: usize,
-> {
+pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
@@ -51,7 +47,7 @@ pub struct LiteralOperation<
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
-    LiteralOperation<N, O, NUM_OPERANDS>
+    Literals<N, O, NUM_OPERANDS>
 {
     /// Returns the opcode.
     #[inline]
@@ -73,7 +69,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
-    LiteralOperation<N, O, NUM_OPERANDS>
+    Literals<N, O, NUM_OPERANDS>
 {
     /// Evaluates the instruction.
     #[inline]
@@ -155,7 +151,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Parser
-    for LiteralOperation<N, O, NUM_OPERANDS>
+    for Literals<N, O, NUM_OPERANDS>
 {
     /// Parses a string into an operation.
     #[inline]
@@ -200,7 +196,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromStr
-    for LiteralOperation<N, O, NUM_OPERANDS>
+    for Literals<N, O, NUM_OPERANDS>
 {
     type Err = Error;
 
@@ -220,7 +216,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Debug
-    for LiteralOperation<N, O, NUM_OPERANDS>
+    for Literals<N, O, NUM_OPERANDS>
 {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -229,7 +225,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Display
-    for LiteralOperation<N, O, NUM_OPERANDS>
+    for Literals<N, O, NUM_OPERANDS>
 {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -251,7 +247,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromBytes
-    for LiteralOperation<N, O, NUM_OPERANDS>
+    for Literals<N, O, NUM_OPERANDS>
 {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -275,7 +271,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> ToBytes
-    for LiteralOperation<N, O, NUM_OPERANDS>
+    for Literals<N, O, NUM_OPERANDS>
 {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {

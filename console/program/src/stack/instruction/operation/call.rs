@@ -14,15 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    stack::Operand,
-    Identifier,
-    Opcode,
-    Program,
-    Register,
-    RegisterType,
-    Stack,
-};
+use crate::{stack::Operand, Identifier, Opcode, Program, Register, RegisterType, Stack};
 use snarkvm_console_network::prelude::*;
 
 /// Calls the operands into the declared type.

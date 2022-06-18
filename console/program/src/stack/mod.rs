@@ -115,8 +115,11 @@ impl<N: Network> Stack<N> {
         let mut stack = Self::new(program, register_types)?;
 
         // Initialize the input registers.
-        for (((register, register_type), input), value_type) in
-            stack.register_types.to_input_types().zip_eq(inputs.iter()).zip_eq(function.inputs().iter().map(|i| i.value_type()))
+        for (((register, register_type), input), value_type) in stack
+            .register_types
+            .to_input_types()
+            .zip_eq(inputs.iter())
+            .zip_eq(function.inputs().iter().map(|i| i.value_type()))
         {
             // Ensure the input value matches the declared type in the register.
             stack.program.matches_input(input, &value_type)?;

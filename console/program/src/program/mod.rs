@@ -399,7 +399,9 @@ impl<N: Network> Program<N> {
             let destination_types = instruction.output_types(&self, &operand_types)?;
 
             // Insert the destination register.
-            for (destination, destination_type) in instruction.destinations().iter().zip_eq(destination_types.into_iter()) {
+            for (destination, destination_type) in
+                instruction.destinations().iter().zip_eq(destination_types.into_iter())
+            {
                 // Ensure the destination register is a locator (and does not reference a member).
                 ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
                 // Insert the destination register.
@@ -608,7 +610,9 @@ impl<N: Network> Program<N> {
             let destination_types = instruction.output_types(&self, &operand_types)?;
 
             // Insert the destination register.
-            for (destination, destination_type) in instruction.destinations().iter().zip_eq(destination_types.into_iter()) {
+            for (destination, destination_type) in
+                instruction.destinations().iter().zip_eq(destination_types.into_iter())
+            {
                 // Ensure the destination register is a locator (and does not reference a member).
                 ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
                 // Insert the destination register.
@@ -990,7 +994,7 @@ function compute:
     output r3 as field.private;
     output r4 as field.private;",
         )
-            .unwrap();
+        .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Declare the function name.
