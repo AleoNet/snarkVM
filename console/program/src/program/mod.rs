@@ -61,6 +61,8 @@ enum ProgramDefinition {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Program<N: Network> {
+    /// The name of the program.
+    name: Identifier<N>,
     /// A map of identifiers to their program declaration.
     identifiers: IndexMap<Identifier<N>, ProgramDefinition>,
     /// A map of the declared interfaces for the program.
@@ -76,8 +78,9 @@ pub struct Program<N: Network> {
 impl<N: Network> Program<N> {
     /// Initializes an empty program.
     #[inline]
-    pub fn new() -> Self {
+    pub fn new(name: Identifier<N>) -> Self {
         Program {
+            name,
             identifiers: IndexMap::new(),
             interfaces: IndexMap::new(),
             records: IndexMap::new(),
@@ -605,6 +608,7 @@ impl<N: Network> Program<N> {
             "function",
             "interface",
             "record",
+            "closure",
             "program",
             "global",
             // Reserved (catch all)
@@ -635,6 +639,14 @@ impl<N: Network> Program<N> {
     }
 }
 
+impl<N: Network> TypeName for Program<N> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "program"
+    }
+}
+
 impl<N: Network> Parser for Program<N> {
     /// Parses a string into a program.
     #[inline]
@@ -645,6 +657,19 @@ impl<N: Network> Parser for Program<N> {
             R(RecordType<N>),
             F(Function<N>),
         }
+
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the 'program' keyword from the string.
+        let (string, _) = tag(Self::type_name())(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the program name from the string.
+        let (string, name) = Identifier::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the semicolon ';' keyword from the string.
+        let (string, _) = tag(";")(string)?;
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -660,7 +685,7 @@ impl<N: Network> Parser for Program<N> {
         // Return the program.
         map_res(take(0usize), move |_| {
             // Initialize a new program.
-            let mut program = Program::<N>::new();
+            let mut program = Program::<N>::new(name);
             // Construct the program with the parsed components.
             for component in components.iter() {
                 let result = match component {
@@ -711,7 +736,7 @@ impl<N: Network> Display for Program<N> {
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         // Initialize a string for the program.
-        let mut program = String::new();
+        let mut program = format!("{} {};\n\n", Self::type_name(), self.name);
 
         for (identifier, definition) in self.identifiers.iter() {
             match definition {
@@ -764,7 +789,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new();
+        let mut program = Program::<CurrentNetwork>::new(Identifier::from_str("unknown")?);
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -789,7 +814,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new();
+        let mut program = Program::<CurrentNetwork>::new(Identifier::from_str("unknown")?);
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -814,7 +839,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new();
+        let mut program = Program::<CurrentNetwork>::new(Identifier::from_str("unknown")?);
 
         // Add the function to the program.
         program.add_function(function.clone())?;
@@ -830,6 +855,8 @@ function compute:
     fn test_program_evaluate_function() {
         let program = Program::<CurrentNetwork>::from_str(
             r"
+    program example;
+
     function foo:
         input r0 as field.public;
         input r1 as field.private;
@@ -864,6 +891,8 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
+program example;
+
 interface message:
     first as field;
     second as field;
@@ -900,6 +929,8 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
+program token;
+
 record token:
     owner as address.private;
     balance as u64.private;
@@ -937,6 +968,8 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
+program token_with_cast;
+
 record token:
     owner as address.private;
     balance as u64.private;
@@ -974,6 +1007,8 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
+program to_parse;
+
 interface message:
     first as field;
     second as field;
@@ -996,7 +1031,9 @@ function compute:
 
     #[test]
     fn test_program_display() -> Result<()> {
-        let expected = r"interface message:
+        let expected = r"program to_parse;
+
+interface message:
     first as field;
     second as field;
 

@@ -24,10 +24,12 @@ impl<N: Network> Parser for Function<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the 'function' keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the function name from the string.
         let (string, name) = Identifier::<N>::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
         let (string, _) = tag(":")(string)?;
 

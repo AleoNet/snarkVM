@@ -25,14 +25,20 @@ impl<N: Network> Parser for Output<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the output keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the register from the string.
         let (string, register) = Register::parse(string)?;
-        // Parse the " as " from the string.
-        let (string, _) = tag(" as ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "as" from the string.
+        let (string, _) = tag("as")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the value type from the string.
         let (string, value_type) = ValueType::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the output statement.

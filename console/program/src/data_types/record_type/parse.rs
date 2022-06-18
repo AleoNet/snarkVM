@@ -31,10 +31,16 @@ impl<N: Network> Parser for RecordType<N> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
-            // Parse the " as " from the string.
-            let (string, _) = tag(" as ")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the "as" from the string.
+            let (string, _) = tag("as")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the value type from the string.
             let (string, value_type) = EntryType::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the semicolon ';' keyword from the string.
             let (string, _) = tag(";")(string)?;
             // Return the identifier and value type.
@@ -45,10 +51,12 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the type name from the string.
         let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the record name from the string.
         let (string, name) = Identifier::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
         let (string, _) = tag(":")(string)?;
 
@@ -56,8 +64,12 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the "owner" tag from the string.
         let (string, _) = tag("owner")(string)?;
-        // Parse the " as " from the string.
-        let (string, _) = tag(" as ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "as" from the string.
+        let (string, _) = tag("as")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the owner visibility from the string.
@@ -65,6 +77,8 @@ impl<N: Network> Parser for RecordType<N> {
             map(tag("address.public"), |_| PublicOrPrivate::Public),
             map(tag("address.private"), |_| PublicOrPrivate::Private),
         ))(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
@@ -72,8 +86,12 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the "balance" tag from the string.
         let (string, _) = tag("balance")(string)?;
-        // Parse the " as " from the string.
-        let (string, _) = tag(" as ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "as" from the string.
+        let (string, _) = tag("as")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the balance visibility from the string.
@@ -81,6 +99,8 @@ impl<N: Network> Parser for RecordType<N> {
             map(tag("u64.public"), |_| PublicOrPrivate::Public),
             map(tag("u64.private"), |_| PublicOrPrivate::Private),
         ))(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 

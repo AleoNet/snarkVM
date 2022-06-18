@@ -31,10 +31,16 @@ impl<N: Network> Parser for Interface<N> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
             let (string, identifier) = Identifier::parse(string)?;
-            // Parse the " as " from the string.
-            let (string, _) = tag(" as ")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
+            // Parse the "as" from the string.
+            let (string, _) = tag("as")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the plaintext type from the string.
             let (string, plaintext_type) = PlaintextType::parse(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the semicolon ';' keyword from the string.
             let (string, _) = tag(";")(string)?;
             // Return the identifier and plaintext type.
@@ -45,10 +51,12 @@ impl<N: Network> Parser for Interface<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the type name from the string.
         let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the interface name from the string.
         let (string, name) = Identifier::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the colon ':' keyword from the string.
         let (string, _) = tag(":")(string)?;
         // Parse the members from the string.

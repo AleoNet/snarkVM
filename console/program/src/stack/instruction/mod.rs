@@ -396,6 +396,8 @@ impl<N: Network> Parser for Instruction<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the instruction from the string.
         let (string, instruction) = instruction!(instruction_parsers!(self, _instruction))(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
 

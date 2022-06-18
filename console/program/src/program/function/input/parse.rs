@@ -28,8 +28,8 @@ impl<N: Network> Parser for Input<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the input keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the register from the string.
         let (string, register) = map_res(Register::parse, |register| {
             // Ensure the register is not a register member.
@@ -38,10 +38,16 @@ impl<N: Network> Parser for Input<N> {
                 Register::Member(..) => Err(error(format!("Input register {register} cannot be a register member"))),
             }
         })(string)?;
-        // Parse the " as " from the string.
-        let (string, _) = tag(" as ")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
+        // Parse the "as" from the string.
+        let (string, _) = tag("as")(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the value type from the string.
         let (string, value_type) = ValueType::parse(string)?;
+        // Parse the whitespace from the string.
+        let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the input statement.
