@@ -54,6 +54,8 @@ enum ProgramDefinition {
     Interface,
     /// A program record.
     Record,
+    /// A program closure.
+    Closure,
     /// A program function.
     Function,
 }
@@ -68,6 +70,8 @@ pub struct Program<N: Network> {
     interfaces: IndexMap<Identifier<N>, Interface<N>>,
     /// A map of the declared record types for the program.
     records: IndexMap<Identifier<N>, RecordType<N>>,
+    /// A map of the declared closures for the program.
+    closures: IndexMap<Identifier<N>, Closure<N>>,
     /// A map of the declared functions for the program.
     functions: IndexMap<Identifier<N>, Function<N>>,
     /// A map of the declared register types for each function.
@@ -78,11 +82,12 @@ impl<N: Network> Program<N> {
     /// Initializes an empty program.
     #[inline]
     pub fn new(name: Identifier<N>) -> Self {
-        Program {
+        Self {
             name,
             identifiers: IndexMap::new(),
             interfaces: IndexMap::new(),
             records: IndexMap::new(),
+            closures: IndexMap::new(),
             functions: IndexMap::new(),
             function_registers: IndexMap::new(),
         }
@@ -112,6 +117,11 @@ impl<N: Network> Program<N> {
         self.records.contains_key(name)
     }
 
+    /// Returns `true` if the program contains a closure with the given name.
+    pub fn contains_closure(&self, name: &Identifier<N>) -> bool {
+        self.closures.contains_key(name)
+    }
+
     /// Returns `true` if the program contains a function with the given name.
     pub fn contains_function(&self, name: &Identifier<N>) -> bool {
         self.functions.contains_key(name)
@@ -125,6 +135,11 @@ impl<N: Network> Program<N> {
     /// Returns the record with the given name.
     pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
         self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))
+    }
+
+    /// Returns the closure with the given name.
+    pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
+        self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))
     }
 
     /// Returns the function with the given name.
@@ -648,6 +663,7 @@ impl<N: Network> Parser for Program<N> {
         enum P<N: Network> {
             I(Interface<N>),
             R(RecordType<N>),
+            // C(Closure<N>),
             F(Function<N>),
         }
 
@@ -670,6 +686,7 @@ impl<N: Network> Parser for Program<N> {
         let (string, components) = many1(alt((
             map(Interface::parse, |interface| P::<N>::I(interface)),
             map(RecordType::parse, |record| P::<N>::R(record)),
+            // map(Closure::parse, |closure| P::<N>::C(closure)),
             map(Function::parse, |function| P::<N>::F(function)),
         )))(string)?;
         // Parse the whitespace and comments from the string.
@@ -684,6 +701,7 @@ impl<N: Network> Parser for Program<N> {
                 let result = match component {
                     P::I(interface) => program.add_interface(interface.clone()),
                     P::R(record) => program.add_record(record.clone()),
+                    // P::C(closure) => program.add_closure(closure.clone()),
                     P::F(function) => program.add_function(function.clone()),
                 };
 
@@ -742,6 +760,13 @@ impl<N: Network> Display for Program<N> {
                 },
                 ProgramDefinition::Record => match self.records.get(identifier) {
                     Some(record) => program.push_str(&format!("{record}\n\n")),
+                    None => {
+                        eprintln!("'{}' is not defined.", identifier);
+                        return Err(fmt::Error);
+                    }
+                },
+                ProgramDefinition::Closure => match self.closures.get(identifier) {
+                    Some(closure) => program.push_str(&format!("{closure}\n\n")),
                     None => {
                         eprintln!("'{}' is not defined.", identifier);
                         return Err(fmt::Error);
