@@ -1097,6 +1097,62 @@ function compute:
     }
 
     #[test]
+    fn test_program_evaluate_call() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program example_call;
+
+// (a + (a + b)) + (a + b) == (3a + 2b)
+closure execute:
+    input r0 as field;
+    input r1 as field;
+    add r0 r1 into r2;
+    add r0 r2 into r3;
+    add r2 r3 into r4;
+    output r4 as field;
+    output r3 as field;
+    output r2 as field;
+
+function compute:
+    input r0 as field.private;
+    input r1 as field.public;
+    call execute r0 r1 into r2 r3 r4;
+    output r2 as field.private;
+    output r3 as field.private;
+    output r4 as field.private;",
+        )
+            .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Declare the input value.
+        let r0 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
+        let r1 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
+
+        // Declare the expected output value.
+        let r2 = Value::Private(Plaintext::from_str("19field").unwrap());
+        let r3 = Value::Private(Plaintext::from_str("11field").unwrap());
+        let r4 = Value::Private(Plaintext::from_str("8field").unwrap());
+
+        // Compute the output value.
+        let candidate = program.evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
+        assert_eq!(3, candidate.len());
+        assert_eq!(r2, candidate[0]);
+        assert_eq!(r3, candidate[1]);
+        assert_eq!(r4, candidate[2]);
+
+        // Re-run to ensure state continues to work.
+        let candidate = program.evaluate(&function_name, &[r0, r1]).unwrap();
+        assert_eq!(3, candidate.len());
+        assert_eq!(r2, candidate[0]);
+        assert_eq!(r3, candidate[1]);
+        assert_eq!(r4, candidate[2]);
+    }
+
+    #[test]
     fn test_program_evaluate_cast() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
