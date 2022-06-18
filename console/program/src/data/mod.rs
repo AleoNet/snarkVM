@@ -29,5 +29,8 @@ pub use plaintext::Plaintext;
 mod record;
 pub use record::{Balance, Entry, Owner, Record};
 
+mod register;
+pub use register::Register;
+
 mod value;
 pub use value::Value;

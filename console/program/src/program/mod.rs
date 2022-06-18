@@ -17,9 +17,6 @@
 mod function;
 pub use function::*;
 
-mod register;
-pub use register::Register;
-
 mod register_types;
 pub use register_types::*;
 
@@ -37,6 +34,7 @@ use crate::{
     PlaintextType,
     Record,
     RecordType,
+    Register,
     RegisterType,
     Stack,
     StackValue,
