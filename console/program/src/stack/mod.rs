@@ -70,11 +70,13 @@ impl<N: Network> Stack<N> {
     }
 
     /// Returns an iterator over all input register types.
+    #[inline]
     pub fn to_input_types(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
         self.register_types.to_input_types()
     }
 
     /// Returns an iterator over all output register types.
+    #[inline]
     pub fn to_output_types(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
         self.register_types.to_output_types()
     }
