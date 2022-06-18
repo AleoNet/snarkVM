@@ -30,6 +30,3 @@ pub use data_types::*;
 
 mod program;
 pub use program::*;
-
-mod stack;
-pub(crate) use stack::*;

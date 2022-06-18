@@ -20,8 +20,14 @@ pub use closure::*;
 mod function;
 pub use function::*;
 
+mod instruction;
+pub(crate) use instruction::*;
+
 mod register_types;
 pub use register_types::*;
+
+mod stack;
+pub(crate) use stack::*;
 
 mod matches;
 mod parse;
@@ -29,18 +35,13 @@ mod parse;
 use crate::{
     EntryType,
     Identifier,
-    Instruction,
     Interface,
-    Opcode,
-    Operand,
     Plaintext,
     PlaintextType,
     Record,
     RecordType,
     Register,
     RegisterType,
-    Stack,
-    StackValue,
     Value,
     ValueType,
 };
@@ -108,6 +109,20 @@ impl<N: Network> Program<N> {
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Evaluate the function.
         Stack::evaluate(self.clone(), function_name, inputs)
+    }
+
+    /// Executes a program function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn execute(
+        &self,
+        function_name: &Identifier<N>,
+        inputs: &[StackValue<N>],
+    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Execute the function.
+        Stack::execute(self.clone(), function_name, inputs)
     }
 
     /// Returns `true` if the program contains a interface with the given name.

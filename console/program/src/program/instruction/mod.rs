@@ -343,7 +343,7 @@ impl<N: Network> Instruction<N> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub(crate) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate(stack))
     }
 

@@ -43,9 +43,9 @@ macro_rules! operation {
         #[derive(Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
-        impl<N: Network> $crate::stack::instruction::Operation<N, $crate::Literal<N>, $crate::LiteralType, 2> for $name<N> {
+        impl<N: Network> $crate::program::instruction::Operation<N, $crate::Literal<N>, $crate::LiteralType, 2> for $name<N> {
             /// The opcode of the operation.
-            const OPCODE: $crate::stack::instruction::Opcode = Opcode::Literal($opcode);
+            const OPCODE: $crate::program::instruction::Opcode = Opcode::Literal($opcode);
 
             /// Returns the result of evaluating the operation on the given inputs.
             #[inline]
@@ -237,7 +237,7 @@ mod tests {
                                 let second = $crate::Literal::from_str(&format!("{literal_b}"))?;
 
                                 // Attempt to compute the invalid operand case.
-                                let result = <$operation::<CurrentNetwork> as $crate::stack::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]);
+                                let result = <$operation::<CurrentNetwork> as $crate::program::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]);
 
                                 // Ensure the computation failed.
                                 assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
@@ -272,7 +272,7 @@ mod tests {
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         $crate::LiteralType::from($crate::LiteralType::$output),
-                        <$operation::<CurrentNetwork> as $crate::stack::instruction::Operation<_, _, _, 2>>::output_type(&[$crate::LiteralType::$input_a.into(), $crate::LiteralType::$input_b.into()])?
+                        <$operation::<CurrentNetwork> as $crate::program::instruction::Operation<_, _, _, 2>>::output_type(&[$crate::LiteralType::$input_a.into(), $crate::LiteralType::$input_b.into()])?
                     );
 
                     // Check the operation on randomly-sampled values.
@@ -290,12 +290,12 @@ mod tests {
                         let mut should_succeed = true;
                         $( $({
                             if $condition == "ensure overflows halt" {
-                                match *<$operation::<CurrentNetwork> as $crate::stack::instruction::Operation<_, _, _, 2>>::OPCODE {
+                                match *<$operation::<CurrentNetwork> as $crate::program::instruction::Operation<_, _, _, 2>>::OPCODE {
                                     "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
                                     "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
                                     "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
                                     "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
-                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork> as $crate::stack::instruction::Operation<_, _, _, 2>>::OPCODE),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork> as $crate::program::instruction::Operation<_, _, _, 2>>::OPCODE),
                                 }
                             }
                             if $condition == "ensure divide by zero halts" {
@@ -309,14 +309,14 @@ mod tests {
                             true => {
                                 // Compute the outputs.
                                 let expected = $crate::Literal::from($crate::Literal::$output(a.$operate(&b)));
-                                let candidate = <$operation::<CurrentNetwork> as $crate::stack::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
+                                let candidate = <$operation::<CurrentNetwork> as $crate::program::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
                                 // Ensure the outputs match.
                                 assert_eq!(expected, candidate);
                             },
                             // If the sampled values overflow on evaluation, ensure it halts.
                             false => {
                                 // Attempt to compute the overflow case.
-                                let result = std::panic::catch_unwind(|| <$operation::<CurrentNetwork> as $crate::stack::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
+                                let result = std::panic::catch_unwind(|| <$operation::<CurrentNetwork> as $crate::program::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
                                 // Ensure the computation halted.
                                 assert!(result.is_err(), "Failure case (on iteration {i}) did not halt: {a} {b}");
                             }

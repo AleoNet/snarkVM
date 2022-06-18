@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    stack::Operand,
     Balance,
     Entry,
     EntryType,
     Literal,
     LiteralType,
     Opcode,
+    Operand,
     Owner,
     Plaintext,
     PlaintextType,
@@ -77,7 +77,7 @@ impl<N: Network> Cast<N> {
 impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub(crate) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         // Initialize a vector to store the operand values.
         let mut inputs = Vec::with_capacity(self.operands.len());
 

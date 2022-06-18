@@ -16,10 +16,11 @@
 
 use crate::{
     program::Program,
-    stack::{Operand, Operation},
     Literal,
     LiteralType,
     Opcode,
+    Operand,
+    Operation,
     PlaintextType,
     Register,
     RegisterType,
@@ -73,7 +74,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub(crate) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         // Ensure the number of operands is correct.
         ensure!(
             self.operands.len() == NUM_OPERANDS,

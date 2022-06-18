@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{stack::Operand, Identifier, Opcode, Program, Register, RegisterType, Stack};
+use crate::{Identifier, Opcode, Operand, Program, Register, RegisterType, Stack};
 use snarkvm_console_network::prelude::*;
 
 /// Calls the operands into the declared type.
@@ -58,7 +58,7 @@ impl<N: Network> Call<N> {
 impl<N: Network> Call<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub(in crate::stack) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub(crate) fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
         // Initialize a vector to store the operand values.
         let mut inputs = Vec::with_capacity(self.operands.len());
         // Load the operands values.
@@ -93,7 +93,7 @@ impl<N: Network> Call<N> {
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
             // TODO (howardwu): OR if input is a record, forbid and error.
             // Assign the input value to the register.
-            closure_stack.input_registers.insert(register.locator(), input.clone());
+            closure_stack.input_registers().insert(register.locator(), input.clone());
         }
 
         // Evaluate the instructions.
