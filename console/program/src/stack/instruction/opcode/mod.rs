@@ -21,6 +21,8 @@ use snarkvm_console_network::prelude::*;
 pub enum Opcode {
     /// The opcode is for a literal operation.
     Literal(&'static str),
+    /// The opcode is for a call operation.
+    Call,
     /// The opcode is for a cast operation.
     Cast,
 }
@@ -32,6 +34,7 @@ impl Deref for Opcode {
     fn deref(&self) -> &Self::Target {
         match self {
             Opcode::Literal(opcode) => opcode,
+            Opcode::Call => &"call",
             Opcode::Cast => &"cast",
         }
     }
@@ -49,6 +52,7 @@ impl Display for Opcode {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Literal(opcode) => write!(f, "{opcode}"),
+            Self::Call => write!(f, "{}", *self),
             Self::Cast => write!(f, "{}", *self),
         }
     }
