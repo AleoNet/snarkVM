@@ -18,6 +18,8 @@
 
 pub mod program {
     use circuit::{
+        program::Record as RecordState,
+        transition::Record,
         Address,
         Aleo,
         Ciphertext,
@@ -26,7 +28,6 @@ pub mod program {
         Group,
         Inject,
         Mode,
-        Record,
         Scalar,
         ToBits,
         ToField,
@@ -43,7 +44,7 @@ pub mod program {
         /// The output records.
         output_records: Vec<Record<A>>,
         /// The output data.
-        output_data: Vec<Record<A, Ciphertext<A>>>,
+        output_data: Vec<RecordState<A, Ciphertext<A>>>,
         /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
         tcm: Field<A>,
         /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
@@ -77,7 +78,7 @@ pub mod program {
         /// The input records.
         input_records: Vec<Record<A>>,
         /// The input data.
-        input_data: Vec<Record<A, Ciphertext<A>>>,
+        input_data: Vec<RecordState<A, Ciphertext<A>>>,
         /// The transition view key commitment randomizer.
         r_tcm: Field<A>,
     }

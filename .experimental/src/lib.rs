@@ -21,16 +21,18 @@
 mod program;
 pub use program::*;
 
+mod vm;
+
 pub mod input {
     use circuit::{
         merkle_tree::MerklePath,
+        transition::Record,
         Aleo,
         Eject,
         Field,
         Group,
         Inject,
         Mode,
-        Record,
         Scalar,
         SerialNumber,
         ToBits,
@@ -190,6 +192,7 @@ pub mod input {
 
 pub mod output {
     use circuit::{
+        transition::Record,
         Address,
         Aleo,
         Eject,
@@ -198,7 +201,6 @@ pub mod output {
         Group,
         Inject,
         Mode,
-        Record,
         Scalar,
         State,
         ToBits,

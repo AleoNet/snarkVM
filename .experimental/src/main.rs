@@ -264,7 +264,7 @@ where
     let (tcm, tpk, r_tcm, tvk) = tcm::<A, R>(caller, rng)?;
 
     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-    let randomizer = A::Network::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), output_index.to_field()])?;
+    let randomizer = A::Network::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), Field::from_u16(output_index)])?;
 
     // Initialize th empty data.
     let data = Field::zero(); // TODO: Hardcode this option in the Network trait.
