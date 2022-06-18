@@ -27,7 +27,6 @@ use crate::{
     RecordType,
     Register,
     RegisterType,
-    ValueType,
 };
 use snarkvm_console_network::prelude::*;
 
@@ -36,11 +35,11 @@ use indexmap::IndexMap;
 #[derive(Clone, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
-    input_registers: IndexMap<u64, ValueType<N>>,
+    input_registers: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all destination registers to their defined types.
     destination_registers: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all output registers to their defined types.
-    output_registers: IndexMap<Register<N>, ValueType<N>>,
+    output_registers: IndexMap<Register<N>, RegisterType<N>>,
 }
 
 impl<N: Network> RegisterTypes<N> {
@@ -73,18 +72,18 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns an iterator over all input registers.
-    pub fn to_inputs(&self) -> impl '_ + Iterator<Item = (Register<N>, ValueType<N>)> {
-        self.input_registers.iter().map(|(locator, value_type)| (Register::Locator(*locator), *value_type))
+    pub fn to_inputs(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
+        self.input_registers.iter().map(|(locator, register_type)| (Register::Locator(*locator), *register_type))
     }
 
     /// Returns an iterator over all output registers.
-    pub fn to_outputs(&self) -> impl '_ + Iterator<Item = (&Register<N>, &ValueType<N>)> {
+    pub fn to_outputs(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
         self.output_registers.iter()
     }
 
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
-    pub fn add_input(&mut self, register: Register<N>, value_type: ValueType<N>) -> Result<()> {
+    pub fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
         // Ensure there are no destination or output registers set yet.
         ensure!(self.destination_registers.is_empty(), "Cannot add input registers after destination registers.");
         ensure!(self.output_registers.is_empty(), "Cannot add input registers after output registers.");
@@ -94,16 +93,17 @@ impl<N: Network> RegisterTypes<N> {
             Register::Locator(locator) => {
                 // Ensure the registers are monotonically increasing.
                 ensure!(self.input_registers.len() as u64 == locator, "Register '{register}' is out of order");
+
+                // Insert the input register and type.
+                match self.input_registers.insert(locator, register_type) {
+                    // If the register already exists, throw an error.
+                    Some(..) => bail!("Input '{register}' already exists"),
+                    // If the register does not exist, return success.
+                    None => Ok(()),
+                }
             }
             // Ensure the register is a locator, and not a member.
             Register::Member(..) => bail!("Register '{register}' must be a locator."),
-        }
-        // Insert the input register and type.
-        match self.input_registers.insert(register.locator(), value_type) {
-            // If the register already exists, throw an error.
-            Some(..) => bail!("Input '{register}' already exists"),
-            // If the register does not exist, return success.
-            None => Ok(()),
         }
     }
 
@@ -116,25 +116,26 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the registers are monotonically increasing.
                 let expected_locator = (self.input_registers.len() as u64) + self.destination_registers.len() as u64;
                 ensure!(expected_locator == locator, "Register '{register}' is out of order");
+
+                // Insert the destination register and type.
+                match self.destination_registers.insert(locator, register_type) {
+                    // If the register already exists, throw an error.
+                    Some(..) => bail!("Destination '{register}' already exists"),
+                    // If the register does not exist, return success.
+                    None => Ok(()),
+                }
             }
             // Ensure the register is a locator, and not a member.
             Register::Member(..) => bail!("Register '{register}' must be a locator."),
         }
-        // Insert the destination register and type.
-        match self.destination_registers.insert(register.locator(), register_type) {
-            // If the register already exists, throw an error.
-            Some(..) => bail!("Destination '{register}' already exists"),
-            // If the register does not exist, return success.
-            None => Ok(()),
-        }
     }
 
-    /// Inserts the given register as an output register with the associated value type.
-    pub fn add_output(&mut self, register: &Register<N>, value_type: ValueType<N>) -> Result<()> {
+    /// Inserts the given register as an output register with the associated register type.
+    pub fn add_output(&mut self, register: &Register<N>, register_type: RegisterType<N>) -> Result<()> {
         // Ensure the given register already exists.
         ensure!(self.contains(register), "Register '{register}' does not exist");
         // Insert the output register and type.
-        match self.output_registers.insert(register.clone(), value_type) {
+        match self.output_registers.insert(register.clone(), register_type) {
             // If the register already exists, throw an error.
             Some(..) => bail!("Register '{register}' already exists"),
             // If the register does not exist, return success.

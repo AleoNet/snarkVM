@@ -30,7 +30,6 @@ use crate::{
     Identifier,
     Instruction,
     Interface,
-    LiteralType,
     Opcode,
     Operand,
     Plaintext,
@@ -461,7 +460,8 @@ impl<N: Network> Program<N> {
 
         // Step 1. Check the function inputs are well-formed.
         for input in function.inputs() {
-            match input.value_type() {
+            // Retrieve the register type.
+            let register_type = match input.value_type() {
                 ValueType::Constant(plaintext_type)
                 | ValueType::Public(plaintext_type)
                 | ValueType::Private(plaintext_type) => {
@@ -475,17 +475,21 @@ impl<N: Network> Program<N> {
                             }
                         }
                     }
+                    // Output the register type.
+                    RegisterType::Plaintext(plaintext_type.clone())
                 }
                 ValueType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
                     if !self.records.contains_key(identifier) {
                         bail!("Record '{identifier}' in function '{function_name}' is not defined.")
                     }
+                    // Output the register type.
+                    RegisterType::Record(identifier.clone())
                 }
             };
 
             // Insert the input register.
-            register_types.add_input(input.register().clone(), *input.value_type())?;
+            register_types.add_input(input.register().clone(), register_type)?;
         }
 
         // Step 2. Check the function instructions are well-formed.
@@ -585,30 +589,27 @@ impl<N: Network> Program<N> {
                             }
                         }
                     }
+                    // Ensure the register type matches the output type.
+                    ensure!(
+                        register_type == RegisterType::Plaintext(plaintext_type.clone()),
+                        "Output '{register}' in '{function_name}' has type '{register_type}', but expected type '{plaintext_type}'."
+                    );
                 }
                 ValueType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
                     if !self.records.contains_key(identifier) {
                         bail!("Record '{identifier}' in function '{function_name}' is not defined.")
                     }
+                    // Ensure the register type matches the output type.
+                    ensure!(
+                        register_type == RegisterType::Record(identifier.clone()),
+                        "Output '{register}' in '{function_name}' has type '{register_type}', but expected type '{identifier}'."
+                    );
                 }
             };
 
-            // Ensure the register type and the output type match.
-            match (register_type, output.value_type()) {
-                (RegisterType::Plaintext(a), ValueType::Constant(b))
-                | (RegisterType::Plaintext(a), ValueType::Public(b))
-                | (RegisterType::Plaintext(a), ValueType::Private(b)) => {
-                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
-                }
-                (RegisterType::Record(a), ValueType::Record(b)) => {
-                    ensure!(a == *b, "Output '{register}' in function '{function_name}' has an incorrect type.")
-                }
-                _ => bail!("Output '{register}' does not match the expected output register type."),
-            }
-
             // Insert the output register.
-            register_types.add_output(output.register(), *output.value_type())?;
+            register_types.add_output(output.register(), register_type)?;
         }
 
         // Add the function name to the identifiers.
@@ -724,7 +725,7 @@ impl<N: Network> Parser for Program<N> {
         enum P<N: Network> {
             I(Interface<N>),
             R(RecordType<N>),
-            // C(Closure<N>),
+            C(Closure<N>),
             F(Function<N>),
         }
 
@@ -747,7 +748,7 @@ impl<N: Network> Parser for Program<N> {
         let (string, components) = many1(alt((
             map(Interface::parse, |interface| P::<N>::I(interface)),
             map(RecordType::parse, |record| P::<N>::R(record)),
-            // map(Closure::parse, |closure| P::<N>::C(closure)),
+            map(Closure::parse, |closure| P::<N>::C(closure)),
             map(Function::parse, |function| P::<N>::F(function)),
         )))(string)?;
         // Parse the whitespace and comments from the string.
@@ -762,7 +763,7 @@ impl<N: Network> Parser for Program<N> {
                 let result = match component {
                     P::I(interface) => program.add_interface(interface.clone()),
                     P::R(record) => program.add_record(record.clone()),
-                    // P::C(closure) => program.add_closure(closure.clone()),
+                    P::C(closure) => program.add_closure(closure.clone()),
                     P::F(function) => program.add_function(function.clone()),
                 };
 
