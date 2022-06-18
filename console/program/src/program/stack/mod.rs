@@ -14,10 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod load;
+mod store;
+
 use crate::{
     function::Operand,
     program::RegisterTypes,
     Entry,
+    Identifier,
     Literal,
     Plaintext,
     Program,
@@ -51,20 +55,37 @@ pub struct Stack<N: Network> {
 }
 
 impl<N: Network> Stack<N> {
-    /// Initializes a new stack with:
-    ///   1. The program (record types, interfaces, functions).
-    ///   2. The register types of the function.
-    ///   3. The input stack values.
+    /// Returns the program.
+    #[inline]
+    pub const fn program(&self) -> &Program<N> {
+        &self.program
+    }
+
+    /// Evaluates a program function on the given inputs.
     ///
     /// # Errors
-    /// This method will halt if any input type does not match the register type.
+    /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn new(program: Program<N>, register_types: RegisterTypes<N>, inputs: &[StackValue<N>]) -> Result<Self> {
+    pub fn evaluate(
+        program: Program<N>,
+        function_name: &Identifier<N>,
+        inputs: &[StackValue<N>],
+    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Retrieve the function from the program.
+        let function = program.get_function(function_name)?;
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        }
+
+        // Retrieve the register types.
+        let register_types = program.get_function_registers(function_name)?;
+
         // Initialize the stack.
         let mut stack =
             Self { program, register_types, input_registers: IndexMap::new(), destination_registers: IndexMap::new() };
 
-        // Determine the visibility of the inputs.
+        // Initialize the input registers.
         for ((input_register, value_type), input) in stack.register_types.to_inputs().zip_eq(inputs.iter()) {
             // Ensure the input value matches the declared type in the register.
             stack.program.matches_input(input, &value_type)?;
@@ -81,133 +102,56 @@ impl<N: Network> Stack<N> {
             });
         }
 
-        Ok(stack)
-    }
+        // Evaluate the function.
+        function.evaluate(&mut stack)?;
 
-    /// Returns the program.
-    pub const fn program(&self) -> &Program<N> {
-        &self.program
-    }
-}
+        // Initialize a vector to store the outputs.
+        let mut outputs = Vec::with_capacity(function.outputs().len());
 
-impl<N: Network> Stack<N> {
-    /// Returns `true` if the given register corresponds to an input register.
-    fn is_input(&self, register: &Register<N>) -> bool {
-        self.input_registers.contains_key(&register.locator())
-    }
+        // Load the outputs.
+        for (register, value_type) in stack.register_types.to_outputs() {
+            // Retrieve the stack value from the register.
+            let register_value = stack.load(&Operand::Register(register.clone()))?;
 
-    /// Assigns the given literal to the given register, assuming the register is not already assigned.
-    ///
-    /// # Errors
-    /// This method will halt if the given register is a register member.
-    /// This method will halt if the given register is an input register.
-    /// This method will halt if the register is already used.
-    #[inline]
-    pub(crate) fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
-        self.store(register, StackValue::Plaintext(Plaintext::from(literal)))
-    }
+            // Convert the stack value to the output value type.
+            let output_value = match (register_value, value_type) {
+                (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
+                (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
+                (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
+                (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
+                _ => bail!("Stack value does not match the expected output type"),
+            };
 
-    /// Assigns the given value to the given register, assuming the register is not already assigned.
-    ///
-    /// # Errors
-    /// This method will halt if the given register is a register member.
-    /// This method will halt if the given register is an input register.
-    /// This method will halt if the register is already used.
-    #[inline]
-    pub(crate) fn store(&mut self, register: &Register<N>, register_value: StackValue<N>) -> Result<()> {
-        match register {
-            Register::Locator(locator) => {
-                // Ensure the register assignments are monotonically increasing.
-                let expected_locator = (self.input_registers.len() as u64) + self.destination_registers.len() as u64;
-                ensure!(expected_locator == *locator, "Out-of-order write operation at '{register}'");
-                // Ensure the register type is not an input register.
-                ensure!(!self.register_types.is_input(register), "Cannot write to input register '{register}'");
+            // Ensure the output value matches the value type.
+            stack.program.matches_value(&output_value, &value_type)?;
+            // Insert the value into the outputs.
+            outputs.push(output_value);
 
-                // Retrieve the register type.
-                match self.register_types.get_type(&self.program, register) {
-                    // Ensure the stack value matches the register type.
-                    Ok(register_type) => self.program.matches_register(&register_value, &register_type)?,
-                    // Ensure the register is defined.
-                    Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
-                };
-
-                // Store the stack value.
-                match self.destination_registers.insert(*locator, register_value) {
-                    // Ensure the register has not been previously stored.
-                    Some(..) => bail!("Attempted to write to register '{register}' again"),
-                    // Return on success.
-                    None => Ok(()),
-                }
-            }
-            // Ensure the register is not a register member.
-            Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+            // TODO (howardwu): Add encryption against the caller's address for all private literals,
+            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
+            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
+            //  the constraint will automatically be discarded, and if it's not, the constraint will
+            //  ensure the output register's value matches the newly-assigned hardcoded constant.
+            // // If the value contains any public literals, assign a new public variable for the public literal,
+            // // and add a constraint to enforce equality of the value.
+            // match &value {
+            //     Value::Literal(literal) => {
+            //         if literal.is_public() {
+            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
+            //             P::Environment::assert_eq(literal, public_literal);
+            //         }
+            //     }
+            //     Value::Definition(_, members) => {
+            //         for member in members.iter() {
+            //             if member.is_public() {
+            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
+            //                 P::Environment::assert_eq(member, public_literal);
+            //             }
+            //         }
+            //     }
+            // }
         }
-    }
 
-    /// Loads the literal of a given operand from the registers.
-    ///
-    /// # Errors
-    /// This method will halt if the given operand is not a literal.
-    /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
-    #[inline]
-    pub(crate) fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
-        match self.load(operand)? {
-            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            StackValue::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
-            StackValue::Record(..) => bail!("Operand must be a literal"),
-        }
-    }
-
-    /// Loads the value of a given operand from the registers.
-    ///
-    /// # Errors
-    /// This method will halt if the register locator is not found.
-    /// In the case of register members, this method will halt if the member is not found.
-    #[inline]
-    pub(crate) fn load(&self, operand: &Operand<N>) -> Result<StackValue<N>> {
-        // Retrieve the register.
-        let register = match operand {
-            // If the operand is a literal, return the literal.
-            Operand::Literal(literal) => return Ok(StackValue::Plaintext(Plaintext::from(literal))),
-            // If the operand is a register, load the value from the register.
-            Operand::Register(register) => register,
-        };
-
-        // Retrieve the stack value.
-        let register_value = if self.is_input(register) {
-            // Retrieve the input value type as a register type.
-            match self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))? {
-                Value::Constant(plaintext) | Value::Public(plaintext) | Value::Private(plaintext) => {
-                    StackValue::Plaintext(plaintext.clone())
-                }
-                Value::Record(record) => StackValue::Record(record.clone()),
-            }
-        } else {
-            // Retrieve the destination register type.
-            self.destination_registers
-                .get(&register.locator())
-                .ok_or_else(|| anyhow!("'{register}' does not exist"))?
-                .clone()
-        };
-
-        // Return the value for the given register or register member.
-        match register {
-            // If the register is a locator, then return the plaintext value.
-            Register::Locator(..) => Ok(register_value),
-            // If the register is a register member, then load the specific plaintext value.
-            Register::Member(_, ref path) => {
-                match register_value {
-                    // Retrieve the plaintext member from the path.
-                    StackValue::Plaintext(plaintext) => Ok(StackValue::Plaintext(plaintext.find(path)?)),
-                    // Retrieve the record entry from the path.
-                    StackValue::Record(record) => match record.find(path)? {
-                        Entry::Constant(plaintext) | Entry::Public(plaintext) | Entry::Private(plaintext) => {
-                            Ok(StackValue::Plaintext(plaintext))
-                        }
-                    },
-                }
-            }
-        }
+        Ok(outputs)
     }
 }

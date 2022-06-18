@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod registers;
-pub(crate) use registers::*;
+mod register_types;
+pub(crate) use register_types::*;
 
 mod stack;
 pub(crate) use stack::*;
@@ -68,91 +68,6 @@ pub struct Program<N: Network> {
 }
 
 impl<N: Network> Program<N> {
-    /// Evaluates a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn evaluate(
-        &self,
-        function_name: &Identifier<N>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
-        // Retrieve the function from the program.
-        let function = self.get_function(function_name)?;
-
-        // Ensure the number of inputs matches the number of input statements.
-        ensure!(
-            function.inputs().len() == inputs.len(),
-            "Expected {} inputs, found {}",
-            function.inputs().len(),
-            inputs.len()
-        );
-
-        // Retrieve the registers for the function.
-        let register_types = self
-            .function_registers
-            .get(function_name)
-            .ok_or_else(|| anyhow!("Function {function_name} is missing its function registers"))?;
-
-        // Initialize the stack.
-        let mut stack = Stack::new(self.clone(), register_types.clone(), inputs)?;
-
-        // Evaluate the function.
-        function.evaluate(&mut stack)?;
-
-        // Initialize a vector to store the outputs.
-        let mut outputs = Vec::with_capacity(function.outputs().len());
-
-        // Load the outputs.
-        for (register, value_type) in register_types.to_outputs() {
-            // Retrieve the stack value from the register.
-            let register_value = stack.load(&Operand::Register(register.clone()))?;
-
-            // Convert the stack value to the output value type.
-            let output_value = match (register_value, value_type) {
-                (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-                (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
-                _ => bail!("Stack value does not match the expected output type"),
-            };
-
-            // Ensure the output value matches the value type.
-            self.matches_value(&output_value, &value_type)?;
-            // Insert the value into the outputs.
-            outputs.push(output_value);
-
-            // TODO (howardwu): Add encryption against the caller's address for all private literals,
-            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
-            //  the constraint will automatically be discarded, and if it's not, the constraint will
-            //  ensure the output register's value matches the newly-assigned hardcoded constant.
-            // // If the value contains any public literals, assign a new public variable for the public literal,
-            // // and add a constraint to enforce equality of the value.
-            // match &value {
-            //     Value::Literal(literal) => {
-            //         if literal.is_public() {
-            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-            //             P::Environment::assert_eq(literal, public_literal);
-            //         }
-            //     }
-            //     Value::Definition(_, members) => {
-            //         for member in members.iter() {
-            //             if member.is_public() {
-            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-            //                 P::Environment::assert_eq(member, public_literal);
-            //             }
-            //         }
-            //     }
-            // }
-        }
-
-        Ok(outputs)
-    }
-}
-
-impl<N: Network> Program<N> {
     /// Initializes an empty program.
     #[inline]
     pub fn new() -> Self {
@@ -165,6 +80,57 @@ impl<N: Network> Program<N> {
         }
     }
 
+    /// Evaluates a program function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn evaluate(
+        &self,
+        function_name: &Identifier<N>,
+        inputs: &[StackValue<N>],
+    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Evaluate the function.
+        Stack::evaluate(self.clone(), function_name, inputs)
+    }
+
+    /// Returns `true` if the program contains a interface with the given name.
+    pub fn contains_interface(&self, name: &Identifier<N>) -> bool {
+        self.interfaces.contains_key(name)
+    }
+
+    /// Returns `true` if the program contains a record with the given name.
+    pub fn contains_record(&self, name: &Identifier<N>) -> bool {
+        self.records.contains_key(name)
+    }
+
+    /// Returns `true` if the program contains a function with the given name.
+    pub fn contains_function(&self, name: &Identifier<N>) -> bool {
+        self.functions.contains_key(name)
+    }
+
+    /// Returns the interface with the given name.
+    pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
+        self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))
+    }
+
+    /// Returns the record with the given name.
+    pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
+        self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))
+    }
+
+    /// Returns the function with the given name.
+    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
+        self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))
+    }
+
+    /// Returns the function registers with the given name.
+    pub fn get_function_registers(&self, name: &Identifier<N>) -> Result<RegisterTypes<N>> {
+        self.function_registers.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is missing registers."))
+    }
+}
+
+impl<N: Network> Program<N> {
     /// Adds a new interface to the program.
     ///
     /// # Errors
@@ -582,45 +548,13 @@ impl<N: Network> Program<N> {
         Ok(())
     }
 
-    /// Returns `true` if the program contains a interface with the given name.
-    pub fn contains_interface(&self, name: &Identifier<N>) -> bool {
-        self.interfaces.contains_key(name)
-    }
-
-    /// Returns `true` if the program contains a record with the given name.
-    pub fn contains_record(&self, name: &Identifier<N>) -> bool {
-        self.records.contains_key(name)
-    }
-
-    /// Returns `true` if the program contains a function with the given name.
-    pub fn contains_function(&self, name: &Identifier<N>) -> bool {
-        self.functions.contains_key(name)
-    }
-
-    /// Returns the interface with the given name.
-    pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
-        self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))
-    }
-
-    /// Returns the record with the given name.
-    pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
-        self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))
-    }
-
-    /// Returns the function with the given name.
-    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
-        self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))
-    }
-}
-
-impl<N: Network> Program<N> {
     /// Returns `true` if the given name does not already exist in the program.
-    pub(crate) fn is_unique_name(&self, name: &Identifier<N>) -> bool {
+    fn is_unique_name(&self, name: &Identifier<N>) -> bool {
         !self.identifiers.contains_key(name)
     }
 
     /// Returns `true` if the given name is a reserved opcode.
-    pub(crate) fn is_reserved_opcode(&self, name: &Identifier<N>) -> bool {
+    fn is_reserved_opcode(&self, name: &Identifier<N>) -> bool {
         // Convert the name to a string.
         let name = name.to_string();
         // Check if it matches root of any opcode.
@@ -628,7 +562,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
-    pub(crate) fn is_reserved_keyword(&self, name: &Identifier<N>) -> bool {
+    fn is_reserved_keyword(&self, name: &Identifier<N>) -> bool {
         #[rustfmt::skip]
         const KEYWORDS: &[&str] = &[
             // Mode
