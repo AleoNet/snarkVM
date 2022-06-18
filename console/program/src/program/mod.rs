@@ -72,6 +72,8 @@ pub struct Program<N: Network> {
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared closures for the program.
     closures: IndexMap<Identifier<N>, Closure<N>>,
+    /// A map of the declared register types for each closure.
+    closure_registers: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// A map of the declared functions for the program.
     functions: IndexMap<Identifier<N>, Function<N>>,
     /// A map of the declared register types for each function.
@@ -88,6 +90,7 @@ impl<N: Network> Program<N> {
             interfaces: IndexMap::new(),
             records: IndexMap::new(),
             closures: IndexMap::new(),
+            closure_registers: IndexMap::new(),
             functions: IndexMap::new(),
             function_registers: IndexMap::new(),
         }
@@ -255,6 +258,179 @@ impl<N: Network> Program<N> {
         Ok(())
     }
 
+    /// Adds a new closure to the program.
+    ///
+    /// # Errors
+    /// This method will halt if the closure was previously added.
+    /// This method will halt if the closure name is already in use in the program.
+    /// This method will halt if the closure name is a reserved opcode or keyword.
+    /// This method will halt if any registers are assigned more than once.
+    /// This method will halt if the registers are not incrementing monotonically.
+    /// This method will halt if an input type references a non-existent definition.
+    /// This method will halt if an operand register does not already exist in memory.
+    /// This method will halt if a destination register already exists in memory.
+    /// This method will halt if an output register does not already exist.
+    /// This method will halt if an output type references a non-existent definition.
+    #[inline]
+    fn add_closure(&mut self, closure: Closure<N>) -> Result<()> {
+        // Retrieve the closure name.
+        let closure_name = closure.name().clone();
+
+        // Ensure the closure name is new.
+        ensure!(self.is_unique_name(&closure_name), "'{closure_name}' is already in use.");
+        // Ensure the closure name is not a reserved opcode.
+        ensure!(!self.is_reserved_opcode(&closure_name), "'{closure_name}' is a reserved opcode.");
+        // Ensure the closure name is not a reserved keyword.
+        ensure!(!self.is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
+
+        // Initialize a map of registers to their types.
+        let mut register_types = RegisterTypes::new();
+
+        // Step 1. Check the function inputs are well-formed.
+        for input in closure.inputs() {
+            match input.register_type() {
+                RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
+                RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                    // Ensure the interface is defined in the program.
+                    if !self.interfaces.contains_key(interface_name) {
+                        bail!("Interface '{interface_name}' in closure '{closure_name}' is not defined.")
+                    }
+                }
+                RegisterType::Record(identifier) => {
+                    // Ensure the record type is defined in the program.
+                    if !self.records.contains_key(identifier) {
+                        bail!("Record '{identifier}' in closure '{closure_name}' is not defined.")
+                    }
+                }
+            };
+
+            // Insert the input register.
+            register_types.add_input(input.register().clone(), *input.register_type())?;
+        }
+
+        // Step 2. Check the closure instructions are well-formed.
+        for instruction in closure.instructions() {
+            // Ensure the opcode is defined.
+            match instruction.opcode() {
+                Opcode::Literal(opcode) => {
+                    // Ensure the opcode **is** a reserved opcode.
+                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                    // Ensure the instruction is not the cast operation.
+                    ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
+                }
+                Opcode::Cast => {
+                    // Retrieve the cast operation.
+                    let operation = match instruction {
+                        Instruction::Cast(operation) => operation,
+                        _ => bail!("Instruction '{instruction}' is not a cast operation."),
+                    };
+
+                    // Ensure the casted register type is defined.
+                    match operation.register_type() {
+                        RegisterType::Plaintext(PlaintextType::Literal(..)) => {
+                            bail!("Casting to literal is currently unsupported")
+                        }
+                        RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                            // Ensure the interface name exists in the program.
+                            if !self.interfaces.contains_key(interface_name) {
+                                bail!("Interface '{interface_name}' in closure '{closure_name}' is not defined.")
+                            }
+                            // Retrieve the interface.
+                            let interface = self.get_interface(&interface_name)?;
+                            // Ensure the operand types match the interface.
+                            register_types.matches_interface(&self, instruction.operands(), &interface)?;
+                        }
+                        RegisterType::Record(record_name) => {
+                            // Ensure the record type is defined in the program.
+                            if !self.records.contains_key(record_name) {
+                                bail!("Record '{record_name}' in closure '{closure_name}' is not defined.")
+                            }
+                            // Retrieve the record type.
+                            let record_type = self.get_record(&record_name)?;
+                            // Ensure the operand types match the record type.
+                            register_types.matches_record(&self, instruction.operands(), &record_type)?;
+                        }
+                    }
+                }
+            }
+
+            // Ensure the destination register is a locator (and does not reference a member).
+            let destination = instruction.destination();
+            ensure!(
+                matches!(destination, Register::Locator(..)),
+                "Destination register '{destination}' must be a locator."
+            );
+
+            // Initialize a vector to store the register types of the operands.
+            let mut operand_types = Vec::with_capacity(instruction.operands().len());
+            // Iterate over the operands, and retrieve the register type of each operand.
+            for operand in instruction.operands() {
+                // Retrieve and append the register type.
+                operand_types.push(match operand {
+                    Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
+                    Operand::Register(register) => register_types.get_type(&self, &register)?,
+                });
+            }
+
+            // Compute the destination register type.
+            let destination_type = instruction.output_type(&self, &operand_types)?;
+            // Insert the destination register.
+            register_types.add_destination(destination.clone(), destination_type)?;
+        }
+
+        // Step 3. Check the function outputs are well-formed.
+        for output in closure.outputs() {
+            // Retrieve the output register.
+            let register = output.register();
+            // Inform the user the output register is an input register, to ensure this is intended behavior.
+            if register_types.is_input(register) {
+                eprintln!("Output {register} in '{closure_name}' is an input register, ensure this is intended");
+            }
+
+            match output.register_type() {
+                RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
+                RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                    // Ensure the interface is defined in the program.
+                    if !self.interfaces.contains_key(interface_name) {
+                        bail!("Interface '{interface_name}' in closure '{closure_name}' is not defined.")
+                    }
+                }
+                RegisterType::Record(identifier) => {
+                    // Ensure the record type is defined in the program.
+                    if !self.records.contains_key(identifier) {
+                        bail!("Record '{identifier}' in closure '{closure_name}' is not defined.")
+                    }
+                }
+            };
+
+            // Retrieve the register type (as a plaintext type).
+            // Note: This serves as the expected output type, which we will compare against.
+            let register_type = register_types.get_type(&self, &register)?;
+
+            // Ensure the register type and the output type match.
+            if register_type != *output.register_type() {
+                bail!("Output '{register}' does not match the expected output register type.")
+            }
+
+            // Insert the output register.
+            register_types.add_output(output.register(), *output.register_type())?;
+        }
+
+        // Add the function name to the identifiers.
+        if self.identifiers.insert(closure_name.clone(), ProgramDefinition::Closure).is_some() {
+            bail!("'{closure_name}' already exists in the program.")
+        }
+        // Add the closure to the program.
+        if self.closures.insert(closure_name.clone(), closure).is_some() {
+            bail!("'{closure_name}' already exists in the program.")
+        }
+        // Add the closure registers to the program.
+        if self.closure_registers.insert(closure_name.clone(), register_types).is_some() {
+            bail!("'{closure_name}' already exists in the program.")
+        }
+        Ok(())
+    }
+
     /// Adds a new function to the program.
     ///
     /// # Errors
@@ -320,10 +496,7 @@ impl<N: Network> Program<N> {
                     // Ensure the opcode **is** a reserved opcode.
                     ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                     // Ensure the instruction is not the cast operation.
-                    ensure!(
-                        !matches!(instruction, Instruction::Cast(..)),
-                        "Instruction '{instruction}' is a cast operation."
-                    );
+                    ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
                 }
                 Opcode::Cast => {
                     // Retrieve the cast operation.
@@ -342,132 +515,20 @@ impl<N: Network> Program<N> {
                             if !self.interfaces.contains_key(interface_name) {
                                 bail!("Interface '{interface_name}' in function '{function_name}' is not defined.")
                             }
-
-                            // Ensure the operands is not empty.
-                            ensure!(
-                                !instruction.operands().is_empty(),
-                                "Casting to an interface requires at least one operand"
-                            );
-
                             // Retrieve the interface.
                             let interface = self.get_interface(&interface_name)?;
                             // Ensure the operand types match the interface.
-                            for (operand, (_, member_type)) in instruction.operands().iter().zip(interface.members()) {
-                                match operand {
-                                    // Ensure the literal type matches the member type.
-                                    Operand::Literal(literal) => {
-                                        ensure!(
-                                            PlaintextType::Literal(literal.to_type()) == *member_type,
-                                            "Literal '{literal}' in function '{function_name}' does not match interface '{interface_name}'."
-                                        )
-                                    }
-                                    // Ensure the register type matches the member type.
-                                    Operand::Register(register) => {
-                                        // Retrieve the register type.
-                                        let register_type = register_types.get_type(&self, &register)?;
-                                        // Ensure the register type is not a record.
-                                        ensure!(
-                                            !matches!(register_type, RegisterType::Record(..)),
-                                            "Casting a record into an interface in function '{function_name}' is illegal"
-                                        );
-                                        // Ensure the register type matches the member type.
-                                        ensure!(
-                                            register_type == RegisterType::Plaintext(*member_type),
-                                            "Register '{register}' in function '{function_name}' does not match interface '{interface_name}'."
-                                        )
-                                    }
-                                }
-                            }
+                            register_types.matches_interface(&self, instruction.operands(), &interface)?;
                         }
                         RegisterType::Record(record_name) => {
                             // Ensure the record type is defined in the program.
                             if !self.records.contains_key(record_name) {
                                 bail!("Record '{record_name}' in function '{function_name}' is not defined.")
                             }
-
-                            // Ensure the operands length is at least 2.
-                            ensure!(
-                                instruction.operands().len() >= 2,
-                                "Casting to a record requires at least two operands"
-                            );
-
-                            // Ensure the first input type is an address.
-                            match &instruction.operands()[0] {
-                                Operand::Literal(literal) => {
-                                    ensure!(
-                                        literal.to_type() == LiteralType::Address,
-                                        "Casting to a record requires the first operand to be an address"
-                                    )
-                                }
-                                Operand::Register(register) => {
-                                    // Retrieve the register type.
-                                    let register_type = register_types.get_type(&self, register)?;
-                                    // Ensure the register type is an address.
-                                    ensure!(
-                                        register_type
-                                            == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-                                        "Casting to a record requires the first operand to be an address"
-                                    );
-                                }
-                            }
-
-                            // Ensure the second input type is a u64.
-                            match &instruction.operands()[1] {
-                                Operand::Literal(literal) => {
-                                    ensure!(
-                                        literal.to_type() == LiteralType::U64,
-                                        "Casting to a record requires the second operand to be a u64"
-                                    )
-                                }
-                                Operand::Register(register) => {
-                                    // Retrieve the register type.
-                                    let register_type = register_types.get_type(&self, register)?;
-                                    // Ensure the register type is a u64.
-                                    ensure!(
-                                        register_type
-                                            == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
-                                        "Casting to a record requires the second operand to be a u64"
-                                    )
-                                }
-                            }
-
                             // Retrieve the record type.
                             let record_type = self.get_record(&record_name)?;
-                            // Ensure the operand types match the record entry types.
-                            for (operand, (_, entry_type)) in
-                                instruction.operands().iter().skip(2).zip(record_type.entries())
-                            {
-                                match entry_type {
-                                    EntryType::Constant(plaintext_type)
-                                    | EntryType::Public(plaintext_type)
-                                    | EntryType::Private(plaintext_type) => {
-                                        match operand {
-                                            // Ensure the literal type matches the member type.
-                                            Operand::Literal(literal) => {
-                                                ensure!(
-                                                    PlaintextType::Literal(literal.to_type()) == *plaintext_type,
-                                                    "Literal '{literal}' in function '{function_name}' does not match record '{record_name}'."
-                                                )
-                                            }
-                                            // Ensure the register type matches the member type.
-                                            Operand::Register(register) => {
-                                                // Retrieve the register type.
-                                                let register_type = register_types.get_type(&self, &register)?;
-                                                // Ensure the register type is not a record.
-                                                ensure!(
-                                                    !matches!(register_type, RegisterType::Record(..)),
-                                                    "Casting a record into a record entry in function '{function_name}' is illegal"
-                                                );
-                                                // Ensure the register type matches the entry type.
-                                                ensure!(
-                                                    register_type == RegisterType::Plaintext(*plaintext_type),
-                                                    "Register '{register}' in function '{function_name}' does not match record '{record_name}'."
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            // Ensure the operand types match the record type.
+                            register_types.matches_record(&self, instruction.operands(), &record_type)?;
                         }
                     }
                 }
@@ -503,7 +564,7 @@ impl<N: Network> Program<N> {
             let register = output.register();
             // Inform the user the output register is an input register, to ensure this is intended behavior.
             if register_types.is_input(register) {
-                eprintln!("Output {register} is an input register, ensure this is intended behavior");
+                eprintln!("Output {register} in '{function_name}' is an input register, ensure this is intended");
             }
 
             // Retrieve the register type (as a plaintext type).
@@ -552,15 +613,15 @@ impl<N: Network> Program<N> {
 
         // Add the function name to the identifiers.
         if self.identifiers.insert(function_name.clone(), ProgramDefinition::Function).is_some() {
-            bail!("'{}' already exists in the program.", function_name)
+            bail!("'{function_name}' already exists in the program.")
         }
         // Add the function to the program.
         if self.functions.insert(function_name.clone(), function).is_some() {
-            bail!("'{}' already exists in the program.", function_name)
+            bail!("'{function_name}' already exists in the program.")
         }
         // Add the function registers to the program.
         if self.function_registers.insert(function_name.clone(), register_types).is_some() {
-            bail!("'{}' already exists in the program.", function_name)
+            bail!("'{function_name}' already exists in the program.")
         }
         Ok(())
     }

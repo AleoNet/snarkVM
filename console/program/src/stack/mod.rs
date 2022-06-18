@@ -88,7 +88,14 @@ impl<N: Network> Stack<N> {
             Self { program, register_types, input_registers: IndexMap::new(), destination_registers: IndexMap::new() };
 
         // Initialize the input registers.
-        for ((input_register, value_type), input) in stack.register_types.to_inputs().zip_eq(inputs.iter()) {
+        for (((input_register, register_type), input), value_type) in stack
+            .register_types
+            .to_inputs()
+            .zip_eq(inputs.iter())
+            .zip_eq(function.inputs().iter().map(|i| i.value_type()))
+        {
+            // Ensure the input register is a locator.
+            ensure!(matches!(input_register, Register::Locator(_)), "Expected locator, found {input_register}");
             // Ensure the input value matches the declared type in the register.
             stack.program.matches_input(input, &value_type)?;
 
@@ -118,7 +125,9 @@ impl<N: Network> Stack<N> {
         let mut outputs = Vec::with_capacity(function.outputs().len());
 
         // Load the outputs.
-        for (register, value_type) in stack.register_types.to_outputs() {
+        for ((register, register_type), value_type) in
+            stack.register_types.to_outputs().zip_eq(function.outputs().iter().map(|o| o.value_type()))
+        {
             // Retrieve the stack value from the register.
             let register_value = stack.load(&Operand::Register(register.clone()))?;
 

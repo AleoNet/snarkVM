@@ -14,7 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{EntryType, Identifier, LiteralType, PlaintextType, Program, Register, RegisterType, ValueType};
+mod matches;
+
+use crate::{
+    EntryType,
+    Identifier,
+    Interface,
+    LiteralType,
+    Operand,
+    PlaintextType,
+    Program,
+    RecordType,
+    Register,
+    RegisterType,
+    ValueType,
+};
 use snarkvm_console_network::prelude::*;
 
 use indexmap::IndexMap;
