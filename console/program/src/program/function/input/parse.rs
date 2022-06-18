@@ -107,10 +107,15 @@ mod tests {
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(0));
         assert_eq!(input.value_type(), &ValueType::<CurrentNetwork>::from_str("field.private")?);
 
-        // Composite
+        // Interface
         let input = Input::<CurrentNetwork>::parse("input r1 as signature.private;").unwrap().1;
         assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(1));
         assert_eq!(input.value_type(), &ValueType::<CurrentNetwork>::from_str("signature.private")?);
+
+        // Record
+        let input = Input::<CurrentNetwork>::parse("input r2 as token.record;").unwrap().1;
+        assert_eq!(input.register(), &Register::<CurrentNetwork>::Locator(2));
+        assert_eq!(input.value_type(), &ValueType::<CurrentNetwork>::from_str("token.record")?);
 
         Ok(())
     }
@@ -121,9 +126,13 @@ mod tests {
         let input = Input::<CurrentNetwork>::from_str("input r0 as field.private;")?;
         assert_eq!("input r0 as field.private;", input.to_string());
 
-        // Composite
+        // Interface
         let input = Input::<CurrentNetwork>::from_str("input r1 as signature.private;")?;
         assert_eq!("input r1 as signature.private;", input.to_string());
+
+        // Record
+        let input = Input::<CurrentNetwork>::parse("input r2 as token.record;").unwrap().1;
+        assert_eq!(format!("{}", input), "input r2 as token.record;");
 
         Ok(())
     }
