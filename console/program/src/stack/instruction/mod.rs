@@ -23,11 +23,7 @@ pub(crate) use operand::*;
 mod operation;
 pub(crate) use operation::*;
 
-use crate::{
-    program::{Program, RegisterType},
-    Register,
-    Stack,
-};
+use crate::{program::Program, Register, RegisterType, Stack};
 use snarkvm_console_network::{
     prelude::{
         alt,

@@ -26,5 +26,8 @@ pub use plaintext_type::PlaintextType;
 mod record_type;
 pub use record_type::{EntryType, RecordType};
 
+mod register_type;
+pub use register_type::RegisterType;
+
 mod value_type;
 pub use value_type::ValueType;

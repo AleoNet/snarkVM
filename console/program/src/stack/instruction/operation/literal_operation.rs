@@ -15,13 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    program::{Program, RegisterType},
+    program::Program,
     stack::{Operand, Operation},
     Literal,
     LiteralType,
     Opcode,
     PlaintextType,
     Register,
+    RegisterType,
     Stack,
 };
 use snarkvm_console_network::prelude::*;

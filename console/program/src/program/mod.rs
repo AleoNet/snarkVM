@@ -20,9 +20,6 @@ pub use function::*;
 mod register;
 pub use register::Register;
 
-mod register_type;
-pub use register_type::*;
-
 mod register_types;
 pub use register_types::*;
 
@@ -40,6 +37,7 @@ use crate::{
     PlaintextType,
     Record,
     RecordType,
+    RegisterType,
     Stack,
     StackValue,
     Value,

@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
+mod parse;
+
 use crate::{Identifier, PlaintextType, ValueType};
 use snarkvm_console_network::prelude::*;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+use enum_index::EnumIndex;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum RegisterType<N: Network> {
     /// A plaintext type.
     Plaintext(PlaintextType<N>),
@@ -33,18 +38,6 @@ impl<N: Network> From<ValueType<N>> for RegisterType<N> {
             | ValueType::Public(plaintext_type)
             | ValueType::Private(plaintext_type) => RegisterType::Plaintext(plaintext_type),
             ValueType::Record(record_name) => RegisterType::Record(record_name),
-        }
-    }
-}
-
-impl<N: Network> Display for RegisterType<N> {
-    /// Prints the register type as a string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            // Prints the plaintext type, i.e. signature
-            Self::Plaintext(plaintext_type) => write!(f, "{plaintext_type}"),
-            // Prints the record name, i.e. token.record
-            Self::Record(record_name) => write!(f, "{record_name}.record"),
         }
     }
 }
