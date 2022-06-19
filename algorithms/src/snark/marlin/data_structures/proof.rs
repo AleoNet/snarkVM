@@ -149,8 +149,23 @@ impl<F: PrimeField> Evaluations<F> {
         mut writer: W,
         compress: Compress,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
+        for z_a_eval in &self.z_a_evals {
+            CanonicalSerialize::serialize_with_mode(z_a_eval, &mut writer, compress)?;
+        }
         for z_b_eval in &self.z_b_evals {
             CanonicalSerialize::serialize_with_mode(z_b_eval, &mut writer, compress)?;
+        }
+        for z_c_eval in &self.z_c_evals {
+            CanonicalSerialize::serialize_with_mode(z_c_eval, &mut writer, compress)?;
+        }
+        for s_m_eval in &self.s_m_evals {
+            CanonicalSerialize::serialize_with_mode(s_m_eval, &mut writer, compress)?;
+        }
+        for s_l_eval in &self.s_l_evals {
+            CanonicalSerialize::serialize_with_mode(s_l_eval, &mut writer, compress)?;
+        }
+        for f_eval in &self.f_evals {
+            CanonicalSerialize::serialize_with_mode(f_eval, &mut writer, compress)?;
         }
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_a_eval, &mut writer, compress)?;
@@ -161,7 +176,12 @@ impl<F: PrimeField> Evaluations<F> {
 
     fn serialized_size(&self, compress: Compress) -> usize {
         let mut size = 0;
+        size += self.z_a_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.z_b_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.z_c_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_m_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_l_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.f_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_b_eval, compress);
@@ -240,7 +260,7 @@ impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn get(&self, label: &str) -> Option<F> {
         if label.starts_with("z_a_") {
             let index = label.strip_prefix("z_a_").expect("should be able to strip identified prefix");
-            self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
+            self.z_a_evals.get(index.parse::<usize>().unwrap()).copied()
         } else if label.starts_with("z_b_") {
             let index = label.strip_prefix("z_b_").expect("should be able to strip identified prefix");
             self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
@@ -285,7 +305,12 @@ impl<F: PrimeField> Valid for Evaluations<F> {
 
 impl<F: PrimeField> Evaluations<F> {
     pub fn to_field_elements(&self) -> Vec<F> {
-        let mut result = self.z_b_evals.clone();
+        let mut result = self.z_a_evals.clone();
+        result.extend(self.z_b_evals.iter());
+        result.extend(self.z_c_evals.iter());
+        result.extend(self.s_m_evals.iter());
+        result.extend(self.s_l_evals.iter());
+        result.extend(self.f_evals.iter());
         result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
         result
     }

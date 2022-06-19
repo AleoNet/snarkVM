@@ -272,12 +272,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mut lincheck_sumcheck = LinearCombination::empty("placeholder");
             // Add rowcheck
             let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
+            for (i, combiner) in batch_combiners.iter().enumerate() {
             rowcheck
-                .add(batch_s_m_at_beta * (batch_z_a_at_beta * batch_z_b_at_beta - batch_z_c_at_beta), LCTerm::One)
-                .add(batch_s_l_at_beta * (batch_z_a_at_beta + zeta * batch_z_b_at_beta + zeta_squared
-                    * batch_z_c_at_beta - batch_f_at_beta),
+                .add((s_m_s_at_beta[i] * (z_a_s_at_beta[i] * z_b_s_at_beta[i] - z_c_s_at_beta[i])) * combiner, LCTerm::One)
+                .add((s_l_s_at_beta[i] * (z_a_s_at_beta[i] + zeta * z_b_s_at_beta[i] + zeta_squared
+                    * z_c_s_at_beta[i] - f_s_at_beta[i])) * combiner,
                     LCTerm::One,
                 );
+            }
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }

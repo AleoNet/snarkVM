@@ -102,9 +102,9 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.a_arith.serialize_with_mode(&mut writer, compress)?;
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
-        self.mode.serialize_with_mode(&mut writer, compress)?;
         self.s_m.serialize_with_mode(&mut writer, compress)?;
         self.s_l.serialize_with_mode(&mut writer, compress)?;
+        self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
     }
 
@@ -118,9 +118,9 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.a_arith.serialized_size(mode);
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
-        size += self.mode.serialized_size(mode);
         size += self.s_m.serialized_size(mode);
         size += self.s_l.serialized_size(mode);
+        size += self.mode.serialized_size(mode);
         size
     }
 }
