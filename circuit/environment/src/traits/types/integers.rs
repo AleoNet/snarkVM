@@ -53,7 +53,9 @@ pub trait IntegerTrait<I: IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16
 }
 
 pub trait IntegerCore<I: IntegerType>:
-    AddAssign
+    AbsChecked
+    + AbsWrapped
+    + AddAssign
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>

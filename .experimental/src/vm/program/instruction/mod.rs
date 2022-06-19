@@ -83,8 +83,8 @@ macro_rules! instruction {
     // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
     ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
         $macro_!{$object, |$input| $operation, {
-            // Abs,
-            // AbsWrapped,
+            Abs,
+            AbsWrapped,
             Add,
             AddWrapped,
             And,
@@ -182,10 +182,10 @@ macro_rules! instruction {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
-    // /// Compute the absolute value of `first`, checking for overflow, and storing the outcome in `destination`.
-    // Abs(Abs<N, A>),
-    // /// Compute the absolute value of `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    // AbsWrapped(AbsWrapped<N, A>),
+    /// Compute the absolute value of `first`, checking for overflow, and storing the outcome in `destination`.
+    Abs(Abs<N, A>),
+    /// Compute the absolute value of `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    AbsWrapped(AbsWrapped<N, A>),
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<N, A>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -527,7 +527,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            13,
+            15,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

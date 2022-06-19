@@ -32,6 +32,35 @@ impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> AbsChecked for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `absolute value` of `self`.
+    #[inline]
+    fn abs_checked(self) -> Self::Output {
+        match I::is_signed() {
+            true => match self.integer.checked_abs() {
+                Some(integer) => Integer::new(integer),
+                None => E::halt(format!("Integer absolute value failed on: {}", self.integer)),
+            },
+            false => self,
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> AbsWrapped for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `absolute value` of `self`.
+    #[inline]
+    fn abs_wrapped(self) -> Self::Output {
+        match I::is_signed() {
+            true => Integer::new(self.integer.wrapping_abs()),
+            false => self,
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 

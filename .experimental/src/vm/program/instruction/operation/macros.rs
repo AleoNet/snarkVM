@@ -38,6 +38,60 @@
 /// ```
 #[macro_export]
 macro_rules! operation {
+    ($vis:vis struct $name:ident<$operator:path, $operate:ident, $opcode:tt> { $( $input:ident => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+        /// The implementation of the binary operation.
+        #[derive(Clone, PartialEq, Eq, Hash)]
+        $vis struct $name<N: Network, A: circuit::Aleo>(core::marker::PhantomData<(N, A)>);
+
+        impl<N: Network, A: circuit::Aleo> $crate::vm::Operation<N, console::program::Literal<N>, circuit::Literal<A>, console::program::LiteralType, 1> for $name<N, A> {
+            /// The opcode of the operation.
+            const OPCODE: $crate::vm::Opcode = Opcode::Literal($opcode);
+
+            /// Returns the result of evaluating the operation on the given inputs.
+            #[inline]
+            fn evaluate(inputs: &[console::program::Literal<N>; 1]) -> Result<console::program::Literal<N>> {
+                // Prepare the operator.
+                use $operator as Operator;
+                // Compute the output.
+                Ok($crate::evaluate!(match Operator::$operate(inputs) { $( $input => $output, )+ }))
+            }
+
+            /// Returns the result of executing the operation on the given circuit inputs.
+            #[inline]
+            fn execute(inputs: &[circuit::Literal<A>; 1]) -> Result<circuit::Literal<A>> {
+                // Prepare the operator.
+                use $operator as Operator;
+                // Compute the output.
+                Ok($crate::execute!(match Operator::$operate(inputs) { $( $input => $output, )+ }))
+            }
+
+            /// Returns the output type from the given input types.
+            #[inline]
+            fn output_type(inputs: &[console::program::LiteralType; 1]) -> Result<console::program::LiteralType> {
+                // Compute the output type.
+                Ok($crate::output_type!(match inputs { $( $input => $output, )+ }))
+            }
+        }
+
+        paste::paste! {
+            #[cfg(test)]
+            mod [<test _ $operate>] {
+                use super::$name;
+                use console::{network::prelude::*, types::*};
+
+                // Prepare the environment.
+                type CurrentNetwork = console::network::Testnet3;
+                type CurrentAleo = circuit::network::AleoV0;
+
+                // Prepare the operator.
+                use $operator as Operator;
+                // Prepare the operation.
+                type Operation = $name::<CurrentNetwork, CurrentAleo>;
+                // Execute the test cases for the operation.
+                $crate::test_execute!(Operator::$operate == Operation::execute { $( $input => $output $( ($($condition),+) )?, )+ });
+            }
+        }
+    };
     ($vis:vis struct $name:ident<$operator:path, $operate:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
         #[derive(Clone, PartialEq, Eq, Hash)]
@@ -115,13 +169,33 @@ macro_rules! operation {
 /// ```
 #[macro_export]
 macro_rules! evaluate {
+    // Unary operation.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( $input:ident => $output:ident, )+ }) => {{
+        // Retrieve the operand.
+        let [first] = $inputs;
+        // Compute the output.
+        match first {
+            $(console::program::Literal::$input(first) => console::program::Literal::$output(first.$operate()),)+
+            _ => bail!("Invalid operand for the '{}' instruction", Self::OPCODE),
+        }
+    }};
     // Binary operation.
     (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
-        // Retrieve the first and second operands.
+        // Retrieve the operands.
         let [first, second] = $inputs;
         // Compute the output.
         match (first, second) {
             $((console::program::Literal::$input_a(first), console::program::Literal::$input_b(second)) => console::program::Literal::$output(first.$operate(second)),)+
+            _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
+        }
+    }};
+    // Ternary operation.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident, )+ }) => {{
+        // Retrieve the operands.
+        let [first, second, third] = $inputs;
+        // Compute the output.
+        match (first, second, third) {
+            $((console::program::Literal::$input_a(first), console::program::Literal::$input_b(second), console::program::Literal::$input_c(third)) => console::program::Literal::$output(first.$operate(second, third)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -148,13 +222,33 @@ macro_rules! evaluate {
 /// ```
 #[macro_export]
 macro_rules! execute {
+    // Unary operation.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( $input:ident => $output:ident, )+ }) => {{
+        // Retrieve the operand.
+        let [first] = $inputs.to_owned();
+        // Compute the output.
+        match first {
+            $(circuit::Literal::$input(first) => circuit::Literal::$output(first.$operate()),)+
+            _ => bail!("Invalid operand for the '{}' instruction", Self::OPCODE),
+        }
+    }};
     // Binary operation.
     (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
-        // Retrieve the first and second operands.
+        // Retrieve the operands.
         let [first, second] = $inputs.to_owned();
         // Compute the output.
         match (first, second) {
             $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second)) => circuit::Literal::$output(first.$operate(&second)),)+
+            _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
+        }
+    }};
+    // Ternary operation.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident, )+ }) => {{
+        // Retrieve the operands.
+        let [first, second] = $inputs.to_owned();
+        // Compute the output.
+        match (first, second, third) {
+            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second), circuit::Literal::$input_c(third)) => circuit::Literal::$output(first.$operate(&second, &third)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -181,13 +275,33 @@ macro_rules! execute {
 /// ```
 #[macro_export]
 macro_rules! output_type {
+    // Unary operation.
+    (match $inputs:ident { $( $input:ident => $output:ident, )+ }) => {{
+        // Retrieve the operand.
+        let [first] = $inputs;
+        // Compute the output type.
+        match first {
+            $(console::program::LiteralType::$input => console::program::LiteralType::$output,)+
+            _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
+        }
+    }};
     // Binary operation.
     (match $inputs:ident { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
-        // Retrieve the first and second operands.
+        // Retrieve the operands.
         let [first, second] = $inputs;
         // Compute the output type.
         match (first, second) {
             $((console::program::LiteralType::$input_a, console::program::LiteralType::$input_b) => console::program::LiteralType::$output,)+
+            _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
+        }
+    }};
+    // Ternary operation.
+    (match $inputs:ident { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident, )+ }) => {{
+        // Retrieve the operands.
+        let [first, second, third] = $inputs;
+        // Compute the output type.
+        match (first, second, third) {
+            $((console::program::LiteralType::$input_a, console::program::LiteralType::$input_b, console::program::LiteralType::$input_c) => console::program::LiteralType::$output,)+
             _ => bail!("Invalid operand types for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -257,6 +371,44 @@ mod tests {
     /// ```
     #[macro_export]
     macro_rules! test_execute {
+        // Case 0: Unary operation.
+        ($operator:tt::$operate:tt == $operation:tt::$execute:tt { $( $input:ident => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+            // For each given case of inputs and outputs, invoke `Case 1A` or `Case 1B` (see below).
+            $( $crate::test_execute!{$operator::$operate == $operation::$execute for $input => $output $( ($($condition),+) )?} )+
+
+            // For each non-existent case of inputs and outputs, invoke the following test to ensure the operation **fails**.
+            paste::paste! {
+                #[test]
+                fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                    for i in 0..10 {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                            for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                // Skip this iteration, if this is **not** an invalid operand case.
+                                $(if literal_a.to_type() == console::program::LiteralType::$input {
+                                    continue;
+                                })+
+
+                                // Attempt to compute the invalid operand case.
+                                let result_a = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::evaluate(&[literal_a.clone()]);
+                                // Ensure the computation failed.
+                                assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a}");
+
+                                // Attempt to compute the invalid operand case.
+                                let result_b = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::$execute(&[
+                                    circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
+                                ]);
+                                // Ensure the computation failed.
+                                assert!(result_b.is_err(), "An invalid operands case (on iteration {i}) did not fail (circuit): {literal_a}");
+                                // Reset the circuit.
+                                <CurrentAleo as circuit::Environment>::reset();
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+            }
+        };
+
         // Case 1: Binary operation.
         ($operator:tt::$operate:tt == $operation:tt::$execute:tt { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
             // For each given case of inputs and outputs, invoke `Case 1A` or `Case 1B` (see below).
@@ -305,6 +457,101 @@ mod tests {
         // Private Macros //
         ////////////////////
 
+        // Case 0A: Unary operation.
+        // Case 0B: Unary operation, where:
+        //   1. "ensure overflow halts"
+        //     - If the sampled values overflow on evaluation, ensure it halts.
+        //     - If the sampled values **do not** overflow on evaluation, ensure it succeeds.
+        ($operator:tt::$operate:tt == $operation:tt::$execute:tt for $input:ident => $output:ident $( ($($condition:tt),+) )?) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operate _ $input:lower _ into _ $output:lower>]() -> Result<()> {
+                    // Ensure the expected output type is correct.
+                    assert_eq!(
+                        console::program::LiteralType::$output,
+                        <$operation as $crate::vm::Operation<_, _, _, _, 1>>::output_type(&[console::program::LiteralType::$input.into()])?
+                    );
+
+                    // Check the operation on randomly-sampled values.
+                    for i in 0..100u64 {
+                        // Sample the first and second value.
+                        #[allow(deprecated)]
+                        let a = match i {
+                            0 => $input::zero(),
+                            1.. => $input::<CurrentNetwork>::rand(&mut test_rng())
+                        };
+
+                        // Initialize an indicator whether the operation should succeed or not.
+                        #[allow(unused_mut)]
+                        let mut should_succeed = true;
+                        /// A helper macro to check the conditions.
+                        macro_rules! check_condition {
+                            ("ensure overflows halt") => {
+                                match *<$operation as $crate::vm::Operation<_, _, _, _, 1>>::OPCODE {
+                                    "abs" | "abs.w" => should_succeed &= (*a).checked_abs().is_some(),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 1>>::OPCODE),
+                                }
+                            };
+                        }
+                        // Check the conditions.
+                        $( $( check_condition!($condition); )+ )?
+
+                        // If `should_succeed` is `true`, compute the expected output.
+                        let expected = match should_succeed {
+                            true => Some(console::program::Literal::$output(a.$operate())),
+                            false => None
+                        };
+
+                        for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                            // Initialize the operands.
+                            let a = console::program::Literal::from_str(&format!("{a}"))?;
+
+                            // Initialize the operands.
+                            let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;
+
+                            // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
+                            if should_succeed {
+                                // Compute the evaluated output.
+                                let candidate_a = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::evaluate(&[a])?;
+                                // Compute the executed output.
+                                let candidate_b = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::$execute(&[first])?;
+
+                                // Ensure the outputs match.
+                                assert_eq!(expected, Some(candidate_a));
+                                // Ensure the outputs match.
+                                assert_eq!(expected, Some(circuit::Eject::eject_value(&candidate_b)));
+
+                            }
+                            // If the sampled values overflow on evaluation, ensure it halts.
+                            else {
+                                // Halt the evaluation.
+                                let result_a = std::panic::catch_unwind(|| <$operation as $crate::vm::Operation<_, _, _, _, 1>>::evaluate(&[a.clone()]));
+                                // Ensure the evaluation halted.
+                                assert!(result_a.is_err(), "Failure case (on iteration {i}) did not halt (console): {a}");
+
+                                // Halt the execution.
+                                if mode_a.is_constant() {
+                                    // Attempt to execute a failure case.
+                                    let result_b = std::panic::catch_unwind(|| <$operation as $crate::vm::Operation<_, _, _, _, 1>>::$execute(&[first]));
+                                    // Ensure the execution halted.
+                                    assert!(result_b.is_err(), "Failure case (on iteration {i}) did not halt (circuit): {a}");
+                                } else {
+                                    // Attempt to execute a failure case.
+                                    let _result_b = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::$execute(&[first]);
+                                    // Ensure the execution halted.
+                                    assert!(!<CurrentAleo as circuit::Environment>::is_satisfied(), "Failure case (on iteration {i}) should not be satisfied (circuit): {a}");
+                                }
+                            }
+                            // Reset the circuit.
+                            <CurrentAleo as circuit::Environment>::reset();
+                        }
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
         // Case 1A: Binary operation.
         // Case 1B: Binary operation, where:
         //   1. "ensure overflow halts" | "ensure exponentiation overflow halts"
@@ -343,28 +590,26 @@ mod tests {
                         // Initialize an indicator whether the operation should succeed or not.
                         #[allow(unused_mut)]
                         let mut should_succeed = true;
-                        {
-                            /// A helper macro to check the conditions.
-                            macro_rules! check_condition {
-                                ("ensure overflows halt") => {
-                                    match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
-                                        "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
-                                        "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
-                                        "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
-                                        "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
-                                        _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
-                                    }
-                                };
-                                ("ensure exponentiation overflows halt") => {
-                                    should_succeed &= (*a).checked_pow((*b) as u32).is_some()
-                                };
-                                ("ensure divide by zero halt") => {
-                                    should_succeed &= (*b) != 0
-                                };
-                            }
-                            // Check the conditions.
-                            $( $( check_condition!($condition); )+ )?
+                        /// A helper macro to check the conditions.
+                        macro_rules! check_condition {
+                            ("ensure overflows halt") => {
+                                match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
+                                    "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
+                                    "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
+                                    "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
+                                    "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
+                                }
+                            };
+                            ("ensure exponentiation overflows halt") => {
+                                should_succeed &= (*a).checked_pow((*b) as u32).is_some()
+                            };
+                            ("ensure divide by zero halt") => {
+                                should_succeed &= (*b) != 0
+                            };
                         }
+                        // Check the conditions.
+                        $( $( check_condition!($condition); )+ )?
 
                         // If `should_succeed` is `true`, compute the expected output.
                         let expected = match should_succeed {

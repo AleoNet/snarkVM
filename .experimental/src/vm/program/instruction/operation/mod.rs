@@ -42,6 +42,32 @@ pub trait Operation<N: Network, Value: Parser + ToBits, CircuitValue, ValueType:
     fn output_type(inputs: &[ValueType; NUM_OPERANDS]) -> Result<ValueType>;
 }
 
+/// Compute the absolute value of `first`, checking for overflow/underflow, and storing the outcome in `destination`.
+pub type Abs<N, A> = UnaryLiteral<N, A, AbsOperation<N, A>>;
+
+crate::operation!(
+    pub struct AbsOperation<console::network::AbsChecked, abs_checked, "abs"> {
+        I8 => I8 ("ensure overflows halt"),
+        I16 => I16 ("ensure overflows halt"),
+        I32 => I32 ("ensure overflows halt"),
+        I64 => I64 ("ensure overflows halt"),
+        I128 => I128 ("ensure overflows halt"),
+    }
+);
+
+/// Compute the absolute value of `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+pub type AbsWrapped<N, A> = UnaryLiteral<N, A, AbsWrappedOperation<N, A>>;
+
+crate::operation!(
+    pub struct AbsWrappedOperation<console::network::AbsWrapped, abs_wrapped, "abs.w"> {
+        I8 => I8,
+        I16 => I16,
+        I32 => I32,
+        I64 => I64,
+        I128 => I128,
+    }
+);
+
 /// Adds `first` with `second`, storing the outcome in `destination`.
 pub type Add<N, A> = BinaryLiteral<N, A, AddOperation<N, A>>;
 
