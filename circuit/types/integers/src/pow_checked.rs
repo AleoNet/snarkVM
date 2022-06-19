@@ -16,9 +16,30 @@
 
 use super::*;
 
+impl<E: Environment, I: IntegerType, M: Magnitude> Pow<Integer<E, M>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: Integer<E, M>) -> Self::Output {
+        self.pow_checked(&other)
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> Pow<&Integer<E, M>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: &Integer<E, M>) -> Self::Output {
+        self.pow_checked(other)
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
+    /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow_checked(&self, other: &Integer<E, M>) -> Self::Output {
         // Determine the variable mode.

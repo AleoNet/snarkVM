@@ -131,10 +131,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
-        // Ensure there are input statements in the function.
-        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
-        // Ensure there are instructions in the function.
-        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
 
         // Retrieve the register types.
         let register_types = program.get_function_registers(function_name)?;
@@ -148,22 +144,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .zip_eq(inputs.iter())
             .zip_eq(function.inputs().iter().map(|i| i.value_type()))
         {
-            // Ensure the input value matches the declared type in the register.
-            stack.program.matches_input(input, &value_type)?;
-
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-
-            // TODO (howardwu): In circuit, allocate using the value type.
-            // stack.input_registers.insert(register.locator(), match (input.clone(), value_type) {
-            //     (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-            //     (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-            //     (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-            //     (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
-            //     _ => bail!("Input value does not match the input register type."),
-            // });
-
             // Assign the input to the register.
-            stack.store(&register, input.clone());
+            stack.store(&register, input.clone())?;
         }
 
         // Evaluate the instructions.
@@ -236,10 +219,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
-        // Ensure there are input statements in the function.
-        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
-        // Ensure there are instructions in the function.
-        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
 
         // Retrieve the register types.
         let register_types = program.get_function_registers(function_name)?;
@@ -253,10 +232,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .zip_eq(inputs.iter())
             .zip_eq(function.inputs().iter().map(|i| i.value_type()))
         {
-            // Ensure the input value matches the declared type in the register.
-            stack.program.matches_input(input, &value_type)?;
             // Assign the console input to the register.
-            stack.store(&register, input.clone());
+            stack.store(&register, input.clone())?;
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
             // Inject the input into a circuit.

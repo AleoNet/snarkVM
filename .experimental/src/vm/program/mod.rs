@@ -159,7 +159,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
     /// Returns the closure with the given name.
     pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N, A>> {
-        self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))
+        // Attempt to retrieve the closure.
+        let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
+        // Ensure there are input statements in the closure.
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        // Ensure there are instructions in the closure.
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+        // Return the closure.
+        Ok(closure)
     }
 
     /// Returns the closure registers with the given name.
@@ -169,7 +176,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
     /// Returns the function with the given name.
     pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N, A>> {
-        self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))
+        // Attempt to retrieve the function.
+        let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
+        // Ensure there are input statements in the function.
+        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
+        // Ensure there are instructions in the function.
+        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Return the function.
+        Ok(function)
     }
 
     /// Returns the function registers with the given name.

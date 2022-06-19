@@ -77,7 +77,12 @@ macro_rules! operation {
             #[cfg(test)]
             mod [<test _ $operate>] {
                 use super::$name;
-                use console::network::prelude::*;
+                use console::{network::prelude::*, types::*};
+
+                // Prepare the environment.
+                type CurrentNetwork = console::network::Testnet3;
+                type CurrentAleo = circuit::network::AleoV0;
+
                 // Prepare the operator.
                 use $operator as Operator;
                 // Evaluate the test cases for the operation.
@@ -261,29 +266,17 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $evaluate _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    use console::types::*;
-
-                    type CurrentNetwork = console::network::Testnet3;
-                    type CurrentAleo = circuit::network::AleoV0;
-
                     for i in 0..100 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                             for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                                // Retrieve the types of the literals.
-                                let (type_a, type_b) = (literal_a.to_type(), literal_b.to_type());
-
                                 // Skip this iteration, if this is **not** an invalid operand case.
-                                $(if type_a == console::program::LiteralType::$input_a && type_b == console::program::LiteralType::$input_b {
+                                $(if literal_a.to_type() == console::program::LiteralType::$input_a
+                                  && literal_b.to_type() == console::program::LiteralType::$input_b {
                                     continue;
                                 })+
 
-                                // Initialize the operands.
-                                let first = console::program::Literal::from_str(&format!("{literal_a}"))?;
-                                let second = console::program::Literal::from_str(&format!("{literal_b}"))?;
-
                                 // Attempt to compute the invalid operand case.
-                                let result = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$evaluate(&[first, second]);
-
+                                let result = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$evaluate(&[literal_a.clone(), literal_b.clone()]);
                                 // Ensure the computation failed.
                                 assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
                             }
@@ -310,14 +303,9 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $evaluate _ $operate _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
-                    use console::types::*;
-
-                    type CurrentNetwork = console::network::Testnet3;
-                    type CurrentAleo = circuit::network::AleoV0;
-
                     // Ensure the expected output type is correct.
                     assert_eq!(
-                        console::program::LiteralType::from(console::program::LiteralType::$output),
+                        console::program::LiteralType::$output,
                         <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
                     );
 
@@ -327,19 +315,9 @@ mod tests {
                         #[allow(deprecated)]
                         let (a, b) = match i {
                             0 => ($input_a::zero(), $input_b::zero()),
-                            1 => {
-                                let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                                (a, $input_b::zero())
-                            },
-                            2 => {
-                                let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
-                                ($input_a::zero(), b)
-                            },
-                            3.. => {
-                                let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                                let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
-                                (a, b)
-                            }
+                            1 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero()),
+                            2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng())),
+                            3.. => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()))
                         };
 
                         // Initialize the operands.
@@ -430,34 +408,24 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $execute _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    use console::types::*;
-
-                    type CurrentNetwork = console::network::Testnet3;
-                    type CurrentAleo = circuit::network::AleoV0;
-
                     for i in 0..10 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                             for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                                 for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                     for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
-                                        // Retrieve the types of the literals.
-                                        let (type_a, type_b) = (literal_a.to_type(), literal_b.to_type());
-
                                         // Skip this iteration, if this is **not** an invalid operand case.
-                                        $(if type_a == console::program::LiteralType::$input_a && type_b == console::program::LiteralType::$input_b {
+                                        $(if literal_a.to_type() == console::program::LiteralType::$input_a
+                                          && literal_b.to_type() == console::program::LiteralType::$input_b {
                                             continue;
                                         })+
 
-                                        // Initialize the operands.
-                                        let first = circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?;
-                                        let second = circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?;
-
                                         // Attempt to compute the invalid operand case.
-                                        let result = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second]);
-
+                                        let result = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[
+                                            circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
+                                            circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?,
+                                        ]);
                                         // Ensure the computation failed.
                                         assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
-
                                         // Reset the circuit.
                                         <CurrentAleo as circuit::Environment>::reset();
                                     }
@@ -486,14 +454,9 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $execute _ $operate _ $input_a:lower _ $input_b:lower _ into _ $output:lower>]() -> Result<()> {
-                    use console::types::*;
-
-                    type CurrentNetwork = console::network::Testnet3;
-                    type CurrentAleo = circuit::network::AleoV0;
-
                     // Ensure the expected output type is correct.
                     assert_eq!(
-                        console::program::LiteralType::from(console::program::LiteralType::$output),
+                        console::program::LiteralType::$output,
                         <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
                     );
 
@@ -505,19 +468,9 @@ mod tests {
                                 #[allow(deprecated)]
                                 let (a, b) = match i {
                                     0 => ($input_a::zero(), $input_b::zero()),
-                                    1 => {
-                                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                                        (a, $input_b::zero())
-                                    },
-                                    2 => {
-                                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
-                                        ($input_a::zero(), b)
-                                    },
-                                    3.. => {
-                                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
-                                        (a, b)
-                                    }
+                                    1 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero()),
+                                    2 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng())),
+                                    3.. => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()))
                                 };
 
                                 // Initialize the operands.
@@ -533,6 +486,7 @@ mod tests {
                                             "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
                                             "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
                                             "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
+                                            // "pow" | "pow.w" => should_succeed &= (*a).checked_pow(*b).is_some(),
                                             "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
                                             _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
                                         }

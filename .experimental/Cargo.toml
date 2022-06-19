@@ -53,6 +53,9 @@ version = "1.8"
 [dependencies.itertools]
 version = "0.10.1"
 
+[dependencies.num-traits]
+version = "0.2"
+
 [dependencies.paste]
 version = "1.0.7"
 

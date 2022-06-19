@@ -82,10 +82,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
-        // Ensure there are input statements in the closure.
-        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
-        // Ensure there are instructions in the closure.
-        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
 
         // Retrieve the register types.
         let register_types = stack.program().get_closure_registers(&self.name)?;
@@ -95,12 +91,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
 
         // Ensure the inputs match the expected closure inputs.
         for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
-            // Ensure the input matches the declared type in the register.
-            closure_stack.program().matches_register(input, &register_type)?;
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
             // TODO (howardwu): OR if input is a record, forbid and error.
             // Assign the input value to the register.
-            closure_stack.store(&register, input.clone());
+            closure_stack.store(&register, input.clone())?;
         }
 
         // Evaluate the instructions.
@@ -148,10 +142,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
-        // Ensure there are input statements in the closure.
-        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
-        // Ensure there are instructions in the closure.
-        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
 
         // Retrieve the register types.
         let register_types = stack.program().get_closure_registers(&self.name)?;
@@ -161,12 +151,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
 
         // Ensure the inputs match the expected closure inputs.
         for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
-            // Ensure the input matches the declared type in the register.
-            closure_stack.program().matches_register(&input.eject_value(), &register_type)?;
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
             // TODO (howardwu): OR if input is a record, forbid and error.
             // Assign the input value to the register.
-            closure_stack.store_circuit(&register, input.clone());
+            closure_stack.store_circuit(&register, input.clone())?;
         }
 
         // Evaluate the instructions.
@@ -202,10 +190,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     ) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the closure.
         let closure = program.get_closure(&self.name)?;
-        // Ensure there are input statements in the closure.
-        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
-        // Ensure there are instructions in the closure.
-        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
 
         // Ensure the number of operands matches the number of input statements.
         if closure.inputs().len() != self.operands.len() {
