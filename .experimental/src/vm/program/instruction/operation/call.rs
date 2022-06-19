@@ -66,15 +66,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
-        // Initialize a vector to store the operand values.
-        let mut inputs = Vec::with_capacity(self.operands.len());
         // Load the operands values.
-        self.operands.iter().try_for_each(|operand| {
-            // Load and append the value.
-            inputs.push(stack.load(operand)?);
-            // Move to the next iteration.
-            Ok::<_, Error>(())
-        })?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
 
         // Retrieve the closure from the program.
         let closure = stack.program().get_closure(&self.name)?;
@@ -124,17 +117,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     /// Executes the instruction.
     #[inline]
     pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
-        use circuit::Eject;
-
-        // Initialize a vector to store the operand values.
-        let mut inputs = Vec::with_capacity(self.operands.len());
         // Load the operands values.
-        self.operands.iter().try_for_each(|operand| {
-            // Load and append the value.
-            inputs.push(stack.load_circuit(operand)?);
-            // Move to the next iteration.
-            Ok::<_, Error>(())
-        })?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
         // Retrieve the closure from the program.
         let closure = stack.program().get_closure(&self.name)?;
@@ -166,6 +150,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         for (register, register_type) in closure_stack.to_output_types() {
             // Retrieve the output from the register.
             let output = closure_stack.load_circuit(&Operand::Register(register.clone()))?;
+
+            use circuit::Eject;
+
             // Ensure the output matches the declared type in the register.
             closure_stack.program().matches_register(&output.eject_value(), &register_type)?;
             // Insert the output into the outputs.

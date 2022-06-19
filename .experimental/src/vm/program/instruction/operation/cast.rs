@@ -79,16 +79,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
-        // Initialize a vector to store the operand values.
-        let mut inputs = Vec::with_capacity(self.operands.len());
-
         // Load the operands values.
-        self.operands.iter().try_for_each(|operand| {
-            // Load and append the value.
-            inputs.push(stack.load(operand)?);
-            // Move to the next iteration.
-            Ok::<_, Error>(())
-        })?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
@@ -206,16 +198,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
     pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
-        // Initialize a vector to store the operand values.
-        let mut inputs = Vec::with_capacity(self.operands.len());
-
         // Load the operands values.
-        self.operands.iter().try_for_each(|operand| {
-            // Load and append the value.
-            inputs.push(stack.load_circuit(operand)?);
-            // Move to the next iteration.
-            Ok::<_, Error>(())
-        })?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),

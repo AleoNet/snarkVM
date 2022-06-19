@@ -81,31 +81,15 @@ impl<
     #[inline]
     pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
-        ensure!(
-            self.operands.len() == NUM_OPERANDS,
-            "Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands",
-            O::OPCODE,
-            self.operands.len()
-        );
+        if self.operands.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
+        }
 
-        // Initialize a vector to store the operand literals.
-        let mut inputs = Vec::with_capacity(NUM_OPERANDS);
-        // Initialize a vector to store the operand register types.
-        let mut input_types = Vec::with_capacity(NUM_OPERANDS);
-
-        // Load the operands **as literals & literal types**.
-        self.operands.iter().try_for_each(|operand| {
-            // Load the literal.
-            let literal = stack.load_literal(operand)?;
-            // Compute the literal type.
-            let literal_type = literal.to_type();
-            // Store the literal.
-            inputs.push(literal);
-            // Store the literal type.
-            input_types.push(RegisterType::Plaintext(PlaintextType::from(literal_type)));
-            // Move to the next iteration.
-            Ok::<_, Error>(())
-        })?;
+        // Load the operands literals.
+        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_literal(operand)).try_collect()?;
+        // Compute the operands register types.
+        let input_types: Vec<_> =
+            inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
 
         // Compute the operation.
         let output = O::evaluate(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
@@ -114,11 +98,10 @@ impl<
 
         // Retrieve the expected output type.
         let expected_types = self.output_types(stack.program(), &input_types)?;
+        // Ensure there is exactly one output.
         ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
-
         // Ensure the output type is correct.
-        let expected_type = expected_types[0];
-        ensure!(expected_type == output_type, "Output type mismatch: expected {expected_type}, found {output_type}",);
+        ensure!(expected_types[0] == output_type, "Expected output type '{}', found {output_type}", expected_types[0]);
 
         // Evaluate the operation and store the output.
         stack.store_literal(&self.destination, output)
@@ -128,31 +111,15 @@ impl<
     #[inline]
     pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
-        ensure!(
-            self.operands.len() == NUM_OPERANDS,
-            "Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands",
-            O::OPCODE,
-            self.operands.len()
-        );
+        if self.operands.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
+        }
 
-        // Initialize a vector to store the operand literals.
-        let mut inputs = Vec::with_capacity(NUM_OPERANDS);
-        // Initialize a vector to store the operand register types.
-        let mut input_types = Vec::with_capacity(NUM_OPERANDS);
-
-        // Load the operands **as literals & literal types**.
-        self.operands.iter().try_for_each(|operand| {
-            // Load the literal.
-            let literal = stack.load_literal_circuit(operand)?;
-            // Compute the literal type.
-            let literal_type = literal.to_type();
-            // Store the literal.
-            inputs.push(literal);
-            // Store the literal type.
-            input_types.push(RegisterType::Plaintext(PlaintextType::from(literal_type)));
-            // Move to the next iteration.
-            Ok::<_, Error>(())
-        })?;
+        // Load the operands literals.
+        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_literal_circuit(operand)).try_collect()?;
+        // Compute the operands register types.
+        let input_types: Vec<_> =
+            inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
 
         // Compute the operation.
         let output = O::execute(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
@@ -161,11 +128,10 @@ impl<
 
         // Retrieve the expected output type.
         let expected_types = self.output_types(stack.program(), &input_types)?;
+        // Ensure there is exactly one output.
         ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
-
         // Ensure the output type is correct.
-        let expected_type = expected_types[0];
-        ensure!(expected_type == output_type, "Output type mismatch: expected {expected_type}, found {output_type}",);
+        ensure!(expected_types[0] == output_type, "Expected output type '{}', found {output_type}", expected_types[0]);
 
         // Evaluate the operation and store the output.
         stack.store_literal_circuit(&self.destination, output)
@@ -178,13 +144,14 @@ impl<
         _program: &Program<N, A>,
         input_types: &[RegisterType<N>],
     ) -> Result<Vec<RegisterType<N>>> {
+        // Ensure the number of input types is correct.
+        if input_types.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())
+        }
         // Ensure the number of operands is correct.
-        ensure!(
-            input_types.len() == NUM_OPERANDS,
-            "Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands",
-            O::OPCODE,
-            input_types.len()
-        );
+        if self.operands.len() != NUM_OPERANDS {
+            bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
+        }
 
         // Convert all input types into `LiteralType`s. If any are not a `LiteralType`, return an error.
         let input_types = input_types

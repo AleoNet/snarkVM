@@ -73,7 +73,6 @@ impl<A: circuit::Aleo> circuit::Eject for CircuitValue<A> {
     }
 }
 
-#[derive(Clone)]
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
     program: Program<N, A>,
@@ -236,14 +235,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             stack.store(&register, input.clone())?;
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-            // Inject the input into a circuit.
-            use circuit::Inject;
             // Assign the circuit input to the register.
             stack.store_circuit(&register, match value_type {
-                ValueType::Constant(..) => CircuitValue::new(circuit::Mode::Constant, input.clone()),
-                ValueType::Public(..) => CircuitValue::new(circuit::Mode::Public, input.clone()),
-                ValueType::Private(..) => CircuitValue::new(circuit::Mode::Private, input.clone()),
-                ValueType::Record(..) => CircuitValue::new(circuit::Mode::Private, input.clone()),
+                ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
+                ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
+                ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
+                ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
             })?;
         }
 
@@ -269,10 +266,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 _ => bail!("Stack value does not match the expected output type"),
             };
 
-            // Eject the output from a circuit.
-            use circuit::Eject;
             // Ensure the output value matches the value type.
-            stack.program.matches_value(&output.eject_value(), &value_type)?;
+            stack.program.matches_value(&circuit::Eject::eject_value(&output), &value_type)?;
             // Insert the value into the outputs.
             outputs.push(output);
 
