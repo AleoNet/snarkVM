@@ -39,10 +39,8 @@ pub struct Stack<N: Network> {
     program: Program<N>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
-    /// The mapping of assigned input registers to their values.
-    input_registers: IndexMap<u64, StackValue<N>>,
-    /// The mapping of assigned destination registers to their values.
-    destination_registers: IndexMap<u64, StackValue<N>>,
+    /// The mapping of assigned console registers to their values.
+    console_registers: IndexMap<u64, StackValue<N>>,
 }
 
 impl<N: Network> Stack<N> {
@@ -54,19 +52,13 @@ impl<N: Network> Stack<N> {
             ensure!(matches!(register, Register::Locator(_)), "Expected locator, found {register}");
         }
 
-        Ok(Self { program, register_types, input_registers: IndexMap::new(), destination_registers: IndexMap::new() })
+        Ok(Self { program, register_types, console_registers: IndexMap::new() })
     }
 
     /// Returns the program.
     #[inline]
     pub const fn program(&self) -> &Program<N> {
         &self.program
-    }
-
-    /// Returns the input registers.
-    #[inline]
-    pub fn input_registers(&mut self) -> &mut IndexMap<u64, StackValue<N>> {
-        &mut self.input_registers
     }
 
     /// Returns an iterator over all input register types.
@@ -106,11 +98,10 @@ impl<N: Network> Stack<N> {
         let register_types = program.get_function_registers(function_name)?;
 
         // Initialize the stack.
-        let mut stack = Self::new(program, register_types)?;
+        let mut stack = Self::new(program, register_types.clone())?;
 
         // Initialize the input registers.
-        for (((register, register_type), input), value_type) in stack
-            .register_types
+        for (((register, register_type), input), value_type) in register_types
             .to_input_types()
             .zip_eq(inputs.iter())
             .zip_eq(function.inputs().iter().map(|i| i.value_type()))
@@ -130,7 +121,7 @@ impl<N: Network> Stack<N> {
             // });
 
             // Assign the input to the register.
-            stack.input_registers.insert(register.locator(), input.clone());
+            stack.store(&register, input.clone());
         }
 
         // Evaluate the instructions.
@@ -212,11 +203,10 @@ impl<N: Network> Stack<N> {
         let register_types = program.get_function_registers(function_name)?;
 
         // Initialize the stack.
-        let mut stack = Self::new(program, register_types)?;
+        let mut stack = Self::new(program, register_types.clone())?;
 
         // Initialize the input registers.
-        for (((register, register_type), input), value_type) in stack
-            .register_types
+        for (((register, register_type), input), value_type) in register_types
             .to_input_types()
             .zip_eq(inputs.iter())
             .zip_eq(function.inputs().iter().map(|i| i.value_type()))
@@ -236,7 +226,7 @@ impl<N: Network> Stack<N> {
             // });
 
             // Assign the input to the register.
-            stack.input_registers.insert(register.locator(), input.clone());
+            stack.store(&register, input.clone());
         }
 
         // Execute the instructions.

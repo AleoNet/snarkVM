@@ -2351,7 +2351,6 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
- "paste",
  "serde_json",
  "snarkvm-console-account",
  "snarkvm-console-network",
@@ -2492,7 +2491,9 @@ name = "snarkvm-experimental"
 version = "0.7.5"
 dependencies = [
  "anyhow",
+ "indexmap",
  "itertools",
+ "paste",
  "rand",
  "snarkvm-algorithms",
  "snarkvm-circuit",

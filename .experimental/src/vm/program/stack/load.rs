@@ -47,24 +47,12 @@ impl<N: Network> Stack<N> {
             Operand::Register(register) => register,
         };
 
-        // Determine if the register is an input register.
-        let is_input_register = self.input_registers.contains_key(&register.locator());
-
         // Retrieve the stack value.
-        let stack_value = match is_input_register {
-            // Retrieve the input value.
-            true => self
-                .input_registers
-                .get(&register.locator())
-                .ok_or_else(|| anyhow!("'{register}' does not exist"))?
-                .clone(),
-            // Retrieve the destination register value.
-            false => self
-                .destination_registers
-                .get(&register.locator())
-                .ok_or_else(|| anyhow!("'{register}' does not exist"))?
-                .clone(),
-        };
+        let stack_value = self
+            .console_registers
+            .get(&register.locator())
+            .ok_or_else(|| anyhow!("'{register}' does not exist"))?
+            .clone();
 
         // Return the value for the given register or register member.
         match register {

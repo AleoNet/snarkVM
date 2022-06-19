@@ -39,12 +39,13 @@ impl<N: Network> Stack<N> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
-                let expected_locator = (self.input_registers.len() as u64) + self.destination_registers.len() as u64;
+                let expected_locator = self.console_registers.len() as u64;
                 ensure!(expected_locator == *locator, "Out-of-order write operation at '{register}'");
-                // Ensure the register is not an input register.
-                ensure!(!self.input_registers.contains_key(locator), "Cannot write to input register '{register}'");
-                // Ensure the register does not already exist as a destination register.
-                ensure!(!self.destination_registers.contains_key(locator), "Cannot write to register '{register}'");
+                // Ensure the register does not already exist.
+                ensure!(
+                    !self.console_registers.contains_key(locator),
+                    "Cannot write to occupied register '{register}'"
+                );
 
                 // Retrieve the register type.
                 match self.register_types.get_type(&self.program, register) {
@@ -55,7 +56,7 @@ impl<N: Network> Stack<N> {
                 };
 
                 // Store the stack value.
-                match self.destination_registers.insert(*locator, stack_value) {
+                match self.console_registers.insert(*locator, stack_value) {
                     // Ensure the register has not been previously stored.
                     Some(..) => bail!("Attempted to write to register '{register}' again"),
                     // Return on success.

@@ -36,9 +36,6 @@ version = "0.2"
 [dependencies.once_cell]
 version = "1.10.0"
 
-[dependencies.paste]
-version = "1.0.7"
-
 [dev-dependencies.bincode]
 version = "1.3"
 

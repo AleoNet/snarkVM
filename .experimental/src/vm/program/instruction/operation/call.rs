@@ -96,7 +96,7 @@ impl<N: Network> Call<N> {
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
             // TODO (howardwu): OR if input is a record, forbid and error.
             // Assign the input value to the register.
-            closure_stack.input_registers().insert(register.locator(), input.clone());
+            closure_stack.store(&register, input.clone());
         }
 
         // Evaluate the instructions.
