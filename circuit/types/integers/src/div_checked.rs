@@ -70,7 +70,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
     fn div_checked(&self, other: &Integer<E, I>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
-            // Halt on division by zero as there is no sound way to perform this operation.
+            // Halt on division by zero.
             E::assert(other.is_not_equal(&Self::zero()));
             // Compute the quotient and return the new constant.
             match self.eject_value().checked_div(&other.eject_value()) {
@@ -78,6 +78,9 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 None => E::halt("Overflow or underflow on division of two integer constants"),
             }
         } else if I::is_signed() {
+            // Ensure this is not a division by zero.
+            E::assert(other.is_not_equal(&Self::zero()));
+
             // Ensure that overflow cannot occur in this division.
             // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
             let min = Integer::constant(console::Integer::MIN);

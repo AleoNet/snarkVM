@@ -26,12 +26,22 @@ impl<E: Environment> Not for Boolean<E> {
     }
 }
 
-impl<E: Environment> BitAnd for Boolean<E> {
+impl<E: Environment> BitAnd<Boolean<E>> for Boolean<E> {
     type Output = Boolean<E>;
 
     /// Returns the bitwise `AND`` of `self` and `other`.
     #[inline]
     fn bitand(self, other: Self) -> Self::Output {
+        Boolean::new(self.boolean & other.boolean)
+    }
+}
+
+impl<E: Environment> BitAnd<&Boolean<E>> for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns the bitwise `AND` of `self` and `other`.
+    #[inline]
+    fn bitand(self, other: &Boolean<E>) -> Self::Output {
         Boolean::new(self.boolean & other.boolean)
     }
 }
@@ -54,6 +64,16 @@ impl<E: Environment> BitOr for Boolean<E> {
     }
 }
 
+impl<E: Environment> BitOr<&Boolean<E>> for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns the bitwise `OR` of `self` and `other`.
+    #[inline]
+    fn bitor(self, other: &Boolean<E>) -> Self::Output {
+        Boolean::new(self.boolean | other.boolean)
+    }
+}
+
 impl<E: Environment> BitOrAssign for Boolean<E> {
     /// Sets `self` as the bitwise `OR` of `self` and `other`.
     #[inline]
@@ -68,6 +88,16 @@ impl<E: Environment> BitXor for Boolean<E> {
     /// Returns the bitwise `XOR` of `self` and `other`.
     #[inline]
     fn bitxor(self, other: Self) -> Self::Output {
+        Boolean::new(self.boolean ^ other.boolean)
+    }
+}
+
+impl<E: Environment> BitXor<&Boolean<E>> for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns the bitwise `XOR` of `self` and `other`.
+    #[inline]
+    fn bitxor(self, other: &Boolean<E>) -> Self::Output {
         Boolean::new(self.boolean ^ other.boolean)
     }
 }

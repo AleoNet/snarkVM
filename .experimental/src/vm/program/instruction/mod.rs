@@ -87,7 +87,7 @@ macro_rules! instruction {
             // AbsWrapped,
             Add,
             AddWrapped,
-            // And,
+            And,
             Call,
             Cast,
             // CommitBHP256,
@@ -96,8 +96,8 @@ macro_rules! instruction {
             // CommitBHP1024,
             // CommitPed64,
             // CommitPed128,
-            Div,
-            DivWrapped,
+            // Div,
+            // DivWrapped,
             // Double,
             // Equal,
             // GreaterThan,
@@ -121,7 +121,7 @@ macro_rules! instruction {
             // Nor,
             // Not,
             // NotEqual,
-            // Or,
+            Or,
             // Pow,
             // PowWrapped,
             // PRFPsd2,
@@ -135,7 +135,7 @@ macro_rules! instruction {
             Sub,
             SubWrapped,
             // Ternary,
-            // Xor,
+            Xor,
         }}
     };
     // A variant **without** curly braces:
@@ -190,8 +190,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     Add(Add<N, A>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     AddWrapped(AddWrapped<N, A>),
-    // /// Performs a bitwise AND operation on `first` and `second`, storing the outcome in `destination`.
-    // And(And<N, A>),
+    /// Performs a bitwise `and` operation on `first` and `second`, storing the outcome in `destination`.
+    And(And<N, A>),
     /// Calls a closure on the operands.
     Call(Call<N, A>),
     /// Casts the operands into the declared type.
@@ -208,10 +208,10 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // CommitPed64(CommitPed64<N, A>),
     // /// Performs a Pedersen commitment taking a 128-bit value as input.
     // CommitPed128(CommitPed128<N, A>),
-    /// Divides `first` by `second`, storing the outcome in `destination`.
-    Div(Div<N, A>),
-    /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    DivWrapped(DivWrapped<N, A>),
+    // /// Divides `first` by `second`, storing the outcome in `destination`.
+    // Div(Div<N, A>),
+    // /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    // DivWrapped(DivWrapped<N, A>),
     // /// Doubles `first`, storing the outcome in `destination`.
     // Double(Double<N, A>),
     // /// Checks if `first` is equal to `second`, storing the outcome in `destination`.
@@ -258,8 +258,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // Not(Not<N, A>),
     // /// Returns true if `first` is not equal to `second`, storing the result in `destination`.
     // NotEqual(NotEqual<N, A>),
-    // /// Performs a bitwise Or on `first` and `second`, storing the outcome in `destination`.
-    // Or(Or<N, A>),
+    /// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
+    Or(Or<N, A>),
     // /// Raises `first` to the power of `second`, storing the outcome in `destination`.
     // Pow(Pow<N, A>),
     // /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
@@ -286,8 +286,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     SubWrapped(SubWrapped<N, A>),
     // /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
     // Ternary(Ternary<N, A>),
-    // /// Performs a bitwise Xor on `first` and `second`, storing the outcome in `destination`.
-    // Xor(Xor<N, A>),
+    /// Performs a bitwise `xor` on `first` and `second`, storing the outcome in `destination`.
+    Xor(Xor<N, A>),
 }
 
 /// Derives `From<Operation>` for the instruction.
@@ -527,7 +527,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            10,
+            11,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

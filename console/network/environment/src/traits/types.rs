@@ -21,12 +21,15 @@ pub trait AddressTrait: Copy + Clone + Debug + Deref + Eq + Parser + Send + Sync
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
-    BitAnd<Output = Self>
-    + BitAndAssign
+    BitAndAssign
+    + BitAnd<Self, Output = Self>
+    + for<'a> BitAnd<&'a Self, Output = Self>
     + BitOrAssign
-    + BitOr<Output = Self>
+    + BitOr<Self, Output = Self>
+    + for<'a> BitOr<&'a Self, Output = Self>
     + BitXorAssign
-    + BitXor<Output = Self>
+    + BitXor<Self, Output = Self>
+    + for<'a> BitXor<&'a Self, Output = Self>
     + Copy
     + Clone
     + Debug
@@ -174,18 +177,24 @@ pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: I
     IntegerCore<I>
     + Pow<U8, Output = Self>
     + Shl<U8, Output = Self>
+    + for<'a> Shl<&'a U8, Output = Self>
     + ShlAssign<U8>
     + Shr<U8, Output = Self>
+    + for<'a> Shr<&'a U8, Output = Self>
     + ShrAssign<U8>
     + Pow<U16, Output = Self>
     + Shl<U16, Output = Self>
+    + for<'a> Shl<&'a U16, Output = Self>
     + ShlAssign<U16>
     + Shr<U16, Output = Self>
+    + for<'a> Shr<&'a U16, Output = Self>
     + ShrAssign<U16>
     + Pow<U32, Output = Self>
     + Shl<U32, Output = Self>
+    + for<'a> Shl<&'a U32, Output = Self>
     + ShlAssign<U32>
     + Shr<U32, Output = Self>
+    + for<'a> Shr<&'a U32, Output = Self>
     + ShrAssign<U32>
 {
 }
@@ -197,11 +206,14 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + AddAssign<Self>
     + for<'a> AddAssign<&'a Self>
     + BitAndAssign
-    + BitAnd<Output = Self>
+    + BitAnd<Self, Output = Self>
+    + for<'a> BitAnd<&'a Self, Output = Self>
     + BitOrAssign
-    + BitOr<Output = Self>
+    + BitOr<Self, Output = Self>
+    + for<'a> BitOr<&'a Self, Output = Self>
     + BitXorAssign
-    + BitXor<Output = Self>
+    + BitXor<Self, Output = Self>
+    + for<'a> BitXor<&'a Self, Output = Self>
     + Copy
     + Clone
     + Debug

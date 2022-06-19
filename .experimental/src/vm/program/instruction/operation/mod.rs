@@ -81,43 +81,62 @@ crate::operation!(
     }
 );
 
-/// Divides `first` by `second`, storing the outcome in `destination`.
-pub type Div<N, A> = BinaryLiteral<N, A, DivOperation<N, A>>;
+/// Performs a bitwise `and` on `first` and `second`, storing the outcome in `destination`.
+pub type And<N, A> = BinaryLiteral<N, A, AndOperation<N, A>>;
 
 crate::operation!(
-    pub struct DivOperation<core::ops::Div, div, "div"> {
-        (Field, Field) => Field,
-        (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
-        (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
-        (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
-        (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
-        (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
-        (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
-        // (Scalar, Scalar) => Scalar,
+    pub struct AndOperation<core::ops::BitAnd, bitand, "and"> {
+        (Boolean, Boolean) => Boolean,
+        (I8, I8) => I8,
+        (I16, I16) => I16,
+        (I32, I32) => I32,
+        (I64, I64) => I64,
+        (I128, I128) => I128,
+        (U8, U8) => U8,
+        (U16, U16) => U16,
+        (U32, U32) => U32,
+        (U64, U64) => U64,
+        (U128, U128) => U128,
     }
 );
 
-/// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-pub type DivWrapped<N, A> = BinaryLiteral<N, A, DivWrappedOperation<N, A>>;
+// /// Divides `first` by `second`, storing the outcome in `destination`.
+// pub type Div<N, A> = BinaryLiteral<N, A, DivOperation<N, A>>;
+//
+// crate::operation!(
+//     pub struct DivOperation<core::ops::Div, div, "div"> {
+//         (Field, Field) => Field,
+//         (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
+//         (Scalar, Scalar) => Scalar,
+//     }
+// );
 
-crate::operation!(
-    pub struct DivWrappedOperation<console::network::DivWrapped, div_wrapped, "div.w"> {
-        (I8, I8) => I8 ("ensure divide by zero halts"),
-        (I16, I16) => I16 ("ensure divide by zero halts"),
-        (I32, I32) => I32 ("ensure divide by zero halts"),
-        (I64, I64) => I64 ("ensure divide by zero halts"),
-        (I128, I128) => I128 ("ensure divide by zero halts"),
-        (U8, U8) => U8 ("ensure divide by zero halts"),
-        (U16, U16) => U16 ("ensure divide by zero halts"),
-        (U32, U32) => U32 ("ensure divide by zero halts"),
-        (U64, U64) => U64 ("ensure divide by zero halts"),
-        (U128, U128) => U128 ("ensure divide by zero halts"),
-    }
-);
+// /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
+// pub type DivWrapped<N, A> = BinaryLiteral<N, A, DivWrappedOperation<N, A>>;
+//
+// crate::operation!(
+//     pub struct DivWrappedOperation<console::network::DivWrapped, div_wrapped, "div.w"> {
+//         (I8, I8) => I8 ("ensure divide by zero halts"),
+//         (I16, I16) => I16 ("ensure divide by zero halts"),
+//         (I32, I32) => I32 ("ensure divide by zero halts"),
+//         (I64, I64) => I64 ("ensure divide by zero halts"),
+//         (I128, I128) => I128 ("ensure divide by zero halts"),
+//         (U8, U8) => U8 ("ensure divide by zero halts"),
+//         (U16, U16) => U16 ("ensure divide by zero halts"),
+//         (U32, U32) => U32 ("ensure divide by zero halts"),
+//         (U64, U64) => U64 ("ensure divide by zero halts"),
+//         (U128, U128) => U128 ("ensure divide by zero halts"),
+//     }
+// );
 
 /// Multiplies `first` and `second`, storing the outcome in `destination`.
 pub type Mul<N, A> = BinaryLiteral<N, A, MulOperation<N, A>>;
@@ -159,6 +178,25 @@ crate::operation!(
     }
 );
 
+/// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
+pub type Or<N, A> = BinaryLiteral<N, A, OrOperation<N, A>>;
+
+crate::operation!(
+    pub struct OrOperation<core::ops::BitOr, bitor, "or"> {
+        (Boolean, Boolean) => Boolean,
+        (I8, I8) => I8,
+        (I16, I16) => I16,
+        (I32, I32) => I32,
+        (I64, I64) => I64,
+        (I128, I128) => I128,
+        (U8, U8) => U8,
+        (U16, U16) => U16,
+        (U32, U32) => U32,
+        (U64, U64) => U64,
+        (U128, U128) => U128,
+    }
+);
+
 /// Computes `first - second`, storing the outcome in `destination`.
 pub type Sub<N, A> = BinaryLiteral<N, A, SubOperation<N, A>>;
 
@@ -185,6 +223,25 @@ pub type SubWrapped<N, A> = BinaryLiteral<N, A, SubWrappedOperation<N, A>>;
 
 crate::operation!(
     pub struct SubWrappedOperation<console::network::SubWrapped, sub_wrapped, "sub.w"> {
+        (I8, I8) => I8,
+        (I16, I16) => I16,
+        (I32, I32) => I32,
+        (I64, I64) => I64,
+        (I128, I128) => I128,
+        (U8, U8) => U8,
+        (U16, U16) => U16,
+        (U32, U32) => U32,
+        (U64, U64) => U64,
+        (U128, U128) => U128,
+    }
+);
+
+/// Performs a bitwise `xor` on `first` and `second`, storing the outcome in `destination`.
+pub type Xor<N, A> = BinaryLiteral<N, A, XorOperation<N, A>>;
+
+crate::operation!(
+    pub struct XorOperation<core::ops::BitXor, bitxor, "xor"> {
+        (Boolean, Boolean) => Boolean,
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,

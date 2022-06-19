@@ -23,11 +23,14 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
     fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
-            // Halt on division by zero as there is no sound way to perform this operation.
+            // Halt on division by zero.
             E::assert(other.is_not_equal(&Self::zero()));
             // Compute the quotient and return the new constant.
             Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_div(&other.eject_value())))
         } else if I::is_signed() {
+            // Ensure this is not a division by zero.
+            E::assert(other.is_not_equal(&Self::zero()));
+
             // Divide the absolute value of `self` and `other` in the base field.
             let unsigned_dividend = self.abs_wrapped().cast_as_dual();
             let unsigned_divisor = other.abs_wrapped().cast_as_dual();
@@ -46,11 +49,17 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             Self::ternary(&overflows, &min, &signed_quotient)
         } else {
+            // Ensure this is not a division by zero.
+            E::assert(other.is_not_equal(&Self::zero()));
+
             // Eject the dividend and divisor, to compute the quotient as a witness.
             let dividend_value = self.eject_value();
             // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
             let divisor_value = match other.eject_value().is_zero() {
-                true => Self::one().eject_value(),
+                true => match self.eject_value().is_zero() {
+                    true => console::Integer::one(),
+                    false => console::Integer::zero(),
+                },
                 false => other.eject_value(),
             };
 

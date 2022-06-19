@@ -36,6 +36,16 @@ impl<E: Environment, I: IntegerType> BitAnd for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> BitAnd<&Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Returns the bitwise `AND` of `self` and `other`.
+    #[inline]
+    fn bitand(self, other: &Integer<E, I>) -> Self::Output {
+        Integer::new(self.integer & other.integer)
+    }
+}
+
 impl<E: Environment, I: IntegerType> BitAndAssign for Integer<E, I> {
     /// Performs the bitwise `AND` of `self` and `other` and assigns the result to `self`.
     #[inline]
@@ -50,6 +60,16 @@ impl<E: Environment, I: IntegerType> BitOr for Integer<E, I> {
     /// Returns the bitwise `OR` of `self` and `other`.
     #[inline]
     fn bitor(self, other: Self) -> Self::Output {
+        Integer::new(self.integer | other.integer)
+    }
+}
+
+impl<E: Environment, I: IntegerType> BitOr<&Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Returns the bitwise `OR` of `self` and `other`.
+    #[inline]
+    fn bitor(self, other: &Integer<E, I>) -> Self::Output {
         Integer::new(self.integer | other.integer)
     }
 }
@@ -72,6 +92,16 @@ impl<E: Environment, I: IntegerType> BitXor for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> BitXor<&Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Returns the bitwise `XOR` of `self` and `other`.
+    #[inline]
+    fn bitxor(self, other: &Integer<E, I>) -> Self::Output {
+        Integer::new(self.integer ^ other.integer)
+    }
+}
+
 impl<E: Environment, I: IntegerType> BitXorAssign for Integer<E, I> {
     /// Performs the bitwise `XOR` of `self` and `other` and assigns the result to `self`.
     #[inline]
@@ -86,6 +116,20 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Shl<Integer<E, M>> for Intege
     /// Shifts `self` to the left by `n` bits.
     #[inline]
     fn shl(self, n: Integer<E, M>) -> Self::Output {
+        match self.integer.checked_shl(n.integer.to_u32().unwrap()) {
+            // Unwrap is safe as we only cast up.
+            Some(shifted) => Integer::new(shifted),
+            None => E::halt(format!("Failed to shift {self} left by {n} bits")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> Shl<&Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Shifts `self` to the left by `n` bits.
+    #[inline]
+    fn shl(self, n: &Integer<E, M>) -> Self::Output {
         match self.integer.checked_shl(n.integer.to_u32().unwrap()) {
             // Unwrap is safe as we only cast up.
             Some(shifted) => Integer::new(shifted),
@@ -114,6 +158,20 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Shr<Integer<E, M>> for Intege
     /// Shifts `self` to the right by `n` bits.
     #[inline]
     fn shr(self, n: Integer<E, M>) -> Self::Output {
+        match self.integer.checked_shr(n.integer.to_u32().unwrap()) {
+            // Unwrap is safe as we only cast up.
+            Some(shifted) => Integer::new(shifted),
+            None => E::halt(format!("Failed to shift {self} right by {n} bits")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> Shr<&Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Shifts `self` to the right by `n` bits.
+    #[inline]
+    fn shr(self, n: &Integer<E, M>) -> Self::Output {
         match self.integer.checked_shr(n.integer.to_u32().unwrap()) {
             // Unwrap is safe as we only cast up.
             Some(shifted) => Integer::new(shifted),

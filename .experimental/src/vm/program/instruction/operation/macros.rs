@@ -322,10 +322,25 @@ mod tests {
                     );
 
                     // Check the operation on randomly-sampled values.
-                    for i in 0..1_000 {
+                    for i in 0..1_000u64 {
                         // Sample the first and second value.
-                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+                        #[allow(deprecated)]
+                        let (a, b) = match i {
+                            0 => ($input_a::zero(), $input_b::zero()),
+                            1 => {
+                                let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                                (a, $input_b::zero())
+                            },
+                            2 => {
+                                let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+                                ($input_a::zero(), b)
+                            },
+                            3.. => {
+                                let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                                let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+                                (a, b)
+                            }
+                        };
 
                         // Initialize the operands.
                         let first = console::program::Literal::from_str(&format!("{a}"))?;
@@ -483,12 +498,27 @@ mod tests {
                     );
 
                     // Check the operation on randomly-sampled values.
-                    for i in 0..50 {
+                    for i in 0..50u64 {
                         for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                             for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                 // Sample the first and second value.
-                                let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
-                                let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+                                #[allow(deprecated)]
+                                let (a, b) = match i {
+                                    0 => ($input_a::zero(), $input_b::zero()),
+                                    1 => {
+                                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                                        (a, $input_b::zero())
+                                    },
+                                    2 => {
+                                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+                                        ($input_a::zero(), b)
+                                    },
+                                    3.. => {
+                                        let a = $input_a::<CurrentNetwork>::rand(&mut test_rng());
+                                        let b = $input_b::<CurrentNetwork>::rand(&mut test_rng());
+                                        (a, b)
+                                    }
+                                };
 
                                 // Initialize the operands.
                                 let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;

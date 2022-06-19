@@ -40,6 +40,12 @@ impl<E: Environment> Boolean<E> {
     pub const fn new(boolean: bool) -> Self {
         Self { boolean, _phantom: PhantomData }
     }
+
+    /// Initializes a `false` boolean.
+    #[deprecated(since = "0.1.0", note = "This is used for **testing** purposes")]
+    pub const fn zero() -> Self {
+        Self::new(false)
+    }
 }
 
 impl<E: Environment> TypeName for Boolean<E> {

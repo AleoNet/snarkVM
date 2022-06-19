@@ -67,6 +67,14 @@ impl<E: Environment> Inject for Boolean<E> {
     }
 }
 
+impl<E: Environment> Boolean<E> {
+    /// Initializes a `false` boolean.
+    #[deprecated(since = "0.1.0", note = "This is used for **testing** purposes")]
+    pub fn zero() -> Self {
+        Self::constant(false)
+    }
+}
+
 #[cfg(console)]
 impl<E: Environment> Eject for Boolean<E> {
     type Primitive = bool;
