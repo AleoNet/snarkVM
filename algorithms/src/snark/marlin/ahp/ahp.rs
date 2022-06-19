@@ -250,12 +250,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
         let batch_z_c_at_beta: F =
             z_c_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_c_at_beta, combiner)| *z_c_at_beta * combiner).sum();
-        let batch_s_m_at_beta: F =
-            s_m_s_at_beta.iter().zip_eq(batch_combiners).map(|(s_m_at_beta, combiner)| *s_m_at_beta * combiner).sum();
-        let batch_s_l_at_beta: F =
-            s_l_s_at_beta.iter().zip_eq(batch_combiners).map(|(s_l_at_beta, combiner)| *s_l_at_beta * combiner).sum();
-        let batch_f_at_beta: F =
-            f_s_at_beta.iter().zip_eq(batch_combiners).map(|(f_at_beta, combiner)| *f_at_beta * combiner).sum();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
