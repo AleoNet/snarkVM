@@ -85,8 +85,10 @@ macro_rules! operation {
 
                 // Prepare the operator.
                 use $operator as Operator;
+                // Prepare the operation.
+                type Operation = $name::<CurrentNetwork, CurrentAleo>;
                 // Execute the test cases for the operation.
-                $crate::test_execute!(Operator::$operate == $name::execute { $( ($input_a, $input_b) => $output $( ($($condition),+) )?, )+ });
+                $crate::test_execute!(Operator::$operate == Operation::execute { $( ($input_a, $input_b) => $output $( ($($condition),+) )?, )+ });
             }
         }
     };
@@ -276,12 +278,12 @@ mod tests {
                                         })+
 
                                         // Attempt to compute the invalid operand case.
-                                        let result_a = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::evaluate(&[literal_a.clone(), literal_b.clone()]);
+                                        let result_a = <$operation as $crate::vm::Operation<_, _, _, _, 2>>::evaluate(&[literal_a.clone(), literal_b.clone()]);
                                         // Ensure the computation failed.
                                         assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a} {literal_b}");
 
                                         // Attempt to compute the invalid operand case.
-                                        let result_b = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[
+                                        let result_b = <$operation as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[
                                             circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
                                             circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?,
                                         ]);
@@ -318,7 +320,7 @@ mod tests {
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         console::program::LiteralType::$output,
-                        <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
+                        <$operation as $crate::vm::Operation<_, _, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
                     );
 
                     // Check the operation on randomly-sampled values.
@@ -337,13 +339,13 @@ mod tests {
                         let mut should_succeed = true;
                         $( $({
                             if $condition == "ensure overflows halt" {
-                                match *<$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
+                                match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
                                     "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
                                     "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
                                     "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
                                     // "pow" | "pow.w" => should_succeed &= (*a).checked_pow(*b).is_some(),
                                     "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
-                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
                                 }
                             }
                             if $condition == "ensure divide by zero halts" {
@@ -367,39 +369,37 @@ mod tests {
                                 let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;
                                 let second = circuit::program::Literal::from_str(&format!("{b}.{mode_b}"))?;
 
-                                // Skip this iteration, if this is **not** an overflow case.
-                                match should_succeed {
-                                    // If the sampled values **do not** overflow on evaluation, ensure it succeeds.
-                                    true => {
-                                        // Compute the evaluated output.
-                                        let candidate_a = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::evaluate(&[a, b])?;
-                                        // Compute the executed output.
-                                        let candidate_b = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second])?;
+                                // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
+                                if should_succeed {
+                                    // Compute the evaluated output.
+                                    let candidate_a = <$operation as $crate::vm::Operation<_, _, _, _, 2>>::evaluate(&[a, b])?;
+                                    // Compute the executed output.
+                                    let candidate_b = <$operation as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second])?;
 
-                                        // Ensure the outputs match.
-                                        assert_eq!(expected, Some(candidate_a));
-                                        // Ensure the outputs match.
-                                        assert_eq!(expected, Some(circuit::Eject::eject_value(&candidate_b)));
-                                    },
-                                    // If the sampled values overflow on evaluation, ensure it halts.
-                                    false => {
-                                        // Halt the evaluated output.
-                                        let result_a = std::panic::catch_unwind(|| <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::evaluate(&[a.clone(), b.clone()]));
-                                        // Ensure the computation halted.
-                                        assert!(result_a.is_err(), "Failure case (on iteration {i}) did not halt (console): {a} {b}");
+                                    // Ensure the outputs match.
+                                    assert_eq!(expected, Some(candidate_a));
+                                    // Ensure the outputs match.
+                                    assert_eq!(expected, Some(circuit::Eject::eject_value(&candidate_b)));
 
-                                        // Halt the executed output.
-                                        if (mode_a.is_constant() && mode_b.is_constant()) {
-                                            // Attempt to compute the overflow case.
-                                            let result_b = std::panic::catch_unwind(|| <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second]));
-                                            // Ensure the computation halted.
-                                            assert!(result_b.is_err(), "Failure case (on iteration {i}) did not halt (circuit): {a} {b}");
-                                        } else {
-                                            // Attempt to compute the overflow case.
-                                            let _result_b = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second]);
-                                            // Ensure the computation halted.
-                                            assert!(!<CurrentAleo as circuit::Environment>::is_satisfied(), "Failure case (on iteration {i}) should not be satisfied (circuit): {a} {b}");
-                                        }
+                                }
+                                // If the sampled values overflow on evaluation, ensure it halts.
+                                else {
+                                    // Halt the evaluation.
+                                    let result_a = std::panic::catch_unwind(|| <$operation as $crate::vm::Operation<_, _, _, _, 2>>::evaluate(&[a.clone(), b.clone()]));
+                                    // Ensure the evaluation halted.
+                                    assert!(result_a.is_err(), "Failure case (on iteration {i}) did not halt (console): {a} {b}");
+
+                                    // Halt the execution.
+                                    if (mode_a.is_constant() && mode_b.is_constant()) {
+                                        // Attempt to execute a failure case.
+                                        let result_b = std::panic::catch_unwind(|| <$operation as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second]));
+                                        // Ensure the execution halted.
+                                        assert!(result_b.is_err(), "Failure case (on iteration {i}) did not halt (circuit): {a} {b}");
+                                    } else {
+                                        // Attempt to execute a failure case.
+                                        let _result_b = <$operation as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second]);
+                                        // Ensure the execution halted.
+                                        assert!(!<CurrentAleo as circuit::Environment>::is_satisfied(), "Failure case (on iteration {i}) should not be satisfied (circuit): {a} {b}");
                                     }
                                 }
                                 // Reset the circuit.
