@@ -236,6 +236,44 @@ crate::operation!(
     }
 );
 
+/// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
+pub type PowWrapped<N, A> = BinaryLiteral<N, A, PowWrappedOperation<N, A>>;
+
+crate::operation!(
+    pub struct PowWrappedOperation<console::network::PowWrapped, pow_wrapped, "pow.w"> {
+        (I8, U8) => I8,
+        (I8, U16) => I8,
+        (I8, U32) => I8,
+        (I16, U8) => I16,
+        (I16, U16) => I16,
+        (I16, U32) => I16,
+        (I32, U8) => I32,
+        (I32, U16) => I32,
+        (I32, U32) => I32,
+        (I64, U8) => I64,
+        (I64, U16) => I64,
+        (I64, U32) => I64,
+        (I128, U8) => I128,
+        (I128, U16) => I128,
+        (I128, U32) => I128,
+        (U8, U8) => U8,
+        (U8, U16) => U8,
+        (U8, U32) => U8,
+        (U16, U8) => U16,
+        (U16, U16) => U16,
+        (U16, U32) => U16,
+        (U32, U8) => U32,
+        (U32, U16) => U32,
+        (U32, U32) => U32,
+        (U64, U8) => U64,
+        (U64, U16) => U64,
+        (U64, U32) => U64,
+        (U128, U8) => U128,
+        (U128, U16) => U128,
+        (U128, U32) => U128,
+    }
+);
+
 /// Computes `first - second`, storing the outcome in `destination`.
 pub type Sub<N, A> = BinaryLiteral<N, A, SubOperation<N, A>>;
 

@@ -307,7 +307,7 @@ mod tests {
 
         // Case 1A: Binary operation.
         // Case 1B: Binary operation, where:
-        //   1. "ensure overflow halts"
+        //   1. "ensure overflow halts" | "ensure exponentiation overflow halts"
         //     - If the sampled values overflow on evaluation, ensure it halts.
         //     - If the sampled values **do not** overflow on evaluation, ensure it succeeds.
         //   2. "ensure divide by zero halts"
