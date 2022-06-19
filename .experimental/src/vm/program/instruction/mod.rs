@@ -315,9 +315,7 @@ instruction!(derive_from_operation, Instruction, |None| {});
 /// opcodes!(Instruction, |None| {}, { Add, Sub, Mul, Div })
 /// ```
 macro_rules! opcodes {
-    ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {
-        [$( $variant::<N, A>::opcode() ),+]
-    }
+    ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => { [$( $variant::<N, A>::opcode() ),+] }
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Instruction<N, A> {

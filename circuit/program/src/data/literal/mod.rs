@@ -208,8 +208,15 @@ impl<A: Aleo> Literal<A> {
 }
 
 #[cfg(console)]
+impl<A: Aleo> Debug for Literal<A> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
 impl<A: Aleo> Display for Literal<A> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Address(literal) => Display::fmt(literal, f),
             Self::Boolean(literal) => Display::fmt(literal, f),

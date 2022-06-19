@@ -21,14 +21,10 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 
     #[inline]
     fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
-        // Halt on division by zero as there is no sound way to perform
-        // this operation.
-        if other.eject_value().is_zero() {
-            E::halt("Division by zero error")
-        }
-
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
+            // Halt on division by zero as there is no sound way to perform this operation.
+            E::assert(other.is_not_equal(&Self::zero()));
             // Compute the quotient and return the new constant.
             Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_div(&other.eject_value())))
         } else if I::is_signed() {
@@ -52,7 +48,11 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
         } else {
             // Eject the dividend and divisor, to compute the quotient as a witness.
             let dividend_value = self.eject_value();
-            let divisor_value = other.eject_value();
+            // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
+            let divisor_value = match other.eject_value().is_zero() {
+                true => Self::one().eject_value(),
+                false => other.eject_value(),
+            };
 
             // Overflow is not possible for unsigned integers so we use wrapping operations.
             let quotient =
