@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Function<N, A> {
     /// Parses a string into a function.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -51,7 +51,7 @@ impl<N: Network> Parser for Function<N> {
     }
 }
 
-impl<N: Network> FromStr for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Function<N, A> {
     type Err = Error;
 
     /// Returns a function from a string literal.
@@ -68,14 +68,14 @@ impl<N: Network> FromStr for Function<N> {
     }
 }
 
-impl<N: Network> Debug for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Function<N, A> {
     /// Prints the function as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Display for Function<N, A> {
     /// Prints the function as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the function to a string.
@@ -89,13 +89,15 @@ impl<N: Network> Display for Function<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_function_parse() {
-        let function = Function::<CurrentNetwork>::parse(
+        let function = Function::<CurrentNetwork, CurrentAleo>::parse(
             r"
 function foo:
     input r0 as field.public;
@@ -113,7 +115,7 @@ function foo:
 
     #[test]
     fn test_function_parse_cast() {
-        let function = Function::<CurrentNetwork>::parse(
+        let function = Function::<CurrentNetwork, CurrentAleo>::parse(
             r"
 function foo:
     input r0 as token.record;
@@ -135,7 +137,7 @@ function foo:
     input r1 as field.private;
     add r0 r1 into r2;
     output r2 as field.private;";
-        let function = Function::<CurrentNetwork>::parse(expected).unwrap().1;
+        let function = Function::<CurrentNetwork, CurrentAleo>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{function}"),);
     }
 }

@@ -41,9 +41,9 @@ macro_rules! operation {
     ($vis:vis struct $name:ident<$operator:path, $operate:ident, $opcode:tt> { $( ($input_a:ident, $input_b:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
         #[derive(Clone, PartialEq, Eq, Hash)]
-        $vis struct $name<N: Network>(core::marker::PhantomData<N>);
+        $vis struct $name<N: Network, A: circuit::Aleo>(core::marker::PhantomData<(N, A)>);
 
-        impl<N: Network> $crate::vm::program::instruction::Operation<N, console::program::Literal<N>, console::program::LiteralType, 2> for $name<N> {
+        impl<N: Network, A: circuit::Aleo> $crate::vm::program::instruction::Operation<N, console::program::Literal<N>, circuit::Literal<A>, console::program::LiteralType, 2> for $name<N, A> {
             /// The opcode of the operation.
             const OPCODE: $crate::vm::program::instruction::Opcode = Opcode::Literal($opcode);
 
@@ -54,6 +54,15 @@ macro_rules! operation {
                 use $operator as Operator;
                 // Compute the output.
                 Ok($crate::evaluate!(match Operator::$operate(inputs) { $( ($input_a, $input_b) => $output, )+ }))
+            }
+
+            /// Returns the result of executing the operation on the given circuit inputs.
+            #[inline]
+            fn execute(inputs: &[circuit::Literal<A>; 2]) -> Result<circuit::Literal<A>> {
+                // Prepare the operator.
+                use $operator as Operator;
+                // Compute the output.
+                Ok($crate::execute!(match Operator::$operate(inputs) { $( ($input_a, $input_b) => $output, )+ }))
             }
 
             /// Returns the output type from the given input types.
@@ -106,6 +115,39 @@ macro_rules! evaluate {
         // Compute the output.
         match (first, second) {
             $((console::program::Literal::$input_a(first), console::program::Literal::$input_b(second)) => console::program::Literal::$output(first.$operate(second)),)+
+            _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
+        }
+    }};
+}
+
+/// Creates a match statement that executes the operation.
+///
+/// ## Example
+/// ```ignore
+/// execute!(
+///     match Operator::add(inputs) {
+///         (I8, I8) => I8,
+///         (I16, I16) => I16,
+///         (I32, I32) => I32,
+///         (I64, I64) => I64,
+///         (I128, I128) => I128,
+///         (U8, U8) => U8,
+///         (U16, U16) => U16,
+///         (U32, U32) => U32,
+///         (U64, U64) => U64,
+///         (U128, U128) => U128,
+///     }
+/// )
+/// ```
+#[macro_export]
+macro_rules! execute {
+    // Binary operation.
+    (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
+        // Retrieve the first and second operands.
+        let [first, second] = $inputs;
+        // Compute the output.
+        match (first, second) {
+            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second)) => circuit::Literal::$output(first.$operate(second)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -220,6 +262,7 @@ mod tests {
                     use console::types::*;
 
                     type CurrentNetwork = console::network::Testnet3;
+                    type CurrentAleo = circuit::network::AleoV0;
 
                     for i in 0..100 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
@@ -237,7 +280,7 @@ mod tests {
                                 let second = console::program::Literal::from_str(&format!("{literal_b}"))?;
 
                                 // Attempt to compute the invalid operand case.
-                                let result = <$operation::<CurrentNetwork> as $crate::vm::program::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]);
+                                let result = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::program::instruction::Operation<_, _, _, _, 2>>::evaluate(&[first, second]);
 
                                 // Ensure the computation failed.
                                 assert!(result.is_err(), "An invalid operands case (on iteration {i}) did not fail: {literal_a} {literal_b}");
@@ -268,11 +311,12 @@ mod tests {
                     use console::types::*;
 
                     type CurrentNetwork = console::network::Testnet3;
+                    type CurrentAleo = circuit::network::AleoV0;
 
                     // Ensure the expected output type is correct.
                     assert_eq!(
                         console::program::LiteralType::from(console::program::LiteralType::$output),
-                        <$operation::<CurrentNetwork> as $crate::vm::program::instruction::Operation<_, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
+                        <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::program::instruction::Operation<_, _, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
                     );
 
                     // Check the operation on randomly-sampled values.
@@ -290,12 +334,12 @@ mod tests {
                         let mut should_succeed = true;
                         $( $({
                             if $condition == "ensure overflows halt" {
-                                match *<$operation::<CurrentNetwork> as $crate::vm::program::instruction::Operation<_, _, _, 2>>::OPCODE {
+                                match *<$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::program::instruction::Operation<_, _, _, _, 2>>::OPCODE {
                                     "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
                                     "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
                                     "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
                                     "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
-                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork> as $crate::vm::program::instruction::Operation<_, _, _, 2>>::OPCODE),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::program::instruction::Operation<_, _, _, _, 2>>::OPCODE),
                                 }
                             }
                             if $condition == "ensure divide by zero halts" {
@@ -309,14 +353,14 @@ mod tests {
                             true => {
                                 // Compute the outputs.
                                 let expected = console::program::Literal::from(console::program::Literal::$output(a.$operate(&b)));
-                                let candidate = <$operation::<CurrentNetwork> as $crate::vm::program::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second])?;
+                                let candidate = <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::program::instruction::Operation<_, _, _, _, 2>>::evaluate(&[first, second])?;
                                 // Ensure the outputs match.
                                 assert_eq!(expected, candidate);
                             },
                             // If the sampled values overflow on evaluation, ensure it halts.
                             false => {
                                 // Attempt to compute the overflow case.
-                                let result = std::panic::catch_unwind(|| <$operation::<CurrentNetwork> as $crate::vm::program::instruction::Operation<_, _, _, 2>>::evaluate(&[first, second]));
+                                let result = std::panic::catch_unwind(|| <$operation::<CurrentNetwork, CurrentAleo> as $crate::vm::program::instruction::Operation<_, _, _, _, 2>>::evaluate(&[first, second]));
                                 // Ensure the computation halted.
                                 assert!(result.is_err(), "Failure case (on iteration {i}) did not halt: {a} {b}");
                             }

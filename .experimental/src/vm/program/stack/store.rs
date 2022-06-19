@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Stack<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Assigns the given literal to the given register, assuming the register is not already assigned.
     ///
     /// # Errors
@@ -57,6 +57,61 @@ impl<N: Network> Stack<N> {
 
                 // Store the stack value.
                 match self.console_registers.insert(*locator, stack_value) {
+                    // Ensure the register has not been previously stored.
+                    Some(..) => bail!("Attempted to write to register '{register}' again"),
+                    // Return on success.
+                    None => Ok(()),
+                }
+            }
+            // Ensure the register is not a register member.
+            Register::Member(..) => bail!("Cannot store to a register member: '{register}'"),
+        }
+    }
+}
+
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+    /// Assigns the given literal to the given register, assuming the register is not already assigned.
+    ///
+    /// # Errors
+    /// This method will halt if the given register is a register member.
+    /// This method will halt if the given register is an input register.
+    /// This method will halt if the register is already used.
+    #[inline]
+    pub fn store_literal_circuit(&mut self, register: &Register<N>, literal: circuit::Literal<A>) -> Result<()> {
+        self.store_circuit(register, CircuitValue::Plaintext(circuit::Plaintext::from(literal)))
+    }
+
+    /// Assigns the given value to the given register, assuming the register is not already assigned.
+    ///
+    /// # Errors
+    /// This method will halt if the given register is a register member.
+    /// This method will halt if the given register is an input register.
+    /// This method will halt if the register is already used.
+    #[inline]
+    pub fn store_circuit(&mut self, register: &Register<N>, circuit_value: CircuitValue<A>) -> Result<()> {
+        match register {
+            Register::Locator(locator) => {
+                // Ensure the register assignments are monotonically increasing.
+                let expected_locator = self.circuit_registers.len() as u64;
+                ensure!(expected_locator == *locator, "Out-of-order write operation at '{register}'");
+                // Ensure the register does not already exist.
+                ensure!(
+                    !self.circuit_registers.contains_key(locator),
+                    "Cannot write to occupied register '{register}'"
+                );
+
+                // Retrieve the register type.
+                match self.register_types.get_type(&self.program, register) {
+                    // Ensure the stack value matches the register type.
+                    Ok(register_type) => {
+                        self.program.matches_register(&circuit::Eject::eject_value(&circuit_value), &register_type)?
+                    }
+                    // Ensure the register is defined.
+                    Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+                };
+
+                // Store the stack value.
+                match self.circuit_registers.insert(*locator, circuit_value) {
                     // Ensure the register has not been previously stored.
                     Some(..) => bail!("Attempted to write to register '{register}' again"),
                     // Return on success.

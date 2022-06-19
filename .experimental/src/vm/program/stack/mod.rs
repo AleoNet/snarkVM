@@ -34,30 +34,72 @@ pub enum StackValue<N: Network> {
 }
 
 #[derive(Clone)]
-pub struct Stack<N: Network> {
+pub enum CircuitValue<A: circuit::Aleo> {
+    /// A plaintext value.
+    Plaintext(circuit::Plaintext<A>),
+    /// A record value.
+    Record(circuit::program::Record<A, circuit::Plaintext<A>>),
+}
+
+impl<A: circuit::Aleo> circuit::Inject for CircuitValue<A> {
+    type Primitive = StackValue<A::Network>;
+
+    /// Initializes a circuit of the given mode and value.
+    fn new(mode: circuit::Mode, value: Self::Primitive) -> Self {
+        match value {
+            StackValue::Plaintext(plaintext) => CircuitValue::Plaintext(circuit::Plaintext::new(mode, plaintext)),
+            StackValue::Record(record) => CircuitValue::Record(circuit::program::Record::new(mode, record)),
+        }
+    }
+}
+
+impl<A: circuit::Aleo> circuit::Eject for CircuitValue<A> {
+    type Primitive = StackValue<A::Network>;
+
+    /// Ejects the mode of the circuit value.
+    fn eject_mode(&self) -> circuit::Mode {
+        match self {
+            CircuitValue::Plaintext(plaintext) => plaintext.eject_mode(),
+            CircuitValue::Record(record) => record.eject_mode(),
+        }
+    }
+
+    /// Ejects the circuit value.
+    fn eject_value(&self) -> Self::Primitive {
+        match self {
+            CircuitValue::Plaintext(plaintext) => StackValue::Plaintext(plaintext.eject_value()),
+            CircuitValue::Record(record) => StackValue::Record(record.eject_value()),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
-    program: Program<N>,
+    program: Program<N, A>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
     console_registers: IndexMap<u64, StackValue<N>>,
+    /// The mapping of assigned circuit registers to their values.
+    circuit_registers: IndexMap<u64, CircuitValue<A>>,
 }
 
-impl<N: Network> Stack<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(program: Program<N>, register_types: RegisterTypes<N>) -> Result<Self> {
+    pub fn new(program: Program<N, A>, register_types: RegisterTypes<N>) -> Result<Self> {
         // Ensure the input registers are locators.
         for (register, _) in register_types.to_input_types() {
             ensure!(matches!(register, Register::Locator(_)), "Expected locator, found {register}");
         }
 
-        Ok(Self { program, register_types, console_registers: IndexMap::new() })
+        Ok(Self { program, register_types, console_registers: IndexMap::new(), circuit_registers: IndexMap::new() })
     }
 
     /// Returns the program.
     #[inline]
-    pub const fn program(&self) -> &Program<N> {
+    pub const fn program(&self) -> &Program<N, A> {
         &self.program
     }
 
@@ -79,7 +121,7 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     pub fn evaluate(
-        program: Program<N>,
+        program: Program<N, A>,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
@@ -184,10 +226,10 @@ impl<N: Network> Stack<N> {
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     pub fn execute(
-        program: Program<N>,
+        program: Program<N, A>,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Retrieve the function from the program.
         let function = program.get_function(function_name)?;
         // Ensure the number of inputs matches the number of input statements.
@@ -213,25 +255,24 @@ impl<N: Network> Stack<N> {
         {
             // Ensure the input value matches the declared type in the register.
             stack.program.matches_input(input, &value_type)?;
+            // Assign the console input to the register.
+            stack.store(&register, input.clone());
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-
-            // TODO (howardwu): In circuit, allocate using the value type.
-            // stack.input_registers.insert(register.locator(), match (input.clone(), value_type) {
-            //     (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-            //     (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-            //     (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-            //     (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
-            //     _ => bail!("Input value does not match the input register type."),
-            // });
-
-            // Assign the input to the register.
-            stack.store(&register, input.clone());
+            // Inject the input into a circuit.
+            use circuit::Inject;
+            // Assign the circuit input to the register.
+            stack.store_circuit(&register, match value_type {
+                ValueType::Constant(..) => CircuitValue::new(circuit::Mode::Constant, input.clone()),
+                ValueType::Public(..) => CircuitValue::new(circuit::Mode::Public, input.clone()),
+                ValueType::Private(..) => CircuitValue::new(circuit::Mode::Private, input.clone()),
+                ValueType::Record(..) => CircuitValue::new(circuit::Mode::Private, input.clone()),
+            })?;
         }
 
         // Execute the instructions.
-        // function.instructions().iter().try_for_each(|instruction| instruction.execute(&mut stack))?;
         function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
+        function.instructions().iter().try_for_each(|instruction| instruction.execute(&mut stack))?;
 
         // Initialize a vector to store the outputs.
         let mut outputs = Vec::with_capacity(function.outputs().len());
@@ -240,19 +281,21 @@ impl<N: Network> Stack<N> {
             stack.to_output_types().zip_eq(function.outputs().iter().map(|o| o.value_type()))
         {
             // Retrieve the stack value from the register.
-            let output = stack.load(&Operand::Register(register.clone()))?;
+            let output = stack.load_circuit(&Operand::Register(register.clone()))?;
 
             // Convert the stack value to the output value type.
             let output = match (output, value_type) {
-                (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-                (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
+                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
+                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
+                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
+                (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
                 _ => bail!("Stack value does not match the expected output type"),
             };
 
+            // Eject the output from a circuit.
+            use circuit::Eject;
             // Ensure the output value matches the value type.
-            stack.program.matches_value(&output, &value_type)?;
+            stack.program.matches_value(&output.eject_value(), &value_type)?;
             // Insert the value into the outputs.
             outputs.push(output);
 

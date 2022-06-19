@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<N: Network> Parser for Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Program<N, A> {
     /// Parses a string into a program.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // A helper to parse a program.
-        enum P<N: Network> {
+        enum P<N: Network, A: circuit::Aleo<Network = N>> {
             I(Interface<N>),
             R(RecordType<N>),
-            C(Closure<N>),
-            F(Function<N>),
+            C(Closure<N, A>),
+            F(Function<N, A>),
         }
 
         // Parse the whitespace and comments from the string.
@@ -45,10 +45,10 @@ impl<N: Network> Parser for Program<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the interface or function from the string.
         let (string, components) = many1(alt((
-            map(Interface::parse, |interface| P::<N>::I(interface)),
-            map(RecordType::parse, |record| P::<N>::R(record)),
-            map(Closure::parse, |closure| P::<N>::C(closure)),
-            map(Function::parse, |function| P::<N>::F(function)),
+            map(Interface::parse, |interface| P::<N, A>::I(interface)),
+            map(RecordType::parse, |record| P::<N, A>::R(record)),
+            map(Closure::parse, |closure| P::<N, A>::C(closure)),
+            map(Function::parse, |function| P::<N, A>::F(function)),
         )))(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -56,7 +56,7 @@ impl<N: Network> Parser for Program<N> {
         // Return the program.
         map_res(take(0usize), move |_| {
             // Initialize a new program.
-            let mut program = Program::<N>::new(name);
+            let mut program = Program::<N, A>::new(name);
             // Construct the program with the parsed components.
             for component in components.iter() {
                 let result = match component {
@@ -80,7 +80,7 @@ impl<N: Network> Parser for Program<N> {
     }
 }
 
-impl<N: Network> FromStr for Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Program<N, A> {
     type Err = Error;
 
     /// Returns a program from a string literal.
@@ -97,14 +97,14 @@ impl<N: Network> FromStr for Program<N> {
     }
 }
 
-impl<N: Network> Debug for Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Program<N, A> {
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Display for Program<N, A> {
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         // Initialize a string for the program.
@@ -152,14 +152,16 @@ impl<N: Network> Display for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_program_parse() -> Result<()> {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
+        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
             r"
 program to_parse;
 
@@ -197,7 +199,7 @@ function compute:
     output r1 as field.private;
 ";
         // Parse a new program.
-        let program = Program::<CurrentNetwork>::from_str(expected)?;
+        let program = Program::<CurrentNetwork, CurrentAleo>::from_str(expected)?;
         // Ensure the program string matches.
         assert_eq!(expected, format!("{program}"));
 

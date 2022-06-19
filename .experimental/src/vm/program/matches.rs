@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Checks that the given input value matches the layout of the value type.
     pub fn matches_input(&self, input: &StackValue<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the input value matches the declared type in the register.
@@ -63,7 +63,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Checks that the given value matches the layout of the value type.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.

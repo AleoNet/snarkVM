@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// #[cfg(test)]
-// use snarkvm_circuit_types::environment::assert_scope;
-
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
@@ -30,7 +27,7 @@ mod plaintext;
 pub use plaintext::Plaintext;
 
 mod record;
-pub use record::{Entry, Record};
+pub use record::{Balance, Entry, Owner, Record};
 
 mod value;
 pub use value::Value;

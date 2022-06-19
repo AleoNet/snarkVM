@@ -20,19 +20,23 @@ use console::{
     program::{Identifier, Register, RegisterType},
 };
 
+use core::marker::PhantomData;
+
 /// Calls the operands into the declared type.
 /// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Call<N: Network> {
+pub struct Call<N: Network, A: circuit::Aleo<Network = N>> {
     /// The name of the closure.
     name: Identifier<N>,
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination registers.
     destinations: Vec<Register<N>>,
+    /// PhantomData.
+    _phantom: PhantomData<A>,
 }
 
-impl<N: Network> Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -58,10 +62,10 @@ impl<N: Network> Call<N> {
     }
 }
 
-impl<N: Network> Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Initialize a vector to store the operand values.
         let mut inputs = Vec::with_capacity(self.operands.len());
         // Load the operands values.
@@ -87,7 +91,7 @@ impl<N: Network> Call<N> {
         let register_types = stack.program().get_closure_registers(&self.name)?;
 
         // Initialize the stack.
-        let mut closure_stack = Stack::new(stack.program().clone(), register_types.clone())?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types.clone())?;
 
         // Ensure the inputs match the expected closure inputs.
         for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
@@ -123,9 +127,79 @@ impl<N: Network> Call<N> {
         Ok(())
     }
 
+    /// Executes the instruction.
+    #[inline]
+    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+        use circuit::Eject;
+
+        // Initialize a vector to store the operand values.
+        let mut inputs = Vec::with_capacity(self.operands.len());
+        // Load the operands values.
+        self.operands.iter().try_for_each(|operand| {
+            // Load and append the value.
+            inputs.push(stack.load_circuit(operand)?);
+            // Move to the next iteration.
+            Ok::<_, Error>(())
+        })?;
+
+        // Retrieve the closure from the program.
+        let closure = stack.program().get_closure(&self.name)?;
+        // Ensure the number of inputs matches the number of input statements.
+        if closure.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
+        }
+        // Ensure there are input statements in the closure.
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        // Ensure there are instructions in the closure.
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+
+        // Retrieve the register types.
+        let register_types = stack.program().get_closure_registers(&self.name)?;
+
+        // Initialize the stack.
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types.clone())?;
+
+        // Ensure the inputs match the expected closure inputs.
+        for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
+            // Ensure the input matches the declared type in the register.
+            closure_stack.program().matches_register(&input.eject_value(), &register_type)?;
+            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
+            // TODO (howardwu): OR if input is a record, forbid and error.
+            // Assign the input value to the register.
+            closure_stack.store_circuit(&register, input.clone());
+        }
+
+        // Evaluate the instructions.
+        closure.instructions().iter().try_for_each(|instruction| instruction.execute(&mut closure_stack))?;
+
+        // Initialize a vector to store the outputs.
+        let mut outputs = Vec::with_capacity(closure.outputs().len());
+        // Load the outputs.
+        for (register, register_type) in closure_stack.to_output_types() {
+            // Retrieve the output from the register.
+            let output = closure_stack.load_circuit(&Operand::Register(register.clone()))?;
+            // Ensure the output matches the declared type in the register.
+            closure_stack.program().matches_register(&output.eject_value(), &register_type)?;
+            // Insert the output into the outputs.
+            outputs.push(output);
+        }
+
+        // Assign the outputs to the destination registers.
+        for (output, register) in outputs.iter().zip_eq(self.destinations.iter()) {
+            // Assign the output to the register.
+            stack.store_circuit(register, output.clone())?;
+        }
+
+        Ok(())
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        program: &Program<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the closure.
         let closure = program.get_closure(&self.name)?;
         // Ensure there are input statements in the closure.
@@ -151,7 +225,7 @@ impl<N: Network> Call<N> {
     }
 }
 
-impl<N: Network> Parser for Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Call<N, A> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -202,11 +276,11 @@ impl<N: Network> Parser for Call<N> {
             }
         })(string)?;
 
-        Ok((string, Self { name, operands, destinations }))
+        Ok((string, Self { name, operands, destinations, _phantom: PhantomData }))
     }
 }
 
-impl<N: Network> FromStr for Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Call<N, A> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -224,14 +298,14 @@ impl<N: Network> FromStr for Call<N> {
     }
 }
 
-impl<N: Network> Debug for Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Call<N, A> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Display for Call<N, A> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -252,7 +326,7 @@ impl<N: Network> Display for Call<N> {
     }
 }
 
-impl<N: Network> FromBytes for Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Call<N, A> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the name of the call.
@@ -287,11 +361,11 @@ impl<N: Network> FromBytes for Call<N> {
         }
 
         // Return the operation.
-        Ok(Self { name, operands, destinations })
+        Ok(Self { name, operands, destinations, _phantom: PhantomData })
     }
 }
 
-impl<N: Network> ToBytes for Call<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Call<N, A> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
@@ -319,14 +393,18 @@ impl<N: Network> ToBytes for Call<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::{network::Testnet3, program::Identifier};
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_parse() {
-        let (string, call) =
-            Call::<CurrentNetwork>::parse("call transfer r0.owner r0.balance r0.token_amount into r1 r2 r3").unwrap();
+        let (string, call) = Call::<CurrentNetwork, CurrentAleo>::parse(
+            "call transfer r0.owner r0.balance r0.token_amount into r1 r2 r3",
+        )
+        .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(call.name, Identifier::from_str("transfer").unwrap(), "The name of the call is incorrect");
         assert_eq!(call.operands.len(), 3, "The number of operands is incorrect");

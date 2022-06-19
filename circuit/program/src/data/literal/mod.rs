@@ -18,6 +18,7 @@ mod from_bits;
 mod size_in_bits;
 mod to_bits;
 mod to_fields;
+mod to_type;
 mod variant;
 
 use snarkvm_circuit_network::Aleo;

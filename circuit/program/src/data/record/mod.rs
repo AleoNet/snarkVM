@@ -50,11 +50,11 @@ impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
     type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
 
     /// Initializes plaintext record from a primitive.
-    fn new(mode: Mode, record: Self::Primitive) -> Self {
+    fn new(_mode: Mode, record: Self::Primitive) -> Self {
         Self {
-            owner: Owner::new(mode, record.owner().clone()),
-            balance: Balance::new(mode, record.balance().clone()),
-            data: Inject::new(mode, record.data().clone()),
+            owner: Owner::new(_mode, record.owner().clone()),
+            balance: Balance::new(_mode, record.balance().clone()),
+            data: Inject::new(_mode, record.data().clone()),
         }
     }
 }
@@ -64,12 +64,54 @@ impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
     type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
 
     /// Initializes ciphertext record from a primitive.
-    fn new(mode: Mode, record: Self::Primitive) -> Self {
+    fn new(_mode: Mode, record: Self::Primitive) -> Self {
         Self {
-            owner: Owner::new(mode, record.owner().clone()),
-            balance: Balance::new(mode, record.balance().clone()),
-            data: Inject::new(mode, record.data().clone()),
+            owner: Owner::new(_mode, record.owner().clone()),
+            balance: Balance::new(_mode, record.balance().clone()),
+            data: Inject::new(_mode, record.data().clone()),
         }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Record<A, Plaintext<A>> {
+    /// Initializes a new record.
+    pub fn from_plaintext(
+        owner: Owner<A, Plaintext<A>>,
+        balance: Balance<A, Plaintext<A>>,
+        data: IndexMap<Identifier<A>, Entry<A, Plaintext<A>>>,
+    ) -> Result<Self> {
+        // Ensure the members has no duplicate names.
+        ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
+        // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
+        ensure!(
+            data.len() <= <A::Network as console::Network>::MAX_DATA_ENTRIES,
+            "Found a record that exceeds size ({})",
+            data.len()
+        );
+        // Return the record.
+        Ok(Self { owner, balance, data })
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Record<A, Ciphertext<A>> {
+    /// Initializes a new record.
+    pub fn from_ciphertext(
+        owner: Owner<A, Ciphertext<A>>,
+        balance: Balance<A, Ciphertext<A>>,
+        data: IndexMap<Identifier<A>, Entry<A, Ciphertext<A>>>,
+    ) -> Result<Self> {
+        // Ensure the members has no duplicate names.
+        ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
+        // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
+        ensure!(
+            data.len() <= <A::Network as console::Network>::MAX_DATA_ENTRIES,
+            "Found a record that exceeds size ({})",
+            data.len()
+        );
+        // Return the record.
+        Ok(Self { owner, balance, data })
     }
 }
 

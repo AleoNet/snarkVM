@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Parser for Closure<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Closure<N, A> {
     /// Parses a string into a closure.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -51,7 +51,7 @@ impl<N: Network> Parser for Closure<N> {
     }
 }
 
-impl<N: Network> FromStr for Closure<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Closure<N, A> {
     type Err = Error;
 
     /// Returns a closure from a string literal.
@@ -68,14 +68,14 @@ impl<N: Network> FromStr for Closure<N> {
     }
 }
 
-impl<N: Network> Debug for Closure<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Closure<N, A> {
     /// Prints the closure as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Closure<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Display for Closure<N, A> {
     /// Prints the closure as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the closure to a string.
@@ -89,13 +89,15 @@ impl<N: Network> Display for Closure<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_closure_parse() {
-        let closure = Closure::<CurrentNetwork>::parse(
+        let closure = Closure::<CurrentNetwork, CurrentAleo>::parse(
             r"
 closure foo:
     input r0 as field;
@@ -113,7 +115,7 @@ closure foo:
 
     #[test]
     fn test_closure_parse_cast() {
-        let closure = Closure::<CurrentNetwork>::parse(
+        let closure = Closure::<CurrentNetwork, CurrentAleo>::parse(
             r"
 closure foo:
     input r0 as token.record;
@@ -135,7 +137,7 @@ closure foo:
     input r1 as field;
     add r0 r1 into r2;
     output r2 as field;";
-        let closure = Closure::<CurrentNetwork>::parse(expected).unwrap().1;
+        let closure = Closure::<CurrentNetwork, CurrentAleo>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{closure}"),);
     }
 }

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Function<N, A> {
     /// Reads the function from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -57,7 +57,7 @@ impl<N: Network> FromBytes for Function<N> {
     }
 }
 
-impl<N: Network> ToBytes for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Function<N, A> {
     /// Writes the function to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -107,9 +107,11 @@ impl<N: Network> ToBytes for Function<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_function_bytes() -> Result<()> {
@@ -129,11 +131,11 @@ function main:
     add r0 r1 into r11;
     output r11 as field.private;";
 
-        let expected = Function::<CurrentNetwork>::from_str(function_string)?;
+        let expected = Function::<CurrentNetwork, CurrentAleo>::from_str(function_string)?;
         let expected_bytes = expected.to_bytes_le()?;
         println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), expected_bytes.len());
 
-        let candidate = Function::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
+        let candidate = Function::<CurrentNetwork, CurrentAleo>::from_bytes_le(&expected_bytes)?;
         assert_eq!(expected.to_string(), candidate.to_string());
         assert_eq!(expected_bytes, candidate.to_bytes_le()?);
         Ok(())

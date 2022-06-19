@@ -23,24 +23,33 @@ use console::{
 use core::marker::PhantomData;
 
 /// A unary literal operation.
-pub type UnaryLiteral<N, O> = Literals<N, O, 1>;
+pub type UnaryLiteral<N, A, O> = Literals<N, A, O, 1>;
 /// A binary literal operation.
-pub type BinaryLiteral<N, O> = Literals<N, O, 2>;
+pub type BinaryLiteral<N, A, O> = Literals<N, A, O, 2>;
 /// A ternary literal operation.
-pub type TernaryLiteral<N, O> = Literals<N, O, 3>;
+pub type TernaryLiteral<N, A, O> = Literals<N, A, O, 3>;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
+pub struct Literals<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
     /// PhantomData.
-    _phantom: PhantomData<O>,
+    _phantom: PhantomData<(O, A)>,
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
-    Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> Literals<N, A, O, NUM_OPERANDS>
 {
     /// Returns the opcode.
     #[inline]
@@ -61,12 +70,16 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>
-    Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> Literals<N, A, O, NUM_OPERANDS>
 {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
         ensure!(
             self.operands.len() == NUM_OPERANDS,
@@ -111,9 +124,60 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         stack.store_literal(&self.destination, output)
     }
 
+    /// Executes the instruction.
+    #[inline]
+    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+        // Ensure the number of operands is correct.
+        ensure!(
+            self.operands.len() == NUM_OPERANDS,
+            "Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands",
+            O::OPCODE,
+            self.operands.len()
+        );
+
+        // Initialize a vector to store the operand literals.
+        let mut inputs = Vec::with_capacity(NUM_OPERANDS);
+        // Initialize a vector to store the operand register types.
+        let mut input_types = Vec::with_capacity(NUM_OPERANDS);
+
+        // Load the operands **as literals & literal types**.
+        self.operands.iter().try_for_each(|operand| {
+            // Load the literal.
+            let literal = stack.load_literal_circuit(operand)?;
+            // Compute the literal type.
+            let literal_type = literal.to_type();
+            // Store the literal.
+            inputs.push(literal);
+            // Store the literal type.
+            input_types.push(RegisterType::Plaintext(PlaintextType::from(literal_type)));
+            // Move to the next iteration.
+            Ok::<_, Error>(())
+        })?;
+
+        // Compute the operation.
+        let output = O::execute(&inputs.try_into().map_err(|_| anyhow!("Failed to prepare operands in evaluate"))?)?;
+        // Compute the output type.
+        let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
+
+        // Retrieve the expected output type.
+        let expected_types = self.output_types(stack.program(), &input_types)?;
+        ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
+
+        // Ensure the output type is correct.
+        let expected_type = expected_types[0];
+        ensure!(expected_type == output_type, "Output type mismatch: expected {expected_type}, found {output_type}",);
+
+        // Evaluate the operation and store the output.
+        stack.store_literal_circuit(&self.destination, output)
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        _program: &Program<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == NUM_OPERANDS,
@@ -143,8 +207,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Parser
-    for Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> Parser for Literals<N, A, O, NUM_OPERANDS>
 {
     /// Parses a string into an operation.
     #[inline]
@@ -188,8 +256,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromStr
-    for Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> FromStr for Literals<N, A, O, NUM_OPERANDS>
 {
     type Err = Error;
 
@@ -208,8 +280,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Debug
-    for Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> Debug for Literals<N, A, O, NUM_OPERANDS>
 {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -217,8 +293,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> Display
-    for Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> Display for Literals<N, A, O, NUM_OPERANDS>
 {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -239,8 +319,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> FromBytes
-    for Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> FromBytes for Literals<N, A, O, NUM_OPERANDS>
 {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -263,8 +347,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     }
 }
 
-impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> ToBytes
-    for Literals<N, O, NUM_OPERANDS>
+impl<
+    N: Network,
+    A: circuit::Aleo<Network = N>,
+    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    const NUM_OPERANDS: usize,
+> ToBytes for Literals<N, A, O, NUM_OPERANDS>
 {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {

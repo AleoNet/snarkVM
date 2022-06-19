@@ -28,19 +28,22 @@ mod macros;
 use crate::vm::Opcode;
 use console::network::prelude::*;
 
-pub trait Operation<N: Network, Value: Parser + ToBits, ValueType: Parser, const NUM_OPERANDS: usize> {
+pub trait Operation<N: Network, Value: Parser + ToBits, CircuitValue, ValueType: Parser, const NUM_OPERANDS: usize> {
     /// The opcode of the operation.
     const OPCODE: Opcode;
 
     /// Returns the result of evaluating the operation on the given inputs.
     fn evaluate(inputs: &[Value; NUM_OPERANDS]) -> Result<Value>;
 
+    /// Returns the result of executing the operation on the given circuit inputs.
+    fn execute(inputs: &[CircuitValue; NUM_OPERANDS]) -> Result<CircuitValue>;
+
     /// Returns the output type from the given input types.
     fn output_type(inputs: &[ValueType; NUM_OPERANDS]) -> Result<ValueType>;
 }
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
-pub type Add<N> = BinaryLiteral<N, AddOperation<N>>;
+pub type Add<N, A> = BinaryLiteral<N, A, AddOperation<N, A>>;
 
 crate::operation!(
     pub struct AddOperation<core::ops::Add, add, "add"> {
@@ -61,7 +64,7 @@ crate::operation!(
 );
 
 /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-pub type AddWrapped<N> = BinaryLiteral<N, AddWrappedOperation<N>>;
+pub type AddWrapped<N, A> = BinaryLiteral<N, A, AddWrappedOperation<N, A>>;
 
 crate::operation!(
     pub struct AddWrappedOperation<console::network::AddWrapped, add_wrapped, "add.w"> {
@@ -79,7 +82,7 @@ crate::operation!(
 );
 
 /// Divides `first` by `second`, storing the outcome in `destination`.
-pub type Div<N> = BinaryLiteral<N, DivOperation<N>>;
+pub type Div<N, A> = BinaryLiteral<N, A, DivOperation<N, A>>;
 
 crate::operation!(
     pub struct DivOperation<core::ops::Div, div, "div"> {
@@ -94,12 +97,12 @@ crate::operation!(
         (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
         (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
         (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
-        (Scalar, Scalar) => Scalar,
+        // (Scalar, Scalar) => Scalar,
     }
 );
 
 /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
+pub type DivWrapped<N, A> = BinaryLiteral<N, A, DivWrappedOperation<N, A>>;
 
 crate::operation!(
     pub struct DivWrappedOperation<console::network::DivWrapped, div_wrapped, "div.w"> {
@@ -117,7 +120,7 @@ crate::operation!(
 );
 
 /// Multiplies `first` and `second`, storing the outcome in `destination`.
-pub type Mul<N> = BinaryLiteral<N, MulOperation<N>>;
+pub type Mul<N, A> = BinaryLiteral<N, A, MulOperation<N, A>>;
 
 crate::operation!(
     pub struct MulOperation<core::ops::Mul, mul, "mul"> {
@@ -134,12 +137,12 @@ crate::operation!(
         (U32, U32) => U32 ("ensure overflows halt"),
         (U64, U64) => U64 ("ensure overflows halt"),
         (U128, U128) => U128 ("ensure overflows halt"),
-        (Scalar, Scalar) => Scalar,
+        // (Scalar, Scalar) => Scalar,
     }
 );
 
 /// Multiplies `first` and `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-pub type MulWrapped<N> = BinaryLiteral<N, MulWrappedOperation<N>>;
+pub type MulWrapped<N, A> = BinaryLiteral<N, A, MulWrappedOperation<N, A>>;
 
 crate::operation!(
     pub struct MulWrappedOperation<console::network::MulWrapped, mul_wrapped, "mul.w"> {
@@ -157,7 +160,7 @@ crate::operation!(
 );
 
 /// Computes `first - second`, storing the outcome in `destination`.
-pub type Sub<N> = BinaryLiteral<N, SubOperation<N>>;
+pub type Sub<N, A> = BinaryLiteral<N, A, SubOperation<N, A>>;
 
 crate::operation!(
     pub struct SubOperation<core::ops::Sub, sub, "sub"> {
@@ -173,12 +176,12 @@ crate::operation!(
         (U32, U32) => U32 ("ensure overflows halt"),
         (U64, U64) => U64 ("ensure overflows halt"),
         (U128, U128) => U128 ("ensure overflows halt"),
-        (Scalar, Scalar) => Scalar,
+        // (Scalar, Scalar) => Scalar,
     }
 );
 
 /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-pub type SubWrapped<N> = BinaryLiteral<N, SubWrappedOperation<N>>;
+pub type SubWrapped<N, A> = BinaryLiteral<N, A, SubWrappedOperation<N, A>>;
 
 crate::operation!(
     pub struct SubWrappedOperation<console::network::SubWrapped, sub_wrapped, "sub.w"> {

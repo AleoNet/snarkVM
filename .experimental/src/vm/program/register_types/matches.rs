@@ -18,9 +18,9 @@ use super::*;
 
 impl<N: Network> RegisterTypes<N> {
     /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.
-    pub fn matches_interface(
+    pub fn matches_interface<A: circuit::Aleo<Network = N>>(
         &self,
-        program: &Program<N>,
+        program: &Program<N, A>,
         operands: &[Operand<N>],
         interface: &Interface<N>,
     ) -> Result<()> {
@@ -63,9 +63,9 @@ impl<N: Network> RegisterTypes<N> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
-    pub fn matches_record(
+    pub fn matches_record<A: circuit::Aleo<Network = N>>(
         &self,
-        program: &Program<N>,
+        program: &Program<N, A>,
         operands: &[Operand<N>],
         record_type: &RecordType<N>,
     ) -> Result<()> {

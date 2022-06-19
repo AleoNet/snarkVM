@@ -29,19 +29,19 @@ use console::{network::prelude::*, program::Identifier};
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Function<N: Network> {
+pub struct Function<N: Network, A: circuit::Aleo<Network = N>> {
     /// The name of the function.
     name: Identifier<N>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
     inputs: IndexSet<Input<N>>,
     /// The instructions, in order of execution.
-    instructions: Vec<Instruction<N>>,
+    instructions: Vec<Instruction<N, A>>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
 }
 
-impl<N: Network> Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
     /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {
         Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new() }
@@ -58,7 +58,7 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the function instructions.
-    pub fn instructions(&self) -> &[Instruction<N>] {
+    pub fn instructions(&self) -> &[Instruction<N, A>] {
         &self.instructions
     }
 
@@ -68,7 +68,7 @@ impl<N: Network> Function<N> {
     }
 }
 
-impl<N: Network> Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
     /// Adds the input statement to the function.
     ///
     /// # Errors
@@ -97,7 +97,7 @@ impl<N: Network> Function<N> {
     /// This method will halt if there are no input statements in memory.
     /// This method will halt if the maximum number of instructions has been reached.
     #[inline]
-    pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
+    pub fn add_instruction(&mut self, instruction: Instruction<N, A>) -> Result<()> {
         // Ensure there are input statements in memory.
         ensure!(!self.inputs.is_empty(), "Cannot add instructions before inputs have been added");
 
@@ -137,7 +137,7 @@ impl<N: Network> Function<N> {
     }
 }
 
-impl<N: Network> TypeName for Function<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> TypeName for Function<N, A> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {

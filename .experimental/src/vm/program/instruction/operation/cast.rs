@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::vm::{Opcode, Operand, Program, Stack, StackValue};
+use crate::vm::{CircuitValue, Opcode, Operand, Program, Stack, StackValue};
 use console::{
     network::prelude::*,
     program::{
@@ -33,20 +33,23 @@ use console::{
     },
 };
 
+use core::marker::PhantomData;
 use indexmap::IndexMap;
 
 /// Casts the operands into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Cast<N: Network> {
+pub struct Cast<N: Network, A: circuit::Aleo<Network = N>> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
     /// The casted register type.
     register_type: RegisterType<N>,
+    /// PhantomData.
+    _phantom: PhantomData<A>,
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -72,10 +75,10 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N>) -> Result<()> {
+    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Initialize a vector to store the operand values.
         let mut inputs = Vec::with_capacity(self.operands.len());
 
@@ -198,9 +201,147 @@ impl<N: Network> Cast<N> {
         }
     }
 
+    /// Executes the instruction.
+    #[inline]
+    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+        use circuit::{Eject, Inject, ToBits};
+
+        // Initialize a vector to store the operand values.
+        let mut inputs = Vec::with_capacity(self.operands.len());
+
+        // Load the operands values.
+        self.operands.iter().try_for_each(|operand| {
+            // Load and append the value.
+            inputs.push(stack.load_circuit(operand)?);
+            // Move to the next iteration.
+            Ok::<_, Error>(())
+        })?;
+
+        match self.register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
+            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                // Ensure the operands is not empty.
+                ensure!(!inputs.is_empty(), "Casting to an interface requires at least one operand");
+
+                // Retrieve the interface and ensure it is defined in the program.
+                let interface = stack.program().get_interface(&interface_name)?;
+
+                // Initialize the interface members.
+                let mut members = IndexMap::new();
+                for (member, (member_name, member_type)) in inputs.iter().zip_eq(interface.members()) {
+                    // Compute the register type.
+                    let register_type = RegisterType::Plaintext(*member_type);
+                    // Retrieve the plaintext value from the entry.
+                    let plaintext = match member {
+                        CircuitValue::Plaintext(plaintext) => {
+                            // Ensure the member matches the register type.
+                            stack.program().matches_register(
+                                &CircuitValue::Plaintext(plaintext.clone()).eject_value(),
+                                &register_type,
+                            )?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the interface member is not a record.
+                        CircuitValue::Record(..) => bail!("Casting a record into an interface member is illegal"),
+                    };
+                    // Append the member to the interface members.
+                    members.insert(circuit::Identifier::constant(*member_name), plaintext);
+                }
+
+                // Construct the interface.
+                let interface = circuit::Plaintext::Interface(members, Default::default());
+                // Store the interface.
+                stack.store_circuit(&self.destination, CircuitValue::Plaintext(interface))
+            }
+            RegisterType::Record(record_name) => {
+                // Ensure the operands length is at least 2.
+                ensure!(inputs.len() >= 2, "Casting to a record requires at least two operands");
+
+                // Retrieve the interface and ensure it is defined in the program.
+                let record_type = stack.program().get_record(&record_name)?;
+
+                // Initialize the record owner.
+                let owner: circuit::Owner<A, circuit::Plaintext<A>> = match &inputs[0] {
+                    // Ensure the entry is an address.
+                    CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Address(owner), ..)) => {
+                        match record_type.owner().is_public() {
+                            true => circuit::Owner::Public(owner.clone()),
+                            false => circuit::Owner::Private(circuit::Plaintext::Literal(
+                                circuit::Literal::Address(owner.clone()),
+                                Default::default(),
+                            )),
+                        }
+                    }
+                    _ => bail!("Invalid record owner"),
+                };
+
+                // Initialize the record balance.
+                let balance: circuit::Balance<A, circuit::Plaintext<A>> = match &inputs[1] {
+                    // Ensure the entry is an balance.
+                    CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::U64(balance), ..)) => {
+                        // Ensure the balance is less than or equal to 2^52.
+                        A::assert(
+                            !balance.to_bits_le()[52..]
+                                .iter()
+                                .fold(circuit::Boolean::constant(false), |acc, bit| acc | bit),
+                        );
+                        // Construct the record balance.
+                        match record_type.balance().is_public() {
+                            true => circuit::Balance::Public(balance.clone()),
+                            false => circuit::Balance::Private(circuit::Plaintext::Literal(
+                                circuit::Literal::U64(balance.clone()),
+                                Default::default(),
+                            )),
+                        }
+                    }
+                    _ => bail!("Invalid record balance"),
+                };
+
+                // Initialize the record entries.
+                let mut entries = IndexMap::new();
+                for (entry, (entry_name, entry_type)) in inputs.iter().skip(2).zip_eq(record_type.entries()) {
+                    // Compute the register type.
+                    let register_type = RegisterType::from(ValueType::from(*entry_type));
+                    // Retrieve the plaintext value from the entry.
+                    let plaintext = match entry {
+                        CircuitValue::Plaintext(plaintext) => {
+                            // Ensure the entry matches the register type.
+                            stack.program().matches_register(
+                                &CircuitValue::Plaintext(plaintext.clone()).eject_value(),
+                                &register_type,
+                            )?;
+                            // Output the plaintext.
+                            plaintext.clone()
+                        }
+                        // Ensure the record entry is not a record.
+                        CircuitValue::Record(..) => bail!("Casting a record into a record entry is illegal"),
+                    };
+                    // Construct the entry name constant circuit.
+                    let entry_name = circuit::Identifier::constant(*entry_name);
+                    // Append the entry to the record entries.
+                    match entry_type {
+                        EntryType::Constant(..) => entries.insert(entry_name, circuit::Entry::Constant(plaintext)),
+                        EntryType::Public(..) => entries.insert(entry_name, circuit::Entry::Public(plaintext)),
+                        EntryType::Private(..) => entries.insert(entry_name, circuit::Entry::Private(plaintext)),
+                    };
+                }
+
+                // Construct the record.
+                let record = circuit::program::Record::from_plaintext(owner, balance, entries)?;
+                // Store the record.
+                stack.store_circuit(&self.destination, CircuitValue::Record(record))
+            }
+        }
+    }
+
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(
+        &self,
+        program: &Program<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -277,7 +418,7 @@ impl<N: Network> Cast<N> {
     }
 }
 
-impl<N: Network> Parser for Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Cast<N, A> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -316,11 +457,11 @@ impl<N: Network> Parser for Cast<N> {
         // Parse the register type from the string.
         let (string, register_type) = RegisterType::parse(string)?;
 
-        Ok((string, Self { operands, destination, register_type }))
+        Ok((string, Self { operands, destination, register_type, _phantom: PhantomData }))
     }
 }
 
-impl<N: Network> FromStr for Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Cast<N, A> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -338,14 +479,14 @@ impl<N: Network> FromStr for Cast<N> {
     }
 }
 
-impl<N: Network> Debug for Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Cast<N, A> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Display for Cast<N, A> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -360,7 +501,7 @@ impl<N: Network> Display for Cast<N> {
     }
 }
 
-impl<N: Network> FromBytes for Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Cast<N, A> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of operands.
@@ -385,11 +526,11 @@ impl<N: Network> FromBytes for Cast<N> {
         let register_type = RegisterType::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination, register_type })
+        Ok(Self { operands, destination, register_type, _phantom: PhantomData })
     }
 }
 
-impl<N: Network> ToBytes for Cast<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Cast<N, A> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
@@ -411,14 +552,18 @@ impl<N: Network> ToBytes for Cast<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::{network::Testnet3, program::Identifier};
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_parse() {
-        let (string, cast) =
-            Cast::<CurrentNetwork>::parse("cast r0.owner r0.balance r0.token_amount into r1 as token.record").unwrap();
+        let (string, cast) = Cast::<CurrentNetwork, CurrentAleo>::parse(
+            "cast r0.owner r0.balance r0.token_amount into r1 as token.record",
+        )
+        .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(cast.operands.len(), 3, "The number of operands is incorrect");
         assert_eq!(

@@ -53,7 +53,20 @@ pub mod prelude {
         Variable,
     };
     pub use console::{
-        prelude::{bail, ensure, fmt, Debug, Display, Error, Formatter, FromStr, One as _, Result, Zero as _},
+        prelude::{
+            bail,
+            ensure,
+            fmt,
+            has_duplicates,
+            Debug,
+            Display,
+            Error,
+            Formatter,
+            FromStr,
+            One as _,
+            Result,
+            Zero as _,
+        },
         traits::{
             integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
             string_parser,

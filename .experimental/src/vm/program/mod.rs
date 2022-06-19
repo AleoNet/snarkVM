@@ -64,7 +64,7 @@ enum ProgramDefinition {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Program<N: Network> {
+pub struct Program<N: Network, A: circuit::Aleo<Network = N>> {
     /// The name of the program.
     name: Identifier<N>,
     /// A map of identifiers to their program declaration.
@@ -74,16 +74,16 @@ pub struct Program<N: Network> {
     /// A map of the declared record types for the program.
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared closures for the program.
-    closures: IndexMap<Identifier<N>, Closure<N>>,
+    closures: IndexMap<Identifier<N>, Closure<N, A>>,
     /// A map of the declared register types for each closure.
     closure_registers: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// A map of the declared functions for the program.
-    functions: IndexMap<Identifier<N>, Function<N>>,
+    functions: IndexMap<Identifier<N>, Function<N, A>>,
     /// A map of the declared register types for each function.
     function_registers: IndexMap<Identifier<N>, RegisterTypes<N>>,
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Initializes an empty program.
     #[inline]
     pub fn new(name: Identifier<N>) -> Self {
@@ -110,7 +110,7 @@ impl<N: Network> Program<N> {
         inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Evaluate the function.
-        Stack::evaluate(self.clone(), function_name, inputs)
+        Stack::<N, A>::evaluate(self.clone(), function_name, inputs)
     }
 
     /// Executes a program function on the given inputs.
@@ -122,9 +122,9 @@ impl<N: Network> Program<N> {
         &self,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Execute the function.
-        Stack::execute(self.clone(), function_name, inputs)
+        Stack::<N, A>::execute(self.clone(), function_name, inputs)
     }
 
     /// Returns `true` if the program contains a interface with the given name.
@@ -158,7 +158,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the closure with the given name.
-    pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
+    pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N, A>> {
         self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))
     }
 
@@ -168,7 +168,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns the function with the given name.
-    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
+    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N, A>> {
         self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))
     }
 
@@ -178,7 +178,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Adds a new interface to the program.
     ///
     /// # Errors
@@ -294,7 +294,7 @@ impl<N: Network> Program<N> {
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
     #[inline]
-    fn add_closure(&mut self, closure: Closure<N>) -> Result<()> {
+    fn add_closure(&mut self, closure: Closure<N, A>) -> Result<()> {
         // Retrieve the closure name.
         let closure_name = closure.name().clone();
 
@@ -493,7 +493,7 @@ impl<N: Network> Program<N> {
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
     #[inline]
-    fn add_function(&mut self, function: Function<N>) -> Result<()> {
+    fn add_function(&mut self, function: Function<N, A>) -> Result<()> {
         // Retrieve the function name.
         let function_name = function.name().clone();
 
@@ -712,7 +712,7 @@ impl<N: Network> Program<N> {
         // Convert the name to a string.
         let name = name.to_string();
         // Check if it matches root of any opcode.
-        Instruction::<N>::OPCODES.into_iter().any(|opcode| (**opcode).splitn(2, '.').next() == Some(&name))
+        Instruction::<N, A>::OPCODES.into_iter().any(|opcode| (**opcode).splitn(2, '.').next() == Some(&name))
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
@@ -784,7 +784,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> TypeName for Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> TypeName for Program<N, A> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -795,9 +795,11 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_program_interface() -> Result<()> {
@@ -810,7 +812,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(Identifier::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(Identifier::from_str("unknown")?);
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -835,7 +837,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(Identifier::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(Identifier::from_str("unknown")?);
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -850,7 +852,7 @@ record foo:
     #[test]
     fn test_program_function() -> Result<()> {
         // Create a new function.
-        let function = Function::<CurrentNetwork>::from_str(
+        let function = Function::<CurrentNetwork, CurrentAleo>::from_str(
             r"
 function compute:
     input r0 as field.public;
@@ -860,7 +862,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(Identifier::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(Identifier::from_str("unknown")?);
 
         // Add the function to the program.
         program.add_function(function.clone())?;
@@ -874,7 +876,7 @@ function compute:
 
     #[test]
     fn test_program_evaluate_function() {
-        let program = Program::<CurrentNetwork>::from_str(
+        let program = Program::<CurrentNetwork, CurrentAleo>::from_str(
             r"
     program example;
 
@@ -910,7 +912,7 @@ function compute:
     #[test]
     fn test_program_evaluate_interface_and_function() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
+        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
             r"
 program example;
 
@@ -948,7 +950,7 @@ function compute:
     #[test]
     fn test_program_evaluate_record_and_function() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
+        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
             r"
 program token;
 
@@ -987,7 +989,7 @@ function compute:
     #[test]
     fn test_program_evaluate_call() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
+        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
             r"
 program example_call;
 
@@ -1033,17 +1035,26 @@ function compute:
         assert_eq!(r4, candidate[2]);
 
         // Re-run to ensure state continues to work.
-        let candidate = program.evaluate(&function_name, &[r0, r1]).unwrap();
+        let candidate = program.evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
+
+        use circuit::Eject;
+
+        // Re-run to ensure state continues to work.
+        let candidate = program.execute(&function_name, &[r0, r1]).unwrap();
+        assert_eq!(3, candidate.len());
+        assert_eq!(r2, candidate[0].eject_value());
+        assert_eq!(r3, candidate[1].eject_value());
+        assert_eq!(r4, candidate[2].eject_value());
     }
 
     #[test]
     fn test_program_evaluate_cast() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork>::parse(
+        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
             r"
 program token_with_cast;
 

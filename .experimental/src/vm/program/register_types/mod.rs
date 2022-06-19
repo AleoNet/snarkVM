@@ -136,7 +136,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the plaintext type of the given register.
-    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<RegisterType<N>> {
+    pub fn get_type<A: circuit::Aleo<Network = N>>(
+        &self,
+        program: &Program<N, A>,
+        register: &Register<N>,
+    ) -> Result<RegisterType<N>> {
         // Determine if the register is an input register.
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
