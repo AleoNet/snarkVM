@@ -337,21 +337,29 @@ mod tests {
                         // Initialize an indicator whether the operation should succeed or not.
                         #[allow(unused_mut)]
                         let mut should_succeed = true;
-                        $( $({
-                            if $condition == "ensure overflows halt" {
-                                match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
-                                    "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
-                                    "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
-                                    "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
-                                    // "pow" | "pow.w" => should_succeed &= (*a).checked_pow(*b).is_some(),
-                                    "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
-                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
-                                }
+                        {
+                            /// A helper macro to check the conditions.
+                            macro_rules! check_condition {
+                                ("ensure overflows halt") => {
+                                    match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
+                                        "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
+                                        "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
+                                        "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
+                                        // "pow" | "pow.w" => should_succeed &= (*a).checked_pow(*b).is_some(),
+                                        "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
+                                        _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
+                                    }
+                                };
+                                ("ensure divide by zero halt") => {
+                                    match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
+                                        "div" | "div.w" => should_succeed &= (*b) != 0,
+                                        _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
+                                    }
+                                };
                             }
-                            if $condition == "ensure divide by zero halts" {
-                                should_succeed &= (*a).checked_div(*b).is_some();
-                            }
-                        })+ )?
+                            // Check the conditions.
+                            $( $( check_condition!($condition); )+ )?
+                        }
 
                         // If `should_succeed` is `true`, compute the expected output.
                         let expected = match should_succeed {
