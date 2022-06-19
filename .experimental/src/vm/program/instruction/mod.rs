@@ -122,7 +122,7 @@ macro_rules! instruction {
             // Not,
             // NotEqual,
             Or,
-            // Pow,
+            Pow,
             // PowWrapped,
             // PRFPsd2,
             // PRFPsd4,
@@ -260,8 +260,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // NotEqual(NotEqual<N, A>),
     /// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
     Or(Or<N, A>),
-    // /// Raises `first` to the power of `second`, storing the outcome in `destination`.
-    // Pow(Pow<N, A>),
+    /// Raises `first` to the power of `second`, storing the outcome in `destination`.
+    Pow(Pow<N, A>),
     // /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
     // PowWrapped(PowWrapped<N, A>),
     // /// Performs a Poseidon PRF with an input rate of 2.
@@ -527,7 +527,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            11,
+            12,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

@@ -197,44 +197,44 @@ crate::operation!(
     }
 );
 
-// /// Raises `first` to the power of `second`, storing the outcome in `destination`.
-// pub type Pow<N, A> = BinaryLiteral<N, A, PowOperation<N, A>>;
-//
-// crate::operation!(
-//     pub struct PowOperation<num_traits::Pow, pow, "pow"> {
-//         (Field, Field) => Field,
-//         (I8, U8) => I8 ("ensure overflows halt"),
-//         (I8, U16) => I8 ("ensure overflows halt"),
-//         (I8, U32) => I8 ("ensure overflows halt"),
-//         (I16, U8) => I16 ("ensure overflows halt"),
-//         (I16, U16) => I16 ("ensure overflows halt"),
-//         (I16, U32) => I16 ("ensure overflows halt"),
-//         (I32, U8) => I32 ("ensure overflows halt"),
-//         (I32, U16) => I32 ("ensure overflows halt"),
-//         (I32, U32) => I32 ("ensure overflows halt"),
-//         (I64, U8) => I64 ("ensure overflows halt"),
-//         (I64, U16) => I64 ("ensure overflows halt"),
-//         (I64, U32) => I64 ("ensure overflows halt"),
-//         (I128, U8) => I128 ("ensure overflows halt"),
-//         (I128, U16) => I128 ("ensure overflows halt"),
-//         (I128, U32) => I128 ("ensure overflows halt"),
-//         (U8, U8) => U8 ("ensure overflows halt"),
-//         (U8, U16) => U8 ("ensure overflows halt"),
-//         (U8, U32) => U8 ("ensure overflows halt"),
-//         (U16, U8) => U16 ("ensure overflows halt"),
-//         (U16, U16) => U16 ("ensure overflows halt"),
-//         (U16, U32) => U16 ("ensure overflows halt"),
-//         (U32, U8) => U32 ("ensure overflows halt"),
-//         (U32, U16) => U32 ("ensure overflows halt"),
-//         (U32, U32) => U32 ("ensure overflows halt"),
-//         (U64, U8) => U64 ("ensure overflows halt"),
-//         (U64, U16) => U64 ("ensure overflows halt"),
-//         (U64, U32) => U64 ("ensure overflows halt"),
-//         (U128, U8) => U128 ("ensure overflows halt"),
-//         (U128, U16) => U128 ("ensure overflows halt"),
-//         (U128, U32) => U128 ("ensure overflows halt"),
-//     }
-// );
+/// Raises `first` to the power of `second`, storing the outcome in `destination`.
+pub type Pow<N, A> = BinaryLiteral<N, A, PowOperation<N, A>>;
+
+crate::operation!(
+    pub struct PowOperation<num_traits::Pow, pow, "pow"> {
+        (Field, Field) => Field,
+        (I8, U8) => I8 ("ensure exponentiation overflows halt"),
+        (I8, U16) => I8 ("ensure exponentiation overflows halt"),
+        (I8, U32) => I8 ("ensure exponentiation overflows halt"),
+        (I16, U8) => I16 ("ensure exponentiation overflows halt"),
+        (I16, U16) => I16 ("ensure exponentiation overflows halt"),
+        (I16, U32) => I16 ("ensure exponentiation overflows halt"),
+        (I32, U8) => I32 ("ensure exponentiation overflows halt"),
+        (I32, U16) => I32 ("ensure exponentiation overflows halt"),
+        (I32, U32) => I32 ("ensure exponentiation overflows halt"),
+        (I64, U8) => I64 ("ensure exponentiation overflows halt"),
+        (I64, U16) => I64 ("ensure exponentiation overflows halt"),
+        (I64, U32) => I64 ("ensure exponentiation overflows halt"),
+        (I128, U8) => I128 ("ensure exponentiation overflows halt"),
+        (I128, U16) => I128 ("ensure exponentiation overflows halt"),
+        (I128, U32) => I128 ("ensure exponentiation overflows halt"),
+        (U8, U8) => U8 ("ensure exponentiation overflows halt"),
+        (U8, U16) => U8 ("ensure exponentiation overflows halt"),
+        (U8, U32) => U8 ("ensure exponentiation overflows halt"),
+        (U16, U8) => U16 ("ensure exponentiation overflows halt"),
+        (U16, U16) => U16 ("ensure exponentiation overflows halt"),
+        (U16, U32) => U16 ("ensure exponentiation overflows halt"),
+        (U32, U8) => U32 ("ensure exponentiation overflows halt"),
+        (U32, U16) => U32 ("ensure exponentiation overflows halt"),
+        (U32, U32) => U32 ("ensure exponentiation overflows halt"),
+        (U64, U8) => U64 ("ensure exponentiation overflows halt"),
+        (U64, U16) => U64 ("ensure exponentiation overflows halt"),
+        (U64, U32) => U64 ("ensure exponentiation overflows halt"),
+        (U128, U8) => U128 ("ensure exponentiation overflows halt"),
+        (U128, U16) => U128 ("ensure exponentiation overflows halt"),
+        (U128, U32) => U128 ("ensure exponentiation overflows halt"),
+    }
+);
 
 /// Computes `first - second`, storing the outcome in `destination`.
 pub type Sub<N, A> = BinaryLiteral<N, A, SubOperation<N, A>>;

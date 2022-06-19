@@ -151,10 +151,10 @@ macro_rules! execute {
     // Binary operation.
     (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
         // Retrieve the first and second operands.
-        let [first, second] = $inputs;
+        let [first, second] = $inputs.to_owned();
         // Compute the output.
         match (first, second) {
-            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second)) => circuit::Literal::$output(first.$operate(second)),)+
+            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second)) => circuit::Literal::$output(first.$operate(&second)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -323,8 +323,14 @@ mod tests {
                         <$operation as $crate::vm::Operation<_, _, _, _, 2>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into()])?
                     );
 
+                    // Determine the number of iterations to run, based on the opcode.
+                    let num_iterations: u64 = match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
+                        "pow" | "pow.w" => 10,
+                        _ => 100
+                    };
+
                     // Check the operation on randomly-sampled values.
-                    for i in 0..50u64 {
+                    for i in 0..num_iterations {
                         // Sample the first and second value.
                         #[allow(deprecated)]
                         let (a, b) = match i {
@@ -345,16 +351,15 @@ mod tests {
                                         "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
                                         "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
                                         "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
-                                        // "pow" | "pow.w" => should_succeed &= (*a).checked_pow(*b).is_some(),
                                         "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
                                         _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
                                     }
                                 };
+                                ("ensure exponentiation overflows halt") => {
+                                    should_succeed &= (*a).checked_pow((*b) as u32).is_some()
+                                };
                                 ("ensure divide by zero halt") => {
-                                    match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
-                                        "div" | "div.w" => should_succeed &= (*b) != 0,
-                                        _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
-                                    }
+                                    should_succeed &= (*b) != 0
                                 };
                             }
                             // Check the conditions.
