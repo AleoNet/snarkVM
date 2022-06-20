@@ -478,7 +478,6 @@ where
 
         sponge.absorb_nonnative_field_elements(evaluations.to_field_elements(), OptimizationType::Weight);
 
-        println!("{} {}", labeled_commitments.len(), commitment_randomnesses.len());
         let pc_proof = SonicKZG10::<E, FS>::open_combinations(
             &circuit_proving_key.committer_key,
             lc_s.values(),
