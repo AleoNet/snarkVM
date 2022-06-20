@@ -194,17 +194,17 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     Call(Call<N, A>),
     /// Casts the operands into the declared type.
     Cast(Cast<N, A>),
-    /// Performs a BHP commitment taking a 256-bit value as input.
+    /// Performs a BHP commitment on inputs of 256-bit chunks.
     CommitBHP256(CommitBHP256<N, A>),
-    /// Performs a BHP commitment taking a 512-bit value as input.
+    /// Performs a BHP commitment on inputs of 512-bit chunks.
     CommitBHP512(CommitBHP512<N, A>),
-    /// Performs a BHP commitment taking a 768-bit value as input.
+    /// Performs a BHP commitment on inputs of 768-bit chunks.
     CommitBHP768(CommitBHP768<N, A>),
-    /// Performs a BHP commitment taking a 1024-bit value as input.
+    /// Performs a BHP commitment on inputs of 1024-bit chunks.
     CommitBHP1024(CommitBHP1024<N, A>),
-    // /// Performs a Pedersen commitment taking a 64-bit value as input.
+    // /// Performs a Pedersen commitment on up to a 64-bit input.
     // CommitPed64(CommitPed64<N, A>),
-    // /// Performs a Pedersen commitment taking a 128-bit value as input.
+    // /// Performs a Pedersen commitment on up to a 128-bit input.
     // CommitPed128(CommitPed128<N, A>),
     // /// Divides `first` by `second`, storing the outcome in `destination`.
     // Div(Div<N, A>),
@@ -224,9 +224,9 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     HashBHP768(HashBHP768<N, A>),
     /// Performs a BHP hash on inputs of 1024-bit chunks.
     HashBHP1024(HashBHP1024<N, A>),
-    // /// Performs a Pedersen hash taking a 64-bit value as input.
+    // /// Performs a Pedersen hash on up to a 64-bit input.
     // HashPed64(HashPed64<N, A>),
-    // /// Performs a Pedersen hash taking a 128-bit value as input.
+    // /// Performs a Pedersen hash on up to a 128-bit input.
     // HashPed128(HashPed128<N, A>),
     // /// Performs a Poseidon hash with an input rate of 2.
     // HashPsd2(HashPsd2<N, A>),
