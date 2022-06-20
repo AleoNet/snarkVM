@@ -22,95 +22,44 @@ use console::{
 
 use core::marker::PhantomData;
 
-pub trait HashOperation<N: Network, A: circuit::Aleo<Network = N>> {
-    /// The opcode of the operation.
-    const OPCODE: Opcode;
-
-    /// Returns the result of hashing the given input.
-    fn evaluate(input: StackValue<N>) -> Result<StackValue<N>>;
-
-    /// Returns the result of hashing the given circuit input.
-    fn execute(input: CircuitValue<A>) -> Result<CircuitValue<A>>;
-
-    /// Returns the output type from the given input types.
-    fn output_type() -> Result<RegisterType<N>>;
-}
-
 /// BHP256 is a collision-resistant hash function that processes inputs in 256-bit chunks.
-pub type HashBHP256<N, A> = HashInstruction<N, A, BHPHashOperation<N, A, 256>>;
+pub type HashBHP256<N, A> = HashInstruction<N, A, { Hasher::BHP256 as u8 }>;
 /// BHP512 is a collision-resistant hash function that processes inputs in 512-bit chunks.
-pub type HashBHP512<N, A> = HashInstruction<N, A, BHPHashOperation<N, A, 512>>;
+pub type HashBHP512<N, A> = HashInstruction<N, A, { Hasher::BHP512 as u8 }>;
 /// BHP768 is a collision-resistant hash function that processes inputs in 768-bit chunks.
-pub type HashBHP768<N, A> = HashInstruction<N, A, BHPHashOperation<N, A, 768>>;
+pub type HashBHP768<N, A> = HashInstruction<N, A, { Hasher::BHP768 as u8 }>;
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
-pub type HashBHP1024<N, A> = HashInstruction<N, A, BHPHashOperation<N, A, 1024>>;
+pub type HashBHP1024<N, A> = HashInstruction<N, A, { Hasher::BHP1024 as u8 }>;
 
-/// The BHP hash operation template.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct BHPHashOperation<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16>(PhantomData<(N, A)>);
-
-impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> HashOperation<N, A>
-    for BHPHashOperation<N, A, NUM_BITS>
-{
-    /// The opcode of the operation.
-    const OPCODE: Opcode = match NUM_BITS {
-        256 => Opcode::Hash("hash.bhp256"),
-        512 => Opcode::Hash("hash.bhp512"),
-        768 => Opcode::Hash("hash.bhp768"),
-        1024 => Opcode::Hash("hash.bhp1024"),
-        _ => panic!("Invalid BHP hash instruction opcode"),
-    };
-
-    /// Returns the result of hashing the given input.
-    fn evaluate(input: StackValue<N>) -> Result<StackValue<N>> {
-        // Hash the input.
-        let output = match NUM_BITS {
-            256 => N::hash_bhp256(&input.to_bits_le())?,
-            512 => N::hash_bhp512(&input.to_bits_le())?,
-            768 => N::hash_bhp768(&input.to_bits_le())?,
-            1024 => N::hash_bhp1024(&input.to_bits_le())?,
-            _ => bail!("Invalid BHP hash variant: BHP{}", NUM_BITS),
-        };
-        // Return the output as a stack value.
-        Ok(StackValue::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default())))
-    }
-
-    /// Returns the result of hashing the given circuit input.
-    fn execute(input: CircuitValue<A>) -> Result<CircuitValue<A>> {
-        // Hash the input.
-        let output = match NUM_BITS {
-            256 => A::hash_bhp256(&input.to_bits_le()),
-            512 => A::hash_bhp512(&input.to_bits_le()),
-            768 => A::hash_bhp768(&input.to_bits_le()),
-            1024 => A::hash_bhp1024(&input.to_bits_le()),
-            _ => bail!("Invalid BHP hash variant: BHP{}", NUM_BITS),
-        };
-        // Return the output as a stack value.
-        Ok(CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default())))
-    }
-
-    /// Returns the output type from the given input types.
-    fn output_type() -> Result<RegisterType<N>> {
-        Ok(RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field)))
-    }
+enum Hasher {
+    BHP256,
+    BHP512,
+    BHP768,
+    BHP1024,
 }
 
 /// Hashes the operand into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct HashInstruction<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> {
+pub struct HashInstruction<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> {
     /// The operand as `input`.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
     /// PhantomData.
-    _phantom: PhantomData<(A, O)>,
+    _phantom: PhantomData<A>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstruction<N, A, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        O::OPCODE
+        match VARIANT {
+            0 => Opcode::Hash("hash.bhp256"),
+            1 => Opcode::Hash("hash.bhp512"),
+            2 => Opcode::Hash("hash.bhp768"),
+            3 => Opcode::Hash("hash.bhp1024"),
+            _ => panic!("Invalid BHP hash instruction opcode"),
+        }
     }
 
     /// Returns the operands in the operation.
@@ -129,7 +78,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> HashInst
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstruction<N, A, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
@@ -140,7 +89,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> HashInst
         // Load the operand.
         let input = stack.load(&self.operands[0])?;
         // Hash the input.
-        let output = O::evaluate(input)?;
+        let output = match VARIANT {
+            0 => N::hash_bhp256(&input.to_bits_le())?,
+            1 => N::hash_bhp512(&input.to_bits_le())?,
+            2 => N::hash_bhp768(&input.to_bits_le())?,
+            3 => N::hash_bhp1024(&input.to_bits_le())?,
+            _ => bail!("Invalid hash variant: {VARIANT}"),
+        };
+        // Convert the output to a stack value.
+        let output = StackValue::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default()));
         // Store the output.
         stack.store(&self.destination, output)
 
@@ -186,7 +143,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> HashInst
         // Load the operand.
         let input = stack.load_circuit(&self.operands[0])?;
         // Hash the input.
-        let output = O::execute(input)?;
+        let output = match VARIANT {
+            0 => A::hash_bhp256(&input.to_bits_le()),
+            1 => A::hash_bhp512(&input.to_bits_le()),
+            2 => A::hash_bhp768(&input.to_bits_le()),
+            3 => A::hash_bhp1024(&input.to_bits_le()),
+            _ => bail!("Invalid hash variant: {VARIANT}"),
+        };
+        // Convert the output to a stack value.
+        let output =
+            CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
         // Store the output.
         stack.store_circuit(&self.destination, output)
     }
@@ -209,11 +175,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> HashInst
 
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
-        Ok(vec![O::output_type()?])
+        match VARIANT {
+            0 | 1 | 2 | 3 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            _ => bail!("Invalid hash variant: {VARIANT}"),
+        }
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> Parser for HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> Parser for HashInstruction<N, A, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -236,7 +205,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> Parser f
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> FromStr for HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> FromStr for HashInstruction<N, A, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -254,14 +223,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> FromStr 
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> Debug for HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> Debug for HashInstruction<N, A, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> Display for HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> Display for HashInstruction<N, A, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is 1.
@@ -276,7 +245,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> Display 
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> FromBytes for HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> FromBytes for HashInstruction<N, A, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the operand.
@@ -288,7 +257,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> FromByte
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: HashOperation<N, A>> ToBytes for HashInstruction<N, A, O> {
+impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> ToBytes for HashInstruction<N, A, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is 1.
