@@ -90,9 +90,11 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
             // Determine the wrapping sum, by computing the difference between the sum and modulus, if `sum` < `modulus`.
             let wrapping_sum = Ternary::ternary(&sum.is_less_than(&modulus), &sum, &(&sum - &modulus));
 
+            // Retrieve the bits of the wrapping sum.
+            let bits_le = wrapping_sum.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits());
+
             // Set the sum of `self` and `other`, in `self`.
-            // Note: Direct indexing the slice here is safe as the scalar field smaller than the base field.
-            *self = Scalar { bits_le: wrapping_sum.to_bits_le()[0..E::ScalarField::size_in_bits()].to_vec() };
+            *self = Scalar { field: wrapping_sum, bits_le: OnceCell::with_value(bits_le) };
         }
     }
 }
@@ -102,8 +104,8 @@ impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
-            (_, _) => Count::is(254, 0, 757, 759),
+            (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
+            (_, _) => Count::is(254, 0, 755, 757),
         }
     }
 }

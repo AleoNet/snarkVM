@@ -35,8 +35,11 @@ use snarkvm_circuit_types_field::Field;
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {
-    /// The little-endian bit representation of the scalar.
-    bits_le: Vec<Boolean<E>>,
+    /// The primary representation of the scalar element.
+    field: Field<E>,
+    /// An optional secondary representation in little-endian bits is provided,
+    /// so that calls to `ToBits` only incur constraint costs once.
+    bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
 impl<E: Environment> ScalarTrait for Scalar<E> {}
@@ -47,7 +50,16 @@ impl<E: Environment> Inject for Scalar<E> {
 
     /// Initializes a scalar circuit from a console scalar.
     fn new(mode: Mode, scalar: Self::Primitive) -> Self {
-        Self { bits_le: Inject::new(mode, scalar.to_bits_le()) }
+        // Note: We are reconstituting the scalar field into a base field.
+        // This is safe as the scalar field modulus is less than the base field modulus,
+        // and thus will always fit within a single base field element.
+        debug_assert!(console::Scalar::<E::Network>::size_in_bits() < console::Field::<E::Network>::size_in_bits());
+
+        // Initialize the scalar as a field element.
+        match console::ToField::to_field(&scalar) {
+            Ok(field) => Self { field: Field::new(mode, field), bits_le: OnceCell::new() },
+            Err(error) => E::halt(format!("Unable to initialize a scalar circuit as a field element: {error}")),
+        }
     }
 }
 
@@ -57,12 +69,12 @@ impl<E: Environment> Eject for Scalar<E> {
 
     /// Ejects the mode of the scalar.
     fn eject_mode(&self) -> Mode {
-        self.bits_le.eject_mode()
+        self.field.eject_mode()
     }
 
     /// Ejects the scalar circuit as a console scalar.
     fn eject_value(&self) -> Self::Primitive {
-        match console::Scalar::<E::Network>::from_bits_le(&self.bits_le.eject_value()) {
+        match console::Scalar::<E::Network>::from_bits_le(&self.field.eject_value().to_bits_le()) {
             Ok(scalar) => scalar,
             Err(error) => E::halt(format!("Failed to eject scalar value: {error}")),
         }
@@ -116,14 +128,14 @@ impl<E: Environment> TypeName for Scalar<E> {
 
 #[cfg(console)]
 impl<E: Environment> Debug for Scalar<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 #[cfg(console)]
 impl<E: Environment> Display for Scalar<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
@@ -179,19 +191,19 @@ mod tests {
     #[test]
     fn test_new_constant() {
         let expected = Uniform::rand(&mut test_rng());
-        check_new("Constant", expected, Mode::Constant, 251, 0, 0, 0);
+        check_new("Constant", expected, Mode::Constant, 1, 0, 0, 0);
     }
 
     #[test]
     fn test_new_public() {
         let expected = Uniform::rand(&mut test_rng());
-        check_new("Public", expected, Mode::Public, 0, 251, 0, 251);
+        check_new("Public", expected, Mode::Public, 0, 1, 0, 0);
     }
 
     #[test]
     fn test_new_private() {
         let expected = Uniform::rand(&mut test_rng());
-        check_new("Private", expected, Mode::Private, 0, 0, 251, 251);
+        check_new("Private", expected, Mode::Private, 0, 0, 1, 0);
     }
 
     #[test]

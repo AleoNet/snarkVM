@@ -23,7 +23,7 @@ impl<E: Environment> Equal<Self> for Scalar<E> {
     /// Returns `true` if `self` and `other` are equal.
     ///
     fn is_equal(&self, other: &Self) -> Self::Output {
-        self.to_field().is_equal(&other.to_field())
+        self.field.is_equal(&other.field)
     }
 
     ///

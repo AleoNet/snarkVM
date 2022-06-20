@@ -28,8 +28,7 @@ mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;
-
-use snarkvm_console_types_field::Field;
+pub use snarkvm_console_types_field::Field;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Scalar<E: Environment> {

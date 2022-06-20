@@ -41,7 +41,7 @@ mod tests {
             assert_scope!(0, 0, 0, 0);
             let candidate = Scalar::<Circuit>::zero();
             assert_eq!(zero, candidate.eject_value());
-            assert_scope!(251, 0, 0, 0);
+            assert_scope!(1, 0, 0, 0);
         });
     }
 

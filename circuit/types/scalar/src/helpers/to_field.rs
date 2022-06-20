@@ -21,20 +21,7 @@ impl<E: Environment> ToField for Scalar<E> {
 
     /// Casts a scalar field element into a base field element.
     fn to_field(&self) -> Self::Field {
-        // Note: We are reconstituting the scalar field into a base field.
-        // This is safe as the scalar field modulus is less than the base field modulus,
-        // and thus will always fit within a single base field element.
-        debug_assert!(E::ScalarField::size_in_bits() < E::BaseField::size_in_bits());
-
-        // Reconstruct the bits as a linear combination representing the original field value.
-        let mut accumulator = Field::zero();
-        let mut coefficient = Field::one();
-        for bit in &self.bits_le {
-            accumulator += Field::from_boolean(bit) * &coefficient;
-            coefficient = coefficient.double();
-        }
-
-        accumulator
+        self.field.clone()
     }
 }
 

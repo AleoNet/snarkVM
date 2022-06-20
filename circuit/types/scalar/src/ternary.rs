@@ -22,13 +22,10 @@ impl<E: Environment> Ternary for Scalar<E> {
 
     /// Returns `first` if `condition` is `true`, otherwise returns `second`.
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
-        let mut bits_le = Vec::with_capacity(first.bits_le.len());
-
-        for (a, b) in first.bits_le.iter().zip_eq(second.bits_le.iter()) {
-            bits_le.push(Ternary::ternary(condition, a, b));
-        }
-
-        Self { bits_le }
+        // Compute the ternary over the field representation (for efficiency).
+        let field = Field::ternary(condition, &first.field, &second.field);
+        // Return the result.
+        Self { field, bits_le: Default::default() }
     }
 }
 
@@ -170,42 +167,42 @@ mod tests {
 
     #[test]
     fn test_if_public_then_constant_else_public() {
-        run_test(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_constant_else_private() {
-        run_test(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_public_else_constant() {
-        run_test(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_public_else_public() {
-        run_test(Mode::Public, Mode::Public, Mode::Public, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Public, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_public_else_private() {
-        run_test(Mode::Public, Mode::Public, Mode::Private, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Public, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_private_else_constant() {
-        run_test(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_private_else_public() {
-        run_test(Mode::Public, Mode::Private, Mode::Public, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Private, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_public_then_private_else_private() {
-        run_test(Mode::Public, Mode::Private, Mode::Private, 0, 0, 251, 251);
+        run_test(Mode::Public, Mode::Private, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]
@@ -215,41 +212,41 @@ mod tests {
 
     #[test]
     fn test_if_private_then_constant_else_public() {
-        run_test(Mode::Private, Mode::Constant, Mode::Public, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Constant, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_constant_else_private() {
-        run_test(Mode::Private, Mode::Constant, Mode::Private, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Constant, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_public_else_constant() {
-        run_test(Mode::Private, Mode::Public, Mode::Constant, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Public, Mode::Constant, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_public_else_public() {
-        run_test(Mode::Private, Mode::Public, Mode::Public, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Public, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_public_else_private() {
-        run_test(Mode::Private, Mode::Public, Mode::Private, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Public, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_private_else_constant() {
-        run_test(Mode::Private, Mode::Private, Mode::Constant, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Private, Mode::Constant, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_private_else_public() {
-        run_test(Mode::Private, Mode::Private, Mode::Public, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Private, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_if_private_then_private_else_private() {
-        run_test(Mode::Private, Mode::Private, Mode::Private, 0, 0, 251, 251);
+        run_test(Mode::Private, Mode::Private, Mode::Private, 0, 0, 1, 1);
     }
 }
