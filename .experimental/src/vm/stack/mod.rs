@@ -131,30 +131,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             stack.program.matches_value(&output, &value_type)?;
             // Insert the value into the outputs.
             outputs.push(output);
-
-            // TODO (howardwu): Add encryption against the caller's address for all private literals,
-            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
-            //  the constraint will automatically be discarded, and if it's not, the constraint will
-            //  ensure the output register's value matches the newly-assigned hardcoded constant.
-            // // If the value contains any public literals, assign a new public variable for the public literal,
-            // // and add a constraint to enforce equality of the value.
-            // match &value {
-            //     Value::Literal(literal) => {
-            //         if literal.is_public() {
-            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-            //             P::Environment::assert_eq(literal, public_literal);
-            //         }
-            //     }
-            //     Value::Definition(_, members) => {
-            //         for member in members.iter() {
-            //             if member.is_public() {
-            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-            //                 P::Environment::assert_eq(member, public_literal);
-            //             }
-            //         }
-            //     }
-            // }
         }
 
         Ok(outputs)

@@ -145,9 +145,7 @@ impl<N: Network> RegisterTypes<N> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            RegisterType::from(
-                *self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?,
-            )
+            *self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?
         } else {
             // Retrieve the destination register type.
             *self

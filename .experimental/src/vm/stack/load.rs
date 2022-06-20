@@ -55,23 +55,33 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .clone();
 
         // Return the value for the given register or register member.
-        match register {
+        let stack_value = match register {
             // If the register is a locator, then return the stack value.
-            Register::Locator(..) => Ok(stack_value),
+            Register::Locator(..) => stack_value,
             // If the register is a register member, then load the specific stack value.
             Register::Member(_, ref path) => {
                 match stack_value {
                     // Retrieve the plaintext member from the path.
-                    StackValue::Plaintext(plaintext) => Ok(StackValue::Plaintext(plaintext.find(path)?)),
+                    StackValue::Plaintext(plaintext) => StackValue::Plaintext(plaintext.find(path)?),
                     // Retrieve the record entry from the path.
                     StackValue::Record(record) => match record.find(path)? {
                         Entry::Constant(plaintext) | Entry::Public(plaintext) | Entry::Private(plaintext) => {
-                            Ok(StackValue::Plaintext(plaintext))
+                            StackValue::Plaintext(plaintext)
                         }
                     },
                 }
             }
-        }
+        };
+
+        // Retrieve the register type.
+        match self.register_types.get_type(&self.program, register) {
+            // Ensure the stack value matches the register type.
+            Ok(register_type) => self.program.matches_register(&stack_value, &register_type)?,
+            // Ensure the register is defined.
+            Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+        };
+
+        Ok(stack_value)
     }
 }
 
@@ -120,9 +130,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .clone();
 
         // Return the value for the given register or register member.
-        match register {
+        let circuit_value = match register {
             // If the register is a locator, then return the stack value.
-            Register::Locator(..) => Ok(circuit_value),
+            Register::Locator(..) => circuit_value,
             // If the register is a register member, then load the specific stack value.
             Register::Member(_, ref path) => {
                 // Inject the path.
@@ -130,15 +140,27 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
                 match circuit_value {
                     // Retrieve the plaintext member from the path.
-                    CircuitValue::Plaintext(plaintext) => Ok(CircuitValue::Plaintext(plaintext.find(&path)?)),
+                    CircuitValue::Plaintext(plaintext) => CircuitValue::Plaintext(plaintext.find(&path)?),
                     // Retrieve the record entry from the path.
                     CircuitValue::Record(record) => match record.find(&path)? {
                         circuit::Entry::Constant(plaintext)
                         | circuit::Entry::Public(plaintext)
-                        | circuit::Entry::Private(plaintext) => Ok(CircuitValue::Plaintext(plaintext)),
+                        | circuit::Entry::Private(plaintext) => CircuitValue::Plaintext(plaintext),
                     },
                 }
             }
-        }
+        };
+
+        // Retrieve the register type.
+        match self.register_types.get_type(&self.program, register) {
+            // Ensure the stack value matches the register type.
+            Ok(register_type) => {
+                self.program.matches_register(&circuit::Eject::eject_value(&circuit_value), &register_type)?
+            }
+            // Ensure the register is defined.
+            Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+        };
+
+        Ok(circuit_value)
     }
 }

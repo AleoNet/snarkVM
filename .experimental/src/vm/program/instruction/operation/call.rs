@@ -97,12 +97,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         let mut outputs = Vec::with_capacity(closure.outputs().len());
         // Load the outputs.
         for (register, register_type) in closure_stack.to_output_types() {
-            // Retrieve the output from the register.
-            let output = closure_stack.load(&Operand::Register(register.clone()))?;
-            // Ensure the output matches the declared type in the register.
-            closure_stack.program().matches_register(&output, &register_type)?;
-            // Insert the output into the outputs.
-            outputs.push(output);
+            // Retrieve and insert the output into the outputs.
+            outputs.push(closure_stack.load(&Operand::Register(register.clone()))?);
         }
 
         // Assign the outputs to the destination registers.
@@ -148,15 +144,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         let mut outputs = Vec::with_capacity(closure.outputs().len());
         // Load the outputs.
         for (register, register_type) in closure_stack.to_output_types() {
-            // Retrieve the output from the register.
-            let output = closure_stack.load_circuit(&Operand::Register(register.clone()))?;
-
-            use circuit::Eject;
-
-            // Ensure the output matches the declared type in the register.
-            closure_stack.program().matches_register(&output.eject_value(), &register_type)?;
-            // Insert the output into the outputs.
-            outputs.push(output);
+            // Retrieve and insert the output into the outputs.
+            outputs.push(closure_stack.load_circuit(&Operand::Register(register.clone()))?);
         }
 
         // Assign the outputs to the destination registers.
