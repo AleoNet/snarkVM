@@ -57,10 +57,6 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) z_b: LabeledPolynomialWithBasis<'a, F>,
     /// The evaluations of `Cz`.
     pub(super) z_c: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `s_mul`.
-    pub(super) s_m: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `s_lookup`.
-    pub(super) s_l: LabeledPolynomialWithBasis<'a, F>,
     /// The evaluations of `f`.
     pub(super) f: LabeledPolynomialWithBasis<'a, F>,
     /// The LDE of `w`.
@@ -71,10 +67,6 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) z_b_poly: LabeledPolynomial<F>,
     /// The LDE of `Cz`.
     pub(super) z_c_poly: LabeledPolynomial<F>,
-    /// The multiplication constraint selector polynomial.
-    pub(super) s_m_poly: LabeledPolynomial<F>,
-    /// The lookup constraint selector polynomial.
-    pub(super) s_l_poly: LabeledPolynomial<F>,
     /// The query vector polynomial.
     pub(super) f_poly: LabeledPolynomial<F>,
 }
@@ -94,23 +86,16 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
         let z_c = self.z_c.clone();
         self.z_c = LabeledPolynomialWithBasis { polynomial: vec![], info: z_c.info().clone() };
 
-        let s_m = self.s_m.clone();
-        self.s_m = LabeledPolynomialWithBasis { polynomial: vec![], info: s_m.info().clone() };
-
-        let s_l = self.s_l.clone();
-        self.s_l = LabeledPolynomialWithBasis { polynomial: vec![], info: s_l.info().clone() };
-
         let f = self.f.clone();
         self.f = LabeledPolynomialWithBasis { polynomial: vec![], info: f.info().clone() };
 
-        [w_poly.into(), z_a, z_b, z_c, s_m, s_l, f].into_iter()
+        [w_poly.into(), z_a, z_b, z_c, f].into_iter()
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when opening.
     pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [(&self.w_poly), &self.z_a_poly, &self.z_b_poly, &self.z_c_poly, &self.s_m_poly, &self.s_l_poly, &self.f_poly]
-            .into_iter()
+        [(&self.w_poly), &self.z_a_poly, &self.z_b_poly, &self.z_c_poly, &self.f_poly].into_iter()
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
@@ -118,14 +103,10 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
             && Some(self.z_a.info()) == info.get(self.z_a.label())
             && Some(self.z_b.info()) == info.get(self.z_b.label())
             && Some(self.z_c.info()) == info.get(self.z_c.label())
-            && Some(self.s_m.info()) == info.get(self.s_m.label())
-            && Some(self.s_l.info()) == info.get(self.s_l.label())
             && Some(self.f.info()) == info.get(self.f.label())
             && Some(self.z_a_poly.info()) == info.get(self.z_a_poly.label())
             && Some(self.z_b_poly.info()) == info.get(self.z_b_poly.label())
             && Some(self.z_c_poly.info()) == info.get(self.z_c_poly.label())
-            && Some(self.s_m_poly.info()) == info.get(self.s_m_poly.label())
-            && Some(self.s_l_poly.info()) == info.get(self.s_l_poly.label())
             && Some(self.f_poly.info()) == info.get(self.f_poly.label())
     }
 }

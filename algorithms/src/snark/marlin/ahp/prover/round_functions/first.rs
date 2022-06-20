@@ -44,7 +44,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        7 * batch_size + (MM::ZK as usize)
+        5 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -56,8 +56,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("z_a", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_c", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("s_m", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("s_l", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("f", i), None, Self::zk_bound()));
         }
         if MM::ZK {
@@ -87,8 +85,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
         let state_ref = &state;
-        for (i, (z_a, z_b, z_c, private_variables, x_poly, s_m, s_l)) in
-            itertools::izip!(&z_a, &z_b, &z_c, private_variables, &state.x_poly, &state.s_m, &state.s_l).enumerate()
+        for (i, (z_a, z_b, z_c, private_variables, x_poly)) in
+            itertools::izip!(&z_a, &z_b, &z_c, private_variables, &state.x_poly).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), &z_a, false, state_ref, None));
@@ -99,42 +97,31 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             }
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), &z_c, true, state_ref, Some(r_b)));
             job_pool.add_job(move || {
-                Self::calculate_f(witness_label("f", i), &z_a, &z_b, &s_l, true, state_ref, Some(r_b))
+                Self::calculate_f(
+                    witness_label("f", i),
+                    &z_a,
+                    &z_b,
+                    &z_c,
+                    &state.index.s_l_evals,
+                    true,
+                    state_ref,
+                    Some(r_b),
+                )
             });
-            job_pool
-                .add_job(move || Self::calculate_selector(witness_label("s_m", i), &s_m, true, state_ref, Some(r_b)));
-            job_pool
-                .add_job(move || Self::calculate_selector(witness_label("s_l", i), &s_l, true, state_ref, Some(r_b)));
         }
 
         let batches = job_pool
             .execute_all()
             .into_iter()
             .tuples()
-            .map(|(w, z_a, z_b, z_c, f, s_m, s_l)| {
+            .map(|(w, z_a, z_b, z_c, f)| {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
                 let (z_c_poly, z_c) = z_c.z_m().unwrap();
                 let (f_poly, f) = f.z_m().unwrap();
-                let (s_m_poly, s_m) = s_m.z_m().unwrap();
-                let (s_l_poly, s_l) = s_l.z_m().unwrap();
 
-                prover::SingleEntry {
-                    z_a,
-                    z_b,
-                    z_c,
-                    s_m,
-                    s_l,
-                    f,
-                    w_poly,
-                    z_a_poly,
-                    z_b_poly,
-                    z_c_poly,
-                    s_m_poly,
-                    s_l_poly,
-                    f_poly,
-                }
+                prover::SingleEntry { z_a, z_b, z_c, f, w_poly, z_a_poly, z_b_poly, z_c_poly, f_poly }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
@@ -274,6 +261,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label: impl ToString,
         z_a: &[F],
         z_b: &[F],
+        z_c: &[F],
         s_l: &[F],
         will_be_evaluated: bool,
         state: &prover::State<'a, F, MM>,
@@ -281,28 +269,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> PoolResult<'a, F> {
         let evaluations = cfg_iter!(z_a)
             .zip(z_b)
+            .zip(z_c)
             .zip(s_l)
-            .map(|((a, b), s)| {
+            .map(|(((a, b), c), s)| {
                 if s.is_zero() {
                     // NOTE: is that correct?
-                    F::zero()
+                    F::one()
                 } else {
-                    *a + state.zeta * b + (state.zeta.square() * *a * b)
+                    *a + state.zeta * b + state.zeta.square() * c
                 }
             })
             .collect::<Vec<F>>();
 
         Self::calculate_z_m(label, &evaluations, will_be_evaluated, state, r)
-    }
-
-    fn calculate_selector<'a>(
-        label: impl ToString,
-        selector_evals: &[F],
-        will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
-        r: Option<F>,
-    ) -> PoolResult<'a, F> {
-        Self::calculate_z_m(label, selector_evals, will_be_evaluated, state, r)
     }
 }
 

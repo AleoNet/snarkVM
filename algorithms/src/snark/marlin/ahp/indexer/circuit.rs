@@ -19,6 +19,7 @@ use core::marker::PhantomData;
 use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
+        DensePolynomial,
         EvaluationDomain,
     },
     polycommit::sonic_pc::LabeledPolynomial,
@@ -55,8 +56,10 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub ifft_precomputation: IFFTPrecomputation<F>,
 
     /// Selectors.
-    pub s_m: Vec<F>,
-    pub s_l: Vec<F>,
+    pub s_m: LabeledPolynomial<F>,
+    pub s_m_evals: Vec<F>,
+    pub s_l: LabeledPolynomial<F>,
+    pub s_l_evals: Vec<F>,
 
     pub(crate) mode: PhantomData<MM>,
 }
@@ -87,6 +90,8 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
             &self.c_arith.col,
             &self.c_arith.val,
             &self.c_arith.row_col,
+            &self.s_m,
+            &self.s_l,
         ]
         .into_iter()
     }
@@ -103,7 +108,9 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
         self.s_m.serialize_with_mode(&mut writer, compress)?;
+        self.s_m_evals.serialize_with_mode(&mut writer, compress)?;
         self.s_l.serialize_with_mode(&mut writer, compress)?;
+        self.s_l_evals.serialize_with_mode(&mut writer, compress)?;
         self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
     }
@@ -119,7 +126,9 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
         size += self.s_m.serialized_size(mode);
+        size += self.s_m_evals.serialized_size(mode);
         size += self.s_l.serialized_size(mode);
+        size += self.s_l_evals.serialized_size(mode);
         size += self.mode.serialized_size(mode);
         size
     }
@@ -173,7 +182,9 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             s_m: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            s_m_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            s_l_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }

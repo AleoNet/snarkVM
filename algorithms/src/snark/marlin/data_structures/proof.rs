@@ -111,10 +111,6 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_b: sonic_pc::Commitment<E>,
     /// Commitment to the `z_c` polynomial.
     pub z_c: sonic_pc::Commitment<E>,
-    /// Commitment to the `s_m` polynomial.
-    pub s_m: sonic_pc::Commitment<E>,
-    /// Commitment to the `s_l` polynomial.
-    pub s_l: sonic_pc::Commitment<E>,
     /// Commitment to the `f` polynomial.
     pub f: sonic_pc::Commitment<E>,
 }
@@ -127,10 +123,6 @@ pub struct Evaluations<F: PrimeField> {
     pub z_b_evals: Vec<F>,
     /// Evaluation of `z_c_i`'s at `beta`.
     pub z_c_evals: Vec<F>,
-    /// Evaluation of `s_m_i`'s at `beta`.
-    pub s_m_evals: Vec<F>,
-    /// Evaluation of `s_l_i`'s at `beta`.
-    pub s_l_evals: Vec<F>,
     /// Evaluation of `f_i`'s at `beta`.
     pub f_evals: Vec<F>,
     /// Evaluation of `g_1` at `beta`.
@@ -158,12 +150,6 @@ impl<F: PrimeField> Evaluations<F> {
         for z_c_eval in &self.z_c_evals {
             CanonicalSerialize::serialize_with_mode(z_c_eval, &mut writer, compress)?;
         }
-        for s_m_eval in &self.s_m_evals {
-            CanonicalSerialize::serialize_with_mode(s_m_eval, &mut writer, compress)?;
-        }
-        for s_l_eval in &self.s_l_evals {
-            CanonicalSerialize::serialize_with_mode(s_l_eval, &mut writer, compress)?;
-        }
         for f_eval in &self.f_evals {
             CanonicalSerialize::serialize_with_mode(f_eval, &mut writer, compress)?;
         }
@@ -179,8 +165,6 @@ impl<F: PrimeField> Evaluations<F> {
         size += self.z_a_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.z_b_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.z_c_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
-        size += self.s_m_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
-        size += self.s_l_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.f_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a_eval, compress);
@@ -207,14 +191,6 @@ impl<F: PrimeField> Evaluations<F> {
         for _ in 0..batch_size {
             z_c_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
-        let mut s_m_evals = Vec::with_capacity(batch_size);
-        for _ in 0..batch_size {
-            s_m_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
-        }
-        let mut s_l_evals = Vec::with_capacity(batch_size);
-        for _ in 0..batch_size {
-            s_l_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
-        }
         let mut f_evals = Vec::with_capacity(batch_size);
         for _ in 0..batch_size {
             f_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
@@ -223,8 +199,6 @@ impl<F: PrimeField> Evaluations<F> {
             z_a_evals,
             z_b_evals,
             z_c_evals,
-            s_m_evals,
-            s_l_evals,
             f_evals,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -239,16 +213,12 @@ impl<F: PrimeField> Evaluations<F> {
         let z_a_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_a_").then(|| *v)).collect::<Vec<_>>();
         let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then(|| *v)).collect::<Vec<_>>();
         let z_c_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_c_").then(|| *v)).collect::<Vec<_>>();
-        let s_m_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_m_").then(|| *v)).collect::<Vec<_>>();
-        let s_l_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_l_").then(|| *v)).collect::<Vec<_>>();
         let f_evals = map.iter().filter_map(|(k, v)| k.starts_with("f_").then(|| *v)).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_size);
         Self {
             z_a_evals,
             z_b_evals,
             z_c_evals,
-            s_m_evals,
-            s_l_evals,
             f_evals,
             g_1_eval: map["g_1"],
             g_a_eval: map["g_a"],
@@ -267,12 +237,6 @@ impl<F: PrimeField> Evaluations<F> {
         } else if label.starts_with("z_c_") {
             let index = label.strip_prefix("z_c_").expect("should be able to strip identified prefix");
             self.z_c_evals.get(index.parse::<usize>().unwrap()).copied()
-        } else if label.starts_with("s_m_") {
-            let index = label.strip_prefix("s_m_").expect("should be able to strip identified prefix");
-            self.s_m_evals.get(index.parse::<usize>().unwrap()).copied()
-        } else if label.starts_with("s_l_") {
-            let index = label.strip_prefix("s_l_").expect("should be able to strip identified prefix");
-            self.s_l_evals.get(index.parse::<usize>().unwrap()).copied()
         } else if label.starts_with("f_") {
             let index = label.strip_prefix("f_").expect("should be able to strip identified prefix");
             self.f_evals.get(index.parse::<usize>().unwrap()).copied()
@@ -293,8 +257,6 @@ impl<F: PrimeField> Valid for Evaluations<F> {
         self.z_a_evals.check()?;
         self.z_b_evals.check()?;
         self.z_c_evals.check()?;
-        self.s_m_evals.check()?;
-        self.s_l_evals.check()?;
         self.f_evals.check()?;
         self.g_1_eval.check()?;
         self.g_a_eval.check()?;
@@ -308,8 +270,6 @@ impl<F: PrimeField> Evaluations<F> {
         let mut result = self.z_a_evals.clone();
         result.extend(self.z_b_evals.iter());
         result.extend(self.z_c_evals.iter());
-        result.extend(self.s_m_evals.iter());
-        result.extend(self.s_l_evals.iter());
         result.extend(self.f_evals.iter());
         result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
         result

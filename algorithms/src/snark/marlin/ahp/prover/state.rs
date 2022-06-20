@@ -72,14 +72,6 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The length of this list must be equal to the batch size.
     pub(super) z_c: Option<Vec<Vec<F>>>,
 
-    /// The list of multiplication selector vectors for each instance in the batch.
-    /// The length of this list must be equal to the batch size.
-    pub(super) s_m: Vec<Vec<F>>,
-
-    /// The list of lookup selector vectors for each instance in the batch.
-    /// The length of this list must be equal to the batch size.
-    pub(super) s_l: Vec<Vec<F>>,
-
     /// Lookup challenge
     /// compression factor
     pub(super) zeta: F,
@@ -154,8 +146,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             z_a: None,
             z_b: None,
             z_c: None,
-            s_m: vec![],
-            s_l: vec![],
             zeta: F::one(),
             first_round_oracles: None,
             mz_poly_randomizer: None,

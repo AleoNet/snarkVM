@@ -14,32 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::convert::TryInto;
 use std::collections::BTreeMap;
 
 use crate::{
-    fft,
-    fft::{
-        domain::IFFTPrecomputation,
-        polynomial::PolyMultiplier,
-        DensePolynomial,
-        EvaluationDomain,
-        SparsePolynomial,
-    },
+    fft::DensePolynomial,
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{
-            indexer::{CircuitInfo, Matrix},
-            verifier,
-            AHPForR1CS,
-            UnnormalizedBivariateLagrangePoly,
-        },
+        ahp::{indexer::CircuitInfo, verifier, AHPForR1CS},
         prover,
         MarlinMode,
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
 use itertools::Itertools;
 use rand_core::RngCore;
@@ -83,12 +70,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let mut z_b = b.z_b_poly.polynomial().as_dense().unwrap().clone();
                     let mut z_c = b.z_c_poly.polynomial().as_dense().unwrap().clone();
                     let f = b.f_poly.polynomial().as_dense().unwrap();
-                    let s_m = b.s_m_poly.polynomial().as_dense().unwrap();
-                    let s_l = b.s_l_poly.polynomial().as_dense().unwrap();
-                    let mul_check = s_m * &(&(z_a * &z_b) - &z_c);
+                    let mul_check = state.index.s_m.polynomial().as_dense().unwrap() * &(&(z_a * &z_b) - &z_c);
                     cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.zeta);
                     cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= zeta_squared);
-                    let lookup_check = s_l * &(&(&(z_a + &z_b) + &z_c) - &f);
+                    let lookup_check =
+                        state.index.s_l.polynomial().as_dense().unwrap() * &(&(&(z_a + &z_b) + &z_c) - f);
                     &mul_check + &lookup_check
                 };
 

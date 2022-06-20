@@ -16,7 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, Randomness, SonicKZG10},
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, LabeledPolynomial, Randomness, SonicKZG10},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
         fiat_shamir::traits::FiatShamirRng,
@@ -381,7 +381,7 @@ where
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(first_round_oracles.iter_for_open()) // 3 * batch_size + (MM::ZK as usize) items
+            .chain(first_round_oracles.iter_for_open()) // 5 * batch_size + (MM::ZK as usize) items
             .chain(second_oracles.iter())// 1 item
             .chain(third_oracles.iter())// 1 item
             .chain(fourth_oracles.iter())// 3 items
@@ -391,7 +391,7 @@ where
         Self::terminate(terminator)?;
 
         // Gather commitments in one vector.
-        let witness_commitments = first_commitments.chunks_exact(7);
+        let witness_commitments = first_commitments.chunks_exact(5);
         let mask_poly = MM::ZK.then(|| *witness_commitments.remainder()[0].commitment());
         let witness_commitments = witness_commitments
             .map(|c| proof::WitnessCommitments {
@@ -399,11 +399,10 @@ where
                 z_a: *c[1].commitment(),
                 z_b: *c[2].commitment(),
                 z_c: *c[3].commitment(),
-                s_m: *c[4].commitment(),
-                s_l: *c[5].commitment(),
-                f: *c[6].commitment(),
+                f: *c[4].commitment(),
             })
             .collect();
+
         #[rustfmt::skip]
         let commitments = proof::Commitments {
             witness_commitments,
@@ -479,6 +478,7 @@ where
 
         sponge.absorb_nonnative_field_elements(evaluations.to_field_elements(), OptimizationType::Weight);
 
+        println!("{} {}", labeled_commitments.len(), commitment_randomnesses.len());
         let pc_proof = SonicKZG10::<E, FS>::open_combinations(
             &circuit_proving_key.committer_key,
             lc_s.values(),
@@ -536,8 +536,6 @@ where
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_a", i)], c.z_a),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_b", i)], c.z_b),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_c", i)], c.z_c),
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("s_m", i)], c.s_m),
-                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("s_l", i)], c.s_l),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("f", i)], c.f),
                 ]
             })

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
-    polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
+    fft::{DensePolynomial, EvaluationDomain, Evaluations},
+    polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
@@ -125,6 +125,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         )
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
+
+        let s_m_evals = Evaluations::from_vec_and_domain(ics.s_mul.clone(), constraint_domain);
+        let s_m = LabeledPolynomial::new(
+            "s_m".to_string(),
+            s_m_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+
+        let s_l_evals = Evaluations::from_vec_and_domain(ics.s_lookup.clone(), constraint_domain);
+        let s_l = LabeledPolynomial::new(
+            "s_l".to_string(),
+            s_l_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
         end_timer!(index_time);
         Ok(Circuit {
             index_info,
@@ -136,8 +152,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
-            s_m: ics.s_mul,
-            s_l: ics.s_lookup,
+            s_m,
+            s_m_evals: ics.s_mul,
+            s_l,
+            s_l_evals: ics.s_lookup,
             mode: PhantomData,
         })
     }
@@ -150,6 +168,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
             map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
         }
+        map.insert("s_m".to_string(), PolynomialInfo::new("s_m".to_string(), None, None));
+        map.insert("s_l".to_string(), PolynomialInfo::new("s_l".to_string(), None, None));
         map
     }
 }

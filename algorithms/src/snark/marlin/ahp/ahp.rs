@@ -212,18 +212,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 LinearCombination::new(z_c_i.clone(), [(F::one(), z_c_i)])
             })
             .collect::<Vec<_>>();
-        let s_m_s = (0..state.batch_size)
-            .map(|i| {
-                let s_m_i = witness_label("s_m", i);
-                LinearCombination::new(s_m_i.clone(), [(F::one(), s_m_i)])
-            })
-            .collect::<Vec<_>>();
-        let s_l_s = (0..state.batch_size)
-            .map(|i| {
-                let s_l_i = witness_label("s_l", i);
-                LinearCombination::new(s_l_i.clone(), [(F::one(), s_l_i)])
-            })
-            .collect::<Vec<_>>();
         let f_s = (0..state.batch_size)
             .map(|i| {
                 let f_i = witness_label("f", i);
@@ -240,8 +228,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let z_a_s_at_beta = z_a_s.iter().map(|z_a| evals.get_lc_eval(z_a, beta)).collect::<Result<Vec<_>, _>>()?;
         let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<_>, _>>()?;
         let z_c_s_at_beta = z_c_s.iter().map(|z_c| evals.get_lc_eval(z_c, beta)).collect::<Result<Vec<_>, _>>()?;
-        let s_m_s_at_beta = s_m_s.iter().map(|s_m| evals.get_lc_eval(s_m, beta)).collect::<Result<Vec<_>, _>>()?;
-        let s_l_s_at_beta = s_l_s.iter().map(|s_l| evals.get_lc_eval(s_l, beta)).collect::<Result<Vec<_>, _>>()?;
         let f_s_at_beta = f_s.iter().map(|f| evals.get_lc_eval(f, beta)).collect::<Result<Vec<_>, _>>()?;
 
         let batch_z_a_at_beta: F =
@@ -268,11 +254,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
             for (i, combiner) in batch_combiners.iter().enumerate() {
             rowcheck
-                .add((s_m_s_at_beta[i] * (z_a_s_at_beta[i] * z_b_s_at_beta[i] - z_c_s_at_beta[i])) * combiner, LCTerm::One)
-                .add((s_l_s_at_beta[i] * (z_a_s_at_beta[i] + zeta * z_b_s_at_beta[i] + zeta_squared
-                    * z_c_s_at_beta[i] - f_s_at_beta[i])) * combiner,
-                    LCTerm::One,
-                );
+                .add((z_a_s_at_beta[i] * z_b_s_at_beta[i] - z_c_s_at_beta[i]) * combiner, "s_m")
+                .add((z_a_s_at_beta[i] + zeta * z_b_s_at_beta[i] + zeta_squared
+                    * z_c_s_at_beta[i] - f_s_at_beta[i]) * combiner, "s_l");
             }
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
@@ -302,12 +286,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         for z_c in z_c_s {
             linear_combinations.insert(z_c.label.clone(), z_c);
-        }
-        for s_m in s_m_s {
-            linear_combinations.insert(s_m.label.clone(), s_m);
-        }
-        for s_l in s_l_s {
-            linear_combinations.insert(s_l.label.clone(), s_l);
         }
         for f in f_s {
             linear_combinations.insert(f.label.clone(), f);
