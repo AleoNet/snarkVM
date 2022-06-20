@@ -34,7 +34,7 @@ use crate::{
 };
 use itertools::Itertools;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::cfg_into_iter;
+use snarkvm_utilities::{cfg_into_iter, cfg_iter};
 
 use rand_core::RngCore;
 
@@ -287,16 +287,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
     ) -> PoolResult<'a, F> {
-        let evaluations = z_a
-            .iter()
-            .zip(z_b.iter())
-            .zip(s_l.iter())
+        let evaluations = cfg_iter!(z_a)
+            .zip(z_b)
+            .zip(s_l)
             .map(|((a, b), s)| {
                 if s.is_zero() {
                     // NOTE: is that correct?
                     F::zero()
                 } else {
-                    *a + state.zeta * *b + (state.zeta.square() * *a * *b)
+                    *a + state.zeta * b + (state.zeta.square() * *a * b)
                 }
             })
             .collect::<Vec<F>>();
