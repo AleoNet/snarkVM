@@ -60,18 +60,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &self.program
     }
 
-    /// Returns an iterator over all input register types.
-    #[inline]
-    pub fn to_input_types(&self) -> impl '_ + Iterator<Item = (Register<N>, RegisterType<N>)> {
-        self.register_types.to_input_types()
-    }
-
-    /// Returns an iterator over all output register types.
-    #[inline]
-    pub fn to_output_types(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
-        self.register_types.to_output_types()
-    }
-
     /// Evaluates a program function on the given inputs.
     ///
     /// # Errors
@@ -91,49 +79,36 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Retrieve the register types.
         let register_types = program.get_function_registers(function_name)?;
-
         // Initialize the stack.
         let mut stack = Self::new(program, register_types.clone())?;
 
-        // Initialize the input registers.
-        for (((register, register_type), input), value_type) in register_types
-            .to_input_types()
-            .zip_eq(inputs.iter())
-            .zip_eq(function.inputs().iter().map(|i| i.value_type()))
-        {
-            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-            // Assign the input to the register.
-            stack.store(&register, input.clone())?;
-        }
+        // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
+        // Store the inputs.
+        function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
+            // Assign the input value to the register.
+            stack.store(&register, input.clone())
+        })?;
 
         // Evaluate the instructions.
         function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
 
-        // Initialize a vector to store the outputs.
-        let mut outputs = Vec::with_capacity(function.outputs().len());
         // Load the outputs.
-        for ((register, register_type), value_type) in
-            stack.to_output_types().zip_eq(function.outputs().iter().map(|o| o.value_type()))
-        {
+        let outputs = function.outputs().iter().map(|output| {
             // Retrieve the stack value from the register.
-            let output = stack.load(&Operand::Register(register.clone()))?;
-
+            let stack_value = stack.load(&Operand::Register(output.register().clone()))?;
             // Convert the stack value to the output value type.
-            let output = match (output, value_type) {
+            let output = match (stack_value, output.value_type()) {
                 (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
                 (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
                 (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
                 (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
                 _ => bail!("Stack value does not match the expected output type"),
             };
+            // Return the output.
+            Ok(output)
+        });
 
-            // Ensure the output value matches the value type.
-            stack.program.matches_value(&output, &value_type)?;
-            // Insert the value into the outputs.
-            outputs.push(output);
-        }
-
-        Ok(outputs)
+        outputs.collect()
     }
 
     /// Executes a program function on the given inputs.
@@ -155,55 +130,42 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Retrieve the register types.
         let register_types = program.get_function_registers(function_name)?;
-
         // Initialize the stack.
         let mut stack = Self::new(program, register_types.clone())?;
 
-        // Initialize the input registers.
-        for (((register, register_type), input), value_type) in register_types
-            .to_input_types()
-            .zip_eq(inputs.iter())
-            .zip_eq(function.inputs().iter().map(|i| i.value_type()))
-        {
-            // Assign the console input to the register.
-            stack.store(&register, input.clone())?;
-
-            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-            // Assign the circuit input to the register.
-            stack.store_circuit(&register, match value_type {
-                ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
-                ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
-                ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-            })?;
-        }
+        // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
+        // Store the inputs.
+        function.inputs().iter().map(|i| (i.register(), i.value_type())).zip_eq(inputs).try_for_each(
+            |((register, value_type), input)| {
+                // Assign the console input to the register.
+                stack.store(&register, input.clone())?;
+                // Assign the circuit input to the register.
+                stack.store_circuit(&register, match value_type {
+                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
+                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
+                    ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
+                    ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
+                })
+            },
+        )?;
 
         // Execute the instructions.
         function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
         function.instructions().iter().try_for_each(|instruction| instruction.execute(&mut stack))?;
 
-        // Initialize a vector to store the outputs.
-        let mut outputs = Vec::with_capacity(function.outputs().len());
         // Load the outputs.
-        for ((register, register_type), value_type) in
-            stack.to_output_types().zip_eq(function.outputs().iter().map(|o| o.value_type()))
-        {
-            // Retrieve the stack value from the register.
-            let output = stack.load_circuit(&Operand::Register(register.clone()))?;
-
-            // Convert the stack value to the output value type.
-            let output = match (output, value_type) {
+        let outputs = function.outputs().iter().map(|output| {
+            // Retrieve the circuit value from the register.
+            let circuit_value = stack.load_circuit(&Operand::Register(output.register().clone()))?;
+            // Convert the circuit value to the output value type.
+            let output = match (circuit_value, output.value_type()) {
                 (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
                 (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
                 (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
                 (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
-                _ => bail!("Stack value does not match the expected output type"),
+                _ => bail!("Circuit value does not match the expected output type"),
             };
-
-            // Ensure the output value matches the value type.
-            stack.program.matches_value(&circuit::Eject::eject_value(&output), &value_type)?;
-            // Insert the value into the outputs.
-            outputs.push(output);
+            // TODO (howardwu): Check the modes are correct.
 
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
@@ -228,8 +190,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             //         }
             //     }
             // }
-        }
 
-        Ok(outputs)
+            // Return the output.
+            Ok(output)
+        });
+
+        outputs.collect()
     }
 }

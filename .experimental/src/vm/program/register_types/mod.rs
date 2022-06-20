@@ -68,11 +68,6 @@ impl<N: Network> RegisterTypes<N> {
         self.input_registers.iter().map(|(locator, register_type)| (Register::Locator(*locator), *register_type))
     }
 
-    /// Returns an iterator over all output register types.
-    pub fn to_output_types(&self) -> impl '_ + Iterator<Item = (&Register<N>, &RegisterType<N>)> {
-        self.output_registers.iter()
-    }
-
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
     pub fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
