@@ -537,7 +537,7 @@ mod tests {
                     );
 
                     // Check the operation on randomly-sampled values.
-                    for i in 0..100u64 {
+                    for i in 0..150u64 {
                         // Sample the first and second value.
                         #[allow(deprecated)]
                         let a = match i {
@@ -553,11 +553,15 @@ mod tests {
                             ("ensure overflows halt") => {
                                 match *<$operation as $crate::vm::Operation<_, _, _, _, 1>>::OPCODE {
                                     "abs" | "abs.w" => should_succeed &= (*a).checked_abs().is_some(),
+                                    "neg" | "neg.w" => should_succeed &= (*a).checked_neg().is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 1>>::OPCODE),
                                 }
                             };
-                            ("ensure inverse of zero halt") => {
+                            ("ensure inverse of zero halts") => {
                                 should_succeed &= !(*a).is_zero()
+                            };
+                            ("ensure quadratic nonresidues halt") => {
+                                should_succeed &= (*a).sqrt().is_some()
                             };
                         }
                         // Check the conditions.

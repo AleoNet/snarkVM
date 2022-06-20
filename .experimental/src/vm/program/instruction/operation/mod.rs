@@ -179,7 +179,7 @@ pub type Inv<N, A> = UnaryLiteral<N, A, InvOperation<N, A>>;
 
 crate::operation!(
     pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
-        Field => Field ("ensure inverse of zero halt"),
+        Field => Field ("ensure inverse of zero halts"),
     }
 );
 
@@ -220,6 +220,40 @@ crate::operation!(
         (U32, U32) => U32,
         (U64, U64) => U64,
         (U128, U128) => U128,
+    }
+);
+
+/// Negates `first`, storing the outcome in `destination`.
+pub type Neg<N, A> = UnaryLiteral<N, A, NegOperation<N, A>>;
+
+crate::operation!(
+    pub struct NegOperation<core::ops::Neg, core::ops::Neg, neg, "neg"> {
+        Field => Field,
+        Group => Group,
+        I8 => I8 ("ensure overflows halt"),
+        I16 => I16 ("ensure overflows halt"),
+        I32 => I32 ("ensure overflows halt"),
+        I64 => I64 ("ensure overflows halt"),
+        I128 => I128 ("ensure overflows halt"),
+    }
+);
+
+/// Flips each bit in the representation of `first`, storing the outcome in `destination`.
+pub type Not<N, A> = UnaryLiteral<N, A, NotOperation<N, A>>;
+
+crate::operation!(
+    pub struct NotOperation<core::ops::Not, core::ops::Not, not, "not"> {
+        Boolean => Boolean,
+        I8 => I8,
+        I16 => I16,
+        I32 => I32,
+        I64 => I64,
+        I128 => I128,
+        U8 => U8,
+        U16 => U16,
+        U32 => U32,
+        U64 => U64,
+        U128 => U128,
     }
 );
 
@@ -325,6 +359,15 @@ pub type Square<N, A> = UnaryLiteral<N, A, SquareOperation<N, A>>;
 crate::operation!(
     pub struct SquareOperation<console::prelude::Square, circuit::prelude::Square, square, "square"> {
         Field => Field,
+    }
+);
+
+/// Computes the square root of `first`, storing the outcome in `destination`.
+pub type SquareRoot<N, A> = UnaryLiteral<N, A, SquareRootOperation<N, A>>;
+
+crate::operation!(
+    pub struct SquareRootOperation<console::prelude::SquareRoot, circuit::prelude::SquareRoot, square_root?, "sqrt"> {
+        Field => Field ("ensure quadratic nonresidues halt"),
     }
 );
 

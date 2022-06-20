@@ -117,9 +117,9 @@ macro_rules! instruction {
             Mul,
             MulWrapped,
             // Nand,
-            // Neg,
+            Neg,
             // Nor,
-            // Not,
+            Not,
             // NotEqual,
             Or,
             Pow,
@@ -132,6 +132,7 @@ macro_rules! instruction {
             // Shr,
             // ShrWrapped,
             Square,
+            SquareRoot,
             Sub,
             SubWrapped,
             // Ternary,
@@ -250,12 +251,12 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     MulWrapped(MulWrapped<N, A>),
     // /// Returns false only if `first` and `second` are true, storing the outcome in `destination`.
     // Nand(Nand<N, A>),
-    // /// Negates `first`, storing the outcome in `destination`.
-    // Neg(Neg<N, A>),
+    /// Negates `first`, storing the outcome in `destination`.
+    Neg(Neg<N, A>),
     // /// Returns true when neither `first` nor `second` is true, storing the outcome in `destination`.
     // Nor(Nor<N, A>),
-    // /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
-    // Not(Not<N, A>),
+    /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
+    Not(Not<N, A>),
     // /// Returns true if `first` is not equal to `second`, storing the result in `destination`.
     // NotEqual(NotEqual<N, A>),
     /// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
@@ -280,6 +281,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // ShrWrapped(ShrWrapped<N, A>),
     /// Squares 'first', storing the outcome in `destination`.
     Square(Square<N, A>),
+    /// Compute the square root of 'first', storing the outcome in `destination`.
+    SquareRoot(SquareRoot<N, A>),
     /// Computes `first - second`, storing the outcome in `destination`.
     Sub(Sub<N, A>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -527,7 +530,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            18,
+            21,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
