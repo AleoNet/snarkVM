@@ -18,7 +18,7 @@ use crate::prelude::*;
 
 /// Representation of an address.
 pub trait AddressTrait:
-    Copy + Clone + Debug + Deref + Eq + Equal + Parser + Send + Sync + TypeName + Visibility
+    Copy + Clone + Compare + Debug + Deref + Eq + Equal + Parser + Send + Sync + TypeName + Visibility
 {
 }
 
@@ -59,6 +59,7 @@ pub trait FieldTrait:
     + for<'a> AddAssign<&'a Self>
     + Clone
     + Copy
+    + Compare
     + Debug
     + Deref
     + Div<Self, Output = Self>
@@ -140,6 +141,7 @@ pub trait ScalarTrait:
     + for<'a> AddAssign<&'a Self>
     + Clone
     + Copy
+    + Compare
     + Debug
     + Deref
     + Div<Self, Output = Self>
@@ -185,23 +187,35 @@ pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: I
     + Pow<U8, Output = Self>
     + Shl<U8, Output = Self>
     + for<'a> Shl<&'a U8, Output = Self>
+    + ShlChecked<U8, Output = Self>
+    + ShlWrapped<U8, Output = Self>
     + ShlAssign<U8>
     + Shr<U8, Output = Self>
     + for<'a> Shr<&'a U8, Output = Self>
+    + ShrChecked<U8, Output = Self>
+    + ShrWrapped<U8, Output = Self>
     + ShrAssign<U8>
     + Pow<U16, Output = Self>
     + Shl<U16, Output = Self>
     + for<'a> Shl<&'a U16, Output = Self>
+    + ShlChecked<U16, Output = Self>
+    + ShlWrapped<U16, Output = Self>
     + ShlAssign<U16>
     + Shr<U16, Output = Self>
     + for<'a> Shr<&'a U16, Output = Self>
+    + ShrChecked<U16, Output = Self>
+    + ShrWrapped<U16, Output = Self>
     + ShrAssign<U16>
     + Pow<U32, Output = Self>
     + Shl<U32, Output = Self>
     + for<'a> Shl<&'a U32, Output = Self>
+    + ShlChecked<U32, Output = Self>
+    + ShlWrapped<U32, Output = Self>
     + ShlAssign<U32>
     + Shr<U32, Output = Self>
     + for<'a> Shr<&'a U32, Output = Self>
+    + ShrChecked<U32, Output = Self>
+    + ShrWrapped<U32, Output = Self>
     + ShrAssign<U32>
 {
 }
@@ -223,6 +237,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + for<'a> BitXor<&'a Self, Output = Self>
     + Copy
     + Clone
+    + Compare
     + Debug
     + Deref
     + Div<Self, Output = Self>

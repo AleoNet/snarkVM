@@ -418,14 +418,14 @@ mod tests {
                                 // Attempt to compute the invalid operand case.
                                 let result_a = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::evaluate(&[literal_a.clone()]);
                                 // Ensure the computation failed.
-                                assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a}");
+                                assert!(result_a.is_err(), "An invalid operand case (on iteration {i}) did not fail (console): {literal_a}");
 
                                 // Attempt to compute the invalid operand case.
                                 let result_b = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::$execute(&[
                                     circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
                                 ]);
                                 // Ensure the computation failed.
-                                assert!(result_b.is_err(), "An invalid operands case (on iteration {i}) did not fail (circuit): {literal_a}");
+                                assert!(result_b.is_err(), "An invalid operand case (on iteration {i}) did not fail (circuit): {literal_a}");
                                 // Reset the circuit.
                                 <CurrentAleo as circuit::Environment>::reset();
                             }
@@ -455,14 +455,14 @@ mod tests {
                                 // Attempt to compute the invalid operand case.
                                 let result_a = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::evaluate(&[literal_a.clone()]);
                                 // Ensure the computation failed.
-                                assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a}");
+                                assert!(result_a.is_err(), "An invalid operand case (on iteration {i}) did not fail (console): {literal_a}");
 
                                 // Attempt to compute the invalid operand case.
                                 let result_b = <$operation as $crate::vm::Operation<_, _, _, _, 1>>::$execute(&[
                                     circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
                                 ]);
                                 // Ensure the computation failed.
-                                assert!(result_b.is_err(), "An invalid operands case (on iteration {i}) did not fail (circuit): {literal_a}");
+                                assert!(result_b.is_err(), "An invalid operand case (on iteration {i}) did not fail (circuit): {literal_a}");
                                 // Reset the circuit.
                                 <CurrentAleo as circuit::Environment>::reset();
                             }
@@ -552,8 +552,8 @@ mod tests {
                         macro_rules! check_condition {
                             ("ensure overflows halt") => {
                                 match *<$operation as $crate::vm::Operation<_, _, _, _, 1>>::OPCODE {
-                                    "abs" | "abs.w" => should_succeed &= (*a).checked_abs().is_some(),
-                                    "neg" | "neg.w" => should_succeed &= (*a).checked_neg().is_some(),
+                                    "abs" => should_succeed &= (*a).checked_abs().is_some(),
+                                    "neg" => should_succeed &= (*a).checked_neg().is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 1>>::OPCODE),
                                 }
                             };
@@ -625,9 +625,9 @@ mod tests {
 
         // Case 1-A: Binary operation.
         // Case 1-B: Binary operation, where:
-        //   1. "ensure overflow halts" | "ensure exponentiation overflow halts"
-        //     - If the sampled values overflow on evaluation, ensure it halts.
-        //     - If the sampled values **do not** overflow on evaluation, ensure it succeeds.
+        //   1. "ensure overflow halts" | "ensure exponentiation overflow halts" | "ensure shifting past boundary halts"
+        //     - If the sampled values overflow or underflow on evaluation, ensure it halts.
+        //     - If the sampled values **do not** overflow or underflow on evaluation, ensure it succeeds.
         //   2. "ensure divide by zero halts"
         //     - If the sampled divisor is zero, ensure it halts.
         //     - If the sampled divisor is **not** zero, ensure it succeeds.
@@ -661,19 +661,30 @@ mod tests {
                         // Initialize an indicator whether the operation should succeed or not.
                         #[allow(unused_mut)]
                         let mut should_succeed = true;
+                        #[allow(unused_mut)]
+                        let mut is_shift_operator = false;
                         /// A helper macro to check the conditions.
                         macro_rules! check_condition {
                             ("ensure overflows halt") => {
                                 match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
-                                    "add" | "add.w" => should_succeed &= (*a).checked_add(*b).is_some(),
-                                    "div" | "div.w" => should_succeed &= (*a).checked_div(*b).is_some(),
-                                    "mul" | "mul.w" => should_succeed &= (*a).checked_mul(*b).is_some(),
-                                    "sub" | "sub.w" => should_succeed &= (*a).checked_sub(*b).is_some(),
+                                    "add" => should_succeed &= (*a).checked_add(*b).is_some(),
+                                    "div" => should_succeed &= (*a).checked_div(*b).is_some(),
+                                    "mul" => should_succeed &= (*a).checked_mul(*b).is_some(),
+                                    "sub" => should_succeed &= (*a).checked_sub(*b).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
                                 }
                             };
                             ("ensure exponentiation overflows halt") => {
                                 should_succeed &= (*a).checked_pow((*b) as u32).is_some()
+                            };
+                            ("ensure shifting past boundary halts") => {
+                                match *<$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE {
+                                    "shl" => should_succeed &= (*a).checked_shl(*b as u32).is_some(),
+                                    "shr" => should_succeed &= (*a).checked_shr(*b as u32).is_some(),
+                                    _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::vm::Operation<_, _, _, _, 2>>::OPCODE),
+                                }
+                                // This indicator is later used in the for-loops below.
+                                is_shift_operator |= true;
                             };
                             ("ensure divide by zero halt") => {
                                 should_succeed &= (*b) != 0
@@ -681,6 +692,8 @@ mod tests {
                         }
                         // Check the conditions.
                         $( $( check_condition!($condition); )+ )?
+
+                        println!("{should_succeed} {a} {b}", should_succeed = should_succeed, a = a, b = b);
 
                         // If `should_succeed` is `true`, compute the expected output.
                         let expected = match should_succeed {
@@ -697,6 +710,12 @@ mod tests {
                                 // Initialize the operands.
                                 let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;
                                 let second = circuit::program::Literal::from_str(&format!("{b}.{mode_b}"))?;
+
+                                // This indicator bit is used to check that a case panics on halt,
+                                // instead of checking that the circuit is not satisfied (i.e. for `Public|Private && Constant`).
+                                let mut should_panic_on_halt = false;
+                                // If the operation is a shift operator, check if the mode of the RHS is a constant.
+                                should_panic_on_halt |= is_shift_operator && mode_b.is_constant();
 
                                 // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
                                 if should_succeed {
@@ -719,7 +738,7 @@ mod tests {
                                     assert!(result_a.is_err(), "Failure case (on iteration {i}) did not halt (console): {a} {b}");
 
                                     // Halt the execution.
-                                    if (mode_a.is_constant() && mode_b.is_constant()) {
+                                    if (mode_a.is_constant() && mode_b.is_constant()) || should_panic_on_halt {
                                         // Attempt to execute a failure case.
                                         let result_b = std::panic::catch_unwind(|| <$operation as $crate::vm::Operation<_, _, _, _, 2>>::$execute(&[first, second]).unwrap());
                                         // Ensure the execution halted.

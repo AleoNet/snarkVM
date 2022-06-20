@@ -76,20 +76,15 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
                 None => E::halt("Constant shifted by constant exceeds the allowed bitwidth."),
             }
         } else {
-            // Index of the first upper bit of rhs that must be zero.
-            // This is a safe case as I::BITS = 8, 16, 32, 64, or 128.
-            // Therefore there is at least one trailing zero.
-            let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
+            // Determine the index where the first upper bit of the RHS must be zero.
+            // There is at least one trailing zero, as I::BITS = 8, 16, 32, 64, or 128.
+            let trailing_zeros_index = I::BITS.trailing_zeros() as usize;
 
-            let upper_bits_are_nonzero =
-                rhs.bits_le[first_upper_bit_index..].iter().fold(Boolean::constant(false), |a, b| a | b);
+            // Determine if any of the upper bits of the RHS are nonzero.
+            let is_nonzero = rhs.bits_le[trailing_zeros_index..].iter().fold(Boolean::constant(false), |a, b| a | b);
 
-            // Halt if upper bits of rhs are constant and nonzero.
-            if upper_bits_are_nonzero.is_constant() && upper_bits_are_nonzero.eject_value() {
-                E::halt("Integer shifted by constant exceeds the allowed bitwidth.")
-            }
-            // Enforce that the appropriate number of upper bits in rhs are zero.
-            E::assert_eq(upper_bits_are_nonzero, E::zero());
+            // Ensure the upper bits of the RHS are zero.
+            E::assert(!is_nonzero);
 
             // Perform a wrapping shift right.
             self.shr_wrapped(rhs)

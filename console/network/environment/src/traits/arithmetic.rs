@@ -101,8 +101,7 @@ pub trait ShlChecked<Rhs: ?Sized = Self> {
     fn shl_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for left shifting a value, checking that the rhs is less than the number
-/// of bits in self.
+/// Binary operator for left shifting a value, safely continuing past the number of bits in self.
 pub trait ShlWrapped<Rhs: ?Sized = Self> {
     type Output;
 
@@ -117,8 +116,7 @@ pub trait ShrChecked<Rhs: ?Sized = Self> {
     fn shr_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for right shifting a value, checking that the rhs is less than the number
-/// of bits in self.
+/// Binary operator for right shifting a value, safely continuing past the number of bits in self.
 pub trait ShrWrapped<Rhs: ?Sized = Self> {
     type Output;
 

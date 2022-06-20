@@ -176,6 +176,29 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Shl<&Integer<E, M>> for Integ
     }
 }
 
+impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Shifts `self` to the left by `n` bits.
+    #[inline]
+    fn shl_checked(&self, n: &Integer<E, M>) -> Self::Output {
+        match self.integer.checked_shl(n.integer.to_u32().unwrap()) {
+            Some(shifted) => Integer::new(shifted),
+            None => E::halt(format!("Failed to shift {self} left by {n} bits")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Shifts `self` to the left by `n` bits, continuing past the boundary.
+    #[inline]
+    fn shl_wrapped(&self, n: &Integer<E, M>) -> Self::Output {
+        Integer::new(self.integer.wrapping_shl(n.integer.to_u32().unwrap()))
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> ShlAssign<Integer<E, M>> for Integer<E, I> {
     /// Shifts `self` to the left by `n` bits and assigns the result to `self`.
     #[inline]
@@ -215,6 +238,29 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Shr<&Integer<E, M>> for Integ
             Some(shifted) => Integer::new(shifted),
             None => E::halt(format!("Failed to shift {self} right by {n} bits")),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Shifts `self` to the right by `n` bits.
+    #[inline]
+    fn shr_checked(&self, n: &Integer<E, M>) -> Self::Output {
+        match self.integer.checked_shr(n.integer.to_u32().unwrap()) {
+            Some(shifted) => Integer::new(shifted),
+            None => E::halt(format!("Failed to shift {self} right by {n} bits")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    /// Shifts `self` to the right by `n` bits, continuing past the boundary.
+    #[inline]
+    fn shr_wrapped(&self, n: &Integer<E, M>) -> Self::Output {
+        Integer::new(self.integer.wrapping_shr(n.integer.to_u32().unwrap()))
     }
 }
 

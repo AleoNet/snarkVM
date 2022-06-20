@@ -127,10 +127,10 @@ macro_rules! instruction {
             // PRFPsd2,
             // PRFPsd4,
             // PRFPsd8,
-            // Shl,
-            // ShlWrapped,
-            // Shr,
-            // ShrWrapped,
+            Shl,
+            ShlWrapped,
+            Shr,
+            ShrWrapped,
             Square,
             SquareRoot,
             Sub,
@@ -271,14 +271,14 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // PRFPsd4(PRFPsd4<N, A>),
     // /// Performs a Poseidon PRF with an input rate of 8.
     // PRFPsd8(PRFPsd8<N, A>),
-    // /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
-    // Shl(Shl<N, A>),
-    // /// Shifts `first` left by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
-    // ShlWrapped(ShlWrapped<N, A>),
-    // /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
-    // Shr(Shr<N, A>),
-    // /// Shifts `first` right by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
-    // ShrWrapped(ShrWrapped<N, A>),
+    /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
+    Shl(Shl<N, A>),
+    /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
+    ShlWrapped(ShlWrapped<N, A>),
+    /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
+    Shr(Shr<N, A>),
+    /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
+    ShrWrapped(ShrWrapped<N, A>),
     /// Squares 'first', storing the outcome in `destination`.
     Square(Square<N, A>),
     /// Compute the square root of 'first', storing the outcome in `destination`.
@@ -530,7 +530,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            29,
+            33,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

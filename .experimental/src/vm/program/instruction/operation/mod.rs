@@ -503,6 +503,158 @@ crate::operation!(
     }
 );
 
+/// Shifts `first` left by `second` bits, storing the outcome in `destination`.
+pub type Shl<N, A> = BinaryLiteral<N, A, ShlOperation<N, A>>;
+
+crate::operation!(
+    pub struct ShlOperation<console::prelude::ShlChecked, circuit::prelude::ShlChecked, shl_checked, "shl"> {
+        (I8, U8) => I8 ("ensure shifting past boundary halts"),
+        (I8, U16) => I8 ("ensure shifting past boundary halts"),
+        (I8, U32) => I8 ("ensure shifting past boundary halts"),
+        (I16, U8) => I16 ("ensure shifting past boundary halts"),
+        (I16, U16) => I16 ("ensure shifting past boundary halts"),
+        (I16, U32) => I16 ("ensure shifting past boundary halts"),
+        (I32, U8) => I32 ("ensure shifting past boundary halts"),
+        (I32, U16) => I32 ("ensure shifting past boundary halts"),
+        (I32, U32) => I32 ("ensure shifting past boundary halts"),
+        (I64, U8) => I64 ("ensure shifting past boundary halts"),
+        (I64, U16) => I64 ("ensure shifting past boundary halts"),
+        (I64, U32) => I64 ("ensure shifting past boundary halts"),
+        (I128, U8) => I128 ("ensure shifting past boundary halts"),
+        (I128, U16) => I128 ("ensure shifting past boundary halts"),
+        (I128, U32) => I128 ("ensure shifting past boundary halts"),
+        (U8, U8) => U8 ("ensure shifting past boundary halts"),
+        (U8, U16) => U8 ("ensure shifting past boundary halts"),
+        (U8, U32) => U8 ("ensure shifting past boundary halts"),
+        (U16, U8) => U16 ("ensure shifting past boundary halts"),
+        (U16, U16) => U16 ("ensure shifting past boundary halts"),
+        (U16, U32) => U16 ("ensure shifting past boundary halts"),
+        (U32, U8) => U32 ("ensure shifting past boundary halts"),
+        (U32, U16) => U32 ("ensure shifting past boundary halts"),
+        (U32, U32) => U32 ("ensure shifting past boundary halts"),
+        (U64, U8) => U64 ("ensure shifting past boundary halts"),
+        (U64, U16) => U64 ("ensure shifting past boundary halts"),
+        (U64, U32) => U64 ("ensure shifting past boundary halts"),
+        (U128, U8) => U128 ("ensure shifting past boundary halts"),
+        (U128, U16) => U128 ("ensure shifting past boundary halts"),
+        (U128, U32) => U128 ("ensure shifting past boundary halts"),
+    }
+);
+
+/// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
+pub type ShlWrapped<N, A> = BinaryLiteral<N, A, ShlWrappedOperation<N, A>>;
+
+crate::operation!(
+    pub struct ShlWrappedOperation<console::prelude::ShlWrapped, circuit::prelude::ShlWrapped, shl_wrapped, "shl.w"> {
+        (I8, U8) => I8,
+        (I8, U16) => I8,
+        (I8, U32) => I8,
+        (I16, U8) => I16,
+        (I16, U16) => I16,
+        (I16, U32) => I16,
+        (I32, U8) => I32,
+        (I32, U16) => I32,
+        (I32, U32) => I32,
+        (I64, U8) => I64,
+        (I64, U16) => I64,
+        (I64, U32) => I64,
+        (I128, U8) => I128,
+        (I128, U16) => I128,
+        (I128, U32) => I128,
+        (U8, U8) => U8,
+        (U8, U16) => U8,
+        (U8, U32) => U8,
+        (U16, U8) => U16,
+        (U16, U16) => U16,
+        (U16, U32) => U16,
+        (U32, U8) => U32,
+        (U32, U16) => U32,
+        (U32, U32) => U32,
+        (U64, U8) => U64,
+        (U64, U16) => U64,
+        (U64, U32) => U64,
+        (U128, U8) => U128,
+        (U128, U16) => U128,
+        (U128, U32) => U128,
+    }
+);
+
+/// Shifts `first` right by `second` bits, storing the outcome in `destination`.
+pub type Shr<N, A> = BinaryLiteral<N, A, ShrOperation<N, A>>;
+
+crate::operation!(
+    pub struct ShrOperation<console::prelude::ShrChecked, circuit::prelude::ShrChecked, shr_checked, "shr"> {
+        (I8, U8) => I8 ("ensure shifting past boundary halts"),
+        (I8, U16) => I8 ("ensure shifting past boundary halts"),
+        (I8, U32) => I8 ("ensure shifting past boundary halts"),
+        (I16, U8) => I16 ("ensure shifting past boundary halts"),
+        (I16, U16) => I16 ("ensure shifting past boundary halts"),
+        (I16, U32) => I16 ("ensure shifting past boundary halts"),
+        (I32, U8) => I32 ("ensure shifting past boundary halts"),
+        (I32, U16) => I32 ("ensure shifting past boundary halts"),
+        (I32, U32) => I32 ("ensure shifting past boundary halts"),
+        (I64, U8) => I64 ("ensure shifting past boundary halts"),
+        (I64, U16) => I64 ("ensure shifting past boundary halts"),
+        (I64, U32) => I64 ("ensure shifting past boundary halts"),
+        (I128, U8) => I128 ("ensure shifting past boundary halts"),
+        (I128, U16) => I128 ("ensure shifting past boundary halts"),
+        (I128, U32) => I128 ("ensure shifting past boundary halts"),
+        (U8, U8) => U8 ("ensure shifting past boundary halts"),
+        (U8, U16) => U8 ("ensure shifting past boundary halts"),
+        (U8, U32) => U8 ("ensure shifting past boundary halts"),
+        (U16, U8) => U16 ("ensure shifting past boundary halts"),
+        (U16, U16) => U16 ("ensure shifting past boundary halts"),
+        (U16, U32) => U16 ("ensure shifting past boundary halts"),
+        (U32, U8) => U32 ("ensure shifting past boundary halts"),
+        (U32, U16) => U32 ("ensure shifting past boundary halts"),
+        (U32, U32) => U32 ("ensure shifting past boundary halts"),
+        (U64, U8) => U64 ("ensure shifting past boundary halts"),
+        (U64, U16) => U64 ("ensure shifting past boundary halts"),
+        (U64, U32) => U64 ("ensure shifting past boundary halts"),
+        (U128, U8) => U128 ("ensure shifting past boundary halts"),
+        (U128, U16) => U128 ("ensure shifting past boundary halts"),
+        (U128, U32) => U128 ("ensure shifting past boundary halts"),
+    }
+);
+
+/// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
+pub type ShrWrapped<N, A> = BinaryLiteral<N, A, ShrWrappedOperation<N, A>>;
+
+crate::operation!(
+    pub struct ShrWrappedOperation<console::prelude::ShrWrapped, circuit::prelude::ShrWrapped, shr_wrapped, "shr.w"> {
+        (I8, U8) => I8,
+        (I8, U16) => I8,
+        (I8, U32) => I8,
+        (I16, U8) => I16,
+        (I16, U16) => I16,
+        (I16, U32) => I16,
+        (I32, U8) => I32,
+        (I32, U16) => I32,
+        (I32, U32) => I32,
+        (I64, U8) => I64,
+        (I64, U16) => I64,
+        (I64, U32) => I64,
+        (I128, U8) => I128,
+        (I128, U16) => I128,
+        (I128, U32) => I128,
+        (U8, U8) => U8,
+        (U8, U16) => U8,
+        (U8, U32) => U8,
+        (U16, U8) => U16,
+        (U16, U16) => U16,
+        (U16, U32) => U16,
+        (U32, U8) => U32,
+        (U32, U16) => U32,
+        (U32, U32) => U32,
+        (U64, U8) => U64,
+        (U64, U16) => U64,
+        (U64, U32) => U64,
+        (U128, U8) => U128,
+        (U128, U16) => U128,
+        (U128, U32) => U128,
+    }
+);
+
 /// Squares `first`, storing the outcome in `destination`.
 pub type Square<N, A> = UnaryLiteral<N, A, SquareOperation<N, A>>;
 
