@@ -16,7 +16,7 @@
 
 mod matches;
 
-use crate::vm::{Operand, Program};
+use crate::{Operand, Program};
 use console::{
     network::prelude::*,
     program::{EntryType, Identifier, Interface, LiteralType, PlaintextType, RecordType, Register, RegisterType},

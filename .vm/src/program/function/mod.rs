@@ -23,7 +23,7 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::vm::Instruction;
+use crate::Instruction;
 use console::{
     network::prelude::*,
     program::{Identifier, Register},
@@ -32,8 +32,8 @@ use console::{
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Closure<N: Network, A: circuit::Aleo<Network = N>> {
-    /// The name of the closure.
+pub struct Function<N: Network, A: circuit::Aleo<Network = N>> {
+    /// The name of the function.
     name: Identifier<N>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
@@ -44,35 +44,35 @@ pub struct Closure<N: Network, A: circuit::Aleo<Network = N>> {
     outputs: IndexSet<Output<N>>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Closure<N, A> {
-    /// Initializes a new closure with the given name.
+impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
+    /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {
         Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new() }
     }
 
-    /// Returns the name of the closure.
+    /// Returns the name of the function.
     pub const fn name(&self) -> &Identifier<N> {
         &self.name
     }
 
-    /// Returns the closure inputs.
+    /// Returns the function inputs.
     pub const fn inputs(&self) -> &IndexSet<Input<N>> {
         &self.inputs
     }
 
-    /// Returns the closure instructions.
+    /// Returns the function instructions.
     pub fn instructions(&self) -> &[Instruction<N, A>] {
         &self.instructions
     }
 
-    /// Returns the closure outputs.
+    /// Returns the function outputs.
     pub const fn outputs(&self) -> &IndexSet<Output<N>> {
         &self.outputs
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Closure<N, A> {
-    /// Adds the input statement to the closure.
+impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
+    /// Adds the input statement to the function.
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements already.
@@ -97,7 +97,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Closure<N, A> {
         Ok(())
     }
 
-    /// Adds the given instruction to the closure.
+    /// Adds the given instruction to the function.
     ///
     /// # Errors
     /// This method will halt if there are no input statements in memory.
@@ -124,7 +124,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Closure<N, A> {
         Ok(())
     }
 
-    /// Adds the output statement to the closure.
+    /// Adds the output statement to the function.
     ///
     /// # Errors
     /// This method will halt if there are no input statements or instructions in memory.
@@ -148,10 +148,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Closure<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> TypeName for Closure<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> TypeName for Function<N, A> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "closure"
+        "function"
     }
 }

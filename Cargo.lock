@@ -2493,24 +2493,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-experimental"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "indexmap",
- "itertools",
- "num-traits",
- "paste",
- "rand",
- "snarkvm-algorithms",
- "snarkvm-circuit",
- "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-utilities",
-]
-
-[[package]]
 name = "snarkvm-fields"
 version = "0.7.5"
 dependencies = [
@@ -2626,6 +2608,24 @@ dependencies = [
  "proc-macro2 1.0.39",
  "quote 1.0.18",
  "syn 1.0.92",
+]
+
+[[package]]
+name = "snarkvm-vm"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "indexmap",
+ "itertools",
+ "num-traits",
+ "paste",
+ "rand",
+ "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
 ]
 
 [[package]]

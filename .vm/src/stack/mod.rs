@@ -23,7 +23,7 @@ pub use stack_value::*;
 mod load;
 mod store;
 
-use crate::vm::{Operand, Program, RegisterTypes};
+use crate::{Operand, Program, RegisterTypes};
 use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Record, Register, RegisterType, Value, ValueType},

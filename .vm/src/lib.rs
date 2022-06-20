@@ -18,10 +18,17 @@
 #![allow(clippy::module_inception)]
 
 #[allow(dead_code, unused_imports)]
+mod program_circuit;
+pub use program_circuit::*;
+
+mod process;
+pub use process::*;
+
 mod program;
 pub use program::*;
 
-mod vm;
+mod stack;
+pub use stack::*;
 
 pub mod input {
     use circuit::{

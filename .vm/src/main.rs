@@ -21,7 +21,7 @@ use console::{
     types::{Field, Group, Scalar, U64},
 };
 use snarkvm_algorithms::snark::marlin::Proof;
-use snarkvm_experimental::{input, output, snark};
+use snarkvm_vm::{input, output, snark};
 
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;

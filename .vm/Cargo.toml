@@ -1,5 +1,5 @@
 [package]
-name = "snarkvm-experimental"
+name = "snarkvm-vm"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"

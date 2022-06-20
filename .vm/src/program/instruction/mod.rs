@@ -23,7 +23,7 @@ pub use operand::*;
 mod operation;
 pub use operation::*;
 
-use crate::vm::{Program, Stack};
+use crate::{Program, Stack};
 use console::{
     network::{
         prelude::{

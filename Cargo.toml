@@ -19,7 +19,7 @@ edition = "2021"
 
 [workspace]
 members = [
-  ".experimental", # <- This is just a hacky experiment. Remind Howard to delete this!
+  ".vm",
   "algorithms",
   "bytecode",
   "circuit",

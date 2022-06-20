@@ -29,7 +29,7 @@ pub use register_types::*;
 mod matches;
 mod parse;
 
-use crate::vm::{Stack, StackValue};
+use crate::{Stack, StackValue};
 use console::{
     network::prelude::*,
     program::{

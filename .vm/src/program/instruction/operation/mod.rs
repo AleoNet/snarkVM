@@ -31,7 +31,7 @@ pub use literals::*;
 
 mod macros;
 
-use crate::vm::Opcode;
+use crate::Opcode;
 use console::network::prelude::*;
 
 pub trait Operation<N: Network, Value: Parser + ToBits, CircuitValue, ValueType: Parser, const NUM_OPERANDS: usize> {

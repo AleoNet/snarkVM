@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::vm::{Operand, Program, RegisterTypes, Stack, StackValue};
+use crate::{Operand, Program, RegisterTypes, Stack, StackValue};
 use console::{
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Record, Register, RegisterType, Value, ValueType},
