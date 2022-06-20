@@ -46,11 +46,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
     pub fn new(program: Program<N, A>, register_types: RegisterTypes<N>) -> Result<Self> {
-        // Ensure the input registers are locators.
-        for (register, _) in register_types.to_input_types() {
-            ensure!(matches!(register, Register::Locator(_)), "Expected locator, found {register}");
-        }
-
         Ok(Self { program, register_types, console_registers: IndexMap::new(), circuit_registers: IndexMap::new() })
     }
 

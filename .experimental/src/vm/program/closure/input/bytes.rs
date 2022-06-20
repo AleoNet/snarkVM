@@ -21,13 +21,22 @@ impl<N: Network> FromBytes for Input<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let register = FromBytes::read_le(&mut reader)?;
         let register_type = FromBytes::read_le(&mut reader)?;
-        Ok(Self { register, register_type })
+
+        // Ensure the register is not a register member.
+        match matches!(register, Register::Locator(..)) {
+            true => Ok(Self { register, register_type }),
+            false => Err(error(format!("Input '{register}' cannot be a register member"))),
+        }
     }
 }
 
 impl<N: Network> ToBytes for Input<N> {
     /// Writes the input to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Ensure the register is not a register member.
+        if !matches!(self.register, Register::Locator(..)) {
+            return Err(error(format!("Input '{register}' cannot be a register member")));
+        }
         self.register.write_le(&mut writer)?;
         self.register_type.write_le(&mut writer)
     }

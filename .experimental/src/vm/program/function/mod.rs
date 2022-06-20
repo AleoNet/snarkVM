@@ -86,6 +86,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
         // Ensure the input statement was not previously added.
         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
 
+        // Ensure the input register is a locator.
+        ensure!(matches!(input.register(), Register::Locator(..)), "Input register must be a locator");
+
         // Insert the input statement.
         self.inputs.insert(input);
         Ok(())
@@ -107,6 +110,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
             "Cannot add more than {} instructions",
             N::MAX_FUNCTION_INSTRUCTIONS
         );
+
+        // Ensure the destination register is a locator.
+        for register in instruction.destinations() {
+            ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+        }
 
         // Insert the instruction.
         self.instructions.push(instruction);
