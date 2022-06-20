@@ -155,18 +155,46 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {
+            use circuit::{Eject, Inject};
+
             // Retrieve the circuit value from the register.
             let circuit_value = stack.load_circuit(&Operand::Register(output.register().clone()))?;
             // Convert the circuit value to the output value type.
             let output = match (circuit_value, output.value_type()) {
-                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
-                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
-                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
-                (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
+                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::Plaintext::new(circuit::Mode::Constant, plaintext.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(plaintext));
+                    // Return the output circuit.
+                    circuit::Value::Constant(output)
+                }
+                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::Plaintext::new(circuit::Mode::Public, plaintext.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(plaintext));
+                    // Return the output circuit.
+                    circuit::Value::Public(output)
+                }
+                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::Plaintext::new(circuit::Mode::Private, plaintext.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(plaintext));
+                    // Return the output circuit.
+                    circuit::Value::Private(output)
+                }
+                (CircuitValue::Record(record), ValueType::Record(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::program::Record::new(circuit::Mode::Private, record.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(record));
+                    // Return the output circuit.
+                    circuit::Value::Record(output)
+                }
                 _ => bail!("Circuit value does not match the expected output type"),
             };
-            // TODO (howardwu): Check the modes are correct.
-
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
             //  For constant outputs, add an assert_eq on the stack value - if it's constant,
