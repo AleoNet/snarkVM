@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod arithmetic;
+mod bitwise;
 mod from_bits;
 mod from_field;
 mod from_fields;
@@ -31,6 +32,7 @@ mod to_y_coordinate;
 mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;
+pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_scalar::Scalar;
 

@@ -17,7 +17,10 @@
 use crate::prelude::*;
 
 /// Representation of an address.
-pub trait AddressTrait: Copy + Clone + Debug + Deref + Eq + Parser + Send + Sync + TypeName + Visibility {}
+pub trait AddressTrait:
+    Copy + Clone + Debug + Deref + Eq + Equal + Parser + Send + Sync + TypeName + Visibility
+{
+}
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
@@ -35,6 +38,7 @@ pub trait BooleanTrait:
     + Debug
     + Deref
     + Eq
+    + Equal
     + Nand
     + Nor
     + Not
@@ -63,6 +67,7 @@ pub trait FieldTrait:
     + for<'a> DivAssign<&'a Self>
     + Double<Output = Self>
     + Eq
+    + Equal
     + Inverse<Output = Self>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
@@ -104,6 +109,7 @@ pub trait GroupTrait<S: ScalarTrait>:
     + Debug
     + Double<Output = Self>
     + Eq
+    + Equal
     + Mul<S>
     + for<'a> Mul<&'a S>
     + MulAssign<S>
@@ -142,6 +148,7 @@ pub trait ScalarTrait:
     + for<'a> DivAssign<&'a Self>
     + Double<Output = Self>
     + Eq
+    + Equal
     + Inverse<Output = Self>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
@@ -170,7 +177,7 @@ pub trait ScalarTrait:
 }
 
 /// Representation of a string.
-pub trait StringTrait: Clone + Debug + Display + Parser + Send + Sync + TypeName {}
+pub trait StringTrait: Clone + Debug + Display + Eq + Equal + Parser + Send + Sync + TypeName {}
 
 /// Representation of an integer.
 pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16>, U32: IntegerCore<u32>>:
@@ -223,6 +230,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + DivAssign<Self>
     + for<'a> DivAssign<&'a Self>
     + Eq
+    + Equal
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>

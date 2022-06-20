@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod arithmetic;
+mod bitwise;
 mod compare;
 mod from_bits;
 mod one;
@@ -26,6 +27,7 @@ mod to_field;
 mod zero;
 
 pub use snarkvm_console_network_environment::prelude::*;
+pub use snarkvm_console_types_boolean::Boolean;
 
 use snarkvm_console_types_field::Field;
 

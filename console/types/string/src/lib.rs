@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bitwise;
 mod parse;
 
 pub use snarkvm_console_network_environment::prelude::*;
+pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_integers::Integer;
 

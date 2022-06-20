@@ -18,7 +18,8 @@
 
 mod helpers;
 
-pub mod equal;
+mod compare;
+mod equal;
 
 #[cfg(test)]
 use console::{test_rng, Uniform};

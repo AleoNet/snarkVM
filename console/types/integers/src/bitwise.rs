@@ -16,6 +16,44 @@
 
 use super::*;
 
+impl<E: Environment, I: IntegerType> Equal for Integer<E, I> {
+    type Output = Boolean<E>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self == other)
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self != other)
+    }
+}
+
+impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
+    type Output = Boolean<E>;
+
+    /// Returns `true` if `self` is less than `other`.
+    fn is_less_than(&self, other: &Self) -> Self::Output {
+        Boolean::new(self.integer < other.integer)
+    }
+
+    /// Returns `true` if `self` is greater than `other`.
+    fn is_greater_than(&self, other: &Self) -> Self::Output {
+        other.is_less_than(self)
+    }
+
+    /// Returns `true` if `self` is less than or equal to `other`.
+    fn is_less_than_or_equal(&self, other: &Self) -> Self::Output {
+        other.is_greater_than_or_equal(self)
+    }
+
+    /// Returns `true` if `self` is greater than or equal to `other`.
+    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Output {
+        !self.is_less_than(other)
+    }
+}
+
 impl<E: Environment, I: IntegerType> Not for Integer<E, I> {
     type Output = Self;
 

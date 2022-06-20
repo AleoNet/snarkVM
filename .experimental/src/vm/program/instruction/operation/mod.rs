@@ -174,12 +174,144 @@ crate::operation!(
     }
 );
 
+/// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
+pub type GreaterThan<N, A> = BinaryLiteral<N, A, GreaterThanOperation<N, A>>;
+
+crate::operation!(
+    pub struct GreaterThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than, "gt"> {
+        (Address, Address) => Boolean,
+        (Field, Field) => Boolean,
+        (I8, I8) => Boolean,
+        (I16, I16) => Boolean,
+        (I32, I32) => Boolean,
+        (I64, I64) => Boolean,
+        (I128, I128) => Boolean,
+        (U8, U8) => Boolean,
+        (U16, U16) => Boolean,
+        (U32, U32) => Boolean,
+        (U64, U64) => Boolean,
+        (U128, U128) => Boolean,
+        (Scalar, Scalar) => Boolean,
+    }
+);
+
+/// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
+pub type GreaterThanOrEqual<N, A> = BinaryLiteral<N, A, GreaterThanOrEqualOperation<N, A>>;
+
+crate::operation!(
+    pub struct GreaterThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than_or_equal, "gte"> {
+        (Address, Address) => Boolean,
+        (Field, Field) => Boolean,
+        (I8, I8) => Boolean,
+        (I16, I16) => Boolean,
+        (I32, I32) => Boolean,
+        (I64, I64) => Boolean,
+        (I128, I128) => Boolean,
+        (U8, U8) => Boolean,
+        (U16, U16) => Boolean,
+        (U32, U32) => Boolean,
+        (U64, U64) => Boolean,
+        (U128, U128) => Boolean,
+        (Scalar, Scalar) => Boolean,
+    }
+);
+
+/// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
+pub type IsEqual<N, A> = BinaryLiteral<N, A, IsEqualOperation<N, A>>;
+
+crate::operation!(
+    pub struct IsEqualOperation<console::prelude::Equal, circuit::prelude::Equal, is_equal, "is.eq"> {
+        (Address, Address) => Boolean,
+        (Boolean, Boolean) => Boolean,
+        (Field, Field) => Boolean,
+        (Group, Group) => Boolean,
+        (I8, I8) => Boolean,
+        (I16, I16) => Boolean,
+        (I32, I32) => Boolean,
+        (I64, I64) => Boolean,
+        (I128, I128) => Boolean,
+        (U8, U8) => Boolean,
+        (U16, U16) => Boolean,
+        (U32, U32) => Boolean,
+        (U64, U64) => Boolean,
+        (U128, U128) => Boolean,
+        (Scalar, Scalar) => Boolean,
+        // (StringType, StringType) => Boolean,
+    }
+);
+
+/// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
+pub type IsNotEqual<N, A> = BinaryLiteral<N, A, IsNotEqualOperation<N, A>>;
+
+crate::operation!(
+    pub struct IsNotEqualOperation<console::prelude::Equal, circuit::prelude::Equal, is_not_equal, "is.neq"> {
+        (Address, Address) => Boolean,
+        (Boolean, Boolean) => Boolean,
+        (Field, Field) => Boolean,
+        (Group, Group) => Boolean,
+        (I8, I8) => Boolean,
+        (I16, I16) => Boolean,
+        (I32, I32) => Boolean,
+        (I64, I64) => Boolean,
+        (I128, I128) => Boolean,
+        (U8, U8) => Boolean,
+        (U16, U16) => Boolean,
+        (U32, U32) => Boolean,
+        (U64, U64) => Boolean,
+        (U128, U128) => Boolean,
+        (Scalar, Scalar) => Boolean,
+        // (StringType, StringType) => Boolean,
+    }
+);
+
 /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
 pub type Inv<N, A> = UnaryLiteral<N, A, InvOperation<N, A>>;
 
 crate::operation!(
     pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
         Field => Field ("ensure inverse of zero halts"),
+    }
+);
+
+/// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
+pub type LessThan<N, A> = BinaryLiteral<N, A, LessThanOperation<N, A>>;
+
+crate::operation!(
+    pub struct LessThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than, "lt"> {
+        (Address, Address) => Boolean,
+        (Field, Field) => Boolean,
+        (I8, I8) => Boolean,
+        (I16, I16) => Boolean,
+        (I32, I32) => Boolean,
+        (I64, I64) => Boolean,
+        (I128, I128) => Boolean,
+        (U8, U8) => Boolean,
+        (U16, U16) => Boolean,
+        (U32, U32) => Boolean,
+        (U64, U64) => Boolean,
+        (U128, U128) => Boolean,
+        (Scalar, Scalar) => Boolean,
+    }
+);
+
+/// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
+pub type LessThanOrEqual<N, A> = BinaryLiteral<N, A, LessThanOrEqualOperation<N, A>>;
+
+crate::operation!(
+    pub struct LessThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than_or_equal, "lte"> {
+        (Address, Address) => Boolean,
+        (Field, Field) => Boolean,
+        (I8, I8) => Boolean,
+        (I16, I16) => Boolean,
+        (I32, I32) => Boolean,
+        (I64, I64) => Boolean,
+        (I128, I128) => Boolean,
+        (U8, U8) => Boolean,
+        (U16, U16) => Boolean,
+        (U32, U32) => Boolean,
+        (U64, U64) => Boolean,
+        (U128, U128) => Boolean,
+        (Scalar, Scalar) => Boolean,
     }
 );
 
@@ -223,6 +355,15 @@ crate::operation!(
     }
 );
 
+/// Returns `false` if `first` and `second` are `true`, storing the outcome in `destination`.
+pub type Nand<N, A> = BinaryLiteral<N, A, NandOperation<N, A>>;
+
+crate::operation!(
+    pub struct NandOperation<console::prelude::Nand, circuit::prelude::Nand, nand, "nand"> {
+        (Boolean, Boolean) => Boolean,
+    }
+);
+
 /// Negates `first`, storing the outcome in `destination`.
 pub type Neg<N, A> = UnaryLiteral<N, A, NegOperation<N, A>>;
 
@@ -235,6 +376,15 @@ crate::operation!(
         I32 => I32 ("ensure overflows halt"),
         I64 => I64 ("ensure overflows halt"),
         I128 => I128 ("ensure overflows halt"),
+    }
+);
+
+/// Returns `true` if neither `first` nor `second` is `true`, storing the outcome in `destination`.
+pub type Nor<N, A> = BinaryLiteral<N, A, NorOperation<N, A>>;
+
+crate::operation!(
+    pub struct NorOperation<console::prelude::Nor, circuit::prelude::Nor, nor, "nor"> {
+        (Boolean, Boolean) => Boolean,
     }
 );
 

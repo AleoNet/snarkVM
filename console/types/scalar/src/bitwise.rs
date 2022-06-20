@@ -14,46 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Trait for equality comparisons.
-pub trait Equal<Rhs: ?Sized = Self> {
-    type Output;
+use super::*;
+
+impl<E: Environment> Equal for Scalar<E> {
+    type Output = Boolean<E>;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_equal(&self, other: &Rhs) -> Self::Output;
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self == other)
+    }
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_not_equal(&self, other: &Rhs) -> Self::Output;
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self != other)
+    }
 }
 
-/// Trait for comparator operations.
-pub trait Compare<Rhs: ?Sized = Self> {
-    type Output;
+impl<E: Environment> Compare for Scalar<E> {
+    type Output = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_less_than(&self, other: &Rhs) -> Self::Output;
+    fn is_less_than(&self, other: &Self) -> Self::Output {
+        Boolean::new(self.scalar < other.scalar)
+    }
 
     /// Returns `true` if `self` is greater than `other`.
-    fn is_greater_than(&self, other: &Rhs) -> Self::Output;
+    fn is_greater_than(&self, other: &Self) -> Self::Output {
+        other.is_less_than(self)
+    }
 
     /// Returns `true` if `self` is less than or equal to `other`.
-    fn is_less_than_or_equal(&self, other: &Rhs) -> Self::Output;
+    fn is_less_than_or_equal(&self, other: &Self) -> Self::Output {
+        other.is_greater_than_or_equal(self)
+    }
 
     /// Returns `true` if `self` is greater than or equal to `other`.
-    fn is_greater_than_or_equal(&self, other: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for performing `NOT (a AND b)`.
-pub trait Nand<Rhs: ?Sized = Self> {
-    type Output;
-
-    /// Returns `NOT (a AND b)`.
-    fn nand(&self, other: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for performing `(NOT a) AND (NOT b)`.
-pub trait Nor<Rhs: ?Sized = Self> {
-    type Output;
-
-    /// Returns `(NOT a) AND (NOT b)`.
-    fn nor(&self, other: &Rhs) -> Self::Output;
+    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Output {
+        !self.is_less_than(other)
+    }
 }

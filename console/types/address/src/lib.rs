@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bitwise;
 mod bytes;
 mod from_bits;
 mod from_field;
@@ -26,6 +27,7 @@ mod to_field;
 mod to_fields;
 
 pub use snarkvm_console_network_environment::prelude::*;
+pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_group::Group;
 
@@ -48,6 +50,18 @@ impl<E: Environment> Address<E> {
     /// Initializes an address from a group element.
     pub const fn new(group: Group<E>) -> Self {
         Self { address: group }
+    }
+
+    /// Initializes a `zero` address.
+    #[deprecated(since = "0.1.0", note = "This is used for **testing** purposes")]
+    pub fn zero() -> Self {
+        Self::new(Group::zero())
+    }
+
+    /// Initializes a "random" address.
+    #[deprecated(since = "0.1.0", note = "This is used for **testing** purposes")]
+    pub fn rand<R: Rng>(rng: &mut R) -> Self {
+        Self::new(Group::rand(rng))
     }
 }
 

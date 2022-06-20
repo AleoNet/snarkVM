@@ -99,9 +99,8 @@ macro_rules! instruction {
             // Div,
             // DivWrapped,
             Double,
-            // Equal,
-            // GreaterThan,
-            // GreaterThanOrEqual,
+            GreaterThan,
+            GreaterThanOrEqual,
             // HashBHP256,
             // HashBHP512,
             // HashBHP768,
@@ -111,16 +110,17 @@ macro_rules! instruction {
             // HashPsd2,
             // HashPsd4,
             // HashPsd8,
+            IsEqual,
+            IsNotEqual,
             Inv,
-            // LessThan,
-            // LessThanOrEqual,
+            LessThan,
+            LessThanOrEqual,
             Mul,
             MulWrapped,
-            // Nand,
+            Nand,
             Neg,
-            // Nor,
+            Nor,
             Not,
-            // NotEqual,
             Or,
             Pow,
             PowWrapped,
@@ -215,12 +215,10 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // DivWrapped(DivWrapped<N, A>),
     /// Doubles `first`, storing the outcome in `destination`.
     Double(Double<N, A>),
-    // /// Checks if `first` is equal to `second`, storing the outcome in `destination`.
-    // Equal(Equal<N, A>),
-    // /// Checks if `first` is greater than `second`, storing the result in `destination`.
-    // GreaterThan(GreaterThan<N, A>),
-    // /// Checks if `first` is greater than or equal to `second`, storing the result in `destination`.
-    // GreaterThanOrEqual(GreaterThanOrEqual<N, A>),
+    /// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
+    GreaterThan(GreaterThan<N, A>),
+    /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
+    GreaterThanOrEqual(GreaterThanOrEqual<N, A>),
     // /// Performs a BHP hash taking a 256-bit value as input.
     // HashBHP256(HashBHP256<N, A>),
     // /// Performs a BHP hash taking a 512-bit value as input.
@@ -239,26 +237,28 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // HashPsd4(HashPsd4<N, A>),
     // /// Performs a Poseidon hash with an input rate of 8.
     // HashPsd8(HashPsd8<N, A>),
+    /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
+    IsEqual(IsEqual<N, A>),
+    /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
+    IsNotEqual(IsNotEqual<N, A>),
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N, A>),
-    // /// Checks if `first` is less than `second`, storing the outcome in `destination`.
-    // LessThan(LessThan<N, A>),
-    // /// Checks if `first` is less than or equal to `second`, storing the outcome in `destination`.
-    // LessThanOrEqual(LessThanOrEqual<N, A>),
+    /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
+    LessThan(LessThan<N, A>),
+    /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
+    LessThanOrEqual(LessThanOrEqual<N, A>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<N, A>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     MulWrapped(MulWrapped<N, A>),
-    // /// Returns false only if `first` and `second` are true, storing the outcome in `destination`.
-    // Nand(Nand<N, A>),
+    /// Returns `false` if `first` and `second` are true, storing the outcome in `destination`.
+    Nand(Nand<N, A>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<N, A>),
-    // /// Returns true when neither `first` nor `second` is true, storing the outcome in `destination`.
-    // Nor(Nor<N, A>),
+    /// Returns `true` if neither `first` nor `second` is `true`, storing the outcome in `destination`.
+    Nor(Nor<N, A>),
     /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
     Not(Not<N, A>),
-    // /// Returns true if `first` is not equal to `second`, storing the result in `destination`.
-    // NotEqual(NotEqual<N, A>),
     /// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
     Or(Or<N, A>),
     /// Raises `first` to the power of `second`, storing the outcome in `destination`.
@@ -530,7 +530,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            21,
+            29,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

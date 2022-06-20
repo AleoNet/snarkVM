@@ -16,6 +16,20 @@
 
 use super::*;
 
+impl<E: Environment> Equal for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self == other)
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self != other)
+    }
+}
+
 impl<E: Environment> Not for Boolean<E> {
     type Output = Boolean<E>;
 
