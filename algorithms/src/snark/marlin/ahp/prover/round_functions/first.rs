@@ -84,35 +84,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert_eq!(z_b.len(), batch_size);
         assert_eq!(private_variables.len(), batch_size);
         let mut r_b_s = Vec::with_capacity(batch_size);
-        let s_m = state.s_m.clone();
-        let s_l = state.s_l.clone();
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
         let state_ref = &state;
         for (i, (z_a, z_b, z_c, private_variables, x_poly, s_m, s_l)) in
-            itertools::izip!(z_a, z_b, z_c, private_variables, &state.x_poly, s_m, s_l).enumerate()
+            itertools::izip!(&z_a, &z_b, &z_c, private_variables, &state.x_poly, &state.s_m, &state.s_l).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
-            let z_a_clone = z_a.clone();
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a_clone, false, state_ref, None));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), &z_a, false, state_ref, None));
             let r_b = F::rand(rng);
-            let z_b_clone = z_b.clone();
-            job_pool
-                .add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b_clone, true, state_ref, Some(r_b)));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), &z_b, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
-            let z_c_clone = z_c.clone();
-            job_pool
-                .add_job(move || Self::calculate_z_m(witness_label("z_c", i), z_c_clone, true, state_ref, Some(r_b)));
-            let s_l_clone = s_l.clone();
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), &z_c, true, state_ref, Some(r_b)));
             job_pool.add_job(move || {
-                Self::calculate_f(witness_label("f", i), z_a, z_b, s_l_clone, true, state_ref, Some(r_b))
+                Self::calculate_f(witness_label("f", i), &z_a, &z_b, &s_l, true, state_ref, Some(r_b))
             });
             job_pool
-                .add_job(move || Self::calculate_selector(witness_label("s_m", i), s_m, true, state_ref, Some(r_b)));
+                .add_job(move || Self::calculate_selector(witness_label("s_m", i), &s_m, true, state_ref, Some(r_b)));
             job_pool
-                .add_job(move || Self::calculate_selector(witness_label("s_l", i), s_l, true, state_ref, Some(r_b)));
+                .add_job(move || Self::calculate_selector(witness_label("s_l", i), &s_l, true, state_ref, Some(r_b)));
         }
 
         let batches = job_pool
@@ -228,7 +220,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calculate_z_m<'a>(
         label: impl ToString,
-        evaluations: Vec<F>,
+        evaluations: &[F],
         will_be_evaluated: bool,
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
@@ -239,7 +231,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let label = label.to_string();
         let poly_time = start_timer!(|| format!("Computing {label}"));
 
-        let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
+        let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations.to_vec(), constraint_domain);
 
         let mut poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
         if should_randomize {
@@ -280,9 +272,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calculate_f<'a>(
         label: impl ToString,
-        z_a: Vec<F>,
-        z_b: Vec<F>,
-        s_l: Vec<F>,
+        z_a: &[F],
+        z_b: &[F],
+        s_l: &[F],
         will_be_evaluated: bool,
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
@@ -300,12 +292,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect::<Vec<F>>();
 
-        Self::calculate_z_m(label, evaluations, will_be_evaluated, state, r)
+        Self::calculate_z_m(label, &evaluations, will_be_evaluated, state, r)
     }
 
     fn calculate_selector<'a>(
         label: impl ToString,
-        selector_evals: Vec<F>,
+        selector_evals: &[F],
         will_be_evaluated: bool,
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
