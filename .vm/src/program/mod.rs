@@ -26,10 +26,12 @@ pub use instruction::*;
 mod register_types;
 pub use register_types::*;
 
+mod stack;
+pub use stack::*;
+
 mod matches;
 mod parse;
 
-use crate::{Stack, StackValue};
 use console::{
     network::prelude::*,
     program::{

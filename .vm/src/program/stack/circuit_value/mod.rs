@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::StackValue;
-use console::network::prelude::*;
 
 #[derive(Clone)]
 pub enum CircuitValue<A: circuit::Aleo> {

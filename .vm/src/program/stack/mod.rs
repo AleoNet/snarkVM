@@ -26,7 +26,7 @@ mod store;
 use crate::{Operand, Program, RegisterTypes};
 use console::{
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Record, Register, RegisterType, Value, ValueType},
+    program::{Entry, Identifier, Literal, Plaintext, Register, Value, ValueType},
 };
 
 use indexmap::IndexMap;
