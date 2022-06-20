@@ -78,33 +78,28 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
 
         // Retrieve the register types.
         let register_types = stack.program().get_closure_registers(&self.name)?;
-
         // Initialize the stack.
         let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types.clone())?;
 
-        // Ensure the inputs match the expected closure inputs.
-        for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
-            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-            // TODO (howardwu): OR if input is a record, forbid and error.
+        // Store the inputs.
+        closure.inputs().iter().map(|i| i.register()).zip_eq(&inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            closure_stack.store(&register, input.clone())?;
-        }
+            closure_stack.store(&register, input.clone())
+        })?;
 
         // Evaluate the instructions.
         closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut closure_stack))?;
 
-        // Initialize a vector to store the outputs.
-        let mut outputs = Vec::with_capacity(closure.outputs().len());
         // Load the outputs.
-        for (register, register_type) in closure_stack.to_output_types() {
+        let outputs = closure.outputs().iter().map(|output| {
             // Retrieve and insert the output into the outputs.
-            outputs.push(closure_stack.load(&Operand::Register(register.clone()))?);
-        }
+            closure_stack.load(&Operand::Register(output.register().clone()))
+        });
 
         // Assign the outputs to the destination registers.
-        for (output, register) in outputs.iter().zip_eq(self.destinations.iter()) {
+        for (output, register) in outputs.zip_eq(&self.destinations) {
             // Assign the output to the register.
-            stack.store(register, output.clone())?;
+            stack.store(register, output?)?;
         }
 
         Ok(())
@@ -129,29 +124,25 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         // Initialize the stack.
         let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types.clone())?;
 
-        // Ensure the inputs match the expected closure inputs.
-        for (input, (register, register_type)) in inputs.iter().zip_eq(register_types.to_input_types()) {
-            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-            // TODO (howardwu): OR if input is a record, forbid and error.
+        // Store the inputs.
+        closure.inputs().iter().map(|i| i.register()).zip_eq(&inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            closure_stack.store_circuit(&register, input.clone())?;
-        }
+            closure_stack.store_circuit(&register, input.clone())
+        })?;
 
         // Evaluate the instructions.
         closure.instructions().iter().try_for_each(|instruction| instruction.execute(&mut closure_stack))?;
 
-        // Initialize a vector to store the outputs.
-        let mut outputs = Vec::with_capacity(closure.outputs().len());
         // Load the outputs.
-        for (register, register_type) in closure_stack.to_output_types() {
+        let outputs = closure.outputs().iter().map(|output| {
             // Retrieve and insert the output into the outputs.
-            outputs.push(closure_stack.load_circuit(&Operand::Register(register.clone()))?);
-        }
+            closure_stack.load_circuit(&Operand::Register(output.register().clone()))
+        });
 
         // Assign the outputs to the destination registers.
-        for (output, register) in outputs.iter().zip_eq(self.destinations.iter()) {
+        for (output, register) in outputs.zip_eq(&self.destinations) {
             // Assign the output to the register.
-            stack.store_circuit(register, output.clone())?;
+            stack.store_circuit(register, output?)?;
         }
 
         Ok(())
