@@ -88,16 +88,16 @@ mod tests {
 
     #[test]
     fn test_commit_uncompressed_constant() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Constant, 7943, 0, 0, 0)
+        check_commit_uncompressed::<32, 48>(Mode::Constant, 8158, 0, 0, 0)
     }
 
     #[test]
     fn test_commit_uncompressed_public() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10098, 10099)
+        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10349, 10351)
     }
 
     #[test]
     fn test_commit_uncompressed_private() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10098, 10099)
+        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10349, 10351)
     }
 }
