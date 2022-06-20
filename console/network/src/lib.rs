@@ -175,13 +175,4 @@ pub trait Network:
     fn merkle_tree_psd<const DEPTH: u8>(
         leaves: &[Vec<Field<Self>>],
     ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>>;
-
-    /// Returns the Poseidon PRF with an input rate of 2.
-    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
-
-    /// Returns the Poseidon PRF with an input rate of 4.
-    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
-
-    /// Returns the Poseidon PRF with an input rate of 8.
-    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>>;
 }

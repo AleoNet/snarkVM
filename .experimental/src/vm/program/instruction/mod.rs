@@ -110,9 +110,9 @@ macro_rules! instruction {
             // HashPsd2,
             // HashPsd4,
             // HashPsd8,
+            Inv,
             IsEqual,
             IsNotEqual,
-            Inv,
             LessThan,
             LessThanOrEqual,
             Mul,
@@ -124,9 +124,6 @@ macro_rules! instruction {
             Or,
             Pow,
             PowWrapped,
-            // PRFPsd2,
-            // PRFPsd4,
-            // PRFPsd8,
             Shl,
             ShlWrapped,
             Shr,
@@ -237,12 +234,12 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // HashPsd4(HashPsd4<N, A>),
     // /// Performs a Poseidon hash with an input rate of 8.
     // HashPsd8(HashPsd8<N, A>),
+    /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+    Inv(Inv<N, A>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
     IsEqual(IsEqual<N, A>),
     /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
     IsNotEqual(IsNotEqual<N, A>),
-    /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
-    Inv(Inv<N, A>),
     /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
     LessThan(LessThan<N, A>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
@@ -265,12 +262,6 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     Pow(Pow<N, A>),
     /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
     PowWrapped(PowWrapped<N, A>),
-    // /// Performs a Poseidon PRF with an input rate of 2.
-    // PRFPsd2(PRFPsd2<N, A>),
-    // /// Performs a Poseidon PRF with an input rate of 4.
-    // PRFPsd4(PRFPsd4<N, A>),
-    // /// Performs a Poseidon PRF with an input rate of 8.
-    // PRFPsd8(PRFPsd8<N, A>),
     /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
     Shl(Shl<N, A>),
     /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.

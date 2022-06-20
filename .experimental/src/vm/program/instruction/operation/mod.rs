@@ -216,6 +216,15 @@ crate::operation!(
     }
 );
 
+/// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+pub type Inv<N, A> = UnaryLiteral<N, A, InvOperation<N, A>>;
+
+crate::operation!(
+    pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
+        Field => Field ("ensure inverse of zero halts"),
+    }
+);
+
 /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
 pub type IsEqual<N, A> = BinaryLiteral<N, A, IsEqualOperation<N, A>>;
 
@@ -261,15 +270,6 @@ crate::operation!(
         (U128, U128) => Boolean,
         (Scalar, Scalar) => Boolean,
         // (StringType, StringType) => Boolean,
-    }
-);
-
-/// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
-pub type Inv<N, A> = UnaryLiteral<N, A, InvOperation<N, A>>;
-
-crate::operation!(
-    pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
-        Field => Field ("ensure inverse of zero halts"),
     }
 );
 

@@ -120,15 +120,6 @@ pub trait Aleo: Environment {
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
     fn hash_to_scalar_psd8(input: &[Field<Self>]) -> Scalar<Self>;
 
-    /// Returns the Poseidon PRF with an input rate of 2.
-    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
-
-    /// Returns the Poseidon PRF with an input rate of 4.
-    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
-
-    /// Returns the Poseidon PRF with an input rate of 8.
-    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
-
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
     #[allow(clippy::ptr_arg)]
     fn verify_merkle_path_bhp<const DEPTH: u8>(

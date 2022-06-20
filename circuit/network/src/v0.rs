@@ -31,7 +31,6 @@ use snarkvm_circuit_algorithms::{
     BHP256,
     BHP512,
     BHP768,
-    PRF,
 };
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
@@ -252,21 +251,6 @@ impl Aleo for AleoV0 {
     /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
     fn hash_to_scalar_psd8(input: &[Field<Self>]) -> Scalar<Self> {
         POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar(input))
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 2.
-    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
-        POSEIDON_2.with(|poseidon| poseidon.prf(seed, input))
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 4.
-    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
-        POSEIDON_4.with(|poseidon| poseidon.prf(seed, input))
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 8.
-    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
-        POSEIDON_8.with(|poseidon| poseidon.prf(seed, input))
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.

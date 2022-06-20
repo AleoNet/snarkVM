@@ -280,19 +280,4 @@ impl Network for Testnet3 {
     ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>> {
         MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
     }
-
-    /// Returns the Poseidon PRF with an input rate of 2.
-    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>> {
-        POSEIDON_2.prf(seed, input)
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 4.
-    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>> {
-        POSEIDON_4.prf(seed, input)
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 8.
-    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Result<Field<Self>> {
-        POSEIDON_8.prf(seed, input)
-    }
 }
