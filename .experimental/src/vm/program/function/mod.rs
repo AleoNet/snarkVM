@@ -24,7 +24,10 @@ mod bytes;
 mod parse;
 
 use crate::vm::Instruction;
-use console::{network::prelude::*, program::Identifier};
+use console::{
+    network::prelude::*,
+    program::{Identifier, Register},
+};
 
 use indexmap::IndexSet;
 

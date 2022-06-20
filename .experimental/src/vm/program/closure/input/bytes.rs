@@ -35,7 +35,7 @@ impl<N: Network> ToBytes for Input<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the register is not a register member.
         if !matches!(self.register, Register::Locator(..)) {
-            return Err(error(format!("Input '{register}' cannot be a register member")));
+            return Err(error(format!("Input '{}' cannot be a register member", self.register)));
         }
         self.register.write_le(&mut writer)?;
         self.register_type.write_le(&mut writer)
