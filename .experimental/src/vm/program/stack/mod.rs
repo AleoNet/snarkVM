@@ -33,12 +33,68 @@ pub enum StackValue<N: Network> {
     Record(Record<N, Plaintext<N>>),
 }
 
+impl<N: Network> StackValue<N> {
+    /// Returns the stack value as a list of **little-endian** bits.
+    #[inline]
+    pub fn to_bits_le(&self) -> Vec<bool> {
+        match self {
+            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => {
+                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
+            }
+            StackValue::Plaintext(Plaintext::Interface(interface, ..)) => interface
+                .into_iter()
+                .flat_map(|(member_name, member_value)| {
+                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
+                })
+                .collect(),
+            StackValue::Record(record) => record
+                .owner()
+                .to_bits_le()
+                .into_iter()
+                .chain(record.balance().to_bits_le().into_iter())
+                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
+                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
+                }))
+                .collect(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum CircuitValue<A: circuit::Aleo> {
     /// A plaintext value.
     Plaintext(circuit::Plaintext<A>),
     /// A record value.
     Record(circuit::program::Record<A, circuit::Plaintext<A>>),
+}
+
+impl<A: circuit::Aleo> CircuitValue<A> {
+    /// Returns the circuit value as a list of **little-endian** bits.
+    #[inline]
+    pub fn to_bits_le(&self) -> Vec<circuit::types::Boolean<A>> {
+        use circuit::ToBits;
+
+        match self {
+            CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
+                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
+            }
+            CircuitValue::Plaintext(circuit::Plaintext::Interface(interface, ..)) => interface
+                .iter()
+                .flat_map(|(member_name, member_value)| {
+                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
+                })
+                .collect(),
+            CircuitValue::Record(record) => record
+                .owner()
+                .to_bits_le()
+                .into_iter()
+                .chain(record.balance().to_bits_le().into_iter())
+                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
+                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
+                }))
+                .collect(),
+        }
+    }
 }
 
 impl<A: circuit::Aleo> circuit::Inject for CircuitValue<A> {

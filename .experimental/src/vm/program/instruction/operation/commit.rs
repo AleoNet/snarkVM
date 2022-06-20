@@ -64,33 +64,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
     /// Returns the result of committing to the given input and randomizer.
     fn evaluate(input: StackValue<N>, randomizer: StackValue<N>) -> Result<StackValue<N>> {
         // Convert the input into bits.
-        let preimage: Vec<bool> = match input {
-            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            StackValue::Plaintext(Plaintext::Interface(interface, ..)) => interface
-                .into_iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            StackValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
-        };
-
+        let preimage = input.to_bits_le();
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             StackValue::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
             _ => bail!("Invalid randomizer type for BHP commit"),
         };
-
         // Compute the commitment.
         let output = match NUM_BITS {
             256 => N::commit_bhp256(&preimage, &randomizer)?,
@@ -108,27 +87,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
         use circuit::ToBits;
 
         // Convert the input into bits.
-        let preimage: Vec<circuit::types::Boolean<A>> = match input {
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            CircuitValue::Plaintext(circuit::Plaintext::Interface(interface, ..)) => interface
-                .iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            CircuitValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
-        };
-
+        let preimage = input.to_bits_le();
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
@@ -136,7 +95,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
             }
             _ => bail!("Invalid randomizer type for BHP commit"),
         };
-
         // Compute the commitment.
         let output = match NUM_BITS {
             256 => A::commit_bhp256(&preimage, &randomizer),

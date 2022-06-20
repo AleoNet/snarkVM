@@ -64,26 +64,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> HashOperati
     /// Returns the result of hashing the given input.
     fn evaluate(input: StackValue<N>) -> Result<StackValue<N>> {
         // Convert the input into bits.
-        let preimage: Vec<bool> = match input {
-            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            StackValue::Plaintext(Plaintext::Interface(interface, ..)) => interface
-                .into_iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            StackValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
-        };
+        let preimage = input.to_bits_le();
         // Hash the preimage.
         let output = match NUM_BITS {
             256 => N::hash_bhp256(&preimage)?,
@@ -98,29 +79,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> HashOperati
 
     /// Returns the result of hashing the given circuit input.
     fn execute(input: CircuitValue<A>) -> Result<CircuitValue<A>> {
-        use circuit::ToBits;
-
         // Convert the input into bits.
-        let preimage: Vec<circuit::types::Boolean<A>> = match input {
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            CircuitValue::Plaintext(circuit::Plaintext::Interface(interface, ..)) => interface
-                .iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            CircuitValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
-        };
+        let preimage = input.to_bits_le();
         // Hash the preimage.
         let output = match NUM_BITS {
             256 => A::hash_bhp256(&preimage),
