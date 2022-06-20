@@ -20,6 +20,12 @@ pub use call::*;
 mod cast;
 pub use cast::*;
 
+mod commit;
+pub use commit::*;
+
+mod hash;
+pub use hash::*;
+
 mod literals;
 pub use literals::*;
 

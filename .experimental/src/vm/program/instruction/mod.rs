@@ -90,10 +90,10 @@ macro_rules! instruction {
             And,
             Call,
             Cast,
-            // CommitBHP256,
-            // CommitBHP512,
-            // CommitBHP768,
-            // CommitBHP1024,
+            CommitBHP256,
+            CommitBHP512,
+            CommitBHP768,
+            CommitBHP1024,
             // CommitPed64,
             // CommitPed128,
             // Div,
@@ -101,10 +101,10 @@ macro_rules! instruction {
             Double,
             GreaterThan,
             GreaterThanOrEqual,
-            // HashBHP256,
-            // HashBHP512,
-            // HashBHP768,
-            // HashBHP1024,
+            HashBHP256,
+            HashBHP512,
+            HashBHP768,
+            HashBHP1024,
             // HashPed64,
             // HashPed128,
             // HashPsd2,
@@ -194,14 +194,14 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     Call(Call<N, A>),
     /// Casts the operands into the declared type.
     Cast(Cast<N, A>),
-    // /// Performs a BHP commitment taking a 256-bit value as input.
-    // CommitBHP256(CommitBHP256<N, A>),
-    // /// Performs a BHP commitment taking a 512-bit value as input.
-    // CommitBHP512(CommitBHP512<N, A>),
-    // /// Performs a BHP commitment taking a 768-bit value as input.
-    // CommitBHP768(CommitBHP768<N, A>),
-    // /// Performs a BHP commitment taking a 1024-bit value as input.
-    // CommitBHP1024(CommitBHP1024<N, A>),
+    /// Performs a BHP commitment taking a 256-bit value as input.
+    CommitBHP256(CommitBHP256<N, A>),
+    /// Performs a BHP commitment taking a 512-bit value as input.
+    CommitBHP512(CommitBHP512<N, A>),
+    /// Performs a BHP commitment taking a 768-bit value as input.
+    CommitBHP768(CommitBHP768<N, A>),
+    /// Performs a BHP commitment taking a 1024-bit value as input.
+    CommitBHP1024(CommitBHP1024<N, A>),
     // /// Performs a Pedersen commitment taking a 64-bit value as input.
     // CommitPed64(CommitPed64<N, A>),
     // /// Performs a Pedersen commitment taking a 128-bit value as input.
@@ -216,14 +216,14 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     GreaterThan(GreaterThan<N, A>),
     /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
     GreaterThanOrEqual(GreaterThanOrEqual<N, A>),
-    // /// Performs a BHP hash taking a 256-bit value as input.
-    // HashBHP256(HashBHP256<N, A>),
-    // /// Performs a BHP hash taking a 512-bit value as input.
-    // HashBHP512(HashBHP512<N, A>),
-    // /// Performs a BHP hash taking a 768-bit value as input.
-    // HashBHP768(HashBHP768<N, A>),
-    // /// Performs a BHP hash taking a 1024-bit value as input.
-    // HashBHP1024(HashBHP1024<N, A>),
+    /// Performs a BHP hash on inputs of 256-bit chunks.
+    HashBHP256(HashBHP256<N, A>),
+    /// Performs a BHP hash on inputs of 512-bit chunks.
+    HashBHP512(HashBHP512<N, A>),
+    /// Performs a BHP hash on inputs of 768-bit chunks.
+    HashBHP768(HashBHP768<N, A>),
+    /// Performs a BHP hash on inputs of 1024-bit chunks.
+    HashBHP1024(HashBHP1024<N, A>),
     // /// Performs a Pedersen hash taking a 64-bit value as input.
     // HashPed64(HashPed64<N, A>),
     // /// Performs a Pedersen hash taking a 128-bit value as input.
@@ -521,7 +521,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            33,
+            41,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

@@ -413,6 +413,57 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                         }
                     }
                 }
+                Opcode::Commit(opcode) => {
+                    // Ensure the opcode **is** a reserved opcode.
+                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                    // Ensure the instruction belongs to the defined set.
+                    if ![
+                        "commit.bhp256",
+                        "commit.bhp512",
+                        "commit.bhp768",
+                        "commit.bhp1024",
+                        "commit.ped64",
+                        "commit.ped128",
+                    ]
+                    .contains(&opcode)
+                    {
+                        bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    }
+                    // Ensure the instruction is the correct one.
+                    // match opcode {
+                    //     "commit.bhp256" => ensure!(
+                    //         matches!(instruction, Instruction::CommitBHP256(..)),
+                    //         "Instruction '{instruction}' is not the opcode '{opcode}'."
+                    //     ),
+                    // }
+                }
+                Opcode::Hash(opcode) => {
+                    // Ensure the opcode **is** a reserved opcode.
+                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                    // Ensure the instruction belongs to the defined set.
+                    if ![
+                        "hash.bhp256",
+                        "hash.bhp512",
+                        "hash.bhp768",
+                        "hash.bhp1024",
+                        "hash.ped64",
+                        "hash.ped128",
+                        "hash.psd2",
+                        "hash.psd4",
+                        "hash.psd8",
+                    ]
+                    .contains(&opcode)
+                    {
+                        bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    }
+                    // Ensure the instruction is the correct one.
+                    // match opcode {
+                    //     "hash.bhp256" => ensure!(
+                    //         matches!(instruction, Instruction::HashBHP256(..)),
+                    //         "Instruction '{instruction}' is not the opcode '{opcode}'."
+                    //     ),
+                    // }
+                }
             }
 
             // Initialize a vector to store the register types of the operands.
@@ -624,6 +675,57 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                         }
                     }
                 }
+                Opcode::Commit(opcode) => {
+                    // Ensure the opcode **is** a reserved opcode.
+                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                    // Ensure the instruction belongs to the defined set.
+                    if ![
+                        "commit.bhp256",
+                        "commit.bhp512",
+                        "commit.bhp768",
+                        "commit.bhp1024",
+                        "commit.ped64",
+                        "commit.ped128",
+                    ]
+                    .contains(&opcode)
+                    {
+                        bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    }
+                    // Ensure the instruction is the correct one.
+                    // match opcode {
+                    //     "commit.bhp256" => ensure!(
+                    //         matches!(instruction, Instruction::CommitBHP256(..)),
+                    //         "Instruction '{instruction}' is not the opcode '{opcode}'."
+                    //     ),
+                    // }
+                }
+                Opcode::Hash(opcode) => {
+                    // Ensure the opcode **is** a reserved opcode.
+                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                    // Ensure the instruction belongs to the defined set.
+                    if ![
+                        "hash.bhp256",
+                        "hash.bhp512",
+                        "hash.bhp768",
+                        "hash.bhp1024",
+                        "hash.ped64",
+                        "hash.ped128",
+                        "hash.psd2",
+                        "hash.psd4",
+                        "hash.psd8",
+                    ]
+                    .contains(&opcode)
+                    {
+                        bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    }
+                    // Ensure the instruction is the correct one.
+                    // match opcode {
+                    //     "hash.bhp256" => ensure!(
+                    //         matches!(instruction, Instruction::HashBHP256(..)),
+                    //         "Instruction '{instruction}' is not the opcode '{opcode}'."
+                    //     ),
+                    // }
+                }
             }
 
             // Initialize a vector to store the register types of the operands.
@@ -723,9 +825,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
     /// Returns `true` if the given name is a reserved opcode.
     fn is_reserved_opcode(&self, name: &Identifier<N>) -> bool {
-        // Convert the name to a string.
+        // Convert the given name to a string.
         let name = name.to_string();
-        // Check if it matches root of any opcode.
+        // Check if the given name matches the root of any opcode (the first part, up to the first '.').
         Instruction::<N, A>::OPCODES.into_iter().any(|opcode| (**opcode).splitn(2, '.').next() == Some(&name))
     }
 

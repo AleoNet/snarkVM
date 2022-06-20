@@ -25,6 +25,10 @@ pub enum Opcode {
     Call,
     /// The opcode is for a cast operation.
     Cast,
+    /// The opcode is for a commit operation.
+    Commit(&'static str),
+    /// The opcode is for a hash operation.
+    Hash(&'static str),
 }
 
 impl Deref for Opcode {
@@ -36,6 +40,8 @@ impl Deref for Opcode {
             Opcode::Literal(opcode) => opcode,
             Opcode::Call => &"call",
             Opcode::Cast => &"cast",
+            Opcode::Commit(opcode) => opcode,
+            Opcode::Hash(opcode) => opcode,
         }
     }
 }
@@ -50,10 +56,13 @@ impl Debug for Opcode {
 impl Display for Opcode {
     /// Prints the opcode as a string, i.e. `add`.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // write!(f, "{}", *self)
         match self {
             Self::Literal(opcode) => write!(f, "{opcode}"),
             Self::Call => write!(f, "{}", *self),
             Self::Cast => write!(f, "{}", *self),
+            Self::Commit(opcode) => write!(f, "{opcode}"),
+            Self::Hash(opcode) => write!(f, "{opcode}"),
         }
     }
 }

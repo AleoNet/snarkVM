@@ -24,9 +24,9 @@ use snarkvm_console_types::prelude::*;
 
 use std::{borrow::Cow, sync::Arc};
 
-/// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
+/// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes up to a 64-bit input.
 pub type Pedersen64<E> = Pedersen<E, 64>;
-/// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes a 128-bit input.
+/// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes up to a 128-bit input.
 pub type Pedersen128<E> = Pedersen<E, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
