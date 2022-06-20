@@ -63,8 +63,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
 
     /// Returns the result of committing to the given input and randomizer.
     fn evaluate(input: StackValue<N>, randomizer: StackValue<N>) -> Result<StackValue<N>> {
-        // Convert the input into bits.
-        let preimage = input.to_bits_le();
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             StackValue::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
@@ -72,10 +70,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
         };
         // Compute the commitment.
         let output = match NUM_BITS {
-            256 => N::commit_bhp256(&preimage, &randomizer)?,
-            512 => N::commit_bhp512(&preimage, &randomizer)?,
-            768 => N::commit_bhp768(&preimage, &randomizer)?,
-            1024 => N::commit_bhp1024(&preimage, &randomizer)?,
+            256 => N::commit_bhp256(&input.to_bits_le(), &randomizer)?,
+            512 => N::commit_bhp512(&input.to_bits_le(), &randomizer)?,
+            768 => N::commit_bhp768(&input.to_bits_le(), &randomizer)?,
+            1024 => N::commit_bhp1024(&input.to_bits_le(), &randomizer)?,
             _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.
@@ -86,8 +84,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
     fn execute(input: CircuitValue<A>, randomizer: CircuitValue<A>) -> Result<CircuitValue<A>> {
         use circuit::ToBits;
 
-        // Convert the input into bits.
-        let preimage = input.to_bits_le();
         // Retrieve the randomizer.
         let randomizer = match randomizer {
             CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
@@ -97,10 +93,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
         };
         // Compute the commitment.
         let output = match NUM_BITS {
-            256 => A::commit_bhp256(&preimage, &randomizer),
-            512 => A::commit_bhp512(&preimage, &randomizer),
-            768 => A::commit_bhp768(&preimage, &randomizer),
-            1024 => A::commit_bhp1024(&preimage, &randomizer),
+            256 => A::commit_bhp256(&input.to_bits_le(), &randomizer),
+            512 => A::commit_bhp512(&input.to_bits_le(), &randomizer),
+            768 => A::commit_bhp768(&input.to_bits_le(), &randomizer),
+            1024 => A::commit_bhp1024(&input.to_bits_le(), &randomizer),
             _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.

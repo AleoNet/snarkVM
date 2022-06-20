@@ -63,14 +63,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> HashOperati
 
     /// Returns the result of hashing the given input.
     fn evaluate(input: StackValue<N>) -> Result<StackValue<N>> {
-        // Convert the input into bits.
-        let preimage = input.to_bits_le();
-        // Hash the preimage.
+        // Hash the input.
         let output = match NUM_BITS {
-            256 => N::hash_bhp256(&preimage)?,
-            512 => N::hash_bhp512(&preimage)?,
-            768 => N::hash_bhp768(&preimage)?,
-            1024 => N::hash_bhp1024(&preimage)?,
+            256 => N::hash_bhp256(&input.to_bits_le())?,
+            512 => N::hash_bhp512(&input.to_bits_le())?,
+            768 => N::hash_bhp768(&input.to_bits_le())?,
+            1024 => N::hash_bhp1024(&input.to_bits_le())?,
             _ => bail!("Invalid BHP hash variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.
@@ -79,14 +77,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> HashOperati
 
     /// Returns the result of hashing the given circuit input.
     fn execute(input: CircuitValue<A>) -> Result<CircuitValue<A>> {
-        // Convert the input into bits.
-        let preimage = input.to_bits_le();
-        // Hash the preimage.
+        // Hash the input.
         let output = match NUM_BITS {
-            256 => A::hash_bhp256(&preimage),
-            512 => A::hash_bhp512(&preimage),
-            768 => A::hash_bhp768(&preimage),
-            1024 => A::hash_bhp1024(&preimage),
+            256 => A::hash_bhp256(&input.to_bits_le()),
+            512 => A::hash_bhp512(&input.to_bits_le()),
+            768 => A::hash_bhp768(&input.to_bits_le()),
+            1024 => A::hash_bhp1024(&input.to_bits_le()),
             _ => bail!("Invalid BHP hash variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.
