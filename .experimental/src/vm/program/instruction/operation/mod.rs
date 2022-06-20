@@ -46,7 +46,7 @@ pub trait Operation<N: Network, Value: Parser + ToBits, CircuitValue, ValueType:
 pub type Abs<N, A> = UnaryLiteral<N, A, AbsOperation<N, A>>;
 
 crate::operation!(
-    pub struct AbsOperation<console::network::AbsChecked, abs_checked, "abs"> {
+    pub struct AbsOperation<console::prelude::AbsChecked, circuit::prelude::AbsChecked, abs_checked, "abs"> {
         I8 => I8 ("ensure overflows halt"),
         I16 => I16 ("ensure overflows halt"),
         I32 => I32 ("ensure overflows halt"),
@@ -59,7 +59,7 @@ crate::operation!(
 pub type AbsWrapped<N, A> = UnaryLiteral<N, A, AbsWrappedOperation<N, A>>;
 
 crate::operation!(
-    pub struct AbsWrappedOperation<console::network::AbsWrapped, abs_wrapped, "abs.w"> {
+    pub struct AbsWrappedOperation<console::prelude::AbsWrapped, circuit::prelude::AbsWrapped, abs_wrapped, "abs.w"> {
         I8 => I8,
         I16 => I16,
         I32 => I32,
@@ -72,7 +72,7 @@ crate::operation!(
 pub type Add<N, A> = BinaryLiteral<N, A, AddOperation<N, A>>;
 
 crate::operation!(
-    pub struct AddOperation<core::ops::Add, add, "add"> {
+    pub struct AddOperation<core::ops::Add, core::ops::Add, add, "add"> {
         (Field, Field) => Field,
         (Group, Group) => Group,
         (I8, I8) => I8 ("ensure overflows halt"),
@@ -93,7 +93,7 @@ crate::operation!(
 pub type AddWrapped<N, A> = BinaryLiteral<N, A, AddWrappedOperation<N, A>>;
 
 crate::operation!(
-    pub struct AddWrappedOperation<console::network::AddWrapped, add_wrapped, "add.w"> {
+    pub struct AddWrappedOperation<console::prelude::AddWrapped, circuit::prelude::AddWrapped, add_wrapped, "add.w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -111,7 +111,7 @@ crate::operation!(
 pub type And<N, A> = BinaryLiteral<N, A, AndOperation<N, A>>;
 
 crate::operation!(
-    pub struct AndOperation<core::ops::BitAnd, bitand, "and"> {
+    pub struct AndOperation<core::ops::BitAnd, core::ops::BitAnd, bitand, "and"> {
         (Boolean, Boolean) => Boolean,
         (I8, I8) => I8,
         (I16, I16) => I16,
@@ -130,7 +130,7 @@ crate::operation!(
 // pub type Div<N, A> = BinaryLiteral<N, A, DivOperation<N, A>>;
 //
 // crate::operation!(
-//     pub struct DivOperation<core::ops::Div, div, "div"> {
+//     pub struct DivOperation<core::ops::Div, core::ops::Div, div, "div"> {
 //         (Field, Field) => Field,
 //         (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
 //         (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
@@ -150,7 +150,7 @@ crate::operation!(
 // pub type DivWrapped<N, A> = BinaryLiteral<N, A, DivWrappedOperation<N, A>>;
 //
 // crate::operation!(
-//     pub struct DivWrappedOperation<console::network::DivWrapped, div_wrapped, "div.w"> {
+//     pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div.w"> {
 //         (I8, I8) => I8 ("ensure divide by zero halts"),
 //         (I16, I16) => I16 ("ensure divide by zero halts"),
 //         (I32, I32) => I32 ("ensure divide by zero halts"),
@@ -164,11 +164,30 @@ crate::operation!(
 //     }
 // );
 
+/// Doubles `first`, storing the outcome in `destination`.
+pub type Double<N, A> = UnaryLiteral<N, A, DoubleOperation<N, A>>;
+
+crate::operation!(
+    pub struct DoubleOperation<console::prelude::Double, circuit::prelude::Double, double, "double"> {
+        Field => Field,
+        Group => Group,
+    }
+);
+
+/// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+pub type Inv<N, A> = UnaryLiteral<N, A, InvOperation<N, A>>;
+
+crate::operation!(
+    pub struct InvOperation<console::prelude::Inverse, circuit::prelude::Inverse, inverse?, "inv"> {
+        Field => Field ("ensure inverse of zero halt"),
+    }
+);
+
 /// Multiplies `first` and `second`, storing the outcome in `destination`.
 pub type Mul<N, A> = BinaryLiteral<N, A, MulOperation<N, A>>;
 
 crate::operation!(
-    pub struct MulOperation<core::ops::Mul, mul, "mul"> {
+    pub struct MulOperation<core::ops::Mul, core::ops::Mul, mul, "mul"> {
         (Field, Field) => Field,
         (Group, Scalar) => Group,
         (Scalar, Group) => Group,
@@ -190,7 +209,7 @@ crate::operation!(
 pub type MulWrapped<N, A> = BinaryLiteral<N, A, MulWrappedOperation<N, A>>;
 
 crate::operation!(
-    pub struct MulWrappedOperation<console::network::MulWrapped, mul_wrapped, "mul.w"> {
+    pub struct MulWrappedOperation<console::prelude::MulWrapped, circuit::prelude::MulWrapped, mul_wrapped, "mul.w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -208,7 +227,7 @@ crate::operation!(
 pub type Or<N, A> = BinaryLiteral<N, A, OrOperation<N, A>>;
 
 crate::operation!(
-    pub struct OrOperation<core::ops::BitOr, bitor, "or"> {
+    pub struct OrOperation<core::ops::BitOr, core::ops::BitOr, bitor, "or"> {
         (Boolean, Boolean) => Boolean,
         (I8, I8) => I8,
         (I16, I16) => I16,
@@ -227,7 +246,7 @@ crate::operation!(
 pub type Pow<N, A> = BinaryLiteral<N, A, PowOperation<N, A>>;
 
 crate::operation!(
-    pub struct PowOperation<num_traits::Pow, pow, "pow"> {
+    pub struct PowOperation<num_traits::Pow, num_traits::Pow, pow, "pow"> {
         (Field, Field) => Field,
         (I8, U8) => I8 ("ensure exponentiation overflows halt"),
         (I8, U16) => I8 ("ensure exponentiation overflows halt"),
@@ -266,7 +285,7 @@ crate::operation!(
 pub type PowWrapped<N, A> = BinaryLiteral<N, A, PowWrappedOperation<N, A>>;
 
 crate::operation!(
-    pub struct PowWrappedOperation<console::network::PowWrapped, pow_wrapped, "pow.w"> {
+    pub struct PowWrappedOperation<console::prelude::PowWrapped, circuit::prelude::PowWrapped, pow_wrapped, "pow.w"> {
         (I8, U8) => I8,
         (I8, U16) => I8,
         (I8, U32) => I8,
@@ -300,11 +319,20 @@ crate::operation!(
     }
 );
 
+/// Squares `first`, storing the outcome in `destination`.
+pub type Square<N, A> = UnaryLiteral<N, A, SquareOperation<N, A>>;
+
+crate::operation!(
+    pub struct SquareOperation<console::prelude::Square, circuit::prelude::Square, square, "square"> {
+        Field => Field,
+    }
+);
+
 /// Computes `first - second`, storing the outcome in `destination`.
 pub type Sub<N, A> = BinaryLiteral<N, A, SubOperation<N, A>>;
 
 crate::operation!(
-    pub struct SubOperation<core::ops::Sub, sub, "sub"> {
+    pub struct SubOperation<core::ops::Sub, core::ops::Sub, sub, "sub"> {
         (Field, Field) => Field,
         (Group, Group) => Group,
         (I8, I8) => I8 ("ensure overflows halt"),
@@ -325,7 +353,7 @@ crate::operation!(
 pub type SubWrapped<N, A> = BinaryLiteral<N, A, SubWrappedOperation<N, A>>;
 
 crate::operation!(
-    pub struct SubWrappedOperation<console::network::SubWrapped, sub_wrapped, "sub.w"> {
+    pub struct SubWrappedOperation<console::prelude::SubWrapped, circuit::prelude::SubWrapped, sub_wrapped, "sub.w"> {
         (I8, I8) => I8,
         (I16, I16) => I16,
         (I32, I32) => I32,
@@ -343,7 +371,7 @@ crate::operation!(
 pub type Xor<N, A> = BinaryLiteral<N, A, XorOperation<N, A>>;
 
 crate::operation!(
-    pub struct XorOperation<core::ops::BitXor, bitxor, "xor"> {
+    pub struct XorOperation<core::ops::BitXor, core::ops::BitXor, bitxor, "xor"> {
         (Boolean, Boolean) => Boolean,
         (I8, I8) => I8,
         (I16, I16) => I16,

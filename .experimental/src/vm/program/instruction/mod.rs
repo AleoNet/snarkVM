@@ -98,7 +98,7 @@ macro_rules! instruction {
             // CommitPed128,
             // Div,
             // DivWrapped,
-            // Double,
+            Double,
             // Equal,
             // GreaterThan,
             // GreaterThanOrEqual,
@@ -111,7 +111,7 @@ macro_rules! instruction {
             // HashPsd2,
             // HashPsd4,
             // HashPsd8,
-            // Inv,
+            Inv,
             // LessThan,
             // LessThanOrEqual,
             Mul,
@@ -131,7 +131,7 @@ macro_rules! instruction {
             // ShlWrapped,
             // Shr,
             // ShrWrapped,
-            // Square,
+            Square,
             Sub,
             SubWrapped,
             // Ternary,
@@ -212,8 +212,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // Div(Div<N, A>),
     // /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     // DivWrapped(DivWrapped<N, A>),
-    // /// Doubles `first`, storing the outcome in `destination`.
-    // Double(Double<N, A>),
+    /// Doubles `first`, storing the outcome in `destination`.
+    Double(Double<N, A>),
     // /// Checks if `first` is equal to `second`, storing the outcome in `destination`.
     // Equal(Equal<N, A>),
     // /// Checks if `first` is greater than `second`, storing the result in `destination`.
@@ -238,8 +238,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // HashPsd4(HashPsd4<N, A>),
     // /// Performs a Poseidon hash with an input rate of 8.
     // HashPsd8(HashPsd8<N, A>),
-    // /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
-    // Inv(Inv<N, A>),
+    /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+    Inv(Inv<N, A>),
     // /// Checks if `first` is less than `second`, storing the outcome in `destination`.
     // LessThan(LessThan<N, A>),
     // /// Checks if `first` is less than or equal to `second`, storing the outcome in `destination`.
@@ -278,8 +278,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // Shr(Shr<N, A>),
     // /// Shifts `first` right by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
     // ShrWrapped(ShrWrapped<N, A>),
-    // /// Squares 'first', storing the outcome in `destination`.
-    // Square(Square<N, A>),
+    /// Squares 'first', storing the outcome in `destination`.
+    Square(Square<N, A>),
     /// Computes `first - second`, storing the outcome in `destination`.
     Sub(Sub<N, A>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -527,7 +527,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            15,
+            18,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
