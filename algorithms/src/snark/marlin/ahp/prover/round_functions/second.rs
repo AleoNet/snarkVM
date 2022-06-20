@@ -188,36 +188,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         assert!(z_b.degree() < constraint_domain.size());
                     }
 
-                    // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
-                    // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
-                    // This is better since it reduces the number of required
-                    // multiplications by `constraint_domain.size()`.
-                    //
-                    // LOOKUPS EDIT
-                    // turning this back into a simpler lincheck sumcheck to allow easy
-                    // modification of the rowcheck.
-                    let mut summed_z_m = {
-                        cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_b);
-                        cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= eta_c);
-                        &(z_a + &z_b) + &z_c
-
-                        /*
-                        // Mutate z_b in place to compute eta_c * z_b + 1
-                        // This saves us an additional memory allocation.
-                        cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
-                        z_b.coeffs[0] += F::one();
-                        let mut multiplier = PolyMultiplier::new();
-                        multiplier.add_polynomial_ref(z_a, "z_a");
-                        multiplier.add_polynomial_ref(&z_b, "eta_c_z_b_plus_one");
-                        multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
-                        let result = multiplier.multiply().unwrap();
-                        // Start undoing in place mutation, by first subtracting the 1 that we added...
-                        z_b.coeffs[0] -= F::one();
-                        result
-                        */
-                    };
-                    // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
-                    // cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
+                    let mut summed_z_m = DensePolynomial::from_coefficients_vec(
+                        cfg_iter!(z_a.coeffs)
+                            .zip(z_b.coeffs)
+                            .zip(z_c.coeffs)
+                            .map(|((a, b), c)| *a + eta_b * b + eta_c * c)
+                            .collect::<Vec<F>>(),
+                    );
 
                     // Multiply by linear combination coefficient.
                     cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
