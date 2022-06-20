@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod circuit_value;
+pub(crate) use circuit_value::*;
+
+mod stack_value;
+pub use stack_value::*;
+
 mod load;
 mod store;
 
@@ -24,110 +30,6 @@ use console::{
 };
 
 use indexmap::IndexMap;
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum StackValue<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
-}
-
-impl<N: Network> StackValue<N> {
-    /// Returns the stack value as a list of **little-endian** bits.
-    #[inline]
-    pub fn to_bits_le(&self) -> Vec<bool> {
-        match self {
-            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            StackValue::Plaintext(Plaintext::Interface(interface, ..)) => interface
-                .into_iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            StackValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub enum CircuitValue<A: circuit::Aleo> {
-    /// A plaintext value.
-    Plaintext(circuit::Plaintext<A>),
-    /// A record value.
-    Record(circuit::program::Record<A, circuit::Plaintext<A>>),
-}
-
-impl<A: circuit::Aleo> CircuitValue<A> {
-    /// Returns the circuit value as a list of **little-endian** bits.
-    #[inline]
-    pub fn to_bits_le(&self) -> Vec<circuit::types::Boolean<A>> {
-        use circuit::ToBits;
-
-        match self {
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            CircuitValue::Plaintext(circuit::Plaintext::Interface(interface, ..)) => interface
-                .iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            CircuitValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
-        }
-    }
-}
-
-impl<A: circuit::Aleo> circuit::Inject for CircuitValue<A> {
-    type Primitive = StackValue<A::Network>;
-
-    /// Initializes a circuit of the given mode and value.
-    fn new(mode: circuit::Mode, value: Self::Primitive) -> Self {
-        match value {
-            StackValue::Plaintext(plaintext) => CircuitValue::Plaintext(circuit::Plaintext::new(mode, plaintext)),
-            StackValue::Record(record) => CircuitValue::Record(circuit::program::Record::new(mode, record)),
-        }
-    }
-}
-
-impl<A: circuit::Aleo> circuit::Eject for CircuitValue<A> {
-    type Primitive = StackValue<A::Network>;
-
-    /// Ejects the mode of the circuit value.
-    fn eject_mode(&self) -> circuit::Mode {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.eject_mode(),
-            CircuitValue::Record(record) => record.eject_mode(),
-        }
-    }
-
-    /// Ejects the circuit value.
-    fn eject_value(&self) -> Self::Primitive {
-        match self {
-            CircuitValue::Plaintext(plaintext) => StackValue::Plaintext(plaintext.eject_value()),
-            CircuitValue::Record(record) => StackValue::Record(record.eject_value()),
-        }
-    }
-}
 
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
