@@ -179,8 +179,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .zip_eq(batch_combiners)
                 .map(|(entry, combiner)| {
                     let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
-                    let z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
-                    let z_c = entry.z_c_poly.polynomial().as_dense().unwrap().clone();
+                    let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
+                    let mut z_c = entry.z_c_poly.polynomial().as_dense().unwrap().clone();
                     assert!(z_a.degree() < constraint_domain.size());
                     if MM::ZK {
                         assert_eq!(z_b.degree(), constraint_domain.size());
@@ -188,14 +188,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         assert!(z_b.degree() < constraint_domain.size());
                     }
 
-                    let mut summed_z_m = z_a.clone();
-                    while summed_z_m.len() < z_b.len() {
-                        summed_z_m.coeffs.push(F::zero());
-                    }
-                    cfg_iter_mut!(summed_z_m.coeffs)
-                        .zip_eq(z_b.coeffs)
-                        .zip_eq(z_c.coeffs)
-                        .for_each(|((a, b), c)| *a += eta_b * b + eta_c * c);
+                    let mut summed_z_m = {
+                        cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_b);
+                        cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= eta_c);
+                        &(z_a + &z_b) + &z_c
+                    };
 
                     // Multiply by linear combination coefficient.
                     cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
