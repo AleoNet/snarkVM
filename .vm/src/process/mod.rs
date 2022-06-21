@@ -66,8 +66,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         );
 
         Ok(outputs)
-
-        // self.program.execute(function_name, inputs)
     }
 }
 

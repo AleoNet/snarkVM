@@ -320,13 +320,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
     //     N::hash_psd2(&[self.tvk.to_x_coordinate(), U16::new(input_index).to_field()?])
     // }
 
-    /// Returns the encryption randomizer for the given output index.
-    pub(crate) fn compute_output_randomizer(&self, index: u16) -> Result<Field<N>> {
-        // Compute the index.
-        let index = U16::new(N::MAX_OUTPUTS as u16 + index).to_field()?;
-        // Compute the encryption randomizer as `Hash(tvk || index)`.
-        N::hash_psd2(&[self.tvk.to_x_coordinate(), index])
-    }
+    // /// Returns the encryption randomizer for the given output index.
+    // pub(crate) fn compute_output_randomizer(&self, index: u16) -> Result<Field<N>> {
+    //     // Compute the index.
+    //     let index = U16::new(N::MAX_OUTPUTS as u16 + index).to_field()?;
+    //     // Compute the encryption randomizer as `Hash(tvk || index)`.
+    //     N::hash_psd2(&[self.tvk.to_x_coordinate(), index])
+    // }
 }
 
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {

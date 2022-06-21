@@ -20,134 +20,11 @@ use console::{
     transition::{Record, State},
     types::{Field, Group, Scalar, U64},
 };
-use snarkvm_algorithms::snark::marlin::Proof;
-use snarkvm_vm::{input, output, snark};
+use snarkvm_vm::{input, output, proof, Transition};
 
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;
 use std::time::Instant;
-
-// pub struct Execution;
-//
-// pub struct Function<N: Network> {
-//     /// The execution proof.
-//     execution: Execution,
-// }
-
-struct Input<N: Network> {
-    /// The serial number of the input record.
-    serial_number: Field<N>,
-    /// The re-randomized balance commitment (i.e. `bcm := Commit(balance, r_bcm + r_bcm')`).
-    bcm: Group<N>,
-}
-
-impl<N: Network> Input<N> {
-    /// Initializes a new `Input` for a transition.
-    pub const fn new(serial_number: Field<N>, bcm: Group<N>) -> Self {
-        Self { serial_number, bcm }
-    }
-
-    /// Returns the serial number of the input record.
-    pub const fn serial_number(&self) -> Field<N> {
-        self.serial_number
-    }
-
-    /// Returns the balance commitment for the input record.
-    pub const fn bcm(&self) -> Group<N> {
-        self.bcm
-    }
-}
-
-struct Output<N: Network> {
-    /// The output record.
-    record: Record<N>,
-    // /// The output program data.
-    // data: Vec<Data<N>>,
-}
-
-impl<N: Network> Output<N> {
-    /// Initializes a new `Output` for a transition.
-    pub const fn new(record: Record<N>) -> Self {
-        Self { record }
-    }
-
-    /// Returns the output record.
-    pub const fn record(&self) -> &Record<N> {
-        &self.record
-    }
-
-    /// Returns the balance commitment for the output record.
-    pub const fn bcm(&self) -> Group<N> {
-        self.record.bcm()
-    }
-
-    /// Returns the output commitment.
-    pub fn to_commitment(&self) -> Result<Field<N>> {
-        self.record.to_commitment()
-    }
-}
-
-#[allow(dead_code)]
-pub struct Transition<N: Network> {
-    /// The program ID of the transition.
-    program: Field<N>,
-    /// The process ID of the transition.
-    process: Field<N>,
-    // /// The function that was executed.
-    // function: Function<N>,
-    /// The transition inputs.
-    inputs: Vec<Input<N>>,
-    /// The transition outputs.
-    outputs: Vec<Output<N>>,
-    /// The transition input proofs.
-    input_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
-    /// The transition output proofs.
-    output_proofs: Vec<Proof<snarkvm_curves::bls12_377::Bls12_377>>,
-    /// The transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
-    tcm: Field<N>,
-    /// The transition public key (i.e. `tpk := Hash(r_tcm) * G`).
-    tpk: Group<N>,
-    /// The fee (i.e. `fee := Σ balance_in - Σ balance_out`).
-    fee: i64,
-}
-
-impl<N: Network> Transition<N> {
-    /// Returns `true` if the transition is valid.
-    pub fn verify(&self) -> bool {
-        // // Ensure the program and process ID matches for all outputs.
-        // self.outputs.iter().all(|output| {})
-
-        // self.
-        true
-    }
-
-    /// Returns the serial numbers in the transition.
-    pub fn serial_numbers(&self) -> Vec<Field<N>> {
-        self.inputs.iter().map(Input::serial_number).collect::<Vec<_>>()
-    }
-
-    /// Returns the commitments in the transition.
-    pub fn to_commitments(&self) -> Result<Vec<Field<N>>> {
-        self.outputs.iter().map(Output::to_commitment).collect::<Result<Vec<_>>>()
-    }
-
-    /// Returns the fee commitment of this transition, where:
-    ///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
-    pub fn fcm(&self) -> Result<Group<N>> {
-        let mut fcm = Group::<N>::zero();
-        // Add the input balance commitments.
-        self.inputs.iter().for_each(|input| fcm += input.bcm());
-        // Subtract the output balance commitments.
-        self.outputs.iter().for_each(|output| fcm -= output.bcm());
-        // Subtract the fee to get the fee commitment.
-        let fcm = match self.fee.is_positive() {
-            true => fcm - N::commit_ped64(&self.fee.abs().to_bits_le(), &Scalar::zero())?,
-            false => fcm + N::commit_ped64(&self.fee.abs().to_bits_le(), &Scalar::zero())?,
-        };
-        // Return the fee commitment.
-        Ok(fcm)
-    }
-}
 
 pub struct Transaction<N: Network> {
     /// The network ID.
@@ -284,9 +161,9 @@ where
     let (fcm, r_fcm) = fcm::<A>(&[], &[r_bcm])?;
 
     let process = std::panic::catch_unwind(|| {
-        let public = output::Public::<A>::from(output_index, record.clone(), fcm, tcm, tpk);
-        let private = output::Private::<A>::from(*caller, state, r_fcm, r_tcm);
-        output::OutputCircuit::from(public, private)?.execute();
+        let public = output::circuit::Public::<A>::from(output_index, record.clone(), fcm, tcm, tpk);
+        let private = output::circuit::Private::<A>::from(*caller, state, r_fcm, r_tcm);
+        output::circuit::OutputCircuit::from(public, private)?.execute();
         println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
         let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
@@ -298,12 +175,12 @@ where
         let assignment = circuit::Circuit::eject();
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
-        let proof = snark::execute(assignment)?;
+        let proof = proof::snark::execute(assignment)?;
         let transition = Transition {
             program: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
             process: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
             inputs: vec![],
-            outputs: vec![Output::new(record)],
+            outputs: vec![output::Output::new(record)],
             input_proofs: vec![],
             output_proofs: vec![proof],
             tcm,
@@ -373,8 +250,8 @@ where
     let (tcm, tpk, r_tcm, _tvk) = tcm::<A, R>(&caller_address, rng)?;
 
     let process = std::panic::catch_unwind(|| {
-        let public = input::Public::<A>::from(*root, *serial_number.value(), bcm, fcm, tcm, tpk);
-        let private = input::Private::<A>::from(
+        let public = input::circuit::Public::<A>::from(*root, *serial_number.value(), bcm, fcm, tcm, tpk);
+        let private = input::circuit::Private::<A>::from(
             record_view_key,
             record.clone(),
             merkle_path,
@@ -382,7 +259,7 @@ where
             r_fcm,
             r_tcm,
         );
-        let input_circuit = input::InputCircuit::from(public, private)?;
+        let input_circuit = input::circuit::InputCircuit::from(public, private)?;
         input_circuit.execute();
 
         let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
@@ -394,11 +271,11 @@ where
         let assignment = circuit::Circuit::eject();
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
-        let proof = snark::execute(assignment)?;
+        let proof = proof::snark::execute(assignment)?;
         let transition = Transition {
             program: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
             process: Field::<A::Network>::zero(), // TODO: Hardcode this option in the Network trait.
-            inputs: vec![Input::new(*serial_number.value(), bcm)],
+            inputs: vec![input::Input::new(*serial_number.value(), bcm)],
             outputs: vec![],
             input_proofs: vec![proof],
             output_proofs: vec![],
