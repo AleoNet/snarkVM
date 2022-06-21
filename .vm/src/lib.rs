@@ -29,20 +29,20 @@ pub use program::*;
 
 pub mod input {
     use circuit::{
+        merkle_tree::MerklePath,
+        transition::Record,
         Aleo,
         Eject,
         Field,
         Group,
         Inject,
-        merkle_tree::MerklePath,
         Mode,
         Scalar,
         SerialNumber,
         ToBits,
         ToGroup,
-        transition::Record,
-        U64,
         Zero,
+        U64,
     };
 
     use anyhow::{ensure, Result};
@@ -196,6 +196,7 @@ pub mod input {
 
 pub mod output {
     use circuit::{
+        transition::Record,
         Address,
         Aleo,
         Eject,
@@ -209,10 +210,9 @@ pub mod output {
         ToBits,
         ToField,
         ToGroup,
-        transition::Record,
+        Zero,
         U16,
         U64,
-        Zero,
     };
 
     use anyhow::{ensure, Result};
@@ -335,7 +335,6 @@ pub mod output {
 pub mod snark {
     use snarkvm_algorithms::{
         crypto_hash::PoseidonSponge,
-        SNARK,
         snark::marlin::{
             ahp::AHPForR1CS,
             fiat_shamir::FiatShamirAlgebraicSpongeRng,
@@ -343,6 +342,7 @@ pub mod snark {
             MarlinSNARK,
             Proof,
         },
+        SNARK,
     };
     use snarkvm_curves::{bls12_377::Bls12_377, PairingEngine};
 

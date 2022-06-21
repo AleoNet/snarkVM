@@ -23,11 +23,11 @@ impl<A: Aleo> FromBits for Plaintext<A> {
     fn from_bits_le(bits_le: &[Boolean<A>]) -> Self {
         let mut counter = 0;
 
-        let is_literal = !Boolean::from_bits_le(&[bits_le[counter].clone()]).eject_value();
-        counter += 1;
+        let variant = [bits_le[counter].eject_value(), bits_le[counter + 1].eject_value()];
+        counter += 2;
 
         // Literal
-        if is_literal {
+        if variant == [false, false] {
             let literal_variant = U8::from_bits_le(&bits_le[counter..counter + 8]);
             counter += 8;
 
@@ -45,7 +45,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             }
         }
         // Interface
-        else {
+        else if variant == [false, true] {
             let num_members = U8::from_bits_le(&bits_le[counter..counter + 8]).eject_value();
             counter += 8;
 
@@ -74,17 +74,21 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
         }
+        // Unknown variant.
+        else {
+            A::halt("Unknown plaintext variant.")
+        }
     }
 
     /// Initializes a new plaintext from a list of big-endian bits *without* trailing zeros.
     fn from_bits_be(bits_be: &[Boolean<A>]) -> Self {
         let mut counter = 0;
 
-        let is_literal = !Boolean::from_bits_be(&[bits_be[counter].clone()]).eject_value();
-        counter += 1;
+        let variant = [bits_be[counter].eject_value(), bits_be[counter + 1].eject_value()];
+        counter += 2;
 
         // Literal
-        if is_literal {
+        if variant == [false, false] {
             let literal_variant = U8::from_bits_be(&bits_be[counter..counter + 8]);
             counter += 8;
 
@@ -102,7 +106,7 @@ impl<A: Aleo> FromBits for Plaintext<A> {
             }
         }
         // Interface
-        else {
+        else if variant == [false, true] {
             let num_members = U8::from_bits_be(&bits_be[counter..counter + 8]).eject_value();
             counter += 8;
 
@@ -130,6 +134,10 @@ impl<A: Aleo> FromBits for Plaintext<A> {
                 Ok(_) => Self::Interface(members, cache),
                 Err(_) => A::halt("Failed to store the plaintext bits in the cache."),
             }
+        }
+        // Unknown variant.
+        else {
+            A::halt("Unknown plaintext variant.")
         }
     }
 }

@@ -66,7 +66,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Function<N, A> {
 
         // Write the number of inputs for the function.
         let num_inputs = self.inputs.len();
-        match num_inputs <= N::MAX_FUNCTION_INPUTS {
+        match num_inputs <= N::MAX_INPUTS {
             true => (num_inputs as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
@@ -78,7 +78,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Function<N, A> {
 
         // Write the number of instructions for the function.
         let num_instructions = self.instructions.len();
-        match num_instructions <= N::MAX_FUNCTION_OUTPUTS {
+        match num_instructions <= N::MAX_FUNCTION_INSTRUCTIONS {
             true => (num_instructions as u32).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }
@@ -90,7 +90,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Function<N, A> {
 
         // Write the number of outputs for the function.
         let num_outputs = self.outputs.len();
-        match num_outputs <= N::MAX_FUNCTION_INSTRUCTIONS {
+        match num_outputs <= N::MAX_OUTPUTS {
             true => (num_outputs as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
         }

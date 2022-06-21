@@ -267,6 +267,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         &self.tree
     }
 
+    /// Returns the empty hash.
+    pub const fn empty_hash(&self) -> &PH::Hash {
+        &self.empty_hash
+    }
+
     /// Returns the leaf hashes from the Merkle tree.
     pub fn leaf_hashes(&self) -> &[LH::Hash] {
         // Compute the start index (on the left) for the leaf hashes level in the Merkle tree.

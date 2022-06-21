@@ -35,6 +35,11 @@ use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::MerkleTree;
 use snarkvm_console_types::{Field, Group, Scalar};
 
+/// A helper type for the BHP Merkle tree.
+pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
+/// A helper type for the Poseidon Merkle tree.
+pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
+
 pub trait Network:
     'static + Environment + Copy + Clone + Debug + Eq + PartialEq + core::hash::Hash + Send + Sync
 {
@@ -48,13 +53,9 @@ pub trait Network:
     const MAX_DATA_ENTRIES: usize = 32;
 
     /// The maximum number of operands in an instruction.
-    const MAX_OPERANDS: usize = Self::MAX_DATA_ENTRIES;
-    /// The maximum number of inputs in a function.
-    const MAX_FUNCTION_INPUTS: usize = u16::MAX as usize;
+    const MAX_OPERANDS: usize = Self::MAX_INPUTS;
     /// The maximum number of instructions in a function.
     const MAX_FUNCTION_INSTRUCTIONS: usize = u16::MAX as usize;
-    /// The maximum number of outputs in a function.
-    const MAX_FUNCTION_OUTPUTS: usize = u16::MAX as usize;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 8;
@@ -64,6 +65,9 @@ pub trait Network:
     const MAX_TRANSITIONS: usize = 16;
     /// The maximum number of transactions per block.
     const MAX_TRANSACTIONS: usize = u16::MAX as usize;
+
+    /// The depth of the Merkle tree for the transitions trace.
+    const TRACE_DEPTH: u8 = 8;
 
     /// The maximum number of bits in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::size_in_data_bits()) as u32;
@@ -166,13 +170,25 @@ pub trait Network:
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
     #[allow(clippy::type_complexity)]
-    fn merkle_tree_bhp<const DEPTH: u8>(
-        leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self, BHP1024<Self>, BHP512<Self>, DEPTH>>;
+    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<BHPMerkleTree<Self, DEPTH>>;
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
     #[allow(clippy::type_complexity)]
-    fn merkle_tree_psd<const DEPTH: u8>(
-        leaves: &[Vec<Field<Self>>],
-    ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>>;
+    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Field<Self>>]) -> Result<PoseidonMerkleTree<Self, DEPTH>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_transitions_tree_depth() {
+        // Ensure the log2 relationship between trace depth and the number of transition inputs & outputs.
+        assert_eq!(
+            1 << CurrentNetwork::TRACE_DEPTH as usize,
+            (CurrentNetwork::MAX_INPUTS + CurrentNetwork::MAX_OUTPUTS) * CurrentNetwork::MAX_TRANSITIONS
+        );
+    }
 }

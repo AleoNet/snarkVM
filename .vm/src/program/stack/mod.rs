@@ -26,10 +26,232 @@ mod store;
 use crate::{Operand, Program, RegisterTypes};
 use console::{
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Register, Value, ValueType},
+    program::{Ciphertext, Entry, Identifier, Literal, Plaintext, Record, Register, Value, ValueType},
+    types::{Address, Field, Group, Scalar, U16},
 };
 
 use indexmap::IndexMap;
+
+use console::network::BHPMerkleTree;
+use core::marker::PhantomData;
+
+pub enum TraceValue<N: Network> {
+    /// A plaintext value.
+    Plaintext(Plaintext<N>),
+    /// A record value, and the leaf value.
+    Record(Record<N, Plaintext<N>>, Record<N, Ciphertext<N>>),
+}
+
+/// N::TRACE_DEPTH
+const TRACE_DEPTH: u8 = 8;
+
+/// The trace is a Merkle tree system that tracks the inputs and outputs for all transitions in a transaction.
+/// ```ignore
+///                                          transaction_root
+///                                               /
+///                                            ...
+///                                            /
+///                                    transition_root_0
+///                              /                            \
+///                         node_0                             node_1
+///                    /           \                      /               \
+///                       ...                                      ...
+///              /                   \                 /                     \
+///         node_0       ...       node_3            node_4        ...       node_7
+///       /       \              /       \         /        \              /       \
+/// \[input_0, input_1, ..., input_6, input_7, output_0, output_1, ..., output_6, output_7\]
+/// ```
+pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
+    /// The Merkle tree of transition inputs and outputs.
+    tree: BHPMerkleTree<N, TRACE_DEPTH>,
+    /// The mapping of transition input indices to their input leaves (i.e. `i-th call, j-th input`).
+    inputs: IndexMap<(u8, u8), Field<N>>,
+    /// The mapping of transition output indices to their output leaves (i.e. `i-th call, j-th output`).
+    outputs: IndexMap<(u8, u8), Field<N>>,
+    /// The caller of the current transition.
+    caller: Address<N>,
+    /// The current transition view key commitment randomizer.
+    r_tcm: Field<N>,
+    /// The current transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
+    tcm: Field<N>,
+    /// The current transition public key (i.e. `tpk := Hash(r_tcm) * G`).
+    tpk: Group<N>,
+    /// The current transition view key (i.e. `tvk := tsk * caller`).
+    tvk: Group<N>,
+    /// The tracker for the current transition index.
+    transition_index: u8,
+    /// The tracker for the current input index.
+    input_index: u8,
+    /// The tracker for the current output index.
+    output_index: u8,
+    /// PhantomData.
+    _phantom: PhantomData<A>,
+}
+
+impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
+    /// Initializes a new stack trace.
+    pub fn new<R: Rng + CryptoRng>(caller: Address<N>, rng: &mut R) -> Result<Self> {
+        // Compute the transition view key.
+        let (r_tcm, tcm, tpk, tvk) = Self::compute_tvk::<R>(caller, rng)?;
+
+        Ok(Self {
+            tree: N::merkle_tree_bhp::<TRACE_DEPTH>(&[])?,
+            inputs: IndexMap::new(),
+            outputs: IndexMap::new(),
+            caller,
+            r_tcm,
+            tcm,
+            tpk,
+            tvk,
+            transition_index: 0,
+            input_index: 0,
+            output_index: 0,
+            _phantom: PhantomData,
+        })
+    }
+
+    /// Returns the current caller.
+    pub const fn caller(&self) -> &Address<N> {
+        &self.caller
+    }
+
+    /// Returns the current transition view key commitment randomizer.
+    pub const fn r_tcm(&self) -> &Field<N> {
+        &self.r_tcm
+    }
+
+    /// Returns the current transition view key commitment.
+    pub const fn tcm(&self) -> &Field<N> {
+        &self.tcm
+    }
+
+    /// Returns the current transition public key.
+    pub const fn tpk(&self) -> &Group<N> {
+        &self.tpk
+    }
+
+    /// Returns the current transition view key.
+    pub const fn tvk(&self) -> &Group<N> {
+        &self.tvk
+    }
+
+    /// Adds an input to the trace.
+    pub fn add_input(&mut self, input: Field<N>) -> Result<()> {
+        // Ensure the input index is within the bounds of the program.
+        ensure!((self.input_index as usize) < N::MAX_INPUTS, "Trace reached the maximum inputs for a program call");
+
+        // Add the input to the trace.
+        self.tree.append(&[input.to_bits_le()])?;
+        self.inputs.insert((self.transition_index, self.input_index), input);
+        // Increment the input index.
+        self.input_index += 1;
+
+        // Ensure the number of leaves is correct.
+        self.ensure_num_leaves()
+    }
+
+    /// Adds an output to the trace.
+    pub fn add_output(&mut self, output: Field<N>) -> Result<()> {
+        // Ensure the output index is within the bounds of the program.
+        ensure!((self.output_index as usize) < N::MAX_OUTPUTS, "Trace reached the maximum outputs for a program call");
+
+        // If this is the first call to output, fast forward the input index to the end of the inputs.
+        if self.output_index == 0 {
+            // Retrieve the empty hash as bits.
+            let empty_hash = self.tree.empty_hash().to_bits_le();
+            // Pad the leaves with the empty hash up to the starting index for the outputs.
+            self.tree.append(&vec![empty_hash; N::MAX_INPUTS - self.input_index as usize])?;
+            // Set the input index to the end of the inputs.
+            self.input_index = N::MAX_INPUTS as u8;
+        }
+
+        // Add the output to the trace.
+        self.tree.append(&[output.to_bits_le()])?;
+        self.outputs.insert((self.transition_index, self.output_index), output);
+        // Increment the output index.
+        self.output_index += 1;
+
+        // Ensure the number of leaves is correct.
+        self.ensure_num_leaves()
+    }
+
+    /// Updates the current caller, transition view key, transition index, input index, and output index.
+    pub fn next_transition<R: Rng + CryptoRng>(&mut self, caller: Address<N>, rng: &mut R) -> Result<()> {
+        // Ensure the transition index is within the bounds of the trace.
+        ensure!((self.transition_index as usize) < N::MAX_TRANSITIONS, "Trace reached the maximum transitions");
+        // Ensure the input index or output index is nonzero.
+        ensure!(self.input_index > 0 || self.output_index > 0, "Trace cannot transition without inputs or outputs");
+
+        // Retrieve the empty hash as bits.
+        let empty_hash = self.tree.empty_hash().to_bits_le();
+        // Pad the leaves with the empty hash up to the starting index of the next transition.
+        self.tree.append(&vec![empty_hash; N::MAX_OUTPUTS - self.output_index as usize])?;
+
+        // Update the caller.
+        self.caller = caller;
+
+        // Update the transition view key.
+        let (r_tcm, tcm, tpk, tvk) = Self::compute_tvk::<R>(caller, rng)?;
+        self.r_tcm = r_tcm;
+        self.tcm = tcm;
+        self.tpk = tpk;
+        self.tvk = tvk;
+
+        // Increment the transition index.
+        self.transition_index += 1;
+        // Reset the input and output indices.
+        self.input_index = 0;
+        self.output_index = 0;
+
+        // Ensure the number of leaves is correct.
+        self.ensure_num_leaves()
+    }
+
+    /// Ensures the current number of leaves is correct.
+    pub fn ensure_num_leaves(&self) -> Result<()> {
+        // Ensure the number of leaves is correct.
+        let expected_num_leaves = self.transition_index as usize * (N::MAX_INPUTS + N::MAX_OUTPUTS) as usize
+            + (self.input_index + self.output_index) as usize;
+        ensure!(self.tree.leaf_hashes().len() == expected_num_leaves, "Trace has an incorrect number of leaves");
+        Ok(())
+    }
+
+    /// Returns the transition view key, given the caller address and an RNG.
+    pub(crate) fn compute_tvk<R: Rng + CryptoRng>(
+        caller: Address<N>,
+        rng: &mut R,
+    ) -> Result<(Field<N>, Field<N>, Group<N>, Group<N>)> {
+        // Sample a random nonce.
+        let r_tcm = Uniform::rand(rng);
+        // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+        // TODO (howardwu): Domain separator.
+        // let tsk = N::hash_to_scalar_psd2(&[N::tvk_domain(), r_tcm])?;
+        let tsk = N::hash_to_scalar_psd2(&[r_tcm])?;
+        // Compute the transition public key `tpk` as `tsk * G`.
+        let tpk = N::g_scalar_multiply(&tsk);
+        // Compute the transition view key `tvk` as `tsk * caller`.
+        let tvk = *caller * tsk;
+        // Compute the transition view key commitment `tcm` := `Hash(tvk)`.
+        // TODO (howardwu): Domain separator.
+        // Compute the transition view key commitment `tcm` as `Hash(caller, tpk, tvk)`.
+        let tcm = N::hash_psd4(&[*caller, tpk, tvk].map(|c| c.to_x_coordinate()))?;
+        Ok((r_tcm, tcm, tpk, tvk))
+    }
+
+    /// Returns the encryption randomizer for the given input index.
+    pub(crate) fn compute_input_randomizer(&self, input_index: u16) -> Result<Field<N>> {
+        // Compute the encryption randomizer as `Hash(tvk || index)`.
+        N::hash_psd2(&[self.tvk.to_x_coordinate(), U16::new(input_index).to_field()?])
+    }
+
+    /// Returns the encryption randomizer for the given output index.
+    pub(crate) fn compute_output_randomizer(&self, index: u16) -> Result<Scalar<N>> {
+        // Compute the index.
+        let index = U16::new(N::MAX_OUTPUTS as u16 + index).to_field()?;
+        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        N::hash_to_scalar_psd2(&[self.tvk.to_x_coordinate(), index])
+    }
+}
 
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
@@ -40,6 +262,206 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     console_registers: IndexMap<u64, StackValue<N>>,
     /// The mapping of assigned circuit registers to their values.
     circuit_registers: IndexMap<u64, CircuitValue<A>>,
+}
+
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+    /// Executes a program function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn execute_transition(
+        trace: &mut Trace<N, A>,
+        program: Program<N, A>,
+        function_name: &Identifier<N>,
+        inputs: &[StackValue<N>],
+    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+        // Ensure the circuit environment is clean.
+        A::reset();
+
+        // Retrieve the function from the program.
+        let function = program.get_function(function_name)?;
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        }
+
+        // Retrieve the register types for the function.
+        let register_types = program.get_function_registers(function_name)?;
+        // Initialize the stack.
+        let mut stack = Self::new(program, register_types)?;
+
+        // Store the inputs.
+        function.inputs().iter().map(|i| (i.register(), i.value_type())).zip_eq(inputs).try_for_each(
+            |((register, value_type), input)| {
+                // Assign the console input to the register.
+                stack.store(&register, input.clone())?;
+                // Add the console input leaf to the trace.
+                let input_leaf = match (input, value_type) {
+                    // In the input is a constant or public plaintext value, hash the plaintext.
+                    (StackValue::Plaintext(plaintext), ValueType::Constant(..))
+                    | (StackValue::Plaintext(plaintext), ValueType::Public(..)) => {
+                        // Hash the input.
+                        let hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
+                        // Add the hash to the trace.
+                        trace.add_input(hash)?;
+                        // Output the plaintext hash.
+                        hash
+                    }
+                    // If the input is a private plaintext value, encrypt and hash the ciphertext.
+                    (StackValue::Plaintext(plaintext), ValueType::Private(..)) => {
+                        // Compute the plaintext view key.
+                        let plaintext_view_key = trace.compute_input_randomizer(register.locator() as u16)?;
+                        // Encrypt the plaintext.
+                        let ciphertext = plaintext.encrypt_symmetric(plaintext_view_key)?;
+                        // Hash the ciphertext.
+                        let hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        // Add the hash to the trace.
+                        trace.add_input(hash)?;
+                        // Output the ciphertext hash.
+                        hash
+                    }
+                    // If the input is a record, compute the serial number.
+                    (StackValue::Record(record), ValueType::Record(..)) => {
+                        // TODO (howardwu): Compute the serial number.
+                        let serial_number = Field::one();
+                        // // Compute the record view key.
+                        // let record_view_key = trace.compute_input_randomizer(register.locator() as u16)?;
+                        // // Encrypt the record.
+                        // let ciphertext = record.encrypt_symmetric(record_view_key)?;
+                        // Add the serial number to the trace.
+                        trace.add_input(serial_number)?;
+                        // Output the serial number.
+                        serial_number
+                    }
+                    // Otherwise, the program should halt.
+                    _ => bail!("Unexpected input type"),
+                };
+
+                // Inject the console input into a circuit input.
+                let circuit_input: CircuitValue<A> = match value_type {
+                    // Constant inputs are injected as constants.
+                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
+                    // Public and private inputs are injected as privates.
+                    // Records are injected based on inherited visibility (the Mode::Private is overridden).
+                    ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
+                        circuit::Inject::new(circuit::Mode::Private, input.clone())
+                    }
+                };
+                // Assign the circuit input to the register.
+                stack.store_circuit(&register, circuit_input.clone())?;
+
+                // Compute the circuit input leaf.
+                let circuit_input_leaf = match circuit_input {
+                    // If the input is a plaintext value, hash the input.
+                    CircuitValue::Plaintext(plaintext) => {
+                        use circuit::ToBits;
+                        A::hash_bhp1024(&plaintext.to_bits_le())
+                    }
+                    // If the input is a record, compute the commitment, and derive the serial number.
+                    CircuitValue::Record(record) => {
+                        // TODO (howardwu): Compute the serial number.
+                        circuit::Inject::new(circuit::Mode::Private, Field::one())
+                    }
+                };
+
+                use circuit::Inject;
+                // Ensure the input leaf matches the computed input leaf.
+                A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, input_leaf));
+                // match value_type {
+                //     // Constant inputs are injected as constants.
+                //     ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input_leaf),
+                //     // Public and private inputs are injected as privates.
+                //     // Records are injected based on inherited visibility (the Mode::Private is overridden).
+                //     ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
+                //         circuit::Inject::new(circuit::Mode::Public, input_leaf)
+                //     }
+                // }
+
+                Ok::<_, Error>(())
+            },
+        )?;
+
+        // Execute the instructions.
+        function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
+        function.instructions().iter().try_for_each(|instruction| instruction.execute(&mut stack))?;
+
+        // Load the outputs.
+        let outputs = function.outputs().iter().map(|output| {
+            use circuit::{Eject, Inject};
+
+            // Retrieve the circuit value from the register.
+            let circuit_value = stack.load_circuit(&Operand::Register(output.register().clone()))?;
+            // Convert the circuit value to the output value type.
+            let output = match (circuit_value, output.value_type()) {
+                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::Plaintext::new(circuit::Mode::Constant, plaintext.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(plaintext));
+                    // Return the output circuit.
+                    circuit::Value::Constant(output)
+                }
+                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::Plaintext::new(circuit::Mode::Public, plaintext.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(plaintext));
+                    // Return the output circuit.
+                    circuit::Value::Public(output)
+                }
+                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::Plaintext::new(circuit::Mode::Private, plaintext.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(plaintext));
+                    // Return the output circuit.
+                    circuit::Value::Private(output)
+                }
+                (CircuitValue::Record(record), ValueType::Record(..)) => {
+                    // Inject the output circuit.
+                    let output = circuit::program::Record::new(circuit::Mode::Private, record.eject_value());
+                    // Ensure the output circuit matches the plaintext.
+                    // A::assert(output.is_equal_to(record));
+                    // Return the output circuit.
+                    circuit::Value::Record(output)
+                }
+                _ => bail!("Circuit value does not match the expected output type"),
+            };
+            // TODO (howardwu): Add encryption against the caller's address for all private literals,
+            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
+            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
+            //  the constraint will automatically be discarded, and if it's not, the constraint will
+            //  ensure the output register's value matches the newly-assigned hardcoded constant.
+            // // If the value contains any public literals, assign a new public variable for the public literal,
+            // // and add a constraint to enforce equality of the value.
+            // match &value {
+            //     Value::Literal(literal) => {
+            //         if literal.is_public() {
+            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
+            //             P::Environment::assert_eq(literal, public_literal);
+            //         }
+            //     }
+            //     Value::Definition(_, members) => {
+            //         for member in members.iter() {
+            //             if member.is_public() {
+            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
+            //                 P::Environment::assert_eq(member, public_literal);
+            //             }
+            //         }
+            //     }
+            // }
+
+            // Return the output.
+            Ok(output)
+        });
+
+        outputs.collect()
+    }
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
@@ -118,15 +540,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Retrieve the function from the program.
         let function = program.get_function(function_name)?;
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
 
-        // Retrieve the register types.
+        // Retrieve the register types for the function.
         let register_types = program.get_function_registers(function_name)?;
         // Initialize the stack.
-        let mut stack = Self::new(program, register_types.clone())?;
+        let mut stack = Self::new(program, register_types)?;
 
         // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         // Store the inputs.

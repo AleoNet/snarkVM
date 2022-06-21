@@ -31,24 +31,8 @@ impl<A: circuit::Aleo> CircuitValue<A> {
         use circuit::ToBits;
 
         match self {
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            CircuitValue::Plaintext(circuit::Plaintext::Interface(interface, ..)) => interface
-                .iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            CircuitValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
+            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_le(),
+            CircuitValue::Record(record) => record.to_bits_le(),
         }
     }
 }

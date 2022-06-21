@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod decrypt;
 mod from_bits;
 mod from_fields;
+mod num_randomizers;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::Visibility;
+use crate::{Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 

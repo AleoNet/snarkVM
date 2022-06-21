@@ -32,24 +32,8 @@ impl<N: Network> StackValue<N> {
     #[inline]
     pub fn to_bits_le(&self) -> Vec<bool> {
         match self {
-            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => {
-                [literal.variant().to_bits_le(), literal.to_bits_le()].into_iter().flatten().collect()
-            }
-            StackValue::Plaintext(Plaintext::Interface(interface, ..)) => interface
-                .into_iter()
-                .flat_map(|(member_name, member_value)| {
-                    [member_name.to_bits_le(), member_value.to_bits_le()].into_iter().flatten()
-                })
-                .collect(),
-            StackValue::Record(record) => record
-                .owner()
-                .to_bits_le()
-                .into_iter()
-                .chain(record.balance().to_bits_le().into_iter())
-                .chain(record.data().iter().flat_map(|(entry_name, entry_value)| {
-                    [entry_name.to_bits_le(), entry_value.to_bits_le()].into_iter().flatten()
-                }))
-                .collect(),
+            StackValue::Plaintext(plaintext) => plaintext.to_bits_le(),
+            StackValue::Record(record) => record.to_bits_le(),
         }
     }
 }

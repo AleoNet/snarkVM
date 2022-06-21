@@ -74,13 +74,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
                 // Public entries do not need to be decrypted.
                 Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
                 // Private entries are decrypted with the given randomizers.
-                Entry::Private(private) => Entry::Private(Plaintext::from_fields(
-                    &private
-                        .iter()
-                        .zip_eq(randomizers)
-                        .map(|(ciphertext, randomizer)| ciphertext - randomizer)
-                        .collect::<Vec<_>>(),
-                )),
+                Entry::Private(private) => Entry::Private(private.decrypt_with_randomizers(randomizers)),
             };
             // Insert the decrypted entry.
             if decrypted_data.insert(id.clone(), entry).is_some() {
@@ -99,7 +93,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
 mod tests {
     use super::*;
     use crate::{Circuit, Literal};
-    use snarkvm_circuit_types::Field;
+    use snarkvm_circuit_types::{Field, U64};
     use snarkvm_utilities::{test_crypto_rng, test_rng, Uniform};
 
     use anyhow::Result;

@@ -14,27 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod decrypt;
-mod from_bits;
-mod from_fields;
-mod num_randomizers;
-mod size_in_fields;
-mod to_bits;
-mod to_fields;
+use super::*;
 
-use crate::Plaintext;
-use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Field;
-
-use core::ops::Deref;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Ciphertext<N: Network>(Vec<Field<N>>);
-
-impl<N: Network> Deref for Ciphertext<N> {
-    type Target = [Field<N>];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl<N: Network> Plaintext<N> {
+    /// Returns the number of field elements to encode `self`.
+    pub(crate) fn num_randomizers(&self) -> Result<u16> {
+        self.size_in_fields()
     }
 }

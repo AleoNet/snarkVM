@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Operand, Program, RegisterTypes, Stack, StackValue};
+use crate::{Operand, Program, RegisterTypes, Stack, StackValue, Trace};
 use console::{
+    account::Address,
     network::prelude::*,
     program::{Entry, Identifier, Literal, Plaintext, Record, Register, RegisterType, Value, ValueType},
 };
@@ -27,9 +28,6 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     pub fn evaluate(
         &self,
@@ -37,20 +35,32 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Evaluate the function.
-        Stack::<N, A>::evaluate(self.program.clone(), function_name, inputs)
+        // Stack::<N, A>::evaluate(self.program.clone(), function_name, inputs)
+        self.program.evaluate(function_name, inputs)
     }
 
     /// Executes a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute(
+    pub fn execute<R: Rng + CryptoRng>(
         &self,
+        caller: Address<N>,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
+        rng: &mut R,
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+        // // Retrieve the function from the program.
+        // let function = program.get_function(function_name)?;
+
+        // // Initialize a new caller account.
+        // let caller_private_key = PrivateKey::<<circuit::AleoV0 as circuit::Environment>::Network>::new(&mut rng)?;
+        // let _caller_view_key = ViewKey::try_from(&caller_private_key)?;
+        // let caller_address = Address::try_from(&caller_private_key)?;
+
+        // Initialize the trace.
+        let mut trace = Trace::new(caller, rng)?;
+
         // Execute the function.
-        Stack::<N, A>::execute(self.program.clone(), function_name, inputs)
+        Stack::<N, A>::execute_transition(&mut trace, self.program.clone(), function_name, inputs)
+        // self.program.execute(function_name, inputs)
     }
 }

@@ -74,14 +74,7 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
                 // Public entries do not need to be encrypted.
                 Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
                 // Private entries are encrypted with the given randomizers.
-                Entry::Private(private) => Entry::Private(Ciphertext::from_fields(
-                    &private
-                        .to_fields()
-                        .iter()
-                        .zip_eq(randomizers)
-                        .map(|(plaintext, randomizer)| plaintext + randomizer)
-                        .collect::<Vec<_>>(),
-                )),
+                Entry::Private(private) => Entry::Private(private.encrypt_with_randomizers(randomizers)),
             };
             // Insert the encrypted entry.
             if encrypted_data.insert(id.clone(), entry).is_some() {
