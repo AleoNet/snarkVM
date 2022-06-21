@@ -163,8 +163,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
         // Ensure there are input statements in the closure.
         ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(closure.inputs().len() <= N::MAX_INPUTS, "Closure exceeds maximum number of inputs");
         // Ensure there are instructions in the closure.
         ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(closure.outputs().len() <= N::MAX_OUTPUTS, "Closure exceeds maximum number of outputs");
         // Return the closure.
         Ok(closure)
     }
@@ -180,8 +184,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
         // Ensure there are input statements in the function.
         ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
         // Ensure there are instructions in the function.
         ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Return the function.
         Ok(function)
     }

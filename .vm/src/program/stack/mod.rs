@@ -357,10 +357,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Retrieve the function from the program.
         let function = program.get_function(function_name)?;
-        // Ensure the number of inputs is within the allowed range.
-        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
-        // Ensure the number of outputs is within the allowed range.
-        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -372,39 +368,39 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let mut stack = Self::new(program, register_types)?;
 
         // Store the inputs.
-        function.inputs().iter().map(|i| (i.register(), i.value_type())).zip_eq(inputs).try_for_each(
-            |((register, value_type), input)| {
-                // Assign the console input to the register.
-                stack.store(&register, input.clone())?;
-                // Compute the console input leaf.
-                let console_input_leaf = N::hash_bhp1024(&input.to_bits_le())?;
-                // Add the console input leaf to the trace.
-                trace.add_input(console_input_leaf)?;
+        function.inputs().iter().zip_eq(inputs).try_for_each(|(input_type, input)| {
+            // Retrieve the register and value type.
+            let (register, value_type) = (input_type.register(), input_type.value_type());
 
-                // Inject the console input into a circuit input.
-                let circuit_input: CircuitValue<A> = match value_type {
-                    // Constant inputs are injected as constants.
-                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
-                    // Public and private inputs are injected as privates.
-                    // Records are injected based on inherited visibility (the Mode::Private is overridden).
-                    ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
-                        circuit::Inject::new(circuit::Mode::Private, input.clone())
-                    }
-                };
+            // Assign the console input to the register.
+            stack.store(&register, input.clone())?;
+            // Compute the console input leaf.
+            let console_input_leaf = N::hash_bhp1024(&input.to_bits_le())?;
+            // Add the console input leaf to the trace.
+            trace.add_input(console_input_leaf)?;
 
-                use circuit::{Inject, ToBits};
+            use circuit::{Inject, ToBits};
 
-                // Assign the circuit input to the register.
-                stack.store_circuit(&register, circuit_input.clone())?;
-                // Compute the circuit input leaf.
-                let circuit_input_leaf = A::hash_bhp1024(&circuit_input.to_bits_le());
+            // Inject the console input into a circuit input.
+            let circuit_input = match value_type {
+                // Constant inputs are injected as constants.
+                ValueType::Constant(..) => CircuitValue::new(circuit::Mode::Constant, input.clone()),
+                // Public and private inputs are injected as privates.
+                // Records are injected based on inherited visibility (the Mode::Private is overridden).
+                ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
+                    CircuitValue::new(circuit::Mode::Private, input.clone())
+                }
+            };
+            // Assign the circuit input to the register.
+            stack.store_circuit(&register, circuit_input.clone())?;
 
-                // Ensure the console input leaf matches the computed input leaf.
-                A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf));
+            // Compute the circuit input leaf.
+            let circuit_input_leaf = A::hash_bhp1024(&circuit_input.to_bits_le());
+            // Ensure the console input leaf matches the computed input leaf.
+            A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf));
 
-                Ok::<_, Error>(())
-            },
-        )?;
+            Ok::<_, Error>(())
+        })?;
 
         // Execute the instructions.
         function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
@@ -478,7 +474,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Initialize the stack.
         let mut stack = Self::new(program, register_types.clone())?;
 
-        // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
@@ -519,10 +514,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Retrieve the function from the program.
         let function = program.get_function(function_name)?;
-        // Ensure the number of inputs is within the allowed range.
-        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
-        // Ensure the number of outputs is within the allowed range.
-        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -533,7 +524,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Initialize the stack.
         let mut stack = Self::new(program, register_types)?;
 
-        // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         // Store the inputs.
         function.inputs().iter().map(|i| (i.register(), i.value_type())).zip_eq(inputs).try_for_each(
             |((register, value_type), input)| {
@@ -555,70 +545,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {
-            use circuit::{Eject, Inject};
-
-            // Retrieve the circuit value from the register.
-            let circuit_value = stack.load_circuit(&Operand::Register(output.register().clone()))?;
-            // Convert the circuit value to the output value type.
-            let output = match (circuit_value, output.value_type()) {
-                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::Plaintext::new(circuit::Mode::Constant, plaintext.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(plaintext));
-                    // Return the output circuit.
-                    circuit::Value::Constant(output)
-                }
-                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::Plaintext::new(circuit::Mode::Public, plaintext.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(plaintext));
-                    // Return the output circuit.
-                    circuit::Value::Public(output)
-                }
-                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::Plaintext::new(circuit::Mode::Private, plaintext.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(plaintext));
-                    // Return the output circuit.
-                    circuit::Value::Private(output)
-                }
-                (CircuitValue::Record(record), ValueType::Record(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::program::Record::new(circuit::Mode::Private, record.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(record));
-                    // Return the output circuit.
-                    circuit::Value::Record(output)
-                }
+            // Retrieve the circuit output from the register.
+            let circuit_output = stack.load_circuit(&Operand::Register(output.register().clone()))?;
+            // Construct the circuit output value.
+            let output = match (circuit_output, output.value_type()) {
+                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
+                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
+                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
+                (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
                 _ => bail!("Circuit value does not match the expected output type"),
             };
-            // TODO (howardwu): Add encryption against the caller's address for all private literals,
-            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
-            //  the constraint will automatically be discarded, and if it's not, the constraint will
-            //  ensure the output register's value matches the newly-assigned hardcoded constant.
-            // // If the value contains any public literals, assign a new public variable for the public literal,
-            // // and add a constraint to enforce equality of the value.
-            // match &value {
-            //     Value::Literal(literal) => {
-            //         if literal.is_public() {
-            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-            //             P::Environment::assert_eq(literal, public_literal);
-            //         }
-            //     }
-            //     Value::Definition(_, members) => {
-            //         for member in members.iter() {
-            //             if member.is_public() {
-            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-            //                 P::Environment::assert_eq(member, public_literal);
-            //             }
-            //         }
-            //     }
-            // }
-
             // Return the output.
             Ok(output)
         });
