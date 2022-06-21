@@ -64,12 +64,10 @@ const TRACE_DEPTH: u8 = 8;
 pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
     /// The Merkle tree of transition inputs and outputs.
     tree: BHPMerkleTree<N, TRACE_DEPTH>,
+    /// The root for the `i-th` transition.
+    roots: IndexMap<u8, Field<N>>,
     /// The leaves for the `i-th` transition.
     leaves: IndexMap<u8, Vec<Option<Field<N>>>>,
-    /// The mapping of transition input indices to their input leaves (i.e. `i-th call, j-th input`).
-    inputs: IndexMap<(u8, u8), Field<N>>,
-    /// The mapping of transition output indices to their output leaves (i.e. `i-th call, j-th output`).
-    outputs: IndexMap<(u8, u8), Field<N>>,
     /// The caller of the current transition.
     caller: Address<N>,
     /// The current transition view key commitment randomizer.
@@ -100,9 +98,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
         Ok(Self {
             tree: N::merkle_tree_bhp::<TRACE_DEPTH>(&[])?,
+            roots: IndexMap::new(),
             leaves: IndexMap::new(),
-            inputs: IndexMap::new(),
-            outputs: IndexMap::new(),
             caller,
             r_tcm,
             tcm,
@@ -114,6 +111,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
             is_finalized: false,
             _phantom: PhantomData,
         })
+    }
+
+    /// Returns the roots.
+    pub const fn roots(&self) -> &IndexMap<u8, Field<N>> {
+        &self.roots
     }
 
     /// Returns the leaves.
@@ -156,7 +158,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         // Add the input to the trace.
         self.tree = self.tree.append(&[input.to_bits_le()])?;
         self.leaves.entry(self.transition_index).or_insert(vec![]).push(Some(input));
-        self.inputs.insert((self.transition_index, self.input_index), input);
         // Increment the input index.
         self.input_index += 1;
 
@@ -189,7 +190,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         // Add the output to the trace.
         self.tree = self.tree.append(&[output.to_bits_le()])?;
         self.leaves.entry(self.transition_index).or_insert(vec![]).push(Some(output));
-        self.outputs.insert((self.transition_index, self.output_index), output);
         // Increment the output index.
         self.output_index += 1;
 
