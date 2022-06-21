@@ -377,7 +377,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 // Assign the console input to the register.
                 stack.store(&register, input.clone())?;
                 // Compute the console input leaf.
-                let console_input_leaf = N::hash_psd8(&input.to_fields()?)?;
+                let console_input_leaf = N::hash_bhp1024(&input.to_bits_le())?;
                 // Add the console input leaf to the trace.
                 trace.add_input(console_input_leaf)?;
 
@@ -392,14 +392,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                     }
                 };
 
-                use circuit::ToFields;
+                use circuit::{Inject, ToBits};
 
                 // Assign the circuit input to the register.
                 stack.store_circuit(&register, circuit_input.clone())?;
                 // Compute the circuit input leaf.
-                let circuit_input_leaf = A::hash_psd8(&circuit_input.to_fields());
+                let circuit_input_leaf = A::hash_bhp1024(&circuit_input.to_bits_le());
 
-                use circuit::Inject;
                 // Ensure the console input leaf matches the computed input leaf.
                 A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf));
 
@@ -413,12 +412,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Load the outputs.
         let outputs = function.outputs().iter().enumerate().map(|(index, output)| {
-            use circuit::{Eject, Inject, ToFields};
+            use circuit::{Eject, Inject, ToBits};
 
             // Retrieve the circuit output from the register.
             let circuit_output = stack.load_circuit(&Operand::Register(output.register().clone()))?;
             // Compute the circuit output leaf.
-            let circuit_output_leaf = A::hash_psd8(&circuit_output.to_fields());
+            let circuit_output_leaf = A::hash_bhp1024(&circuit_output.to_bits_le());
 
             // Eject to the console output leaf.
             let console_output_leaf = circuit_output_leaf.eject_value();

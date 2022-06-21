@@ -86,7 +86,12 @@ mod tests {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
             r"
-program example_call;
+program token;
+
+record token:
+    owner as address.private;
+    balance as u64.private;
+    token_amount as u64.private;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
 closure execute:
@@ -102,10 +107,12 @@ closure execute:
 function compute:
     input r0 as field.private;
     input r1 as field.public;
-    call execute r0 r1 into r2 r3 r4;
-    output r2 as field.private;
+    input r2 as token.record;
+    call execute r0 r1 into r3 r4 r5;
+    output r2 as token.record;
     output r3 as field.private;
-    output r4 as field.private;",
+    output r4 as field.private;
+    output r5 as field.private;",
         )
         .unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
@@ -116,11 +123,13 @@ function compute:
         // Declare the input value.
         let r0 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
         let r1 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
+        let r2 =
+            StackValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
 
         // Declare the expected output value.
-        let r2 = Value::Private(Plaintext::from_str("19field").unwrap());
-        let r3 = Value::Private(Plaintext::from_str("11field").unwrap());
-        let r4 = Value::Private(Plaintext::from_str("8field").unwrap());
+        let r3 = Value::Private(Plaintext::from_str("19field").unwrap());
+        let r4 = Value::Private(Plaintext::from_str("11field").unwrap());
+        let r5 = Value::Private(Plaintext::from_str("8field").unwrap());
 
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo> { program };
@@ -143,10 +152,10 @@ function compute:
         use circuit::Eject;
 
         // Re-run to ensure state continues to work.
-        let candidate = process.execute(caller, &function_name, &[r0, r1], rng).unwrap();
-        assert_eq!(3, candidate.len());
-        assert_eq!(r2, candidate[0].eject_value());
+        let candidate = process.execute(caller, &function_name, &[r0, r1, r2], rng).unwrap();
+        assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[1].eject_value());
         assert_eq!(r4, candidate[2].eject_value());
+        assert_eq!(r5, candidate[3].eject_value());
     }
 }
