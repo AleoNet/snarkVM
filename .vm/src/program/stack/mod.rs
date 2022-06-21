@@ -65,7 +65,7 @@ pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
     /// The Merkle tree of transition inputs and outputs.
     tree: BHPMerkleTree<N, TRACE_DEPTH>,
     /// The leaves for the `i-th` transition.
-    leaves: IndexMap<u8, Vec<Field<N>>>,
+    leaves: IndexMap<u8, Vec<Option<Field<N>>>>,
     /// The mapping of transition input indices to their input leaves (i.e. `i-th call, j-th input`).
     inputs: IndexMap<(u8, u8), Field<N>>,
     /// The mapping of transition output indices to their output leaves (i.e. `i-th call, j-th output`).
@@ -117,7 +117,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
     }
 
     /// Returns the leaves.
-    pub const fn leaves(&self) -> &IndexMap<u8, Vec<Field<N>>> {
+    pub const fn leaves(&self) -> &IndexMap<u8, Vec<Option<Field<N>>>> {
         &self.leaves
     }
 
@@ -155,7 +155,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
         // Add the input to the trace.
         self.tree = self.tree.append(&[input.to_bits_le()])?;
-        self.leaves.entry(self.transition_index).or_insert(vec![]).push(input);
+        self.leaves.entry(self.transition_index).or_insert(vec![]).push(Some(input));
         self.inputs.insert((self.transition_index, self.input_index), input);
         // Increment the input index.
         self.input_index += 1;
@@ -178,7 +178,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
             // Pad the leaves with the empty hash up to the starting index for the outputs.
             self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_INPUTS - self.input_index as usize])?;
             self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
-                empty_hash;
+                None;
                 N::MAX_INPUTS
                     - self.input_index as usize
             ]);
@@ -188,7 +188,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
         // Add the output to the trace.
         self.tree = self.tree.append(&[output.to_bits_le()])?;
-        self.leaves.entry(self.transition_index).or_insert(vec![]).push(output);
+        self.leaves.entry(self.transition_index).or_insert(vec![]).push(Some(output));
         self.outputs.insert((self.transition_index, self.output_index), output);
         // Increment the output index.
         self.output_index += 1;
@@ -212,12 +212,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_INPUTS - self.input_index as usize])?;
         self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_OUTPUTS - self.output_index as usize])?;
         self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
-            empty_hash;
+            None;
             N::MAX_INPUTS
                 - self.input_index as usize
         ]);
         self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
-            empty_hash;
+            None;
             N::MAX_OUTPUTS
                 - self.output_index as usize
         ]);
@@ -257,12 +257,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_INPUTS - self.input_index as usize])?;
         self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_OUTPUTS - self.output_index as usize])?;
         self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
-            empty_hash;
+            None;
             N::MAX_INPUTS
                 - self.input_index as usize
         ]);
         self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
-            empty_hash;
+            None;
             N::MAX_OUTPUTS
                 - self.output_index as usize
         ]);
