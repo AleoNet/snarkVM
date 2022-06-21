@@ -136,6 +136,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
     /// Executes the instruction.
     #[inline]
     pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+        use circuit::ToBits;
+
         // Ensure the number of operands is correct.
         if self.operands.len() != 1 {
             bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())

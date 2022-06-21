@@ -28,6 +28,7 @@ mod encrypt;
 mod find;
 mod num_randomizers;
 mod to_bits;
+mod to_fields;
 mod to_id;
 
 use crate::{Ciphertext, Identifier, Plaintext, Visibility};

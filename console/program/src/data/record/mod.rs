@@ -26,6 +26,7 @@ mod find;
 mod num_randomizers;
 mod parse;
 mod to_bits;
+mod to_fields;
 mod to_id;
 
 use crate::{Ciphertext, Identifier, Literal, Plaintext};

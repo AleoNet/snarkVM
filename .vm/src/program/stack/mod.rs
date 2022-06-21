@@ -64,6 +64,8 @@ const TRACE_DEPTH: u8 = 8;
 pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
     /// The Merkle tree of transition inputs and outputs.
     tree: BHPMerkleTree<N, TRACE_DEPTH>,
+    /// The leaves for the `i-th` transition.
+    leaves: IndexMap<u8, Vec<Field<N>>>,
     /// The mapping of transition input indices to their input leaves (i.e. `i-th call, j-th input`).
     inputs: IndexMap<(u8, u8), Field<N>>,
     /// The mapping of transition output indices to their output leaves (i.e. `i-th call, j-th output`).
@@ -84,6 +86,8 @@ pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
     input_index: u8,
     /// The tracker for the current output index.
     output_index: u8,
+    /// The boolean indicator if the trace is finalized.
+    is_finalized: bool,
     /// PhantomData.
     _phantom: PhantomData<A>,
 }
@@ -96,6 +100,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
         Ok(Self {
             tree: N::merkle_tree_bhp::<TRACE_DEPTH>(&[])?,
+            leaves: IndexMap::new(),
             inputs: IndexMap::new(),
             outputs: IndexMap::new(),
             caller,
@@ -106,8 +111,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
             transition_index: 0,
             input_index: 0,
             output_index: 0,
+            is_finalized: false,
             _phantom: PhantomData,
         })
+    }
+
+    /// Returns the leaves.
+    pub const fn leaves(&self) -> &IndexMap<u8, Vec<Field<N>>> {
+        &self.leaves
     }
 
     /// Returns the current caller.
@@ -137,11 +148,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
     /// Adds an input to the trace.
     pub fn add_input(&mut self, input: Field<N>) -> Result<()> {
+        // Ensure the trace is not finalized.
+        ensure!(!self.is_finalized, "Trace is finalized, cannot add input");
         // Ensure the input index is within the bounds of the program.
         ensure!((self.input_index as usize) < N::MAX_INPUTS, "Trace reached the maximum inputs for a program call");
 
         // Add the input to the trace.
-        self.tree.append(&[input.to_bits_le()])?;
+        self.tree = self.tree.append(&[input.to_bits_le()])?;
+        self.leaves.entry(self.transition_index).or_insert(vec![]).push(input);
         self.inputs.insert((self.transition_index, self.input_index), input);
         // Increment the input index.
         self.input_index += 1;
@@ -152,21 +166,29 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
     /// Adds an output to the trace.
     pub fn add_output(&mut self, output: Field<N>) -> Result<()> {
+        // Ensure the trace is not finalized.
+        ensure!(!self.is_finalized, "Trace is finalized, cannot add output");
         // Ensure the output index is within the bounds of the program.
         ensure!((self.output_index as usize) < N::MAX_OUTPUTS, "Trace reached the maximum outputs for a program call");
 
         // If this is the first call to output, fast forward the input index to the end of the inputs.
         if self.output_index == 0 {
-            // Retrieve the empty hash as bits.
-            let empty_hash = self.tree.empty_hash().to_bits_le();
+            // Retrieve the empty hash.
+            let empty_hash = *self.tree.empty_hash();
             // Pad the leaves with the empty hash up to the starting index for the outputs.
-            self.tree.append(&vec![empty_hash; N::MAX_INPUTS - self.input_index as usize])?;
+            self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_INPUTS - self.input_index as usize])?;
+            self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
+                empty_hash;
+                N::MAX_INPUTS
+                    - self.input_index as usize
+            ]);
             // Set the input index to the end of the inputs.
             self.input_index = N::MAX_INPUTS as u8;
         }
 
         // Add the output to the trace.
-        self.tree.append(&[output.to_bits_le()])?;
+        self.tree = self.tree.append(&[output.to_bits_le()])?;
+        self.leaves.entry(self.transition_index).or_insert(vec![]).push(output);
         self.outputs.insert((self.transition_index, self.output_index), output);
         // Increment the output index.
         self.output_index += 1;
@@ -177,15 +199,28 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
     /// Updates the current caller, transition view key, transition index, input index, and output index.
     pub fn next_transition<R: Rng + CryptoRng>(&mut self, caller: Address<N>, rng: &mut R) -> Result<()> {
+        // Ensure the trace is not finalized.
+        ensure!(!self.is_finalized, "Trace is finalized, cannot call next transition");
         // Ensure the transition index is within the bounds of the trace.
         ensure!((self.transition_index as usize) < N::MAX_TRANSITIONS, "Trace reached the maximum transitions");
         // Ensure the input index or output index is nonzero.
         ensure!(self.input_index > 0 || self.output_index > 0, "Trace cannot transition without inputs or outputs");
 
-        // Retrieve the empty hash as bits.
-        let empty_hash = self.tree.empty_hash().to_bits_le();
+        // Retrieve the empty hash.
+        let empty_hash = *self.tree.empty_hash();
         // Pad the leaves with the empty hash up to the starting index of the next transition.
-        self.tree.append(&vec![empty_hash; N::MAX_OUTPUTS - self.output_index as usize])?;
+        self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_INPUTS - self.input_index as usize])?;
+        self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_OUTPUTS - self.output_index as usize])?;
+        self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
+            empty_hash;
+            N::MAX_INPUTS
+                - self.input_index as usize
+        ]);
+        self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
+            empty_hash;
+            N::MAX_OUTPUTS
+                - self.output_index as usize
+        ]);
 
         // Update the caller.
         self.caller = caller;
@@ -207,12 +242,53 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         self.ensure_num_leaves()
     }
 
+    /// Finalizes the trace.
+    pub fn finalize(&mut self) -> Result<()> {
+        // Ensure the trace is not finalized.
+        ensure!(!self.is_finalized, "Trace is already finalized");
+        // Ensure the transition index is within the bounds of the trace.
+        ensure!((self.transition_index as usize) < N::MAX_TRANSITIONS, "Trace reached the maximum transitions");
+        // Ensure the input index or output index is nonzero.
+        ensure!(self.input_index > 0 || self.output_index > 0, "Trace cannot transition without inputs or outputs");
+
+        // Retrieve the empty hash.
+        let empty_hash = *self.tree.empty_hash();
+        // Pad the leaves with the empty hash up to the starting index of the next transition.
+        self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_INPUTS - self.input_index as usize])?;
+        self.tree = self.tree.append(&vec![empty_hash.to_bits_le(); N::MAX_OUTPUTS - self.output_index as usize])?;
+        self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
+            empty_hash;
+            N::MAX_INPUTS
+                - self.input_index as usize
+        ]);
+        self.leaves.entry(self.transition_index).or_insert(vec![]).extend(vec![
+            empty_hash;
+            N::MAX_OUTPUTS
+                - self.output_index as usize
+        ]);
+
+        // Increment the transition index.
+        self.transition_index += 1;
+        // Reset the input and output indices.
+        self.input_index = 0;
+        self.output_index = 0;
+
+        // Ensure the number of leaves is correct.
+        self.ensure_num_leaves()
+    }
+
     /// Ensures the current number of leaves is correct.
     pub fn ensure_num_leaves(&self) -> Result<()> {
-        // Ensure the number of leaves is correct.
+        // Compute the number of leaves.
+        let num_leaves = self.tree.leaf_hashes().len();
+        // Compute the expected number of leaves.
         let expected_num_leaves = self.transition_index as usize * (N::MAX_INPUTS + N::MAX_OUTPUTS) as usize
             + (self.input_index + self.output_index) as usize;
-        ensure!(self.tree.leaf_hashes().len() == expected_num_leaves, "Trace has an incorrect number of leaves");
+        // Ensure the number of leaves is correct.
+        ensure!(
+            num_leaves == expected_num_leaves,
+            "Trace has an incorrect number of leaves: expected {expected_num_leaves}, found {num_leaves}"
+        );
         Ok(())
     }
 
@@ -238,18 +314,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         Ok((r_tcm, tcm, tpk, tvk))
     }
 
-    /// Returns the encryption randomizer for the given input index.
-    pub(crate) fn compute_input_randomizer(&self, input_index: u16) -> Result<Field<N>> {
-        // Compute the encryption randomizer as `Hash(tvk || index)`.
-        N::hash_psd2(&[self.tvk.to_x_coordinate(), U16::new(input_index).to_field()?])
-    }
+    // /// Returns the encryption randomizer for the given input index.
+    // pub(crate) fn compute_input_randomizer(&self, input_index: u16) -> Result<Field<N>> {
+    //     // Compute the encryption randomizer as `Hash(tvk || index)`.
+    //     N::hash_psd2(&[self.tvk.to_x_coordinate(), U16::new(input_index).to_field()?])
+    // }
 
     /// Returns the encryption randomizer for the given output index.
-    pub(crate) fn compute_output_randomizer(&self, index: u16) -> Result<Scalar<N>> {
+    pub(crate) fn compute_output_randomizer(&self, index: u16) -> Result<Field<N>> {
         // Compute the index.
         let index = U16::new(N::MAX_OUTPUTS as u16 + index).to_field()?;
-        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        N::hash_to_scalar_psd2(&[self.tvk.to_x_coordinate(), index])
+        // Compute the encryption randomizer as `Hash(tvk || index)`.
+        N::hash_psd2(&[self.tvk.to_x_coordinate(), index])
     }
 }
 
@@ -300,47 +376,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             |((register, value_type), input)| {
                 // Assign the console input to the register.
                 stack.store(&register, input.clone())?;
+                // Compute the console input leaf.
+                let console_input_leaf = N::hash_psd8(&input.to_fields()?)?;
                 // Add the console input leaf to the trace.
-                let input_leaf = match (input, value_type) {
-                    // In the input is a constant or public plaintext value, hash the plaintext.
-                    (StackValue::Plaintext(plaintext), ValueType::Constant(..))
-                    | (StackValue::Plaintext(plaintext), ValueType::Public(..)) => {
-                        // Hash the input.
-                        let hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
-                        // Add the hash to the trace.
-                        trace.add_input(hash)?;
-                        // Output the plaintext hash.
-                        hash
-                    }
-                    // If the input is a private plaintext value, encrypt and hash the ciphertext.
-                    (StackValue::Plaintext(plaintext), ValueType::Private(..)) => {
-                        // Compute the plaintext view key.
-                        let plaintext_view_key = trace.compute_input_randomizer(register.locator() as u16)?;
-                        // Encrypt the plaintext.
-                        let ciphertext = plaintext.encrypt_symmetric(plaintext_view_key)?;
-                        // Hash the ciphertext.
-                        let hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
-                        // Add the hash to the trace.
-                        trace.add_input(hash)?;
-                        // Output the ciphertext hash.
-                        hash
-                    }
-                    // If the input is a record, compute the serial number.
-                    (StackValue::Record(record), ValueType::Record(..)) => {
-                        // TODO (howardwu): Compute the serial number.
-                        let serial_number = Field::one();
-                        // // Compute the record view key.
-                        // let record_view_key = trace.compute_input_randomizer(register.locator() as u16)?;
-                        // // Encrypt the record.
-                        // let ciphertext = record.encrypt_symmetric(record_view_key)?;
-                        // Add the serial number to the trace.
-                        trace.add_input(serial_number)?;
-                        // Output the serial number.
-                        serial_number
-                    }
-                    // Otherwise, the program should halt.
-                    _ => bail!("Unexpected input type"),
-                };
+                trace.add_input(console_input_leaf)?;
 
                 // Inject the console input into a circuit input.
                 let circuit_input: CircuitValue<A> = match value_type {
@@ -352,35 +391,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                         circuit::Inject::new(circuit::Mode::Private, input.clone())
                     }
                 };
+
+                use circuit::ToFields;
+
                 // Assign the circuit input to the register.
                 stack.store_circuit(&register, circuit_input.clone())?;
-
                 // Compute the circuit input leaf.
-                let circuit_input_leaf = match circuit_input {
-                    // If the input is a plaintext value, hash the input.
-                    CircuitValue::Plaintext(plaintext) => {
-                        use circuit::ToBits;
-                        A::hash_bhp1024(&plaintext.to_bits_le())
-                    }
-                    // If the input is a record, compute the commitment, and derive the serial number.
-                    CircuitValue::Record(record) => {
-                        // TODO (howardwu): Compute the serial number.
-                        circuit::Inject::new(circuit::Mode::Private, Field::one())
-                    }
-                };
+                let circuit_input_leaf = A::hash_psd8(&circuit_input.to_fields());
 
                 use circuit::Inject;
-                // Ensure the input leaf matches the computed input leaf.
-                A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, input_leaf));
-                // match value_type {
-                //     // Constant inputs are injected as constants.
-                //     ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input_leaf),
-                //     // Public and private inputs are injected as privates.
-                //     // Records are injected based on inherited visibility (the Mode::Private is overridden).
-                //     ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
-                //         circuit::Inject::new(circuit::Mode::Public, input_leaf)
-                //     }
-                // }
+                // Ensure the console input leaf matches the computed input leaf.
+                A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf));
 
                 Ok::<_, Error>(())
             },
@@ -391,71 +412,30 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         function.instructions().iter().try_for_each(|instruction| instruction.execute(&mut stack))?;
 
         // Load the outputs.
-        let outputs = function.outputs().iter().map(|output| {
-            use circuit::{Eject, Inject};
+        let outputs = function.outputs().iter().enumerate().map(|(index, output)| {
+            use circuit::{Eject, Inject, ToFields};
 
-            // Retrieve the circuit value from the register.
-            let circuit_value = stack.load_circuit(&Operand::Register(output.register().clone()))?;
-            // Convert the circuit value to the output value type.
-            let output = match (circuit_value, output.value_type()) {
-                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::Plaintext::new(circuit::Mode::Constant, plaintext.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(plaintext));
-                    // Return the output circuit.
-                    circuit::Value::Constant(output)
-                }
-                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::Plaintext::new(circuit::Mode::Public, plaintext.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(plaintext));
-                    // Return the output circuit.
-                    circuit::Value::Public(output)
-                }
-                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::Plaintext::new(circuit::Mode::Private, plaintext.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(plaintext));
-                    // Return the output circuit.
-                    circuit::Value::Private(output)
-                }
-                (CircuitValue::Record(record), ValueType::Record(..)) => {
-                    // Inject the output circuit.
-                    let output = circuit::program::Record::new(circuit::Mode::Private, record.eject_value());
-                    // Ensure the output circuit matches the plaintext.
-                    // A::assert(output.is_equal_to(record));
-                    // Return the output circuit.
-                    circuit::Value::Record(output)
-                }
+            // Retrieve the circuit output from the register.
+            let circuit_output = stack.load_circuit(&Operand::Register(output.register().clone()))?;
+            // Compute the circuit output leaf.
+            let circuit_output_leaf = A::hash_psd8(&circuit_output.to_fields());
+
+            // Eject to the console output leaf.
+            let console_output_leaf = circuit_output_leaf.eject_value();
+            // Add the console output leaf to the trace.
+            trace.add_output(console_output_leaf)?;
+
+            // Ensure the console output leaf matches the computed output leaf.
+            A::assert_eq(&circuit_output_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_output_leaf));
+
+            // Construct the circuit output value.
+            let output = match (circuit_output, output.value_type()) {
+                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
+                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
+                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
+                (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
                 _ => bail!("Circuit value does not match the expected output type"),
             };
-            // TODO (howardwu): Add encryption against the caller's address for all private literals,
-            //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
-            //  For constant outputs, add an assert_eq on the stack value - if it's constant,
-            //  the constraint will automatically be discarded, and if it's not, the constraint will
-            //  ensure the output register's value matches the newly-assigned hardcoded constant.
-            // // If the value contains any public literals, assign a new public variable for the public literal,
-            // // and add a constraint to enforce equality of the value.
-            // match &value {
-            //     Value::Literal(literal) => {
-            //         if literal.is_public() {
-            //             let public_literal = Literal::new(Mode::Public, literal.eject_value());
-            //             P::Environment::assert_eq(literal, public_literal);
-            //         }
-            //     }
-            //     Value::Definition(_, members) => {
-            //         for member in members.iter() {
-            //             if member.is_public() {
-            //                 let public_literal = Literal::new(Mode::Public, member.eject_value());
-            //                 P::Environment::assert_eq(member, public_literal);
-            //             }
-            //         }
-            //     }
-            // }
-
             // Return the output.
             Ok(output)
         });

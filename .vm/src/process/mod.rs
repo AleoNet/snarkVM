@@ -48,19 +48,107 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         inputs: &[StackValue<N>],
         rng: &mut R,
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
-        // // Retrieve the function from the program.
-        // let function = program.get_function(function_name)?;
-
-        // // Initialize a new caller account.
-        // let caller_private_key = PrivateKey::<<circuit::AleoV0 as circuit::Environment>::Network>::new(&mut rng)?;
-        // let _caller_view_key = ViewKey::try_from(&caller_private_key)?;
-        // let caller_address = Address::try_from(&caller_private_key)?;
-
         // Initialize the trace.
         let mut trace = Trace::new(caller, rng)?;
 
         // Execute the function.
-        Stack::<N, A>::execute_transition(&mut trace, self.program.clone(), function_name, inputs)
+        let outputs = Stack::<N, A>::execute_transition(&mut trace, self.program.clone(), function_name, inputs)?;
+
+        // Finalize the trace.
+        trace.finalize()?;
+        println!("{:?}", trace.leaves());
+
+        println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
+
+        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+        println!(
+            "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
+        );
+
+        Ok(outputs)
+
         // self.program.execute(function_name, inputs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use circuit::network::AleoV0;
+    use console::{
+        account::{PrivateKey, ViewKey},
+        network::Testnet3,
+    };
+
+    type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
+
+    #[test]
+    fn test_process_execute_call() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
+            r"
+program example_call;
+
+// (a + (a + b)) + (a + b) == (3a + 2b)
+closure execute:
+    input r0 as field;
+    input r1 as field;
+    add r0 r1 into r2;
+    add r0 r2 into r3;
+    add r2 r3 into r4;
+    output r4 as field;
+    output r3 as field;
+    output r2 as field;
+
+function compute:
+    input r0 as field.private;
+    input r1 as field.public;
+    call execute r0 r1 into r2 r3 r4;
+    output r2 as field.private;
+    output r3 as field.private;
+    output r4 as field.private;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Declare the input value.
+        let r0 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
+        let r1 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
+
+        // Declare the expected output value.
+        let r2 = Value::Private(Plaintext::from_str("19field").unwrap());
+        let r3 = Value::Private(Plaintext::from_str("11field").unwrap());
+        let r4 = Value::Private(Plaintext::from_str("8field").unwrap());
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo> { program };
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // // Compute the output value.
+        // let candidate = program.evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
+        // assert_eq!(3, candidate.len());
+        // assert_eq!(r2, candidate[0]);
+        // assert_eq!(r3, candidate[1]);
+        // assert_eq!(r4, candidate[2]);
+
+        use circuit::Eject;
+
+        // Re-run to ensure state continues to work.
+        let candidate = process.execute(caller, &function_name, &[r0, r1], rng).unwrap();
+        assert_eq!(3, candidate.len());
+        assert_eq!(r2, candidate[0].eject_value());
+        assert_eq!(r3, candidate[1].eject_value());
+        assert_eq!(r4, candidate[2].eject_value());
     }
 }
