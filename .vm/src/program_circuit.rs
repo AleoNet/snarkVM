@@ -168,7 +168,7 @@ pub mod program {
                 println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
                 // Compute the data ID.
-                let data_id = data.to_id();
+                let data_id = data.to_commitment();
                 println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
 
                 // Ensure the data ID matches the declared data ID in the record.

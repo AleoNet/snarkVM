@@ -16,17 +16,17 @@
 
 use super::*;
 
-impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Returns the record ID, as a hash over the **`Record<N, Ciphertext<N>>` variant**.
-    pub fn to_id(&self) -> Result<Field<N>> {
-        // Compute the BHP hash of the flattened data.
+impl<N: Network> Record<N, Plaintext<N>> {
+    /// Returns the record commitment.
+    pub fn to_commitment(&self) -> Result<Field<N>> {
+        // Compute the BHP hash of the program record.
         N::hash_bhp1024(&self.to_bits_le())
     }
 }
 
-impl<N: Network> Record<N, Plaintext<N>> {
-    /// Returns the record ID, as a hash over the **`Record<N, Plaintext<N>>` variant**.
-    pub fn to_id(&self) -> Result<Field<N>> {
-        bail!("Illegal operation: Record::to_id() cannot be invoked on the `Plaintext` variant.")
+impl<N: Network> Record<N, Ciphertext<N>> {
+    /// Returns the record commitment.
+    pub fn to_commitment(&self) -> Result<Field<N>> {
+        bail!("Illegal operation: Record::to_commitment() cannot be invoked on the `Ciphertext` variant.")
     }
 }

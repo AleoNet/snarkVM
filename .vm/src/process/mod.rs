@@ -65,41 +65,54 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         let mut trace = Trace::<N, A>::new(caller, rng)?;
 
         // Inject the inputs.
-        let circuit_inputs: Vec<_> = function
+        let inputs: Vec<_> = function
             .inputs()
             .iter()
             .map(|i| i.value_type())
             .zip_eq(inputs)
             .map(|(value_type, input)| {
-                // Compute the console input leaf.
-                let console_input_leaf = N::hash_bhp1024(&input.to_bits_le())?;
-                // Add the console input leaf to the trace.
-                trace.add_input(console_input_leaf)?;
-
-                use circuit::{Inject, ToBits};
+                use circuit::{Eject, Inject, ToBits};
 
                 // Inject the console input into a circuit input.
-                let circuit_input = match value_type {
+                let input = match value_type {
                     // Constant inputs are injected as constants.
                     ValueType::Constant(..) => CircuitValue::new(circuit::Mode::Constant, input.clone()),
-                    // Public and private inputs are injected as privates.
-                    // Records are injected based on inherited visibility (the Mode::Private is overridden).
+                    // Public and private inputs are injected as privates. Records inherit their visibility.
                     ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
                         CircuitValue::new(circuit::Mode::Private, input.clone())
                     }
                 };
 
-                // Compute the circuit input leaf.
-                let circuit_input_leaf = A::hash_bhp1024(&circuit_input.to_bits_le());
-                // Ensure the console input leaf matches the computed input leaf.
-                A::assert_eq(&circuit_input_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf));
+                // Compute the input leaf.
+                let input_leaf = match &input {
+                    // TODO (howardwu): Handle encrypting the private input case.
+                    CircuitValue::Plaintext(..) => A::hash_bhp1024(&input.to_bits_le()),
+                    CircuitValue::Record(record) => {
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment();
+                        // TODO (howardwu): Compute the serial number.
+                        // Compute the serial number.
+                        let serial_number = commitment;
+                        // Output the serial number.
+                        serial_number
+                    }
+                };
 
-                Ok::<_, Error>(circuit_input)
+                // Inject the input leaf as a public input.
+                let console_input_leaf = input_leaf.eject_value();
+                let candidate_leaf = circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf);
+                // Ensure the candidate input leaf matches the computed input leaf.
+                A::assert_eq(candidate_leaf, &input_leaf);
+
+                // Add the console input leaf to the trace.
+                trace.add_input(console_input_leaf)?;
+
+                Ok::<_, Error>(input)
             })
             .try_collect()?;
 
         // Execute the function.
-        let circuit_outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &circuit_inputs)?;
+        let circuit_outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &inputs)?;
 
         // Load the outputs.
         circuit_outputs.iter().enumerate().try_for_each(|(index, circuit_output)| {

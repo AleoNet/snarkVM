@@ -16,17 +16,17 @@
 
 use super::*;
 
-impl<A: Aleo> Record<A, Ciphertext<A>> {
-    /// Returns the record ID, as a hash over the **`Record<A, Ciphertext<A>>` variant**.
-    pub fn to_id(&self) -> Field<A> {
-        // Compute the BHP hash of the flattened record.
+impl<A: Aleo> Record<A, Plaintext<A>> {
+    /// Returns the record commitment.
+    pub fn to_commitment(&self) -> Field<A> {
+        // Compute the BHP hash of the program record.
         A::hash_bhp1024(&self.to_bits_le())
     }
 }
 
-impl<A: Aleo> Record<A, Plaintext<A>> {
-    /// Returns the record ID, as a hash over the **`Record<A, Plaintext<A>>` variant**.
-    pub fn to_id(&self) -> Field<A> {
-        A::halt("Illegal operation: Record::to_id() cannot be invoked on the `Plaintext` variant.")
+impl<A: Aleo> Record<A, Ciphertext<A>> {
+    /// Returns the record commitment.
+    pub fn to_commitment(&self) -> Field<A> {
+        A::halt("Illegal operation: Record::to_commitment() cannot be invoked on the `Ciphertext` variant.")
     }
 }

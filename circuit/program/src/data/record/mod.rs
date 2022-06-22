@@ -28,8 +28,8 @@ mod encrypt;
 mod find;
 mod num_randomizers;
 mod to_bits;
+mod to_commitment;
 mod to_fields;
-mod to_id;
 
 use crate::{Ciphertext, Identifier, Plaintext, Visibility};
 use snarkvm_circuit_account::ViewKey;

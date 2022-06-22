@@ -26,8 +26,8 @@ mod find;
 mod num_randomizers;
 mod parse;
 mod to_bits;
+mod to_commitment;
 mod to_fields;
-mod to_id;
 
 use crate::{Ciphertext, Identifier, Literal, Plaintext};
 use snarkvm_console_account::{Address, ViewKey};
