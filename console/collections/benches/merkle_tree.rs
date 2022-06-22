@@ -93,7 +93,7 @@ fn append(c: &mut Criterion) {
 criterion_group! {
     name = merkle_tree;
     config = Criterion::default().sample_size(10);
-    targets = add, append
+    targets = new, append
 }
 
 criterion_main!(merkle_tree);
