@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use console::{
-    account::{Address, ComputeKey, PrivateKey, ViewKey},
     network::{prelude::*, Network},
     transition::{Record, State},
     types::{Field, Group, Scalar, U64},

@@ -123,6 +123,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+        // Ensure the circuit environment is clean.
+        A::reset();
         // Execute the function.
         Stack::<N, A>::execute(self.clone(), function_name, inputs)
     }

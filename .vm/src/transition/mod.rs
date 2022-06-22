@@ -24,10 +24,8 @@ pub mod proof;
 use proof::*;
 
 use console::{
-    account::{Address, ComputeKey, PrivateKey, ViewKey},
     network::{prelude::*, Network},
-    transition::{Record, State},
-    types::{Field, Group, Scalar, U64},
+    types::{Field, Group, Scalar},
 };
 use snarkvm_algorithms::snark::marlin::Proof;
 

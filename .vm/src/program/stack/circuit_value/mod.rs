@@ -63,8 +63,6 @@ impl<A: circuit::Aleo> ToBits for CircuitValue<A> {
     /// Returns the circuit value as a list of **little-endian** bits.
     #[inline]
     fn to_bits_le(&self) -> Vec<circuit::types::Boolean<A>> {
-        use circuit::ToBits;
-
         match self {
             CircuitValue::Plaintext(plaintext) => plaintext.to_bits_le(),
             CircuitValue::Record(record) => record.to_bits_le(),
@@ -74,8 +72,6 @@ impl<A: circuit::Aleo> ToBits for CircuitValue<A> {
     /// Returns the circuit value as a list of **big-endian** bits.
     #[inline]
     fn to_bits_be(&self) -> Vec<circuit::types::Boolean<A>> {
-        use circuit::ToBits;
-
         match self {
             CircuitValue::Plaintext(plaintext) => plaintext.to_bits_be(),
             CircuitValue::Record(record) => record.to_bits_be(),
