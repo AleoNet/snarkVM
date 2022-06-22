@@ -98,8 +98,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     }
                 };
 
-                // Inject the input leaf as a public input.
+                // Eject to the console input leaf.
                 let console_input_leaf = input_leaf.eject_value();
+                // Inject the input leaf as a public input.
                 let candidate_leaf = circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf);
                 // Ensure the candidate input leaf matches the computed input leaf.
                 A::assert_eq(candidate_leaf, &input_leaf);
@@ -112,38 +113,45 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             .try_collect()?;
 
         // Execute the function.
-        let circuit_outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &inputs)?;
+        let outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &inputs)?;
 
         // Load the outputs.
-        circuit_outputs.iter().enumerate().try_for_each(|(index, circuit_output)| {
+        outputs.iter().enumerate().try_for_each(|(index, output)| {
             use circuit::{Eject, Inject, ToBits};
 
-            // Compute the circuit output leaf.
-            let circuit_output_leaf = A::hash_bhp1024(&circuit_output.to_bits_le());
+            // Compute the output leaf.
+            let output_leaf = match output {
+                // TODO (howardwu): Handle encrypting the private output case.
+                circuit::Value::Constant(..) | circuit::Value::Public(..) | circuit::Value::Private(..) => {
+                    A::hash_bhp1024(&output.to_bits_le())
+                }
+                circuit::Value::Record(record) => record.to_commitment(),
+            };
 
             // Eject to the console output leaf.
-            let console_output_leaf = circuit_output_leaf.eject_value();
+            let console_output_leaf = output_leaf.eject_value();
+            // Inject the output leaf as a public input.
+            let candidate_leaf = circuit::Field::<A>::new(circuit::Mode::Public, console_output_leaf);
+            // Ensure the candidate output leaf matches the computed output leaf.
+            A::assert_eq(candidate_leaf, &output_leaf);
+
             // Add the console output leaf to the trace.
             trace.add_output(console_output_leaf)?;
-
-            // Ensure the console output leaf matches the computed output leaf.
-            A::assert_eq(&circuit_output_leaf, circuit::Field::<A>::new(circuit::Mode::Public, console_output_leaf));
 
             Ok::<_, Error>(())
         })?;
 
         // Finalize the trace.
         trace.finalize()?;
+
         println!("{:?}", trace.leaves());
-
         println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-
         let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
         println!(
             "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
         );
 
-        Ok(circuit_outputs)
+        Ok(outputs)
     }
 }
 
