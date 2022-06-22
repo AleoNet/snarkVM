@@ -30,6 +30,7 @@ use aleo_std::prelude::*;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+#[derive(Clone)]
 pub struct MerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8> {
     /// The leaf hasher for the Merkle tree.
     leaf_hasher: LH,
@@ -111,7 +112,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
     #[timed]
     #[inline]
     /// Returns a new Merkle tree with the given new leaves appended to it.
-    pub fn append(&self, new_leaves: &[LH::Leaf]) -> Result<Self> {
+    pub fn append(&mut self, new_leaves: &[LH::Leaf]) -> Result<()> {
         // Compute the maximum number of leaves.
         let max_leaves = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
         // Compute the number of nodes.
@@ -198,14 +199,15 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         }
 
         // update the values at the very end so the original tree is not altered in case of failure
-        Ok(Self {
+        *self = Self {
             leaf_hasher: self.leaf_hasher.clone(),
             path_hasher: self.path_hasher.clone(),
             root: root_hash,
             tree,
             empty_hash: self.empty_hash,
             number_of_leaves: self.number_of_leaves + new_leaves.len(),
-        })
+        };
+        Ok(())
     }
 
     #[inline]

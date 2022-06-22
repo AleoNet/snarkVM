@@ -296,7 +296,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
         }
 
         // Ensure the number of leaves is correct.
-        self.ensure_num_leaves()
+        self.ensure_num_leaves()?;
+        // Ensure the transaction root is correct.
+        self.ensure_transaction_root()
     }
 
     /// Ensures the current number of leaves is correct.
@@ -312,6 +314,40 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
             "Trace has an incorrect number of leaves: expected {expected_num_leaves}, found {num_leaves}"
         );
         Ok(())
+    }
+
+    /// Ensures the transaction root is correct.
+    pub fn ensure_transaction_root(&self) -> Result<()> {
+        // Compute the transition roots.
+        self.leaves
+            .values()
+            .map(|leaves| {
+                // Compute the leaf nodes.
+                let leaf_nodes = leaves.iter().map(|leaf| leaf.unwrap_or(Field::<N>::zero()).to_bits_le());
+                // Compute the transition root.
+                Ok::<_, Error>(*N::merkle_tree_bhp::<TRANSITION_DEPTH>(&leaf_nodes.collect::<Vec<_>>())?.root())
+            })
+            .zip_eq(self.roots.values())
+            .try_for_each(|(root, expected_root)| {
+                let root = root?;
+                match root == *expected_root {
+                    true => Ok(()),
+                    false => bail!("Trace has an incorrect transition root: expected {expected_root}, found {root}"),
+                }
+            })?;
+
+        // Compute the transaction root.
+        let root = *N::merkle_tree_bhp::<TRANSACTION_DEPTH>(
+            &self.roots.values().map(|subroot| subroot.to_bits_le()).collect::<Vec<_>>(),
+        )?
+        .root();
+
+        // Ensure the transaction root is correct.
+        let expected_root = self.transaction.root();
+        match root == *expected_root {
+            true => Ok(()),
+            false => bail!("Trace has an incorrect transaction root: expected {expected_root}, found {root}"),
+        }
     }
 
     /// Returns the transition view key, given the caller address and an RNG.

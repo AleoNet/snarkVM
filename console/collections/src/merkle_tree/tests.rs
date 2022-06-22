@@ -34,7 +34,7 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     additional_leaves: &[LH::Leaf],
 ) -> Result<()> {
     // Construct the Merkle tree for the given leaves.
-    let merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
+    let mut merkle_tree = MerkleTree::<E, LH, PH, DEPTH>::new(leaf_hasher, path_hasher, leaves)?;
     assert_eq!(leaves.len(), merkle_tree.number_of_leaves);
 
     // Check each leaf in the Merkle tree.
@@ -53,7 +53,7 @@ fn check_merkle_tree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash
     // If additional leaves are provided, check that the Merkle tree is consistent with them.
     if !additional_leaves.is_empty() {
         // Append additional leaves to the Merkle tree.
-        let merkle_tree = merkle_tree.append(additional_leaves)?;
+        merkle_tree.append(additional_leaves)?;
         // Check each additional leaf in the Merkle tree.
         for (leaf_index, leaf) in additional_leaves.iter().enumerate() {
             // Compute a Merkle proof for the leaf.
@@ -157,7 +157,7 @@ fn check_merkle_tree_depth_3_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     // ------------------------------------------------------------------------------------------ //
 
     // Rebuild the Merkle tree with the additional leaf.
-    merkle_tree = merkle_tree.append(additional_leaves)?;
+    merkle_tree.append(additional_leaves)?;
     assert_eq!(15, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
@@ -258,7 +258,7 @@ fn check_merkle_tree_depth_4_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     // ------------------------------------------------------------------------------------------ //
 
     // Rebuild the Merkle tree with the additional leaf.
-    merkle_tree = merkle_tree.append(&[additional_leaves[0].clone()])?;
+    merkle_tree.append(&[additional_leaves[0].clone()])?;
     assert_eq!(15, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(5, merkle_tree.number_of_leaves);
@@ -314,7 +314,7 @@ fn check_merkle_tree_depth_4_padded<E: Environment, LH: LeafHash<Hash = PH::Hash
     assert_eq!(5, merkle_tree.number_of_leaves);
 
     // Rebuild the Merkle tree with the additional leaf.
-    merkle_tree = merkle_tree.append(&[additional_leaves[1].clone()])?;
+    merkle_tree.append(&[additional_leaves[1].clone()])?;
     assert_eq!(15, merkle_tree.tree.len());
     // assert_eq!(0, merkle_tree.padding_tree.len());
     assert_eq!(6, merkle_tree.number_of_leaves);
@@ -584,32 +584,35 @@ fn test_merkle_tree_depth_4_poseidon() -> Result<()> {
 #[ignore]
 #[test]
 fn test_profiler() -> Result<()> {
+    const DEPTH: u8 = 32;
+    const NUM_LEAVES: &[usize] = &[1000, 10000];
+
+    /// Generates the specified number of random Merkle tree leaves.
+    macro_rules! generate_leaves {
+        ($num_leaves:expr) => {{
+            (0..$num_leaves)
+                .map(|_| Field::<CurrentEnvironment>::rand(&mut test_rng()).to_bits_le())
+                .collect::<Vec<_>>()
+        }};
+    }
+
     type LH = BHP1024<CurrentEnvironment>;
     type PH = BHP512<CurrentEnvironment>;
 
     let leaf_hasher = LH::setup("AleoMerkleTreeTest0")?;
     let path_hasher = PH::setup("AleoMerkleTreeTest1")?;
 
-    const DEPTH: u8 = 32;
-    const NUM_LEAVES: &[usize] = &[1000, 10000];
-
-    /// Generates the specified number of random Merkle tree leaves.
-    macro_rules! generate_leaves {
-        ($num_leaves:expr, $leaf_size:expr) => {{
-            (0..$num_leaves)
-                .map(|_| (0..$leaf_size).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>())
-                .collect::<Vec<_>>()
-        }};
-    }
-
     for num_leaves in NUM_LEAVES {
         println!("Generating Merkle tree with {} leaves, and appending 1 leaf...", num_leaves);
 
-        let leaves = generate_leaves!(*num_leaves, 253);
-        let merkle_tree = MerkleTree::<CurrentEnvironment, LH, PH, DEPTH>::new(&leaf_hasher, &path_hasher, &leaves)?;
+        // New
+        let leaves = generate_leaves!(*num_leaves);
+        let mut merkle_tree =
+            MerkleTree::<CurrentEnvironment, LH, PH, DEPTH>::new(&leaf_hasher, &path_hasher, &leaves)?;
 
-        let new_leaf = generate_leaves!(1, 253);
-        let _tree = merkle_tree.append(&new_leaf)?;
+        // Append
+        let new_leaf = generate_leaves!(1);
+        merkle_tree.append(&new_leaf)?;
     }
 
     bail!("\n\nRemember to #[ignore] this test!\n\n")
