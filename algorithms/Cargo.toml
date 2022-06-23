@@ -215,9 +215,6 @@ version = "0.3.5"
 [dev-dependencies.csv]
 version = "1"
 
-[dev-dependencies.indexmap]
-version = "1.8.2"
-
 [dev-dependencies.rand_xorshift]
 version = "0.3"
 

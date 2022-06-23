@@ -2004,7 +2004,6 @@ dependencies = [
  "getrandom",
  "hashbrown 0.12.1",
  "hex",
- "indexmap",
  "itertools",
  "lazy_static",
  "num_cpus",
