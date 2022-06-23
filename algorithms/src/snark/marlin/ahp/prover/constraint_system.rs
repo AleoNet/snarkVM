@@ -18,12 +18,15 @@ use crate::snark::marlin::ahp::matrices::make_matrices_square;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{
     errors::SynthesisError,
+    ConstraintIndex,
     ConstraintSystem as CS,
     Index as VarIndex,
     LinearCombination,
+    LookupConstraints,
     LookupTable,
     Variable,
 };
+use std::collections::HashSet;
 
 pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) public_variables: Vec<F>,
@@ -31,9 +34,8 @@ pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) num_public_variables: usize,
     pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
-    pub(crate) lookup_table: Option<LookupTable<F>>,
-    pub(crate) s_mul: Vec<F>,
-    pub(crate) s_lookup: Vec<F>,
+    pub(crate) mul_constraints: HashSet<ConstraintIndex>,
+    pub(crate) lookup_constraints: Vec<LookupConstraints<F>>,
 }
 
 impl<F: Field> ConstraintSystem<F> {
@@ -44,9 +46,8 @@ impl<F: Field> ConstraintSystem<F> {
             num_public_variables: 1usize,
             num_private_variables: 0usize,
             num_constraints: 0usize,
-            lookup_table: None,
-            s_mul: vec![],
-            s_lookup: vec![],
+            mul_constraints: HashSet::new(),
+            lookup_constraints: vec![],
         }
     }
 
@@ -70,21 +71,34 @@ impl<F: Field> ConstraintSystem<F> {
         assert_eq!(self.num_public_variables + self.num_private_variables, self.num_constraints, "padding failed!");
     }
 
-    fn lookup(&mut self, val: LinearCombination<F>) -> Result<F, SynthesisError> {
-        if let Some(lookup_table) = &self.lookup_table {
-            Ok(*lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?)
-        } else {
-            Err(SynthesisError::LookupTableMissing)
-        }
+    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<F, SynthesisError> {
+        let lookup_values = key
+            .iter()
+            .enumerate()
+            .map(|(i, lc)| {
+                lc.0.iter()
+                    .map(|(var, coeff)| {
+                        let value = match var.get_unchecked() {
+                            VarIndex::Public(index) => self.public_variables[index],
+                            VarIndex::Private(index) => self.private_variables[index],
+                        };
+                        value * coeff
+                    })
+                    .sum::<F>()
+            })
+            .collect::<Vec<F>>();
+        // TODO: should this table lookup be done with identifiers instead of indices?
+        Ok(*self.lookup_constraints[table_index]
+            .lookup(&lookup_values)
+            .ok_or_else(|| SynthesisError::LookupValueMissing)?)
     }
 }
 
 impl<F: Field> CS<F> for ConstraintSystem<F> {
     type Root = Self;
 
-    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
-        self.lookup_table = Some(lookup_table);
-        Ok(())
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
+        self.lookup_constraints.push(LookupConstraints::new(lookup_table));
     }
 
     #[inline]
@@ -124,18 +138,16 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
+        self.mul_constraints.insert(self.num_constraints);
         self.num_constraints += 1;
-        self.s_mul.push(F::one());
-        self.s_lookup.push(F::zero());
     }
 
     #[inline]
-    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
-        let res = self.lookup(val)?;
+    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
+        let res = self.lookup(key, table_index)?;
 
+        self.lookup_constraints[table_index].insert(self.num_constraints);
         self.num_constraints += 1;
-        self.s_mul.push(F::zero());
-        self.s_lookup.push(F::one());
         self.alloc(|| "lookup_table", || Ok(res))
     }
 

@@ -19,6 +19,7 @@ use crate::{
     snark::marlin::{ahp::indexer::*, CircuitVerifyingKey, MarlinMode},
 };
 use snarkvm_curves::PairingEngine;
+use snarkvm_r1cs::LookupTable;
 use snarkvm_utilities::{
     io::{self, Read, Write},
     serialize::*,

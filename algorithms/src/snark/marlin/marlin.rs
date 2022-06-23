@@ -79,8 +79,8 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
-        c: &C,
+    pub fn circuit_specific_setup<CS: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
+        c: &CS,
         rng: &mut R,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let circuit = AHPForR1CS::<_, MM>::index(c)?;
@@ -91,9 +91,9 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     /// Generates the circuit proving and verifying keys.
     /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
-    pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
+    pub fn circuit_setup<CS: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
-        circuit: &C,
+        circuit: &CS,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
@@ -215,8 +215,8 @@ where
         srs
     }
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
-        circuit: &C,
+    fn setup<CS: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+        circuit: &CS,
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
@@ -227,9 +227,9 @@ where
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    fn prove_batch_with_terminator<CS: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit_proving_key: &CircuitProvingKey<E, MM>,
-        circuits: &[C],
+        circuits: &[CS],
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
@@ -745,6 +745,87 @@ pub mod test {
             c.mul_assign(&b);
 
             let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25 };
+
+            // Generate the circuit parameters.
+
+            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific(&mut rng)).unwrap();
+
+            // Test native proof and verification.
+
+            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+            assert!(TestSNARK::verify(&vk.clone(), &vec![c], &proof).unwrap(), "The native verification check fails.");
+        }
+    }
+}
+
+#[cfg(test)]
+mod lookup_test {
+    use super::*;
+    use crate::{
+        crypto_hash::PoseidonSponge,
+        snark::marlin::{fiat_shamir::FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
+        SRS,
+    };
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use snarkvm_fields::Field;
+    use snarkvm_r1cs::{ConstraintSystem, LinearCombination, LookupTable, SynthesisError};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+
+    use indexmap::IndexMap;
+
+    use core::ops::MulAssign;
+
+    const ITERATIONS: usize = 10;
+
+    #[derive(Clone)]
+    pub struct Circuit<F: Field> {
+        pub a: Option<F>,
+        pub b: Option<F>,
+        pub num_constraints: usize,
+        pub num_variables: usize,
+        pub table: LookupTable<F>,
+    }
+
+    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
+        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+            cs.add_lookup_table(self.table.clone());
+            let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+            let c = cs.lookup(&vec![LinearCombination::from(a), LinearCombination::from(b)], 0)?;
+
+            for i in 0..(self.num_variables - 3) {
+                let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            }
+
+            for i in 0..(self.num_constraints - 2) {
+                cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+            }
+
+            Ok(())
+        }
+    }
+
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
+
+    #[test]
+    fn marlin_snark_lookup_test() {
+        let mut rng = test_crypto_rng();
+
+        for _ in 0..ITERATIONS {
+            // Construct the circuit.
+
+            let a = Fr::rand(&mut rng);
+            let b = Fr::rand(&mut rng);
+            let mut c = a;
+            c.mul_assign(&b);
+
+            let mut table = LookupTable::new(2);
+            let lookup_value = vec![a, b];
+            table.fill(lookup_value, c);
+
+            let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25, table };
 
             // Generate the circuit parameters.
 

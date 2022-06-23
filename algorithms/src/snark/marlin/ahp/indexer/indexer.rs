@@ -39,7 +39,7 @@ use snarkvm_utilities::println;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Generate the index for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>, AHPError> {
+    pub fn index<CS: ConstraintSynthesizer<F>>(c: &CS) -> Result<Circuit<F, MM>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -126,7 +126,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
-        let s_m_evals = Evaluations::from_vec_and_domain(ics.s_mul.clone(), constraint_domain);
+        let mut mul_constraint_evals = vec![F::zero(); num_constraints];
+        ics.mul_constraints.iter().for_each(|index| mul_constraint_evals[*index] = F::one());
+        let s_m_evals = Evaluations::from_vec_and_domain(mul_constraint_evals, constraint_domain);
         let s_m = LabeledPolynomial::new(
             "s_m".to_string(),
             s_m_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
@@ -134,7 +136,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
         );
 
-        let s_l_evals = Evaluations::from_vec_and_domain(ics.s_lookup.clone(), constraint_domain);
+        let mut lookup_constraint_evals = vec![F::zero(); num_constraints];
+        ics.lookup_constraints.iter().for_each(|entry| {
+            entry.indices.iter().for_each(|index| lookup_constraint_evals[*index] = F::one());
+        });
+        let s_l_evals = Evaluations::from_vec_and_domain(lookup_constraint_evals.clone(), constraint_domain);
         let s_l = LabeledPolynomial::new(
             "s_l".to_string(),
             s_l_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
@@ -153,9 +159,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             s_m,
-            s_m_evals: ics.s_mul,
             s_l,
-            s_l_evals: ics.s_lookup,
+            s_l_evals: lookup_constraint_evals,
             mode: PhantomData,
         })
     }

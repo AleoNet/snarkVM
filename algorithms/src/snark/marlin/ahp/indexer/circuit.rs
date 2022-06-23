@@ -57,7 +57,6 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
 
     /// Selectors.
     pub s_m: LabeledPolynomial<F>,
-    pub s_m_evals: Vec<F>,
     pub s_l: LabeledPolynomial<F>,
     pub s_l_evals: Vec<F>,
 
@@ -108,7 +107,6 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
         self.s_m.serialize_with_mode(&mut writer, compress)?;
-        self.s_m_evals.serialize_with_mode(&mut writer, compress)?;
         self.s_l.serialize_with_mode(&mut writer, compress)?;
         self.s_l_evals.serialize_with_mode(&mut writer, compress)?;
         self.mode.serialize_with_mode(&mut writer, compress)?;
@@ -126,7 +124,6 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
         size += self.s_m.serialized_size(mode);
-        size += self.s_m_evals.serialized_size(mode);
         size += self.s_l.serialized_size(mode);
         size += self.s_l_evals.serialized_size(mode);
         size += self.mode.serialized_size(mode);
@@ -182,7 +179,6 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             s_m: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            s_m_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
