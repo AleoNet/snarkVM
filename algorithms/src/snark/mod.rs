@@ -15,4 +15,3 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod marlin;
-// pub mod plookup;
