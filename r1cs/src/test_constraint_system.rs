@@ -64,8 +64,8 @@ pub enum TestEntry<F: Field> {
         c: Vec<(Variable, InternedField)>,
     },
     TestLookup {
-        val: LinearCombination<F>,
-        result: Variable,
+        key: Vec<LinearCombination<F>>,
+        val: Variable,
     },
 }
 
@@ -200,8 +200,8 @@ impl<F: Field> TestConstraintSystem<F> {
                     }
                 }
                 (
-                    TestEntry::TestLookup { val: self_val, result: self_result },
-                    TestEntry::TestLookup { val: other_val, result: other_result },
+                    TestEntry::TestLookup { key: self_key, val: self_val },
+                    TestEntry::TestLookup { key: other_key, val: other_val },
                 ) => {}
                 _ => panic!("constraint systems aren't equal"),
             }
@@ -423,9 +423,8 @@ impl<F: Field> TestConstraintSystem<F> {
 impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     type Root = Self;
 
-    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
         self.lookup_table = Some(lookup_table);
-        Ok(())
     }
 
     fn alloc<Fn, A, AR>(&mut self, annotation: A, f: Fn) -> Result<Variable, SynthesisError>
@@ -493,14 +492,15 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         self.constraints.insert(TestEntry::TestConstraint { interned_path, a, b, c });
     }
 
-    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
-        let res = if let Some(lookup_table) = &self.lookup_table {
-            *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
-        } else {
-            return Err(SynthesisError::LookupTableMissing);
-        };
+    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
+        // let res = if let Some(lookup_table) = &self.lookup_table {
+        //     *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
+        // } else {
+        //     return Err(SynthesisError::LookupTableMissing);
+        // };
 
-        self.alloc(|| "lookup_table", || Ok(res))
+        // self.alloc(|| "lookup_table", || Ok(res))
+        Err(SynthesisError::LookupTableMissing)
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

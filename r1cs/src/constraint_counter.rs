@@ -28,9 +28,7 @@ pub struct ConstraintCounter {
 impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
     type Root = Self;
 
-    fn add_lookup_table(&mut self, _: LookupTable<ConstraintF>) -> Result<(), SynthesisError> {
-        Ok(())
-    }
+    fn add_lookup_table(&mut self, _: LookupTable<ConstraintF>) {}
 
     fn alloc<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
     where
@@ -66,7 +64,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         self.num_constraints += 1;
     }
 
-    fn lookup(&mut self, _: LinearCombination<ConstraintF>) -> Result<Variable, SynthesisError> {
+    fn lookup(&mut self, _: &[LinearCombination<ConstraintF>], _: usize) -> Result<Variable, SynthesisError> {
         self.num_constraints += 1;
         let var = Variable::new_unchecked(Index::Private(self.num_private_variables));
         self.num_private_variables += 1;

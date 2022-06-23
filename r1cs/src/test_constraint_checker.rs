@@ -77,9 +77,8 @@ impl<F: Field> TestConstraintChecker<F> {
 impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
     type Root = Self;
 
-    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
         self.lookup_table = Some(lookup_table);
-        Ok(())
     }
 
     fn alloc<Fn, A, AR>(&mut self, _annotation: A, f: Fn) -> Result<Variable, SynthesisError>
@@ -146,19 +145,20 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         }
     }
 
-    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
-        let res = if let Some(lookup_table) = &self.lookup_table {
-            *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
-        } else {
-            if self.first_unsatisfied_constraint.is_none() {
-                self.found_unsatisfactory_constraint = true;
-                self.first_unsatisfied_constraint = Some("lookup".to_string());
-            }
-            return Err(SynthesisError::LookupTableMissing);
-        };
+    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
+        // let res = if let Some(lookup_table) = &self.lookup_table {
+        //     *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
+        // } else {
+        //     if self.first_unsatisfied_constraint.is_none() {
+        //         self.found_unsatisfactory_constraint = true;
+        //         self.first_unsatisfied_constraint = Some("lookup".to_string());
+        //     }
+        //     return Err(SynthesisError::LookupTableMissing);
+        // };
 
-        self.num_constraints += 1;
-        self.alloc(|| "lookup_table", || Ok(res))
+        // self.num_constraints += 1;
+        // self.alloc(|| "lookup_table", || Ok(res))
+        Err(SynthesisError::LookupTableMissing)
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

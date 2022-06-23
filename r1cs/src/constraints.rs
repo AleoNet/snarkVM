@@ -14,31 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::LinearCombination;
-use indexmap::IndexMap;
+use crate::LookupTable;
 use snarkvm_fields::Field;
+use std::collections::HashSet;
 
-#[derive(Clone)]
-pub struct LookupTable<F: Field> {
-    arity: usize,
-    table: IndexMap<Vec<F>, F>,
+pub type ConstraintIndex = usize;
+
+pub struct LookupConstraints<F: Field> {
+    table: LookupTable<F>,
+    pub indices: HashSet<ConstraintIndex>,
 }
 
-impl<F: Field> LookupTable<F> {
-    pub fn new(arity: usize) -> Self {
-        Self { arity, table: IndexMap::new() }
+impl<F: Field> LookupConstraints<F> {
+    pub fn new(table: LookupTable<F>) -> Self {
+        Self { table, indices: HashSet::new() }
     }
 
-    pub fn fill(&mut self, key: Vec<F>, val: F) -> Option<F> {
-        assert!(key.len() == self.arity);
-        self.table.insert(key, val)
+    pub fn insert(&mut self, index: ConstraintIndex) -> bool {
+        self.indices.insert(index)
     }
 
     pub fn lookup(&self, key: &[F]) -> Option<&F> {
-        self.table.get(key)
-    }
-
-    pub fn arity(&self) -> usize {
-        self.arity
+        self.table.lookup(key)
     }
 }

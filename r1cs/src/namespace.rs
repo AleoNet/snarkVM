@@ -32,8 +32,8 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
     }
 
     #[inline]
-    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) -> Result<(), SynthesisError> {
-        self.0.add_lookup_table(lookup_table)
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
+        self.0.add_lookup_table(lookup_table);
     }
 
     #[inline]
@@ -69,8 +69,8 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
     }
 
     #[inline]
-    fn lookup(&mut self, val: LinearCombination<F>) -> Result<Variable, SynthesisError> {
-        self.0.lookup(val)
+    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
+        self.0.lookup(key, table_index)
     }
 
     // Downstream users who use `namespace` will never interact with these

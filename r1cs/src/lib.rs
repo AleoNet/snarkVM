@@ -20,6 +20,9 @@ extern crate thiserror;
 mod assignment;
 pub use assignment::*;
 
+mod constraints;
+pub use constraints::*;
+
 mod constraint_counter;
 pub use constraint_counter::*;
 
