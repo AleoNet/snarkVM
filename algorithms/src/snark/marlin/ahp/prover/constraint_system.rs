@@ -74,8 +74,7 @@ impl<F: Field> ConstraintSystem<F> {
     fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<F, SynthesisError> {
         let lookup_values = key
             .iter()
-            .enumerate()
-            .map(|(i, lc)| {
+            .map(|lc| {
                 lc.0.iter()
                     .map(|(var, coeff)| {
                         let value = match var.get_unchecked() {
@@ -88,9 +87,7 @@ impl<F: Field> ConstraintSystem<F> {
             })
             .collect::<Vec<F>>();
         // TODO: should this table lookup be done with identifiers instead of indices?
-        Ok(*self.lookup_constraints[table_index]
-            .lookup(&lookup_values)
-            .ok_or_else(|| SynthesisError::LookupValueMissing)?)
+        Ok(*self.lookup_constraints[table_index].lookup(&lookup_values).ok_or(SynthesisError::LookupValueMissing)?)
     }
 }
 

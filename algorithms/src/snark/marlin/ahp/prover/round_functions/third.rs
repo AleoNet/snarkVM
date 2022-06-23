@@ -28,6 +28,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
+#[cfg(not(feature = "parallel"))]
 use itertools::Itertools;
 use rand_core::RngCore;
 
@@ -41,14 +42,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the degree bounds of oracles in the third round.
-    pub fn third_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+    pub fn third_round_polynomial_info(_info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         [PolynomialInfo::new("h_1".into(), None, None)].into_iter().map(|info| (info.label().into(), info)).collect()
     }
 
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &verifier::SecondMessage<F>,
-        mut state: prover::State<'a, F, MM>,
+        state: prover::State<'a, F, MM>,
         _r: &mut R,
     ) -> (prover::ThirdOracles<F>, prover::State<'a, F, MM>) {
         let constraint_domain = state.constraint_domain;

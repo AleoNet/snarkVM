@@ -89,19 +89,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             itertools::izip!(&z_a, &z_b, &z_c, private_variables, &state.x_poly).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), &z_a, false, state_ref, None));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
             let r_b = F::rand(rng);
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), &z_b, true, state_ref, Some(r_b)));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
-            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), &z_c, true, state_ref, Some(r_b)));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), z_c, true, state_ref, Some(r_b)));
             job_pool.add_job(move || {
                 Self::calculate_f(
                     witness_label("f", i),
-                    &z_a,
-                    &z_b,
-                    &z_c,
+                    z_a,
+                    z_b,
+                    z_c,
                     &state.index.s_l_evals,
                     true,
                     state_ref,
@@ -257,6 +257,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         PoolResult::MatrixPoly(poly_for_opening, poly_for_committing)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn calculate_f<'a>(
         label: impl ToString,
         z_a: &[F],

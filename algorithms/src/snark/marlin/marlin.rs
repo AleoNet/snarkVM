@@ -16,7 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, LabeledPolynomial, Randomness, SonicKZG10},
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, Randomness, SonicKZG10},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
         fiat_shamir::traits::FiatShamirRng,
@@ -772,8 +772,6 @@ mod lookup_test {
     use snarkvm_r1cs::{ConstraintSystem, LinearCombination, LookupTable, SynthesisError};
     use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
-    use indexmap::IndexMap;
-
     use core::ops::MulAssign;
 
     const ITERATIONS: usize = 10;
@@ -792,7 +790,7 @@ mod lookup_test {
             cs.add_lookup_table(self.table.clone());
             let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
-            let c = cs.lookup(&vec![LinearCombination::from(a), LinearCombination::from(b)], 0)?;
+            let c = cs.lookup(&[LinearCombination::from(a), LinearCombination::from(b)], 0)?;
 
             for i in 0..(self.num_variables - 3) {
                 let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;

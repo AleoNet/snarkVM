@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain, Evaluations},
+    fft::{EvaluationDomain, Evaluations},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{

@@ -58,6 +58,18 @@ impl<F: Field> TestConstraintChecker<F> {
         self.first_unsatisfied_constraint.clone()
     }
 
+    pub fn eval_lc(&self, lc: &LinearCombination<F>) -> F {
+        lc.0.iter()
+            .map(|(var, coeff)| {
+                let value = match var.get_unchecked() {
+                    Index::Public(index) => self.public_variables[index],
+                    Index::Private(index) => self.private_variables[index],
+                };
+                value * coeff
+            })
+            .sum::<F>()
+    }
+
     #[inline]
     pub fn is_satisfied(&self) -> bool {
         !self.found_unsatisfactory_constraint
@@ -117,21 +129,9 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
     {
         self.num_constraints += 1;
 
-        let eval_lc = |lc: Vec<(Variable, F)>| -> F {
-            lc.into_iter()
-                .map(|(var, coeff)| {
-                    let value = match var.get_unchecked() {
-                        Index::Public(index) => self.public_variables[index],
-                        Index::Private(index) => self.private_variables[index],
-                    };
-                    value * coeff
-                })
-                .sum::<F>()
-        };
-
-        let a = eval_lc(a(LinearCombination::zero()).0);
-        let b = eval_lc(b(LinearCombination::zero()).0);
-        let c = eval_lc(c(LinearCombination::zero()).0);
+        let a = self.eval_lc(&a(LinearCombination::zero()));
+        let b = self.eval_lc(&b(LinearCombination::zero()));
+        let c = self.eval_lc(&c(LinearCombination::zero()));
 
         if a * b != c && self.first_unsatisfied_constraint.is_none() {
             self.found_unsatisfactory_constraint = true;
@@ -145,20 +145,20 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         }
     }
 
-    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
-        // let res = if let Some(lookup_table) = &self.lookup_table {
-        //     *lookup_table.lookup(&val).ok_or_else(|| SynthesisError::LookupValueMissing)?
-        // } else {
-        //     if self.first_unsatisfied_constraint.is_none() {
-        //         self.found_unsatisfactory_constraint = true;
-        //         self.first_unsatisfied_constraint = Some("lookup".to_string());
-        //     }
-        //     return Err(SynthesisError::LookupTableMissing);
-        // };
+    fn lookup(&mut self, key: &[LinearCombination<F>], _table_index: usize) -> Result<Variable, SynthesisError> {
+        let lookup_key = key.iter().map(|lc| self.eval_lc(lc)).collect::<Vec<F>>();
+        let res = if let Some(lookup_table) = &self.lookup_table {
+            *lookup_table.lookup(&lookup_key).ok_or(SynthesisError::LookupValueMissing)?
+        } else {
+            if self.first_unsatisfied_constraint.is_none() {
+                self.found_unsatisfactory_constraint = true;
+                self.first_unsatisfied_constraint = Some("lookup".to_string());
+            }
+            return Err(SynthesisError::LookupTableMissing);
+        };
 
-        // self.num_constraints += 1;
-        // self.alloc(|| "lookup_table", || Ok(res))
-        Err(SynthesisError::LookupTableMissing)
+        self.num_constraints += 1;
+        self.alloc(|| "lookup_table", || Ok(res))
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {
