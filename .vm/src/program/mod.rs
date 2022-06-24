@@ -151,7 +151,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
     /// Returns the interface with the given name.
     pub fn get_interface(&self, name: &Identifier<N>) -> Result<Interface<N>> {
-        self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))
+        // Attempt to retrieve the interface.
+        let interface =
+            self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))?;
+        // Ensure the interface contains members.
+        ensure!(!interface.members().is_empty(), "Interface '{name}' is missing members.");
+        // Return the interface.
+        Ok(interface)
     }
 
     /// Returns the record with the given name.
@@ -221,6 +227,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         ensure!(!self.is_reserved_opcode(&interface_name), "'{interface_name}' is a reserved opcode.");
         // Ensure the interface name is not a reserved keyword.
         ensure!(!self.is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
+
+        // Ensure the interface contains members.
+        ensure!(!interface.members().is_empty(), "Interface '{interface_name}' is missing members.");
 
         // Ensure all interface members are well-formed.
         // Note: This design ensures cyclic references are not possible.
@@ -328,6 +337,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         ensure!(!self.is_reserved_opcode(&closure_name), "'{closure_name}' is a reserved opcode.");
         // Ensure the closure name is not a reserved keyword.
         ensure!(!self.is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
+
+        // Ensure there are input statements in the closure.
+        ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(closure.inputs().len() <= N::MAX_INPUTS, "Closure exceeds maximum number of inputs");
+        // Ensure there are instructions in the closure.
+        ensure!(!closure.instructions().is_empty(), "Cannot evaluate a closure without instructions");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(closure.outputs().len() <= N::MAX_OUTPUTS, "Closure exceeds maximum number of outputs");
 
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
@@ -578,6 +596,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         ensure!(!self.is_reserved_opcode(&function_name), "'{function_name}' is a reserved opcode.");
         // Ensure the function name is not a reserved keyword.
         ensure!(!self.is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
+
+        // Ensure there are input statements in the function.
+        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
+        // Ensure there are instructions in the function.
+        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
 
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
