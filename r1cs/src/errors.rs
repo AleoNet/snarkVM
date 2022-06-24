@@ -45,6 +45,10 @@ pub enum SynthesisError {
     /// being present in the lookup table.
     #[error("Lookup value missing")]
     LookupValueMissing,
+    /// During synthesis, we attempted to fill a lookup table with a key that was
+    /// of the wrong length.
+    #[error("Wrong length for lookup key, field element count was {} but expected {}", _0, _1)]
+    LookupKeyWrongLength(usize, usize),
     /// During proof generation, we encountered an identity in the CRS
     #[error("Encountered an identity element in the CRS")]
     UnexpectedIdentity,

@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::SynthesisError;
+
 use indexmap::IndexMap;
 use snarkvm_fields::Field;
+use snarkvm_utilities::serialize::*;
 
 #[derive(Clone)]
 pub struct LookupTable<F: Field> {
@@ -28,9 +31,12 @@ impl<F: Field> LookupTable<F> {
         Self { arity, table: IndexMap::new() }
     }
 
-    pub fn fill(&mut self, key: Vec<F>, val: F) -> Option<F> {
-        assert!(key.len() == self.arity);
-        self.table.insert(key, val)
+    pub fn fill(&mut self, key: Vec<F>, val: F) -> Result<Option<F>, SynthesisError> {
+        if key.len() != self.arity {
+            Err(SynthesisError::LookupKeyWrongLength(key.len(), self.arity))
+        } else {
+            Ok(self.table.insert(key, val))
+        }
     }
 
     pub fn lookup(&self, key: &[F]) -> Option<&F> {
