@@ -137,7 +137,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         );
 
         let mut lookup_constraint_evals = vec![F::zero(); num_constraints];
+        let mut lookup_tables = vec![];
         ics.lookup_constraints.iter().for_each(|entry| {
+            lookup_tables.push(entry.table.clone());
             entry.indices.iter().for_each(|index| lookup_constraint_evals[*index] = F::one());
         });
         let s_l_evals = Evaluations::from_vec_and_domain(lookup_constraint_evals.clone(), constraint_domain);
@@ -161,6 +163,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             s_m,
             s_l,
             s_l_evals: lookup_constraint_evals,
+            lookup_tables,
             mode: PhantomData,
         })
     }

@@ -21,7 +21,7 @@ use std::collections::HashSet;
 pub type ConstraintIndex = usize;
 
 pub struct LookupConstraints<F: Field> {
-    table: LookupTable<F>,
+    pub table: LookupTable<F>,
     pub indices: HashSet<ConstraintIndex>,
 }
 

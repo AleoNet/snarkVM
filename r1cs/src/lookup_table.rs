@@ -20,7 +20,7 @@ use indexmap::IndexMap;
 use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LookupTable<F: Field> {
     arity: usize,
     table: IndexMap<Vec<F>, F>,

@@ -25,6 +25,7 @@ use crate::{
     snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
 };
 use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::LookupTable;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
 #[derive(Clone, Debug)]
@@ -58,6 +59,9 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub s_m: LabeledPolynomial<F>,
     pub s_l: LabeledPolynomial<F>,
     pub s_l_evals: Vec<F>,
+
+    /// Lookup tables used in the circuit.
+    pub lookup_tables: Vec<LookupTable<F>>,
 
     pub(crate) mode: PhantomData<MM>,
 }
@@ -108,6 +112,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.s_m.serialize_with_mode(&mut writer, compress)?;
         self.s_l.serialize_with_mode(&mut writer, compress)?;
         self.s_l_evals.serialize_with_mode(&mut writer, compress)?;
+        self.lookup_tables.serialize_with_mode(&mut writer, compress)?;
         self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
     }
@@ -125,6 +130,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.s_m.serialized_size(mode);
         size += self.s_l.serialized_size(mode);
         size += self.s_l_evals.serialized_size(mode);
+        size += self.lookup_tables.serialized_size(mode);
         size += self.mode.serialized_size(mode);
         size
     }
@@ -180,6 +186,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             s_m: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            lookup_tables: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }
