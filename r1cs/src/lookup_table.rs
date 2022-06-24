@@ -47,3 +47,47 @@ impl<F: Field> LookupTable<F> {
         self.arity
     }
 }
+
+impl<F: Field> CanonicalSerialize for LookupTable<F> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.arity.serialize_with_mode(&mut writer, compress)?;
+        self.table.len().serialize_with_mode(&mut writer, compress)?;
+        for (k, v) in self.table.iter() {
+            k.serialize_with_mode(&mut writer, compress)?;
+            v.serialize_with_mode(&mut writer, compress)?;
+        }
+        Ok(())
+    }
+
+    fn serialized_size(&self, compress: Compress) -> usize {
+        self.arity.serialized_size(compress)
+            + self.table.len().serialized_size(compress)
+            + self.table.iter().map(|(k, v)| k.serialized_size(compress) + v.serialized_size(compress)).sum::<usize>()
+    }
+}
+
+impl<F: Field> Valid for LookupTable<F> {
+    fn check(&self) -> Result<(), SerializationError> {
+        Vec::<F>::batch_check(self.table.keys())?;
+        F::batch_check(self.table.values())
+    }
+}
+
+impl<F: Field> CanonicalDeserialize for LookupTable<F> {
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let arity = usize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let mut table = IndexMap::new();
+        let len = usize::deserialize_with_mode(&mut reader, compress, validate)?;
+        for _ in 0..len {
+            table.insert(
+                Vec::<F>::deserialize_with_mode(&mut reader, compress, validate)?,
+                F::deserialize_with_mode(&mut reader, compress, validate)?,
+            );
+        }
+        Ok(Self { arity, table })
+    }
+}
