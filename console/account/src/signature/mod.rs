@@ -61,9 +61,14 @@ impl<N: Network> Signature<N> {
         self.response
     }
 
-    /// Returns the compute key.
+    /// Returns the signer compute key.
     pub const fn compute_key(&self) -> ComputeKey<N> {
         self.compute_key
+    }
+
+    /// Returns the signer address.
+    pub fn signer(&self) -> Result<Address<N>> {
+        Address::try_from(self.compute_key)
     }
 }
 
