@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::{EvaluationDomain, Evaluations},
+    fft::{DensePolynomial, EvaluationDomain, Evaluations},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
@@ -126,6 +126,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
+        // Compute zeta
+        // TODO: this needs to be derived from something, in plonk this is a hash of the transcript
+        // but for marlin i dont think we have a transcript - although we probably can do something
+        // similar with just hashing the indexed information.
+        let zeta = F::one();
+
         let mut mul_constraint_evals = vec![F::zero(); num_constraints];
         ics.mul_constraints.iter().for_each(|index| mul_constraint_evals[*index] = F::one());
         let s_m_evals = Evaluations::from_vec_and_domain(mul_constraint_evals, constraint_domain);
@@ -149,6 +155,32 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
             None,
         );
+
+        // Compute t poly
+        let mut evals = vec![vec![]; 3];
+        ics.lookup_constraints.iter().enumerate().for_each(|(i, entry)| {
+            entry.table.table.keys().zip(entry.table.table.values()).enumerate().for_each(|(j, (key, value))| {
+                evals[0][j * (i + 1)] = key[0];
+                evals[1][j * (i + 1)] = key[1];
+                evals[2][j * (i + 1)] = *value;
+            });
+        });
+
+        let t = LabeledPolynomial::new(
+            "t".to_string(),
+            evals
+                .iter()
+                .enumerate()
+                .map(|(i, column)| {
+                    let poly = Evaluations::from_vec_and_domain(column.to_vec(), constraint_domain)
+                        .interpolate_with_pc_by_ref(&ifft_precomputation);
+                    if i > 0 { poly * (F::from(i as u8 + 1) * zeta) } else { poly }
+                })
+                .sum::<DensePolynomial<F>>(),
+            None,
+            None,
+        );
+
         end_timer!(index_time);
         Ok(Circuit {
             index_info,
@@ -160,9 +192,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
+            zeta,
             s_m,
             s_l,
             s_l_evals: lookup_constraint_evals,
+            t,
             lookup_tables,
             mode: PhantomData,
         })
@@ -178,6 +212,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         map.insert("s_m".to_string(), PolynomialInfo::new("s_m".to_string(), None, None));
         map.insert("s_l".to_string(), PolynomialInfo::new("s_l".to_string(), None, None));
+        map.insert("t".to_string(), PolynomialInfo::new("t".to_string(), None, None));
         map
     }
 }

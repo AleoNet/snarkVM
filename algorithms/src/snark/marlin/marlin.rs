@@ -819,9 +819,9 @@ mod lookup_test {
             let mut c = a;
             c.mul_assign(&b);
 
-            let mut table = LookupTable::new(2);
-            let lookup_value = vec![a, b];
-            table.fill(lookup_value, c).expect("lookup key should be of the correct length");
+            let mut table = LookupTable::default();
+            let lookup_value = [a, b];
+            table.fill(lookup_value, c);
 
             let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25, table };
 

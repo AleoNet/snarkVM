@@ -61,7 +61,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .as_ref()
             .expect("prover::State should include verifier_first_msg when prover_fourth_round is called");
 
-        let zeta_squared = state.zeta.square();
+        let zeta_squared = state.index.zeta.square();
 
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
@@ -72,7 +72,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let mut z_c = b.z_c_poly.polynomial().as_dense().unwrap().clone();
                     let f = b.f_poly.polynomial().as_dense().unwrap();
                     let mul_check = state.index.s_m.polynomial().as_dense().unwrap() * &(&(z_a * &z_b) - &z_c);
-                    cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.zeta);
+                    cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.index.zeta);
                     cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= zeta_squared);
                     let lookup_check =
                         state.index.s_l.polynomial().as_dense().unwrap() * &(&(&(z_a + &z_b) + &z_c) - f);

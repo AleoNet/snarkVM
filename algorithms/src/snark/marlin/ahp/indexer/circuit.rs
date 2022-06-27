@@ -55,6 +55,10 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub fft_precomputation: FFTPrecomputation<F>,
     pub ifft_precomputation: IFFTPrecomputation<F>,
 
+    /// Lookup challenge
+    /// compression factor
+    pub zeta: F,
+
     /// Selectors.
     pub s_m: LabeledPolynomial<F>,
     pub s_l: LabeledPolynomial<F>,
@@ -62,6 +66,9 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
 
     /// Lookup tables used in the circuit.
     pub lookup_tables: Vec<LookupTable<F>>,
+
+    /// Lookup polynomials.
+    pub t: LabeledPolynomial<F>,
 
     pub(crate) mode: PhantomData<MM>,
 }
@@ -94,6 +101,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
             &self.c_arith.row_col,
             &self.s_m,
             &self.s_l,
+            &self.t,
         ]
         .into_iter()
     }
@@ -109,9 +117,11 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.a_arith.serialize_with_mode(&mut writer, compress)?;
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
+        self.zeta.serialize_with_mode(&mut writer, compress)?;
         self.s_m.serialize_with_mode(&mut writer, compress)?;
         self.s_l.serialize_with_mode(&mut writer, compress)?;
         self.s_l_evals.serialize_with_mode(&mut writer, compress)?;
+        self.t.serialize_with_mode(&mut writer, compress)?;
         self.lookup_tables.serialize_with_mode(&mut writer, compress)?;
         self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
@@ -127,9 +137,11 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.a_arith.serialized_size(mode);
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
+        size += self.zeta.serialized_size(mode);
         size += self.s_m.serialized_size(mode);
         size += self.s_l.serialized_size(mode);
         size += self.s_l_evals.serialized_size(mode);
+        size += self.t.serialized_size(mode);
         size += self.lookup_tables.serialized_size(mode);
         size += self.mode.serialized_size(mode);
         size
@@ -183,9 +195,11 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             fft_precomputation,
             ifft_precomputation,
+            zeta: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_m: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            t: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             lookup_tables: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })

@@ -277,7 +277,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     // NOTE: is that correct?
                     F::one()
                 } else {
-                    *a + state.zeta * b + state.zeta.square() * c
+                    *a + state.index.zeta * b + state.index.zeta.square() * c
                 }
             })
             .collect::<Vec<F>>();

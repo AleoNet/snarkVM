@@ -72,10 +72,6 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The length of this list must be equal to the batch size.
     pub(super) z_c: Option<Vec<Vec<F>>>,
 
-    /// Lookup challenge
-    /// compression factor
-    pub(super) zeta: F,
-
     /// A list of polynomials corresponding to the interpolation of the public input.
     /// The length of this list must be equal to the batch size.
     pub(super) x_poly: Vec<DensePolynomial<F>>,
@@ -146,7 +142,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             z_a: None,
             z_b: None,
             z_c: None,
-            zeta: F::one(),
             first_round_oracles: None,
             mz_poly_randomizer: None,
             verifier_first_message: None,
