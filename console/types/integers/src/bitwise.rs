@@ -277,3 +277,16 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrAssign<Integer<E, M>> for 
         }
     }
 }
+
+impl<E: Environment, I: IntegerType> Ternary for Integer<E, I> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        match **condition {
+            true => first.clone(),
+            false => second.clone(),
+        }
+    }
+}

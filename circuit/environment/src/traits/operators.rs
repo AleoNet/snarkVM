@@ -18,17 +18,6 @@ pub use console::traits::{arithmetic::*, bitwise::*};
 
 use crate::BooleanTrait;
 
-/// Trait for ternary operations.
-pub trait Ternary {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
-    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output
-    where
-        Self: Sized;
-}
-
 /// Unary operator for retrieving the inverse value.
 pub trait Inverse {
     type Output;

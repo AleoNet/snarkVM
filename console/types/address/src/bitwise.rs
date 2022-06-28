@@ -53,3 +53,16 @@ impl<E: Environment> Compare for Address<E> {
         !self.is_less_than(other)
     }
 }
+
+impl<E: Environment> Ternary for Address<E> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        match **condition {
+            true => first.clone(),
+            false => second.clone(),
+        }
+    }
+}

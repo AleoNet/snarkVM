@@ -132,7 +132,7 @@ macro_rules! instruction {
             SquareRoot,
             Sub,
             SubWrapped,
-            // Ternary,
+            Ternary,
             Xor,
         }}
     };
@@ -278,8 +278,8 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     Sub(Sub<N, A>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<N, A>),
-    // /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
-    // Ternary(Ternary<N, A>),
+    /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
+    Ternary(Ternary<N, A>),
     /// Performs a bitwise `xor` on `first` and `second`, storing the outcome in `destination`.
     Xor(Xor<N, A>),
 }

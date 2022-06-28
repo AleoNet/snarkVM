@@ -29,3 +29,16 @@ impl<E: Environment> Equal for Group<E> {
         Boolean::new(self != other)
     }
 }
+
+impl<E: Environment> Ternary for Group<E> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        match **condition {
+            true => first.clone(),
+            false => second.clone(),
+        }
+    }
+}

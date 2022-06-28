@@ -29,3 +29,16 @@ impl<E: Environment> Equal for StringType<E> {
         Boolean::new(self != other)
     }
 }
+
+impl<E: Environment> Ternary for StringType<E> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        match **condition {
+            true => first.clone(),
+            false => second.clone(),
+        }
+    }
+}

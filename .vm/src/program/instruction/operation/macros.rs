@@ -223,7 +223,7 @@ macro_rules! evaluate {
         let [first, second, third] = $inputs;
         // Compute the output.
         match (first, second, third) {
-            $((console::program::Literal::$input_a(first), console::program::Literal::$input_b(second), console::program::Literal::$input_c(third)) => console::program::Literal::$output(first.$operate(second, third)),)+
+            $((console::program::Literal::$input_a(first), console::program::Literal::$input_b(second), console::program::Literal::$input_c(third)) => console::program::Literal::$output($operator::$operate(first, second, third)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -273,10 +273,10 @@ macro_rules! execute {
     // Ternary operation.
     (match $operator:tt::$operate:tt($inputs:expr) { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident, )+ }) => {{
         // Retrieve the operands.
-        let [first, second] = $inputs.to_owned();
+        let [first, second, third] = $inputs.to_owned();
         // Compute the output.
         match (first, second, third) {
-            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second), circuit::Literal::$input_c(third)) => circuit::Literal::$output(first.$operate(&second, &third)),)+
+            $((circuit::Literal::$input_a(first), circuit::Literal::$input_b(second), circuit::Literal::$input_c(third)) => circuit::Literal::$output($operator::$operate(&first, &second, &third)),)+
             _ => bail!("Invalid operands for the '{}' instruction", Self::OPCODE),
         }
     }};
@@ -517,6 +517,56 @@ mod tests {
             }
         };
 
+        // Case 2: Ternary operation.
+        ($operator:tt::$operate:tt == $operation:tt::$execute:tt { $( ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
+            // For each given case of inputs and outputs, invoke `Case 2-A` or `Case 2-B` (see below).
+            $( $crate::test_execute!{$operator::$operate == $operation::$execute for ($input_a, $input_b, $input_c) => $output $( ($($condition),+) )?} )+
+
+            // For each non-existent case of inputs and outputs, invoke the following test to ensure the operation **fails**.
+            paste::paste! {
+                #[test]
+                fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
+                    for i in 0..10 {
+                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                            for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                                for literal_c in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                                    for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                        for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                            for mode_c in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                                // Skip this iteration, if this is **not** an invalid operand case.
+                                                $(if literal_a.to_type() == console::program::LiteralType::$input_a
+                                                  && literal_b.to_type() == console::program::LiteralType::$input_b
+                                                  && literal_c.to_type() == console::program::LiteralType::$input_c {
+                                                    continue;
+                                                })+
+
+                                                // Attempt to compute the invalid operand case.
+                                                let result_a = <$operation as $crate::Operation<_, _, _, _, 3>>::evaluate(&[literal_a.clone(), literal_b.clone(), literal_c.clone()]);
+                                                // Ensure the computation failed.
+                                                assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a} {literal_b}");
+
+                                                // Attempt to compute the invalid operand case.
+                                                let result_b = <$operation as $crate::Operation<_, _, _, _, 3>>::$execute(&[
+                                                    circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
+                                                    circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?,
+                                                    circuit::program::Literal::from_str(&format!("{literal_c}.{mode_c}"))?,
+                                                ]);
+                                                // Ensure the computation failed.
+                                                assert!(result_b.is_err(), "An invalid operands case (on iteration {i}) did not fail (circuit): {literal_a} {literal_b} {literal_c}");
+                                                // Reset the circuit.
+                                                <CurrentAleo as circuit::Environment>::reset();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+            }
+        };
+
         ////////////////////
         // Private Macros //
         ////////////////////
@@ -693,8 +743,6 @@ mod tests {
                         // Check the conditions.
                         $( $( check_condition!($condition); )+ )?
 
-                        println!("{should_succeed} {a} {b}", should_succeed = should_succeed, a = a, b = b);
-
                         // If `should_succeed` is `true`, compute the expected output.
                         let expected = match should_succeed {
                             true => Some(console::program::Literal::$output(a.$operate(&b))),
@@ -752,6 +800,111 @@ mod tests {
                                 }
                                 // Reset the circuit.
                                 <CurrentAleo as circuit::Environment>::reset();
+                            }
+                        }
+                    }
+
+                    Ok(())
+                }
+            }
+        };
+
+        // Case 2-A: Ternary operation.
+        // Case 2-B: Ternary operation, where:
+        //   1. "ensure overflow halts" | "ensure exponentiation overflow halts" | "ensure shifting past boundary halts"
+        //     - If the sampled values overflow or underflow on evaluation, ensure it halts.
+        //     - If the sampled values **do not** overflow or underflow on evaluation, ensure it succeeds.
+        //   2. "ensure divide by zero halts"
+        //     - If the sampled divisor is zero, ensure it halts.
+        //     - If the sampled divisor is **not** zero, ensure it succeeds.
+        ($operator:tt::$operate:tt == $operation:tt::$execute:tt for ($input_a:ident, $input_b:ident, $input_c:ident) => $output:ident $( ($($condition:tt),+) )?) => {
+            paste::paste! {
+                #[test]
+                fn [<test _ $operate _ $input_a:lower _ $input_b:lower _ $input_c:lower _ into _ $output:lower>]() -> Result<()> {
+                    // Ensure the expected output type is correct.
+                    assert_eq!(
+                        console::program::LiteralType::$output,
+                        <$operation as $crate::Operation<_, _, _, _, 3>>::output_type(&[console::program::LiteralType::$input_a.into(), console::program::LiteralType::$input_b.into(), console::program::LiteralType::$input_c.into()])?
+                    );
+
+                    // Determine the number of iterations to run, based on the opcode.
+                    let num_iterations: u64 = match *<$operation as $crate::Operation<_, _, _, _, 3>>::OPCODE {
+                        _ => 100
+                    };
+
+                    // Check the operation on randomly-sampled values.
+                    for i in 0..num_iterations {
+                        // Sample the first and second value.
+                        #[allow(deprecated)]
+                        let (a, b, c) = match i {
+                            0 => ($input_a::zero(), $input_b::zero(), $input_c::zero()),
+                            1 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::zero()),
+                            2 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero(), $input_c::<CurrentNetwork>::rand(&mut test_rng())),
+                            3 => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::zero(), $input_c::zero()),
+                            4 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::<CurrentNetwork>::rand(&mut test_rng())),
+                            5 => ($input_a::zero(), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::<CurrentNetwork>::zero()),
+                            6 => ($input_a::zero(), $input_b::zero(), $input_c::<CurrentNetwork>::rand(&mut test_rng())),
+                            7.. => ($input_a::<CurrentNetwork>::rand(&mut test_rng()), $input_b::<CurrentNetwork>::rand(&mut test_rng()), $input_c::<CurrentNetwork>::rand(&mut test_rng()))
+                        };
+
+                        // Initialize an indicator whether the operation should succeed or not.
+                        #[allow(unused_mut)]
+                        let mut should_succeed = true;
+
+                        // If `should_succeed` is `true`, compute the expected output.
+                        let expected = match should_succeed {
+                            true => Some(console::program::Literal::$output($operator::$operate(&a, &b, &c))),
+                            false => None
+                        };
+
+                        for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                            for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                for mode_c in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                    // Initialize the operands.
+                                    let a = console::program::Literal::from_str(&format!("{a}"))?;
+                                    let b = console::program::Literal::from_str(&format!("{b}"))?;
+                                    let c = console::program::Literal::from_str(&format!("{c}"))?;
+
+                                    // Initialize the operands.
+                                    let first = circuit::program::Literal::from_str(&format!("{a}.{mode_a}"))?;
+                                    let second = circuit::program::Literal::from_str(&format!("{b}.{mode_b}"))?;
+                                    let third = circuit::program::Literal::from_str(&format!("{c}.{mode_c}"))?;
+
+                                    // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
+                                    if should_succeed {
+                                        // Compute the evaluated output.
+                                        let candidate_a = <$operation as $crate::Operation<_, _, _, _, 3>>::evaluate(&[a, b, c])?;
+                                        // Compute the executed output.
+                                        let candidate_b = <$operation as $crate::Operation<_, _, _, _, 3>>::$execute(&[first, second, third])?;
+
+                                        // Ensure the outputs match.
+                                        assert_eq!(expected, Some(candidate_a));
+                                        // Ensure the outputs match.
+                                        assert_eq!(expected, Some(circuit::Eject::eject_value(&candidate_b)));
+                                    }
+                                    // If the sampled values overflow on evaluation, ensure it halts.
+                                    else {
+                                        // Halt the evaluation.
+                                        let result_a = std::panic::catch_unwind(|| <$operation as $crate::Operation<_, _, _, _, 3>>::evaluate(&[a.clone(), b.clone(), c.clone()]).unwrap());
+                                        // Ensure the evaluation halted.
+                                        assert!(result_a.is_err(), "Failure case (on iteration {i}) did not halt (console): {a} {b} {c}");
+
+                                        // Halt the execution.
+                                        if (mode_a.is_constant() && mode_b.is_constant() && mode_c.is_constant()) {
+                                            // Attempt to execute a failure case.
+                                            let result_b = std::panic::catch_unwind(|| <$operation as $crate::Operation<_, _, _, _, 3>>::$execute(&[first, second, third]).unwrap());
+                                            // Ensure the execution halted.
+                                            assert!(result_b.is_err(), "Failure case (on iteration {i}) did not halt (circuit): {a} {b} {c}");
+                                        } else {
+                                            // Attempt to execute a failure case.
+                                            let _result_b = <$operation as $crate::Operation<_, _, _, _, 3>>::$execute(&[first, second, third])?;
+                                            // Ensure the execution halted.
+                                            assert!(!<CurrentAleo as circuit::Environment>::is_satisfied(), "Failure case (on iteration {i}) should not be satisfied (circuit): {a} {b} {c}");
+                                        }
+                                    }
+                                    // Reset the circuit.
+                                    <CurrentAleo as circuit::Environment>::reset();
+                                }
                             }
                         }
                     }

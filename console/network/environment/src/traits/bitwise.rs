@@ -57,3 +57,14 @@ pub trait Nor<Rhs: ?Sized = Self> {
     /// Returns `(NOT a) AND (NOT b)`.
     fn nor(&self, other: &Rhs) -> Self::Output;
 }
+
+/// Trait for ternary operations.
+pub trait Ternary {
+    type Boolean;
+    type Output;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output
+    where
+        Self: Sized;
+}

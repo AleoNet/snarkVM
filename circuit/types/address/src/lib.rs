@@ -20,11 +20,12 @@ mod helpers;
 
 mod compare;
 mod equal;
+mod ternary;
 
 #[cfg(test)]
 use console::{test_rng, Uniform};
 #[cfg(test)]
-use snarkvm_circuit_environment::assert_scope;
+use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;

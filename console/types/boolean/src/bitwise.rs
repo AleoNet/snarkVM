@@ -143,3 +143,16 @@ impl<E: Environment> Nor for Boolean<E> {
         Boolean::new(!(self.boolean | other.boolean))
     }
 }
+
+impl<E: Environment> Ternary for Boolean<E> {
+    type Boolean = Boolean<E>;
+    type Output = Self;
+
+    /// Returns `first` if `condition` is `true`, otherwise returns `second`.
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
+        match **condition {
+            true => first.clone(),
+            false => second.clone(),
+        }
+    }
+}

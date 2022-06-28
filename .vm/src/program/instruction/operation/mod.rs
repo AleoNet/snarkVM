@@ -185,7 +185,7 @@ pub type GreaterThan<N, A> = BinaryLiteral<N, A, GreaterThanOperation<N, A>>;
 
 crate::operation!(
     pub struct GreaterThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than, "gt"> {
-        (Address, Address) => Boolean,
+        // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
         (I16, I16) => Boolean,
@@ -206,7 +206,7 @@ pub type GreaterThanOrEqual<N, A> = BinaryLiteral<N, A, GreaterThanOrEqualOperat
 
 crate::operation!(
     pub struct GreaterThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_greater_than_or_equal, "gte"> {
-        (Address, Address) => Boolean,
+        // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
         (I16, I16) => Boolean,
@@ -284,7 +284,7 @@ pub type LessThan<N, A> = BinaryLiteral<N, A, LessThanOperation<N, A>>;
 
 crate::operation!(
     pub struct LessThanOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than, "lt"> {
-        (Address, Address) => Boolean,
+        // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
         (I16, I16) => Boolean,
@@ -305,7 +305,7 @@ pub type LessThanOrEqual<N, A> = BinaryLiteral<N, A, LessThanOrEqualOperation<N,
 
 crate::operation!(
     pub struct LessThanOrEqualOperation<console::prelude::Compare, circuit::prelude::Compare, is_less_than_or_equal, "lte"> {
-        (Address, Address) => Boolean,
+        // (Address, Address) => Boolean,
         (Field, Field) => Boolean,
         (I8, I8) => Boolean,
         (I16, I16) => Boolean,
@@ -715,6 +715,30 @@ crate::operation!(
         (U32, U32) => U32,
         (U64, U64) => U64,
         (U128, U128) => U128,
+    }
+);
+
+/// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
+pub type Ternary<N, A> = TernaryLiteral<N, A, TernaryOperation<N, A>>;
+
+crate::operation!(
+    pub struct TernaryOperation<console::prelude::Ternary, circuit::prelude::Ternary, ternary, "ternary"> {
+        (Boolean, Address, Address) => Address,
+        (Boolean, Boolean, Boolean) => Boolean,
+        (Boolean, Field, Field) => Field,
+        (Boolean, Group, Group) => Group,
+        (Boolean, I8, I8) => I8,
+        (Boolean, I16, I16) => I16,
+        (Boolean, I32, I32) => I32,
+        (Boolean, I64, I64) => I64,
+        (Boolean, I128, I128) => I128,
+        (Boolean, U8, U8) => U8,
+        (Boolean, U16, U16) => U16,
+        (Boolean, U32, U32) => U32,
+        (Boolean, U64, U64) => U64,
+        (Boolean, U128, U128) => U128,
+        (Boolean, Scalar, Scalar) => Scalar,
+        // (Boolean, StringType, StringType) => StringType,
     }
 );
 
