@@ -105,8 +105,8 @@ macro_rules! instruction {
             HashBHP512,
             HashBHP768,
             HashBHP1024,
-            // HashPed64,
-            // HashPed128,
+            HashPED64,
+            HashPED128,
             HashPSD2,
             HashPSD4,
             HashPSD8,
@@ -224,10 +224,10 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     HashBHP768(HashBHP768<N, A>),
     /// Performs a BHP hash on inputs of 1024-bit chunks.
     HashBHP1024(HashBHP1024<N, A>),
-    // /// Performs a Pedersen hash on up to a 64-bit input.
-    // HashPed64(HashPed64<N, A>),
-    // /// Performs a Pedersen hash on up to a 128-bit input.
-    // HashPed128(HashPed128<N, A>),
+    /// Performs a Pedersen hash on up to a 64-bit input.
+    HashPED64(HashPED64<N, A>),
+    /// Performs a Pedersen hash on up to a 128-bit input.
+    HashPED128(HashPED128<N, A>),
     /// Performs a Poseidon hash with an input rate of 2.
     HashPSD2(HashPSD2<N, A>),
     /// Performs a Poseidon hash with an input rate of 4.
@@ -521,7 +521,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            41,
+            46,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

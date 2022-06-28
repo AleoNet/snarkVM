@@ -31,6 +31,11 @@ pub type HashBHP768<N, A> = HashInstruction<N, A, { Hasher::BHP768 as u8 }>;
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
 pub type HashBHP1024<N, A> = HashInstruction<N, A, { Hasher::BHP1024 as u8 }>;
 
+/// Pedersen64 is a collision-resistant hash function that processes inputs in 64-bit chunks.
+pub type HashPED64<N, A> = HashInstruction<N, A, { Hasher::PED64 as u8 }>;
+/// Pedersen128 is a collision-resistant hash function that processes inputs in 128-bit chunks.
+pub type HashPED128<N, A> = HashInstruction<N, A, { Hasher::PED128 as u8 }>;
+
 /// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
 pub type HashPSD2<N, A> = HashInstruction<N, A, { Hasher::PSD2 as u8 }>;
 /// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
@@ -43,6 +48,8 @@ enum Hasher {
     BHP512,
     BHP768,
     BHP1024,
+    PED64,
+    PED128,
     PSD2,
     PSD4,
     PSD8,
@@ -68,9 +75,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             1 => Opcode::Hash("hash.bhp512"),
             2 => Opcode::Hash("hash.bhp768"),
             3 => Opcode::Hash("hash.bhp1024"),
-            4 => Opcode::Hash("hash.psd2"),
-            5 => Opcode::Hash("hash.psd4"),
-            6 => Opcode::Hash("hash.psd8"),
+            4 => Opcode::Hash("hash.ped64"),
+            5 => Opcode::Hash("hash.ped128"),
+            6 => Opcode::Hash("hash.psd2"),
+            7 => Opcode::Hash("hash.psd4"),
+            8 => Opcode::Hash("hash.psd8"),
             _ => panic!("Invalid hash instruction opcode"),
         }
     }
@@ -107,46 +116,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             1 => N::hash_bhp512(&input.to_bits_le())?,
             2 => N::hash_bhp768(&input.to_bits_le())?,
             3 => N::hash_bhp1024(&input.to_bits_le())?,
-            4 => N::hash_psd2(&input.to_fields()?)?,
-            5 => N::hash_psd4(&input.to_fields()?)?,
-            6 => N::hash_psd8(&input.to_fields()?)?,
+            4 => N::hash_ped64(&input.to_bits_le())?,
+            5 => N::hash_ped128(&input.to_bits_le())?,
+            6 => N::hash_psd2(&input.to_fields()?)?,
+            7 => N::hash_psd4(&input.to_fields()?)?,
+            8 => N::hash_psd8(&input.to_fields()?)?,
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
         let output = StackValue::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default()));
         // Store the output.
         stack.store(&self.destination, output)
-
-        // // TODO (howardwu): Implement `Literal::to_fields()` to replace this closure.
-        // // (Optional) Closure for converting a list of literals into a list of field elements.
-        // //
-        // // If the list is comprised of `Address`, `Field`, `Group`, and/or `Scalar`, then the closure
-        // // will return the underlying field elements (instead of packing the literals from bits).
-        // // Otherwise, the list is converted into bits, and then packed into field elements.
-        // let to_field_elements = |input: &[Literal<_>]| {
-        //     // Determine whether the input is comprised of field-friendly literals.
-        //     match input.iter().all(|literal| {
-        //         matches!(literal, Literal::Address(_) | Literal::Field(_) | Literal::Group(_) | Literal::Scalar(_))
-        //     }) {
-        //         // Case 1 - Map each literal directly to its field representation.
-        //         true => input
-        //             .iter()
-        //             .map(|literal| match literal {
-        //                 Literal::Address(address) => address.to_field(),
-        //                 Literal::Field(field) => field.clone(),
-        //                 Literal::Group(group) => group.to_x_coordinate(),
-        //                 Literal::Scalar(scalar) => scalar.to_field(),
-        //                 _ => P::halt("Unreachable literal variant detected during hashing."),
-        //             })
-        //             .collect::<Vec<_>>(),
-        //         // Case 2 - Convert the literals to bits, and then pack them into field elements.
-        //         false => input
-        //             .to_bits_le()
-        //             .chunks(<P::Environment as Environment>::BaseField::size_in_data_bits())
-        //             .map(FromBits::from_bits_le)
-        //             .collect::<Vec<_>>(),
-        //     }
-        // };
     }
 
     /// Executes the instruction.
@@ -166,9 +146,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             1 => A::hash_bhp512(&input.to_bits_le()),
             2 => A::hash_bhp768(&input.to_bits_le()),
             3 => A::hash_bhp1024(&input.to_bits_le()),
-            4 => A::hash_psd2(&input.to_fields()),
-            5 => A::hash_psd4(&input.to_fields()),
-            6 => A::hash_psd8(&input.to_fields()),
+            4 => A::hash_ped64(&input.to_bits_le()),
+            5 => A::hash_ped128(&input.to_bits_le()),
+            6 => A::hash_psd2(&input.to_fields()),
+            7 => A::hash_psd4(&input.to_fields()),
+            8 => A::hash_psd8(&input.to_fields()),
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
