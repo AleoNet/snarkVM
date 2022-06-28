@@ -1971,7 +1971,6 @@ dependencies = [
  "rusty-hook",
  "self_update",
  "snarkvm-algorithms",
- "snarkvm-bytecode",
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-curves",
@@ -2027,23 +2026,6 @@ dependencies = [
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "snarkvm-bytecode"
-version = "0.7.5"
-dependencies = [
- "enum_index",
- "enum_index_derive",
- "indexmap",
- "nom",
- "once_cell",
- "paste",
- "snarkvm-algorithms",
- "snarkvm-circuit",
- "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-utilities",
 ]
 
 [[package]]

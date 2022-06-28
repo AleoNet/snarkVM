@@ -143,15 +143,6 @@ jobs:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
-  bytecode:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: bytecode
-          cache_key: snarkvm-bytecode-cache
-
   circuit:
     docker:
       - image: cimg/rust:1.61
@@ -643,7 +634,6 @@ workflows:
     jobs:
       - integration
       - algorithms
-      - bytecode
       - circuit
       - circuit-account
       - circuit-account-noconsole
@@ -701,7 +691,6 @@ workflows:
               workspace_member: [
                 .integration,
                 algorithms,
-                bytecode,
                 circuit,
                 console,
                 curves,
