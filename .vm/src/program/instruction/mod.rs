@@ -107,9 +107,9 @@ macro_rules! instruction {
             HashBHP1024,
             // HashPed64,
             // HashPed128,
-            // HashPsd2,
-            // HashPsd4,
-            // HashPsd8,
+            HashPSD2,
+            HashPSD4,
+            HashPSD8,
             Inv,
             IsEqual,
             IsNotEqual,
@@ -228,12 +228,12 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // HashPed64(HashPed64<N, A>),
     // /// Performs a Pedersen hash on up to a 128-bit input.
     // HashPed128(HashPed128<N, A>),
-    // /// Performs a Poseidon hash with an input rate of 2.
-    // HashPsd2(HashPsd2<N, A>),
-    // /// Performs a Poseidon hash with an input rate of 4.
-    // HashPsd4(HashPsd4<N, A>),
-    // /// Performs a Poseidon hash with an input rate of 8.
-    // HashPsd8(HashPsd8<N, A>),
+    /// Performs a Poseidon hash with an input rate of 2.
+    HashPSD2(HashPSD2<N, A>),
+    /// Performs a Poseidon hash with an input rate of 4.
+    HashPSD4(HashPSD4<N, A>),
+    /// Performs a Poseidon hash with an input rate of 8.
+    HashPSD8(HashPSD8<N, A>),
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N, A>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.

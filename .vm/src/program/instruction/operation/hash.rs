@@ -31,11 +31,21 @@ pub type HashBHP768<N, A> = HashInstruction<N, A, { Hasher::BHP768 as u8 }>;
 /// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
 pub type HashBHP1024<N, A> = HashInstruction<N, A, { Hasher::BHP1024 as u8 }>;
 
+/// Poseidon2 is a cryptographic hash function that processes inputs in 2-field chunks.
+pub type HashPSD2<N, A> = HashInstruction<N, A, { Hasher::PSD2 as u8 }>;
+/// Poseidon4 is a cryptographic hash function that processes inputs in 4-field chunks.
+pub type HashPSD4<N, A> = HashInstruction<N, A, { Hasher::PSD4 as u8 }>;
+/// Poseidon8 is a cryptographic hash function that processes inputs in 8-field chunks.
+pub type HashPSD8<N, A> = HashInstruction<N, A, { Hasher::PSD8 as u8 }>;
+
 enum Hasher {
     BHP256,
     BHP512,
     BHP768,
     BHP1024,
+    PSD2,
+    PSD4,
+    PSD8,
 }
 
 /// Hashes the operand into the declared type.
@@ -58,7 +68,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             1 => Opcode::Hash("hash.bhp512"),
             2 => Opcode::Hash("hash.bhp768"),
             3 => Opcode::Hash("hash.bhp1024"),
-            _ => panic!("Invalid BHP hash instruction opcode"),
+            4 => Opcode::Hash("hash.psd2"),
+            5 => Opcode::Hash("hash.psd4"),
+            6 => Opcode::Hash("hash.psd8"),
+            _ => panic!("Invalid hash instruction opcode"),
         }
     }
 
@@ -94,6 +107,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             1 => N::hash_bhp512(&input.to_bits_le())?,
             2 => N::hash_bhp768(&input.to_bits_le())?,
             3 => N::hash_bhp1024(&input.to_bits_le())?,
+            4 => N::hash_psd2(&input.to_fields()?)?,
+            5 => N::hash_psd4(&input.to_fields()?)?,
+            6 => N::hash_psd8(&input.to_fields()?)?,
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
@@ -136,7 +152,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
     /// Executes the instruction.
     #[inline]
     pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
-        use circuit::ToBits;
+        use circuit::{ToBits, ToFields};
 
         // Ensure the number of operands is correct.
         if self.operands.len() != 1 {
@@ -150,6 +166,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             1 => A::hash_bhp512(&input.to_bits_le()),
             2 => A::hash_bhp768(&input.to_bits_le()),
             3 => A::hash_bhp1024(&input.to_bits_le()),
+            4 => A::hash_psd2(&input.to_fields()),
+            5 => A::hash_psd4(&input.to_fields()),
+            6 => A::hash_psd8(&input.to_fields()),
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
