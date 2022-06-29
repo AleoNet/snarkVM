@@ -88,7 +88,7 @@ mod tests {
                 let candidate =
                     affine * Scalar::constant(console::Scalar::new(<Circuit as Environment>::ScalarField::from(4u128)));
                 assert_eq!(expected, candidate.eject_value());
-                assert_scope!(257, 0, 22, 22);
+                assert_scope!(258, 0, 22, 22);
             });
             Circuit::reset();
         }
