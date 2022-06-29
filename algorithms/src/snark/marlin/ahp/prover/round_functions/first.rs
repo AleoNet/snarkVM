@@ -268,7 +268,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
     ) -> PoolResult<'a, F> {
-        let evaluations = cfg_iter!(z_a)
+        let mut evaluations = cfg_iter!(z_a)
             .zip(z_b)
             .zip(z_c)
             .zip(s_l)
@@ -282,7 +282,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect::<Vec<F>>();
 
-        Self::calculate_z_m(label, &evaluations, will_be_evaluated, state, r)
+        let f = Self::calculate_z_m(label, &evaluations, will_be_evaluated, state, r);
+        evaluations.extend(state.index.t_evals.clone());
+        // Split into alternating halves.
+        let (s_1, s_2): (Vec<F>, Vec<F>) = evaluations.chunks(2).map(|els| (els[0], els[1])).unzip();
+        let s_1 = Self::calculate_z_m("s_1", &s_1, will_be_evaluated, state, r);
+        let s_2 = Self::calculate_z_m("s_2", &s_2, will_be_evaluated, state, r);
+        PoolResult::TablePolys(vec![f.z_m().unwrap(), s_1.z_m().unwrap(), s_2.z_m().unwrap()])
     }
 }
 
@@ -290,6 +296,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 pub enum PoolResult<'a, F: PrimeField> {
     Witness(LabeledPolynomial<F>),
     MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
+    TablePolys(Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>),
 }
 
 impl<'a, F: PrimeField> PoolResult<'a, F> {
@@ -303,6 +310,13 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
     fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)> {
         match self {
             Self::MatrixPoly(p1, p2) => Some((p1, p2)),
+            _ => None,
+        }
+    }
+
+    fn table_polys(self) -> Option<Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>> {
+        match self {
+            Self::TablePolys(polys) => Some(polys),
             _ => None,
         }
     }

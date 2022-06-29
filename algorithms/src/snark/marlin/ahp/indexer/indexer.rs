@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain, Evaluations},
+    fft::{EvaluationDomain, Evaluations},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
@@ -157,26 +157,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         );
 
         // Compute t poly
-        let mut evals = vec![vec![]; 3];
+        let mut t_evals = vec![vec![]; 3];
         ics.lookup_constraints.iter().enumerate().for_each(|(i, entry)| {
             entry.table.table.keys().zip(entry.table.table.values()).enumerate().for_each(|(j, (key, value))| {
-                evals[0][j * (i + 1)] = key[0];
-                evals[1][j * (i + 1)] = key[1];
-                evals[2][j * (i + 1)] = *value;
+                t_evals[0][j * (i + 1)] = key[0];
+                t_evals[1][j * (i + 1)] = key[1];
+                t_evals[2][j * (i + 1)] = *value;
             });
         });
 
+        let zeta_squared = zeta.square();
+
+        let t_evals = t_evals[0]
+            .iter()
+            .zip(t_evals[1].iter())
+            .zip(t_evals[2].iter())
+            .map(|((first, second), third)| *first + zeta * second + zeta_squared * third)
+            .collect::<Vec<F>>();
+
         let t = LabeledPolynomial::new(
             "t".to_string(),
-            evals
-                .iter()
-                .enumerate()
-                .map(|(i, column)| {
-                    let poly = Evaluations::from_vec_and_domain(column.to_vec(), constraint_domain)
-                        .interpolate_with_pc_by_ref(&ifft_precomputation);
-                    if i > 0 { poly * (F::from(i as u8 + 1) * zeta) } else { poly }
-                })
-                .sum::<DensePolynomial<F>>(),
+            Evaluations::from_vec_and_domain(t_evals.clone(), constraint_domain)
+                .interpolate_with_pc_by_ref(&ifft_precomputation),
             None,
             None,
         );
@@ -197,6 +199,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             s_l,
             s_l_evals: lookup_constraint_evals,
             t,
+            t_evals,
             lookup_tables,
             mode: PhantomData,
         })
