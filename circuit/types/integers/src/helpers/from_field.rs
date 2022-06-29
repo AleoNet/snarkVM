@@ -51,7 +51,10 @@ mod tests {
                 // Perform the operation.
                 let candidate = Integer::from_field(candidate);
                 assert_eq!(expected, candidate.eject_value());
-                assert_scope!(I::BITS, 0, 0, 0);
+                match mode {
+                    Mode::Constant => assert_scope!(I::BITS, 0, 0, 0),
+                    _ => assert_scope!(0, 0, I::BITS, I::BITS + 1),
+                }
             });
             Circuit::reset();
         }
