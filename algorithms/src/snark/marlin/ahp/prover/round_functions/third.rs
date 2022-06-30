@@ -59,7 +59,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let verifier::FirstMessage { batch_combiners, .. } = state
             .verifier_first_message
             .as_ref()
-            .expect("prover::State should include verifier_first_msg when prover_fourth_round is called");
+            .expect("prover::State should include verifier_first_msg when prover_third_round is called");
 
         let zeta_squared = state.index.zeta.square();
 
