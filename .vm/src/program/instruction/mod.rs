@@ -23,6 +23,8 @@ pub use operand::*;
 mod operation;
 pub use operation::*;
 
+mod bytes;
+
 use crate::{Program, Stack};
 use console::{
     network::{
@@ -75,10 +77,10 @@ use console::{
 macro_rules! instruction {
     // A variant **with** curly braces:
     // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
-    ($object:expr, |$input:ident| $operation:block) => {{ instruction!(instruction, $object, |$input| $operation) }};
+    ($object:expr, |$input:ident| $operation:block) => {{ $crate::instruction!(instruction, $object, |$input| $operation) }};
     // A variant **without** curly braces:
     // i.e. `instruction!(self, |instruction| operation(instruction))`.
-    ($object:expr, |$input:ident| $operation:expr) => {{ instruction!(instruction, $object, |$input| { $operation }) }};
+    ($object:expr, |$input:ident| $operation:expr) => {{ $crate::instruction!(instruction, $object, |$input| { $operation }) }};
     // A variant **with** curly braces:
     // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
     ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
@@ -138,10 +140,10 @@ macro_rules! instruction {
     };
     // A variant **without** curly braces:
     // i.e. `instruction!(custom_macro, self, |instruction| operation(instruction))`.
-    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{ instruction!($macro_, $object, |$input| { $operation }) }};
+    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{ $crate::instruction!($macro_, $object, |$input| { $operation }) }};
     // A variant invoking a macro internally:
     // i.e. `instruction!(instruction_to_bytes_le!(self, writer))`.
-    ($macro_:ident!($object:expr, $input:ident)) => {{ instruction!($macro_, $object, |$input| {}) }};
+    ($macro_:ident!($object:expr, $input:ident)) => {{ $crate::instruction!($macro_, $object, |$input| {}) }};
 
     ////////////////////
     // Private Macros //
@@ -163,7 +165,7 @@ macro_rules! instruction {
     // A static variant **without** curly braces:
     // i.e. `instruction!(self, |InstructionMember| InstructionMember::opcode())`.
     ($object:expr, |InstructionMember| $operation:expr, { $( $variant:ident, )+ }) => {{
-        instruction!($object, |InstructionMember| { $operation }, { $( $variant, )+ })
+        $crate::instruction!($object, |InstructionMember| { $operation }, { $( $variant, )+ })
     }};
     // A non-static variant **with** curly braces:
     // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
@@ -174,7 +176,7 @@ macro_rules! instruction {
     // A non-static variant **without** curly braces:
     // i.e. `instruction!(self, |instruction| operation(instruction))`.
     ($object:expr, |$instruction:ident| $operation:expr, { $( $variant:ident, )+ }) => {{
-        instruction!($object, |$instruction| { $operation }, { $( $variant, )+ })
+        $crate::instruction!($object, |$instruction| { $operation }, { $( $variant, )+ })
     }};
 }
 
@@ -438,73 +440,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Instruction<N, A> {
     /// Prints the instruction as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         instruction!(self, |instruction| write!(f, "{};", instruction))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Instruction<N, A> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        /// Creates a match statement that produces the `FromBytes` implementation for the given instruction.
-        ///
-        /// ## Example
-        /// ```ignore
-        /// instruction_from_bytes_le!(self, |reader| {}, { Add, Sub, Mul, Div })
-        /// ```
-        macro_rules! instruction_from_bytes_le {
-            ($object:expr, |$reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
-                // A list of instruction enum variants.
-                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
-                // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
-
-                // Read the enum variant index.
-                let variant = u16::read_le(&mut $reader)?;
-
-                // Build the cases for all instructions.
-                $(if INSTRUCTION_ENUMS[variant as usize] == stringify!($variant) {
-                    // Read the instruction.
-                    let instruction = $variant::read_le(&mut $reader)?;
-                    // Return the instruction.
-                    return Ok(Self::$variant(instruction));
-                })+
-                // If the index is out of bounds, return an error.
-                Err(error(format!("Failed to deserialize an instruction of variant {variant}")))
-            }};
-        }
-        instruction!(instruction_from_bytes_le!(self, reader))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Instruction<N, A> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        /// Creates a match statement that produces the `ToBytes` implementation for the given instruction.
-        ///
-        /// ## Example
-        /// ```ignore
-        /// instruction_to_bytes_le!(self, |writer| {}, { Add, Sub, Mul, Div })
-        /// ```
-        macro_rules! instruction_to_bytes_le {
-            ($object:expr, |$writer:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
-                // A list of instruction enum variants.
-                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
-                // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
-
-                // Build the match cases.
-                match $object {
-                    $(Self::$variant(instruction) => {
-                        // Retrieve the enum variant index.
-                        // Note: This unwrap is guaranteed to succeed because the enum variant is known to exist.
-                        let variant = INSTRUCTION_ENUMS.iter().position(|&name| stringify!($variant) == name).unwrap();
-
-                        // Serialize the instruction.
-                        u16::write_le(&(variant as u16),&mut $writer)?;
-                        instruction.write_le(&mut $writer)?;
-                    }),+
-                }
-                Ok(())
-            }};
-        }
-        instruction!(instruction_to_bytes_le!(self, writer))
     }
 }
 
