@@ -54,8 +54,12 @@ mod tests {
             Circuit::scope(format!("{mode} {expected}"), || {
                 let candidate = Field::from_boolean(&given);
                 match expected {
-                    true => assert_eq!(<Circuit as Environment>::BaseField::one(), candidate.eject_value()),
-                    false => assert_eq!(<Circuit as Environment>::BaseField::zero(), candidate.eject_value()),
+                    true => {
+                        assert_eq!(console::Field::<<Circuit as Environment>::Network>::one(), candidate.eject_value())
+                    }
+                    false => {
+                        assert_eq!(console::Field::<<Circuit as Environment>::Network>::zero(), candidate.eject_value())
+                    }
                 }
                 assert_count!(FromBoolean(Boolean) => Field, &());
                 assert_output_mode!(FromBoolean(Boolean) => Field, &mode, candidate);

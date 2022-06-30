@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<N: Network> TryFrom<Vec<N::Field>> for Ciphertext<N> {
+impl<N: Network> TryFrom<Vec<Field<N>>> for Ciphertext<N> {
     type Error = Error;
 
     /// Initializes a ciphertext from a list of base field elements.
-    fn try_from(fields: Vec<N::Field>) -> Result<Self, Self::Error> {
+    fn try_from(fields: Vec<Field<N>>) -> Result<Self, Self::Error> {
         // Ensure the number of field elements does not exceed the maximum allowed size.
         match fields.len() <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
             true => Ok(Self(fields)),
@@ -29,17 +29,17 @@ impl<N: Network> TryFrom<Vec<N::Field>> for Ciphertext<N> {
     }
 }
 
-impl<N: Network> TryFrom<&[N::Field]> for Ciphertext<N> {
+impl<N: Network> TryFrom<&[Field<N>]> for Ciphertext<N> {
     type Error = Error;
 
     /// Initializes a ciphertext from a list of base field elements.
-    fn try_from(fields: &[N::Field]) -> Result<Self, Self::Error> {
+    fn try_from(fields: &[Field<N>]) -> Result<Self, Self::Error> {
         Self::from_fields(fields)
     }
 }
 
 impl<N: Network> FromFields for Ciphertext<N> {
-    type Field = N::Field;
+    type Field = Field<N>;
 
     /// Initializes a ciphertext from a list of base field elements.
     fn from_fields(fields: &[Self::Field]) -> Result<Self> {

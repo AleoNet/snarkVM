@@ -72,24 +72,19 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
         if self.is_constant() && rhs.is_constant() {
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
             match self.eject_value().checked_shr(rhs.eject_value().to_u32().unwrap()) {
-                Some(value) => Integer::new(Mode::Constant, value),
+                Some(value) => Integer::new(Mode::Constant, console::Integer::new(value)),
                 None => E::halt("Constant shifted by constant exceeds the allowed bitwidth."),
             }
         } else {
-            // Index of the first upper bit of rhs that must be zero.
-            // This is a safe case as I::BITS = 8, 16, 32, 64, or 128.
-            // Therefore there is at least one trailing zero.
-            let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
+            // Determine the index where the first upper bit of the RHS must be zero.
+            // There is at least one trailing zero, as I::BITS = 8, 16, 32, 64, or 128.
+            let trailing_zeros_index = I::BITS.trailing_zeros() as usize;
 
-            let upper_bits_are_nonzero =
-                rhs.bits_le[first_upper_bit_index..].iter().fold(Boolean::constant(false), |a, b| a | b);
+            // Determine if any of the upper bits of the RHS are nonzero.
+            let is_nonzero = rhs.bits_le[trailing_zeros_index..].iter().fold(Boolean::constant(false), |a, b| a | b);
 
-            // Halt if upper bits of rhs are constant and nonzero.
-            if upper_bits_are_nonzero.is_constant() && upper_bits_are_nonzero.eject_value() {
-                E::halt("Integer shifted by constant exceeds the allowed bitwidth.")
-            }
-            // Enforce that the appropriate number of upper bits in rhs are zero.
-            E::assert_eq(upper_bits_are_nonzero, E::zero());
+            // Ensure the upper bits of the RHS are zero.
+            E::assert(!is_nonzero);
 
             // Perform a wrapping shift right.
             self.shr_wrapped(rhs)
@@ -154,7 +149,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn ShrChecked<Int
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
     use test_utilities::*;
 
     use core::{ops::RangeInclusive, panic::RefUnwindSafe};
@@ -163,8 +158,8 @@ mod tests {
 
     fn check_shr<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
         name: &str,
-        first: I,
-        second: M,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, M>,
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -173,7 +168,8 @@ mod tests {
         match first.checked_shr(second.to_u32().unwrap()) {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.shr_checked(&b);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
+                assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 assert_count!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                 assert_output_mode!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
             }),
@@ -190,15 +186,15 @@ mod tests {
 
     fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: M = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Shr: {} >> {} {}", mode_a, mode_b, i);
-            check_shr(&name, first, second, mode_a, mode_b);
+            check_shr::<I, M>(&name, first, second, mode_a, mode_b);
 
             // Check that shift right by one is computed correctly.
             let name = format!("Half: {} >> {} {}", mode_a, mode_b, i);
-            check_shr(&name, first, M::one(), mode_a, mode_b);
+            check_shr::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
         }
     }
 
@@ -209,8 +205,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in M::MIN..=M::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, M>::new(second);
+
                 let name = format!("Shr: ({} >> {})", first, second);
-                check_shr(&name, first, second, mode_a, mode_b);
+                check_shr::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }
     }

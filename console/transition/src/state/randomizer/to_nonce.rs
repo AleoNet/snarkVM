@@ -18,8 +18,8 @@ use super::*;
 
 impl<N: Network> Randomizer<N> {
     /// Returns the nonce, computed as `randomizer * G`.
-    pub fn to_nonce(&self) -> N::Affine {
+    pub fn to_nonce(&self) -> Group<N> {
         // Compute the program state nonce.
-        N::g_scalar_multiply(&self.randomizer).to_affine()
+        N::g_scalar_multiply(&self.randomizer)
     }
 }

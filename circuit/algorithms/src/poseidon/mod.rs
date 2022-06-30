@@ -22,6 +22,8 @@ mod prf;
 
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
+#[cfg(test)]
+use snarkvm_utilities::{test_rng, Uniform};
 
 use crate::{Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
 use snarkvm_circuit_types::{environment::prelude::*, Field, Group, Scalar};
@@ -69,7 +71,7 @@ pub struct Poseidon<E: Environment, const RATE: usize> {
 
 #[cfg(console)]
 impl<E: Environment, const RATE: usize> Inject for Poseidon<E, RATE> {
-    type Primitive = console::Poseidon<E::BaseField, RATE>;
+    type Primitive = console::Poseidon<E::Network, RATE>;
 
     fn new(_mode: Mode, poseidon: Self::Primitive) -> Self {
         // Initialize the domain separator.
@@ -79,20 +81,24 @@ impl<E: Environment, const RATE: usize> Inject for Poseidon<E, RATE> {
         let parameters = poseidon.parameters();
         let full_rounds = parameters.full_rounds;
         let partial_rounds = parameters.partial_rounds;
-        let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
+        let alpha = Field::constant(console::Field::from_u128(parameters.alpha as u128));
         // Cache the bits for the field element.
         alpha.to_bits_le();
         let ark = parameters
             .ark
             .iter()
             .take(full_rounds + partial_rounds)
-            .map(|round| round.iter().take(RATE + 1).cloned().map(Field::constant).collect())
+            .map(|round| {
+                round.iter().take(RATE + 1).copied().map(|field| Field::constant(console::Field::new(field))).collect()
+            })
             .collect();
         let mds = parameters
             .mds
             .iter()
             .take(RATE + 1)
-            .map(|round| round.iter().take(RATE + 1).cloned().map(Field::constant).collect())
+            .map(|round| {
+                round.iter().take(RATE + 1).copied().map(|field| Field::constant(console::Field::new(field))).collect()
+            })
             .collect();
 
         Self { domain, full_rounds, partial_rounds, alpha, ark, mds }

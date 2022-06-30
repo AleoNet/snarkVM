@@ -618,8 +618,7 @@ impl<'a, P: Fp256Parameters> AddAssign<&'a Self> for Fp256<P> {
     fn add_assign(&mut self, other: &Self) {
         // This cannot exceed the backing capacity.
         self.0.add_nocarry(&other.0);
-        // However, it may need to be reduced
-
+        // However, it may need to be reduced.
         self.reduce();
     }
 }

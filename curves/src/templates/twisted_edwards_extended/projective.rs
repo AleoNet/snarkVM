@@ -19,7 +19,7 @@ use crate::{
     traits::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -47,8 +47,26 @@ pub struct Projective<P: Parameters> {
 }
 
 impl<P: Parameters> Projective<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField, t: P::BaseField, z: P::BaseField) -> Self {
+    #[inline]
+    pub const fn new(x: P::BaseField, y: P::BaseField, t: P::BaseField, z: P::BaseField) -> Self {
         Self { x, y, t, z }
+    }
+}
+
+impl<P: Parameters> Zero for Projective<P> {
+    fn zero() -> Self {
+        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero(), P::BaseField::one())
+    }
+
+    fn is_zero(&self) -> bool {
+        self.x.is_zero() && self.y == self.z && !self.y.is_zero() && self.t.is_zero()
+    }
+}
+
+impl<P: Parameters> Default for Projective<P> {
+    #[inline]
+    fn default() -> Self {
+        Self::zero()
     }
 }
 
@@ -120,23 +138,6 @@ impl<P: Parameters> FromBytes for Projective<P> {
         let t = P::BaseField::read_le(&mut reader)?;
         let z = P::BaseField::read_le(reader)?;
         Ok(Self::new(x, y, t, z))
-    }
-}
-
-impl<P: Parameters> Default for Projective<P> {
-    #[inline]
-    fn default() -> Self {
-        Self::zero()
-    }
-}
-
-impl<P: Parameters> Zero for Projective<P> {
-    fn zero() -> Self {
-        Self::new(P::BaseField::zero(), P::BaseField::one(), P::BaseField::zero(), P::BaseField::one())
-    }
-
-    fn is_zero(&self) -> bool {
-        self.x.is_zero() && self.y == self.z && !self.y.is_zero() && self.t.is_zero()
     }
 }
 
@@ -368,8 +369,7 @@ impl<P: Parameters> MulAssign<P::ScalarField> for Projective<P> {
     }
 }
 
-// The affine point (X, Y) is represented in the Extended Projective coordinates
-// with Z = 1.
+// The affine point (X, Y) is represented in the Extended Projective coordinates with Z = 1.
 impl<P: Parameters> From<Affine<P>> for Projective<P> {
     fn from(p: Affine<P>) -> Projective<P> {
         Self::new(p.x, p.y, p.x * p.y, P::BaseField::one())

@@ -16,12 +16,9 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-where
-    <G as AffineCurve>::BaseField: PrimeField,
-{
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = bool;
-    type Output = G::BaseField;
+    type Output = Field<E>;
 
     /// Returns the BHP hash of the given input as a field element.
     fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {

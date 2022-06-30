@@ -70,7 +70,7 @@ impl<A: Aleo> SerialNumber<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     use anyhow::Result;
 
@@ -88,8 +88,8 @@ mod tests {
         for i in 0..ITERATIONS {
             // Compute the native serial number.
             let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
-            let message = UniformRand::rand(rng);
-            let commitment = UniformRand::rand(rng);
+            let message = Uniform::rand(rng);
+            let commitment = Uniform::rand(rng);
 
             let sk_sig = private_key.sk_sig();
             let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
@@ -121,16 +121,16 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 20969, 0, 0, 0)
+        check_verify(Mode::Constant, 21466, 0, 0, 0)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 15792, 0, 17301, 17326)
+        check_verify(Mode::Public, 15792, 0, 17803, 17830)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 15792, 0, 17301, 17326)
+        check_verify(Mode::Private, 15792, 0, 17803, 17830)
     }
 }

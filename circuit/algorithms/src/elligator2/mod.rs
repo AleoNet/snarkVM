@@ -20,7 +20,6 @@ mod encode;
 use snarkvm_circuit_types::environment::assert_scope;
 
 use snarkvm_circuit_types::prelude::*;
-use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_fields::SquareRootField;
 
 use core::marker::PhantomData;

@@ -20,21 +20,13 @@ impl<E: Environment> SquareRoot for Field<E> {
     type Output = Self;
 
     fn square_root(&self) -> Self::Output {
-        (&self).square_root()
-    }
-}
-
-impl<E: Environment> SquareRoot for &Field<E> {
-    type Output = Field<E>;
-
-    fn square_root(&self) -> Self::Output {
-        let square_root = witness!(|self| match self.sqrt() {
-            Some(square_root) => square_root,
-            None => E::BaseField::zero(),
+        let square_root = witness!(|self| match self.square_root() {
+            Ok(square_root) => square_root,
+            _ => console::Field::zero(),
         });
 
         // Ensure `square_root` * `square_root` == `self`.
-        E::enforce(|| (&square_root, &square_root, *self));
+        E::enforce(|| (&square_root, &square_root, self));
 
         square_root
     }
@@ -66,16 +58,15 @@ impl<E: Environment> OutputMode<dyn SquareRoot<Output = Field<E>>> for Field<E> 
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1_000;
 
     fn check_square_root(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let given: console::Field<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
             // Compute it's square root, or skip this iteration if it does not natively exist.
-            if let Some(expected) = given.sqrt() {
+            if let Ok(expected) = given.square_root() {
                 let input = Field::<Circuit>::new(mode, given);
 
                 Circuit::scope(name, || {

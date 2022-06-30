@@ -17,23 +17,13 @@
 use super::*;
 
 impl<N: Network> FromBits for Ciphertext<N> {
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this ciphertext as a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[bool]) -> Result<Self> {
-        Ok(Self(
-            bits_le
-                .chunks(N::Field::size_in_bits())
-                .map(|chunk| N::field_from_bits_le(chunk))
-                .collect::<Result<Vec<_>>>()?,
-        ))
+        Ok(Self(bits_le.chunks(Field::<N>::size_in_bits()).map(Field::<N>::from_bits_le).collect::<Result<Vec<_>>>()?))
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this ciphertext as a list of **big-endian** bits.
     fn from_bits_be(bits_be: &[bool]) -> Result<Self> {
-        Ok(Self(
-            bits_be
-                .chunks(N::Field::size_in_bits())
-                .map(|chunk| N::field_from_bits_be(chunk))
-                .collect::<Result<Vec<_>>>()?,
-        ))
+        Ok(Self(bits_be.chunks(Field::<N>::size_in_bits()).map(Field::<N>::from_bits_be).collect::<Result<Vec<_>>>()?))
     }
 }

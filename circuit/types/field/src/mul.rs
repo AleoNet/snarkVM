@@ -61,8 +61,8 @@ impl<E: Environment> MulAssign<Field<E>> for Field<E> {
 impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
     fn mul_assign(&mut self, other: &Field<E>) {
         match (self.is_constant(), other.is_constant()) {
-            (true, true) | (false, true) => *self = (&self.linear_combination * other.eject_value()).into(),
-            (true, false) => *self = (&other.linear_combination * self.eject_value()).into(),
+            (true, true) | (false, true) => *self = (&self.linear_combination * *other.eject_value()).into(),
+            (true, false) => *self = (&other.linear_combination * *self.eject_value()).into(),
             (false, false) => {
                 let product = witness!(|self, other| self * other);
 
@@ -95,8 +95,8 @@ impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<
             (Mode::Constant, Mode::Public) => match &case.0 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
                     // TODO: Should this be a constant?
-                    //value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value == E::BaseField::one() => Mode::Public,
+                    //value if value.is_zero() => Mode::Constant,
+                    value if value.is_one() => Mode::Public,
                     _ => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
@@ -104,8 +104,8 @@ impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<
             (Mode::Public, Mode::Constant) => match &case.1 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
                     // TODO: Should this be a constant?
-                    //value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value == E::BaseField::one() => Mode::Public,
+                    //value if value.is_zero() => Mode::Constant,
+                    value if value.is_one() => Mode::Public,
                     _ => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
@@ -119,11 +119,15 @@ impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
-    fn check_mul(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
+    fn check_mul(
+        name: &str,
+        expected: &console::Field<<Circuit as Environment>::Network>,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let candidate = a * b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
@@ -134,7 +138,7 @@ mod tests {
 
     fn check_mul_assign(
         name: &str,
-        expected: &<Circuit as Environment>::BaseField,
+        expected: &console::Field<<Circuit as Environment>::Network>,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
     ) {
@@ -149,8 +153,8 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let expected = first * second;
             let a = Field::<Circuit>::new(mode_a, first);
@@ -163,29 +167,29 @@ mod tests {
 
             // Test identity.
             let name = format!("Mul: a * 1 {}", i);
-            let one = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::one());
+            let one = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::one());
             check_mul(&name, &first, &a, &one);
             let name = format!("MulAssign: a * 1 {}", i);
             check_mul_assign(&name, &first, &a, &one);
 
             let name = format!("Mul: 1 * b {}", i);
-            let one = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::one());
+            let one = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::one());
             check_mul(&name, &second, &one, &b);
             let name = format!("MulAssign: 1 * b {}", i);
             check_mul_assign(&name, &second, &one, &b);
 
             // Test zero.
             let name = format!("Mul: a * 0 {}", i);
-            let zero = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::zero());
-            check_mul(&name, &<Circuit as Environment>::BaseField::zero(), &a, &zero);
+            let zero = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::zero());
+            check_mul(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &a, &zero);
             let name = format!("MulAssign: a * 0 {}", i);
-            check_mul_assign(&name, &<Circuit as Environment>::BaseField::zero(), &a, &zero);
+            check_mul_assign(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &a, &zero);
 
             let name = format!("Mul: 0 * b {}", i);
-            let zero = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::zero());
-            check_mul(&name, &<Circuit as Environment>::BaseField::zero(), &zero, &b);
+            let zero = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::zero());
+            check_mul(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &zero, &b);
             let name = format!("MulAssign: 0 * b {}", i);
-            check_mul_assign(&name, &<Circuit as Environment>::BaseField::zero(), &zero, &b);
+            check_mul_assign(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &zero, &b);
         }
     }
 
@@ -237,8 +241,8 @@ mod tests {
     #[test]
     fn test_mul_matches() {
         // Sample two random elements.
-        let a: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-        let b: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let a = Uniform::rand(&mut test_rng());
+        let b = Uniform::rand(&mut test_rng());
         let expected = a * b;
 
         // Constant
@@ -256,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_0_times_0() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         let candidate = Field::<Circuit>::zero() * Field::zero();
         assert_eq!(zero, candidate.eject_value());
@@ -276,8 +280,8 @@ mod tests {
 
     #[test]
     fn test_0_times_1() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         let candidate = Field::<Circuit>::zero() * Field::one();
         assert_eq!(zero, candidate.eject_value());
@@ -303,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_1_times_1() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         let candidate = Field::<Circuit>::one() * Field::one();
         assert_eq!(one, candidate.eject_value());
@@ -323,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_2_times_2() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
         let four = two + two;
 

@@ -824,7 +824,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 + *c2)),
             (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
-                Ok(Self::Variable(v.add_constant(cs, &*c)))
+                Ok(Self::Variable(v.add_constant(cs, c)))
             }
             (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, v2))),
         }
@@ -854,9 +854,9 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     fn sub<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 - *c2)),
-            (Self::Variable(v), Self::Constant(c)) => Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), &*c))),
+            (Self::Variable(v), Self::Constant(c)) => Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), c))),
             (Self::Constant(c), Self::Variable(v)) => {
-                Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), &*c).negate(cs.ns(|| "negate"))))
+                Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), c).negate(cs.ns(|| "negate"))))
             }
             (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.sub(cs.ns(|| "sub"), v2))),
         }
@@ -889,7 +889,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 * *c2)),
             (Self::Variable(v), Self::Constant(c)) | (Self::Constant(c), Self::Variable(v)) => {
-                Ok(Self::Variable(v.mul_by_constant(cs.ns(|| "mul_by_constant"), &*c)))
+                Ok(Self::Variable(v.mul_by_constant(cs.ns(|| "mul_by_constant"), c)))
             }
             (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.mul(cs.ns(|| "mul"), v2)?)),
         }
@@ -1159,8 +1159,8 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
                         let is = AllocatedFp::from_boolean(cs.ns(|| "from_bool_is"), *cond)?;
                         let not = AllocatedFp::from_boolean(cs.ns(|| "from_bool_not"), cond.not())?;
                         // cond * t + (1 - cond) * f
-                        let not_f = &not.mul_by_constant(cs.ns(|| "mul_by_f"), &*f);
-                        Ok(is.mul_by_constant(cs.ns(|| "mul_by_t"), &*t).add(cs.ns(|| "add"), not_f).into())
+                        let not_f = &not.mul_by_constant(cs.ns(|| "mul_by_f"), f);
+                        Ok(is.mul_by_constant(cs.ns(|| "mul_by_t"), t).add(cs.ns(|| "add"), not_f).into())
                     }
                     (..) => {
                         let first = match first {

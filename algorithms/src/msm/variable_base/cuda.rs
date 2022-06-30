@@ -357,7 +357,7 @@ mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
     use snarkvm_fields::{Field, One, PrimeField};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::rand::{test_rng, Uniform};
 
     use serial_test::serial;
 

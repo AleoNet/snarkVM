@@ -25,29 +25,7 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         if self.is_constant() && other.is_constant() {
             Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
         }
-        // Case 2: Constant < Variable
-        else if self.is_constant() {
-            // Compute `self < other`. See `Field::is_less_than` for the truth table.
-            self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
-                Boolean::constant(false),
-                |is_less_than, (this, that)| match this.eject_value() {
-                    true => that.bitand(&is_less_than),
-                    false => that.bitor(&is_less_than),
-                },
-            )
-        }
-        // Case 3: Variable < Constant
-        else if other.is_constant() {
-            // Compute `self < other`. See `Field::is_less_than` for the truth table.
-            self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
-                Boolean::constant(false),
-                |is_less_than, (this, that)| match that.eject_value() {
-                    true => (!this).bitor(is_less_than),
-                    false => (!this).bitand(&is_less_than),
-                },
-            )
-        }
-        // Case 4: Variable < Variable
+        // Case 2: Constant < Variable | Variable < Constant | Variable < Variable
         else {
             // If all scalar field elements are less than (MODULUS - 1)/2 on the base field,
             // we can perform an optimized check for `is_less_than` by casting the scalars onto the base field.
@@ -84,7 +62,6 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -98,11 +75,11 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element `a`.
-            let expected_a: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected_a = Uniform::rand(&mut test_rng());
             let candidate_a = Scalar::<Circuit>::new(mode_a, expected_a);
 
             // Sample a random element `b`.
-            let expected_b: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected_b = Uniform::rand(&mut test_rng());
             let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
 
             // Perform the less than comparison.
@@ -122,17 +99,17 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_public() {
-        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 250, 250);
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_constant_is_less_than_private() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 250, 250);
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_public_is_less_than_constant() {
-        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 250, 250);
+        check_is_less_than(Mode::Public, Mode::Constant, 0, 0, 253, 254);
     }
 
     #[test]
@@ -147,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_private_is_less_than_constant() {
-        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 250, 250);
+        check_is_less_than(Mode::Private, Mode::Constant, 0, 0, 253, 254);
     }
 
     #[test]

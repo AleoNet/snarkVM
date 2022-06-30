@@ -23,7 +23,7 @@ impl<A: Aleo> Record<A> {
         A::assert(!state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
 
         // Compute the randomizers.
-        let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);
+        let randomizers = A::hash_many_psd8(&[A::encryption_domain(), record_view_key.clone()], 2);
         // Encrypt the owner.
         let owner = state.owner().to_field() + &randomizers[0];
         // Encrypt the balance.

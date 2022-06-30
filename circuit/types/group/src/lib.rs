@@ -28,13 +28,16 @@ pub mod sub;
 pub mod ternary;
 
 #[cfg(test)]
+use console::{test_rng, Uniform};
+#[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
+use console::AffineCurve;
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_scalar::Scalar;
-use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
+use snarkvm_curves::TwistedEdwardsParameters;
 
 #[derive(Clone)]
 pub struct Group<E: Environment> {
@@ -44,26 +47,26 @@ pub struct Group<E: Environment> {
 
 impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
+#[cfg(console)]
 impl<E: Environment> Inject for Group<E> {
-    type Primitive = E::Affine;
+    type Primitive = console::Group<E::Network>;
 
     /// Initializes a new affine group element.
     ///
-    /// If only the x-coordinate is given, recovery of the y-coordinate is performed natively.
-    ///
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
+    fn new(mode: Mode, group: Self::Primitive) -> Self {
         // Initialize the x- and y-coordinate field elements.
-        let x = Field::new(mode, value.to_x_coordinate());
-        let y = Field::new(mode, value.to_y_coordinate());
+        let x = Field::new(mode, group.to_x_coordinate());
+        let y = Field::new(mode, group.to_y_coordinate());
 
         Self::from_xy_coordinates(x, y)
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Eject for Group<E> {
-    type Primitive = E::Affine;
+    type Primitive = console::Group<E::Network>;
 
     /// Ejects the mode of the group element.
     fn eject_mode(&self) -> Mode {
@@ -71,31 +74,21 @@ impl<E: Environment> Eject for Group<E> {
     }
 
     /// Ejects the group as a constant group element.
-    fn eject_value(&self) -> E::Affine {
-        E::Affine::from_coordinates((self.x.eject_value(), self.y.eject_value()))
+    fn eject_value(&self) -> Self::Primitive {
+        console::Group::from_xy_coordinates((self.x.eject_value(), self.y.eject_value()))
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Parser for Group<E> {
-    type Environment = E;
-
-    /// Parses a string into an affine group circuit.
+    /// Parses a string into a group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the optional negative sign '-' from the string.
-        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
-        // Parse the digits from the string.
-        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
-        // Parse the x-coordinate from the string.
-        let (string, x_coordinate): (&str, E::BaseField) =
-            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        // // Parse the group from the string.
+        let (string, group) = console::Group::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
-        // Recover and negate the group element if the negative sign was present.
-        let group = match negation {
-            true => -E::affine_from_x_coordinate(x_coordinate),
-            false => E::affine_from_x_coordinate(x_coordinate),
-        };
+
         match mode {
             Some((_, mode)) => Ok((string, Group::new(mode, group))),
             None => Ok((string, Group::new(Mode::Constant, group))),
@@ -103,17 +96,45 @@ impl<E: Environment> Parser for Group<E> {
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> FromStr for Group<E> {
+    type Err = Error;
+
+    /// Parses a string into a group circuit.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> TypeName for Group<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "group"
+        console::Group::<E::Network>::type_name()
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> Debug for Group<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> Display for Group<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.x.eject_value(), Self::type_name(), self.eject_mode())
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -133,15 +154,14 @@ impl<E: Environment> From<&Group<E>> for LinearCombination<E::BaseField> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::str::FromStr;
 
     const ITERATIONS: u64 = 128;
 
     /// Attempts to construct an affine group element from the given x-coordinate and mode.
-    fn check_display(mode: Mode, point: <Circuit as Environment>::Affine) {
-        let x = point.to_x_coordinate();
+    fn check_display(mode: Mode, point: console::Group<<Circuit as Environment>::Network>) {
+        let x = *point.to_x_coordinate();
         let candidate = Group::<Circuit>::new(mode, point);
         assert_eq!(format!("{x}{}.{mode}", Group::<Circuit>::type_name()), format!("{candidate}"));
     }
@@ -151,7 +171,7 @@ mod tests {
         // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point = Uniform::rand(&mut test_rng());
 
             Circuit::scope(&format!("Constant {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Constant, point);
@@ -163,7 +183,7 @@ mod tests {
         // Public variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point = Uniform::rand(&mut test_rng());
 
             Circuit::scope(&format!("Public {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Public, point);
@@ -175,7 +195,7 @@ mod tests {
         // Private variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point = Uniform::rand(&mut test_rng());
 
             Circuit::scope(&format!("Private {}", i), || {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
@@ -189,7 +209,7 @@ mod tests {
     fn test_display() {
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point = Uniform::rand(&mut test_rng());
 
             // Constant
             check_display(Mode::Constant, point);
@@ -202,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_display_zero() {
-        let zero = <Circuit as Environment>::Affine::zero();
+        let zero = console::Group::<<Circuit as Environment>::Network>::zero();
 
         // Constant
         let candidate = Group::<Circuit>::new(Mode::Constant, zero);
@@ -220,67 +240,67 @@ mod tests {
     #[rustfmt::skip]
     #[test]
     fn test_parser() {
-        type Primitive = <Circuit as Environment>::BaseField;
+        type Primitive = console::Group<<Circuit as Environment>::Network>;
 
         // Constant
 
         let (_, candidate) = Group::<Circuit>::parse("2group").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Group::<Circuit>::parse("2_group").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Group::<Circuit>::parse("6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group", ).unwrap();
-        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231group").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Group::<Circuit>::parse("2group.constant").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Group::<Circuit>::parse("2_group.constant").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Group::<Circuit>::parse("6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group.constant", ).unwrap();
-        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231group").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         // Public
 
         let (_, candidate) = Group::<Circuit>::parse("2group.public").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Group::<Circuit>::parse("2_group.public").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Group::<Circuit>::parse("6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group.public", ).unwrap();
-        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231group").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         // Private
 
         let (_, candidate) = Group::<Circuit>::parse("2group.private").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Group::<Circuit>::parse("2_group.private").unwrap();
-        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("2group").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Group::<Circuit>::parse("6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group.private", ).unwrap();
-        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert_eq!(Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231group").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         // Random
 
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+                let point = Uniform::rand(&mut test_rng());
                 let expected = Group::<Circuit>::new(mode, point);
 
                 let (_, candidate) = Group::<Circuit>::parse(&format!("{expected}")).unwrap();

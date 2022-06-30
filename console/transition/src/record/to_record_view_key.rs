@@ -18,8 +18,8 @@ use super::*;
 
 impl<N: Network> Record<N> {
     /// Returns the record view key given the account view key.
-    pub fn to_record_view_key(&self, view_key: &ViewKey<N>) -> N::Field {
+    pub fn to_record_view_key(&self, view_key: &ViewKey<N>) -> Field<N> {
         // Compute the record view key := G^r^view_key.
-        (self.nonce * **view_key).to_affine().to_x_coordinate()
+        (self.nonce * **view_key).to_x_coordinate()
     }
 }

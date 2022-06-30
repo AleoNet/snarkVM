@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_BITS: u8> Hash for Pedersen<G, NUM_BITS> {
+impl<E: Environment, const NUM_BITS: u8> Hash for Pedersen<E, NUM_BITS> {
     type Input = bool;
-    type Output = G::BaseField;
+    type Output = Field<E>;
 
     /// Returns the Pedersen hash of the given input as a field element.
     fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {

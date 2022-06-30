@@ -23,9 +23,14 @@ impl<E: Environment> FromBits for Scalar<E> {
     ///   - If `bits_le` is longer than `E::ScalarField::size_in_bits()`, the excess bits are enforced to be `0`s.
     ///   - If `bits_le` is shorter than `E::ScalarField::size_in_bits()`, it is padded with `0`s up to scalar field size.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
+        // Note: We are reconstituting the scalar field into a base field.
+        // This is safe as the scalar field modulus is less than the base field modulus,
+        // and thus will always fit within a single base field element.
+        debug_assert!(console::Scalar::<E::Network>::size_in_bits() < console::Field::<E::Network>::size_in_bits());
+
         // Retrieve the data and scalar field size.
-        let size_in_data_bits = E::ScalarField::size_in_data_bits();
-        let size_in_bits = E::ScalarField::size_in_bits();
+        let size_in_data_bits = console::Scalar::<E::Network>::size_in_data_bits();
+        let size_in_bits = console::Scalar::<E::Network>::size_in_bits();
 
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
@@ -40,11 +45,19 @@ impl<E: Environment> FromBits for Scalar<E> {
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus_minus_one = Scalar::constant(-E::ScalarField::one());
+            let modulus_minus_one = Scalar::constant(-console::Scalar::one());
+
+            // Reconstruct the bits as a linear combination representing the original scalar as a field.
+            let mut accumulator = Field::zero();
+            let mut coefficient = Field::one();
+            for bit in &bits_le[..size_in_bits] {
+                accumulator += Field::from_boolean(bit) * &coefficient;
+                coefficient = coefficient.double();
+            }
 
             // As `bits_le[size_in_bits..]` is guaranteed to be zero from the above logic,
             // and `bits_le` is greater than `size_in_data_bits`, it is safe to truncate `bits_le` to `size_in_bits`.
-            let scalar = Scalar { bits_le: bits_le[..size_in_bits].to_vec() };
+            let scalar = Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le[..size_in_bits].to_vec()) };
 
             // Ensure the scalar is less than `ScalarField::MODULUS`.
             E::assert(scalar.is_less_than_or_equal(&modulus_minus_one));
@@ -56,8 +69,16 @@ impl<E: Environment> FromBits for Scalar<E> {
             let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
             bits_le.resize(size_in_bits, Boolean::constant(false));
 
+            // Reconstruct the bits as a linear combination representing the original scalar as a field.
+            let mut accumulator = Field::zero();
+            let mut coefficient = Field::one();
+            for bit in &bits_le {
+                accumulator += Field::from_boolean(bit) * &coefficient;
+                coefficient = coefficient.double();
+            }
+
             // Return the scalar.
-            Scalar { bits_le }
+            Scalar { field: accumulator, bits_le: OnceCell::with_value(bits_le) }
         }
     }
 
@@ -76,21 +97,21 @@ impl<E: Environment> FromBits for Scalar<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = Scalar::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
+                assert_eq!(expected_size_in_bits, candidate.to_bits_le().len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
 
@@ -100,7 +121,7 @@ mod tests {
             Circuit::scope(&format!("Excess {} {}", mode, i), || {
                 let candidate = Scalar::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
                 match mode.is_constant() {
                     true => assert_scope!(num_constants, num_public, num_private, num_constraints),
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
@@ -116,13 +137,14 @@ mod tests {
     fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = Scalar::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
                 assert_eq!(expected_size_in_bits, candidate.to_bits_be().len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
@@ -133,7 +155,7 @@ mod tests {
             Circuit::scope(&format!("Excess {} {}", mode, i), || {
                 let candidate = Scalar::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().unwrap().len());
                 match mode.is_constant() {
                     true => assert_scope!(num_constants, num_public, num_private, num_constraints),
                     // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
@@ -148,31 +170,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 252, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 2, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 251, 0, 250, 251);
+        check_from_bits_le(Mode::Public, 1, 0, 253, 255);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 251, 0, 250, 251);
+        check_from_bits_le(Mode::Private, 1, 0, 253, 255);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 252, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 2, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 251, 0, 250, 251);
+        check_from_bits_be(Mode::Public, 1, 0, 253, 255);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 251, 0, 250, 251);
+        check_from_bits_be(Mode::Private, 1, 0, 253, 255);
     }
 }

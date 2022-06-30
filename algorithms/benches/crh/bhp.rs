@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::{crh::BHPCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::{test_rng, UniformRand};
+use snarkvm_utilities::{test_rng, Uniform};
 
 use criterion::Criterion;
 

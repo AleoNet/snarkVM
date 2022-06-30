@@ -17,7 +17,7 @@
 use crate::{One, PrimeField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
-    rand::UniformRand,
+    rand::Uniform,
     serialize::{
         CanonicalDeserialize,
         CanonicalDeserializeWithFlags,
@@ -56,7 +56,7 @@ pub trait Field:
     + One
     + Ord
     + Neg<Output = Self>
-    + UniformRand
+    + Uniform
     + Zero
     + Sized
     + Hash

@@ -59,7 +59,7 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger384},
-    rand::{test_rng, UniformRand},
+    rand::{test_rng, Uniform},
 };
 
 use rand::{thread_rng, Rng, SeedableRng};

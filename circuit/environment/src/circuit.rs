@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Constraint, *};
-use snarkvm_curves::AffineCurve;
+use crate::{helpers::Constraint, Mode, *};
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
 
-type Field = <console::Testnet3 as console::Network>::Field;
+type Field = <console::Testnet3 as console::Environment>::Field;
 
 thread_local! {
     pub(super) static CIRCUIT: Rc<RefCell<R1CS<Field>>> = Rc::new(RefCell::new(R1CS::new()));
@@ -51,11 +50,11 @@ impl Circuit {
 }
 
 impl Environment for Circuit {
-    type Affine = <console::Testnet3 as console::Network>::Affine;
-    type AffineParameters = <console::Testnet3 as console::Network>::AffineParameters;
+    type Affine = <console::Testnet3 as console::Environment>::Affine;
+    type AffineParameters = <console::Testnet3 as console::Environment>::AffineParameters;
     type BaseField = Field;
     type Network = console::Testnet3;
-    type ScalarField = <console::Testnet3 as console::Network>::Scalar;
+    type ScalarField = <console::Testnet3 as console::Environment>::Scalar;
 
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;
@@ -265,24 +264,6 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_gates_in_scope())
     }
 
-    /// A helper method to recover the y-coordinate given the x-coordinate for
-    /// a twisted Edwards point, returning the affine curve point.
-    fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
-        if let Some(element) = Self::Affine::from_x_coordinate(x, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return element;
-            }
-        }
-
-        if let Some(element) = Self::Affine::from_x_coordinate(x, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return element;
-            }
-        }
-
-        Self::halt(format!("Failed to recover an affine group from an x-coordinate of {}", x))
-    }
-
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         let error = message.into();
@@ -314,7 +295,7 @@ mod tests {
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
-        let one = <E as Environment>::BaseField::one();
+        let one = snarkvm_console_types::Field::<E::Network>::one();
         let two = one + one;
 
         const EXPONENT: u64 = 64;

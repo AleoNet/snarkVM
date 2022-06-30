@@ -17,15 +17,9 @@
 mod decode;
 mod encode;
 
-use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
-use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
+use snarkvm_console_types::prelude::*;
+use snarkvm_fields::LegendreSymbol;
 
-use anyhow::{anyhow, bail, ensure, Result};
-use core::{cmp, marker::PhantomData, ops::Neg};
+use core::{cmp, marker::PhantomData};
 
-type BaseField<G> = <G as AffineCurve>::BaseField;
-
-pub struct Elligator2<
-    G: AffineCurve<Coordinates = (BaseField<G>, BaseField<G>)>,
-    P: MontgomeryParameters<BaseField = BaseField<G>> + TwistedEdwardsParameters<BaseField = BaseField<G>>,
->(PhantomData<(G, P)>);
+pub struct Elligator2<E: Environment>(PhantomData<E>);

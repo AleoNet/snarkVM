@@ -20,15 +20,7 @@ impl<E: Environment> Square for Field<E> {
     type Output = Field<E>;
 
     fn square(&self) -> Self::Output {
-        (&self).square()
-    }
-}
-
-impl<E: Environment> Square for &Field<E> {
-    type Output = Field<E>;
-
-    fn square(&self) -> Self::Output {
-        *self * *self
+        self * self
     }
 }
 
@@ -58,11 +50,10 @@ impl<E: Environment> OutputMode<dyn Square<Output = Field<E>>> for Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 500;
 
-    fn check_square(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>) {
+    fn check_square(name: &str, expected: &console::Field<<Circuit as Environment>::Network>, a: &Field<Circuit>) {
         Circuit::scope(name, || {
             let result = a.square();
             assert_eq!(*expected, result.eject_value());
@@ -74,7 +65,7 @@ mod tests {
     fn run_test(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
             let a = Field::<Circuit>::new(mode, first);
 
             let name = format!("Square: {}", i);
@@ -83,12 +74,12 @@ mod tests {
 
         // Test zero case.
         let name = "Square Zero";
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
         check_square(name, &zero, &Field::new(mode, zero));
 
         // Test one case.
         let name = "Square One";
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         check_square(name, &one, &Field::new(mode, one));
     }
 
@@ -101,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_0_square() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         let candidate = Field::<Circuit>::new(Mode::Public, zero).square();
         assert_eq!(zero, candidate.eject_value());
@@ -109,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_1_double() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         let candidate = Field::<Circuit>::new(Mode::Public, one).square();
         assert_eq!(one, candidate.eject_value());
@@ -117,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_2_double() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
         let four = two.square();
 

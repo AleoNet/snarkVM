@@ -45,12 +45,9 @@ impl<E: Environment> Equal<Self> for Field<E> {
 
                 // Assign the expected multiplier.
                 let multiplier: Field<E> = witness!(|self, other| {
-                    match self != other {
-                        true => match (self - other).inverse() {
-                            Some(inverse) => inverse,
-                            None => E::halt("Failed to compute the native inverse of a field element"),
-                        },
-                        false => E::BaseField::one(),
+                    match (self - other).inverse() {
+                        Ok(inverse) => inverse,
+                        _ => console::Field::one(),
                     }
                 });
 
@@ -162,7 +159,6 @@ impl<E: Environment> OutputMode<dyn Equal<Field<E>, Output = Boolean<E>>> for Fi
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 200;
 
@@ -186,8 +182,8 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
@@ -259,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_is_eq_cases() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         // Basic `true` and `false` cases
         {
@@ -288,8 +284,8 @@ mod tests {
 
     #[test]
     fn test_is_neq_cases() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
         let two = one + one;
         let five = two + two + one;
 

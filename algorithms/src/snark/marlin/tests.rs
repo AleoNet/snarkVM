@@ -76,7 +76,7 @@ mod marlin {
         MarlinSNARK,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_utilities::rand::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::rand::{test_crypto_rng, Uniform};
 
     use blake2::Blake2s256;
     use core::ops::MulAssign;
@@ -306,7 +306,7 @@ mod marlin_recursion {
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
-        rand::{test_crypto_rng, UniformRand},
+        rand::{test_crypto_rng, Uniform},
         FromBytes,
         ToBytes,
     };

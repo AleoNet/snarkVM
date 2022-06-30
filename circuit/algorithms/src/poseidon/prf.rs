@@ -37,7 +37,7 @@ impl<E: Environment, const RATE: usize> PRF for Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -55,17 +55,16 @@ mod tests {
     ) -> Result<()> {
         use console::PRF as P;
 
-        let native = console::Poseidon::<<Circuit as Environment>::BaseField, RATE>::setup(DOMAIN)?;
+        let native = console::Poseidon::<<Circuit as Environment>::Network, RATE>::setup(DOMAIN)?;
         let poseidon = Poseidon::<Circuit, RATE>::constant(native.clone());
 
         for i in 0..ITERATIONS {
             // Prepare the seed.
-            let native_seed = <Circuit as Environment>::BaseField::rand(&mut test_rng());
+            let native_seed = Uniform::rand(&mut test_rng());
             let seed = Field::new(mode, native_seed);
 
             // Prepare the preimage.
-            let native_input =
-                (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(&mut test_rng())).collect::<Vec<_>>();
+            let native_input = (0..num_inputs).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.

@@ -20,7 +20,7 @@ impl<E: Environment> One for Scalar<E> {
     type Boolean = Boolean<E>;
 
     fn one() -> Self {
-        Self::constant(<E as Environment>::ScalarField::one())
+        Self::constant(console::Scalar::one())
     }
 
     fn is_one(&self) -> Self::Boolean {
@@ -35,13 +35,13 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let one = <Circuit as Environment>::ScalarField::one();
+        let one = console::Scalar::<<Circuit as Environment>::Network>::one();
 
         Circuit::scope("One", || {
             assert_scope!(0, 0, 0, 0);
             let candidate = Scalar::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
-            assert_scope!(251, 0, 0, 0);
+            assert_scope!(1, 0, 0, 0);
         });
     }
 

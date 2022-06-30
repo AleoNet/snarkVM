@@ -18,15 +18,15 @@ use super::*;
 
 impl<N: Network> Record<N> {
     /// Initializes a new record by encrypting the given state with a given record view key.
-    pub fn encrypt(state: &State<N>, record_view_key: &N::Field) -> Result<Self> {
+    pub fn encrypt(state: &State<N>, record_view_key: &Field<N>) -> Result<Self> {
         // Ensure the balance is less than or equal to 2^52.
         ensure!(state.balance().to_bits_le()[52..].iter().all(|bit| !bit), "Attempted to encrypt an invalid balance");
         // Compute the randomizers.
-        let randomizers = N::hash_many_psd2(&[N::encryption_domain(), *record_view_key], 3);
+        let randomizers = N::hash_many_psd8(&[N::encryption_domain(), *record_view_key], 3);
         // Encrypt the owner.
         let owner = state.owner().to_x_coordinate() + randomizers[0];
         // Encrypt the balance.
-        let balance = N::Field::from(state.balance() as u128) + randomizers[1];
+        let balance = Field::<N>::from_u64(*state.balance()) + randomizers[1];
 
         // // Encrypt the data.
         // let data = state.data().encrypt_symmetric(&(*record_view_key * randomizers[2]))?;
@@ -47,7 +47,6 @@ impl<N: Network> Record<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;
 
@@ -59,17 +58,17 @@ mod tests {
     fn test_randomizers_num_outputs() {
         for _ in 0..ITERATIONS {
             // Sample a random record view key.
-            let record_view_key = UniformRand::rand(&mut test_rng());
+            let record_view_key = Uniform::rand(&mut test_rng());
             // Compute the randomizers.
             let randomizers =
-                CurrentNetwork::hash_many_psd2(&[CurrentNetwork::encryption_domain(), record_view_key], 2);
+                CurrentNetwork::hash_many_psd8(&[CurrentNetwork::encryption_domain(), record_view_key], 2);
             // Retrieve the first and second randomizers.
             let randomizer_0 = randomizers[0];
             let randomizer_1 = randomizers[1];
 
             for num_outputs in 2..50 {
                 // Compute the randomizers.
-                let randomizers = CurrentNetwork::hash_many_psd2(
+                let randomizers = CurrentNetwork::hash_many_psd8(
                     &[CurrentNetwork::encryption_domain(), record_view_key],
                     num_outputs,
                 );

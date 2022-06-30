@@ -836,7 +836,7 @@ mod tests {
     use crate::fft::{DensePolynomial, EvaluationDomain};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::{FftField, Field, One, Zero};
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::Uniform;
 
     use rand::{thread_rng, Rng};
 

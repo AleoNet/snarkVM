@@ -39,11 +39,8 @@ impl<'de, N: Network> Deserialize<'de> for Identifier<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data::identifier::tests::sample_identifier;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_rng, Rng};
-
-    use anyhow::Result;
-    use rand::distributions::Alphanumeric;
 
     type CurrentNetwork = Testnet3;
 
@@ -51,17 +48,9 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        let rng = &mut test_rng();
-
         for _ in 0..ITERATIONS {
-            // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let string = "a".to_string()
-                + &rng
-                    .sample_iter(&Alphanumeric)
-                    .take(<CurrentNetwork as Network>::Field::size_in_data_bits() / (8 * 2))
-                    .map(char::from)
-                    .collect::<String>();
-            let expected = Identifier::<CurrentNetwork>::from_str(&string)?;
+            // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
+            let expected = sample_identifier::<CurrentNetwork>()?;
 
             // Serialize
             let expected_string = &expected.to_string();
@@ -77,17 +66,9 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let rng = &mut test_rng();
-
         for _ in 0..ITERATIONS {
-            // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
-            let string = "a".to_string()
-                + &rng
-                    .sample_iter(&Alphanumeric)
-                    .take(<CurrentNetwork as Network>::Field::size_in_data_bits() / (8 * 2))
-                    .map(char::from)
-                    .collect::<String>();
-            let expected = Identifier::<CurrentNetwork>::from_str(&string)?;
+            // Sample a random fixed-length alphanumeric identifier, that always starts with an alphabetic character.
+            let expected = sample_identifier::<CurrentNetwork>()?;
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

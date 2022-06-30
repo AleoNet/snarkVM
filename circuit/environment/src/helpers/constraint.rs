@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{prelude::*, *};
+use snarkvm_fields::PrimeField;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Constraint<F: PrimeField>(

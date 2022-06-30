@@ -43,14 +43,13 @@ impl<E: Environment> FromField for Address<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_field(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
             let candidate = Group::<Circuit>::new(mode, expected).to_x_coordinate();
 
             Circuit::scope(&format!("{} {}", mode, i), || {

@@ -37,3 +37,7 @@ pub use snarkvm_console_transition as transition;
 
 #[cfg(feature = "types")]
 pub use snarkvm_console_types as types;
+
+pub mod prelude {
+    pub use crate::network::prelude::*;
+}

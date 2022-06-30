@@ -31,7 +31,7 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
     /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         match I::is_signed() {
-            // Note: This addition must be checked as `-I::MIN` is an invalid operation.
+            // Note: This addition must be checked as `-Integer::MIN` is an invalid operation.
             true => Integer::one().add_checked(&!self),
             false => E::halt("Attempted to negate an unsigned integer"),
         }
@@ -67,19 +67,24 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Neg<Output = Integer<E, I>>>
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+
     use test_utilities::*;
 
     use core::{ops::RangeInclusive, panic::UnwindSafe};
 
     const ITERATIONS: u64 = 128;
 
-    fn check_neg<I: IntegerType + UnwindSafe + Neg<Output = I>>(name: &str, value: I, mode: Mode) {
+    fn check_neg<I: IntegerType + UnwindSafe + Neg<Output = I>>(
+        name: &str,
+        value: console::Integer<<Circuit as Environment>::Network, I>,
+        mode: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode, value);
         match value.checked_neg() {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.neg();
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
+                assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 assert_count!(Neg(Integer<I>) => Integer<I>, &mode);
                 assert_output_mode!(Neg(Integer<I>) => Integer<I>, &mode, candidate);
             }),
@@ -96,18 +101,18 @@ mod tests {
 
     fn run_test<I: IntegerType + UnwindSafe + Neg<Output = I>>(mode: Mode) {
         // Check the 0 case.
-        check_neg(&format!("Neg: {} zero", mode), I::zero(), mode);
+        check_neg::<I>(&format!("Neg: {} zero", mode), console::Integer::zero(), mode);
         // Check the 1 case.
-        check_neg(&format!("Neg: {} one", mode), -I::one(), mode);
+        check_neg::<I>(&format!("Neg: {} one", mode), -console::Integer::one(), mode);
         // Check random values.
         for i in 0..ITERATIONS {
-            let value: I = UniformRand::rand(&mut test_rng());
-            check_neg(&format!("Neg: {} {}", mode, i), value, mode);
+            let value = Uniform::rand(&mut test_rng());
+            check_neg::<I>(&format!("Neg: {} {}", mode, i), value, mode);
         }
     }
 
     fn assert_unsigned_neg_halts<I: IntegerType + UnwindSafe>(mode: Mode) {
-        let candidate = Integer::<Circuit, I>::new(mode, UniformRand::rand(&mut test_rng()));
+        let candidate = Integer::<Circuit, I>::new(mode, Uniform::rand(&mut test_rng()));
         let operation = std::panic::catch_unwind(|| candidate.neg());
         assert!(operation.is_err());
     }
@@ -117,8 +122,10 @@ mod tests {
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for value in I::MIN..=I::MAX {
+            let value = console::Integer::<_, I>::new(value);
+
             let name = format!("Neg: {}", mode);
-            check_neg(&name, value, mode);
+            check_neg::<I>(&name, value, mode);
         }
     }
 

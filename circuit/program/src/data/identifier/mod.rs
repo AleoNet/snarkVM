@@ -14,14 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(test)]
+use snarkvm_circuit_types::environment::assert_scope;
+
 mod from_bits;
+mod from_field;
 mod size_in_bits;
 mod to_bits;
 mod to_field;
 
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, U8};
-use snarkvm_utilities::{error, FromBits as FB, ToBits as TB};
+use snarkvm_utilities::{FromBits as FB, ToBits as TB};
 
 /// An identifier is an **immutable** UTF-8 string,
 /// represented as a **constant** field element in the circuit.
@@ -33,7 +37,7 @@ use snarkvm_utilities::{error, FromBits as FB, ToBits as TB};
 /// The identifier must not consist solely of underscores.
 /// The identifier must fit within the data capacity of a base field element.
 #[derive(Clone)]
-pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes
+pub struct Identifier<A: Aleo>(Field<A>, u8); // Number of bytes in the identifier.
 
 #[cfg(console)]
 impl<A: Aleo> Inject for Identifier<A> {
@@ -44,38 +48,12 @@ impl<A: Aleo> Inject for Identifier<A> {
         // Convert the identifier to a string to check its validity.
         let identifier = identifier.to_string();
 
-        // Ensure the identifier is not an empty string, and does not start with a number.
-        match identifier.chars().next() {
-            Some(character) => {
-                if character.is_numeric() {
-                    A::halt("Identifier cannot start with a number")
-                }
-            }
-            None => A::halt("Identifier cannot be an empty string"),
-        }
-
-        // Ensure the identifier is alphanumeric and underscores.
-        if !identifier.chars().all(|character| character.is_alphanumeric() || character == '_') {
-            A::halt("Identifier must be alphanumeric and underscores")
-        }
-
-        // Ensure the identifier is not solely underscores.
-        if identifier.chars().all(|character| character == '_') {
-            A::halt("Identifier cannot consist solely of underscores")
-        }
-
-        // Ensure identifier fits within the data capacity of the base field.
-        let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-        if identifier.len() > max_bytes {
-            A::halt(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long"))
-        }
-
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        let field = Field::from_bits_le(&Vec::<Boolean<_>>::constant(identifier.as_bytes().to_bits_le()));
+        let field = Field::from_bits_le(&Vec::<Boolean<_>>::constant(identifier.to_bits_le()));
 
         // Return the identifier.
-        Self(field, identifier.as_bytes().len() as u8)
+        Self(field, identifier.len() as u8)
     }
 }
 
@@ -85,89 +63,120 @@ impl<A: Aleo> Eject for Identifier<A> {
 
     /// Ejects the mode of the identifier.
     fn eject_mode(&self) -> Mode {
-        self.0.eject_mode()
+        match self.0.eject_mode() == Mode::Constant {
+            true => Mode::Constant,
+            false => A::halt("Identifier::eject_mode: Identifier mode is not constant."),
+        }
     }
 
     /// Ejects the identifier as a string.
     fn eject_value(&self) -> Self::Primitive {
-        // Convert the identifier to bits.
-        let bits_le = self.0.to_bits_le().eject_value();
-        // Convert the bits to bytes, and parse the bytes as a UTF-8 string.
-        match String::from_utf8(
-            bits_le
-                .chunks(8)
-                .map(|byte| match u8::from_bits_le(byte) {
-                    Ok(byte) => byte,
-                    Err(error) => A::halt(format!("Failed to recover an identifier from bits: {error}")),
-                })
-                .collect::<Vec<_>>(),
-        ) {
-            // Truncate the UTF-8 string at the first instance of '\0'.
-            Ok(string) => match string.split('\0').next() {
-                // Check that the UTF-8 string matches the expected length.
-                Some(string) => match string.len() == self.1 as usize {
-                    // Return the string.
-                    true => match Self::Primitive::try_from(string) {
-                        Ok(identifier) => identifier,
-                        Err(error) => A::halt(format!("Failed to convert an identifier to a string: {error}")),
-                    },
-                    false => A::halt(format!("Identifier should be {} bytes, found {} bytes", self.1, string.len())),
-                },
-                None => A::halt("Identifier exceeds the maximum capacity allowed"),
-            },
-            Err(error) => A::halt(format!("Failed to eject identifier as string: {error}")),
+        match console::FromField::from_field(&self.0.eject_value()) {
+            Ok(identifier) => identifier,
+            Err(error) => A::halt(format!("Failed to convert an identifier to a string: {error}")),
         }
     }
 }
 
 #[cfg(console)]
 impl<A: Aleo> Parser for Identifier<A> {
-    type Environment = A;
-
     /// Parses a UTF-8 string into an identifier.
-    ///
-    /// # Requirements
-    /// The identifier must not be an empty string.
-    /// The identifier must not start with a number.
-    /// The identifier must be alphanumeric, and may include underscores.
-    /// The identifier must not consist solely of underscores.
-    /// The identifier must fit within the data capacity of a base field element.
-    /// The identifier must not be a keyword.
-    /// The identifier must not be a register format.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Ensure the identifier is not empty, is alphanumeric and underscores, and does not begin with a number.
-        map_res(recognize(pair(alt((alpha1, tag("_"))), many0(alt((alphanumeric1, tag("_")))))), |identifier: &str| {
-            // Ensure the identifier is not solely underscores.
-            if identifier.chars().all(|character| character == '_') {
-                return Err(error("Identifier cannot consist solely of underscores"));
-            }
+        // Parse the identifier from the string.
+        let (string, identifier) = console::Identifier::parse(string)?;
 
-            // Ensure identifier fits within the data capacity of the base field.
-            let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
-            if identifier.as_bytes().len() > max_bytes {
-                return Err(error(format!("Identifier is too large. Identifiers must be <= {max_bytes} bytes long")));
-            }
-
-            Ok(Self::constant(console::Identifier::try_from(identifier).map_err(|e| error(format!("{e}")))?))
-        })(string)
+        Ok((string, Identifier::constant(identifier)))
     }
 }
 
 #[cfg(console)]
-impl<A: Aleo> fmt::Display for Identifier<A> {
+impl<A: Aleo> FromStr for Identifier<A> {
+    type Err = Error;
+
+    /// Parses a UTF-8 string into an identifier.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Debug for Identifier<A> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Display for Identifier<A> {
     /// Prints the identifier as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
     }
 }
 
+impl<A: Aleo> Eq for Identifier<A> {}
+
+impl<A: Aleo> PartialEq for Identifier<A> {
+    /// Implements the `Eq` trait for the identifier.
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eject_value() == other.0.eject_value()
+    }
+}
+
+impl<A: Aleo> core::hash::Hash for Identifier<A> {
+    /// Implements the `Hash` trait for the identifier.
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.0.eject_value().hash(state);
+    }
+}
+
 #[cfg(all(test, console))]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use crate::Circuit;
+    use console::{test_rng, Rng};
 
-    use anyhow::Result;
+    use anyhow::{bail, Result};
+    use core::str::FromStr;
+    use rand::distributions::Alphanumeric;
+
+    /// Samples a random identifier.
+    pub(super) fn sample_console_identifier<A: Aleo>() -> Result<console::Identifier<A::Network>> {
+        // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
+        let string = sample_console_identifier_as_string::<A>()?;
+        // Return the identifier.
+        console::Identifier::from_str(&string)
+    }
+
+    /// Samples a random identifier as a string.
+    pub(super) fn sample_console_identifier_as_string<A: Aleo>() -> Result<String> {
+        // Initialize a test RNG.
+        let rng = &mut test_rng();
+        // Sample a random fixed-length alphanumeric string, that always starts with an alphabetic character.
+        let string = "a".to_string()
+            + &rng
+                .sample_iter(&Alphanumeric)
+                .take(A::BaseField::size_in_data_bits() / (8 * 2))
+                .map(char::from)
+                .collect::<String>();
+        // Ensure identifier fits within the data capacity of the base field.
+        let max_bytes = A::BaseField::size_in_data_bits() / 8; // Note: This intentionally rounds down.
+        match string.len() <= max_bytes {
+            // Return the identifier.
+            true => Ok(string),
+            false => bail!("Identifier exceeds the maximum capacity allowed"),
+        }
+    }
 
     #[test]
     fn test_identifier_parse() -> Result<()> {
@@ -178,12 +187,12 @@ mod tests {
     }
 
     #[test]
-    fn test_identifier_parse_fails() {
+    fn test_identifier_parse_fails() -> Result<()> {
         // Must be alphanumeric or underscore.
         let identifier = Identifier::<Circuit>::parse("foo_bar~baz").unwrap();
-        assert_eq!(("~baz", Identifier::<Circuit>::from_str("foo_bar").eject()), (identifier.0, identifier.1.eject()));
+        assert_eq!(("~baz", Identifier::<Circuit>::from_str("foo_bar")?.eject()), (identifier.0, identifier.1.eject()));
         let identifier = Identifier::<Circuit>::parse("foo_bar-baz").unwrap();
-        assert_eq!(("-baz", Identifier::<Circuit>::from_str("foo_bar").eject()), (identifier.0, identifier.1.eject()));
+        assert_eq!(("-baz", Identifier::<Circuit>::from_str("foo_bar")?.eject()), (identifier.0, identifier.1.eject()));
 
         // Must not be solely underscores.
         assert!(Identifier::<Circuit>::parse("_").is_err());
@@ -203,17 +212,19 @@ mod tests {
         let identifier =
             Identifier::<Circuit>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(identifier.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_identifier_display() {
-        let identifier = Identifier::<Circuit>::from_str("foo_bar");
+    fn test_identifier_display() -> Result<()> {
+        let identifier = Identifier::<Circuit>::from_str("foo_bar")?;
         assert_eq!("foo_bar", format!("{identifier}"));
+        Ok(())
     }
 
     #[test]
-    fn test_identifier_bits() {
-        let identifier = Identifier::<Circuit>::from_str("foo_bar");
+    fn test_identifier_bits() -> Result<()> {
+        let identifier = Identifier::<Circuit>::from_str("foo_bar")?;
         assert_eq!(
             identifier.to_bits_le().eject(),
             Identifier::from_bits_le(&identifier.to_bits_le()).to_bits_le().eject()
@@ -222,5 +233,6 @@ mod tests {
             identifier.to_bits_be().eject(),
             Identifier::from_bits_be(&identifier.to_bits_be()).to_bits_be().eject()
         );
+        Ok(())
     }
 }

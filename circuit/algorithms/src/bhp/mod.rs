@@ -28,13 +28,13 @@ use snarkvm_circuit_types::environment::assert_scope;
 use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
 
-/// BHP256 is a collision-resistant hash function that takes a 256-bit input.
+/// BHP256 is a collision-resistant hash function that processes inputs in 256-bit chunks.
 pub type BHP256<E> = BHP<E, 3, 57>; // Supports inputs up to 261 bits (1 u8 + 1 Fq).
-/// BHP512 is a collision-resistant hash function that takes a 512-bit input.
+/// BHP512 is a collision-resistant hash function that processes inputs in 512-bit chunks.
 pub type BHP512<E> = BHP<E, 6, 43>; // Supports inputs up to 522 bits (2 u8 + 2 Fq).
-/// BHP768 is a collision-resistant hash function that takes a 768-bit input.
+/// BHP768 is a collision-resistant hash function that processes inputs in 768-bit chunks.
 pub type BHP768<E> = BHP<E, 15, 23>; // Supports inputs up to 783 bits (3 u8 + 3 Fq).
-/// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
+/// BHP1024 is a collision-resistant hash function that processes inputs in 1024-bit chunks.
 pub type BHP1024<E> = BHP<E, 8, 54>; // Supports inputs up to 1044 bits (4 u8 + 4 Fq).
 
 /// The BHP chunk size (this implementation is for a 3-bit BHP).
@@ -63,7 +63,7 @@ pub struct BHP<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> {
 
 #[cfg(console)]
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
-    type Primitive = console::BHP<E::Affine, NUM_WINDOWS, WINDOW_SIZE>;
+    type Primitive = console::BHP<E::Network, NUM_WINDOWS, WINDOW_SIZE>;
 
     /// Initializes a new instance of a BHP circuit with the given BHP variant.
     fn new(_mode: Mode, bhp: Self::Primitive) -> Self {
@@ -90,7 +90,6 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
 mod tests {
     use super::*;
     use snarkvm_circuit_types::{environment::Circuit, Eject};
-    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     use anyhow::Result;
 
@@ -100,7 +99,7 @@ mod tests {
     #[test]
     fn test_setup_constant() -> Result<()> {
         for _ in 0..ITERATIONS {
-            let native = console::BHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE)?;
+            let native = console::BHP::<<Circuit as Environment>::Network, 8, 32>::setup(MESSAGE)?;
             let circuit = BHP::<Circuit, 8, 32>::new(Mode::Constant, native.clone());
 
             native.bases().iter().zip(circuit.hasher.bases().iter()).for_each(|(native_bases, circuit_bases)| {
@@ -113,8 +112,8 @@ mod tests {
                         let edwards_y = (&x_bases[0] - Field::one()) / (&x_bases[0] + Field::one());
                         (edwards_x, edwards_y)
                     };
-                    assert_eq!(native_base.to_affine().to_x_coordinate(), circuit_x.eject_value());
-                    assert_eq!(native_base.to_affine().to_y_coordinate(), circuit_y.eject_value());
+                    assert_eq!(native_base.to_x_coordinate(), circuit_x.eject_value());
+                    assert_eq!(native_base.to_y_coordinate(), circuit_y.eject_value());
                 })
             });
         }

@@ -296,7 +296,7 @@ impl<F: PrimeField, CF: PrimeField> ToBitsLEGadget<CF> for NonNativeFieldInputVa
 mod test {
 
     use snarkvm_r1cs::{Fr, TestConstraintSystem};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::rand::{test_rng, Uniform};
 
     use super::*;
     use crate::traits::eq::EqGadget;

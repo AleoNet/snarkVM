@@ -16,7 +16,7 @@
 
 use crate::PairingEngine;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::UniformRand, serialize::*, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::{
     fmt::{Debug, Display},
@@ -28,20 +28,21 @@ use serde::{de::DeserializeOwned, Serialize};
 
 /// Projective representation of an elliptic curve point guaranteed to be in the prime order subgroup.
 pub trait ProjectiveCurve:
-    ToBytes
-    + FromBytes
+    CanonicalSerialize
+    + CanonicalDeserialize
     + Copy
     + Clone
     + Debug
     + Display
     + Default
+    + FromBytes
     + Send
     + Sync
     + 'static
     + Eq
     + Hash
     + Neg<Output = Self>
-    + UniformRand
+    + Uniform
     + Zero
     + Add<Self, Output = Self>
     + Sub<Self, Output = Self>
@@ -55,8 +56,7 @@ pub trait ProjectiveCurve:
     + for<'a> SubAssign<&'a Self>
     + PartialEq<Self::Affine>
     + Sized
-    + CanonicalSerialize
-    + CanonicalDeserialize
+    + ToBytes
     + iter::Sum
     + From<<Self as ProjectiveCurve>::Affine>
 {
@@ -109,30 +109,30 @@ pub trait ProjectiveCurve:
 /// in the correct prime order subgroup.
 #[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
-    ToBytes
-    + FromBytes
+    CanonicalSerialize
+    + CanonicalDeserialize
     + Copy
     + Clone
     + Debug
     + Display
     + Default
+    + FromBytes
     + Send
     + Sync
     + 'static
     + Eq
     + Hash
     + Neg<Output = Self>
-    + UniformRand
-    + Zero
+    + Uniform
     + PartialEq<Self::Projective>
     + Mul<Self::ScalarField, Output = Self::Projective>
     + Sized
     + Serialize
     + DeserializeOwned
-    + CanonicalSerialize
-    + CanonicalDeserialize
+    + ToBytes
     + From<<Self as AffineCurve>::Projective>
     + ToMinimalBits
+    + Zero
 {
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
     type BaseField: Field + SquareRootField;
@@ -141,6 +141,9 @@ pub trait AffineCurve:
 
     /// Initializes a new affine group element from the given coordinates.
     fn from_coordinates(coordinates: Self::Coordinates) -> Self;
+
+    /// Returns the cofactor of the curve.
+    fn cofactor() -> &'static [u64];
 
     /// Returns a fixed generator of unknown exponent.
     #[must_use]

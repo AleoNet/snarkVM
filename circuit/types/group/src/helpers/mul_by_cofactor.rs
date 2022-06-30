@@ -21,6 +21,8 @@ impl<E: Environment> Group<E> {
     pub fn mul_by_cofactor(&self) -> Group<E> {
         // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
         // See unit tests below, which sanity check that this condition holds.
+        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
+
         self.double().double()
     }
 }
@@ -29,17 +31,16 @@ impl<E: Environment> Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 250;
 
     fn check_mul_by_cofactor(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
-            let input = expected.mul_by_cofactor_inv();
+            let input = expected.div_by_cofactor();
             assert_eq!(expected, input.mul_by_cofactor());
 
             // Initialize the input.
@@ -74,19 +75,20 @@ mod tests {
     fn test_mul_by_cofactor_matches() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
 
             // Multiply the point by the inverse of the cofactor.
-            let input = expected.mul_by_cofactor_inv();
+            let input = expected.div_by_cofactor();
             assert_eq!(expected, input.mul_by_cofactor());
 
             // Initialize the input.
             let affine = Group::<Circuit>::new(Mode::Private, input);
 
             Circuit::scope(&format!("Constant {}", i), || {
-                let candidate = affine * Scalar::constant(<Circuit as Environment>::ScalarField::from(4u128));
+                let candidate =
+                    affine * Scalar::constant(console::Scalar::new(<Circuit as Environment>::ScalarField::from(4u128)));
                 assert_eq!(expected, candidate.eject_value());
-                assert_scope!(257, 0, 22, 22);
+                assert_scope!(258, 0, 22, 22);
             });
             Circuit::reset();
         }

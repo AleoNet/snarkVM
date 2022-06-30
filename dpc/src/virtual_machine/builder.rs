@@ -16,7 +16,7 @@
 
 use crate::prelude::*;
 use snarkvm_algorithms::CommitmentScheme;
-use snarkvm_utilities::{ToBytes, UniformRand};
+use snarkvm_utilities::{ToBytes, Uniform};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;

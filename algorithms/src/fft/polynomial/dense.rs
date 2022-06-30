@@ -476,7 +476,7 @@ mod tests {
     use crate::fft::polynomial::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::{Field, One, Zero};
-    use snarkvm_utilities::rand::UniformRand;
+    use snarkvm_utilities::rand::Uniform;
 
     use rand::thread_rng;
 

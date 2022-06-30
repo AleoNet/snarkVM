@@ -58,7 +58,7 @@ mod test {
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{
         bititerator::BitIteratorBE,
-        rand::{test_rng, UniformRand},
+        rand::{test_rng, Uniform},
     };
 
     use core::ops::Mul;

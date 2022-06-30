@@ -28,13 +28,13 @@ impl<A: Aleo> Randomizer<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, Rng, UniformRand};
+    use console::{test_crypto_rng, Rng, Uniform};
 
     use anyhow::Result;
 
     pub(crate) const ITERATIONS: usize = 100;
 
-    fn check_to_nonce(
+    fn check_to_record_view_key(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -50,8 +50,8 @@ mod tests {
             let address = snarkvm_console_account::Address::<<Circuit as Environment>::Network>::try_from(&view_key)?;
 
             // Compute the native randomizer.
-            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
-            let output_index = UniformRand::rand(rng);
+            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
+            let output_index = Uniform::rand(rng);
             let randomizer = console::Randomizer::<<Circuit as Environment>::Network>::prove(
                 &view_key,
                 &serial_numbers,
@@ -74,17 +74,17 @@ mod tests {
     }
 
     #[test]
-    fn test_to_nonce_constant() -> Result<()> {
-        check_to_nonce(Mode::Constant, 1743, 0, 0, 0)
+    fn test_to_record_view_key_constant() -> Result<()> {
+        check_to_record_view_key(Mode::Constant, 1994, 0, 0, 0)
     }
 
     #[test]
-    fn test_to_nonce_public() -> Result<()> {
-        check_to_nonce(Mode::Public, 750, 0, 3252, 3252)
+    fn test_to_record_view_key_public() -> Result<()> {
+        check_to_record_view_key(Mode::Public, 750, 0, 3503, 3504)
     }
 
     #[test]
-    fn test_to_nonce_private() -> Result<()> {
-        check_to_nonce(Mode::Private, 750, 0, 3252, 3252)
+    fn test_to_record_view_key_private() -> Result<()> {
+        check_to_record_view_key(Mode::Private, 750, 0, 3503, 3504)
     }
 }

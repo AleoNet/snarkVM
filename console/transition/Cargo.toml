@@ -14,17 +14,6 @@ version = "0.7.5"
 path = "../network"
 version = "0.7.5"
 
-[dependencies.snarkvm-curves]
-path = "../../curves"
+[dependencies.snarkvm-console-types]
+path = "../types"
 version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-utilities]
-path = "../../utilities"
-version = "0.7.5"
-
-[dependencies.anyhow]
-version = "1.0.57"
-
-[dependencies.itertools]
-version = "0.10.1"

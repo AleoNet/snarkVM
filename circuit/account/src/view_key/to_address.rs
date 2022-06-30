@@ -61,16 +61,16 @@ mod tests {
 
     #[test]
     fn test_to_address_constant() -> Result<()> {
-        check_to_address(Mode::Constant, 1000, 0, 0, 0)
+        check_to_address(Mode::Constant, 1251, 0, 0, 0)
     }
 
     #[test]
     fn test_to_address_public() -> Result<()> {
-        check_to_address(Mode::Public, 500, 0, 1250, 1250)
+        check_to_address(Mode::Public, 500, 0, 1501, 1502)
     }
 
     #[test]
     fn test_to_address_private() -> Result<()> {
-        check_to_address(Mode::Private, 500, 0, 1250, 1250)
+        check_to_address(Mode::Private, 500, 0, 1501, 1502)
     }
 }

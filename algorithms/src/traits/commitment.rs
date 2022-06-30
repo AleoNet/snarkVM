@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::{FromBytes, ToBits, ToBytes, UniformRand};
+use snarkvm_utilities::{FromBytes, ToBits, ToBytes, Uniform};
 
 use anyhow::Result;
 use core::{fmt::Debug, hash::Hash};
@@ -22,7 +22,7 @@ use core::{fmt::Debug, hash::Hash};
 pub trait CommitmentScheme: Sized + Clone {
     type Output: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Sync + Send;
     type Parameters: Clone + Debug + Eq;
-    type Randomness: Clone + Debug + Default + Eq + UniformRand + ToBytes + FromBytes + Sync + Send;
+    type Randomness: Clone + Debug + Default + Eq + Uniform + ToBytes + FromBytes + Sync + Send;
 
     fn setup(message: &str) -> Self;
 

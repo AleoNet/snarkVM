@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_curves::AffineCurve;
 
 impl<N: Network> ToBits for Literal<N> {
     /// Returns the little-endian bits of the literal.
@@ -33,10 +32,10 @@ impl<N: Network> ToBits for &Literal<N> {
     /// Returns the little-endian bits of the literal.
     fn to_bits_le(&self) -> Vec<bool> {
         match self {
-            Literal::Address(literal) => (*literal).to_x_coordinate().to_bits_le(),
-            Literal::Boolean(literal) => vec![*literal],
+            Literal::Address(literal) => literal.to_bits_le(),
+            Literal::Boolean(literal) => literal.to_bits_le(),
             Literal::Field(literal) => literal.to_bits_le(),
-            Literal::Group(literal) => literal.to_x_coordinate().to_bits_le(),
+            Literal::Group(literal) => literal.to_bits_le(),
             Literal::I8(literal) => literal.to_bits_le(),
             Literal::I16(literal) => literal.to_bits_le(),
             Literal::I32(literal) => literal.to_bits_le(),
@@ -55,10 +54,10 @@ impl<N: Network> ToBits for &Literal<N> {
     /// Returns the big-endian bits of the literal.
     fn to_bits_be(&self) -> Vec<bool> {
         match self {
-            Literal::Address(literal) => (*literal).to_x_coordinate().to_bits_be(),
-            Literal::Boolean(literal) => vec![*literal],
+            Literal::Address(literal) => literal.to_bits_be(),
+            Literal::Boolean(literal) => literal.to_bits_be(),
             Literal::Field(literal) => literal.to_bits_be(),
-            Literal::Group(literal) => literal.to_x_coordinate().to_bits_be(),
+            Literal::Group(literal) => literal.to_bits_be(),
             Literal::I8(literal) => literal.to_bits_be(),
             Literal::I16(literal) => literal.to_bits_be(),
             Literal::I32(literal) => literal.to_bits_be(),

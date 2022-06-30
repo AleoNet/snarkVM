@@ -158,7 +158,7 @@ impl<N: Network> Transitions<N> {
     fn to_transition_path(&self, transition_id: N::TransitionID) -> Result<MerklePath<N::TransactionIDParameters>> {
         match self.get_transition_index(&transition_id) {
             Some(index) => Ok(self.tree.generate_proof(*index as usize, &transition_id)?),
-            _ => return Err(MerkleError::MissingLeaf(format!("{}", transition_id)).into()),
+            _ => Err(MerkleError::MissingLeaf(format!("{}", transition_id)).into()),
         }
     }
 }

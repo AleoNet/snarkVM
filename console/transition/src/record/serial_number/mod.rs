@@ -19,25 +19,22 @@ mod verify;
 
 use snarkvm_console_account::{Address, ComputeKey};
 use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{CryptoRng, Rng, ToBits, UniformRand};
-
-use anyhow::Result;
+use snarkvm_console_types::prelude::*;
 
 #[derive(Clone)]
 pub struct SerialNumber<N: Network> {
     /// The serial number of the record.
-    serial_number: N::Field,
+    serial_number: Field<N>,
     /// The signature for the serial number: `(challenge, response, compute_key, gamma)`.
-    signature: (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine),
+    signature: (Scalar<N>, Scalar<N>, ComputeKey<N>, Group<N>),
 }
 
-impl<N: Network> From<(N::Field, (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine))> for SerialNumber<N> {
+impl<N: Network> From<(Field<N>, (Scalar<N>, Scalar<N>, ComputeKey<N>, Group<N>))> for SerialNumber<N> {
     /// Note: See `SerialNumber::prove` to create a serial number. This method is used to eject from a circuit.
     fn from(
         (serial_number, (challenge, response, compute_key, gamma)): (
-            N::Field,
-            (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine),
+            Field<N>,
+            (Scalar<N>, Scalar<N>, ComputeKey<N>, Group<N>),
         ),
     ) -> Self {
         Self { serial_number, signature: (challenge, response, compute_key, gamma) }
@@ -46,12 +43,12 @@ impl<N: Network> From<(N::Field, (N::Scalar, N::Scalar, ComputeKey<N>, N::Affine
 
 impl<N: Network> SerialNumber<N> {
     /// Returns the serial number.
-    pub const fn value(&self) -> &N::Field {
+    pub const fn value(&self) -> &Field<N> {
         &self.serial_number
     }
 
     /// Returns the signature for the serial number.
-    pub const fn signature(&self) -> &(N::Scalar, N::Scalar, ComputeKey<N>, N::Affine) {
+    pub const fn signature(&self) -> &(Scalar<N>, Scalar<N>, ComputeKey<N>, Group<N>) {
         &self.signature
     }
 }

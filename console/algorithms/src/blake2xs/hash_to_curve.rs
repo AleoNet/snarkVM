@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_curves::AffineCurve;
+use snarkvm_console_types::prelude::AffineCurve;
 
 impl Blake2Xs {
     /// Runs hash-to-curve and returns the generator, message, and counter on success.

@@ -16,14 +16,14 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_BITS: u8> CommitUncompressed for Pedersen<G, NUM_BITS> {
+impl<E: Environment, const NUM_BITS: u8> CommitUncompressed for Pedersen<E, NUM_BITS> {
     type Input = bool;
-    type Output = G;
-    type Randomizer = G::ScalarField;
+    type Output = Group<E>;
+    type Randomizer = Scalar<E>;
 
-    /// Returns the Pedersen commitment of the given input and randomizer as an affine group element.
+    /// Returns the Pedersen commitment of the given input and randomizer as a group element.
     fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output> {
-        let mut output = self.hash_uncompressed(input)?.to_projective();
+        let mut output = self.hash_uncompressed(input)?;
 
         // Compute h^r.
         randomizer.to_bits_le().iter().zip_eq(&*self.random_base_window).filter(|(bit, _)| **bit).for_each(
@@ -32,6 +32,6 @@ impl<G: AffineCurve, const NUM_BITS: u8> CommitUncompressed for Pedersen<G, NUM_
             },
         );
 
-        Ok(output.to_affine())
+        Ok(output)
     }
 }

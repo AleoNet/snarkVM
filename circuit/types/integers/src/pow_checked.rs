@@ -16,9 +16,30 @@
 
 use super::*;
 
+impl<E: Environment, I: IntegerType, M: Magnitude> Pow<Integer<E, M>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: Integer<E, M>) -> Self::Output {
+        self.pow_checked(&other)
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> Pow<&Integer<E, M>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the `power` of `self` to the power of `other`.
+    #[inline]
+    fn pow(self, other: &Integer<E, M>) -> Self::Output {
+        self.pow_checked(other)
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
+    /// Returns the `power` of `self` to the power of `other`.
     #[inline]
     fn pow_checked(&self, other: &Integer<E, M>) -> Self::Output {
         // Determine the variable mode.
@@ -26,7 +47,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
             // Compute the result and return the new constant.
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
             match self.eject_value().checked_pow(&other.eject_value().to_u32().unwrap()) {
-                Some(value) => Integer::new(Mode::Constant, value),
+                Some(value) => Integer::new(Mode::Constant, console::Integer::new(value)),
                 None => E::halt("Integer overflow on exponentiation of two constants"),
             }
         } else {
@@ -41,7 +62,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
+                    // Note that it is safe to use abs_wrapped since we want Integer::MIN to be interpreted as an unsigned number.
                     let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
@@ -134,7 +155,6 @@ mod tests {
     use super::*;
     use crate::test_utilities::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
@@ -143,8 +163,8 @@ mod tests {
 
     fn check_pow<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
         name: &str,
-        first: I,
-        second: M,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, M>,
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -153,7 +173,8 @@ mod tests {
         match first.checked_pow(&second.to_u32().unwrap()) {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.pow_checked(&b);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
+                assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 // assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                 // assert_output_mode!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
             }),
@@ -172,33 +193,39 @@ mod tests {
 
     fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: M = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(&name, first, second, mode_a, mode_b);
+            check_pow::<I, M>(&name, first, second, mode_a, mode_b);
 
             let name = format!("Pow Zero: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(&name, first, M::zero(), mode_a, mode_b);
+            check_pow::<I, M>(&name, first, console::Integer::zero(), mode_a, mode_b);
 
             let name = format!("Pow One: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(&name, first, M::one(), mode_a, mode_b);
+            check_pow::<I, M>(&name, first, console::Integer::one(), mode_a, mode_b);
 
             // Check that the square is computed correctly.
             let name = format!("Square: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(&name, first, M::one() + M::one(), mode_a, mode_b);
+            check_pow::<I, M>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
 
             // Check that the cube is computed correctly.
             let name = format!("Cube: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(&name, first, M::one() + M::one() + M::one(), mode_a, mode_b);
+            check_pow::<I, M>(
+                &name,
+                first,
+                console::Integer::one() + console::Integer::one() + console::Integer::one(),
+                mode_a,
+                mode_b,
+            );
         }
 
         // Test corner cases for exponentiation.
-        check_pow("MAX ** MAX", I::MAX, M::MAX, mode_a, mode_b);
-        check_pow("MIN ** 0", I::MIN, M::zero(), mode_a, mode_b);
-        check_pow("MAX ** 0", I::MAX, M::zero(), mode_a, mode_b);
-        check_pow("MIN ** 1", I::MIN, M::one(), mode_a, mode_b);
-        check_pow("MAX ** 1", I::MAX, M::one(), mode_a, mode_b);
+        check_pow::<I, M>("MAX ** MAX", console::Integer::MAX, console::Integer::MAX, mode_a, mode_b);
+        check_pow::<I, M>("MIN ** 0", console::Integer::MIN, console::Integer::zero(), mode_a, mode_b);
+        check_pow::<I, M>("MAX ** 0", console::Integer::MAX, console::Integer::zero(), mode_a, mode_b);
+        check_pow::<I, M>("MIN ** 1", console::Integer::MIN, console::Integer::one(), mode_a, mode_b);
+        check_pow::<I, M>("MAX ** 1", console::Integer::MAX, console::Integer::one(), mode_a, mode_b);
     }
 
     fn run_exhaustive_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode)
@@ -208,8 +235,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in M::MIN..=M::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, M>::new(second);
+
                 let name = format!("Pow: ({} ** {})", first, second);
-                check_pow(&name, first, second, mode_a, mode_b);
+                check_pow::<I, M>(&name, first, second, mode_a, mode_b);
             }
         }
     }

@@ -69,7 +69,7 @@ pub trait MerkleParameters: Clone + Debug + PartialEq + Eq + Send + Sync {
         //  64 bytes was chosen as a temporary fix, to at least ensure the `TwoToOneCRH` preimage size fits,
         //  however this temporary fix does not technically address the issue in a meaningful sense.
         let empty_buffer = &[0u8; 64];
-        Ok(self.two_to_one_crh().hash_bytes(&*empty_buffer)?)
+        Ok(self.two_to_one_crh().hash_bytes(empty_buffer)?)
     }
 }
 

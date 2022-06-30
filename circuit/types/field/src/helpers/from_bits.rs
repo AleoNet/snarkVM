@@ -113,14 +113,13 @@ impl<E: Environment> OutputMode<dyn FromBits<Boolean = Boolean<E>>> for Field<E>
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
     fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
@@ -158,7 +157,7 @@ mod tests {
     fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 

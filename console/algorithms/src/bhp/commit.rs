@@ -16,13 +16,10 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Commit for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-where
-    <G as AffineCurve>::BaseField: PrimeField,
-{
+impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Commit for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = bool;
-    type Output = G::BaseField;
-    type Randomizer = G::ScalarField;
+    type Output = Field<E>;
+    type Randomizer = Scalar<E>;
 
     /// Returns the BHP commitment of the given input and randomizer as a field element.
     fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output> {

@@ -44,8 +44,8 @@ impl<E: Environment> Add<&Self> for Group<E> {
                 false => (other, &self),
             };
 
-            let a = Field::constant(E::AffineParameters::COEFF_A);
-            let d = Field::constant(E::AffineParameters::COEFF_D);
+            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
+            let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
 
             // Compute U = (-A * x1 + y1) * (x2 + y2)
             let u1 = (&this.x * &-&a) + &this.y;
@@ -64,9 +64,9 @@ impl<E: Environment> Add<&Self> for Group<E> {
             // Compute x3 and y3.
             let (x3, y3) = witness!(|a, u, v0, v1, v2| {
                 // Assign x3 = (v0 + v1) / (v2 + 1).
-                let x3 = (v0 + v1) / (v2 + E::BaseField::one());
+                let x3 = (v0 + v1) / (v2 + console::Field::one());
                 // Assign y3 = (U + a * v0 - v1) / (1 - v2).
-                let y3 = (u + (v0 * a) - v1) / (E::BaseField::one() - v2);
+                let y3 = (u + (v0 * a) - v1) / (console::Field::one() - v2);
                 // Return (x3, y3).
                 (x3, y3)
             });
@@ -138,11 +138,15 @@ impl<E: Environment> OutputMode<dyn Add<Group<E>, Output = Group<E>>> for Group<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
-    fn check_add(name: &str, expected: &<Circuit as Environment>::Affine, a: &Group<Circuit>, b: &Group<Circuit>) {
+    fn check_add(
+        name: &str,
+        expected: &console::Group<<Circuit as Environment>::Network>,
+        a: &Group<Circuit>,
+        b: &Group<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
@@ -153,7 +157,7 @@ mod tests {
 
     fn check_add_assign(
         name: &str,
-        expected: &<Circuit as Environment>::Affine,
+        expected: &console::Group<<Circuit as Environment>::Network>,
         a: &Group<Circuit>,
         b: &Group<Circuit>,
     ) {
@@ -168,12 +172,13 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() + second.to_projective()).into();
             let a = Group::<Circuit>::new(mode_a, first);
             let b = Group::<Circuit>::new(mode_b, second);
+
+            let expected = first + second;
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b);
@@ -230,9 +235,9 @@ mod tests {
     #[test]
     fn test_add_matches() {
         // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let b = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let expected: <Circuit as Environment>::Affine = (a.to_projective() + b.to_projective()).into();
+        let a = Uniform::rand(&mut test_rng());
+        let b = Uniform::rand(&mut test_rng());
+        let expected = a + b;
 
         // Constant
         let first = Group::<Circuit>::new(Mode::Constant, a);

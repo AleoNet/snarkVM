@@ -94,7 +94,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitOr<Integer<E, I>, Output 
                     // Determine if the constant is all ones.
                     let is_all_ones = match I::is_signed() {
                         true => constant.eject_value().into_dual() == I::Dual::MAX, // Cast to unsigned
-                        false => constant.eject_value() == I::MAX,
+                        false => constant.eject_value() == console::Integer::MAX,
                     };
                     match is_all_ones {
                         true => Mode::Constant,
@@ -112,13 +112,18 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitOr<Integer<E, I>, Output 
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use std::ops::RangeInclusive;
 
     const ITERATIONS: u64 = 128;
 
-    fn check_or<I: IntegerType + BitOr<Output = I>>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_or<I: IntegerType + BitOr<Output = I>>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
         let expected = first | second;
@@ -133,28 +138,28 @@ mod tests {
 
     fn run_test<I: IntegerType + BitOr<Output = I>>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: I = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("BitOr: ({} | {}) {}", mode_a, mode_b, i);
-            check_or(&name, first, second, mode_a, mode_b);
-            check_or(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_or::<I>(&name, first, second, mode_a, mode_b);
+            check_or::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("BitOr Identity: ({} | {}) {}", mode_a, mode_b, i);
-            check_or(&name, I::zero(), first, mode_a, mode_b);
-            check_or(&name, first, I::zero(), mode_a, mode_b); // Commute the operation.
+            check_or::<I>(&name, console::Integer::zero(), first, mode_a, mode_b);
+            check_or::<I>(&name, first, console::Integer::zero(), mode_a, mode_b); // Commute the operation.
 
             let name = format!("BitOr Invariant: ({} | {}) {}", mode_a, mode_b, i);
-            let invariant = if I::is_signed() { I::zero() - I::one() } else { I::MAX };
-            check_or(&name, invariant, first, mode_a, mode_b);
-            check_or(&name, first, invariant, mode_a, mode_b); // Commute the operation.
+            let invariant = if I::is_signed() { -console::Integer::one() } else { console::Integer::MAX };
+            check_or::<I>(&name, invariant, first, mode_a, mode_b);
+            check_or::<I>(&name, first, invariant, mode_a, mode_b); // Commute the operation.
         }
 
         // Check cases common to signed and unsigned integers.
-        check_or("0 | MAX", I::zero(), I::MAX, mode_a, mode_b);
-        check_or("MAX | 0", I::MAX, I::zero(), mode_a, mode_b);
-        check_or("0 | MIN", I::zero(), I::MIN, mode_a, mode_b);
-        check_or("MIN | 0", I::MIN, I::zero(), mode_a, mode_b);
+        check_or::<I>("0 | MAX", console::Integer::zero(), console::Integer::MAX, mode_a, mode_b);
+        check_or::<I>("MAX | 0", console::Integer::MAX, console::Integer::zero(), mode_a, mode_b);
+        check_or::<I>("0 | MIN", console::Integer::zero(), console::Integer::MIN, mode_a, mode_b);
+        check_or::<I>("MIN | 0", console::Integer::MIN, console::Integer::zero(), mode_a, mode_b);
     }
 
     fn run_exhaustive_test<I: IntegerType + BitOr<Output = I>>(mode_a: Mode, mode_b: Mode)
@@ -163,8 +168,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("BitOr: ({} | {})", first, second);
-                check_or(&name, first, second, mode_a, mode_b);
+                check_or::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

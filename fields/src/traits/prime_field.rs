@@ -21,6 +21,11 @@ use snarkvm_utilities::{biginteger::BigInteger, cmp::min, str::FromStr};
 pub trait PrimeField:
     FftField<FftParameters = <Self as PrimeField>::Parameters> + PoseidonDefaultField + FromStr<Err = FieldError>
 {
+    /// Returns the field size in bits.
+    const SIZE_IN_BITS: usize = Self::Parameters::MODULUS_BITS as usize;
+    /// Returns the field capacity for data bits.
+    const SIZE_IN_DATA_BITS: usize = Self::Parameters::CAPACITY as usize;
+
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 

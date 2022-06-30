@@ -49,7 +49,7 @@ impl<A: Aleo> Randomizer<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, Rng, ToBits as T, UniformRand};
+    use console::{test_crypto_rng, Rng, Uniform};
 
     use anyhow::Result;
 
@@ -71,8 +71,8 @@ mod tests {
             let address = snarkvm_console_account::Address::<<Circuit as Environment>::Network>::try_from(&view_key)?;
 
             // Compute the native randomizer.
-            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
-            let output_index = UniformRand::rand(rng);
+            let serial_numbers = (0..rng.gen_range(0..255i32)).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
+            let output_index = Uniform::rand(rng);
             let randomizer = console::Randomizer::<<Circuit as Environment>::Network>::prove(
                 &view_key,
                 &serial_numbers,
@@ -102,16 +102,16 @@ mod tests {
 
     #[test]
     fn test_prove_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 9174, 0, 0, 0)
+        check_verify(Mode::Constant, 9676, 0, 0, 0)
     }
 
     #[test]
     fn test_prove_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 5148, 0, 13242, 13264)
+        check_verify(Mode::Public, 5148, 0, 13744, 13768)
     }
 
     #[test]
     fn test_prove_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 5148, 0, 13242, 13264)
+        check_verify(Mode::Private, 5148, 0, 13744, 13768)
     }
 }

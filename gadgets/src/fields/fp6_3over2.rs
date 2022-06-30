@@ -330,25 +330,20 @@ where
             let one_third_v2 = one_sixth_v2.double(&mut c1_cs.ns(|| "v2_by_3"))?;
             let non_residue_v4 = v4.mul_by_constant(&mut c1_cs.ns(|| "mul_by_beta"), &P::NONRESIDUE)?;
 
-            let result = half_v0
+            half_v0
                 .negate(c1_cs.ns(|| "neg1"))?
                 .add(c1_cs.ns(|| "add2"), &v1)?
                 .sub(c1_cs.ns(|| "sub3"), &one_third_v2)?
                 .sub(c1_cs.ns(|| "sub4"), &one_sixth_v3)?
                 .add(c1_cs.ns(|| "sub5"), &two_v4)?
-                .add(c1_cs.ns(|| "sub6"), &non_residue_v4)?;
-            result
+                .add(c1_cs.ns(|| "sub6"), &non_residue_v4)?
         };
 
         // -v0 + (1/2)v1 + (1/2)v2 −v4
         let c2 = {
             let c2_cs = &mut cs.ns(|| "c2");
             let half_v2 = v2.mul_by_fp_constant(&mut c2_cs.ns(|| "mul1"), &two_inverse)?;
-            let result = half_v1
-                .add(c2_cs.ns(|| "add1"), &half_v2)?
-                .sub(c2_cs.ns(|| "sub1"), &v4)?
-                .sub(c2_cs.ns(|| "sub2"), &v0)?;
-            result
+            half_v1.add(c2_cs.ns(|| "add1"), &half_v2)?.sub(c2_cs.ns(|| "sub1"), &v4)?.sub(c2_cs.ns(|| "sub2"), &v0)?
         };
 
         Ok(Self::new(c0, c1, c2))

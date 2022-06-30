@@ -50,7 +50,6 @@ impl<E: Environment, I: IntegerType> ToBits for &Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 128;
 
@@ -63,7 +62,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -90,7 +89,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -128,7 +127,7 @@ mod tests {
         }
     }
 
-    fn test_individual_bits<I: IntegerType>(value: I) {
+    fn test_individual_bits<I: IntegerType>(value: console::Integer<<Circuit as Environment>::Network, I>) {
         // Constant
         check_individual_bits_le(Integer::<Circuit, I>::new(Mode::Constant, value));
         check_individual_bits_be(Integer::<Circuit, I>::new(Mode::Constant, value));
@@ -523,60 +522,60 @@ mod tests {
     #[test]
     fn test_u8_one() {
         type I = u8;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_i8_one() {
         type I = i8;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_u16_one() {
         type I = u16;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_i16_one() {
         type I = i16;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_u32_one() {
         type I = u32;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_i32_one() {
         type I = i32;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_u64_one() {
         type I = u64;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_i64_one() {
         type I = i64;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_u128_one() {
         type I = u128;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 
     #[test]
     fn test_i128_one() {
         type I = i128;
-        test_individual_bits(I::one());
+        test_individual_bits::<I>(console::Integer::one());
     }
 }

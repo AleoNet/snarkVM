@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Randomizer<N> {
     /// Returns `true` if the proof is valid, and `false` otherwise.
-    pub fn verify(&self, address: &Address<N>, serial_numbers_digest: N::Field, output_index: u16) -> bool {
+    pub fn verify(&self, address: &Address<N>, serial_numbers_digest: Field<N>, output_index: U16<N>) -> bool {
         // Retrieve the proof components.
         let (gamma, challenge, response) = self.proof;
 
@@ -26,7 +26,7 @@ impl<N: Network> Randomizer<N> {
         let generator_h = match N::hash_to_group_psd4(&[
             N::randomizer_domain(),
             serial_numbers_digest,
-            N::Field::from(output_index as u128),
+            Field::from_u16(*output_index),
         ]) {
             Ok(generator_h) => generator_h,
             Err(err) => {
@@ -36,10 +36,10 @@ impl<N: Network> Randomizer<N> {
         };
 
         // Compute `u` as `(challenge * address) + (response * G)`, equivalent to `nonce * G`.
-        let u = (((*address).to_projective() * challenge) + N::g_scalar_multiply(&response)).to_affine();
+        let u = (**address * challenge) + N::g_scalar_multiply(&response);
 
         // Compute `v` as `(challenge * gamma) + (response * H)`, equivalent to `nonce * H`.
-        let v = ((gamma.to_projective() * challenge) + (generator_h * response)).to_affine();
+        let v = (gamma * challenge) + (generator_h * response);
 
         // Compute `candidate_challenge` as `HashToScalar(address, gamma, nonce * G, nonce * H)`.
         let candidate_challenge = match N::hash_to_scalar_psd4(&[**address, gamma, u, v].map(|c| c.to_x_coordinate())) {
@@ -70,7 +70,6 @@ mod tests {
     use super::*;
     use snarkvm_console_account::{Address, PrivateKey, ViewKey};
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, ToBits, UniformRand};
 
     type CurrentNetwork = Testnet3;
 
@@ -85,8 +84,8 @@ mod tests {
             let view_key = ViewKey::<CurrentNetwork>::try_from(&private_key)?;
             let address = Address::<CurrentNetwork>::try_from(&view_key)?;
 
-            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| UniformRand::rand(rng)).collect::<Vec<_>>();
-            let output_index = UniformRand::rand(rng);
+            let serial_numbers = (0..rng.gen_range(0..255)).map(|_| Uniform::rand(rng)).collect::<Vec<_>>();
+            let output_index = Uniform::rand(rng);
 
             let randomizer = Randomizer::<CurrentNetwork>::prove(&view_key, &serial_numbers, output_index, rng)?;
 

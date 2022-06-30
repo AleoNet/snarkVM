@@ -16,7 +16,7 @@
 
 use crate::{Field, Fp2, Fp2Parameters, One, Zero};
 use snarkvm_utilities::{
-    rand::UniformRand,
+    rand::Uniform,
     serialize::{SerializationError, *},
     FromBytes,
     ToBits,
@@ -310,7 +310,7 @@ impl<P: Fp6Parameters> std::fmt::Display for Fp6<P> {
 impl<P: Fp6Parameters> Distribution<Fp6<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Fp6<P> {
-        Fp6::new(UniformRand::rand(rng), UniformRand::rand(rng), UniformRand::rand(rng))
+        Fp6::new(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng))
     }
 }
 

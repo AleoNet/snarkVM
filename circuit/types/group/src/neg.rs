@@ -57,11 +57,14 @@ impl<E: Environment> OutputMode<dyn Neg<Output = Group<E>>> for Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
-    fn check_neg(name: &str, expected: <Circuit as Environment>::Affine, candidate_input: Group<Circuit>) {
+    fn check_neg(
+        name: &str,
+        expected: console::Group<<Circuit as Environment>::Network>,
+        candidate_input: Group<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let mode = candidate_input.eject_mode();
             let candidate_output = -candidate_input;
@@ -75,10 +78,8 @@ mod tests {
     fn test_neg_constant() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
+            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
             check_neg(&format!("NEG Constant {}", i), expected, candidate_input);
@@ -89,10 +90,8 @@ mod tests {
     fn test_neg_public() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
+            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Public, point);
             check_neg(&format!("NEG Public {}", i), expected, candidate_input);
@@ -103,10 +102,8 @@ mod tests {
     fn test_neg_private() {
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
+            let point: console::Group<_> = Uniform::rand(&mut test_rng());
+            let expected: console::Group<_> = -point;
 
             let candidate_input = Group::<Circuit>::new(Mode::Private, point);
             check_neg(&format!("NEG Private {}", i), expected, candidate_input);
@@ -115,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let expected = <Circuit as Environment>::Affine::zero();
+        let expected = console::Group::<<Circuit as Environment>::Network>::zero();
 
         let candidate_input = Group::<Circuit>::zero();
         check_neg("NEG Constant Zero", expected, candidate_input);

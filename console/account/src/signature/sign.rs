@@ -20,11 +20,12 @@ impl<N: Network> Signature<N> {
     /// Returns a signature `(challenge, response, compute_key)` for a given message and RNG, where:
     ///     challenge := HashToScalar(nonce * G, pk_sig, pr_sig, address, message)
     ///     response := nonce - challenge * private_key.sk_sig()
-    pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[N::Field], rng: &mut R) -> Result<Self> {
+    #[cfg(feature = "private_key")]
+    pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[Field<N>], rng: &mut R) -> Result<Self> {
         // Sample a random nonce from the scalar field.
-        let nonce = N::Scalar::rand(rng);
+        let nonce = Scalar::rand(rng);
         // Compute `g_nonce` as `nonce * G`.
-        let g_nonce = N::g_scalar_multiply(&nonce).to_affine();
+        let g_nonce = N::g_scalar_multiply(&nonce);
 
         // Derive the compute key from the private key.
         let compute_key = ComputeKey::try_from(private_key)?;
@@ -52,14 +53,14 @@ impl<N: Network> Signature<N> {
 
     /// Verifies (challenge == challenge') && (address == address') where:
     ///     challenge' := HashToScalar(G^response pk_sig^challenge, pk_sig, pr_sig, address, message)
-    pub fn verify(&self, address: &Address<N>, message: &[N::Field]) -> bool {
+    pub fn verify(&self, address: &Address<N>, message: &[Field<N>]) -> bool {
         // Retrieve pk_sig.
         let pk_sig = self.compute_key.pk_sig();
         // Retrieve pr_sig.
         let pr_sig = self.compute_key.pr_sig();
 
         // Compute `g_nonce` := (response * G) + (challenge * pk_sig).
-        let g_nonce = (N::g_scalar_multiply(&self.response) + (pk_sig.to_projective() * self.challenge)).to_affine();
+        let g_nonce = N::g_scalar_multiply(&self.response) + (pk_sig * self.challenge);
 
         // Construct the hash input as (nonce * G, address, pk_sig, pr_sig, message).
         let mut preimage = Vec::with_capacity(4 + message.len());
@@ -91,7 +92,6 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;
 
@@ -107,12 +107,12 @@ mod tests {
             let address = Address::try_from(&private_key)?;
 
             // Check that the signature is valid for the message.
-            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
             let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 
             // Check that the signature is invalid for an incorrect message.
-            let failure_message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let failure_message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
             if message != failure_message {
                 assert!(!signature.verify(&address, &failure_message));
             }

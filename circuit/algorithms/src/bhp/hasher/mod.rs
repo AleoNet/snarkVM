@@ -21,7 +21,6 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 use crate::HashUncompressed;
 use snarkvm_circuit_types::prelude::*;
-use snarkvm_curves::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 
 /// The BHP chunk size (this implementation is for a 3-bit BHP).
 const BHP_CHUNK_SIZE: usize = 3;
@@ -60,7 +59,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> BHPHasher<E, 
 
 #[cfg(console)]
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE> {
-    type Primitive = console::BHP<E::Affine, NUM_WINDOWS, WINDOW_SIZE>;
+    type Primitive = console::BHP<E::Network, NUM_WINDOWS, WINDOW_SIZE>;
 
     /// Initializes a new instance of a BHP circuit with the given BHP variant.
     fn new(_mode: Mode, bhp: Self::Primitive) -> Self {
@@ -72,7 +71,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
             .map(|window| {
                 // Construct the window with the base.
                 let mut powers = Vec::with_capacity(WINDOW_SIZE as usize);
-                for base in window.iter().take(WINDOW_SIZE as usize).map(|base| Group::constant(base.to_affine())) {
+                for base in window.iter().take(WINDOW_SIZE as usize).map(|base| Group::constant(*base)) {
                     let mut x_bases = Vec::with_capacity(Self::BHP_LOOKUP_SIZE);
                     let mut y_bases = Vec::with_capacity(Self::BHP_LOOKUP_SIZE);
                     let mut accumulator = base.clone();
@@ -95,8 +94,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
         bases.iter().for_each(|window| assert_eq!(window.len(), WINDOW_SIZE as usize));
 
         // Initialize the random base.
-        let random_base = Vec::constant(bhp.random_base().iter().map(|base| base.to_affine()).collect());
-        assert_eq!(random_base.len(), E::ScalarField::size_in_bits());
+        let random_base = Vec::constant(bhp.random_base().iter().copied().collect());
+        assert_eq!(random_base.len(), console::Scalar::<E::Network>::size_in_bits());
 
         Self { bases, random_base }
     }
@@ -106,7 +105,6 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Inject for BH
 mod tests {
     use super::*;
     use snarkvm_circuit_types::{environment::Circuit, Eject};
-    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     use anyhow::Result;
 
@@ -116,7 +114,7 @@ mod tests {
     #[test]
     fn test_setup_constant() -> Result<()> {
         for _ in 0..ITERATIONS {
-            let native = console::BHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE)?;
+            let native = console::BHP::<<Circuit as Environment>::Network, 8, 32>::setup(MESSAGE)?;
             let circuit = BHPHasher::<Circuit, 8, 32>::new(Mode::Constant, native.clone());
 
             native.bases().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
@@ -129,8 +127,8 @@ mod tests {
                         let edwards_y = (&x_bases[0] - Field::one()) / (&x_bases[0] + Field::one());
                         (edwards_x, edwards_y)
                     };
-                    assert_eq!(native_base.to_affine().to_x_coordinate(), circuit_x.eject_value());
-                    assert_eq!(native_base.to_affine().to_y_coordinate(), circuit_y.eject_value());
+                    assert_eq!(native_base.to_x_coordinate(), circuit_x.eject_value());
+                    assert_eq!(native_base.to_y_coordinate(), circuit_y.eject_value());
                 })
             });
         }

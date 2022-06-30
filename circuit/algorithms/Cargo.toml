@@ -16,13 +16,13 @@ optional = true
 path = "../types"
 version = "0.7.5"
 
-[dependencies.snarkvm-curves]
-path = "../../curves"
+[dependencies.snarkvm-fields]
+path = "../../fields"
 version = "0.7.5"
 default-features = false
 
-[dependencies.snarkvm-fields]
-path = "../../fields"
+[dev-dependencies.snarkvm-curves]
+path = "../../curves"
 version = "0.7.5"
 default-features = false
 

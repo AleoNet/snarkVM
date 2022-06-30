@@ -26,7 +26,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective, Fq};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::rand::{test_rng, UniformRand};
+use snarkvm_utilities::rand::{test_rng, Uniform};
 
 use rand::Rng;
 use rand_xorshift::XorShiftRng;

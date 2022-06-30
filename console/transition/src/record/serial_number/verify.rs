@@ -21,7 +21,7 @@ impl<N: Network> SerialNumber<N> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_number == serial_number') where:
     ///     challenge' := HashToScalar(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)
-    pub fn verify(&self, address: &Address<N>, message: &[N::Field], commitment: N::Field) -> bool {
+    pub fn verify(&self, address: &Address<N>, message: &[Field<N>], commitment: Field<N>) -> bool {
         // Retrieve the signature components.
         let (challenge, response, compute_key, gamma) = self.signature;
         // Retrieve pk_sig.
@@ -39,10 +39,10 @@ impl<N: Network> SerialNumber<N> {
         };
 
         // Compute `g_r` as `(challenge * pk_sig) + (response * G)`, equivalent to `r * G`.
-        let g_r = ((pk_sig.to_projective() * challenge) + N::g_scalar_multiply(&response)).to_affine();
+        let g_r = (pk_sig * challenge) + N::g_scalar_multiply(&response);
 
         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-        let h_r = ((gamma.to_projective() * challenge) + (h * response)).to_affine();
+        let h_r = (gamma * challenge) + (h * response);
 
         // Construct the hash input as `(H, r * H, gamma, r * G, pk_sig, pr_sig, address, message)`.
         let mut preimage = Vec::with_capacity(8 + message.len());
@@ -99,7 +99,6 @@ mod tests {
     use super::*;
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     type CurrentNetwork = Testnet3;
 
@@ -111,8 +110,8 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
-            let message = UniformRand::rand(rng);
-            let commitment = UniformRand::rand(rng);
+            let message = Uniform::rand(rng);
+            let commitment = Uniform::rand(rng);
 
             let sk_sig = private_key.sk_sig();
             let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();
