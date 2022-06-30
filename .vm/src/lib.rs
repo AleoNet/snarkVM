@@ -34,5 +34,8 @@ pub use process::*;
 mod program;
 pub use program::*;
 
+mod stack;
+pub use stack::*;
+
 mod transition;
 pub use transition::*;

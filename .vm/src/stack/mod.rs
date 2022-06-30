@@ -20,10 +20,13 @@ pub(crate) use circuit_value::*;
 mod stack_value;
 pub use stack_value::*;
 
+mod register_types;
+pub use register_types::*;
+
 mod load;
 mod store;
 
-use crate::{Function, Operand, Program, RegisterTypes};
+use crate::{Function, Operand, Program};
 use console::{
     network::prelude::*,
     program::{Entry, Literal, Plaintext, Register, Value, ValueType},
