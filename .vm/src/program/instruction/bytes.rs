@@ -85,7 +85,7 @@ mod tests {
     type CurrentAleo = AleoV0;
 
     #[test]
-    fn test_instruction_bytes() -> Result<()> {
+    fn test_bytes() -> Result<()> {
         let instruction = "add r0 r1 into r2;";
         let expected = Instruction::<CurrentNetwork, CurrentAleo>::from_str(instruction)?;
         let expected_bytes = expected.to_bytes_le()?;
