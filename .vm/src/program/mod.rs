@@ -562,125 +562,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
         // Step 2. Check the function instructions are well-formed.
         for instruction in function.instructions() {
-            // Ensure the opcode is defined.
-            match instruction.opcode() {
-                Opcode::Literal(opcode) => {
-                    // Ensure the opcode **is** a reserved opcode.
-                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
-                    // Ensure the instruction is not the cast operation.
-                    ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
-                    // Ensure the instruction has one destination register.
-                    ensure!(
-                        instruction.destinations().len() == 1,
-                        "Instruction '{instruction}' has multiple destinations."
-                    );
-                }
-                Opcode::Call => {
-                    // Retrieve the call operation.
-                    let operation = match instruction {
-                        Instruction::Call(operation) => operation,
-                        _ => bail!("Instruction '{instruction}' is not a call operation."),
-                    };
-
-                    // Retrieve the closure name.
-                    let closure_name = operation.name();
-                    // Ensure the operation is defined.
-                    if !self.closures.contains_key(closure_name) {
-                        bail!("Closure '{closure_name}' is not defined.")
-                    }
-                }
-                Opcode::Cast => {
-                    // Retrieve the cast operation.
-                    let operation = match instruction {
-                        Instruction::Cast(operation) => operation,
-                        _ => bail!("Instruction '{instruction}' is not a cast operation."),
-                    };
-
-                    // Ensure the instruction has one destination register.
-                    ensure!(
-                        instruction.destinations().len() == 1,
-                        "Instruction '{instruction}' has multiple destinations."
-                    );
-
-                    // Ensure the casted register type is defined.
-                    match operation.register_type() {
-                        RegisterType::Plaintext(PlaintextType::Literal(..)) => {
-                            bail!("Casting to literal is currently unsupported")
-                        }
-                        RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                            // Ensure the interface name exists in the program.
-                            if !self.interfaces.contains_key(interface_name) {
-                                bail!("Interface '{interface_name}' in function '{function_name}' is not defined.")
-                            }
-                            // Retrieve the interface.
-                            let interface = self.get_interface(interface_name)?;
-                            // Ensure the operand types match the interface.
-                            register_types.matches_interface(self, instruction.operands(), &interface)?;
-                        }
-                        RegisterType::Record(record_name) => {
-                            // Ensure the record type is defined in the program.
-                            if !self.records.contains_key(record_name) {
-                                bail!("Record '{record_name}' in function '{function_name}' is not defined.")
-                            }
-                            // Retrieve the record type.
-                            let record_type = self.get_record(record_name)?;
-                            // Ensure the operand types match the record type.
-                            register_types.matches_record(self, instruction.operands(), &record_type)?;
-                        }
-                    }
-                }
-                Opcode::Commit(opcode) => {
-                    // Ensure the opcode **is** a reserved opcode.
-                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
-                    // Ensure the instruction belongs to the defined set.
-                    if ![
-                        "commit.bhp256",
-                        "commit.bhp512",
-                        "commit.bhp768",
-                        "commit.bhp1024",
-                        "commit.ped64",
-                        "commit.ped128",
-                    ]
-                    .contains(&opcode)
-                    {
-                        bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
-                    }
-                    // Ensure the instruction is the correct one.
-                    // match opcode {
-                    //     "commit.bhp256" => ensure!(
-                    //         matches!(instruction, Instruction::CommitBHP256(..)),
-                    //         "Instruction '{instruction}' is not the opcode '{opcode}'."
-                    //     ),
-                    // }
-                }
-                Opcode::Hash(opcode) => {
-                    // Ensure the opcode **is** a reserved opcode.
-                    ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
-                    // Ensure the instruction belongs to the defined set.
-                    if ![
-                        "hash.bhp256",
-                        "hash.bhp512",
-                        "hash.bhp768",
-                        "hash.bhp1024",
-                        "hash.ped64",
-                        "hash.ped128",
-                        "hash.psd2",
-                        "hash.psd4",
-                        "hash.psd8",
-                    ]
-                    .contains(&opcode)
-                    {
-                        bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
-                    }
-                    // Ensure the instruction is the correct one.
-                    // match opcode {
-                    //     "hash.bhp256" => ensure!(
-                    //         matches!(instruction, Instruction::HashBHP256(..)),
-                    //         "Instruction '{instruction}' is not the opcode '{opcode}'."
-                    //     ),
-                    // }
-                }
-            }
+            // Ensure the opcode is well-formed.
+            self.ensure_opcode_safety(instruction, &register_types)?;
 
             // Initialize a vector to store the register types of the operands.
             let mut operand_types = Vec::with_capacity(instruction.operands().len());
@@ -768,6 +651,69 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
         Ok(())
     }
+}
+
+impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+    #[rustfmt::skip]
+    const KEYWORDS: &'static [&'static str] = &[
+        // Mode
+        "const",
+        "constant",
+        "public",
+        "private",
+        // Literals
+        "address",
+        "boolean",
+        "field",
+        "group",
+        "i8",
+        "i16",
+        "i32",
+        "i64",
+        "i128",
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "u128",
+        "scalar",
+        "string",
+        // Boolean
+        "true",
+        "false",
+        // Statements
+        "input",
+        "output",
+        "as",
+        "into",
+        // Program
+        "function",
+        "interface",
+        "record",
+        "closure",
+        "program",
+        "global",
+        // Reserved (catch all)
+        "return",
+        "break",
+        "assert",
+        "continue",
+        "let",
+        "if",
+        "else",
+        "while",
+        "for",
+        "switch",
+        "case",
+        "default",
+        "match",
+        "enum",
+        "struct",
+        "union",
+        "trait",
+        "impl",
+        "type",
+    ];
 
     /// Returns `true` if the given name does not already exist in the program.
     fn is_unique_name(&self, name: &Identifier<N>) -> bool {
@@ -784,70 +730,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
     /// Returns `true` if the given name uses a reserved keyword.
     fn is_reserved_keyword(&self, name: &Identifier<N>) -> bool {
-        #[rustfmt::skip]
-        const KEYWORDS: &[&str] = &[
-            // Mode
-            "const",
-            "constant",
-            "public",
-            "private",
-            // Literals
-            "address",
-            "boolean",
-            "field",
-            "group",
-            "i8",
-            "i16",
-            "i32",
-            "i64",
-            "i128",
-            "u8",
-            "u16",
-            "u32",
-            "u64",
-            "u128",
-            "scalar",
-            "string",
-            // Boolean
-            "true",
-            "false",
-            // Statements
-            "input",
-            "output",
-            "as",
-            "into",
-            // Program
-            "function",
-            "interface",
-            "record",
-            "closure",
-            "program",
-            "global",
-            // Reserved (catch all)
-            "return",
-            "break",
-            "assert",
-            "continue",
-            "let",
-            "if",
-            "else",
-            "while",
-            "for",
-            "switch",
-            "case",
-            "default",
-            "match",
-            "enum",
-            "struct",
-            "union",
-            "trait",
-            "impl",
-            "type",
-        ];
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the name is a keyword.
-        KEYWORDS.iter().any(|keyword| *keyword == name)
+        Self::KEYWORDS.iter().any(|keyword| *keyword == name)
     }
 
     /// Ensures the opcode is a valid opcode and corresponds to the correct instruction.
