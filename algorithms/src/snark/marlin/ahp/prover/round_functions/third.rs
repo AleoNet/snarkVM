@@ -85,14 +85,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .sum::<DensePolynomial<F>>();
 
-        let mut lin = state.lin.as_ref().unwrap().clone();
-        cfg_iter_mut!(lin.coeffs).for_each(|c| *c *= delta);
-        let mut x_g_1 = state.x_g_1.as_ref().unwrap().clone();
-        cfg_iter_mut!(x_g_1.coeffs).for_each(|c| *c *= delta);
+        let mut h_1 = state.h_1.as_ref().unwrap().clone();
+        cfg_iter_mut!(h_1.coeffs).for_each(|c| *c *= delta);
 
-        let q_1 = &(&row + &lin) - &x_g_1;
-        let (h_1, rem) = q_1.divide_by_vanishing_poly(constraint_domain).unwrap();
+        let (div, rem) = row.divide_by_vanishing_poly(constraint_domain).unwrap();
         assert!(rem.is_zero());
+        h_1 += &div;
 
         let oracles = prover::ThirdOracles { h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None) };
         assert!(oracles.matches_info(&Self::third_round_polynomial_info(&state.index.index_info)));

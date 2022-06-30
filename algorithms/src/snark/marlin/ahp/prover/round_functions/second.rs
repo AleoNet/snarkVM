@@ -99,10 +99,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             sumcheck_lhs.evaluate_over_domain_by_ref(constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
         );
 
-        state.lin = Some(sumcheck_lhs.clone());
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
-        let (_h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
-        state.x_g_1 = Some(x_g_1.clone());
+        let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+        state.h_1 = Some(h_1);
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         drop(x_g_1);
         end_timer!(sumcheck_time);

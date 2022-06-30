@@ -87,11 +87,9 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The challenges sent by the verifier in the first round
     pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
 
-    /// The lincheck sumcheck polynomial produced in the second round.
-    pub(super) lin: Option<DensePolynomial<F>>,
-
-    /// The Xg_1(X) polynomial produced in the second round.
-    pub(super) x_g_1: Option<DensePolynomial<F>>,
+    /// The vanishing polynomial produced when by dividing the lincheck sumcheck polynomial by zero
+    /// in the second round.
+    pub(super) h_1: Option<DensePolynomial<F>>,
 
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
@@ -145,8 +143,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             first_round_oracles: None,
             mz_poly_randomizer: None,
             verifier_first_message: None,
-            lin: None,
-            x_g_1: None,
+            h_1: None,
             lhs_polynomials: None,
             sums: None,
         })
