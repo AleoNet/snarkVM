@@ -130,7 +130,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Program<N, A> {
             }
 
             // Print a newline.
-            program.push_str("\n");
+            program.push('\n');
         }
 
         // Print the program name.

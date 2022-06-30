@@ -25,6 +25,7 @@ use console::{
 use core::marker::PhantomData;
 use indexmap::IndexMap;
 
+#[derive(Default)]
 pub struct RegisterTypes<N: Network, A: circuit::Aleo<Network = N>> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,
