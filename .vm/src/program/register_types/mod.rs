@@ -27,21 +27,17 @@ use indexmap::IndexMap;
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
-    input_registers: IndexMap<u64, RegisterType<N>>,
+    inputs: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all destination registers to their defined types.
-    destination_registers: IndexMap<u64, RegisterType<N>>,
+    destinations: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all output registers to their defined types.
-    output_registers: IndexMap<Register<N>, RegisterType<N>>,
+    outputs: IndexMap<Register<N>, RegisterType<N>>,
 }
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes`.
     pub fn new() -> Self {
-        Self {
-            input_registers: IndexMap::new(),
-            destination_registers: IndexMap::new(),
-            output_registers: IndexMap::new(),
-        }
+        Self { inputs: IndexMap::new(), destinations: IndexMap::new(), outputs: IndexMap::new() }
     }
 
     /// Returns `true` if the given register exists.
@@ -50,34 +46,34 @@ impl<N: Network> RegisterTypes<N> {
         let locator = &register.locator();
         // The input and destination registers represent the full set of registers.
         // The output registers represent a subset of registers that are returned by the function.
-        self.input_registers.contains_key(locator) || self.destination_registers.contains_key(locator)
+        self.inputs.contains_key(locator) || self.destinations.contains_key(locator)
     }
 
     /// Returns `true` if the given register corresponds to an input register.
     pub fn is_input(&self, register: &Register<N>) -> bool {
-        self.input_registers.contains_key(&register.locator())
+        self.inputs.contains_key(&register.locator())
     }
 
     /// Returns `true` if the given register corresponds to an output register.
     pub fn is_output(&self, register: &Register<N>) -> bool {
-        self.output_registers.contains_key(register)
+        self.outputs.contains_key(register)
     }
 
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
     pub fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
         // Ensure there are no destination or output registers set yet.
-        ensure!(self.destination_registers.is_empty(), "Cannot add input registers after destination registers.");
-        ensure!(self.output_registers.is_empty(), "Cannot add input registers after output registers.");
+        ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
+        ensure!(self.outputs.is_empty(), "Cannot add input registers after output registers.");
 
         // Check the input register.
         match register {
             Register::Locator(locator) => {
                 // Ensure the registers are monotonically increasing.
-                ensure!(self.input_registers.len() as u64 == locator, "Register '{register}' is out of order");
+                ensure!(self.inputs.len() as u64 == locator, "Register '{register}' is out of order");
 
                 // Insert the input register and type.
-                match self.input_registers.insert(locator, register_type) {
+                match self.inputs.insert(locator, register_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Input '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -96,11 +92,11 @@ impl<N: Network> RegisterTypes<N> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the registers are monotonically increasing.
-                let expected_locator = (self.input_registers.len() as u64) + self.destination_registers.len() as u64;
+                let expected_locator = (self.inputs.len() as u64) + self.destinations.len() as u64;
                 ensure!(expected_locator == locator, "Register '{register}' is out of order");
 
                 // Insert the destination register and type.
-                match self.destination_registers.insert(locator, register_type) {
+                match self.destinations.insert(locator, register_type) {
                     // If the register already exists, throw an error.
                     Some(..) => bail!("Destination '{register}' already exists"),
                     // If the register does not exist, return success.
@@ -117,7 +113,7 @@ impl<N: Network> RegisterTypes<N> {
         // Ensure the given register already exists.
         ensure!(self.contains(register), "Register '{register}' does not exist");
         // Insert the output register and type.
-        match self.output_registers.insert(register.clone(), register_type) {
+        match self.outputs.insert(register.clone(), register_type) {
             // If the register already exists, throw an error.
             Some(..) => bail!("Register '{register}' already exists"),
             // If the register does not exist, return success.
@@ -131,84 +127,70 @@ impl<N: Network> RegisterTypes<N> {
         program: &Program<N, A>,
         register: &Register<N>,
     ) -> Result<RegisterType<N>> {
-        // Determine if the register is an input register.
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.input_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?
+            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?
         } else {
             // Retrieve the destination register type.
-            *self
-                .destination_registers
-                .get(&register.locator())
-                .ok_or_else(|| anyhow!("'{register}' does not exist"))?
+            *self.destinations.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?
         };
 
-        match &register {
+        // Retrieve the member path if the register is a member. Otherwise, return the register type.
+        let path = match &register {
             // If the register is a locator, then output the register type.
-            Register::Locator(..) => Ok(register_type),
+            Register::Locator(..) => return Ok(register_type),
             // If the register is a member, then traverse the member path to output the register type.
             Register::Member(_, path) => {
                 // Ensure the member path is valid.
                 ensure!(!path.is_empty(), "Register '{register}' references no members.");
+                // Output the member path.
+                path
+            }
+        };
 
-                // Traverse the member path to find the register type.
-                for path_name in path.iter() {
-                    match &register_type {
-                        // Ensure the plaintext type is not a literal, as the register references a member.
-                        RegisterType::Plaintext(PlaintextType::Literal(..)) => {
-                            bail!("Register '{register}' references a literal.")
-                        }
-                        // Traverse the member path to output the register type.
-                        RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                            // Retrieve the interface.
-                            match program.get_interface(interface_name) {
-                                // Retrieve the member type from the interface.
-                                Ok(interface) => match interface.members().get(path_name) {
-                                    // Update the member type.
-                                    Some(plaintext_type) => register_type = RegisterType::Plaintext(*plaintext_type),
-                                    None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
-                                },
-                                Err(..) => bail!("'{register}' references a missing interface '{interface_name}'."),
-                            }
-                        }
-                        RegisterType::Record(record_name) => {
-                            // Retrieve the record.
-                            match program.get_record(record_name) {
-                                // Retrieve the entry type from the record.
-                                Ok(record_type) => {
-                                    if path_name == &Identifier::from_str("owner")? {
-                                        // If the member is the owner, then output the address type.
-                                        register_type =
-                                            RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
-                                    } else if path_name == &Identifier::from_str("balance")? {
-                                        // If the member is the balance, then output the u64 type.
-                                        register_type =
-                                            RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64));
-                                    } else {
-                                        match record_type.entries().get(path_name) {
-                                            // Update the entry type.
-                                            Some(entry_type) => {
-                                                register_type = match entry_type {
-                                                    EntryType::Constant(plaintext_type)
-                                                    | EntryType::Public(plaintext_type)
-                                                    | EntryType::Private(plaintext_type) => {
-                                                        RegisterType::Plaintext(*plaintext_type)
-                                                    }
-                                                }
-                                            }
-                                            None => bail!("'{path_name}' does not exist in record '{record_name}'"),
-                                        }
-                                    }
+        // Traverse the member path to find the register type.
+        for path_name in path.iter() {
+            match &register_type {
+                // Ensure the plaintext type is not a literal, as the register references a member.
+                RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
+                // Traverse the member path to output the register type.
+                RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                    // Retrieve the member type from the interface.
+                    match program.get_interface(interface_name)?.members().get(path_name) {
+                        // Update the member type.
+                        Some(plaintext_type) => register_type = RegisterType::Plaintext(*plaintext_type),
+                        None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
+                    }
+                }
+                RegisterType::Record(record_name) => {
+                    // Ensure the record type exists.
+                    ensure!(program.contains_record(record_name), "'{record_name}' does not exist");
+                    // Retrieve the member type from the record.
+                    if path_name == &Identifier::from_str("owner")? {
+                        // If the member is the owner, then output the address type.
+                        register_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                    } else if path_name == &Identifier::from_str("balance")? {
+                        // If the member is the balance, then output the u64 type.
+                        register_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64));
+                    } else {
+                        // Retrieve the entry type from the record.
+                        match program.get_record(record_name)?.entries().get(path_name) {
+                            // Update the entry type.
+                            Some(entry_type) => {
+                                register_type = match entry_type {
+                                    EntryType::Constant(plaintext_type)
+                                    | EntryType::Public(plaintext_type)
+                                    | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
                                 }
-                                Err(..) => bail!("'{register}' references a missing record '{record_name}'."),
                             }
+                            None => bail!("'{path_name}' does not exist in record '{record_name}'"),
                         }
                     }
                 }
-                // Output the member type.
-                Ok(register_type)
             }
         }
+        // Output the member type.
+        Ok(register_type)
     }
 }

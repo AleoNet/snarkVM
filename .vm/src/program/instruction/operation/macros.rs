@@ -407,7 +407,7 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    for i in 0..10 {
+                    for i in 0..8 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                             for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                 // Skip this iteration, if this is **not** an invalid operand case.
@@ -444,7 +444,7 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    for i in 0..10 {
+                    for i in 0..8 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                             for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
                                 // Skip this iteration, if this is **not** an invalid operand case.
@@ -482,7 +482,7 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    for i in 0..10 {
+                    for i in 0..8 {
                         for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                             for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
                                 for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
@@ -526,36 +526,34 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test _ $operate _ fails _ on _ invalid _ operands>]() -> Result<()> {
-                    for i in 0..10 {
-                        for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                            for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                                for literal_c in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
-                                    for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
-                                        for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
-                                            for mode_c in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
-                                                // Skip this iteration, if this is **not** an invalid operand case.
-                                                $(if literal_a.to_type() == console::program::LiteralType::$input_a
-                                                  && literal_b.to_type() == console::program::LiteralType::$input_b
-                                                  && literal_c.to_type() == console::program::LiteralType::$input_c {
-                                                    continue;
-                                                })+
+                    for literal_a in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                        for literal_b in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                            for literal_c in $crate::sample_literals!(CurrentNetwork, &mut test_rng()).iter() {
+                                for mode_a in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                    for mode_b in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                        for mode_c in &[circuit::Mode::Constant, circuit::Mode::Public, circuit::Mode::Private] {
+                                            // Skip this iteration, if this is **not** an invalid operand case.
+                                            $(if literal_a.to_type() == console::program::LiteralType::$input_a
+                                              && literal_b.to_type() == console::program::LiteralType::$input_b
+                                              && literal_c.to_type() == console::program::LiteralType::$input_c {
+                                                continue;
+                                            })+
 
-                                                // Attempt to compute the invalid operand case.
-                                                let result_a = <$operation as $crate::Operation<_, _, _, _, 3>>::evaluate(&[literal_a.clone(), literal_b.clone(), literal_c.clone()]);
-                                                // Ensure the computation failed.
-                                                assert!(result_a.is_err(), "An invalid operands case (on iteration {i}) did not fail (console): {literal_a} {literal_b}");
+                                            // Attempt to compute the invalid operand case.
+                                            let result_a = <$operation as $crate::Operation<_, _, _, _, 3>>::evaluate(&[literal_a.clone(), literal_b.clone(), literal_c.clone()]);
+                                            // Ensure the computation failed.
+                                            assert!(result_a.is_err(), "An invalid operands case did not fail (console): {literal_a} {literal_b}");
 
-                                                // Attempt to compute the invalid operand case.
-                                                let result_b = <$operation as $crate::Operation<_, _, _, _, 3>>::$execute(&[
-                                                    circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
-                                                    circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?,
-                                                    circuit::program::Literal::from_str(&format!("{literal_c}.{mode_c}"))?,
-                                                ]);
-                                                // Ensure the computation failed.
-                                                assert!(result_b.is_err(), "An invalid operands case (on iteration {i}) did not fail (circuit): {literal_a} {literal_b} {literal_c}");
-                                                // Reset the circuit.
-                                                <CurrentAleo as circuit::Environment>::reset();
-                                            }
+                                            // Attempt to compute the invalid operand case.
+                                            let result_b = <$operation as $crate::Operation<_, _, _, _, 3>>::$execute(&[
+                                                circuit::program::Literal::from_str(&format!("{literal_a}.{mode_a}"))?,
+                                                circuit::program::Literal::from_str(&format!("{literal_b}.{mode_b}"))?,
+                                                circuit::program::Literal::from_str(&format!("{literal_c}.{mode_c}"))?,
+                                            ]);
+                                            // Ensure the computation failed.
+                                            assert!(result_b.is_err(), "An invalid operands case did not fail (circuit): {literal_a} {literal_b} {literal_c}");
+                                            // Reset the circuit.
+                                            <CurrentAleo as circuit::Environment>::reset();
                                         }
                                     }
                                 }

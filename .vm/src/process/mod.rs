@@ -60,6 +60,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
+        // Retrieve the register types for the function.
+        let register_types = self.program.get_function_registers(function_name)?;
 
         // Initialize the trace.
         let mut trace = Trace::<N, A>::new(caller, rng)?;
@@ -114,7 +116,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             .try_collect()?;
 
         // Execute the function.
-        let outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &inputs)?;
+        let outputs = Stack::<N, A>::execute(self.program.clone(), register_types, &function, &inputs)?;
 
         // Load the outputs.
         outputs.iter().try_for_each(|output| {

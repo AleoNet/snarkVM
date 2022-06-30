@@ -109,11 +109,21 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Retrieve the function from the program.
+        let function = self.get_function(function_name)?;
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        }
+        // Retrieve the register types for the function.
+        let register_types = self.get_function_registers(function_name)?;
         // Evaluate the function.
-        Stack::<N, A>::evaluate(self.clone(), function_name, inputs)
+        Stack::<N, A>::evaluate(self.clone(), register_types, &function, inputs)
     }
 
     /// Executes a program function on the given inputs.
+    ///
+    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
@@ -125,8 +135,35 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Ensure the circuit environment is clean.
         A::reset();
+
+        // Retrieve the function from the program.
+        let function = self.get_function(function_name)?;
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        }
+        // Retrieve the register types for the function.
+        let register_types = self.get_function_registers(function_name)?;
+
+        // Inject the inputs to the circuit environment.
+        let inputs = function
+            .inputs()
+            .iter()
+            .map(|i| i.value_type())
+            .zip_eq(inputs)
+            .map(|(value_type, input)| {
+                // Inject the inputs according to their value type.
+                match value_type {
+                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
+                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
+                    ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
+                    ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
+                }
+            })
+            .collect::<Vec<_>>();
+
         // Execute the function.
-        Stack::<N, A>::execute(self.clone(), function_name, inputs)
+        Stack::<N, A>::execute(self.clone(), register_types, &function, &inputs)
     }
 
     /// Returns `true` if the program contains a interface with the given name.

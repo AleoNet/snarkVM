@@ -23,10 +23,10 @@ pub use stack_value::*;
 mod load;
 mod store;
 
-use crate::{Operand, Program, RegisterTypes};
+use crate::{Function, Operand, Program, RegisterTypes};
 use console::{
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Register, Value, ValueType},
+    program::{Entry, Literal, Plaintext, Register, Value, ValueType},
 };
 
 use indexmap::IndexMap;
@@ -62,18 +62,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn evaluate(
         program: Program<N, A>,
-        function_name: &Identifier<N>,
+        register_types: RegisterTypes<N>,
+        function: &Function<N, A>,
         inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
-        // Retrieve the function from the program.
-        let function = program.get_function(function_name)?;
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
 
-        // Retrieve the register types.
-        let register_types = program.get_function_registers(function_name)?;
         // Initialize the stack.
         let mut stack = Self::new(program, register_types)?;
 
@@ -112,78 +109,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn execute(
         program: Program<N, A>,
-        function_name: &Identifier<N>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
-        // Retrieve the function from the program.
-        let function = program.get_function(function_name)?;
-        // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
-        }
-
-        // Retrieve the register types for the function.
-        let register_types = program.get_function_registers(function_name)?;
-        // Initialize the stack.
-        let mut stack = Self::new(program, register_types)?;
-
-        // Store the inputs.
-        function.inputs().iter().map(|i| (i.register(), i.value_type())).zip_eq(inputs).try_for_each(
-            |((register, value_type), input)| {
-                // Assign the console input to the register.
-                stack.store(register, input.clone())?;
-                // Assign the circuit input to the register.
-                stack.store_circuit(register, match value_type {
-                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
-                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
-                    ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                    ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                })
-            },
-        )?;
-
-        // Execute the instructions.
-        function.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut stack))?;
-        function.instructions().iter().try_for_each(|instruction| instruction.execute(&mut stack))?;
-
-        // Load the outputs.
-        let outputs = function.outputs().iter().map(|output| {
-            // Retrieve the circuit output from the register.
-            let circuit_output = stack.load_circuit(&Operand::Register(output.register().clone()))?;
-            // Construct the circuit output value.
-            let output = match (circuit_output, output.value_type()) {
-                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
-                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
-                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
-                (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
-                _ => bail!("Circuit value does not match the expected output type"),
-            };
-            // Return the output.
-            Ok(output)
-        });
-
-        outputs.collect()
-    }
-
-    /// Executes a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn execute_transition(
-        program: Program<N, A>,
-        function_name: &Identifier<N>,
+        register_types: RegisterTypes<N>,
+        function: &Function<N, A>,
         inputs: &[CircuitValue<A>],
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
-        // Retrieve the function from the program.
-        let function = program.get_function(function_name)?;
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
 
-        // Retrieve the register types for the function.
-        let register_types = program.get_function_registers(function_name)?;
         // Initialize the stack.
         let mut stack = Self::new(program, register_types)?;
 
