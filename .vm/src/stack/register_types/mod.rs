@@ -16,26 +16,28 @@
 
 mod matches;
 
-use crate::{Operand, Program};
+use crate::Program;
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, Interface, LiteralType, PlaintextType, RecordType, Register, RegisterType},
+    program::{EntryType, Identifier, LiteralType, PlaintextType, Register, RegisterType},
 };
 
+use core::marker::PhantomData;
 use indexmap::IndexMap;
 
-#[derive(Clone, Default, PartialEq, Eq)]
-pub struct RegisterTypes<N: Network> {
+pub struct RegisterTypes<N: Network, A: circuit::Aleo<Network = N>> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all destination registers to their defined types.
     destinations: IndexMap<u64, RegisterType<N>>,
+    /// PhantomData.
+    _phantom: PhantomData<A>,
 }
 
-impl<N: Network> RegisterTypes<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
     /// Initializes a new instance of `RegisterTypes`.
     pub fn new() -> Self {
-        Self { inputs: IndexMap::new(), destinations: IndexMap::new() }
+        Self { inputs: IndexMap::new(), destinations: IndexMap::new(), _phantom: PhantomData }
     }
 
     /// Returns `true` if the given register exists.
@@ -100,19 +102,18 @@ impl<N: Network> RegisterTypes<N> {
         }
     }
 
-    /// Returns the plaintext type of the given register.
-    pub fn get_type<A: circuit::Aleo<Network = N>>(
-        &self,
-        program: &Program<N, A>,
-        register: &Register<N>,
-    ) -> Result<RegisterType<N>> {
+    /// Returns the register type of the given register.
+    pub fn get_type(&self, program: &Program<N, A>, register: &Register<N>) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
-            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?
+            *self.inputs.get(&register.locator()).ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         } else {
             // Retrieve the destination register type.
-            *self.destinations.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?
+            *self
+                .destinations
+                .get(&register.locator())
+                .ok_or_else(|| anyhow!("Register '{register}' does not exist"))?
         };
 
         // Retrieve the member path if the register is a member. Otherwise, return the register type.
@@ -145,7 +146,7 @@ impl<N: Network> RegisterTypes<N> {
                 }
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.
-                    ensure!(program.contains_record(record_name), "'{record_name}' does not exist");
+                    ensure!(program.contains_record(record_name), "Record '{record_name}' does not exist");
                     // Retrieve the member type from the record.
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
