@@ -1999,6 +1999,7 @@ dependencies = [
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
+ "walkdir",
 ]
 
 [[package]]
