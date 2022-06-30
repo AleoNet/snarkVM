@@ -48,16 +48,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         };
 
         // Retrieve the stack value.
-        let stack_value = self
-            .console_registers
-            .get(&register.locator())
-            .ok_or_else(|| anyhow!("'{register}' does not exist"))?
-            .clone();
+        let stack_value =
+            self.console_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
         // Return the value for the given register or register member.
         let stack_value = match register {
             // If the register is a locator, then return the stack value.
-            Register::Locator(..) => stack_value,
+            Register::Locator(..) => stack_value.clone(),
             // If the register is a register member, then load the specific stack value.
             Register::Member(_, ref path) => {
                 match stack_value {
@@ -123,16 +120,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         };
 
         // Retrieve the circuit value.
-        let circuit_value = self
-            .circuit_registers
-            .get(&register.locator())
-            .ok_or_else(|| anyhow!("'{register}' does not exist"))?
-            .clone();
+        let circuit_value =
+            self.circuit_registers.get(&register.locator()).ok_or_else(|| anyhow!("'{register}' does not exist"))?;
 
         // Return the value for the given register or register member.
         let circuit_value = match register {
             // If the register is a locator, then return the stack value.
-            Register::Locator(..) => circuit_value,
+            Register::Locator(..) => circuit_value.clone(),
             // If the register is a register member, then load the specific stack value.
             Register::Member(_, ref path) => {
                 // Inject the path.

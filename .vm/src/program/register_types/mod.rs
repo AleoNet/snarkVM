@@ -151,7 +151,8 @@ impl<N: Network> RegisterTypes<N> {
 
         // Traverse the member path to find the register type.
         for path_name in path.iter() {
-            match &register_type {
+            // Update the register type at each step.
+            register_type = match &register_type {
                 // Ensure the plaintext type is not a literal, as the register references a member.
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("'{register}' references a literal."),
                 // Traverse the member path to output the register type.
@@ -159,7 +160,7 @@ impl<N: Network> RegisterTypes<N> {
                     // Retrieve the member type from the interface.
                     match program.get_interface(interface_name)?.members().get(path_name) {
                         // Update the member type.
-                        Some(plaintext_type) => register_type = RegisterType::Plaintext(*plaintext_type),
+                        Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
                         None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
                     }
                 }
@@ -169,21 +170,19 @@ impl<N: Network> RegisterTypes<N> {
                     // Retrieve the member type from the record.
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
-                        register_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address));
+                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
                     } else if path_name == &Identifier::from_str("balance")? {
                         // If the member is the balance, then output the u64 type.
-                        register_type = RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64));
+                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
                     } else {
                         // Retrieve the entry type from the record.
                         match program.get_record(record_name)?.entries().get(path_name) {
                             // Update the entry type.
-                            Some(entry_type) => {
-                                register_type = match entry_type {
-                                    EntryType::Constant(plaintext_type)
-                                    | EntryType::Public(plaintext_type)
-                                    | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                                }
-                            }
+                            Some(entry_type) => match entry_type {
+                                EntryType::Constant(plaintext_type)
+                                | EntryType::Public(plaintext_type)
+                                | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
+                            },
                             None => bail!("'{path_name}' does not exist in record '{record_name}'"),
                         }
                     }
