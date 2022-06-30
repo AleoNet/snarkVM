@@ -303,10 +303,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
-        // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
-        }
         // Evaluate the function.
         self.evaluate_function(&function, inputs)
     }
@@ -328,10 +324,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
-        // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
-        }
 
         // Inject the inputs to the circuit environment.
         let inputs = function
