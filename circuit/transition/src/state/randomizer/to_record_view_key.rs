@@ -34,7 +34,7 @@ mod tests {
 
     pub(crate) const ITERATIONS: usize = 100;
 
-    fn check_to_nonce(
+    fn check_to_record_view_key(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -74,17 +74,17 @@ mod tests {
     }
 
     #[test]
-    fn test_to_nonce_constant() -> Result<()> {
-        check_to_nonce(Mode::Constant, 1743, 0, 0, 0)
+    fn test_to_record_view_key_constant() -> Result<()> {
+        check_to_record_view_key(Mode::Constant, 1994, 0, 0, 0)
     }
 
     #[test]
-    fn test_to_nonce_public() -> Result<()> {
-        check_to_nonce(Mode::Public, 750, 0, 3252, 3252)
+    fn test_to_record_view_key_public() -> Result<()> {
+        check_to_record_view_key(Mode::Public, 750, 0, 3503, 3504)
     }
 
     #[test]
-    fn test_to_nonce_private() -> Result<()> {
-        check_to_nonce(Mode::Private, 750, 0, 3252, 3252)
+    fn test_to_record_view_key_private() -> Result<()> {
+        check_to_record_view_key(Mode::Private, 750, 0, 3503, 3504)
     }
 }

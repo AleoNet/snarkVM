@@ -102,16 +102,16 @@ mod tests {
 
     #[test]
     fn test_prove_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 9174, 0, 0, 0)
+        check_verify(Mode::Constant, 9669, 0, 0, 0)
     }
 
     #[test]
     fn test_prove_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 5148, 0, 13242, 13264)
+        check_verify(Mode::Public, 5148, 0, 13744, 13768)
     }
 
     #[test]
     fn test_prove_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 5148, 0, 13242, 13264)
+        check_verify(Mode::Private, 5148, 0, 13744, 13768)
     }
 }

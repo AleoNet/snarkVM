@@ -121,16 +121,16 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 20969, 0, 0, 0)
+        check_verify(Mode::Constant, 21466, 0, 0, 0)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 15792, 0, 17301, 17326)
+        check_verify(Mode::Public, 15792, 0, 17803, 17830)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 15792, 0, 17301, 17326)
+        check_verify(Mode::Private, 15792, 0, 17803, 17830)
     }
 }
