@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod to_bits;
-mod to_fields;
+use super::*;
 
-use console::{
-    network::prelude::*,
-    program::{Plaintext, Record},
-    types::Field,
-};
+impl<A: circuit::Aleo> ToFields for CircuitValue<A> {
+    type Field = circuit::types::Field<A>;
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum StackValue<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+    /// Returns the circuit value as a list of fields.
+    #[inline]
+    fn to_fields(&self) -> Vec<circuit::types::Field<A>> {
+        match self {
+            CircuitValue::Plaintext(plaintext) => plaintext.to_fields(),
+            CircuitValue::Record(record) => record.to_fields(),
+        }
+    }
 }
