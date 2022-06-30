@@ -110,16 +110,16 @@ mod tests {
 
     #[test]
     fn test_signature_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 764, 0, 0, 0)
+        check_new(Mode::Constant, 264, 0, 0, 0)
     }
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 5, 506, 597, 1102)
+        check_new(Mode::Public, 5, 6, 597, 600)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 5, 0, 1103, 1102)
+        check_new(Mode::Private, 5, 0, 603, 600)
     }
 }
