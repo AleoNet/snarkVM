@@ -599,6 +599,7 @@ mod tests {
                         #[allow(unused_mut)]
                         let mut should_succeed = true;
                         /// A helper macro to check the conditions.
+                        #[allow(unused_macros)]
                         macro_rules! check_condition {
                             ("ensure overflows halt") => {
                                 match *<$operation as $crate::Operation<_, _, _, _, 1>>::OPCODE {
@@ -714,6 +715,7 @@ mod tests {
                         #[allow(unused_mut)]
                         let mut is_shift_operator = false;
                         /// A helper macro to check the conditions.
+                        #[allow(unused_macros)]
                         macro_rules! check_condition {
                             ("ensure overflows halt") => {
                                 match *<$operation as $crate::Operation<_, _, _, _, 2>>::OPCODE {

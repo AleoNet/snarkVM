@@ -16,8 +16,8 @@
 
 use console::{
     network::{prelude::*, Network},
-    transition::{Record, State},
-    types::{Field, Group, Scalar, U64},
+    transition::Record,
+    types::{Field, Group},
 };
 
 pub struct Output<N: Network> {

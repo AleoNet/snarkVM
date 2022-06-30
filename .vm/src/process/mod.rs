@@ -17,11 +17,11 @@
 mod trace;
 use trace::*;
 
-use crate::{CircuitValue, Operand, Program, RegisterTypes, Stack, StackValue};
+use crate::{CircuitValue, Program, Stack, StackValue};
 use console::{
     account::Address,
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Record, Register, RegisterType, Value, ValueType},
+    program::{Identifier, Plaintext, Value, ValueType},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -116,7 +116,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         let outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &inputs)?;
 
         // Load the outputs.
-        outputs.iter().enumerate().try_for_each(|(index, output)| {
+        outputs.iter().try_for_each(|output| {
             use circuit::{Eject, Inject, ToBits};
 
             // Compute the output leaf.
@@ -162,6 +162,7 @@ mod tests {
     use console::{
         account::{PrivateKey, ViewKey},
         network::Testnet3,
+        program::Record,
     };
 
     type CurrentNetwork = Testnet3;

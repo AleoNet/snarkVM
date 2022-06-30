@@ -61,8 +61,8 @@ impl<E: Environment> Ternary for Scalar<E> {
     /// Returns `first` if `condition` is `true`, otherwise returns `second`.
     fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output {
         match **condition {
-            true => first.clone(),
-            false => second.clone(),
+            true => *first,
+            false => *second,
         }
     }
 }

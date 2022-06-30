@@ -155,7 +155,7 @@ impl<
 
         // Convert all input types into `LiteralType`s. If any are not a `LiteralType`, return an error.
         let input_types = input_types
-            .into_iter()
+            .iter()
             .copied()
             .map(|input_type| match input_type {
                 RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => Ok(literal_type),

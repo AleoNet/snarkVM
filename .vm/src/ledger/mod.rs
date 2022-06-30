@@ -16,9 +16,8 @@
 
 use crate::Program;
 use console::{
-    account::Address,
     network::prelude::*,
-    program::{Entry, Identifier, Literal, Plaintext, Record, Register, RegisterType, Value, ValueType},
+    program::{Identifier, Plaintext},
 };
 
 use indexmap::{IndexMap, IndexSet};
@@ -67,10 +66,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Ledger<N, A> {
 mod tests {
     use super::*;
     use circuit::network::AleoV0;
-    use console::{
-        account::{PrivateKey, ViewKey},
-        network::Testnet3,
-    };
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
@@ -78,7 +74,7 @@ mod tests {
     #[test]
     fn test_deploy() -> Result<()> {
         // Initialize a new ledger.
-        let ledger = Ledger::<CurrentNetwork, CurrentAleo>::new();
+        let _ledger = Ledger::<CurrentNetwork, CurrentAleo>::new();
 
         Ok(())
     }

@@ -33,13 +33,10 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
         let (bits_le, zero_bits) = bits_le.split_at(I::BITS as usize);
 
         // Ensure the unused upper bits are all zero.
-        ensure!(
-            zero_bits.iter().all(|&bit| bit == false),
-            "Failed to convert integer to field: upper bits are not zero"
-        );
+        ensure!(zero_bits.iter().all(|&bit| !bit), "Failed to convert integer to field: upper bits are not zero");
 
         // Return the integer.
-        Self::from_bits_le(&bits_le)
+        Self::from_bits_le(bits_le)
     }
 }
 

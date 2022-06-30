@@ -104,6 +104,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Program<N, A> {
     }
 }
 
+#[allow(clippy::format_push_string)]
 impl<N: Network, A: circuit::Aleo<Network = N>> Display for Program<N, A> {
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

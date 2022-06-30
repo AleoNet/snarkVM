@@ -26,7 +26,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
             | (StackValue::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
                 self.matches_plaintext(plaintext, &plaintext_type)
             }
-            (StackValue::Record(record), ValueType::Record(record_name)) => self.matches_record(record, &record_name),
+            (StackValue::Record(record), ValueType::Record(record_name)) => self.matches_record(record, record_name),
             _ => bail!("Input value does not match the input register type '{value_type}'"),
         }
     }
@@ -35,11 +35,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     pub fn matches_register(&self, stack_value: &StackValue<N>, register_type: &RegisterType<N>) -> Result<()> {
         match (stack_value, register_type) {
             (StackValue::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
-                self.matches_plaintext(plaintext, &plaintext_type)
+                self.matches_plaintext(plaintext, plaintext_type)
             }
-            (StackValue::Record(record), RegisterType::Record(record_name)) => {
-                self.matches_record(record, &record_name)
-            }
+            (StackValue::Record(record), RegisterType::Record(record_name)) => self.matches_record(record, record_name),
             _ => bail!("Stack value does not match the register type '{register_type}'"),
         }
     }

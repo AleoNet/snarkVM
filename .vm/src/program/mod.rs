@@ -219,7 +219,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     #[inline]
     fn add_interface(&mut self, interface: Interface<N>) -> Result<()> {
         // Retrieve the interface name.
-        let interface_name = interface.name().clone();
+        let interface_name = *interface.name();
 
         // Ensure the interface name is new.
         ensure!(self.is_unique_name(&interface_name), "'{interface_name}' is already in use.");
@@ -249,11 +249,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
 
         // Add the interface name to the identifiers.
-        if self.identifiers.insert(interface_name.clone(), ProgramDefinition::Interface).is_some() {
+        if self.identifiers.insert(interface_name, ProgramDefinition::Interface).is_some() {
             bail!("'{}' already exists in the program.", interface_name)
         }
         // Add the interface to the program.
-        if self.interfaces.insert(interface_name.clone(), interface).is_some() {
+        if self.interfaces.insert(interface_name, interface).is_some() {
             bail!("'{}' already exists in the program.", interface_name)
         }
         Ok(())
@@ -272,7 +272,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         ensure!(self.records.len() <= 1, "Only one record type is allowed in the program (for now).");
 
         // Retrieve the record name.
-        let record_name = record.name().clone();
+        let record_name = *record.name();
 
         // Ensure the record name is new.
         ensure!(self.is_unique_name(&record_name), "'{record_name}' is already in use.");
@@ -303,11 +303,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
 
         // Add the record name to the identifiers.
-        if self.identifiers.insert(record_name.clone(), ProgramDefinition::Record).is_some() {
+        if self.identifiers.insert(record_name, ProgramDefinition::Record).is_some() {
             bail!("'{record_name}' already exists in the program.")
         }
         // Add the record to the program.
-        if self.records.insert(record_name.clone(), record).is_some() {
+        if self.records.insert(record_name, record).is_some() {
             bail!("'{record_name}' already exists in the program.")
         }
         Ok(())
@@ -329,7 +329,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     #[inline]
     fn add_closure(&mut self, closure: Closure<N, A>) -> Result<()> {
         // Retrieve the closure name.
-        let closure_name = closure.name().clone();
+        let closure_name = *closure.name();
 
         // Ensure the closure name is new.
         ensure!(self.is_unique_name(&closure_name), "'{closure_name}' is already in use.");
@@ -425,9 +425,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                                 bail!("Interface '{interface_name}' in closure '{closure_name}' is not defined.")
                             }
                             // Retrieve the interface.
-                            let interface = self.get_interface(&interface_name)?;
+                            let interface = self.get_interface(interface_name)?;
                             // Ensure the operand types match the interface.
-                            register_types.matches_interface(&self, instruction.operands(), &interface)?;
+                            register_types.matches_interface(self, instruction.operands(), &interface)?;
                         }
                         RegisterType::Record(record_name) => {
                             // Ensure the record type is defined in the program.
@@ -435,9 +435,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                                 bail!("Record '{record_name}' in closure '{closure_name}' is not defined.")
                             }
                             // Retrieve the record type.
-                            let record_type = self.get_record(&record_name)?;
+                            let record_type = self.get_record(record_name)?;
                             // Ensure the operand types match the record type.
-                            register_types.matches_record(&self, instruction.operands(), &record_type)?;
+                            register_types.matches_record(self, instruction.operands(), &record_type)?;
                         }
                     }
                 }
@@ -501,12 +501,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                 // Retrieve and append the register type.
                 operand_types.push(match operand {
                     Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                    Operand::Register(register) => register_types.get_type(&self, &register)?,
+                    Operand::Register(register) => register_types.get_type(self, register)?,
                 });
             }
 
             // Compute the destination register types.
-            let destination_types = instruction.output_types(&self, &operand_types)?;
+            let destination_types = instruction.output_types(self, &operand_types)?;
 
             // Insert the destination register.
             for (destination, destination_type) in
@@ -546,7 +546,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
             // Retrieve the register type (as a plaintext type).
             // Note: This serves as the expected output type, which we will compare against.
-            let register_type = register_types.get_type(&self, &register)?;
+            let register_type = register_types.get_type(self, register)?;
 
             // Ensure the register type and the output type match.
             if register_type != *output.register_type() {
@@ -558,15 +558,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
 
         // Add the function name to the identifiers.
-        if self.identifiers.insert(closure_name.clone(), ProgramDefinition::Closure).is_some() {
+        if self.identifiers.insert(closure_name, ProgramDefinition::Closure).is_some() {
             bail!("'{closure_name}' already exists in the program.")
         }
         // Add the closure to the program.
-        if self.closures.insert(closure_name.clone(), closure).is_some() {
+        if self.closures.insert(closure_name, closure).is_some() {
             bail!("'{closure_name}' already exists in the program.")
         }
         // Add the closure registers to the program.
-        if self.closure_registers.insert(closure_name.clone(), register_types).is_some() {
+        if self.closure_registers.insert(closure_name, register_types).is_some() {
             bail!("'{closure_name}' already exists in the program.")
         }
         Ok(())
@@ -588,7 +588,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     #[inline]
     fn add_function(&mut self, function: Function<N, A>) -> Result<()> {
         // Retrieve the function name.
-        let function_name = function.name().clone();
+        let function_name = *function.name();
 
         // Ensure the function name is new.
         ensure!(self.is_unique_name(&function_name), "'{function_name}' is already in use.");
@@ -627,7 +627,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                         }
                     }
                     // Output the register type.
-                    RegisterType::Plaintext(plaintext_type.clone())
+                    RegisterType::Plaintext(*plaintext_type)
                 }
                 ValueType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
@@ -635,7 +635,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                         bail!("Record '{identifier}' in function '{function_name}' is not defined.")
                     }
                     // Output the register type.
-                    RegisterType::Record(identifier.clone())
+                    RegisterType::Record(*identifier)
                 }
             };
 
@@ -696,9 +696,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                                 bail!("Interface '{interface_name}' in function '{function_name}' is not defined.")
                             }
                             // Retrieve the interface.
-                            let interface = self.get_interface(&interface_name)?;
+                            let interface = self.get_interface(interface_name)?;
                             // Ensure the operand types match the interface.
-                            register_types.matches_interface(&self, instruction.operands(), &interface)?;
+                            register_types.matches_interface(self, instruction.operands(), &interface)?;
                         }
                         RegisterType::Record(record_name) => {
                             // Ensure the record type is defined in the program.
@@ -706,9 +706,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                                 bail!("Record '{record_name}' in function '{function_name}' is not defined.")
                             }
                             // Retrieve the record type.
-                            let record_type = self.get_record(&record_name)?;
+                            let record_type = self.get_record(record_name)?;
                             // Ensure the operand types match the record type.
-                            register_types.matches_record(&self, instruction.operands(), &record_type)?;
+                            register_types.matches_record(self, instruction.operands(), &record_type)?;
                         }
                     }
                 }
@@ -772,12 +772,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                 // Retrieve and append the register type.
                 operand_types.push(match operand {
                     Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                    Operand::Register(register) => register_types.get_type(&self, &register)?,
+                    Operand::Register(register) => register_types.get_type(self, register)?,
                 });
             }
 
             // Compute the destination register types.
-            let destination_types = instruction.output_types(&self, &operand_types)?;
+            let destination_types = instruction.output_types(self, &operand_types)?;
 
             // Insert the destination register.
             for (destination, destination_type) in
@@ -801,7 +801,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
             // Retrieve the register type (as a plaintext type).
             // Note: This serves as the expected output type, which we will compare against.
-            let register_type = register_types.get_type(&self, &register)?;
+            let register_type = register_types.get_type(self, register)?;
 
             match output.value_type() {
                 ValueType::Constant(plaintext_type)
@@ -819,7 +819,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                     }
                     // Ensure the register type matches the output type.
                     ensure!(
-                        register_type == RegisterType::Plaintext(plaintext_type.clone()),
+                        register_type == RegisterType::Plaintext(*plaintext_type),
                         "Output '{register}' in '{function_name}' has type '{register_type}', but expected type '{plaintext_type}'."
                     );
                 }
@@ -830,7 +830,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                     }
                     // Ensure the register type matches the output type.
                     ensure!(
-                        register_type == RegisterType::Record(identifier.clone()),
+                        register_type == RegisterType::Record(*identifier),
                         "Output '{register}' in '{function_name}' has type '{register_type}', but expected type '{identifier}'."
                     );
                 }
@@ -841,15 +841,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
 
         // Add the function name to the identifiers.
-        if self.identifiers.insert(function_name.clone(), ProgramDefinition::Function).is_some() {
+        if self.identifiers.insert(function_name, ProgramDefinition::Function).is_some() {
             bail!("'{function_name}' already exists in the program.")
         }
         // Add the function to the program.
-        if self.functions.insert(function_name.clone(), function).is_some() {
+        if self.functions.insert(function_name, function).is_some() {
             bail!("'{function_name}' already exists in the program.")
         }
         // Add the function registers to the program.
-        if self.function_registers.insert(function_name.clone(), register_types).is_some() {
+        if self.function_registers.insert(function_name, register_types).is_some() {
             bail!("'{function_name}' already exists in the program.")
         }
         Ok(())
@@ -865,7 +865,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the given name matches the root of any opcode (the first part, up to the first '.').
-        Instruction::<N, A>::OPCODES.into_iter().any(|opcode| (**opcode).splitn(2, '.').next() == Some(&name))
+        Instruction::<N, A>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
@@ -933,7 +933,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the name is a keyword.
-        KEYWORDS.iter().any(|keyword| *keyword == &name)
+        KEYWORDS.iter().any(|keyword| *keyword == name)
     }
 }
 

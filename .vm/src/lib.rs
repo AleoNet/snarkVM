@@ -16,7 +16,10 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
+// TODO (howardwu): Remove me after tracing.
+#![allow(clippy::print_in_format_impl)]
 
+#[allow(dead_code, unused_imports)]
 mod ledger;
 pub use ledger::*;
 

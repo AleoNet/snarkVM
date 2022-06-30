@@ -15,9 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use console::{
-    network::{prelude::*, Network},
-    transition::{Record, State},
-    types::{Field, Group, Scalar, U64},
+    network::Network,
+    types::{Field, Group},
 };
 
 pub struct Input<N: Network> {

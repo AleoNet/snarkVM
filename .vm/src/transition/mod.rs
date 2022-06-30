@@ -21,7 +21,6 @@ pub mod output;
 use output::*;
 
 pub mod proof;
-use proof::*;
 
 use console::{
     network::{prelude::*, Network},
