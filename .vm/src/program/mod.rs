@@ -430,12 +430,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
             // Insert the destination register.
             for (destination, destination_type) in
-                instruction.destinations().iter().zip_eq(destination_types.into_iter())
+                instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
             {
                 // Ensure the destination register is a locator (and does not reference a member).
                 ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
                 // Insert the destination register.
-                register_types.add_destination(destination.clone(), destination_type)?;
+                register_types.add_destination(destination, destination_type)?;
             }
         }
 
@@ -581,12 +581,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 
             // Insert the destination register.
             for (destination, destination_type) in
-                instruction.destinations().iter().zip_eq(destination_types.into_iter())
+                instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
             {
                 // Ensure the destination register is a locator (and does not reference a member).
                 ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
                 // Insert the destination register.
-                register_types.add_destination(destination.clone(), destination_type)?;
+                register_types.add_destination(destination, destination_type)?;
             }
         }
 
