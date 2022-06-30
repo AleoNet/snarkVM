@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod find;
-mod num_randomizers;
 mod parse;
 mod to_bits;
 

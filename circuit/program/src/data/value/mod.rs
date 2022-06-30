@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod find;
-mod num_randomizers;
 mod to_bits;
 
 use crate::{Ciphertext, Entry, Identifier, Plaintext, Record, Visibility};
