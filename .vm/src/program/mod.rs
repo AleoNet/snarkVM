@@ -20,6 +20,9 @@ pub use closure::*;
 mod function;
 pub use function::*;
 
+mod id;
+pub use id::*;
+
 mod import;
 pub use import::*;
 
@@ -62,10 +65,10 @@ enum ProgramDefinition {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Program<N: Network, A: circuit::Aleo<Network = N>> {
-    /// The name of the program.
-    name: Identifier<N>,
-    /// A map of the declared imports for the program `(i.e. (name, domain) => program)`.
-    imports: IndexMap<(Identifier<N>, Identifier<N>), Import<N>>,
+    /// The ID of the program.
+    id: ProgramID<N>,
+    /// A map of the declared imports for the program.
+    imports: IndexMap<ProgramID<N>, Import<N>>,
     /// A map of identifiers to their program declaration.
     identifiers: IndexMap<Identifier<N>, ProgramDefinition>,
     /// A map of the declared interfaces for the program.
@@ -81,9 +84,9 @@ pub struct Program<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Initializes an empty program.
     #[inline]
-    pub fn new(name: Identifier<N>) -> Self {
+    pub fn new(id: ProgramID<N>) -> Self {
         Self {
-            name,
+            id,
             imports: IndexMap::new(),
             identifiers: IndexMap::new(),
             interfaces: IndexMap::new(),
@@ -93,9 +96,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
     }
 
-    /// Returns the name of the program.
-    pub const fn name(&self) -> &Identifier<N> {
-        &self.name
+    /// Returns the ID of the program.
+    pub const fn id(&self) -> &ProgramID<N> {
+        &self.id
     }
 
     /// Returns the closures in the program.
@@ -194,14 +197,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         // Ensure the import name is not a reserved keyword.
         ensure!(!self.is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
 
-        // Construct the key.
-        let key = (import_name, *import.domain());
         // Ensure the import is new.
-        ensure!(!self.imports.contains_key(&key), "Import '{}.{}' is already defined.", import.name(), import.domain());
+        ensure!(!self.imports.contains_key(import.id()), "Import '{}' is already defined.", import.id());
 
         // Add the import statement to the program.
-        if self.imports.insert(key, import.clone()).is_some() {
-            bail!("'{}.{}' already exists in the program.", import.name(), import.domain())
+        if self.imports.insert(*import.id(), import.clone()).is_some() {
+            bail!("'{}' already exists in the program.", import.id())
         }
         Ok(())
     }
@@ -514,7 +515,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(Identifier::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(ProgramID::from_str("unknown")?);
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -539,7 +540,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(Identifier::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(ProgramID::from_str("unknown")?);
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -564,7 +565,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(Identifier::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(ProgramID::from_str("unknown")?);
 
         // Add the function to the program.
         program.add_function(function.clone())?;

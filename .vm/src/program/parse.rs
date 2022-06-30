@@ -36,8 +36,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Program<N, A> {
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the program name from the string.
-        let (string, name) = Identifier::parse(string)?;
+        // Parse the program ID from the string.
+        let (string, id) = ProgramID::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon ';' keyword from the string.
@@ -58,7 +58,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Program<N, A> {
         // Return the program.
         map_res(take(0usize), move |_| {
             // Initialize a new program.
-            let mut program = Program::<N, A>::new(name);
+            let mut program = Program::<N, A>::new(id);
             // Construct the program with the parsed components.
             for component in components.iter() {
                 let result = match component {
@@ -134,7 +134,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Program<N, A> {
         }
 
         // Print the program name.
-        program += &format!("{} {};\n\n", Self::type_name(), self.name);
+        program += &format!("{} {};\n\n", Self::type_name(), self.id);
 
         for (identifier, definition) in self.identifiers.iter() {
             match definition {
@@ -213,7 +213,7 @@ function compute:
 
     #[test]
     fn test_program_display() -> Result<()> {
-        let expected = r"program to_parse;
+        let expected = r"program to_parse.aleo;
 
 interface message:
     first as field;

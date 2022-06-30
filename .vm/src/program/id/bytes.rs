@@ -16,17 +16,33 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Import<N> {
-    /// Reads the import from a buffer.
+impl<N: Network> FromBytes for ProgramID<N> {
+    /// Reads the program ID from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let id = ProgramID::read_le(&mut reader)?;
-        Ok(Self { id })
+        let name = FromBytes::read_le(&mut reader)?;
+
+        let variant = u8::read_le(&mut reader)?;
+        match variant {
+            0 => Ok(Self { name, network: None }),
+            1 => {
+                let network = FromBytes::read_le(&mut reader)?;
+                Ok(Self { name, network: Some(network) })
+            },
+            _ => Err(error(format!("Failed to parse program ID. Invalid variant '{variant}'"))),
+        }
     }
 }
 
-impl<N: Network> ToBytes for Import<N> {
-    /// Writes the import to a buffer.
+impl<N: Network> ToBytes for ProgramID<N> {
+    /// Writes the program ID to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.id.write_le(&mut writer)
+        self.name.write_le(&mut writer)?;
+        match self.network {
+            None => 0u8.write_le(&mut writer),
+            Some(ref network) => {
+                1u8.write_le(&mut writer)?;
+                network.write_le(&mut writer)
+            },
+        }
     }
 }

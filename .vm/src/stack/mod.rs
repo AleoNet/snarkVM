@@ -26,7 +26,7 @@ pub use stack_value::*;
 mod load;
 mod store;
 
-use crate::{Closure, Function, Instruction, Opcode, Operand, Program};
+use crate::{Closure, ProgramID, Function, Instruction, Opcode, Operand, Program};
 use console::{
     network::prelude::*,
     program::{
@@ -51,8 +51,8 @@ use indexmap::IndexMap;
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
     program: Program<N, A>,
-    /// The mapping of imported programs as `(program name, program)`.
-    imports: IndexMap<Identifier<N>, Program<N, A>>,
+    /// The mapping of imported programs as `(program ID, program)`.
+    imports: IndexMap<ProgramID<N>, Program<N, A>>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N, A>,
     /// The mapping of assigned console registers to their values.
@@ -81,10 +81,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Adds a new imported program to the stack.
     #[inline]
     pub fn import_program(&mut self, program: &Program<N, A>) -> Result<()> {
-        // Retrieve the program name.
-        let program_name = program.name();
+        // Retrieve the program ID.
+        let program_id = program.id();
         // Ensure the program is not already added.
-        ensure!(!self.imports.contains_key(program_name), "Program '{program_name}' already exists");
+        ensure!(!self.imports.contains_key(program_id), "Program '{program_id}' already exists");
         // TODO (howardwu): Ensure the imported program is declared in the program imports.
         // TODO (howardwu): Ensure the imported program is not the main program.
 
@@ -97,7 +97,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             self.process_function(program, function, false)?;
         }
         // Add the program to the stack.
-        self.imports.insert(*program_name, program.clone());
+        self.imports.insert(*program_id, program.clone());
 
         // Return success.
         Ok(())
@@ -359,98 +359,25 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         //     bail!("'{closure_name}' already exists in the program.")
         // }
 
-        // Retrieve the program name.
-        let program_name = program.name();
-
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
         // Step 1. Check the inputs are well-formed.
         for input in closure.inputs() {
-            match input.register_type() {
-                RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                    // Ensure the interface is defined in the program.
-                    if !program.contains_interface(interface_name) {
-                        bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
-                    }
-                }
-                RegisterType::Record(identifier) => {
-                    // Ensure the record type is defined in the program.
-                    if !program.contains_record(identifier) {
-                        bail!("Record '{identifier}' in '{program_name}' is not defined.")
-                    }
-                }
-            };
-
-            // Insert the input register.
-            register_types.add_input(input.register().clone(), *input.register_type())?;
+            // Check the input register type.
+            Self::check_input(program, &mut register_types, input.register(), input.register_type())?;
         }
 
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
-            // Ensure the opcode is well-formed.
-            self.check_opcode_safety(program, &register_types, instruction)?;
-
-            // Initialize a vector to store the register types of the operands.
-            let mut operand_types = Vec::with_capacity(instruction.operands().len());
-            // Iterate over the operands, and retrieve the register type of each operand.
-            for operand in instruction.operands() {
-                // Retrieve and append the register type.
-                operand_types.push(match operand {
-                    Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                    Operand::Register(register) => register_types.get_type(program, register)?,
-                });
-            }
-
-            // Compute the destination register types.
-            let destination_types = instruction.output_types(program, &operand_types)?;
-
-            // Insert the destination register.
-            for (destination, destination_type) in
-                instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
-            {
-                // Ensure the destination register is a locator (and does not reference a member).
-                ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
-                // Insert the destination register.
-                register_types.add_destination(destination, destination_type)?;
-            }
+            // Check the instruction opcode, operands, and destinations.
+            Self::check_instruction(program, &mut register_types, instruction)?;
         }
 
         // Step 3. Check the outputs are well-formed.
         for output in closure.outputs() {
-            // Retrieve the output register.
-            let register = output.register();
-            // Inform the user the output register is an input register, to ensure this is intended behavior.
-            if register_types.is_input(register) {
-                eprintln!("Output {register} in '{program_name}' is an input register, ensure this is intended");
-            }
-
-            // Ensure the register type is defined in the program.
-            match output.register_type() {
-                RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-                RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                    // Ensure the interface is defined in the program.
-                    if !program.contains_interface(interface_name) {
-                        bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
-                    }
-                }
-                RegisterType::Record(identifier) => {
-                    // Ensure the record type is defined in the program.
-                    if !program.contains_record(identifier) {
-                        bail!("Record '{identifier}' in '{program_name}' is not defined.")
-                    }
-                }
-            };
-
-            // Retrieve the register type (as a plaintext type).
-            // Note: This serves as the expected output type, which we will compare against.
-            let register_type = register_types.get_type(program, register)?;
-
-            // Ensure the register type and the output type match.
-            if register_type != *output.register_type() {
-                bail!("Output '{register}' does not match the expected output register type.")
-            }
+            // Check the output register type.
+            Self::check_output(program, &register_types, output.register(), output.register_type())?;
         }
 
         // If this is the main call, save the register types.
@@ -464,122 +391,35 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Checks that the given function is well-formed for the given program. If `is_main` is `true`,
     /// the register types will be set in the `Stack` for use as the main call.
     fn process_function(&mut self, program: &Program<N, A>, function: &Function<N, A>, is_main: bool) -> Result<()> {
-        // Retrieve the program name.
-        let program_name = program.name();
-
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
         // Step 1. Check the inputs are well-formed.
         for input in function.inputs() {
-            // Retrieve the register type.
-            let register_type = match input.value_type() {
+            // Check the input register type.
+            Self::check_input(program, &mut register_types, input.register(), &match input.value_type() {
                 ValueType::Constant(plaintext_type)
                 | ValueType::Public(plaintext_type)
-                | ValueType::Private(plaintext_type) => {
-                    // Ensure the plaintext type is defined in the program.
-                    match plaintext_type {
-                        PlaintextType::Literal(..) => (),
-                        PlaintextType::Interface(interface_name) => {
-                            // Ensure the interface name exists in the program.
-                            if !program.contains_interface(interface_name) {
-                                bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
-                            }
-                        }
-                    }
-                    // Output the register type.
-                    RegisterType::Plaintext(*plaintext_type)
-                }
-                ValueType::Record(identifier) => {
-                    // Ensure the record type is defined in the program.
-                    if !program.contains_record(identifier) {
-                        bail!("Record '{identifier}' in '{program_name}' is not defined.")
-                    }
-                    // Output the register type.
-                    RegisterType::Record(*identifier)
-                }
-            };
-
-            // Insert the input register.
-            register_types.add_input(input.register().clone(), register_type)?;
+                | ValueType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
+                ValueType::Record(identifier) => RegisterType::Record(*identifier),
+            })?;
         }
 
         // Step 2. Check the instructions are well-formed.
         for instruction in function.instructions() {
-            // Ensure the opcode is well-formed.
-            self.check_opcode_safety(program, &register_types, instruction)?;
-
-            // Initialize a vector to store the register types of the operands.
-            let mut operand_types = Vec::with_capacity(instruction.operands().len());
-            // Iterate over the operands, and retrieve the register type of each operand.
-            for operand in instruction.operands() {
-                // Retrieve and append the register type.
-                operand_types.push(match operand {
-                    Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                    Operand::Register(register) => register_types.get_type(program, register)?,
-                });
-            }
-
-            // Compute the destination register types.
-            let destination_types = instruction.output_types(program, &operand_types)?;
-
-            // Insert the destination register.
-            for (destination, destination_type) in
-                instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
-            {
-                // Ensure the destination register is a locator (and does not reference a member).
-                ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
-                // Insert the destination register.
-                register_types.add_destination(destination, destination_type)?;
-            }
+            // Check the instruction opcode, operands, and destinations.
+            Self::check_instruction(program, &mut register_types, instruction)?;
         }
 
         // Step 3. Check the outputs are well-formed.
         for output in function.outputs() {
-            // Retrieve the output register.
-            let register = output.register();
-            // Inform the user the output register is an input register, to ensure this is intended behavior.
-            if register_types.is_input(register) {
-                eprintln!("Output {register} in '{program_name}' is an input register, ensure this is intended");
-            }
-
-            // Retrieve the register type (as a plaintext type).
-            // Note: This serves as the expected output type, which we will compare against.
-            let register_type = register_types.get_type(program, register)?;
-
-            // Ensure the value type is defined in the program.
-            match output.value_type() {
+            // Retrieve the register type and check the output register type.
+            Self::check_output(program, &register_types, output.register(), &match output.value_type() {
                 ValueType::Constant(plaintext_type)
                 | ValueType::Public(plaintext_type)
-                | ValueType::Private(plaintext_type) => {
-                    // Ensure the plaintext type is defined in the program.
-                    match plaintext_type {
-                        PlaintextType::Literal(..) => (),
-                        PlaintextType::Interface(interface_name) => {
-                            // Ensure the interface name exists in the program.
-                            if !program.contains_interface(interface_name) {
-                                bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
-                            }
-                        }
-                    }
-                    // Ensure the register type matches the output type.
-                    ensure!(
-                        register_type == RegisterType::Plaintext(*plaintext_type),
-                        "Output '{register}' in '{program_name}' has type '{register_type}', but expected type '{plaintext_type}'."
-                    );
-                }
-                ValueType::Record(identifier) => {
-                    // Ensure the record type is defined in the program.
-                    if !program.contains_record(identifier) {
-                        bail!("Record '{identifier}' in '{program_name}' is not defined.")
-                    }
-                    // Ensure the register type matches the output type.
-                    ensure!(
-                        register_type == RegisterType::Record(*identifier),
-                        "Output '{register}' in '{program_name}' has type '{register_type}', but expected type '{identifier}'."
-                    );
-                }
-            };
+                | ValueType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
+                ValueType::Record(identifier) => RegisterType::Record(*identifier),
+            })?;
         }
 
         // If this is the main call, save the register types.
@@ -590,10 +430,114 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         Ok(())
     }
 
+    /// Ensure the given input register is well-formed.
+    fn check_input(
+        program: &Program<N, A>,
+        register_types: &mut RegisterTypes<N, A>,
+        register: &Register<N>,
+        register_type: &RegisterType<N>,
+    ) -> Result<()> {
+        // Ensure the register type is defined in the program.
+        match register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
+            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                // Ensure the interface is defined in the program.
+                if !program.contains_interface(interface_name) {
+                    bail!("Interface '{interface_name}' in '{}' is not defined.", program.id())
+                }
+            }
+            RegisterType::Record(identifier) => {
+                // Ensure the record type is defined in the program.
+                if !program.contains_record(identifier) {
+                    bail!("Record '{identifier}' in '{}' is not defined.", program.id())
+                }
+            }
+        };
+
+        // Insert the input register.
+        register_types.add_input(register.clone(), *register_type)?;
+
+        // Ensure the register type and the input type match.
+        if *register_type != register_types.get_type(program, register)? {
+            bail!("Input '{register}' does not match the expected input register type.")
+        }
+        Ok(())
+    }
+
+    /// Ensure the given output register is well-formed.
+    fn check_output(
+        program: &Program<N, A>,
+        register_types: &RegisterTypes<N, A>,
+        register: &Register<N>,
+        register_type: &RegisterType<N>,
+    ) -> Result<()> {
+        // Inform the user the output register is an input register, to ensure this is intended behavior.
+        if register_types.is_input(register) {
+            eprintln!("Output {register} in '{}' is an input register, ensure this is intended", program.id());
+        }
+
+        // Ensure the register type is defined in the program.
+        match register_type {
+            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
+            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
+                // Ensure the interface is defined in the program.
+                if !program.contains_interface(interface_name) {
+                    bail!("Interface '{interface_name}' in '{}' is not defined.", program.id())
+                }
+            }
+            RegisterType::Record(identifier) => {
+                // Ensure the record type is defined in the program.
+                if !program.contains_record(identifier) {
+                    bail!("Record '{identifier}' in '{}' is not defined.", program.id())
+                }
+            }
+        };
+
+        // Ensure the register type and the output type match.
+        if *register_type != register_types.get_type(program, register)? {
+            bail!("Output '{register}' does not match the expected output register type.")
+        }
+        Ok(())
+    }
+
+    /// Ensures the given instruction is well-formed.
+    fn check_instruction(
+        program: &Program<N, A>,
+        register_types: &mut RegisterTypes<N, A>,
+        instruction: &Instruction<N, A>,
+    ) -> Result<()> {
+        // Ensure the opcode is well-formed.
+        Self::check_instruction_opcode(program, &register_types, instruction)?;
+
+        // Initialize a vector to store the register types of the operands.
+        let mut operand_types = Vec::with_capacity(instruction.operands().len());
+        // Iterate over the operands, and retrieve the register type of each operand.
+        for operand in instruction.operands() {
+            // Retrieve and append the register type.
+            operand_types.push(match operand {
+                Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
+                Operand::Register(register) => register_types.get_type(program, register)?,
+            });
+        }
+
+        // Compute the destination register types.
+        let destination_types = instruction.output_types(program, &operand_types)?;
+
+        // Insert the destination register.
+        for (destination, destination_type) in
+            instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
+        {
+            // Ensure the destination register is a locator (and does not reference a member).
+            ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
+            // Insert the destination register.
+            register_types.add_destination(destination, destination_type)?;
+        }
+        Ok(())
+    }
+
     /// Ensures the opcode is a valid opcode and corresponds to the correct instruction.
     /// This method is called when adding a new closure or function to the program.
-    fn check_opcode_safety(
-        &self,
+    fn check_instruction_opcode(
         program: &Program<N, A>,
         register_types: &RegisterTypes<N, A>,
         instruction: &Instruction<N, A>,
@@ -601,7 +545,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         match instruction.opcode() {
             Opcode::Literal(opcode) => {
                 // Ensure the opcode **is** a reserved opcode.
-                ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                 // Ensure the instruction is not the cast operation.
                 ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
                 // Ensure the instruction has one destination register.
@@ -666,7 +610,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             }
             Opcode::Commit(opcode) => {
                 // Ensure the opcode **is** a reserved opcode.
-                ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                 // Ensure the instruction belongs to the defined set.
                 if ![
                     "commit.bhp256",
@@ -690,7 +634,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             }
             Opcode::Hash(opcode) => {
                 // Ensure the opcode **is** a reserved opcode.
-                ensure!(self.is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                 // Ensure the instruction belongs to the defined set.
                 if ![
                     "hash.bhp256",
@@ -720,7 +664,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 
     /// Returns `true` if the given name is a reserved opcode.
-    fn is_reserved_opcode(&self, name: &Identifier<N>) -> bool {
+    fn is_reserved_opcode(name: &Identifier<N>) -> bool {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the given name matches the root of any opcode (the first part, up to the first '.').

@@ -18,55 +18,53 @@ mod bytes;
 mod parse;
 
 use console::{network::prelude::*, program::Identifier};
-use crate::ProgramID;
 
-/// An import statement defines an imported program, and is of the form `import {name}.{network};`.
+/// A program ID is of the form `{name}.{network}`.
 /// If no `network`-level domain is specified, the default network is used.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Import<N: Network> {
-    /// The imported program ID.
-    id: ProgramID<N>,
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ProgramID<N: Network> {
+    /// The program name.
+    name: Identifier<N>,
+    /// The network-level domain (NLD).
+    network: Option<Identifier<N>>,
 }
 
-impl<N: Network> Import<N> {
-    /// Returns the imported program ID.
-    #[inline]
-    pub const fn id(&self) -> &ProgramID<N> {
-        &self.id
-    }
-
-    /// Returns the imported program name.
+impl<N: Network> ProgramID<N> {
+    /// Returns the program name.
     #[inline]
     pub const fn name(&self) -> &Identifier<N> {
-        self.id.name()
+        &self.name
     }
 
-    /// Returns the imported network-level domain (NLD).
+    /// Returns the network-level domain (NLD).
     #[inline]
     pub fn network(&self) -> Result<Identifier<N>> {
-        self.id.network()
+        match self.network {
+            Some(network) => Ok(network),
+            None => Identifier::from_str("aleo"),
+        }
     }
 }
 
-impl<N: Network> TypeName for Import<N> {
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "import"
-    }
-}
-
-impl<N: Network> Ord for Import<N> {
-    /// Ordering is determined by the NLD first, then the program name second.
+impl<N: Network> Ord for ProgramID<N> {
+    /// Ordering is determined by the network first, then the program name second.
     fn cmp(&self, other: &Self) -> Ordering {
-        self.id.cmp(&other.id)
+        match self.network == other.network {
+            true => self.name.to_string().cmp(&other.name.to_string()),
+            false => match (self.network, other.network) {
+                (Some(this), Some(that)) => this.to_string().cmp(&that.to_string()),
+                (Some(this), None) => this.to_string().cmp(&"aleo".to_string()),
+                (None, Some(that)) => "aleo".to_string().cmp(&that.to_string()),
+                (None, None) => Ordering::Equal,
+            },
+        }
     }
 }
 
-impl<N: Network> PartialOrd for Import<N> {
-    /// Ordering is determined by the NLD first, then the program name second.
+impl<N: Network> PartialOrd for ProgramID<N> {
+    /// Ordering is determined by the network first, then the program name second.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.id.partial_cmp(&other.id)
+        Some(self.cmp(other))
     }
 }
 
@@ -78,18 +76,12 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_import_type_name() -> Result<()> {
-        assert_eq!(Import::<CurrentNetwork>::type_name(), "import");
-        Ok(())
-    }
+    fn test_partial_ord() -> Result<()> {
+        let import1 = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
+        let import2 = ProgramID::<CurrentNetwork>::from_str("foo.aleo")?;
 
-    #[test]
-    fn test_import_partial_ord() -> Result<()> {
-        let import1 = Import::<CurrentNetwork>::from_str("import bar.aleo;")?;
-        let import2 = Import::<CurrentNetwork>::from_str("import foo.aleo;")?;
-
-        let import3 = Import::<CurrentNetwork>::from_str("import bar.aleo;")?;
-        let import4 = Import::<CurrentNetwork>::from_str("import foo.aleo;")?;
+        let import3 = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
+        let import4 = ProgramID::<CurrentNetwork>::from_str("foo.aleo")?;
 
         assert_eq!(import1.partial_cmp(&import1), Some(Ordering::Equal));
         assert_eq!(import1.partial_cmp(&import2), Some(Ordering::Less));

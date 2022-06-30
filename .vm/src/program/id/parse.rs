@@ -16,32 +16,27 @@
 
 use super::*;
 
-impl<N: Network> Parser for Import<N> {
-    /// Parses a string into an import statement of the form `import {name}.{network};`.
+impl<N: Network> Parser for ProgramID<N> {
+    /// Parses a string into a program ID of the form `{name}.{network}`.
     /// If no `network`-level domain is specified, the default network is used.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
-        // Parse the import keyword from the string.
-        let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the program ID from the string.
-        let (string, id) = ProgramID::parse(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
-        // Return the import statement.
-        Ok((string, Self { id }))
+        // Parse the name from the string.
+        let (string, name) = Identifier::parse(string)?;
+        // Parse the optional "." and network-level domain (NLD) from the string.
+        let (string, network) = opt(pair(tag("."), Identifier::parse))(string)?;
+        // Return the program ID.
+        match network {
+            Some((_, network)) => Ok((string, Self { name, network: Some(network) })),
+            None => Ok((string, Self { name, network: None })),
+        }
     }
 }
 
-impl<N: Network> FromStr for Import<N> {
+impl<N: Network> FromStr for ProgramID<N> {
     type Err = Error;
 
-    /// Parses a string into an import statement.
+    /// Parses a string into a program ID.
     #[inline]
     fn from_str(string: &str) -> Result<Self> {
         match Self::parse(string) {
@@ -56,17 +51,20 @@ impl<N: Network> FromStr for Import<N> {
     }
 }
 
-impl<N: Network> Debug for Import<N> {
-    /// Prints the import as a string.
+impl<N: Network> Debug for ProgramID<N> {
+    /// Prints the program ID as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Import<N> {
-    /// Prints the import statement as a string.
+impl<N: Network> Display for ProgramID<N> {
+    /// Prints the program ID as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{type_} {id};", type_ = Self::type_name(), id = self.id)
+        match self.network {
+            Some(network) => write!(f, "{name}.{network}", name = self.name, network = network),
+            None => write!(f, "{name}.aleo", name = self.name),
+        }
     }
 }
 
@@ -79,11 +77,11 @@ mod tests {
 
     #[test]
     fn test_import_parse() -> Result<()> {
-        let import = Import::<CurrentNetwork>::parse("import bar.aleo;").unwrap().1;
+        let import = ProgramID::<CurrentNetwork>::parse("bar.aleo").unwrap().1;
         assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
         assert_eq!(import.network()?, Identifier::<CurrentNetwork>::from_str("aleo")?);
 
-        let import = Import::<CurrentNetwork>::parse("import foo.aleo;").unwrap().1;
+        let import = ProgramID::<CurrentNetwork>::parse("foo").unwrap().1;
         assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("foo")?);
         assert_eq!(import.network()?, Identifier::<CurrentNetwork>::from_str("aleo")?);
 
@@ -92,11 +90,11 @@ mod tests {
 
     #[test]
     fn test_import_display() -> Result<()> {
-        let import = Import::<CurrentNetwork>::from_str("import bar.aleo;")?;
-        assert_eq!("import bar.aleo;", import.to_string());
+        let import = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
+        assert_eq!("bar.aleo", import.to_string());
 
-        let import = Import::<CurrentNetwork>::from_str("import foo.aleo;")?;
-        assert_eq!("import foo.aleo;", import.to_string());
+        let import = ProgramID::<CurrentNetwork>::from_str("foo")?;
+        assert_eq!("foo.aleo", import.to_string());
 
         Ok(())
     }
