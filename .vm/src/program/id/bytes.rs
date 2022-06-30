@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for ProgramID<N> {
             1 => {
                 let network = FromBytes::read_le(&mut reader)?;
                 Ok(Self { name, network: Some(network) })
-            },
+            }
             _ => Err(error(format!("Failed to parse program ID. Invalid variant '{variant}'"))),
         }
     }
@@ -42,7 +42,7 @@ impl<N: Network> ToBytes for ProgramID<N> {
             Some(ref network) => {
                 1u8.write_le(&mut writer)?;
                 network.write_le(&mut writer)
-            },
+            }
         }
     }
 }

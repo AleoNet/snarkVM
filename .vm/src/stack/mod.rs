@@ -26,7 +26,7 @@ pub use stack_value::*;
 mod load;
 mod store;
 
-use crate::{Closure, ProgramID, Function, Instruction, Opcode, Operand, Program};
+use crate::{Closure, Function, Instruction, Opcode, Operand, Program, ProgramID};
 use console::{
     network::prelude::*,
     program::{
