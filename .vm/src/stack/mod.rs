@@ -379,13 +379,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                 RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                     // Ensure the interface is defined in the program.
-                    if !program.contains_interface(&interface_name) {
+                    if !program.contains_interface(interface_name) {
                         bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
                     }
                 }
                 RegisterType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
-                    if !program.contains_record(&identifier) {
+                    if !program.contains_record(identifier) {
                         bail!("Record '{identifier}' in '{program_name}' is not defined.")
                     }
                 }
@@ -439,13 +439,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
                 RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                     // Ensure the interface is defined in the program.
-                    if !program.contains_interface(&interface_name) {
+                    if !program.contains_interface(interface_name) {
                         bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
                     }
                 }
                 RegisterType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
-                    if !program.contains_record(&identifier) {
+                    if !program.contains_record(identifier) {
                         bail!("Record '{identifier}' in '{program_name}' is not defined.")
                     }
                 }
@@ -490,7 +490,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                         PlaintextType::Literal(..) => (),
                         PlaintextType::Interface(interface_name) => {
                             // Ensure the interface name exists in the program.
-                            if !program.contains_interface(&interface_name) {
+                            if !program.contains_interface(interface_name) {
                                 bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
                             }
                         }
@@ -500,7 +500,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 }
                 ValueType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
-                    if !program.contains_record(&identifier) {
+                    if !program.contains_record(identifier) {
                         bail!("Record '{identifier}' in '{program_name}' is not defined.")
                     }
                     // Output the register type.
@@ -565,7 +565,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                         PlaintextType::Literal(..) => (),
                         PlaintextType::Interface(interface_name) => {
                             // Ensure the interface name exists in the program.
-                            if !program.contains_interface(&interface_name) {
+                            if !program.contains_interface(interface_name) {
                                 bail!("Interface '{interface_name}' in '{program_name}' is not defined.")
                             }
                         }
@@ -578,7 +578,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 }
                 ValueType::Record(identifier) => {
                     // Ensure the record type is defined in the program.
-                    if !program.contains_record(&identifier) {
+                    if !program.contains_record(identifier) {
                         bail!("Record '{identifier}' in '{program_name}' is not defined.")
                     }
                     // Ensure the register type matches the output type.
