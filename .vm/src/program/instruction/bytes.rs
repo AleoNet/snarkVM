@@ -26,23 +26,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Instruction<N, A> 
         /// ```
         macro_rules! instruction_from_bytes_le {
             ($object:expr, |$reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
-                // A list of instruction enum variants.
-                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
-                // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
-
-                // Read the enum variant index.
-                let variant = u16::read_le(&mut $reader)?;
+                // Read the opcode index.
+                let index = u16::read_le(&mut $reader)?;
 
                 // Build the cases for all instructions.
-                $(if INSTRUCTION_ENUMS[variant as usize] == stringify!($variant) {
+                $(if Instruction::<N, A>::OPCODES[index as usize] == $variant::<N, A>::opcode() {
                     // Read the instruction.
                     let instruction = $variant::read_le(&mut $reader)?;
                     // Return the instruction.
                     return Ok(Self::$variant(instruction));
                 })+
                 // If the index is out of bounds, return an error.
-                Err(error(format!("Failed to deserialize an instruction of variant {variant}")))
+                Err(error(format!("Failed to deserialize an instruction of opcode index '{index}'")))
             }};
         }
         // Execute the `from_bytes_le` method.
@@ -60,20 +55,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Instruction<N, A> {
         /// ```
         macro_rules! instruction_to_bytes_le {
             ($object:expr, |$writer:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
-                // A list of instruction enum variants.
-                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
-                // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
-
                 // Build the match cases.
                 match $object {
                     $(Self::$variant(instruction) => {
-                        // Retrieve the enum variant index.
-                        // Note: This unwrap is guaranteed to succeed because the enum variant is known to exist.
-                        let variant = INSTRUCTION_ENUMS.iter().position(|&name| stringify!($variant) == name).unwrap();
+                        // Retrieve the opcode index.
+                        // Note: This unwrap is guaranteed to succeed because the opcode variant is known to exist.
+                        let index = Instruction::<N, A>::OPCODES.iter().position(|&opcode| $variant::<N, A>::opcode() == opcode).unwrap();
 
                         // Serialize the instruction.
-                        u16::write_le(&(variant as u16),&mut $writer)?;
+                        u16::write_le(&(index as u16),&mut $writer)?;
                         instruction.write_le(&mut $writer)?;
                     }),+
                 }
