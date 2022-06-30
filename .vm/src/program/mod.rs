@@ -589,9 +589,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
             if register_type != *output.register_type() {
                 bail!("Output '{register}' does not match the expected output register type.")
             }
-
-            // Insert the output register.
-            register_types.add_output(output.register(), *output.register_type())?;
         }
 
         // Add the function name to the identifiers.
@@ -872,9 +869,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                     );
                 }
             };
-
-            // Insert the output register.
-            register_types.add_output(output.register(), register_type)?;
         }
 
         // Add the function name to the identifiers.

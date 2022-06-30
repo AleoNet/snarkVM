@@ -30,14 +30,12 @@ pub struct RegisterTypes<N: Network> {
     inputs: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all destination registers to their defined types.
     destinations: IndexMap<u64, RegisterType<N>>,
-    /// The mapping of all output registers to their defined types.
-    outputs: IndexMap<Register<N>, RegisterType<N>>,
 }
 
 impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes`.
     pub fn new() -> Self {
-        Self { inputs: IndexMap::new(), destinations: IndexMap::new(), outputs: IndexMap::new() }
+        Self { inputs: IndexMap::new(), destinations: IndexMap::new() }
     }
 
     /// Returns `true` if the given register exists.
@@ -54,17 +52,11 @@ impl<N: Network> RegisterTypes<N> {
         self.inputs.contains_key(&register.locator())
     }
 
-    /// Returns `true` if the given register corresponds to an output register.
-    pub fn is_output(&self, register: &Register<N>) -> bool {
-        self.outputs.contains_key(register)
-    }
-
     /// Inserts the given input register and type into the registers.
     /// Note: The given input register must be a `Register::Locator`.
     pub fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
-        // Ensure there are no destination or output registers set yet.
+        // Ensure there are no destination registers set yet.
         ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
-        ensure!(self.outputs.is_empty(), "Cannot add input registers after output registers.");
 
         // Check the input register.
         match register {
@@ -105,19 +97,6 @@ impl<N: Network> RegisterTypes<N> {
             }
             // Ensure the register is a locator, and not a member.
             Register::Member(..) => bail!("Register '{register}' must be a locator."),
-        }
-    }
-
-    /// Inserts the given register as an output register with the associated register type.
-    pub fn add_output(&mut self, register: &Register<N>, register_type: RegisterType<N>) -> Result<()> {
-        // Ensure the given register already exists.
-        ensure!(self.contains(register), "Register '{register}' does not exist");
-        // Insert the output register and type.
-        match self.outputs.insert(register.clone(), register_type) {
-            // If the register already exists, throw an error.
-            Some(..) => bail!("Register '{register}' already exists"),
-            // If the register does not exist, return success.
-            None => Ok(()),
         }
     }
 
