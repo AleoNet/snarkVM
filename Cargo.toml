@@ -19,7 +19,6 @@ edition = "2021"
 
 [workspace]
 members = [
-  ".vm",
   "algorithms",
   "circuit",
   "circuit/account",
@@ -62,27 +61,27 @@ members = [
   "r1cs",
   "utilities",
   "utilities/derives", # excluded from [features], for internal use primarily
+  "vm/compiler", # excluded from [features], for internal use primarily
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
   ".integration" # excluded from [features], for CI only
 ]
 
 [lib]
-path = "snarkvm/lib.rs"
+path = "vm/lib.rs"
 
 [[bin]]
-name = "snarkvm"
-path = "snarkvm/cli/main.rs"
+name = "vm"
+path = "vm/cli/main.rs"
 required-features = ["cli"]
 
 [features]
-default = ["core"]
-#
-# `core` is defined as the commonly-used members of snarkVM with default features.
-#
-# If you need more granular control of members and/or member features,
-# please import the requisite crates directly and enable features as needed.
-core = ["console", "utilities"]
-full = ["algorithms", "circuit", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+default = ["cli", "compiler"]
+full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+
+## snarkVM CLI ##
+cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
+## snarkVM compiler ##
+compiler = ["snarkvm-compiler"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
@@ -100,9 +99,6 @@ utilities = ["snarkvm-utilities"]
 cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
-## snarkVM CLI ##
-cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
-
 ## CI ##
 noconfig = []
 
@@ -113,6 +109,11 @@ optional = true
 
 [dependencies.snarkvm-circuit]
 path = "./circuit"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-compiler]
+path = "./vm/compiler"
 version = "0.7.5"
 optional = true
 

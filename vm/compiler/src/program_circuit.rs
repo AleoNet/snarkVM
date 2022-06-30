@@ -27,6 +27,7 @@ pub mod program {
         Field,
         Group,
         Inject,
+        Itertools,
         Mode,
         Scalar,
         ToBits,
@@ -36,7 +37,6 @@ pub mod program {
     };
 
     use anyhow::{bail, ensure, Result};
-    use itertools::Itertools;
 
     pub struct Public<A: Aleo> {
         /// The input serial numbers.

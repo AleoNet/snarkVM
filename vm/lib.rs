@@ -24,36 +24,26 @@ extern crate thiserror;
 #[cfg(feature = "cli")]
 pub mod cli;
 
+pub use snarkvm_compiler as compiler;
+
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;
-
-#[cfg(feature = "bytecode")]
-pub use snarkvm_bytecode as bytecode;
-
-#[cfg(feature = "circuits")]
-pub use snarkvm_circuits as circuits;
-
+#[cfg(feature = "circuit")]
+pub use snarkvm_circuit as circuit;
 #[cfg(feature = "console")]
 pub use snarkvm_console as console;
-
 #[cfg(feature = "curves")]
 pub use snarkvm_curves as curves;
-
 #[cfg(feature = "dpc")]
 pub use snarkvm_dpc as dpc;
-
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
-
 #[cfg(feature = "gadgets")]
 pub use snarkvm_gadgets as gadgets;
-
 #[cfg(feature = "parameters")]
 pub use snarkvm_parameters as parameters;
-
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs as r1cs;
-
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
 
@@ -106,8 +96,11 @@ pub mod prelude {
     #[cfg(feature = "algorithms")]
     pub use crate::algorithms::prelude::*;
 
-    #[cfg(feature = "circuits")]
-    pub use crate::circuits::prelude::*;
+    #[cfg(feature = "circuit")]
+    pub use crate::circuit::prelude::*;
+
+    #[cfg(feature = "console")]
+    pub use crate::console::prelude::*;
 
     #[cfg(feature = "dpc")]
     pub use crate::dpc::prelude::*;

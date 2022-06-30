@@ -436,7 +436,7 @@ crate::operation!(
 pub type Pow<N, A> = BinaryLiteral<N, A, PowOperation<N, A>>;
 
 crate::operation!(
-    pub struct PowOperation<num_traits::Pow, num_traits::Pow, pow, "pow"> {
+    pub struct PowOperation<console::prelude::Pow, circuit::prelude::Pow, pow, "pow"> {
         (Field, Field) => Field,
         (I8, U8) => I8 ("ensure exponentiation overflows halt"),
         (I8, U16) => I8 ("ensure exponentiation overflows halt"),

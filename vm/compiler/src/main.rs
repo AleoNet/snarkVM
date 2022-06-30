@@ -20,7 +20,7 @@ use console::{
     transition::{Record, State},
     types::{Field, Group, Scalar, U64},
 };
-use snarkvm_vm::{input, output, proof, Transition};
+use snarkvm_compiler::{input, output, proof, Transition};
 
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use rand::prelude::ThreadRng;
