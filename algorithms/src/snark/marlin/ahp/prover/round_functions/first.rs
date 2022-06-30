@@ -119,9 +119,24 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
                 let (z_c_poly, z_c) = z_c.z_m().unwrap();
-                let (f_poly, f) = f.z_m().unwrap();
+                let table_polys = f.table_polys().unwrap();
 
-                prover::SingleEntry { z_a, z_b, z_c, f, w_poly, z_a_poly, z_b_poly, z_c_poly, f_poly }
+                prover::SingleEntry {
+                    z_a,
+                    z_b,
+                    z_c,
+                    // TODO: this looks really ugly and can probably be done better
+                    f: table_polys[0].1.clone(),
+                    s_1: table_polys[1].1.clone(),
+                    s_2: table_polys[2].1.clone(),
+                    w_poly,
+                    z_a_poly,
+                    z_b_poly,
+                    z_c_poly,
+                    f_poly: table_polys[0].0.clone(),
+                    s_1_poly: table_polys[1].0.clone(),
+                    s_2_poly: table_polys[2].0.clone(),
+                }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
