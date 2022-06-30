@@ -176,7 +176,7 @@ impl<N: Network> FromStr for Operation<N> {
                 let function_inputs = serde_json::from_value(operation["function_inputs"].clone())?;
                 Ok(Self::Evaluate(function_id, function_type, function_inputs))
             }
-            _ => unreachable!(format!("Invalid operation id {}", operation_id)),
+            _ => unreachable!("Invalid operation id {}", operation_id),
         }
     }
 }

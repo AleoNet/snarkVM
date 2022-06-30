@@ -2113,6 +2113,7 @@ dependencies = [
  "derivative",
  "digest 0.9.0",
  "hashbrown",
+ "itertools",
  "rand",
  "rand_chacha",
  "rand_core",

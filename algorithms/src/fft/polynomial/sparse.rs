@@ -16,18 +16,18 @@
 
 //! A sparse polynomial represented in coefficient form.
 
-use crate::fft::{DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations};
+use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 /// Stores a sparse polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SparsePolynomial<F: Field> {
     /// The coefficient a_i of `x^i` is stored as (i, a_i) in `self.coeffs`.
     /// the entries in `self.coeffs` are sorted in increasing order of `i`.
-    pub coeffs: Vec<(usize, F)>,
+    coeffs: BTreeMap<usize, F>,
 }
 
 impl<F: Field> fmt::Debug for SparsePolynomial<F> {
@@ -48,7 +48,9 @@ impl<F: Field> fmt::Debug for SparsePolynomial<F> {
 impl<F: Field> SparsePolynomial<F> {
     /// Returns the zero polynomial.
     pub fn zero() -> Self {
-        Self { coeffs: Vec::new() }
+        Self {
+            coeffs: BTreeMap::new(),
+        }
     }
 
     /// Checks if the given polynomial is zero.
@@ -58,19 +60,17 @@ impl<F: Field> SparsePolynomial<F> {
 
     /// Constructs a new polynomial from a list of coefficients.
     pub fn from_coefficients_slice(coeffs: &[(usize, F)]) -> Self {
-        Self::from_coefficients_vec(coeffs.to_vec())
+        Self::from_coefficients(coeffs.iter().copied())
     }
 
     /// Constructs a new polynomial from a list of coefficients.
-    pub fn from_coefficients_vec(mut coeffs: Vec<(usize, F)>) -> Self {
-        // While there are zeros at the end of the coefficient vector, pop them off.
-        while coeffs.last().map_or(false, |(_, c)| c.is_zero()) {
-            coeffs.pop();
-        }
-        // Check that either the coefficients vec is empty or that the last coeff is non-zero.
-        assert!(coeffs.last().map_or(true, |(_, c)| !c.is_zero()));
-
+    pub fn from_coefficients(coeffs: impl IntoIterator<Item = (usize, F)>) -> Self {
+        let coeffs: BTreeMap<_, _> = coeffs.into_iter().filter(|(_, c)| !c.is_zero()).collect();
         Self { coeffs }
+    }
+
+    pub fn coeffs(&self) -> impl Iterator<Item = (&usize, &F)> {
+        self.coeffs.iter()
     }
 
     /// Returns the degree of the polynomial.
@@ -78,8 +78,9 @@ impl<F: Field> SparsePolynomial<F> {
         if self.is_zero() {
             0
         } else {
-            assert!(self.coeffs.last().map_or(false, |(_, c)| !c.is_zero()));
-            self.coeffs.last().unwrap().0
+            let last = self.coeffs.iter().max();
+            assert!(last.map_or(false, |(_, c)| !c.is_zero()));
+            *last.unwrap().0
         }
     }
 
@@ -107,9 +108,7 @@ impl<F: Field> SparsePolynomial<F> {
                     *cur_coeff += *self_coeff * other_coeff;
                 }
             }
-            let mut result = result.into_iter().collect::<Vec<_>>();
-            result.sort_by(|a, b| a.0.cmp(&b.0));
-            SparsePolynomial::from_coefficients_vec(result)
+            SparsePolynomial::from_coefficients(result.into_iter())
         }
     }
 }
@@ -131,8 +130,12 @@ impl<F: PrimeField> SparsePolynomial<F> {
 }
 impl<F: PrimeField> core::ops::MulAssign<F> for SparsePolynomial<F> {
     fn mul_assign(&mut self, other: F) {
-        for (_, coeff) in &mut self.coeffs {
-            *coeff *= other;
+        if other.is_zero() {
+            *self = Self::zero()
+        } else {
+            for coeff in self.coeffs.values_mut() {
+                *coeff *= other;
+            }
         }
     }
 }
@@ -147,14 +150,25 @@ impl<'a, F: PrimeField> core::ops::Mul<F> for &'a SparsePolynomial<F> {
     }
 }
 
-#[allow(clippy::from_over_into)]
-impl<F: Field> Into<DensePolynomial<F>> for SparsePolynomial<F> {
-    fn into(self) -> DensePolynomial<F> {
-        let mut other = vec![F::zero(); self.degree() + 1];
-        for (i, coeff) in self.coeffs {
-            other[i] = coeff;
+impl<'a, F: PrimeField> core::ops::AddAssign<&'a Self> for SparsePolynomial<F> {
+    fn add_assign(&mut self, other: &'a Self) {
+        let mut result = other.clone();
+        for (i, coeff) in self.coeffs.iter() {
+            let cur_coeff = result.coeffs.entry(*i).or_insert_with(F::zero);
+            *cur_coeff += coeff;
         }
-        DensePolynomial::from_coefficients_vec(other)
+        *self = Self::from_coefficients(result.coeffs.into_iter().filter(|(_, f)| !f.is_zero()));
+    }
+}
+
+impl<'a, F: PrimeField> core::ops::AddAssign<(F, &'a Self)> for SparsePolynomial<F> {
+    fn add_assign(&mut self, (f, other): (F, &'a Self)) {
+        let mut result = other.clone();
+        for (i, coeff) in self.coeffs.iter() {
+            let cur_coeff = result.coeffs.entry(*i).or_insert_with(F::zero);
+            *cur_coeff += f * coeff;
+        }
+        *self = Self::from_coefficients(result.coeffs.into_iter().filter(|(_, f)| !f.is_zero()))
     }
 }
 
@@ -170,7 +184,7 @@ mod tests {
             let domain_size = 1 << size;
             let domain = EvaluationDomain::new(domain_size).unwrap();
             let two = Fr::one() + Fr::one();
-            let sparse_poly = SparsePolynomial::from_coefficients_vec(vec![(0, two), (1, two)]);
+            let sparse_poly = SparsePolynomial::from_coefficients(vec![(0, two), (1, two)]);
             let evals1 = sparse_poly.evaluate_over_domain_by_ref(domain);
 
             let dense_poly: DensePolynomial<Fr> = sparse_poly.into();

@@ -51,6 +51,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<C
 mod bls12_377 {
     use super::*;
     use crate::snark::groth16::{
+        create_proof_no_zk,
         create_random_proof,
         generate_random_parameters,
         prepare_verifying_key,
@@ -73,6 +74,24 @@ mod bls12_377 {
             let c = a * b;
 
             let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
+            let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
+
+            assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
+            assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_prove_and_verify_no_zk() {
+        let rng = &mut thread_rng();
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        for _ in 0..100 {
+            let (a, b) = (Fr::rand(rng), Fr::rand(rng));
+            let c = a * b;
+
+            let proof = create_proof_no_zk(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters).unwrap();
             let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
 
             assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
