@@ -19,15 +19,15 @@ use console::network::prelude::*;
 /// The `Opcode` enum stores the mnemonic for the instruction.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Opcode {
-    /// The opcode is for a literal operation.
+    /// The opcode is for a literal operation (i.e. `add`).
     Literal(&'static str),
-    /// The opcode is for a call operation.
+    /// The opcode is for a call operation (i.e. `call`).
     Call,
-    /// The opcode is for a cast operation.
+    /// The opcode is for a cast operation (i.e. `cast`).
     Cast,
-    /// The opcode is for a commit operation.
+    /// The opcode is for a commit operation (i.e. `commit.psd4`).
     Commit(&'static str),
-    /// The opcode is for a hash operation.
+    /// The opcode is for a hash operation (i.e. `hash.psd4`).
     Hash(&'static str),
 }
 

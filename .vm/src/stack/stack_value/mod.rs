@@ -14,28 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![allow(dead_code)]
+mod to_bits;
+mod to_fields;
 
-#[allow(dead_code, unused_imports)]
-mod ledger;
-pub use ledger::*;
+use console::{
+    network::prelude::*,
+    program::{Plaintext, Record},
+    types::Field,
+};
 
-#[allow(dead_code, unused_imports)]
-mod program_circuit;
-pub use program_circuit::*;
-
-mod process;
-pub use process::*;
-
-mod program;
-pub use program::*;
-
-mod stack;
-pub use stack::*;
-
-mod transition;
-pub use transition::*;
+#[derive(Clone, PartialEq, Eq)]
+pub enum StackValue<N: Network> {
+    /// A plaintext value.
+    Plaintext(Plaintext<N>),
+    /// A record value.
+    Record(Record<N, Plaintext<N>>),
+}

@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod to_bits;
+mod to_fields;
+
 use crate::StackValue;
 use circuit::{ToBits, ToFields};
 
@@ -53,41 +56,6 @@ impl<A: circuit::Aleo> circuit::Eject for CircuitValue<A> {
         match self {
             CircuitValue::Plaintext(plaintext) => StackValue::Plaintext(plaintext.eject_value()),
             CircuitValue::Record(record) => StackValue::Record(record.eject_value()),
-        }
-    }
-}
-
-impl<A: circuit::Aleo> ToBits for CircuitValue<A> {
-    type Boolean = circuit::types::Boolean<A>;
-
-    /// Returns the circuit value as a list of **little-endian** bits.
-    #[inline]
-    fn to_bits_le(&self) -> Vec<circuit::types::Boolean<A>> {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_le(),
-            CircuitValue::Record(record) => record.to_bits_le(),
-        }
-    }
-
-    /// Returns the circuit value as a list of **big-endian** bits.
-    #[inline]
-    fn to_bits_be(&self) -> Vec<circuit::types::Boolean<A>> {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_be(),
-            CircuitValue::Record(record) => record.to_bits_be(),
-        }
-    }
-}
-
-impl<A: circuit::Aleo> ToFields for CircuitValue<A> {
-    type Field = circuit::types::Field<A>;
-
-    /// Returns the circuit value as a list of fields.
-    #[inline]
-    fn to_fields(&self) -> Vec<circuit::types::Field<A>> {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_fields(),
-            CircuitValue::Record(record) => record.to_fields(),
         }
     }
 }

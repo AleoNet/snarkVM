@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_commit_uncompressed_constant() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Constant, 8158, 0, 0, 0)
+        check_commit_uncompressed::<32, 48>(Mode::Constant, 8166, 0, 0, 0)
     }
 
     #[test]

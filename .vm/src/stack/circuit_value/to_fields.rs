@@ -14,28 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![allow(dead_code)]
+use super::*;
 
-#[allow(dead_code, unused_imports)]
-mod ledger;
-pub use ledger::*;
+impl<A: circuit::Aleo> ToFields for CircuitValue<A> {
+    type Field = circuit::types::Field<A>;
 
-#[allow(dead_code, unused_imports)]
-mod program_circuit;
-pub use program_circuit::*;
-
-mod process;
-pub use process::*;
-
-mod program;
-pub use program::*;
-
-mod stack;
-pub use stack::*;
-
-mod transition;
-pub use transition::*;
+    /// Returns the circuit value as a list of fields.
+    #[inline]
+    fn to_fields(&self) -> Vec<circuit::types::Field<A>> {
+        match self {
+            CircuitValue::Plaintext(plaintext) => plaintext.to_fields(),
+            CircuitValue::Record(record) => record.to_fields(),
+        }
+    }
+}

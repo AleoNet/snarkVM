@@ -28,14 +28,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Program<N, A> {
             F(Function<N, A>),
         }
 
+        // Parse the imports from the string.
+        let (string, imports) = many0(Import::parse)(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the 'program' keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the program name from the string.
-        let (string, name) = Identifier::parse(string)?;
+        // Parse the program ID from the string.
+        let (string, id) = ProgramID::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the semicolon ';' keyword from the string.
@@ -56,7 +58,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Program<N, A> {
         // Return the program.
         map_res(take(0usize), move |_| {
             // Initialize a new program.
-            let mut program = Program::<N, A>::new(name);
+            let mut program = Program::<N, A>::new(id);
             // Construct the program with the parsed components.
             for component in components.iter() {
                 let result = match component {
@@ -67,6 +69,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Program<N, A> {
                 };
 
                 match result {
+                    Ok(_) => (),
+                    Err(error) => {
+                        eprintln!("{error}");
+                        return Err(error);
+                    }
+                }
+            }
+            // Lastly, add the imports (if any) to the program.
+            for import in imports.iter() {
+                match program.add_import(import.clone()) {
                     Ok(_) => (),
                     Err(error) => {
                         eprintln!("{error}");
@@ -109,7 +121,20 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Program<N, A> {
     /// Prints the program as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         // Initialize a string for the program.
-        let mut program = format!("{} {};\n\n", Self::type_name(), self.name);
+        let mut program = String::new();
+
+        if !self.imports.is_empty() {
+            // Print the imports.
+            for import in self.imports.values() {
+                program.push_str(&format!("{}\n", import));
+            }
+
+            // Print a newline.
+            program.push('\n');
+        }
+
+        // Print the program name.
+        program += &format!("{} {};\n\n", Self::type_name(), self.id);
 
         for (identifier, definition) in self.identifiers.iter() {
             match definition {
@@ -188,7 +213,7 @@ function compute:
 
     #[test]
     fn test_program_display() -> Result<()> {
-        let expected = r"program to_parse;
+        let expected = r"program to_parse.aleo;
 
 interface message:
     first as field;

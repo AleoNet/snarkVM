@@ -76,30 +76,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
-        // Retrieve the register types.
-        let register_types = stack.program().get_closure_registers(&self.name)?;
         // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types)?;
+        let mut closure_stack = Stack::<N, A>::new(Some(stack.program().clone()))?;
 
-        // Store the inputs.
-        closure.inputs().iter().map(|i| i.register()).zip_eq(&inputs).try_for_each(|(register, input)| {
-            // Assign the input value to the register.
-            closure_stack.store(register, input.clone())
-        })?;
-
-        // Evaluate the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(&mut closure_stack))?;
-
-        // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            // Retrieve and insert the output into the outputs.
-            closure_stack.load(&Operand::Register(output.register().clone()))
-        });
+        // Evaluate the closure, and load the outputs.
+        let outputs = closure_stack.evaluate_closure(&closure, &inputs)?;
 
         // Assign the outputs to the destination registers.
-        for (output, register) in outputs.zip_eq(&self.destinations) {
+        for (output, register) in outputs.into_iter().zip_eq(&self.destinations) {
             // Assign the output to the register.
-            stack.store(register, output?)?;
+            stack.store(register, output)?;
         }
 
         Ok(())
@@ -118,31 +104,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
-        // Retrieve the register types.
-        let register_types = stack.program().get_closure_registers(&self.name)?;
+        // Initialize the closure stack.
+        let mut closure_stack = Stack::<N, A>::new(Some(stack.program().clone()))?;
 
-        // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types)?;
-
-        // Store the inputs.
-        closure.inputs().iter().map(|i| i.register()).zip_eq(&inputs).try_for_each(|(register, input)| {
-            // Assign the input value to the register.
-            closure_stack.store_circuit(register, input.clone())
-        })?;
-
-        // Evaluate the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.execute(&mut closure_stack))?;
-
-        // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            // Retrieve and insert the output into the outputs.
-            closure_stack.load_circuit(&Operand::Register(output.register().clone()))
-        });
+        // Execute the closure, and load the outputs.
+        let outputs = closure_stack.execute_closure(&closure, &inputs)?;
 
         // Assign the outputs to the destination registers.
-        for (output, register) in outputs.zip_eq(&self.destinations) {
+        for (output, register) in outputs.into_iter().zip_eq(&self.destinations) {
             // Assign the output to the register.
-            stack.store_circuit(register, output?)?;
+            stack.store_circuit(register, output)?;
         }
 
         Ok(())

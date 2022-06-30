@@ -47,12 +47,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                     "Cannot write to occupied register '{register}'"
                 );
 
-                // Retrieve the register type.
+                // Ensure the register type is valid.
                 match self.register_types.get_type(&self.program, register) {
                     // Ensure the stack value matches the register type.
                     Ok(register_type) => self.program.matches_register(&stack_value, &register_type)?,
                     // Ensure the register is defined.
-                    Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+                    Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
 
                 // Store the stack value.
@@ -100,14 +100,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                     "Cannot write to occupied register '{register}'"
                 );
 
-                // Retrieve the register type.
+                // Ensure the register type is valid.
                 match self.register_types.get_type(&self.program, register) {
                     // Ensure the stack value matches the register type.
                     Ok(register_type) => {
                         self.program.matches_register(&circuit::Eject::eject_value(&circuit_value), &register_type)?
                     }
                     // Ensure the register is defined.
-                    Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
+                    Err(error) => bail!("Register '{register}' is missing a type definition: {error}"),
                 };
 
                 // Store the stack value.

@@ -14,28 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![allow(dead_code)]
+use super::*;
 
-#[allow(dead_code, unused_imports)]
-mod ledger;
-pub use ledger::*;
+impl<N: Network> FromBytes for Import<N> {
+    /// Reads the import from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let id = ProgramID::read_le(&mut reader)?;
+        Ok(Self { id })
+    }
+}
 
-#[allow(dead_code, unused_imports)]
-mod program_circuit;
-pub use program_circuit::*;
-
-mod process;
-pub use process::*;
-
-mod program;
-pub use program::*;
-
-mod stack;
-pub use stack::*;
-
-mod transition;
-pub use transition::*;
+impl<N: Network> ToBytes for Import<N> {
+    /// Writes the import to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.id.write_le(&mut writer)
+    }
+}

@@ -23,6 +23,9 @@ pub use operand::*;
 mod operation;
 pub use operation::*;
 
+mod bytes;
+mod parse;
+
 use crate::{Program, Stack};
 use console::{
     network::{
@@ -53,130 +56,6 @@ use console::{
     },
     program::{Register, RegisterType},
 };
-
-/// Creates a match statement that applies the given operation for each instruction.
-///
-/// ## Example
-/// This example will print the opcode and the instruction to the given stream.
-/// ```ignore
-/// instruction!(self, |instruction| write!(f, "{} {};", self.opcode(), instruction))
-/// ```
-/// The above example is equivalent to the following logic:
-/// ```ignore
-///     match self {
-///         Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-///         Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-///         Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-///         Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-///     }
-/// )
-/// ```
-#[macro_export]
-macro_rules! instruction {
-    // A variant **with** curly braces:
-    // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
-    ($object:expr, |$input:ident| $operation:block) => {{ instruction!(instruction, $object, |$input| $operation) }};
-    // A variant **without** curly braces:
-    // i.e. `instruction!(self, |instruction| operation(instruction))`.
-    ($object:expr, |$input:ident| $operation:expr) => {{ instruction!(instruction, $object, |$input| { $operation }) }};
-    // A variant **with** curly braces:
-    // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
-    ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
-        $macro_!{$object, |$input| $operation, {
-            Abs,
-            AbsWrapped,
-            Add,
-            AddWrapped,
-            And,
-            Call,
-            Cast,
-            CommitBHP256,
-            CommitBHP512,
-            CommitBHP768,
-            CommitBHP1024,
-            // CommitPed64,
-            // CommitPed128,
-            // Div,
-            // DivWrapped,
-            Double,
-            GreaterThan,
-            GreaterThanOrEqual,
-            HashBHP256,
-            HashBHP512,
-            HashBHP768,
-            HashBHP1024,
-            HashPED64,
-            HashPED128,
-            HashPSD2,
-            HashPSD4,
-            HashPSD8,
-            Inv,
-            IsEqual,
-            IsNotEqual,
-            LessThan,
-            LessThanOrEqual,
-            Mul,
-            MulWrapped,
-            Nand,
-            Neg,
-            Nor,
-            Not,
-            Or,
-            Pow,
-            PowWrapped,
-            Shl,
-            ShlWrapped,
-            Shr,
-            ShrWrapped,
-            Square,
-            SquareRoot,
-            Sub,
-            SubWrapped,
-            Ternary,
-            Xor,
-        }}
-    };
-    // A variant **without** curly braces:
-    // i.e. `instruction!(custom_macro, self, |instruction| operation(instruction))`.
-    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{ instruction!($macro_, $object, |$input| { $operation }) }};
-    // A variant invoking a macro internally:
-    // i.e. `instruction!(instruction_to_bytes_le!(self, writer))`.
-    ($macro_:ident!($object:expr, $input:ident)) => {{ instruction!($macro_, $object, |$input| {}) }};
-
-    ////////////////////
-    // Private Macros //
-    ////////////////////
-
-    // A static variant **with** curly braces:
-    // i.e. `instruction!(self, |InstructionMember| { InstructionMember::opcode() })`.
-    ($object:expr, |InstructionMember| $operation:block, { $( $variant:ident, )+ }) => {{
-        // Build the match cases.
-        match $object {
-            $( Self::$variant(..) => {{
-                // Set the variant to be called `InstructionMember`.
-                type InstructionMember<N, A> = $variant<N, A>;
-                // Perform the operation.
-                $operation
-            }} ),+
-        }
-    }};
-    // A static variant **without** curly braces:
-    // i.e. `instruction!(self, |InstructionMember| InstructionMember::opcode())`.
-    ($object:expr, |InstructionMember| $operation:expr, { $( $variant:ident, )+ }) => {{
-        instruction!($object, |InstructionMember| { $operation }, { $( $variant, )+ })
-    }};
-    // A non-static variant **with** curly braces:
-    // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
-    ($object:expr, |$instruction:ident| $operation:block, { $( $variant:ident, )+ }) => {{
-        // Build the match cases.
-        match $object { $( Self::$variant($instruction) => { $operation } ),+ }
-    }};
-    // A non-static variant **without** curly braces:
-    // i.e. `instruction!(self, |instruction| operation(instruction))`.
-    ($object:expr, |$instruction:ident| $operation:expr, { $( $variant:ident, )+ }) => {{
-        instruction!($object, |$instruction| { $operation }, { $( $variant, )+ })
-    }};
-}
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
@@ -284,6 +163,130 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     Xor(Xor<N, A>),
 }
 
+/// Creates a match statement that applies the given operation for each instruction.
+///
+/// ## Example
+/// This example will print the opcode and the instruction to the given stream.
+/// ```ignore
+/// instruction!(self, |instruction| write!(f, "{} {};", self.opcode(), instruction))
+/// ```
+/// The above example is equivalent to the following logic:
+/// ```ignore
+///     match self {
+///         Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///         Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///         Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///         Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///     }
+/// )
+/// ```
+#[macro_export]
+macro_rules! instruction {
+    // A variant **with** curly braces:
+    // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
+    ($object:expr, |$input:ident| $operation:block) => {{ $crate::instruction!(instruction, $object, |$input| $operation) }};
+    // A variant **without** curly braces:
+    // i.e. `instruction!(self, |instruction| operation(instruction))`.
+    ($object:expr, |$input:ident| $operation:expr) => {{ $crate::instruction!(instruction, $object, |$input| { $operation }) }};
+    // A variant **with** curly braces:
+    // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
+    ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {
+        $macro_!{$object, |$input| $operation, {
+            Abs,
+            AbsWrapped,
+            Add,
+            AddWrapped,
+            And,
+            Call,
+            Cast,
+            CommitBHP256,
+            CommitBHP512,
+            CommitBHP768,
+            CommitBHP1024,
+            // CommitPed64,
+            // CommitPed128,
+            // Div,
+            // DivWrapped,
+            Double,
+            GreaterThan,
+            GreaterThanOrEqual,
+            HashBHP256,
+            HashBHP512,
+            HashBHP768,
+            HashBHP1024,
+            HashPED64,
+            HashPED128,
+            HashPSD2,
+            HashPSD4,
+            HashPSD8,
+            Inv,
+            IsEqual,
+            IsNotEqual,
+            LessThan,
+            LessThanOrEqual,
+            Mul,
+            MulWrapped,
+            Nand,
+            Neg,
+            Nor,
+            Not,
+            Or,
+            Pow,
+            PowWrapped,
+            Shl,
+            ShlWrapped,
+            Shr,
+            ShrWrapped,
+            Square,
+            SquareRoot,
+            Sub,
+            SubWrapped,
+            Ternary,
+            Xor,
+        }}
+    };
+    // A variant **without** curly braces:
+    // i.e. `instruction!(custom_macro, self, |instruction| operation(instruction))`.
+    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{ $crate::instruction!($macro_, $object, |$input| { $operation }) }};
+    // A variant invoking a macro internally:
+    // i.e. `instruction!(instruction_to_bytes_le!(self, writer))`.
+    ($macro_:ident!($object:expr, $input:ident)) => {{ $crate::instruction!($macro_, $object, |$input| {}) }};
+
+    ////////////////////
+    // Private Macros //
+    ////////////////////
+
+    // A static variant **with** curly braces:
+    // i.e. `instruction!(self, |InstructionMember| { InstructionMember::opcode() })`.
+    ($object:expr, |InstructionMember| $operation:block, { $( $variant:ident, )+ }) => {{
+        // Build the match cases.
+        match $object {
+            $( Self::$variant(..) => {{
+                // Set the variant to be called `InstructionMember`.
+                type InstructionMember<N, A> = $variant<N, A>;
+                // Perform the operation.
+                $operation
+            }} ),+
+        }
+    }};
+    // A static variant **without** curly braces:
+    // i.e. `instruction!(self, |InstructionMember| InstructionMember::opcode())`.
+    ($object:expr, |InstructionMember| $operation:expr, { $( $variant:ident, )+ }) => {{
+        $crate::instruction!($object, |InstructionMember| { $operation }, { $( $variant, )+ })
+    }};
+    // A non-static variant **with** curly braces:
+    // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
+    ($object:expr, |$instruction:ident| $operation:block, { $( $variant:ident, )+ }) => {{
+        // Build the match cases.
+        match $object { $( Self::$variant($instruction) => { $operation } ),+ }
+    }};
+    // A non-static variant **without** curly braces:
+    // i.e. `instruction!(self, |instruction| operation(instruction))`.
+    ($object:expr, |$instruction:ident| $operation:expr, { $( $variant:ident, )+ }) => {{
+        $crate::instruction!($object, |$instruction| { $operation }, { $( $variant, )+ })
+    }};
+}
+
 /// Derives `From<Operation>` for the instruction.
 ///
 /// ## Example
@@ -315,9 +318,7 @@ macro_rules! opcodes {
 impl<N: Network, A: circuit::Aleo<Network = N>> Instruction<N, A> {
     /// The list of all instruction opcodes.
     pub const OPCODES: &'static [Opcode] = &instruction!(opcodes, Instruction, |None| {});
-}
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Instruction<N, A> {
     /// Returns the opcode of the instruction.
     #[inline]
     pub const fn opcode(&self) -> Opcode {
@@ -359,74 +360,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Instruction<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Instruction<N, A> {
-    /// Parses a string into an instruction.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        /// Create an alt parser that matches the instruction.
-        ///
-        /// `nom` documentation notes that alt supports a maximum of 21 parsers.
-        /// The documentation suggests to nest alt to support more parsers, as we do here.
-        /// Note that order of the individual parsers matters.
-        macro_rules! alt_parser {
-            ($v0:expr) => {{ alt(($v0,)) }};
-            ($v0:expr, $v1:expr) => {{ alt(($v0, $v1,)) }};
-            ($v0:expr, $v1:expr, $v2:expr) => {{ alt(($v0, $v1, $v2,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr) => {{ alt(($v0, $v1, $v2, $v3,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr, $v8:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr, $v8:expr, $v9:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8, $v9,)) }};
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr, $v8:expr, $v9:expr, $( $variants:expr ),*) => {{ alt((
-                alt_parser!($( $variants ),*), $v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8, $v9,
-            )) }};
-        }
-
-        /// Creates a parser for the given instructions.
-        ///
-        /// ## Example
-        /// ```ignore
-        /// instruction_parsers!(self, |_instruction| {}, { Add, Sub, Mul, Div })
-        /// ```
-        macro_rules! instruction_parsers {
-            ($object:expr, |_instruction| $_operation:block, { $( $variant:ident, )+ }) => {{
-                alt_parser!( $( map($variant::parse, Into::into) ),+ )
-            }};
-        }
-
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
-        // Parse the instruction from the string.
-        let (string, instruction) = instruction!(instruction_parsers!(self, _instruction))(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
-
-        Ok((string, instruction))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Instruction<N, A> {
-    type Err = Error;
-
-    /// Parses a string into an instruction.
-    #[inline]
-    fn from_str(string: &str) -> Result<Self> {
-        match Self::parse(string) {
-            Ok((remainder, object)) => {
-                // Ensure the remainder is empty.
-                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
-                // Return the object.
-                Ok(object)
-            }
-            Err(error) => bail!("Failed to parse string. {error}"),
-        }
-    }
-}
-
 impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Instruction<N, A> {
     /// Prints the instruction as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -438,73 +371,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Instruction<N, A> {
     /// Prints the instruction as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         instruction!(self, |instruction| write!(f, "{};", instruction))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Instruction<N, A> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        /// Creates a match statement that produces the `FromBytes` implementation for the given instruction.
-        ///
-        /// ## Example
-        /// ```ignore
-        /// instruction_from_bytes_le!(self, |reader| {}, { Add, Sub, Mul, Div })
-        /// ```
-        macro_rules! instruction_from_bytes_le {
-            ($object:expr, |$reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
-                // A list of instruction enum variants.
-                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
-                // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
-
-                // Read the enum variant index.
-                let variant = u16::read_le(&mut $reader)?;
-
-                // Build the cases for all instructions.
-                $(if INSTRUCTION_ENUMS[variant as usize] == stringify!($variant) {
-                    // Read the instruction.
-                    let instruction = $variant::read_le(&mut $reader)?;
-                    // Return the instruction.
-                    return Ok(Self::$variant(instruction));
-                })+
-                // If the index is out of bounds, return an error.
-                Err(error(format!("Failed to deserialize an instruction of variant {variant}")))
-            }};
-        }
-        instruction!(instruction_from_bytes_le!(self, reader))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Instruction<N, A> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        /// Creates a match statement that produces the `ToBytes` implementation for the given instruction.
-        ///
-        /// ## Example
-        /// ```ignore
-        /// instruction_to_bytes_le!(self, |writer| {}, { Add, Sub, Mul, Div })
-        /// ```
-        macro_rules! instruction_to_bytes_le {
-            ($object:expr, |$writer:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
-                // A list of instruction enum variants.
-                const INSTRUCTION_ENUMS: &[&'static str] = &[ $( stringify!($variant), )+];
-                // Ensure the size is sufficiently large.
-                assert!(INSTRUCTION_ENUMS.len() <= u16::MAX as usize);
-
-                // Build the match cases.
-                match $object {
-                    $(Self::$variant(instruction) => {
-                        // Retrieve the enum variant index.
-                        // Note: This unwrap is guaranteed to succeed because the enum variant is known to exist.
-                        let variant = INSTRUCTION_ENUMS.iter().position(|&name| stringify!($variant) == name).unwrap();
-
-                        // Serialize the instruction.
-                        u16::write_le(&(variant as u16),&mut $writer)?;
-                        instruction.write_le(&mut $writer)?;
-                    }),+
-                }
-                Ok(())
-            }};
-        }
-        instruction!(instruction_to_bytes_le!(self, writer))
     }
 }
 
@@ -521,7 +387,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            46,
+            47,
             Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

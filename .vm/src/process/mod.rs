@@ -37,9 +37,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Retrieve the function from the program.
+        let function = self.program.get_function(function_name)?;
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        }
+
+        // Prepare the stack.
+        let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Evaluate the function.
-        // Stack::<N, A>::evaluate(self.program.clone(), function_name, inputs)
-        self.program.evaluate(function_name, inputs)
+        stack.evaluate_function(&function, inputs)
     }
 
     /// Executes a program function on the given inputs.
@@ -113,8 +121,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             })
             .try_collect()?;
 
+        // Prepare the stack.
+        let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Execute the function.
-        let outputs = Stack::<N, A>::execute_transition(self.program.clone(), function_name, &inputs)?;
+        let outputs = stack.execute_function(&function, &inputs)?;
 
         // Load the outputs.
         outputs.iter().try_for_each(|output| {

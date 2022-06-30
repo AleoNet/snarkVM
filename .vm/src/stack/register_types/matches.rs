@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::stack::*;
 
-impl<N: Network> RegisterTypes<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
     /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.
-    pub fn matches_interface<A: circuit::Aleo<Network = N>>(
+    pub fn matches_interface(
         &self,
         program: &Program<N, A>,
         operands: &[Operand<N>],
@@ -63,7 +63,7 @@ impl<N: Network> RegisterTypes<N> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
-    pub fn matches_record<A: circuit::Aleo<Network = N>>(
+    pub fn matches_record(
         &self,
         program: &Program<N, A>,
         operands: &[Operand<N>],
