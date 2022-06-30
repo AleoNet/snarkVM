@@ -38,7 +38,7 @@ pub struct Block<N: Network, A: circuit::Aleo<Network = N>> {
     transactions: Vec<Transaction<N, A>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Ledger<N: Network, A: circuit::Aleo<Network = N>> {
     /// The mapping of program IDs to their programs.
     programs: IndexMap<u64, Program<N, A>>,

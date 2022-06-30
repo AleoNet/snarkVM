@@ -46,6 +46,7 @@ pub type CommitBHP768<N, A> = CommitInstruction<N, A, BHPCommitOperation<N, A, 7
 pub type CommitBHP1024<N, A> = CommitInstruction<N, A, BHPCommitOperation<N, A, 1024>>;
 
 /// The BHP commitment operation template.
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct BHPCommitOperation<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16>(PhantomData<(N, A)>);
 

@@ -84,6 +84,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 };
 
                 // Compute the input leaf.
+                #[allow(clippy::let_and_return)]
                 let input_leaf = match &input {
                     // TODO (howardwu): Handle encrypting the private input case.
                     CircuitValue::Plaintext(..) => A::hash_bhp1024(&input.to_bits_le()),
