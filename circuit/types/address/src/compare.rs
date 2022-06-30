@@ -49,6 +49,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
+    #[allow(clippy::too_many_arguments)]
     fn check_is_less_than(
         name: &str,
         expected: bool,

@@ -37,6 +37,6 @@ impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
         let bits = &output.to_bits_le()[..Scalar::<E>::size_in_data_bits()];
 
         // Output the scalar.
-        Scalar::from_bits_le(&bits)
+        Scalar::from_bits_le(bits)
     }
 }

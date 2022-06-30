@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn test_display() -> Result<()> {
         // Ensure type and empty value fails.
-        assert!(StringType::<CurrentEnvironment>::parse(&StringType::<CurrentEnvironment>::type_name()).is_err());
+        assert!(StringType::<CurrentEnvironment>::parse(StringType::<CurrentEnvironment>::type_name()).is_err());
         assert!(StringType::<CurrentEnvironment>::parse("").is_err());
 
         // Ensure empty string succeeds.

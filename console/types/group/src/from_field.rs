@@ -21,7 +21,7 @@ impl<E: Environment> FromField for Group<E> {
 
     /// Initializes a new group by recovering the **x-coordinate** of an affine group from a field element.
     fn from_field(field: &Self::Field) -> Result<Self> {
-        Ok(Group::from_x_coordinate(*field)?)
+        Group::from_x_coordinate(*field)
     }
 }
 

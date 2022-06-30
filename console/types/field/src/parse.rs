@@ -81,7 +81,7 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Field::<CurrentEnvironment>::parse(&Field::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Field::<CurrentEnvironment>::parse(Field::<CurrentEnvironment>::type_name()).is_err());
         assert!(Field::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {

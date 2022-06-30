@@ -77,7 +77,7 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Integer::<CurrentEnvironment, i8>::parse(&Integer::<CurrentEnvironment, i8>::type_name()).is_err());
+        assert!(Integer::<CurrentEnvironment, i8>::parse(Integer::<CurrentEnvironment, i8>::type_name()).is_err());
         assert!(Integer::<CurrentEnvironment, i8>::parse("").is_err());
 
         for _ in 0..ITERATIONS {

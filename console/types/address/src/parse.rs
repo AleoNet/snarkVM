@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         // Ensure type and empty value fails.
-        assert!(Address::<CurrentEnvironment>::parse(&Address::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Address::<CurrentEnvironment>::parse(Address::<CurrentEnvironment>::type_name()).is_err());
         assert!(Address::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
@@ -129,7 +129,7 @@ mod tests {
             assert_eq!(format!("{expected}"), candidate);
             assert_eq!(ADDRESS_PREFIX, candidate.split('1').next().unwrap());
 
-            let candidate_recovered = Address::<CurrentEnvironment>::from_str(&format!("{candidate}"))?;
+            let candidate_recovered = Address::<CurrentEnvironment>::from_str(&candidate.to_string())?;
             assert_eq!(expected, candidate_recovered);
         }
         Ok(())
