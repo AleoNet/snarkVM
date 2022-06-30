@@ -293,10 +293,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .zip(z_b)
             .zip(z_c)
             .zip(s_l)
-            .map(|(((a, b), c), s)| {
+            .enumerate()
+            .map(|(i, (((a, b), c), s))| {
                 if s.is_zero() {
-                    // NOTE: is that correct?
-                    F::one()
+                    state.index.t_evals[i]
                 } else {
                     *a + state.index.zeta * b + state.index.zeta.square() * c
                 }
