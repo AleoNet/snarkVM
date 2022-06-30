@@ -507,7 +507,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         instruction: &Instruction<N, A>,
     ) -> Result<()> {
         // Ensure the opcode is well-formed.
-        Self::check_instruction_opcode(program, &register_types, instruction)?;
+        Self::check_instruction_opcode(program, register_types, instruction)?;
 
         // Initialize a vector to store the register types of the operands.
         let mut operand_types = Vec::with_capacity(instruction.operands().len());
