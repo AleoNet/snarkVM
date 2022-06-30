@@ -34,7 +34,7 @@ version = "0.1.14"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.58"
 
 [dependencies.itertools]
 version = "0.10.1"

@@ -82,7 +82,7 @@ version = "0.1.14"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.58"
 
 [dependencies.base58]
 version = "0.2"

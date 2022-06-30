@@ -21,7 +21,7 @@ path = "../../utilities"
 version = "0.7.5"
 
 [dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.58"
 
 [dependencies.blake2s_simd]
 version = "1.0"
