@@ -79,12 +79,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         // Retrieve the register types.
         let register_types = stack.program().get_closure_registers(&self.name)?;
         // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types.clone())?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types)?;
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(&inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            closure_stack.store(&register, input.clone())
+            closure_stack.store(register, input.clone())
         })?;
 
         // Evaluate the instructions.
@@ -122,12 +122,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         let register_types = stack.program().get_closure_registers(&self.name)?;
 
         // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types.clone())?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), register_types)?;
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(&inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            closure_stack.store_circuit(&register, input.clone())
+            closure_stack.store_circuit(register, input.clone())
         })?;
 
         // Evaluate the instructions.

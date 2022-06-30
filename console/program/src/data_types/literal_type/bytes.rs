@@ -19,7 +19,7 @@ use super::*;
 impl FromBytes for LiteralType {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;
-        FromPrimitive::from_u16(index).ok_or(error(format!("Failed to deserialize literal type variant {index}")))
+        FromPrimitive::from_u16(index).ok_or_else(|| error("Failed to deserialize literal type variant {index}"))
     }
 }
 

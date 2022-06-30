@@ -331,6 +331,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
     }
 
     /// Returns the transition view key, given the caller address and an RNG.
+    #[allow(clippy::type_complexity)]
     pub(crate) fn compute_tvk<R: Rng + CryptoRng>(
         caller: Address<N>,
         rng: &mut R,

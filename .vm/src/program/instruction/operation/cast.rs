@@ -130,10 +130,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
                     // Ensure the entry is an address.
                     StackValue::Plaintext(Plaintext::Literal(Literal::Address(owner), ..)) => {
                         match record_type.owner().is_public() {
-                            true => Owner::Public(owner.clone()),
-                            false => {
-                                Owner::Private(Plaintext::Literal(Literal::Address(owner.clone()), Default::default()))
-                            }
+                            true => Owner::Public(*owner),
+                            false => Owner::Private(Plaintext::Literal(Literal::Address(*owner), Default::default())),
                         }
                     }
                     _ => bail!("Invalid record owner"),
@@ -150,10 +148,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
                         );
                         // Construct the record balance.
                         match record_type.balance().is_public() {
-                            true => Balance::Public(balance.clone()),
-                            false => {
-                                Balance::Private(Plaintext::Literal(Literal::U64(balance.clone()), Default::default()))
-                            }
+                            true => Balance::Public(*balance),
+                            false => Balance::Private(Plaintext::Literal(Literal::U64(*balance), Default::default())),
                         }
                     }
                     _ => bail!("Invalid record balance"),
@@ -398,7 +394,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
             }
         }
 
-        Ok(vec![self.register_type.clone()])
+        Ok(vec![self.register_type])
     }
 }
 

@@ -29,7 +29,7 @@ impl<N: Network> ToFields for Plaintext<N> {
         // Pack the bits into field elements.
         let fields = bits_le
             .chunks(Field::<N>::size_in_data_bits())
-            .map(|bits_le| Field::<N>::from_bits_le(bits_le))
+            .map(Field::<N>::from_bits_le)
             .collect::<Result<Vec<_>>>()?;
         // Ensure the number of field elements does not exceed the maximum allowed size.
         match fields.len() <= N::MAX_DATA_SIZE_IN_FIELDS as usize {

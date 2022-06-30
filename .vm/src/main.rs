@@ -68,6 +68,7 @@ impl<N: Network> Transaction<N> {
 }
 
 /// Returns the re-randomized balance commitment as `bcm := Commit(balance, r_bcm + r_bcm')`.
+#[allow(clippy::type_complexity)]
 fn bcm<A: circuit::Aleo>(
     balance: U64<A::Network>,
     record_view_key: Field<A::Network>,
@@ -85,6 +86,7 @@ fn bcm<A: circuit::Aleo>(
 /// Returns the fee commitment `fcm` and fee randomizer `r_fcm`, where:
 ///   - `fcm := Σ bcm_in - Σ bcm_out - Commit(fee, 0) = Commit(0, r_fcm)`
 ///   - `r_fcm := Σ r_in - Σ r_out`.
+#[allow(clippy::type_complexity)]
 fn fcm<A: circuit::Aleo>(
     r_in: &[Scalar<A::Network>],
     r_out: &[Scalar<A::Network>],

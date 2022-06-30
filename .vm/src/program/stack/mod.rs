@@ -75,12 +75,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Retrieve the register types.
         let register_types = program.get_function_registers(function_name)?;
         // Initialize the stack.
-        let mut stack = Self::new(program, register_types.clone())?;
+        let mut stack = Self::new(program, register_types)?;
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            stack.store(&register, input.clone())
+            stack.store(register, input.clone())
         })?;
 
         // Evaluate the instructions.
@@ -131,9 +131,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         function.inputs().iter().map(|i| (i.register(), i.value_type())).zip_eq(inputs).try_for_each(
             |((register, value_type), input)| {
                 // Assign the console input to the register.
-                stack.store(&register, input.clone())?;
+                stack.store(register, input.clone())?;
                 // Assign the circuit input to the register.
-                stack.store_circuit(&register, match value_type {
+                stack.store_circuit(register, match value_type {
                     ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
                     ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
                     ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
@@ -192,9 +192,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             use circuit::Eject;
 
             // Assign the console input to the register.
-            stack.store(&register, input.eject_value())?;
+            stack.store(register, input.eject_value())?;
             // Assign the circuit input to the register.
-            stack.store_circuit(&register, input.clone())
+            stack.store_circuit(register, input.clone())
         })?;
 
         // Execute the instructions.

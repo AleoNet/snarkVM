@@ -86,7 +86,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 )?),
             };
             // Insert the encrypted entry.
-            if encrypted_data.insert(id.clone(), entry).is_some() {
+            if encrypted_data.insert(*id, entry).is_some() {
                 bail!("Duplicate identifier in record: {}", id);
             }
             // Increment the index.

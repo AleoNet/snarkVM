@@ -29,7 +29,7 @@ impl<E: Environment> Parser for Address<E> {
         ));
 
         // Parse the address from the string.
-        map_res(parse_address, |address: &str| -> Result<_, Error> { Ok(Self::from_str(&address.replace('_', ""))?) })(
+        map_res(parse_address, |address: &str| -> Result<_, Error> { Self::from_str(&address.replace('_', "")) })(
             string,
         )
     }

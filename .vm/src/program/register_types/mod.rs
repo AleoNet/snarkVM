@@ -24,7 +24,7 @@ use console::{
 
 use indexmap::IndexMap;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
     input_registers: IndexMap<u64, RegisterType<N>>,
@@ -150,7 +150,7 @@ impl<N: Network> RegisterTypes<N> {
             // If the register is a member, then traverse the member path to output the register type.
             Register::Member(_, path) => {
                 // Ensure the member path is valid.
-                ensure!(path.len() > 0, "Register '{register}' references no members.");
+                ensure!(!path.is_empty(), "Register '{register}' references no members.");
 
                 // Traverse the member path to find the register type.
                 for path_name in path.iter() {
@@ -162,7 +162,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Traverse the member path to output the register type.
                         RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                             // Retrieve the interface.
-                            match program.get_interface(&interface_name) {
+                            match program.get_interface(interface_name) {
                                 // Retrieve the member type from the interface.
                                 Ok(interface) => match interface.members().get(path_name) {
                                     // Update the member type.
@@ -174,7 +174,7 @@ impl<N: Network> RegisterTypes<N> {
                         }
                         RegisterType::Record(record_name) => {
                             // Retrieve the record.
-                            match program.get_record(&record_name) {
+                            match program.get_record(record_name) {
                                 // Retrieve the entry type from the record.
                                 Ok(record_type) => {
                                     if path_name == &Identifier::from_str("owner")? {

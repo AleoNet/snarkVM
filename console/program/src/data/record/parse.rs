@@ -21,6 +21,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a sanitized pair: `identifier: entry`.
+        #[allow(clippy::type_complexity)]
         fn parse_pair<N: Network>(string: &str) -> ParserResult<(Identifier<N>, Entry<N, Plaintext<N>>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
@@ -80,7 +81,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             map_res(separated_list0(tag(","), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.
                 if has_duplicates(members.iter().map(|(name, ..)| name)) {
-                    return Err(error(format!("Duplicate data entry in record")));
+                    return Err(error("Duplicate data entry in record"));
                 }
                 // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
                 match members.len() <= N::MAX_DATA_ENTRIES {

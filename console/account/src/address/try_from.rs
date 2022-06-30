@@ -76,7 +76,7 @@ impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
     /// Derives the account address from an account view key.
     fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
         // Compute G^view_key.
-        Ok(Self::new(N::g_scalar_multiply(&*view_key)))
+        Ok(Self::new(N::g_scalar_multiply(view_key)))
     }
 }
 

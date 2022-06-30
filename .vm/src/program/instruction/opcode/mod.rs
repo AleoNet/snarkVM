@@ -59,8 +59,8 @@ impl Display for Opcode {
         // write!(f, "{}", *self)
         match self {
             Self::Literal(opcode) => write!(f, "{opcode}"),
-            Self::Call => write!(f, "{}", *self),
-            Self::Cast => write!(f, "{}", *self),
+            Self::Call => write!(f, "{}", self.deref()),
+            Self::Cast => write!(f, "{}", self.deref()),
             Self::Commit(opcode) => write!(f, "{opcode}"),
             Self::Hash(opcode) => write!(f, "{opcode}"),
         }

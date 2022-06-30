@@ -42,7 +42,7 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the register type.
-                    let register_type = self.get_type(program, &register)?;
+                    let register_type = self.get_type(program, register)?;
                     // Ensure the register type is not a record.
                     ensure!(
                         !matches!(register_type, RegisterType::Record(..)),
@@ -130,7 +130,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the register type matches the entry type.
                         Operand::Register(register) => {
                             // Retrieve the register type.
-                            let register_type = self.get_type(program, &register)?;
+                            let register_type = self.get_type(program, register)?;
                             // Ensure the register type is not a record.
                             ensure!(
                                 !matches!(register_type, RegisterType::Record(..)),

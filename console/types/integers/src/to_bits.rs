@@ -40,7 +40,7 @@ mod tests {
     fn check_to_bits_le<I: IntegerType>() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let integer = Integer::<CurrentEnvironment, I>::from(Uniform::rand(&mut test_rng()));
+            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
 
             let candidate = integer.to_bits_le();
             assert_eq!(Integer::<CurrentEnvironment, I>::size_in_bits(), candidate.len());
@@ -54,7 +54,7 @@ mod tests {
     fn check_to_bits_be<I: IntegerType>() {
         for _ in 0..ITERATIONS {
             // Sample a random value.
-            let integer = Integer::<CurrentEnvironment, I>::from(Uniform::rand(&mut test_rng()));
+            let integer: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
 
             let candidate = integer.to_bits_be();
             assert_eq!(Integer::<CurrentEnvironment, I>::size_in_bits(), candidate.len());

@@ -51,7 +51,7 @@ mod tests {
             for (index, candidate_bit) in candidate.to_bits_le().iter().enumerate() {
                 match index < Scalar::<CurrentEnvironment>::size_in_bits() {
                     true => assert_eq!(expected[index], *candidate_bit),
-                    false => assert_eq!(false, *candidate_bit),
+                    false => assert!(!*candidate_bit),
                 }
             }
         }

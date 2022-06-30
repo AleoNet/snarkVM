@@ -82,7 +82,7 @@ mod tests {
         let rng = &mut test_rng();
 
         // Ensure empty value fails.
-        assert!(Group::<CurrentEnvironment>::parse(&Group::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Group::<CurrentEnvironment>::parse(Group::<CurrentEnvironment>::type_name()).is_err());
         assert!(Group::<CurrentEnvironment>::parse("").is_err());
 
         for _ in 0..ITERATIONS {
