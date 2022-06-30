@@ -54,7 +54,7 @@ impl<A: Aleo> Inject for Owner<A, Ciphertext<A>> {
     fn new(_: Mode, owner: Self::Primitive) -> Self {
         match owner {
             console::Owner::Public(owner) => Self::Public(Address::new(Mode::Public, owner)),
-            console::Owner::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext.clone())),
+            console::Owner::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext)),
         }
     }
 }

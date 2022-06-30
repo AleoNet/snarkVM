@@ -51,7 +51,7 @@ impl<A: Aleo> Inject for Balance<A, Ciphertext<A>> {
     fn new(_: Mode, owner: Self::Primitive) -> Self {
         match owner {
             console::Balance::Public(balance) => Self::Public(U64::new(Mode::Public, balance)),
-            console::Balance::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext.clone())),
+            console::Balance::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext)),
         }
     }
 }

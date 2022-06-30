@@ -48,7 +48,7 @@ type E = Circuit;
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().copied().collect());
+    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
 
     /// The balance commitment domain as a constant field element.
     static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
