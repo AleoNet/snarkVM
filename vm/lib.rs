@@ -24,8 +24,6 @@ extern crate thiserror;
 #[cfg(feature = "cli")]
 pub mod cli;
 
-pub use snarkvm_compiler as compiler;
-
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;
 #[cfg(feature = "circuit")]
