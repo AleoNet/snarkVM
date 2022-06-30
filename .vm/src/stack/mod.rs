@@ -97,7 +97,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             self.process_function(program, function, false)?;
         }
         // Add the program to the stack.
-        self.imports.insert(program_name.clone(), program.clone());
+        self.imports.insert(*program_name, program.clone());
 
         // Return success.
         Ok(())
@@ -658,7 +658,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                         // Retrieve the interface.
                         let interface = program.get_interface(interface_name)?;
                         // Ensure the operand types match the interface.
-                        register_types.matches_interface(&program, instruction.operands(), &interface)?;
+                        register_types.matches_interface(program, instruction.operands(), &interface)?;
                     }
                     RegisterType::Record(record_name) => {
                         // Ensure the record type is defined in the program.
@@ -668,7 +668,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                         // Retrieve the record type.
                         let record_type = program.get_record(record_name)?;
                         // Ensure the operand types match the record type.
-                        register_types.matches_record(&program, instruction.operands(), &record_type)?;
+                        register_types.matches_record(program, instruction.operands(), &record_type)?;
                     }
                 }
             }
