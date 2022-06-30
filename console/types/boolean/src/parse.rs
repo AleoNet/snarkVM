@@ -67,7 +67,7 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         // Ensure type and empty value fails.
-        assert!(Boolean::<CurrentEnvironment>::parse(&Boolean::<CurrentEnvironment>::type_name()).is_err());
+        assert!(Boolean::<CurrentEnvironment>::parse(Boolean::<CurrentEnvironment>::type_name()).is_err());
         assert!(Boolean::<CurrentEnvironment>::parse("").is_err());
 
         for boolean in &[true, false] {
