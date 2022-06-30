@@ -39,6 +39,13 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ViewKey<N: Network>(N::Scalar);
 
+impl<N: Network> ViewKey<N> {
+    /// Initializes the account view key from a scalar.
+    pub fn from_scalar(view_key: N::Scalar) -> Self {
+        Self(view_key)
+    }
+}
+
 impl<N: Network> Deref for ViewKey<N> {
     type Target = N::Scalar;
 
@@ -61,7 +68,7 @@ mod tests {
     const ITERATIONS: u64 = 1000;
 
     #[test]
-    fn test_deref() -> Result<()> {
+    fn test_from_scalar() -> Result<()> {
         for _ in 0..ITERATIONS {
             // Sample a new address.
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
@@ -69,7 +76,7 @@ mod tests {
 
             // Check the scalar representation.
             let candidate = *expected;
-            assert_eq!(expected, ViewKey(candidate));
+            assert_eq!(expected, ViewKey::from_scalar(candidate));
         }
         Ok(())
     }

@@ -67,7 +67,7 @@ impl<A: Aleo> Inject for Literal<A> {
     /// Initializes a new literal from a primitive.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
-            Self::Primitive::Address(address) => Self::Address(Address::new(mode, *address)),
+            Self::Primitive::Address(address) => Self::Address(Address::new(mode, address)),
             Self::Primitive::Boolean(boolean) => Self::Boolean(Boolean::new(mode, boolean)),
             Self::Primitive::Field(field) => Self::Field(Field::new(mode, field)),
             Self::Primitive::Group(group) => Self::Group(Group::new(mode, group)),
@@ -116,9 +116,7 @@ impl<A: Aleo> Eject for Literal<A> {
     /// Ejects the literal into its primitive.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Self::Address(literal) => {
-                Self::Primitive::Address(snarkvm_console_account::Address::from_group(literal.eject_value()))
-            }
+            Self::Address(literal) => Self::Primitive::Address(literal.eject_value()),
             Self::Boolean(literal) => Self::Primitive::Boolean(literal.eject_value()),
             Self::Field(literal) => Self::Primitive::Field(literal.eject_value()),
             Self::Group(literal) => Self::Primitive::Group(literal.eject_value()),
@@ -187,30 +185,6 @@ impl<A: Aleo> Literal<A> {
             Self::U128(..) => U128::<A>::type_name(),
             Self::Scalar(..) => Scalar::<A>::type_name(),
             Self::String(..) => StringType::<A>::type_name(),
-        }
-    }
-}
-
-#[cfg(console)]
-impl<A: Aleo> Debug for Literal<A> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Address(literal) => Debug::fmt(literal, f),
-            Self::Boolean(literal) => Debug::fmt(literal, f),
-            Self::Field(literal) => Debug::fmt(literal, f),
-            Self::Group(literal) => Debug::fmt(literal, f),
-            Self::I8(literal) => Debug::fmt(literal, f),
-            Self::I16(literal) => Debug::fmt(literal, f),
-            Self::I32(literal) => Debug::fmt(literal, f),
-            Self::I64(literal) => Debug::fmt(literal, f),
-            Self::I128(literal) => Debug::fmt(literal, f),
-            Self::U8(literal) => Debug::fmt(literal, f),
-            Self::U16(literal) => Debug::fmt(literal, f),
-            Self::U32(literal) => Debug::fmt(literal, f),
-            Self::U64(literal) => Debug::fmt(literal, f),
-            Self::U128(literal) => Debug::fmt(literal, f),
-            Self::Scalar(literal) => Debug::fmt(literal, f),
-            Self::String(literal) => Debug::fmt(literal, f),
         }
     }
 }

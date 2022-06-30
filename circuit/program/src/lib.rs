@@ -22,9 +22,3 @@ use snarkvm_circuit_network::AleoV0 as Circuit;
 
 mod data;
 pub use data::{Ciphertext, Data, Identifier, Literal, Plaintext, Visibility};
-
-mod record;
-pub use record::Record;
-
-mod state;
-pub use state::State;

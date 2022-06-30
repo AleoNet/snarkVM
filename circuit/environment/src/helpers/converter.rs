@@ -18,12 +18,12 @@ use crate::{Circuit, LinearCombination, Variable, R1CS};
 use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 /// A struct for tracking the mapping of variables from the virtual machine (first) to the gadget constraint system (second).
 struct Converter {
-    public: HashMap<u64, snarkvm_r1cs::Variable>,
-    private: HashMap<u64, snarkvm_r1cs::Variable>,
+    public: IndexMap<u64, snarkvm_r1cs::Variable>,
+    private: IndexMap<u64, snarkvm_r1cs::Variable>,
 }
 
 impl snarkvm_r1cs::ConstraintSynthesizer<Fq> for Circuit {

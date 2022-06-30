@@ -28,7 +28,6 @@ pub use bigint_384::*;
 #[cfg(test)]
 mod tests;
 
-/// TODO (howardwu): Update to use ToBits.
 /// This defines a `BigInteger`, a smart wrapper around a
 /// sequence of `u64` limbs, least-significant digit first.
 pub trait BigInteger:

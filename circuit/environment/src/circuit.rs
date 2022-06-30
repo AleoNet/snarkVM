@@ -15,29 +15,47 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{helpers::Constraint, *};
-use snarkvm_curves::{
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq, Fr},
-    AffineCurve,
-};
+use snarkvm_curves::AffineCurve;
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
 
+type Field = <console::Testnet3 as console::Network>::Field;
+
 thread_local! {
-    pub(super) static CIRCUIT: Rc<RefCell<R1CS<Fq>>> = Rc::new(RefCell::new(R1CS::<Fq>::new()));
+    pub(super) static CIRCUIT: Rc<RefCell<R1CS<Field>>> = Rc::new(RefCell::new(R1CS::new()));
     pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
-    pub(super) static ZERO: LinearCombination<Fq> = LinearCombination::zero();
-    pub(super) static ONE: LinearCombination<Fq> = LinearCombination::one();
+    pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
+    pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
+impl Circuit {
+    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
+    ///  Circuits should not have easy access to this during synthesis.
+    /// Returns the R1CS assignment of the circuit.
+    pub fn eject() -> Assignment<Field> {
+        CIRCUIT.with(|circuit| {
+            // Eject the R1CS instance.
+            let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
+            assert_eq!(0, (**circuit).borrow().num_constants());
+            assert_eq!(1, (**circuit).borrow().num_public());
+            assert_eq!(0, (**circuit).borrow().num_private());
+            assert_eq!(0, (**circuit).borrow().num_constraints());
+            // Convert the R1CS instance to an assignment.
+            Assignment::from(r1cs)
+        })
+    }
+}
+
 impl Environment for Circuit {
-    type Affine = EdwardsAffine;
-    type AffineParameters = EdwardsParameters;
-    type BaseField = Fq;
-    type ScalarField = Fr;
+    type Affine = <console::Testnet3 as console::Network>::Affine;
+    type AffineParameters = <console::Testnet3 as console::Network>::AffineParameters;
+    type BaseField = Field;
+    type Network = console::Testnet3;
+    type ScalarField = <console::Testnet3 as console::Network>::Scalar;
 
     /// The maximum number of characters allowed in a string.
     const NUM_STRING_BYTES: u32 = u8::MAX as u32;

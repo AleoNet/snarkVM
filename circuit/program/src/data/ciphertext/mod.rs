@@ -29,6 +29,38 @@ use core::ops::Deref;
 #[derive(Clone)]
 pub struct Ciphertext<A: Aleo>(Vec<Field<A>>);
 
+#[cfg(console)]
+impl<A: Aleo> Inject for Ciphertext<A> {
+    type Primitive = console::Ciphertext<A::Network>;
+
+    /// Initializes a new ciphertext circuit from a primitive.
+    fn new(mode: Mode, ciphertext: Self::Primitive) -> Self {
+        // Ensure the number of field elements does not exceed the maximum allowed size.
+        match (*ciphertext).len() <= A::MAX_DATA_SIZE_IN_FIELDS as usize {
+            true => Self(Inject::new(mode, (*ciphertext).to_vec())),
+            false => A::halt("Ciphertext exceeds maximum allowed size"),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<A: Aleo> Eject for Ciphertext<A> {
+    type Primitive = console::Ciphertext<A::Network>;
+
+    /// Ejects the mode of the ciphertext entry.
+    fn eject_mode(&self) -> Mode {
+        self.0.eject_mode()
+    }
+
+    /// Ejects the ciphertext entry.
+    fn eject_value(&self) -> Self::Primitive {
+        match console::FromFields::from_fields(&self.0.eject_value()) {
+            Ok(ciphertext) => ciphertext,
+            Err(error) => A::halt(format!("Failed to eject a ciphertext entry: {error}")),
+        }
+    }
+}
+
 impl<A: Aleo> Deref for Ciphertext<A> {
     type Target = [Field<A>];
 

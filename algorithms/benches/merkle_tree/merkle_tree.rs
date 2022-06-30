@@ -31,13 +31,10 @@ use criterion::Criterion;
 
 const SETUP_MESSAGE: &str = "merkle_tree_bhp_benchmark";
 
-const NUM_WINDOWS: usize = 3;
-const LEAF_WINDOW_SIZE: usize = 29;
-const TWO_TO_ONE_WINDOW_SIZE: usize = 57;
 const TREE_DEPTH: usize = 32;
 
-type LeafCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, LEAF_WINDOW_SIZE>;
-type TwoToOneCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, TWO_TO_ONE_WINDOW_SIZE>;
+type LeafCRH = BHPCRH<EdwardsProjective, 8, 54>;
+type TwoToOneCRH = BHPCRH<EdwardsProjective, 6, 43>;
 type P = MerkleTreeParameters<LeafCRH, TwoToOneCRH, TREE_DEPTH>;
 
 const NUM_ENTRIES: &[usize] = &[10, 100, 1000, 10000];
@@ -116,9 +113,9 @@ fn rebuild_multiple_leaves(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = merkle_tree_bhp;
+    name = merkle_tree;
     config = Criterion::default().sample_size(10);
     targets = new, rebuild_single_leaf, rebuild_multiple_leaves
 }
 
-criterion_main!(merkle_tree_bhp);
+criterion_main!(merkle_tree);

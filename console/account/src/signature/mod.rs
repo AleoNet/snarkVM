@@ -20,11 +20,13 @@ mod sign;
 use crate::{Address, ComputeKey, PrivateKey};
 use snarkvm_console_network::Network;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
+    CryptoRng,
     FromBytes,
+    Rng,
     ToBytes,
+    UniformRand,
 };
 
 use anyhow::Result;
@@ -37,6 +39,20 @@ pub struct Signature<N: Network> {
     response: N::Scalar,
     /// The compute key of the prover.
     compute_key: ComputeKey<N>,
+}
+
+impl<N: Network> From<(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+    /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
+    fn from((challenge, response, compute_key): (N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+        Self { challenge, response, compute_key }
+    }
+}
+
+impl<N: Network> From<&(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+    /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
+    fn from((challenge, response, compute_key): &(N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+        Self { challenge: *challenge, response: *response, compute_key: *compute_key }
+    }
 }
 
 impl<N: Network> Signature<N> {
@@ -53,5 +69,39 @@ impl<N: Network> Signature<N> {
     /// Returns the compute key.
     pub const fn compute_key(&self) -> ComputeKey<N> {
         self.compute_key
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+
+    use anyhow::Result;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 100;
+
+    #[test]
+    fn test_from() -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
+        for i in 0..ITERATIONS {
+            // Sample an address and a private key.
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+            let address = Address::try_from(&private_key)?;
+
+            // Generate a signature.
+            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let signature = Signature::sign(&private_key, &message, rng)?;
+            assert!(signature.verify(&address, &message));
+
+            // Check that the signature can be reconstructed from its parts.
+            let candidate = Signature::from((signature.challenge(), signature.response(), signature.compute_key()));
+            assert_eq!(signature, candidate);
+        }
+        Ok(())
     }
 }

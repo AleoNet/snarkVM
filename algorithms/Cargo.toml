@@ -43,7 +43,7 @@ path = "benches/crypto_hash/hash_to_curve.rs"
 harness = false
 
 [[bench]]
-name = "merkle_tree_bhp"
+name = "merkle_tree"
 path = "benches/merkle_tree/merkle_tree.rs"
 harness = false
 

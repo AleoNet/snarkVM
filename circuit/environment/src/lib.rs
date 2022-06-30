@@ -86,7 +86,7 @@ pub mod prelude {
     pub use nom::{
         branch::alt,
         bytes::complete::tag,
-        character::complete::{char, one_of},
+        character::complete::{alpha1, alphanumeric1, char, one_of},
         combinator::{map, map_res, opt, recognize},
         multi::{many0, many1},
         sequence::{pair, terminated},

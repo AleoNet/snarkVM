@@ -34,12 +34,13 @@ pub use view_key::*;
 
 #[cfg(all(test, console))]
 pub(crate) mod helpers {
-    use snarkvm_circuit_network::{Aleo, AleoV0};
+    use snarkvm_circuit_network::AleoV0;
+    use snarkvm_circuit_types::environment::Environment;
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;
 
-    type CurrentNetwork = <AleoV0 as Aleo>::Network;
+    type CurrentNetwork = <AleoV0 as Environment>::Network;
 
     #[allow(clippy::type_complexity)]
     pub(crate) fn generate_account() -> Result<(

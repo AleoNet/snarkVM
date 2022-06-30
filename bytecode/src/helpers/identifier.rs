@@ -84,7 +84,7 @@ const KEYWORDS: &[&str] = &[
     "output",
     // Reserved (catch all)
     "function",
-    "type",
+    "interface",
     "as",
     "record",
 ];

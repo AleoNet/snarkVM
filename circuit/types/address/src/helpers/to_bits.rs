@@ -44,7 +44,7 @@ impl<E: Environment> ToBits for &Address<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
@@ -57,8 +57,8 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Address::<Circuit>::new(mode, expected);
+            let expected = UniformRand::rand(&mut test_rng());
+            let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
@@ -78,8 +78,8 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Address::<Circuit>::new(mode, expected);
+            let expected = UniformRand::rand(&mut test_rng());
+            let candidate = Address::<Circuit>::from_group(Group::new(mode, expected));
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_be();

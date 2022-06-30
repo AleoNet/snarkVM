@@ -82,10 +82,9 @@ mod tests {
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+                let input = (0..$num_bits).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>();
                 // Compute the expected hash.
-                let expected =
-                    console::HashUncompressed::hash_uncompressed(&native, &input).expect("Failed to hash native input");
+                let expected = console::HashUncompressed::hash_uncompressed(&native, &input)?;
                 // Prepare the circuit input.
                 let circuit_input: Vec<Boolean<_>> = Inject::new(Mode::$mode, input);
 

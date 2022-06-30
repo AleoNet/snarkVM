@@ -29,13 +29,13 @@ use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<G> = BHP<G, 3, 57>; // Supports inputs up to 261 bits (1 u8 + 1 Fq).
+pub type BHP256<E> = BHP<E, 3, 57>; // Supports inputs up to 261 bits (1 u8 + 1 Fq).
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<G> = BHP<G, 6, 43>; // Supports inputs up to 522 bits (2 u8 + 2 Fq).
+pub type BHP512<E> = BHP<E, 6, 43>; // Supports inputs up to 522 bits (2 u8 + 2 Fq).
 /// BHP768 is a collision-resistant hash function that takes a 768-bit input.
-pub type BHP768<G> = BHP<G, 15, 23>; // Supports inputs up to 783 bits (3 u8 + 3 Fq).
+pub type BHP768<E> = BHP<E, 15, 23>; // Supports inputs up to 783 bits (3 u8 + 3 Fq).
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<G> = BHP<G, 8, 54>; // Supports inputs up to 1044 bits (4 u8 + 4 Fq).
+pub type BHP1024<E> = BHP<E, 8, 54>; // Supports inputs up to 1044 bits (4 u8 + 4 Fq).
 
 /// The BHP chunk size (this implementation is for a 3-bit BHP).
 const BHP_CHUNK_SIZE: usize = 3;

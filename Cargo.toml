@@ -19,15 +19,18 @@ edition = "2021"
 
 [workspace]
 members = [
+  ".experimental", # <- This is just a hacky experiment. Remind Howard to delete this!
   "algorithms",
   "bytecode",
   "circuit",
   "circuit/account",
   "circuit/algorithms",
+  "circuit/collections",
   "circuit/environment",
   "circuit/environment/witness",
   "circuit/network",
   "circuit/program",
+  "circuit/transition",
   "circuit/types",
   "circuit/types/address",
   "circuit/types/boolean",
@@ -39,8 +42,10 @@ members = [
   "console",
   "console/account",
   "console/algorithms",
+  "console/collections",
   "console/network",
   "console/program",
+  "console/transition",
   "console/types",
   "curves",
   "dpc",

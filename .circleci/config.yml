@@ -190,6 +190,37 @@ jobs:
           workspace_member: circuit/algorithms
           cache_key: snarkvm-circuit-algorithms-cache
 
+  # This checks that no `console` structs are used in core circuit logic.
+  circuit-algorithms-noconsole:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/algorithms
+          flags: --no-default-features
+          cache_key: snarkvm-circuit-algorithms-noconsole-cache
+
+  circuit-collections:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/collections
+          cache_key: snarkvm-circuit-collections-cache
+
+  # This checks that no `console` structs are used in core circuit logic.
+  circuit-collections-noconsole:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/collections
+          flags: --no-default-features
+          cache_key: snarkvm-circuit-collections-noconsole-cache
+
   circuit-environment:
     docker:
       - image: cimg/rust:1.61
@@ -227,6 +258,26 @@ jobs:
           workspace_member: circuit/program
           flags: --no-default-features
           cache_key: snarkvm-circuit-program-noconsole-cache
+
+  circuit-transition:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/transition
+          cache_key: snarkvm-circuit-transition-cache
+
+  # This checks that no `console` structs are used in core circuit logic.
+  circuit-transition-noconsole:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuit/transition
+          flags: --no-default-features
+          cache_key: snarkvm-circuit-transition-noconsole-cache
 
   circuit-types:
     docker:
@@ -329,6 +380,15 @@ jobs:
           workspace_member: console/algorithms
           cache_key: snarkvm-console-algorithms-cache
 
+  console-collections:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/collections
+          cache_key: snarkvm-console-collections-cache
+
   console-network:
     docker:
       - image: cimg/rust:1.61
@@ -346,6 +406,15 @@ jobs:
       - run_serial:
           workspace_member: console/program
           cache_key: snarkvm-console-program-cache
+
+  console-transition:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/transition
+          cache_key: snarkvm-console-transition-cache
 
   console-types:
     docker:
@@ -507,10 +576,15 @@ workflows:
       - circuit-account
       - circuit-account-noconsole
       - circuit-algorithms
+      - circuit-algorithms-noconsole
+      - circuit-collections
+      - circuit-collections-noconsole
       - circuit-environment
       - circuit-network
       - circuit-program
       - circuit-program-noconsole
+      - circuit-transition
+      - circuit-transition-noconsole
       - circuit-types
       - circuit-types-address
       - circuit-types-boolean
@@ -522,8 +596,10 @@ workflows:
       - console
       - console-account
       - console-algorithms
+      - console-collections
       - console-network
       - console-program
+      - console-transition
       - console-types
       - curves
       - dpc

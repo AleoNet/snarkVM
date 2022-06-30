@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod verify;
+mod verify;
 
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
@@ -34,30 +34,37 @@ pub struct Signature<A: Aleo> {
 
 #[cfg(console)]
 impl<A: Aleo> Inject for Signature<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, (A::Affine, A::Affine, A::Affine));
+    type Primitive = console::Signature<A::Network>;
 
-    /// Initializes a signature from the given mode and `(challenge, response, (pk_sig, pr_sig, pk_vrf))`.
-    fn new(mode: Mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)): Self::Primitive) -> Signature<A> {
+    /// Initializes a signature from the given mode and native signature.
+    fn new(mode: Mode, signature: Self::Primitive) -> Signature<A> {
         Self {
-            challenge: Scalar::new(mode, challenge),
-            response: Scalar::new(mode, response),
-            compute_key: ComputeKey::new(mode, (pk_sig, pr_sig, pk_vrf)),
+            challenge: Scalar::new(mode, signature.challenge()),
+            response: Scalar::new(mode, signature.response()),
+            compute_key: ComputeKey::new(mode, signature.compute_key()),
         }
+    }
+}
+
+impl<A: Aleo> Signature<A> {
+    /// Returns the account compute key.
+    pub const fn compute_key(&self) -> &ComputeKey<A> {
+        &self.compute_key
     }
 }
 
 #[cfg(console)]
 impl<A: Aleo> Eject for Signature<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, (A::Affine, A::Affine, A::Affine, A::ScalarField));
+    type Primitive = console::Signature<A::Network>;
 
     /// Ejects the mode of the signature.
     fn eject_mode(&self) -> Mode {
         (&self.challenge, &self.response, &self.compute_key).eject_mode()
     }
 
-    /// Ejects the signature as `(challenge, response, (pk_sig, pr_sig, pk_vrf, sk_prf))`.
+    /// Ejects the signature.
     fn eject_value(&self) -> Self::Primitive {
-        (&self.challenge, &self.response, &self.compute_key).eject_value()
+        Self::Primitive::from((&self.challenge, &self.response, &self.compute_key).eject_value())
     }
 }
 
@@ -65,11 +72,11 @@ impl<A: Aleo> Eject for Signature<A> {
 mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
-    use snarkvm_utilities::{test_crypto_rng, ToBits as T, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
 
     use anyhow::Result;
 
-    const ITERATIONS: u64 = 1000;
+    const ITERATIONS: u64 = 250;
 
     fn check_new(
         mode: Mode,
@@ -78,28 +85,19 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
-        // Generate a private key, compute key, view key, and address.
-        let (private_key, compute_key, _view_key, _address) = generate_account()?;
+        let rng = &mut test_crypto_rng();
 
-        // Retrieve the native compute key components.
-        let pk_sig = compute_key.pk_sig();
-        let pr_sig = compute_key.pr_sig();
-        let pk_vrf = compute_key.pk_vrf();
-        let sk_prf = compute_key.sk_prf();
+        // Generate a private key, compute key, view key, and address.
+        let (private_key, _compute_key, _view_key, _address) = generate_account()?;
 
         for i in 0..ITERATIONS {
             // Generate a signature.
-            let message = "Hi, I am an Aleo signature!";
-            let randomizer = UniformRand::rand(&mut test_crypto_rng());
-            let signature = console::Signature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
-
-            // Retrieve the challenge and response.
-            let challenge = signature.challenge();
-            let response = signature.response();
+            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let signature = console::Signature::sign(&private_key, &message, rng)?;
 
             Circuit::scope(format!("New {mode}"), || {
-                let candidate = Signature::<Circuit>::new(mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)));
-                assert_eq!((challenge, response, (pk_sig, pr_sig, pk_vrf, sk_prf)), candidate.eject_value());
+                let candidate = Signature::<Circuit>::new(mode, signature);
+                assert_eq!(signature, candidate.eject_value());
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
                     assert_scope!(num_constants, num_public, num_private, num_constraints);
@@ -112,16 +110,16 @@ mod tests {
 
     #[test]
     fn test_signature_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 768, 0, 0, 0)
+        check_new(Mode::Constant, 764, 0, 0, 0)
     }
 
     #[test]
     fn test_signature_new_public() -> Result<()> {
-        check_new(Mode::Public, 7, 508, 604, 1110)
+        check_new(Mode::Public, 5, 506, 597, 1102)
     }
 
     #[test]
     fn test_signature_new_private() -> Result<()> {
-        check_new(Mode::Private, 7, 0, 1112, 1110)
+        check_new(Mode::Private, 5, 0, 1103, 1102)
     }
 }

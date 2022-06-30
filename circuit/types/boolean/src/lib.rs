@@ -43,9 +43,7 @@ impl<E: Environment> BooleanTrait for Boolean<E> {}
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
 
-    ///
     /// Initializes a new instance of a boolean from a primitive boolean value.
-    ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         let variable = E::new_variable(mode, match value {
             true => E::BaseField::one(),
@@ -59,9 +57,7 @@ impl<E: Environment> Inject for Boolean<E> {
         Self(variable.into())
     }
 
-    ///
     /// Initializes a constant boolean circuit from a primitive boolean value.
-    ///
     fn constant(value: Self::Primitive) -> Self {
         match value {
             true => Self(E::one()),
@@ -73,9 +69,7 @@ impl<E: Environment> Inject for Boolean<E> {
 impl<E: Environment> Eject for Boolean<E> {
     type Primitive = bool;
 
-    ///
     /// Ejects the mode of the boolean.
-    ///
     fn eject_mode(&self) -> Mode {
         // Perform a software-level safety check that the boolean is well-formed.
         match self.0.is_boolean_type() {
@@ -84,9 +78,7 @@ impl<E: Environment> Eject for Boolean<E> {
         }
     }
 
-    ///
     /// Ejects the boolean as a constant boolean value.
-    ///
     fn eject_value(&self) -> Self::Primitive {
         let value = self.0.value();
         debug_assert!(value.is_zero() || value.is_one());
@@ -117,12 +109,6 @@ impl<E: Environment> TypeName for Boolean<E> {
     #[inline]
     fn type_name() -> &'static str {
         "boolean"
-    }
-}
-
-impl<E: Environment> Debug for Boolean<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.eject_value())
     }
 }
 
@@ -237,27 +223,6 @@ mod tests {
 
             Circuit::reset();
         }
-    }
-
-    #[test]
-    fn test_debug() {
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert_eq!("false", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert_eq!("true", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert_eq!("false", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert_eq!("true", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert_eq!("false", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert_eq!("true", format!("{:?}", candidate));
     }
 
     #[test]

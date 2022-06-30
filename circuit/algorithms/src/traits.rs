@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuit_types::environment::{Eject, Inject, ScalarTrait, Ternary, ToBits};
+use snarkvm_circuit_types::{
+    environment::{Eject, Inject, ScalarTrait, Ternary, ToBits},
+    GroupTrait,
+};
 
 /// A trait for a commitment scheme.
 pub trait Commit {
@@ -52,6 +55,16 @@ pub trait HashMany {
 
     /// Returns the hash of the given input.
     fn hash_many(&self, input: &[Self::Input], num_outputs: u16) -> Vec<Self::Output>;
+}
+
+/// A trait for a hash function that projects the value to an affine group element.
+pub trait HashToGroup {
+    type Input;
+    type Group: GroupTrait<Self::Scalar>;
+    type Scalar: ScalarTrait;
+
+    /// Returns the hash of the given input.
+    fn hash_to_group(&self, input: &[Self::Input]) -> Self::Group;
 }
 
 /// A trait for a hash function that projects the value to a scalar.

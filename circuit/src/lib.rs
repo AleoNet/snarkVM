@@ -22,6 +22,9 @@ pub use snarkvm_circuit_account::*;
 pub use snarkvm_circuit_algorithms as algorithms;
 pub use snarkvm_circuit_algorithms::*;
 
+pub use snarkvm_circuit_collections as collections;
+pub use snarkvm_circuit_collections::*;
+
 pub use snarkvm_circuit_environment as environment;
 pub use snarkvm_circuit_environment::*;
 
@@ -30,6 +33,9 @@ pub use snarkvm_circuit_network::*;
 
 pub use snarkvm_circuit_program as program;
 pub use snarkvm_circuit_program::*;
+
+pub use snarkvm_circuit_transition as transition;
+pub use snarkvm_circuit_transition::*;
 
 pub use snarkvm_circuit_types as types;
 pub use snarkvm_circuit_types::*;

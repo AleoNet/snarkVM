@@ -25,6 +25,10 @@ version = "0.7.5"
 path = "./algorithms"
 version = "0.7.5"
 
+[dependencies.snarkvm-circuit-collections]
+path = "./collections"
+version = "0.7.5"
+
 [dependencies.snarkvm-circuit-environment]
 path = "./environment"
 version = "0.7.5"
@@ -35,6 +39,10 @@ version = "0.7.5"
 
 [dependencies.snarkvm-circuit-program]
 path = "./program"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuit-transition]
+path = "./transition"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuit-types]

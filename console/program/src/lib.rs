@@ -20,23 +20,8 @@
 #[macro_use]
 extern crate enum_index_derive;
 
-mod merkle_tree;
-pub use merkle_tree::MerkleTree;
-
 mod data;
 pub use data::*;
 
-mod record;
-pub use record::*;
-
-mod state;
-pub use state::*;
-
 pub mod traits;
 pub use traits::*;
-
-// pub mod transaction;
-// pub use transaction::*;
-
-// pub mod transition;
-// pub use transition::*;

@@ -5,3 +5,7 @@ authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Console types for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
+
+[dependencies.snarkvm-console-network]
+path = "../network"
+version = "0.7.5"

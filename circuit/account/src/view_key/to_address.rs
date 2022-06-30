@@ -44,12 +44,11 @@ mod tests {
             let (_private_key, _compute_key, view_key, address) = generate_account()?;
 
             // Initialize the view key.
-            let candidate = ViewKey::<Circuit>::new(mode, *view_key);
+            let candidate = ViewKey::<Circuit>::new(mode, view_key);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_address();
                 assert_eq!(*address, candidate.to_group().eject_value());
-
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
                     assert_scope!(<=num_constants, num_public, num_private, num_constraints);

@@ -21,7 +21,6 @@ pub trait GroupTrait<S: ScalarTrait>:
     Add<Output = Self>
     + AddAssign
     + Clone
-    + Debug
     + Double<Output = Self>
     + Eject
     + Equal

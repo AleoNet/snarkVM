@@ -17,7 +17,7 @@
 use crate::prelude::*;
 
 pub trait StringTrait:
-    Clone + Display + Debug + Eject<Primitive = String> + Inject<Primitive = String> + FromBits + ToBits + Parser + TypeName
+    Clone + Display + Eject<Primitive = String> + Inject<Primitive = String> + FromBits + Parser + ToBits + TypeName
 {
 }
 

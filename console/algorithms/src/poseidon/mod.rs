@@ -18,13 +18,16 @@ mod helpers;
 
 mod hash;
 mod hash_many;
+mod hash_to_group;
 mod hash_to_scalar;
 mod prf;
 
-use crate::{poseidon::helpers::*, Hash, HashMany, HashToScalar, PRF};
+use crate::{poseidon::helpers::*, Elligator2, Hash, HashMany, HashToGroup, HashToScalar, PRF};
+use snarkvm_curves::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
 use anyhow::{bail, ensure, Result};
+use itertools::Itertools;
 use std::sync::Arc;
 
 const CAPACITY: usize = 1;
@@ -53,7 +56,7 @@ impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
         ensure!(num_bits <= max_bits, "Domain cannot exceed {max_bits} bits, found {num_bits} bits");
 
         Ok(Self {
-            domain: F::from_bytes_be_mod_order(domain.as_bytes()),
+            domain: F::from_bytes_le_mod_order(domain.as_bytes()),
             parameters: Arc::new(F::default_poseidon_parameters::<RATE>()?),
         })
     }

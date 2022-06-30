@@ -69,21 +69,6 @@ impl<Slice: AsRef<[u64]>> BitIteratorLE<Slice> {
         let max_len = s.as_ref().len() * 64;
         BitIteratorLE { s, n, max_len }
     }
-
-    /// Construct an iterator that automatically skips any trailing zeros.
-    /// That is, it skips all zeros after the most-significant one.
-    pub fn new_without_trailing_zeros(s: Slice) -> impl Iterator<Item = bool> {
-        let mut first_trailing_zero = 0;
-        for (i, limb) in s.as_ref().iter().enumerate().rev() {
-            first_trailing_zero = i * 64 + (64 - limb.leading_zeros()) as usize;
-            if *limb != 0 {
-                break;
-            }
-        }
-        let mut iter = Self::new(s);
-        iter.max_len = first_trailing_zero;
-        iter
-    }
 }
 
 impl<Slice: AsRef<[u64]>> Iterator for BitIteratorLE<Slice> {
@@ -139,16 +124,6 @@ mod tests {
         for _ in 0..61 {
             assert_eq!(Some(false), five.next());
         }
-        assert_eq!(None, five.next());
-    }
-
-    #[test]
-    fn test_bititerator_le_without_trailing_zeros() {
-        let mut five = BitIteratorLE::new_without_trailing_zeros(&[5]);
-
-        assert_eq!(Some(true), five.next());
-        assert_eq!(Some(false), five.next());
-        assert_eq!(Some(true), five.next());
         assert_eq!(None, five.next());
     }
 }

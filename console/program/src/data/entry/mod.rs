@@ -17,7 +17,7 @@
 mod decrypt;
 mod encrypt;
 mod num_randomizers;
-// mod to_bits;
+mod to_bits;
 
 use crate::{Ciphertext, FromFields, Plaintext, ToFields, Visibility};
 use snarkvm_console_network::Network;
@@ -35,38 +35,6 @@ pub enum Entry<N: Network, Private: Visibility<N>> {
     Public(Plaintext<N>),
     /// A private entry encrypted under the account owner's address.
     Private(Private),
-}
-
-impl<N: Network, Private: Visibility<N>> ToBits for Entry<N, Private> {
-    /// Returns this entry as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<bool> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![false, false],
-            Self::Public(..) => vec![false, true],
-            Self::Private(..) => vec![true, false],
-        };
-        match self {
-            Self::Constant(entry) => bits_le.extend(entry.to_bits_le()),
-            Self::Public(entry) => bits_le.extend(entry.to_bits_le()),
-            Self::Private(entry) => bits_le.extend(entry.to_bits_le()),
-        }
-        bits_le
-    }
-
-    /// Returns this entry as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<bool> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![false, false],
-            Self::Public(..) => vec![false, true],
-            Self::Private(..) => vec![true, false],
-        };
-        match self {
-            Self::Constant(entry) => bits_be.extend(entry.to_bits_be()),
-            Self::Public(entry) => bits_be.extend(entry.to_bits_be()),
-            Self::Private(entry) => bits_be.extend(entry.to_bits_be()),
-        }
-        bits_be
-    }
 }
 
 // impl<N: Network, Literal: EntryMode<N>>> Entry<N, Literal> {
