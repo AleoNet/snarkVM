@@ -168,12 +168,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let zeta_squared = zeta.square();
 
-        let t_evals = t_evals[0]
+        let mut t_evals = t_evals[0]
             .iter()
             .zip(t_evals[1].iter())
             .zip(t_evals[2].iter())
             .map(|((first, second), third)| *first + zeta * second + zeta_squared * third)
             .collect::<Vec<F>>();
+        t_evals.resize(num_constraints, F::zero());
 
         let t = LabeledPolynomial::new(
             "t".to_string(),

@@ -44,7 +44,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        5 * batch_size + (MM::ZK as usize)
+        7 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -57,6 +57,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_c", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("f", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
