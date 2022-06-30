@@ -101,6 +101,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             job_pool.add_job(move || {
                 Self::calculate_f(
                     witness_label("f", i),
+                    witness_label("s_1", i),
+                    witness_label("s_2", i),
                     z_a,
                     z_b,
                     z_c,
@@ -277,6 +279,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     #[allow(clippy::too_many_arguments)]
     fn calculate_f<'a>(
         label: impl ToString,
+        label_s_1: impl ToString,
+        label_s_2: impl ToString,
         z_a: &[F],
         z_b: &[F],
         z_c: &[F],
@@ -303,8 +307,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         evaluations.extend(state.index.t_evals.clone());
         // Split into alternating halves.
         let (s_1, s_2): (Vec<F>, Vec<F>) = evaluations.chunks(2).map(|els| (els[0], els[1])).unzip();
-        let s_1 = Self::calculate_z_m("s_1", &s_1, will_be_evaluated, state, r);
-        let s_2 = Self::calculate_z_m("s_2", &s_2, will_be_evaluated, state, r);
+        let s_1 = Self::calculate_z_m(label_s_1, &s_1, will_be_evaluated, state, r);
+        let s_2 = Self::calculate_z_m(label_s_2, &s_2, will_be_evaluated, state, r);
         PoolResult::TablePolys(vec![f.z_m().unwrap(), s_1.z_m().unwrap(), s_2.z_m().unwrap()])
     }
 }
