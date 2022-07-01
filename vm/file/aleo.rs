@@ -19,7 +19,6 @@ use snarkvm_compiler::Program;
 use anyhow::{anyhow, ensure, Result};
 use core::str::FromStr;
 use std::{
-    borrow::Cow,
     fs::{self, File},
     io::Write,
     path::Path,
@@ -50,7 +49,7 @@ impl FromStr for AleoFile {
         let program_string = s.to_string();
 
         // The file name is defined as the string up to the extension (excluding the extension).
-        let file_name = match program.id().network()?.to_string() == ALEO_FILE_EXTENSION.to_string() {
+        let file_name = match program.id().network()?.to_string() == *ALEO_FILE_EXTENSION {
             true => program.id().name().to_string(),
             false => program.id().to_string(),
         };
@@ -183,7 +182,7 @@ function compute:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Read the program from the string.
-        let file = AleoFile::from_str(&program_string).unwrap();
+        let file = AleoFile::from_str(program_string).unwrap();
         assert_eq!("token", file.file_name());
         assert_eq!(program_string, file.program_string());
         assert_eq!(&program, file.program());

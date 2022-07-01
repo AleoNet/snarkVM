@@ -19,7 +19,6 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, ensure, Result};
 use std::{
-    borrow::Cow,
     fs::{self, File},
     io::Write,
     path::Path,
