@@ -108,6 +108,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // // Ensure the record matches the declared record.
         // A::assert(public.record.is_equal(&record));
 
+        // Retrieve the number of inputs.
+        let num_inputs = inputs.len();
+
         // Inject the inputs.
         let inputs = function
             .inputs()
@@ -118,10 +121,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             .map(|((index, value_type), input)| {
                 use circuit::{Eject, Inject, ToBits};
 
-                // Inject the console input into a circuit input.
                 match value_type {
                     // A constant input is injected as `Mode::Constant` and hashed to a field element.
-                    // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
+                    // An expected hash is injected as `Mode::Constant`, and compared to the computed hash.
                     ValueType::Constant(..) => {
                         // Inject the input as `Mode::Constant`.
                         let input = CircuitValue::new(circuit::Mode::Constant, input.clone());
@@ -130,8 +132,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
                         // Hash the input to a field element.
                         let input_hash = A::hash_bhp1024(&input.to_bits_le());
-                        // Inject the expected hash as `Mode::Public`.
-                        let expected_hash = circuit::Field::<A>::new(circuit::Mode::Public, input_hash.eject_value());
+                        // Inject the expected hash as `Mode::Constant`.
+                        let expected_hash = circuit::Field::<A>::new(circuit::Mode::Constant, input_hash.eject_value());
                         // Ensure the computed hash matches the expected hash.
                         A::assert_eq(&input_hash, expected_hash);
 
@@ -161,7 +163,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         Ok(input)
                     }
                     // A private input is injected as `Mode::Private` and committed (using `tvk`) to a field element.
-                    // An expected hash is injected as `Mode::Public`, and compared to the commitment.
+                    // An expected commitment is injected as `Mode::Public`, and compared to the commitment.
                     ValueType::Private(..) => {
                         // Inject the input as `Mode::Private`.
                         let input = CircuitValue::new(circuit::Mode::Private, input.clone());
@@ -176,15 +178,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), input_index]);
 
                         // Commit the input to a field element.
-                        let input_commitment = A::commit_bhp1024(&input.to_bits_le(), &randomizer);
+                        let commitment = A::commit_bhp1024(&input.to_bits_le(), &randomizer);
                         // Inject the expected commitment as `Mode::Public`.
-                        let expected_cm =
-                            circuit::Field::<A>::new(circuit::Mode::Public, input_commitment.eject_value());
+                        let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
                         // Ensure the computed commitment matches the expected commitment.
-                        A::assert_eq(&input_commitment, expected_cm);
+                        A::assert_eq(&commitment, expected_cm);
 
                         // Add the input commitment to the trace.
-                        trace.add_input(input_commitment.eject_value())?;
+                        trace.add_input(commitment.eject_value())?;
                         // Return the input.
                         Ok(input)
                     }
@@ -225,27 +226,70 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         let outputs = stack.execute_function(&function, &inputs)?;
 
         // Load the outputs.
-        outputs.iter().try_for_each(|output| {
+        outputs.iter().enumerate().try_for_each(|(index, output)| {
             use circuit::{Eject, Inject, ToBits};
 
-            // Compute the output leaf.
-            let output_leaf = match output {
-                // TODO (howardwu): Handle encrypting the private output case.
-                circuit::Value::Constant(..) | circuit::Value::Public(..) | circuit::Value::Private(..) => {
-                    A::hash_bhp1024(&output.to_bits_le())
+            match output {
+                // For a constant output, compute the hash of the output.
+                // An expected hash is injected as `Mode::Constant`, and compared to the computed hash.
+                circuit::Value::Constant(output) => {
+                    // Hash the output to a field element.
+                    let output_hash = A::hash_bhp1024(&output.to_bits_le());
+                    // Inject the expected hash as `Mode::Public`.
+                    let expected_hash = circuit::Field::<A>::new(circuit::Mode::Constant, output_hash.eject_value());
+                    // Ensure the computed hash matches the expected hash.
+                    A::assert_eq(&output_hash, expected_hash);
+
+                    // Add the output hash to the trace.
+                    trace.add_output(output_hash.eject_value())?;
                 }
-                circuit::Value::Record(record) => record.to_commitment(),
+                // For a public output, compute the hash of the output.
+                // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
+                circuit::Value::Public(output) => {
+                    // Hash the output to a field element.
+                    let output_hash = A::hash_bhp1024(&output.to_bits_le());
+                    // Inject the expected hash as `Mode::Public`.
+                    let expected_hash = circuit::Field::<A>::new(circuit::Mode::Public, output_hash.eject_value());
+                    // Ensure the computed hash matches the expected hash.
+                    A::assert_eq(&output_hash, expected_hash);
+
+                    // Add the output hash to the trace.
+                    trace.add_output(output_hash.eject_value())?;
+                }
+                // For a private output, compute the commitment (using `tvk`) for the output.
+                // An expected commitment is injected as `Mode::Public`, and compared to the commitment.
+                circuit::Value::Private(output) => {
+                    // Construct the (console) output index as a field element.
+                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
+                    // Inject the output index as `Mode::Private`.
+                    let output_index = circuit::Field::new(circuit::Mode::Private, index);
+                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), output_index]);
+
+                    // Commit the output to a field element.
+                    let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
+                    // Inject the expected commitment as `Mode::Public`.
+                    let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
+                    // Ensure the computed commitment matches the expected commitment.
+                    A::assert_eq(&commitment, expected_cm);
+
+                    // Add the output commitment to the trace.
+                    trace.add_output(commitment.eject_value())?;
+                }
+                // For an output record, compute the record commitment.
+                // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
+                circuit::Value::Record(record) => {
+                    // Compute the record commitment.
+                    let commitment = record.to_commitment();
+                    // Inject the expected record commitment as `Mode::Public`.
+                    let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
+                    // Ensure the computed record commitment matches the expected record commitment.
+                    A::assert_eq(&commitment, expected_cm);
+
+                    // Add the record commitment to the trace.
+                    trace.add_output(commitment.eject_value())?;
+                }
             };
-
-            // Eject to the console output leaf.
-            let console_output_leaf = output_leaf.eject_value();
-            // Inject the output leaf as a public input.
-            let candidate_leaf = circuit::Field::<A>::new(circuit::Mode::Public, console_output_leaf);
-            // Ensure the candidate output leaf matches the computed output leaf.
-            A::assert_eq(candidate_leaf, &output_leaf);
-
-            // Add the console output leaf to the trace.
-            trace.add_output(console_output_leaf)?;
 
             Ok::<_, Error>(())
         })?;
