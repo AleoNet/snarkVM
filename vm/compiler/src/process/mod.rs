@@ -59,11 +59,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         inputs: &[StackValue<N>],
         rng: &mut R,
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+        // Retrieve the number of inputs.
+        let num_inputs = inputs.len();
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
         // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        if function.inputs().len() != num_inputs {
+            bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
         // Initialize the trace.
@@ -72,9 +74,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Ensure the circuit environment is clean.
         A::reset();
 
+        use circuit::Inject;
+
+        // Inject the caller as `Mode::Private`.
+        let caller = circuit::Address::new(circuit::Mode::Private, *trace.caller());
+
         // Compute the transition view key `tvk`.
         let tvk = {
-            use circuit::{Inject, ToGroup};
+            use circuit::ToGroup;
 
             // Inject `r_tcm` as `Mode::Private`.
             let r_tcm = circuit::Field::new(circuit::Mode::Private, *trace.r_tcm());
@@ -86,8 +93,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             // Ensure the transition public key `tpk` is `tsk * G`.
             A::assert_eq(&tpk, &A::g_scalar_multiply(&tsk));
 
-            // Inject the caller as `Mode::Private`.
-            let caller = circuit::Address::new(circuit::Mode::Private, *trace.caller()).to_group();
+            // Cast the caller into a group element.
+            let caller = caller.to_group();
             // Compute the transition view key `tvk` as `tsk * caller`.
             let tvk = &caller * tsk;
 
@@ -97,19 +104,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             let preimage = [&caller, &tpk, &tvk].map(|c| c.to_x_coordinate());
             A::assert_eq(&tcm, &A::hash_psd4(&preimage));
 
+            #[cfg(debug_assertions)]
+            Self::log_circuit("Transition View Key");
+
             // Output the transition view key `tvk`.
             tvk
         };
-
-        // // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-        // let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), public.index.to_field()]);
-        // // Encrypt the program state into a record, using the randomizer.
-        // let record = private.state.encrypt(&randomizer);
-        // // Ensure the record matches the declared record.
-        // A::assert(public.record.is_equal(&record));
-
-        // Retrieve the number of inputs.
-        let num_inputs = inputs.len();
 
         // Inject the inputs.
         let inputs = function
@@ -119,7 +119,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             .map(|(index, input_statement)| (index, input_statement.value_type()))
             .zip_eq(inputs)
             .map(|((index, value_type), input)| {
-                use circuit::{Eject, Inject, ToBits};
+                use circuit::{Eject, ToBits};
 
                 match value_type {
                     // A constant input is injected as `Mode::Constant` and hashed to a field element.
@@ -136,6 +136,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         let expected_hash = circuit::Field::<A>::new(circuit::Mode::Constant, input_hash.eject_value());
                         // Ensure the computed hash matches the expected hash.
                         A::assert_eq(&input_hash, expected_hash);
+
+                        #[cfg(debug_assertions)]
+                        Self::log_circuit("Constant Input");
 
                         // Add the input hash to the trace.
                         trace.add_input(input_hash.eject_value())?;
@@ -157,6 +160,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         // Ensure the computed hash matches the expected hash.
                         A::assert_eq(&input_hash, expected_hash);
 
+                        #[cfg(debug_assertions)]
+                        Self::log_circuit("Public Input");
+
                         // Add the input hash to the trace.
                         trace.add_input(input_hash.eject_value())?;
                         // Return the input.
@@ -174,7 +180,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         let index = console::types::Field::from_u16(index as u16);
                         // Inject the input index as `Mode::Private`.
                         let input_index = circuit::Field::new(circuit::Mode::Private, index);
-                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), input_index]);
 
                         // Commit the input to a field element.
@@ -184,12 +190,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         // Ensure the computed commitment matches the expected commitment.
                         A::assert_eq(&commitment, expected_cm);
 
+                        #[cfg(debug_assertions)]
+                        Self::log_circuit("Private Input");
+
                         // Add the input commitment to the trace.
                         trace.add_input(commitment.eject_value())?;
                         // Return the input.
                         Ok(input)
                     }
-                    // A record is injected as `Mode::Private`, and computed to its serial number.
+                    // An input record is injected as `Mode::Private`, and computed to its serial number.
                     // An expected serial number is injected as `Mode::Public`, and compared to the computed serial number.
                     ValueType::Record(..) => {
                         // Inject the input as `Mode::Private`.
@@ -211,6 +220,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                         // Ensure the computed serial number matches the expected serial number.
                         A::assert_eq(&serial_number, expected_sn);
 
+                        #[cfg(debug_assertions)]
+                        Self::log_circuit("Record Input");
+
                         // Add the serial number to the trace.
                         trace.add_input(serial_number.eject_value())?;
                         // Return the input.
@@ -225,9 +237,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Execute the function.
         let outputs = stack.execute_function(&function, &inputs)?;
 
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Function");
+
         // Load the outputs.
         outputs.iter().enumerate().try_for_each(|(index, output)| {
-            use circuit::{Eject, Inject, ToBits};
+            use circuit::{Eject, ToBits};
 
             match output {
                 // For a constant output, compute the hash of the output.
@@ -239,6 +254,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     let expected_hash = circuit::Field::<A>::new(circuit::Mode::Constant, output_hash.eject_value());
                     // Ensure the computed hash matches the expected hash.
                     A::assert_eq(&output_hash, expected_hash);
+
+                    #[cfg(debug_assertions)]
+                    Self::log_circuit("Constant Output");
 
                     // Add the output hash to the trace.
                     trace.add_output(output_hash.eject_value())?;
@@ -253,6 +271,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Ensure the computed hash matches the expected hash.
                     A::assert_eq(&output_hash, expected_hash);
 
+                    #[cfg(debug_assertions)]
+                    Self::log_circuit("Public Output");
+
                     // Add the output hash to the trace.
                     trace.add_output(output_hash.eject_value())?;
                 }
@@ -263,7 +284,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     let index = console::types::Field::from_u16((num_inputs + index) as u16);
                     // Inject the output index as `Mode::Private`.
                     let output_index = circuit::Field::new(circuit::Mode::Private, index);
-                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                     let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), output_index]);
 
                     // Commit the output to a field element.
@@ -273,10 +294,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Ensure the computed commitment matches the expected commitment.
                     A::assert_eq(&commitment, expected_cm);
 
+                    #[cfg(debug_assertions)]
+                    Self::log_circuit("Private Output");
+
                     // Add the output commitment to the trace.
                     trace.add_output(commitment.eject_value())?;
                 }
-                // For an output record, compute the record commitment.
+                // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
                 // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
                 circuit::Value::Record(record) => {
                     // Compute the record commitment.
@@ -288,6 +312,32 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
                     // Add the record commitment to the trace.
                     trace.add_output(commitment.eject_value())?;
+
+                    // Construct the (console) output index as a field element.
+                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
+                    // Inject the output index as `Mode::Private`.
+                    let output_index = circuit::Field::new(circuit::Mode::Private, index);
+                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), output_index]);
+
+                    // Compute the record nonce.
+                    let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
+                    // Inject the expected nonce as `Mode::Public`.
+                    let expected_nonce = circuit::Field::<A>::new(circuit::Mode::Public, nonce.eject_value());
+                    // Ensure the computed nonce matches the expected nonce.
+                    A::assert_eq(&nonce, expected_nonce);
+
+                    // Encrypt the record, using the randomizer.
+                    let encrypted_record = record.encrypt(&caller, &randomizer);
+                    // Compute the record checksum, as the hash of the encrypted record.
+                    let checksum = A::hash_bhp1024(&encrypted_record.to_bits_le());
+                    // Inject the expected record checksum as `Mode::Public`.
+                    let expected_checksum = circuit::Field::<A>::new(circuit::Mode::Public, checksum.eject_value());
+                    // Ensure the computed record checksum matches the expected record checksum.
+                    A::assert_eq(&checksum, expected_checksum);
+
+                    #[cfg(debug_assertions)]
+                    Self::log_circuit("Record Output");
                 }
             };
 
@@ -298,13 +348,25 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         trace.finalize()?;
 
         println!("{:?}", trace.leaves());
-        println!("Is satisfied? {} ({} constraints)", A::is_satisfied(), A::num_constraints());
-        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
-        println!(
-            "Count(Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})"
-        );
 
         Ok(outputs)
+    }
+
+    /// Prints the current state of the circuit.
+    fn log_circuit(scope: &str) {
+        use colored::Colorize;
+
+        // Determine if the circuit is satisfied.
+        let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
+        // Determine the count.
+        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+
+        // Print the log.
+        println!(
+            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+            scope.bold(),
+            width = 20
+        );
     }
 }
 

@@ -47,6 +47,9 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.57"
 
+[dependencies.colored]
+version = "2"
+
 [dependencies.indexmap]
 version = "1.8"
 

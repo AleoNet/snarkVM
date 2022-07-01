@@ -162,6 +162,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
+        // Retrieve the number of public variables in the circuit.
+        let num_public = A::num_public();
+
         // Initialize the stack.
         self.process_closure(&self.program.clone(), closure, true)?;
         self.console_registers.clear();
@@ -180,6 +183,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Execute the instructions.
         closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+
+        // Ensure the number of public variables remains the same.
+        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
 
         // Load the outputs.
         let outputs = closure.outputs().iter().map(|output| {
@@ -253,6 +259,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
 
+        // Retrieve the number of public variables in the circuit.
+        let num_public = A::num_public();
+
         // Initialize the stack.
         self.process_function(&self.program.clone(), function, true)?;
         self.console_registers.clear();
@@ -271,6 +280,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Execute the instructions.
         function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         function.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+
+        // Ensure the number of public variables remains the same.
+        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
 
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {

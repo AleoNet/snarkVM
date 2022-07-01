@@ -2263,6 +2263,7 @@ name = "snarkvm-compiler"
 version = "0.7.5"
 dependencies = [
  "anyhow",
+ "colored",
  "indexmap",
  "paste",
  "rand",
