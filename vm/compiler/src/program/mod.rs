@@ -29,6 +29,7 @@ pub use import::*;
 mod instruction;
 pub use instruction::*;
 
+mod bytes;
 mod matches;
 mod parse;
 

@@ -1990,6 +1990,7 @@ dependencies = [
  "self_update",
  "snarkvm-algorithms",
  "snarkvm-circuit",
+ "snarkvm-compiler",
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-dpc",
@@ -1998,6 +1999,7 @@ dependencies = [
  "snarkvm-parameters",
  "snarkvm-r1cs",
  "snarkvm-utilities",
+ "tempfile",
  "thiserror",
  "walkdir",
 ]
@@ -2253,6 +2255,22 @@ dependencies = [
  "snarkvm-circuit-types-field",
  "snarkvm-circuit-types-integers",
  "snarkvm-console-types-string",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-compiler"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "indexmap",
+ "paste",
+ "rand",
+ "snarkvm-algorithms",
+ "snarkvm-circuit",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
  "snarkvm-utilities",
 ]
 
@@ -2609,24 +2627,6 @@ dependencies = [
  "proc-macro2 1.0.40",
  "quote 1.0.20",
  "syn 1.0.98",
-]
-
-[[package]]
-name = "snarkvm-vm"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "indexmap",
- "itertools",
- "num-traits",
- "paste",
- "rand",
- "snarkvm-algorithms",
- "snarkvm-circuit",
- "snarkvm-console",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-utilities",
 ]
 
 [[package]]
