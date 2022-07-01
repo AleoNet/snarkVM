@@ -75,11 +75,12 @@ path = "vm/cli/main.rs"
 required-features = ["cli"]
 
 [features]
-default = ["cli"]
+default = ["cli", "file"]
 full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM CLI ##
 cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
+file = ["circuit", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
@@ -158,6 +159,11 @@ version = "0.7.5"
 version = "1.0.57"
 optional = true
 
+[dependencies.clap]
+version = "3.1"
+features = ["derive"]
+optional = true
+
 [dependencies.colored]
 version = "2"
 optional = true
@@ -166,17 +172,15 @@ optional = true
 version = "0.30"
 optional = true
 
-[dependencies.clap]
-version = "3.1"
-features = ["derive"]
-optional = true
-
 [dependencies.thiserror]
 version = "1.0"
 optional = true
 
 [dev-dependencies.rusty-hook]
 version = "0.11.2"
+
+[dev-dependencies.tempfile]
+version = "3.3"
 
 [build-dependencies.walkdir]
 version = "2"

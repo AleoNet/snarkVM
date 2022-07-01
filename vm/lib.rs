@@ -23,6 +23,8 @@ extern crate thiserror;
 
 #[cfg(feature = "cli")]
 pub mod cli;
+#[cfg(feature = "file")]
+pub mod file;
 
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;

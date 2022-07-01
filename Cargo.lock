@@ -1999,6 +1999,7 @@ dependencies = [
  "snarkvm-parameters",
  "snarkvm-r1cs",
  "snarkvm-utilities",
+ "tempfile",
  "thiserror",
  "walkdir",
 ]
