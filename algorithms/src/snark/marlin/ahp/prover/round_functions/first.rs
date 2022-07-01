@@ -44,7 +44,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        7 * batch_size + (MM::ZK as usize)
+        8 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -59,6 +59,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("f", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("z_2", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
@@ -103,6 +104,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     witness_label("f", i),
                     witness_label("s_1", i),
                     witness_label("s_2", i),
+                    witness_label("z_2", i),
                     z_a,
                     z_b,
                     z_c,
@@ -133,6 +135,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     f: table_polys[0].1.clone(),
                     s_1: table_polys[1].1.clone(),
                     s_2: table_polys[2].1.clone(),
+                    z_2: table_polys[3].1.clone(),
                     w_poly,
                     z_a_poly,
                     z_b_poly,
@@ -140,6 +143,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     f_poly: table_polys[0].0.clone(),
                     s_1_poly: table_polys[1].0.clone(),
                     s_2_poly: table_polys[2].0.clone(),
+                    z_2_poly: table_polys[3].0.clone(),
                 }
             })
             .collect::<Vec<_>>();
@@ -281,6 +285,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label: impl ToString,
         label_s_1: impl ToString,
         label_s_2: impl ToString,
+        label_z_2: impl ToString,
         z_a: &[F],
         z_b: &[F],
         z_c: &[F],
@@ -289,7 +294,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
     ) -> PoolResult<'a, F> {
-        let mut evaluations = cfg_iter!(z_a)
+        let constraint_domain = state.constraint_domain;
+        let f_evals = cfg_iter!(z_a)
             .zip(z_b)
             .zip(z_c)
             .zip(s_l)
@@ -303,13 +309,49 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect::<Vec<F>>();
 
-        let f = Self::calculate_z_m(label, &evaluations, will_be_evaluated, state, r);
-        evaluations.extend(state.index.t_evals.clone());
+        let f = Self::calculate_z_m(label, &f_evals, will_be_evaluated, state, r);
+        let mut s_evals = f_evals.clone();
+        s_evals.extend(state.index.t_evals.clone());
         // Split into alternating halves.
-        let (s_1, s_2): (Vec<F>, Vec<F>) = evaluations.chunks(2).map(|els| (els[0], els[1])).unzip();
-        let s_1 = Self::calculate_z_m(label_s_1, &s_1, will_be_evaluated, state, r);
-        let s_2 = Self::calculate_z_m(label_s_2, &s_2, will_be_evaluated, state, r);
-        PoolResult::TablePolys(vec![f.z_m().unwrap(), s_1.z_m().unwrap(), s_2.z_m().unwrap()])
+        let (s_1_evals, s_2_evals): (Vec<F>, Vec<F>) = s_evals.chunks(2).map(|els| (els[0], els[1])).unzip();
+        let s_1 = Self::calculate_z_m(label_s_1, &s_1_evals, will_be_evaluated, state, r);
+        let s_2 = Self::calculate_z_m(label_s_2, &s_2_evals, will_be_evaluated, state, r);
+        let z_2 = {
+            // Compute divisions for each constraint
+            let product_arguments = f_evals
+                .iter()
+                .enumerate()
+                .zip(state.index.t_evals.clone())
+                .zip(s_1_evals.clone())
+                .zip(s_2_evals)
+                .take(f_evals.len() - 1)
+                .map(|((((i, f), t), s_1), s_2)| {
+                    let one_plus_delta = F::one() + state.index.delta;
+                    let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
+                    one_plus_delta
+                        * (state.index.epsilon + f)
+                        * (epsilon_one_plus_delta + t + (state.index.delta * state.index.t_evals[i + 1]))
+                        * ((epsilon_one_plus_delta + s_1 + (s_2 * state.index.delta))
+                            * (epsilon_one_plus_delta + s_2 + (s_1_evals[i + 1] * state.index.delta)))
+                            .inverse()
+                            .unwrap()
+                })
+                .collect::<Vec<F>>();
+
+            // Create evaluations for z_2
+            // First element is one
+            let mut l_1 = F::one();
+            let mut z_2_evals = Vec::with_capacity(constraint_domain.size());
+            z_2_evals.push(l_1);
+            for s in product_arguments {
+                l_1 *= s;
+                z_2_evals.push(l_1);
+            }
+
+            Self::calculate_z_m(label_z_2, &z_2_evals, will_be_evaluated, state, r)
+        };
+
+        PoolResult::TablePolys(vec![f.z_m().unwrap(), s_1.z_m().unwrap(), s_2.z_m().unwrap(), z_2.z_m().unwrap()])
     }
 }
 

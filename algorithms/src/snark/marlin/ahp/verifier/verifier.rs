@@ -88,10 +88,10 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         fs_rng: &mut R,
     ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
-        let delta = elems[0];
-        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(delta).is_zero());
+        let theta = elems[0];
+        assert!(!state.constraint_domain.evaluate_vanishing_polynomial(theta).is_zero());
 
-        let message = SecondMessage { delta };
+        let message = SecondMessage { theta };
         state.second_round_message = Some(message);
 
         Ok((message, state))

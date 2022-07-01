@@ -117,6 +117,8 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub s_1: sonic_pc::Commitment<E>,
     /// Commitment to the `s_2` polynomial.
     pub s_2: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_2` polynomial.
+    pub z_2: sonic_pc::Commitment<E>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

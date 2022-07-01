@@ -35,7 +35,7 @@ pub struct FirstMessage<F> {
 #[derive(Copy, Clone, Debug)]
 pub struct SecondMessage<F> {
     /// Query for the second round of polynomials.
-    pub delta: F,
+    pub theta: F,
 }
 
 /// Third verifier message.

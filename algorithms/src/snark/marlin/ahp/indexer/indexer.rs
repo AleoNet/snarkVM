@@ -131,6 +131,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // but for marlin i dont think we have a transcript - although we probably can do something
         // similar with just hashing the indexed information.
         let zeta = F::one();
+        let delta = F::one();
+        let epsilon = F::one();
 
         let mut mul_constraint_evals = vec![F::zero(); num_constraints];
         ics.mul_constraints.iter().for_each(|index| mul_constraint_evals[*index] = F::one());
@@ -196,6 +198,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             zeta,
+            delta,
+            epsilon,
             s_m,
             s_l,
             s_l_evals: lookup_constraint_evals,

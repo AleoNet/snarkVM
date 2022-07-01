@@ -186,7 +186,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let r_b = state.fourth_round_message.as_ref().unwrap().r_b;
         let r_c = state.fourth_round_message.as_ref().unwrap().r_c;
 
-        let delta = state.second_round_message.unwrap().delta;
+        let theta = state.second_round_message.unwrap().theta;
         let beta = state.third_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         let zeta = state.zeta.unwrap();
@@ -271,7 +271,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .add(r_alpha_at_beta * eta_c * batch_z_c_at_beta, LCTerm::One)
                 .add(-t_at_beta * combined_x_at_beta, LCTerm::One)
                 .add(-beta * g_1_at_beta, LCTerm::One);
-            rowcheck += (delta, &lincheck_sumcheck);
+            rowcheck += (theta, &lincheck_sumcheck);
             rowcheck
                 .add(-v_H_at_beta, "h_1");
             rowcheck

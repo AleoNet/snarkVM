@@ -73,7 +73,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let zk_bound = Self::zk_bound();
 
-        let verifier::FirstMessage { alpha, eta_b, eta_c, batch_combiners } = verifier_message;
+        let verifier::FirstMessage { alpha, eta_b, eta_c, batch_combiners, .. } = verifier_message;
 
         let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&state, *alpha, *eta_b, *eta_c, batch_combiners);
 

@@ -54,7 +54,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> (prover::ThirdOracles<F>, prover::State<'a, F, MM>) {
         let constraint_domain = state.constraint_domain;
 
-        let delta = verifier_message.delta;
+        let theta = verifier_message.theta;
 
         let verifier::FirstMessage { batch_combiners, .. } = state
             .verifier_first_message
@@ -86,7 +86,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .sum::<DensePolynomial<F>>();
 
         let mut h_1 = state.h_1.as_ref().unwrap().clone();
-        cfg_iter_mut!(h_1.coeffs).for_each(|c| *c *= delta);
+        cfg_iter_mut!(h_1.coeffs).for_each(|c| *c *= theta);
 
         let (div, rem) = row.divide_by_vanishing_poly(constraint_domain).unwrap();
         assert!(rem.is_zero());

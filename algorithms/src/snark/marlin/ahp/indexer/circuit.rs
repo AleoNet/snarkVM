@@ -59,6 +59,11 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     /// compression factor
     pub zeta: F,
 
+    /// Query for the lookup polynomial.
+    pub delta: F,
+    /// Query for the lookup polynomial.
+    pub epsilon: F,
+
     /// Selectors.
     pub s_m: LabeledPolynomial<F>,
     pub s_l: LabeledPolynomial<F>,
@@ -119,6 +124,8 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.b_arith.serialize_with_mode(&mut writer, compress)?;
         self.c_arith.serialize_with_mode(&mut writer, compress)?;
         self.zeta.serialize_with_mode(&mut writer, compress)?;
+        self.delta.serialize_with_mode(&mut writer, compress)?;
+        self.epsilon.serialize_with_mode(&mut writer, compress)?;
         self.s_m.serialize_with_mode(&mut writer, compress)?;
         self.s_l.serialize_with_mode(&mut writer, compress)?;
         self.s_l_evals.serialize_with_mode(&mut writer, compress)?;
@@ -140,6 +147,8 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.b_arith.serialized_size(mode);
         size += self.c_arith.serialized_size(mode);
         size += self.zeta.serialized_size(mode);
+        size += self.delta.serialized_size(mode);
+        size += self.epsilon.serialized_size(mode);
         size += self.s_m.serialized_size(mode);
         size += self.s_l.serialized_size(mode);
         size += self.s_l_evals.serialized_size(mode);
@@ -199,6 +208,8 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             fft_precomputation,
             ifft_precomputation,
             zeta: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            epsilon: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_m: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
