@@ -22,6 +22,7 @@ use console::{
     account::Address,
     network::prelude::*,
     program::{Identifier, Plaintext, Value, ValueType},
+    transition::SerialNumbers,
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -32,22 +33,163 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given inputs.
     #[inline]
-    pub fn evaluate(
+    pub fn evaluate<R: Rng + CryptoRng>(
         &self,
+        caller: &Address<N>,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
+        rng: &mut R,
     ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Retrieve the number of inputs.
+        let num_inputs = inputs.len();
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
         // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        if function.inputs().len() != num_inputs {
+            bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
+
+        // Initialize the trace.
+        let mut trace = Trace::<N, A>::new(*caller, rng)?;
+
+        // Compute the transition view key `tvk`.
+        let tvk = {
+            // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+            let tsk = N::hash_to_scalar_psd2(&[*trace.r_tcm()])?;
+            // Ensure the transition public key `tpk` is `tsk * G`.
+            ensure!(trace.tpk() == &N::g_scalar_multiply(&tsk), "Invalid transition public key");
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = **caller * tsk;
+            // Ensure the transition view key commitment `tcm` is `Hash(caller, tpk, tvk)`.
+            let preimage = [**caller, *trace.tpk(), tvk].map(|c| c.to_x_coordinate());
+            ensure!(trace.tcm() == &N::hash_psd4(&preimage)?, "Invalid transition view key commitment");
+            // Output the transition view key `tvk`.
+            tvk
+        };
+
+        // Prepare the inputs.
+        function
+            .inputs()
+            .iter()
+            .enumerate()
+            .map(|(index, input_statement)| (index, input_statement.value_type()))
+            .zip_eq(inputs)
+            .try_for_each(|((index, value_type), input)| {
+                match value_type {
+                    // A constant input is hashed to a field element.
+                    ValueType::Constant(..) => {
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        // Hash the input to a field element.
+                        let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        // Add the input hash to the trace.
+                        trace.add_input(input_hash)?;
+                    }
+                    // A public input is hashed to a field element.
+                    ValueType::Public(..) => {
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        // Hash the input to a field element.
+                        let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        // Add the input hash to the trace.
+                        trace.add_input(input_hash)?;
+                    }
+                    // A private input is committed (using `tvk`) to a field element.
+                    ValueType::Private(..) => {
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        // Construct the (console) input index as a field element.
+                        let index = console::types::Field::from_u16(index as u16);
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = N::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), index])?;
+                        // Commit the input to a field element.
+                        let commitment = N::commit_bhp1024(&input.to_bits_le(), &randomizer)?;
+                        // Add the input commitment to the trace.
+                        trace.add_input(commitment)?;
+                    }
+                    // An input record is computed to its serial number.
+                    ValueType::Record(..) => {
+                        // Compute the record commitment.
+                        let commitment = match &input {
+                            StackValue::Record(record) => record.to_commitment()?,
+                            // Ensure the input is a record.
+                            StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                        };
+                        // TODO (howardwu): Compute the serial number.
+                        // Compute the serial number.
+                        let serial_number = commitment;
+                        // Add the serial number to the trace.
+                        trace.add_input(serial_number)?;
+                    }
+                }
+                Ok(())
+            })?;
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Evaluate the function.
-        stack.evaluate_function(&function, inputs)
+        let outputs = stack.evaluate_function(&function, &inputs)?;
+
+        // Load the outputs.
+        outputs.iter().enumerate().try_for_each(|(index, output)| {
+            match output {
+                // For a constant output, compute the hash of the output.
+                Value::Constant(output) => {
+                    // Hash the output to a field element.
+                    let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
+                    // Add the output hash to the trace.
+                    trace.add_output(output_hash)?;
+                }
+                // For a public output, compute the hash of the output.
+                Value::Public(output) => {
+                    // Hash the output to a field element.
+                    let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
+                    // Add the output hash to the trace.
+                    trace.add_output(output_hash)?;
+                }
+                // For a private output, compute the commitment (using `tvk`) for the output.
+                Value::Private(output) => {
+                    // Construct the (console) output index as a field element.
+                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
+                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = N::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), index])?;
+                    // Commit the output to a field element.
+                    let commitment = N::commit_bhp1024(&output.to_bits_le(), &randomizer)?;
+                    // Add the output commitment to the trace.
+                    trace.add_output(commitment)?;
+                }
+                // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
+                // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
+                Value::Record(record) => {
+                    // Compute the record commitment.
+                    let commitment = record.to_commitment()?;
+                    // Add the record commitment to the trace.
+                    trace.add_output(commitment)?;
+
+                    // Construct the (console) output index as a field element.
+                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
+                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = N::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), index])?;
+
+                    // Compute the record nonce.
+                    let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
+
+                    // Encrypt the record, using the randomizer.
+                    let encrypted_record = record.encrypt(*caller, randomizer)?;
+                    // Compute the record checksum, as the hash of the encrypted record.
+                    let checksum = N::hash_bhp1024(&encrypted_record.to_bits_le())?;
+                }
+            };
+
+            Ok::<_, Error>(())
+        })?;
+
+        // Finalize the trace.
+        trace.finalize()?;
+
+        println!("{:?}", trace.leaves());
+
+        Ok(outputs)
     }
 
     /// Executes a program function on the given inputs.
@@ -55,6 +197,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     pub fn execute<R: Rng + CryptoRng>(
         &self,
         caller: Address<N>,
+        // signature: &SerialNumbers<N>,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
         rng: &mut R,
