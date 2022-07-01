@@ -59,9 +59,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         inputs: &[StackValue<N>],
         rng: &mut R,
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
-        // Ensure the circuit environment is clean.
-        A::reset();
-
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
         // Ensure the number of inputs matches the number of input statements.
@@ -72,54 +69,155 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Initialize the trace.
         let mut trace = Trace::<N, A>::new(caller, rng)?;
 
+        // Ensure the circuit environment is clean.
+        A::reset();
+
+        // Compute the transition view key `tvk`.
+        let tvk = {
+            use circuit::{Inject, ToGroup};
+
+            // Inject `r_tcm` as `Mode::Private`.
+            let r_tcm = circuit::Field::new(circuit::Mode::Private, *trace.r_tcm());
+            // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
+            let tsk = A::hash_to_scalar_psd2(&[r_tcm]);
+
+            // Inject the expected `tpk` as `Mode::Public`.
+            let tpk = circuit::Group::new(circuit::Mode::Public, *trace.tpk());
+            // Ensure the transition public key `tpk` is `tsk * G`.
+            A::assert_eq(&tpk, &A::g_scalar_multiply(&tsk));
+
+            // Inject the caller as `Mode::Private`.
+            let caller = circuit::Address::new(circuit::Mode::Private, *trace.caller()).to_group();
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = &caller * tsk;
+
+            // Inject the expected `tcm` as `Mode::Public`.
+            let tcm = circuit::Field::<A>::new(circuit::Mode::Public, *trace.tcm());
+            // Ensure the transition view key commitment `tcm` is `Hash(caller, tpk, tvk)`.
+            let preimage = [&caller, &tpk, &tvk].map(|c| c.to_x_coordinate());
+            A::assert_eq(&tcm, &A::hash_psd4(&preimage));
+
+            // Output the transition view key `tvk`.
+            tvk
+        };
+
+        // // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        // let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), public.index.to_field()]);
+        // // Encrypt the program state into a record, using the randomizer.
+        // let record = private.state.encrypt(&randomizer);
+        // // Ensure the record matches the declared record.
+        // A::assert(public.record.is_equal(&record));
+
         // Inject the inputs.
-        let inputs: Vec<_> = function
+        let inputs = function
             .inputs()
             .iter()
-            .map(|i| i.value_type())
+            .enumerate()
+            .map(|(index, input_statement)| (index, input_statement.value_type()))
             .zip_eq(inputs)
-            .map(|(value_type, input)| {
+            .map(|((index, value_type), input)| {
                 use circuit::{Eject, Inject, ToBits};
 
                 // Inject the console input into a circuit input.
-                let input = match value_type {
-                    // Constant inputs are injected as constants.
-                    ValueType::Constant(..) => CircuitValue::new(circuit::Mode::Constant, input.clone()),
-                    // Public and private inputs are injected as privates. Records inherit their visibility.
-                    ValueType::Public(..) | ValueType::Private(..) | ValueType::Record(..) => {
-                        CircuitValue::new(circuit::Mode::Private, input.clone())
-                    }
-                };
+                match value_type {
+                    // A constant input is injected as `Mode::Constant` and hashed to a field element.
+                    // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
+                    ValueType::Constant(..) => {
+                        // Inject the input as `Mode::Constant`.
+                        let input = CircuitValue::new(circuit::Mode::Constant, input.clone());
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
 
-                // Compute the input leaf.
-                #[allow(clippy::let_and_return)]
-                let input_leaf = match &input {
-                    // TODO (howardwu): Handle encrypting the private input case.
-                    CircuitValue::Plaintext(..) => A::hash_bhp1024(&input.to_bits_le()),
-                    CircuitValue::Record(record) => {
+                        // Hash the input to a field element.
+                        let input_hash = A::hash_bhp1024(&input.to_bits_le());
+                        // Inject the expected hash as `Mode::Public`.
+                        let expected_hash = circuit::Field::<A>::new(circuit::Mode::Public, input_hash.eject_value());
+                        // Ensure the computed hash matches the expected hash.
+                        A::assert_eq(&input_hash, expected_hash);
+
+                        // Add the input hash to the trace.
+                        trace.add_input(input_hash.eject_value())?;
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // A public input is injected as `Mode::Private` and hashed to a field element.
+                    // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
+                    ValueType::Public(..) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = CircuitValue::new(circuit::Mode::Private, input.clone());
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+
+                        // Hash the input to a field element.
+                        let input_hash = A::hash_bhp1024(&input.to_bits_le());
+                        // Inject the expected hash as `Mode::Public`.
+                        let expected_hash = circuit::Field::<A>::new(circuit::Mode::Public, input_hash.eject_value());
+                        // Ensure the computed hash matches the expected hash.
+                        A::assert_eq(&input_hash, expected_hash);
+
+                        // Add the input hash to the trace.
+                        trace.add_input(input_hash.eject_value())?;
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // A private input is injected as `Mode::Private` and committed (using `tvk`) to a field element.
+                    // An expected hash is injected as `Mode::Public`, and compared to the commitment.
+                    ValueType::Private(..) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = CircuitValue::new(circuit::Mode::Private, input.clone());
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+
+                        // Construct the (console) input index as a field element.
+                        let index = console::types::Field::from_u16(index as u16);
+                        // Inject the input index as `Mode::Private`.
+                        let input_index = circuit::Field::new(circuit::Mode::Private, index);
+                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = A::hash_to_scalar_psd2(&[tvk.to_x_coordinate(), input_index]);
+
+                        // Commit the input to a field element.
+                        let input_commitment = A::commit_bhp1024(&input.to_bits_le(), &randomizer);
+                        // Inject the expected commitment as `Mode::Public`.
+                        let expected_cm =
+                            circuit::Field::<A>::new(circuit::Mode::Public, input_commitment.eject_value());
+                        // Ensure the computed commitment matches the expected commitment.
+                        A::assert_eq(&input_commitment, expected_cm);
+
+                        // Add the input commitment to the trace.
+                        trace.add_input(input_commitment.eject_value())?;
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // A record is injected as `Mode::Private`, and computed to its serial number.
+                    // An expected serial number is injected as `Mode::Public`, and compared to the computed serial number.
+                    ValueType::Record(..) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = CircuitValue::new(circuit::Mode::Private, input.clone());
+                        // Retrieve the record from the input.
+                        let record = match &input {
+                            CircuitValue::Record(record) => record,
+                            // Ensure the input is a record.
+                            CircuitValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                        };
+
                         // Compute the record commitment.
                         let commitment = record.to_commitment();
                         // TODO (howardwu): Compute the serial number.
                         // Compute the serial number.
                         let serial_number = commitment;
-                        // Output the serial number.
-                        serial_number
+                        // Inject the expected serial number as `Mode::Public`.
+                        let expected_sn = circuit::Field::<A>::new(circuit::Mode::Public, serial_number.eject_value());
+                        // Ensure the computed serial number matches the expected serial number.
+                        A::assert_eq(&serial_number, expected_sn);
+
+                        // Add the serial number to the trace.
+                        trace.add_input(serial_number.eject_value())?;
+                        // Return the input.
+                        Ok(input)
                     }
-                };
-
-                // Eject to the console input leaf.
-                let console_input_leaf = input_leaf.eject_value();
-                // Inject the input leaf as a public input.
-                let candidate_leaf = circuit::Field::<A>::new(circuit::Mode::Public, console_input_leaf);
-                // Ensure the candidate input leaf matches the computed input leaf.
-                A::assert_eq(candidate_leaf, &input_leaf);
-
-                // Add the console input leaf to the trace.
-                trace.add_input(console_input_leaf)?;
-
-                Ok::<_, Error>(input)
+                }
             })
-            .try_collect()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
