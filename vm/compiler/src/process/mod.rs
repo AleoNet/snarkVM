@@ -238,7 +238,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         let outputs = stack.execute_function(&function, &inputs)?;
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Function");
+        Self::log_circuit(format!("Function {}", function.name()));
 
         // Load the outputs.
         outputs.iter().enumerate().try_for_each(|(index, output)| {
@@ -353,7 +353,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     }
 
     /// Prints the current state of the circuit.
-    fn log_circuit(scope: &str) {
+    fn log_circuit<S: Into<String>>(scope: S) {
         use colored::Colorize;
 
         // Determine if the circuit is satisfied.
@@ -364,7 +364,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Print the log.
         println!(
             "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
-            scope.bold(),
+            scope.into().bold(),
             width = 20
         );
     }
