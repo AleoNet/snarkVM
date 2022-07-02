@@ -19,7 +19,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 mod verify;
 
-use crate::{Identifier, ProgramID};
+use crate::{CircuitValue, Identifier, ProgramID};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group};
@@ -29,8 +29,8 @@ pub enum InputID<A: Aleo> {
     Constant(Field<A>),
     /// The hash of the public input.
     Public(Field<A>),
-    /// The commitment of the private input.
-    Private(Field<A>),
+    /// The index and commitment of the private input.
+    Private(Field<A>, Field<A>),
     /// The `(commitment, H, r * H, gamma, serial_number)` tuple of the record input.
     Record(Field<A>, Group<A>, Group<A>, Group<A>, Field<A>),
 }
@@ -40,17 +40,23 @@ impl<A: Aleo> Inject for InputID<A> {
     type Primitive = console::InputID<A::Network>;
 
     /// Initializes the input ID from the given mode and console input ID.
-    fn new(mode: Mode, input: Self::Primitive) -> Self {
+    fn new(_: Mode, input: Self::Primitive) -> Self {
         match input {
-            console::InputID::Constant(field) => Self::Constant(Field::new(mode, field)),
-            console::InputID::Public(field) => Self::Public(Field::new(mode, field)),
-            console::InputID::Private(field) => Self::Private(Field::new(mode, field)),
+            // Inject the expected hash as `Mode::Constant`.
+            console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
+            // Inject the expected hash as `Mode::Public`.
+            console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
+            // Inject the expected index as `Mode::Private` and commitment as `Mode::Public`.
+            console::InputID::Private(index, field) => {
+                Self::Private(Field::new(Mode::Private, index), Field::new(Mode::Public, field))
+            }
+            // Inject the expected serial number as `Mode::Public`, and all other values as `Mode::Private`.
             console::InputID::Record(commitment, h, h_r, gamma, serial_number) => Self::Record(
-                Field::new(mode, commitment),
-                Group::new(mode, h),
-                Group::new(mode, h_r),
-                Group::new(mode, gamma),
-                Field::new(mode, serial_number),
+                Field::new(Mode::Private, commitment),
+                Group::new(Mode::Private, h),
+                Group::new(Mode::Private, h_r),
+                Group::new(Mode::Private, gamma),
+                Field::new(Mode::Public, serial_number),
             ),
         }
     }
@@ -65,7 +71,7 @@ impl<A: Aleo> Eject for InputID<A> {
         match self {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
-            Self::Private(field) => field.eject_mode(),
+            Self::Private(index, field) => (index, field).eject_mode(),
             Self::Record(commitment, h, h_r, gamma, serial_number) => Mode::combine(commitment.eject_mode(), [
                 h.eject_mode(),
                 h_r.eject_mode(),
@@ -80,7 +86,7 @@ impl<A: Aleo> Eject for InputID<A> {
         match self {
             Self::Constant(field) => console::InputID::Constant(field.eject_value()),
             Self::Public(field) => console::InputID::Public(field.eject_value()),
-            Self::Private(field) => console::InputID::Private(field.eject_value()),
+            Self::Private(index, field) => console::InputID::Private(index.eject_value(), field.eject_value()),
             Self::Record(commitment, h, h_r, gamma, serial_number) => console::InputID::Record(
                 commitment.eject_value(),
                 h.eject_value(),
@@ -100,7 +106,7 @@ impl<A: Aleo> ToFields for InputID<A> {
         match self {
             InputID::Constant(field) => vec![field.clone()],
             InputID::Public(field) => vec![field.clone()],
-            InputID::Private(field) => vec![field.clone()],
+            InputID::Private(index, field) => vec![index.clone(), field.clone()],
             InputID::Record(commitment, h, h_r, gamma, serial_number) => vec![
                 commitment.clone(),
                 h.to_x_coordinate(),
@@ -121,6 +127,8 @@ pub struct Call<A: Aleo> {
     function_name: Identifier<A>,
     /// The function input IDs.
     input_ids: Vec<InputID<A>>,
+    /// The function inputs.
+    inputs: Vec<CircuitValue<A>>,
     /// The signature for the transition.
     signature: Signature<A>,
     /// The transition view key.
@@ -133,11 +141,63 @@ impl<A: Aleo> Inject for Call<A> {
 
     /// Initializes the call from the given mode and console call.
     fn new(mode: Mode, call: Self::Primitive) -> Self {
+        // Inject the inputs.
+        let inputs = match call
+            .input_ids()
+            .iter()
+            .zip_eq(call.inputs())
+            .map(|(input_id, input)| {
+                match input_id {
+                    // A constant input is injected as `Mode::Constant`.
+                    console::InputID::Constant(input_hash) => {
+                        // Inject the input as `Mode::Constant`.
+                        let input = CircuitValue::new(Mode::Constant, input.clone());
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // A public input is injected as `Mode::Private`.
+                    console::InputID::Public(input_hash) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = CircuitValue::new(Mode::Private, input.clone());
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // A private input is injected as `Mode::Private`.
+                    console::InputID::Private(index, commitment) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = CircuitValue::new(Mode::Private, input.clone());
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // An input record is injected as `Mode::Private`.
+                    console::InputID::Record(_, _, _, _, serial_number) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = CircuitValue::new(Mode::Private, input.clone());
+                        // Ensure the input is a record.
+                        ensure!(matches!(input, CircuitValue::Record(..)), "Expected a record input");
+                        // Return the input.
+                        Ok(input)
+                    }
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(inputs) => inputs,
+            Err(error) => A::halt(format!("{error}")),
+        };
+
         Self {
             caller: Address::new(mode, *call.caller()),
             program_id: ProgramID::new(mode, *call.program_id()),
             function_name: Identifier::new(mode, *call.function_name()),
             input_ids: call.input_ids().iter().map(|input_id| InputID::new(mode, input_id.clone())).collect(),
+            inputs,
             signature: Signature::new(mode, call.signature().clone()),
             tvk: Field::new(mode, *call.tvk()),
         }
@@ -165,6 +225,11 @@ impl<A: Aleo> Call<A> {
         &self.input_ids
     }
 
+    /// Returns the function inputs.
+    pub fn inputs(&self) -> &[CircuitValue<A>] {
+        &self.inputs
+    }
+
     /// Returns the signature for the transition.
     pub const fn signature(&self) -> &Signature<A> {
         &self.signature
@@ -186,6 +251,7 @@ impl<A: Aleo> Eject for Call<A> {
             self.program_id.eject_mode(),
             self.function_name.eject_mode(),
             self.input_ids.eject_mode(),
+            self.inputs.eject_mode(),
             self.signature.eject_mode(),
             self.tvk.eject_mode(),
         ])
@@ -198,6 +264,7 @@ impl<A: Aleo> Eject for Call<A> {
             self.program_id.eject_value(),
             self.function_name.eject_value(),
             self.input_ids.iter().map(|input_id| input_id.eject_value()).collect(),
+            self.inputs.eject_value(),
             self.signature.eject_value(),
             self.tvk.eject_value(),
         ))

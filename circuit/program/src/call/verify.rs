@@ -26,7 +26,7 @@ impl<A: Aleo> Call<A> {
         let input_ids = self.input_ids.iter().map(|input| input.to_fields()).collect::<Vec<_>>();
 
         // Construct the signature message as `[tvk, input IDs]`.
-        let mut message = Vec::with_capacity(1 + input_ids.len());
+        let mut message = Vec::with_capacity(1 + 2 * input_ids.len());
         message.push(self.tvk.clone());
         message.extend(input_ids.into_iter().flatten());
 
@@ -35,14 +35,35 @@ impl<A: Aleo> Call<A> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        // Initialize a vector for the serial number checks.
-        let mut check_sn = Vec::with_capacity(self.input_ids.len());
-
-        // Verify each serial number is computed correctly.
-        for input in self.input_ids.iter() {
-            match input {
-                InputID::Constant(..) | InputID::Public(..) | InputID::Private(..) => continue,
+        // Initialize an iterator for the input checks.
+        let input_checks = self.input_ids.iter().zip_eq(&self.inputs).map(|(input_id, input)| {
+            match input_id {
+                // A constant input is hashed to a field element.
+                InputID::Constant(input_hash) => {
+                    // Ensure the expected hash matches the computed hash.
+                    // input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
+                    A::hash_bhp1024(&input.to_bits_le()).is_equal(input_hash)
+                }
+                // A public input is hashed to a field element.
+                InputID::Public(input_hash) => {
+                    // Ensure the expected hash matches the computed hash.
+                    input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
+                }
+                // A private input is committed (using `tvk`) to a field element.
+                InputID::Private(input_index, input_commitment) => {
+                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index.clone()]);
+                    // Ensure the expected commitment matches the computed commitment.
+                    input_commitment.is_equal(&A::commit_bhp1024(&input.to_bits_le(), &randomizer))
+                }
+                // An input record is computed to its serial number.
                 InputID::Record(commitment, h, h_r, gamma, serial_number) => {
+                    // Compute the record commitment.
+                    let candidate_commitment = match &input {
+                        CircuitValue::Record(record) => record.to_commitment(),
+                        // Ensure the input is a record.
+                        CircuitValue::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                    };
                     // Compute the generator `H` as `HashToGroup(commitment)`.
                     let candidate_h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
                     // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
@@ -54,20 +75,20 @@ impl<A: Aleo> Call<A> {
                     let candidate_serial_number =
                         A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
 
-                    // Ensure the candidate H matches the expected H.
-                    check_sn.push(
-                        h.is_equal(&candidate_h)
+                    // Ensure the commitment matches.
+                    commitment.is_equal(&candidate_commitment)
+                        // Ensure the candidate H matches the expected H.
+                        & h.is_equal(&candidate_h)
                         // Ensure `h_r` matches.
                         & h_r.is_equal(&candidate_h_r)
                         // Ensure the candidate serial number matches the expected serial number.
-                        & serial_number.is_equal(&candidate_serial_number),
-                    );
+                        & serial_number.is_equal(&candidate_serial_number)
                 }
             }
-        }
+        });
 
         // Verify the signature and serial numbers are valid.
-        self.signature.verify(&self.caller, &message) & check_sn.iter().fold(Boolean::constant(true), |acc, x| acc & x)
+        self.signature.verify(&self.caller, &message) & input_checks.fold(Boolean::constant(true), |acc, x| acc & x)
     }
 }
 
@@ -124,7 +145,10 @@ mod tests {
             Circuit::scope(format!("Call {i}"), || {
                 let candidate = call.verify();
                 assert!(candidate.eject_value());
-                assert_scope!(<=num_constants, num_public, num_private, num_constraints);
+                match mode.is_constant() {
+                    true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
+                    false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
+                }
             })
         }
         Ok(())
@@ -132,16 +156,18 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 27963, 0, 0, 0)
+        // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
+        // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
+        check_verify(Mode::Constant, 36311, 0, 21761, 21817)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 19338, 0, 28084, 28140)
+        check_verify(Mode::Public, 33824, 0, 30092, 30152)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 19338, 0, 28084, 28140)
+        check_verify(Mode::Private, 33824, 0, 30092, 30152)
     }
 }

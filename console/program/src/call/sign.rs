@@ -52,7 +52,7 @@ impl<N: Network> Call<N> {
         preimage.push(tvk);
 
         // Initialize a vector to store the input IDs.
-        let mut inputs = Vec::with_capacity(request.inputs().len());
+        let mut input_ids = Vec::with_capacity(request.inputs().len());
 
         // Prepare the inputs.
         for (index, (input, input_type)) in request.inputs().iter().zip_eq(input_types).enumerate() {
@@ -64,7 +64,7 @@ impl<N: Network> Call<N> {
                     // Hash the input to a field element.
                     let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
                     // Add the input ID to the inputs.
-                    inputs.push(InputID::Constant(input_hash));
+                    input_ids.push(InputID::Constant(input_hash));
                 }
                 // A public input is hashed to a field element.
                 ValueType::Public(..) => {
@@ -73,7 +73,7 @@ impl<N: Network> Call<N> {
                     // Hash the input to a field element.
                     let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
                     // Add the input ID to the inputs.
-                    inputs.push(InputID::Public(input_hash));
+                    input_ids.push(InputID::Public(input_hash));
                 }
                 // A private input is committed (using `tvk`) to a field element.
                 ValueType::Private(..) => {
@@ -86,7 +86,7 @@ impl<N: Network> Call<N> {
                     // Commit the input to a field element.
                     let input_commitment = N::commit_bhp1024(&input.to_bits_le(), &randomizer)?;
                     // Add the input commitment to the inputs.
-                    inputs.push(InputID::Private(input_commitment));
+                    input_ids.push(InputID::Private(index, input_commitment));
                 }
                 // An input record is computed to its serial number.
                 ValueType::Record(..) => {
@@ -114,13 +114,13 @@ impl<N: Network> Call<N> {
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
 
                     // Add the commitment, H, r * H, gamma, and serial number to the inputs.
-                    inputs.push(InputID::Record(commitment, h, h_r, gamma, serial_number));
+                    input_ids.push(InputID::Record(commitment, h, h_r, gamma, serial_number));
                 }
             }
         }
         // Append the input IDs to the preimage.
         preimage
-            .extend(inputs.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>()?.into_iter().flatten());
+            .extend(input_ids.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>()?.into_iter().flatten());
 
         // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, input IDs])`.
         let challenge = N::hash_to_scalar_psd8(&preimage)?;
@@ -131,7 +131,8 @@ impl<N: Network> Call<N> {
             caller,
             program_id: *request.program_id(),
             function_name: *request.function_name(),
-            input_ids: inputs,
+            input_ids,
+            inputs: request.inputs().to_vec(),
             signature: Signature::from((challenge, response, compute_key)),
             tvk,
         })

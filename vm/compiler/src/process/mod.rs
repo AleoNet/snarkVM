@@ -20,7 +20,7 @@ use trace::*;
 use crate::{Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Call, Plaintext, StackValue, Value, ValueType},
+    program::{Call, InputID, Plaintext, StackValue, Value, ValueType},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -31,7 +31,12 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given inputs.
     #[inline]
-    pub fn evaluate(&self, call: &Call<N>, inputs: &[StackValue<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    pub fn evaluate(&self, call: &Call<N>) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Ensure the call is well-formed.
+        ensure!(call.verify(), "Call is invalid");
+
+        // Retrieve the inputs.
+        let inputs = call.inputs();
         // Retrieve the number of inputs.
         let num_inputs = inputs.len();
         // Retrieve the function from the program.
@@ -45,62 +50,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         let mut trace = Trace::<N>::new(*call.caller())?;
 
         // Prepare the inputs.
-        function
-            .inputs()
-            .iter()
-            .enumerate()
-            .map(|(index, input_statement)| (index, input_statement.value_type()))
-            .zip_eq(inputs)
-            .try_for_each(|((index, value_type), input)| {
-                match value_type {
-                    // A constant input is hashed to a field element.
-                    ValueType::Constant(..) => {
-                        // Ensure the input is a plaintext.
-                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                        // Hash the input to a field element.
-                        let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
-                        // Add the input hash to the trace.
-                        trace.add_input(input_hash)?;
-                    }
-                    // A public input is hashed to a field element.
-                    ValueType::Public(..) => {
-                        // Ensure the input is a plaintext.
-                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                        // Hash the input to a field element.
-                        let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
-                        // Add the input hash to the trace.
-                        trace.add_input(input_hash)?;
-                    }
-                    // A private input is committed (using `tvk`) to a field element.
-                    ValueType::Private(..) => {
-                        // Ensure the input is a plaintext.
-                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                        // Construct the (console) input index as a field element.
-                        let index = console::types::Field::from_u16(index as u16);
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = N::hash_to_scalar_psd2(&[*call.tvk(), index])?;
-                        // Commit the input to a field element.
-                        let commitment = N::commit_bhp1024(&input.to_bits_le(), &randomizer)?;
-                        // Add the input commitment to the trace.
-                        trace.add_input(commitment)?;
-                    }
-                    // An input record is computed to its serial number.
-                    ValueType::Record(..) => {
-                        // Compute the record commitment.
-                        let commitment = match &input {
-                            StackValue::Record(record) => record.to_commitment()?,
-                            // Ensure the input is a record.
-                            StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
-                        };
-                        // TODO (howardwu): Compute the serial number.
-                        // Compute the serial number.
-                        let serial_number = commitment;
-                        // Add the serial number to the trace.
-                        trace.add_input(serial_number)?;
-                    }
-                }
-                Ok(())
-            })?;
+        call.input_ids().iter().try_for_each(|input_id| {
+            match input_id {
+                // A constant input is hashed to a field element.
+                InputID::Constant(input_hash) => trace.add_input(*input_hash),
+                // A public input is hashed to a field element.
+                InputID::Public(input_hash) => trace.add_input(*input_hash),
+                // A private input is committed (using `tvk`) to a field element.
+                InputID::Private(_, commitment) => trace.add_input(*commitment),
+                // An input record is computed to its serial number.
+                InputID::Record(_, _, _, _, serial_number) => trace.add_input(*serial_number),
+            }
+        })?;
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
@@ -171,11 +132,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Executes a program function on the given inputs.
     #[inline]
-    pub fn execute(
-        &self,
-        call: &Call<N>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+    pub fn execute(&self, call: &Call<N>) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+        // Ensure the call is well-formed.
+        ensure!(call.verify(), "Call is invalid");
+
+        // Retrieve the inputs.
+        let inputs = call.inputs();
         // Retrieve the number of inputs.
         let num_inputs = inputs.len();
         // Retrieve the function from the program.
@@ -187,6 +149,20 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
         // Initialize the trace.
         let mut trace = Trace::<N>::new(*call.caller())?;
+
+        // Prepare the inputs.
+        call.input_ids().iter().try_for_each(|input_id| {
+            match input_id {
+                // A constant input is hashed to a field element.
+                InputID::Constant(input_hash) => trace.add_input(*input_hash),
+                // A public input is hashed to a field element.
+                InputID::Public(input_hash) => trace.add_input(*input_hash),
+                // A private input is committed (using `tvk`) to a field element.
+                InputID::Private(_, commitment) => trace.add_input(*commitment),
+                // An input record is computed to its serial number.
+                InputID::Record(_, _, _, _, serial_number) => trace.add_input(*serial_number),
+            }
+        })?;
 
         // Ensure the circuit environment is clean.
         A::reset();
@@ -205,133 +181,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         #[cfg(debug_assertions)]
         Self::log_circuit("Call Authentication");
 
-        // Inject the inputs.
-        let inputs = function
-            .inputs()
-            .iter()
-            .enumerate()
-            .map(|(index, input_statement)| (index, input_statement.value_type()))
-            .zip_eq(inputs)
-            .map(|((index, value_type), input)| {
-                use circuit::{Eject, ToBits};
-
-                match value_type {
-                    // A constant input is injected as `Mode::Constant` and hashed to a field element.
-                    // An expected hash is injected as `Mode::Constant`, and compared to the computed hash.
-                    ValueType::Constant(..) => {
-                        // Inject the input as `Mode::Constant`.
-                        let input = circuit::CircuitValue::new(circuit::Mode::Constant, input.clone());
-                        // Ensure the input is a plaintext.
-                        ensure!(matches!(input, circuit::CircuitValue::Plaintext(..)), "Expected a plaintext input");
-
-                        // Hash the input to a field element.
-                        let input_hash = A::hash_bhp1024(&input.to_bits_le());
-                        // Inject the expected hash as `Mode::Constant`.
-                        let expected_hash = circuit::Field::<A>::new(circuit::Mode::Constant, input_hash.eject_value());
-                        // Ensure the computed hash matches the expected hash.
-                        A::assert_eq(&input_hash, expected_hash);
-
-                        #[cfg(debug_assertions)]
-                        Self::log_circuit("Constant Input");
-
-                        // Add the input hash to the trace.
-                        trace.add_input(input_hash.eject_value())?;
-                        // Return the input.
-                        Ok(input)
-                    }
-                    // A public input is injected as `Mode::Private` and hashed to a field element.
-                    // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
-                    ValueType::Public(..) => {
-                        // Inject the input as `Mode::Private`.
-                        let input = circuit::CircuitValue::new(circuit::Mode::Private, input.clone());
-                        // Ensure the input is a plaintext.
-                        ensure!(matches!(input, circuit::CircuitValue::Plaintext(..)), "Expected a plaintext input");
-
-                        // Hash the input to a field element.
-                        let input_hash = A::hash_bhp1024(&input.to_bits_le());
-                        // Inject the expected hash as `Mode::Public`.
-                        let expected_hash = circuit::Field::<A>::new(circuit::Mode::Public, input_hash.eject_value());
-                        // Ensure the computed hash matches the expected hash.
-                        A::assert_eq(&input_hash, expected_hash);
-
-                        #[cfg(debug_assertions)]
-                        Self::log_circuit("Public Input");
-
-                        // Add the input hash to the trace.
-                        trace.add_input(input_hash.eject_value())?;
-                        // Return the input.
-                        Ok(input)
-                    }
-                    // A private input is injected as `Mode::Private` and committed (using `tvk`) to a field element.
-                    // An expected commitment is injected as `Mode::Public`, and compared to the commitment.
-                    ValueType::Private(..) => {
-                        // Inject the input as `Mode::Private`.
-                        let input = circuit::CircuitValue::new(circuit::Mode::Private, input.clone());
-                        // Ensure the input is a plaintext.
-                        ensure!(matches!(input, circuit::CircuitValue::Plaintext(..)), "Expected a plaintext input");
-
-                        // Construct the (console) input index as a field element.
-                        let index = console::types::Field::from_u16(index as u16);
-                        // Inject the input index as `Mode::Private`.
-                        let input_index = circuit::Field::new(circuit::Mode::Private, index);
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[call.tvk().clone(), input_index]);
-
-                        // Commit the input to a field element.
-                        let commitment = A::commit_bhp1024(&input.to_bits_le(), &randomizer);
-                        // Inject the expected commitment as `Mode::Public`.
-                        let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
-                        // Ensure the computed commitment matches the expected commitment.
-                        A::assert_eq(&commitment, expected_cm);
-
-                        #[cfg(debug_assertions)]
-                        Self::log_circuit("Private Input");
-
-                        // Add the input commitment to the trace.
-                        trace.add_input(commitment.eject_value())?;
-                        // Return the input.
-                        Ok(input)
-                    }
-                    // An input record is injected as `Mode::Private`, and computed to its serial number.
-                    // An expected serial number is injected as `Mode::Public`, and compared to the computed serial number.
-                    ValueType::Record(..) => {
-                        // Inject the input as `Mode::Private`.
-                        let input = circuit::CircuitValue::new(circuit::Mode::Private, input.clone());
-                        // Retrieve the record from the input.
-                        let record = match &input {
-                            circuit::CircuitValue::Record(record) => record,
-                            // Ensure the input is a record.
-                            circuit::CircuitValue::Plaintext(..) => {
-                                bail!("Expected a record input, found a plaintext input")
-                            }
-                        };
-
-                        // Compute the record commitment.
-                        let commitment = record.to_commitment();
-                        // TODO (howardwu): Compute the serial number.
-                        // Compute the serial number.
-                        let serial_number = commitment;
-                        // Inject the expected serial number as `Mode::Public`.
-                        let expected_sn = circuit::Field::<A>::new(circuit::Mode::Public, serial_number.eject_value());
-                        // Ensure the computed serial number matches the expected serial number.
-                        A::assert_eq(&serial_number, expected_sn);
-
-                        #[cfg(debug_assertions)]
-                        Self::log_circuit("Record Input");
-
-                        // Add the serial number to the trace.
-                        trace.add_input(serial_number.eject_value())?;
-                        // Return the input.
-                        Ok(input)
-                    }
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
-
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Execute the function.
-        let outputs = stack.execute_function(&function, &inputs)?;
+        let outputs = stack.execute_function(&function, call.inputs())?;
 
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function {}", function.name()));
@@ -547,7 +400,7 @@ function compute:
         ];
 
         // Construct the call via a request.
-        let call = Request::new(caller, *program.id(), function_name, inputs.clone())
+        let call = Request::new(caller, *program.id(), function_name, inputs)
             .to_call(&input_types, &caller_private_key.sk_sig(), &caller_compute_key.pr_sig(), rng)
             .unwrap();
 
@@ -564,7 +417,7 @@ function compute:
         use circuit::Eject;
 
         // Re-run to ensure state continues to work.
-        let candidate = process.execute(&call, &inputs).unwrap();
+        let candidate = process.execute(&call).unwrap();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[1].eject_value());
         assert_eq!(r4, candidate[2].eject_value());
@@ -578,8 +431,8 @@ function compute:
         // assert_eq!(90497, CurrentAleo::num_gates());
         assert_eq!(37145, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(39541, CurrentAleo::num_private());
-        assert_eq!(39578, CurrentAleo::num_constraints());
-        assert_eq!(132220, CurrentAleo::num_gates());
+        assert_eq!(39547, CurrentAleo::num_private());
+        assert_eq!(39587, CurrentAleo::num_constraints());
+        assert_eq!(132247, CurrentAleo::num_gates());
     }
 }

@@ -28,8 +28,8 @@ pub enum InputID<N: Network> {
     Constant(Field<N>),
     /// The hash of the public input.
     Public(Field<N>),
-    /// The commitment of the private input.
-    Private(Field<N>),
+    /// The index and commitment of the private input.
+    Private(Field<N>, Field<N>),
     /// The `(commitment, H, r * H, gamma, serial_number)` tuple of the record input.
     Record(Field<N>, Group<N>, Group<N>, Group<N>, Field<N>),
 }
@@ -42,7 +42,7 @@ impl<N: Network> ToFields for InputID<N> {
         match self {
             InputID::Constant(field) => Ok(vec![*field]),
             InputID::Public(field) => Ok(vec![*field]),
-            InputID::Private(field) => Ok(vec![*field]),
+            InputID::Private(index, field) => Ok(vec![*index, *field]),
             InputID::Record(commitment, h, h_r, gamma, serial_number) => Ok(vec![
                 *commitment,
                 h.to_x_coordinate(),
@@ -76,25 +76,31 @@ pub struct Call<N: Network> {
     function_name: Identifier<N>,
     /// The input ID for the transition.
     input_ids: Vec<InputID<N>>,
+    /// The function inputs.
+    inputs: Vec<StackValue<N>>,
     /// The signature for the transition.
     signature: Signature<N>,
     /// The transition view key.
     tvk: Field<N>,
 }
 
-impl<N: Network> From<(Address<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Signature<N>, Field<N>)> for Call<N> {
+impl<N: Network>
+    From<(Address<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Vec<StackValue<N>>, Signature<N>, Field<N>)>
+    for Call<N>
+{
     /// Note: See `Call::sign` to create the call. This method is used to eject from a circuit.
     fn from(
-        (caller, program_id, function_name, input_ids, signature, tvk): (
+        (caller, program_id, function_name, input_ids, inputs, signature, tvk): (
             Address<N>,
             ProgramID<N>,
             Identifier<N>,
             Vec<InputID<N>>,
+            Vec<StackValue<N>>,
             Signature<N>,
             Field<N>,
         ),
     ) -> Self {
-        Self { caller, program_id, function_name, input_ids, signature, tvk }
+        Self { caller, program_id, function_name, input_ids, inputs, signature, tvk }
     }
 }
 
@@ -115,8 +121,13 @@ impl<N: Network> Call<N> {
     }
 
     /// Returns the input ID for the transition.
-    pub fn input_ids(&self) -> &Vec<InputID<N>> {
+    pub fn input_ids(&self) -> &[InputID<N>] {
         &self.input_ids
+    }
+
+    /// Returns the function inputs.
+    pub fn inputs(&self) -> &[StackValue<N>] {
+        &self.inputs
     }
 
     /// Returns the signature for the transition.
