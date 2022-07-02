@@ -17,15 +17,14 @@
 use super::*;
 
 impl<N: Network> Request<N> {
-    /// Returns the input commitments from this request.
-    pub fn to_commitments(&self) -> Result<Vec<Field<N>>> {
-        self.inputs
-            .iter()
-            .flat_map(|input| match input {
-                StackValue::Plaintext(..) => None,
-                StackValue::Record(record) => Some(record),
-            })
-            .map(|record| record.to_commitment())
-            .collect()
+    /// Signs the request and returns the trace corresponding to this request.
+    pub fn to_trace<R: Rng + CryptoRng>(
+        &self,
+        input_types: &[ValueType<N>],
+        sk_sig: &Scalar<N>,
+        pr_sig: &Group<N>,
+        rng: &mut R,
+    ) -> Result<Trace<N>> {
+        Trace::sign(self, input_types, sk_sig, pr_sig, rng)
     }
 }

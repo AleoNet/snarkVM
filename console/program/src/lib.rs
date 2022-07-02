@@ -23,9 +23,6 @@ extern crate enum_index_derive;
 pub use snarkvm_console_network::Network;
 pub use snarkvm_console_types::prelude::*;
 
-// mod call;
-// pub use call::*;
-
 mod data;
 pub use data::*;
 
@@ -37,3 +34,6 @@ pub use id::*;
 
 mod request;
 pub use request::*;
+
+mod trace;
+pub use trace::*;

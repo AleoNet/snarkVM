@@ -26,9 +26,9 @@ use snarkvm_console_types::prelude::*;
 pub struct Call<N: Network> {
     /// The request for the call.
     request: Request<N>,
-    /// The serial numbers of the record.
+    /// The serial numbers of the input records.
     serial_numbers: Vec<Field<N>>,
-    /// The signature for the serial number: `(challenge, response, compute_key, gamma)`.
+    /// The signature for the call: `(challenge, response, compute_key, gamma)`.
     signature: (Scalar<N>, Scalar<N>, ComputeKey<N>, Vec<Group<N>>),
 }
 

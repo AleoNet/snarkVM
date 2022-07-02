@@ -40,6 +40,8 @@ impl<N: Network> Call<N> {
         let compute_key = ComputeKey::try_from((pk_sig, *pr_sig))?;
         // Derive the address from the compute key.
         let address = Address::try_from(compute_key)?;
+        // Ensure the address matches the request caller.
+        ensure!(address == request.caller(), "Request caller does not match derived address during signing");
 
         // Construct the hash input as `(r * G, pk_sig, pr_sig, address, function_call, ∀ [H, r * H, gamma])`.
         let mut preimage = Vec::with_capacity(4 + (3 * commitments.len()) + function_call.len());

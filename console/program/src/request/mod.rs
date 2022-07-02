@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 // mod bytes;
-mod to_commitments;
 mod to_fields;
+mod to_trace;
 
-use crate::{Identifier, ProgramID, StackValue};
+use crate::{Identifier, ProgramID, StackValue, Trace, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -40,12 +40,11 @@ impl<N: Network> Request<N> {
     /// Initializes a new request.
     pub const fn new(
         caller: Address<N>,
-        network_id: u16,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         inputs: Vec<StackValue<N>>,
     ) -> Self {
-        Self { caller, network_id: U16::new(network_id), program_id, function_name, inputs }
+        Self { caller, network_id: U16::new(N::ID), program_id, function_name, inputs }
     }
 
     /// Returns the request caller.
