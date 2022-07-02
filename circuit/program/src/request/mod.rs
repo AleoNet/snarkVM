@@ -29,7 +29,7 @@ pub enum InputID<A: Aleo> {
     Constant(Field<A>),
     /// The hash of the public input.
     Public(Field<A>),
-    /// The index and commitment of the private input.
+    /// The index and ciphertext hash of the private input.
     Private(Field<A>, Field<A>),
     /// The `(commitment, H, r * H, gamma, serial_number)` tuple of the record input.
     Record(Field<A>, Group<A>, Group<A>, Group<A>, Field<A>),
@@ -46,7 +46,7 @@ impl<A: Aleo> Inject for InputID<A> {
             console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
             // Inject the expected hash as `Mode::Public`.
             console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
-            // Inject the expected index as `Mode::Private` and commitment as `Mode::Public`.
+            // Inject the expected index as `Mode::Private` and ciphertext hash as `Mode::Public`.
             console::InputID::Private(index, field) => {
                 Self::Private(Field::new(Mode::Private, index), Field::new(Mode::Public, field))
             }

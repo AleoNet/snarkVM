@@ -23,8 +23,9 @@ mod to_bits;
 mod to_fields;
 
 use crate::Plaintext;
+use snarkvm_console_account::ViewKey;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Field;
+use snarkvm_console_types::{Field, Group};
 
 use core::ops::Deref;
 

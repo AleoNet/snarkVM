@@ -88,7 +88,7 @@ impl<N: Network> Request<N> {
                     // Add the input ID to the inputs.
                     input_ids.push(InputID::Public(input_hash));
                 }
-                // A private input is committed (using `tvk`) to a field element.
+                // A private input is encrypted (using `tvk`) and hashed to a field element.
                 ValueType::Private(..) => {
                     // Ensure the input is a plaintext.
                     ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
@@ -96,10 +96,17 @@ impl<N: Network> Request<N> {
                     let index = Field::from_u16(index as u16);
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                     let randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
-                    // Commit the input to a field element.
-                    let input_commitment = N::commit_bhp1024(&input.to_bits_le(), &randomizer)?;
-                    // Add the input commitment to the inputs.
-                    input_ids.push(InputID::Private(index, input_commitment));
+
+                    // Compute the ciphertext.
+                    let ciphertext = match &input {
+                        StackValue::Plaintext(plaintext) => plaintext.encrypt(&caller, randomizer)?,
+                        // Ensure the input is a plaintext.
+                        StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                    };
+                    // Hash the ciphertext to a field element.
+                    let input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                    // Add the input hash to the inputs.
+                    input_ids.push(InputID::Private(index, input_hash));
                 }
                 // An input record is computed to its serial number.
                 ValueType::Record(..) => {

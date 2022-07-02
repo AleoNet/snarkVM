@@ -63,12 +63,18 @@ impl<A: Aleo> Request<A> {
                     // Ensure the expected hash matches the computed hash.
                     input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
                 }
-                // A private input is committed (using `tvk`) to a field element.
-                InputID::Private(input_index, input_commitment) => {
+                // A private input is encrypted (using `tvk`) and hashed to a field element.
+                InputID::Private(input_index, input_hash) => {
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                     let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index.clone()]);
-                    // Ensure the expected commitment matches the computed commitment.
-                    input_commitment.is_equal(&A::commit_bhp1024(&input.to_bits_le(), &randomizer))
+                    // Compute the ciphertext.
+                    let ciphertext = match &input {
+                        CircuitValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer),
+                        // Ensure the input is a plaintext.
+                        CircuitValue::Record(..) => A::halt("Expected a plaintext input, found a record input"),
+                    };
+                    // Ensure the expected hash matches the computed hash.
+                    input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                 }
                 // An input record is computed to its serial number.
                 InputID::Record(commitment, h, h_r, gamma, serial_number) => {
@@ -138,13 +144,26 @@ mod tests {
             let program_id = console::ProgramID::from_str("token.aleo")?;
             let function_name = console::Identifier::from_str("transfer")?;
 
-            // Construct two input records.
-            let input_record = console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap();
-            let input = console::StackValue::<<Circuit as Environment>::Network>::Record(input_record.clone());
-            let inputs = vec![input.clone(), input.clone()];
+            // Construct four inputs.
+            let input_constant = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+                console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
+            );
+            let input_public = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+                console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
+            );
+            let input_private = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+                console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
+            );
+            let input_record = console::StackValue::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.
-            let input_types = vec![console::ValueType::Record(console::Identifier::from_str("token")?); 2];
+            let input_types = vec![
+                console::ValueType::from_str("amount.constant").unwrap(),
+                console::ValueType::from_str("amount.public").unwrap(),
+                console::ValueType::from_str("amount.private").unwrap(),
+                console::ValueType::from_str("token.record").unwrap(),
+            ];
 
             // Compute the signed request.
             let request =
@@ -170,16 +189,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 36939, 0, 21761, 21817)
+        check_verify(Mode::Constant, 35544, 0, 16595, 16629)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 34442, 0, 30087, 30147)
+        check_verify(Mode::Public, 33054, 0, 24665, 24703)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 34442, 0, 30087, 30147)
+        check_verify(Mode::Private, 33054, 0, 24665, 24703)
     }
 }

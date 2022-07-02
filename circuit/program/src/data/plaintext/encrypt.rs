@@ -17,6 +17,14 @@
 use super::*;
 
 impl<A: Aleo> Plaintext<A> {
+    /// Encrypts `self` to the given address under the given randomizer.
+    pub fn encrypt(&self, address: &Address<A>, randomizer: Scalar<A>) -> Ciphertext<A> {
+        // Compute the plaintext view key.
+        let plaintext_view_key = (address.to_group() * randomizer).to_x_coordinate();
+        // Encrypt the plaintext.
+        self.encrypt_symmetric(plaintext_view_key)
+    }
+
     /// Encrypts `self` under the given plaintext view key.
     pub fn encrypt_symmetric(&self, plaintext_view_key: Field<A>) -> Ciphertext<A> {
         // Determine the number of randomizers needed to encrypt the plaintext.

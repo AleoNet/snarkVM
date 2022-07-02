@@ -17,6 +17,14 @@
 use super::*;
 
 impl<N: Network> Plaintext<N> {
+    /// Encrypts `self` to the given address under the given randomizer.
+    pub fn encrypt(&self, address: &Address<N>, randomizer: Scalar<N>) -> Result<Ciphertext<N>> {
+        // Compute the plaintext view key.
+        let plaintext_view_key = (**address * randomizer).to_x_coordinate();
+        // Encrypt the plaintext.
+        self.encrypt_symmetric(plaintext_view_key)
+    }
+
     /// Encrypts `self` under the given plaintext view key.
     pub fn encrypt_symmetric(&self, plaintext_view_key: Field<N>) -> Result<Ciphertext<N>> {
         // Determine the number of randomizers needed to encrypt the plaintext.

@@ -29,7 +29,7 @@ pub enum InputID<N: Network> {
     Constant(Field<N>),
     /// The hash of the public input.
     Public(Field<N>),
-    /// The index and commitment of the private input.
+    /// The index and ciphertext hash of the private input.
     Private(Field<N>, Field<N>),
     /// The `(commitment, H, r * H, gamma, serial_number)` tuple of the record input.
     Record(Field<N>, Group<N>, Group<N>, Group<N>, Field<N>),

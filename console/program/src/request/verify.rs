@@ -81,16 +81,22 @@ impl<N: Network> Request<N> {
                     // Ensure the input hash matches.
                     ensure!(*input_hash == candidate_input_hash, "Expected a public input with the same hash");
                 }
-                // A private input is committed (using `tvk`) to a field element.
-                InputID::Private(index, input_commitment) => {
+                // A private input is encrypted (using `tvk`) and hashed to a field element.
+                InputID::Private(index, input_hash) => {
                     // Ensure the input is a plaintext.
                     ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                     let randomizer = N::hash_to_scalar_psd2(&[self.tvk, *index])?;
-                    // Commit the input to a field element.
-                    let commitment = N::commit_bhp1024(&input.to_bits_le(), &randomizer)?;
+                    // Compute the ciphertext.
+                    let ciphertext = match &input {
+                        StackValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer)?,
+                        // Ensure the input is a plaintext.
+                        StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                    };
+                    // Hash the ciphertext to a field element.
+                    let candidate_input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
                     // Ensure the input hash matches.
-                    ensure!(*input_commitment == commitment, "Expected a private input with the same commitment");
+                    ensure!(*input_hash == candidate_input_hash, "Expected a private input with the same commitment");
                 }
                 // An input record is computed to its serial number.
                 InputID::Record(commitment, h, h_r, gamma, serial_number) => {
@@ -139,7 +145,7 @@ impl<N: Network> Request<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Record;
+    use crate::{Plaintext, Record};
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
 
@@ -164,13 +170,21 @@ mod tests {
             let program_id = ProgramID::from_str("token.aleo")?;
             let function_name = Identifier::from_str("transfer")?;
 
-            // Construct two input records.
-            let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap();
-            let input = StackValue::<CurrentNetwork>::Record(input_record.clone());
-            let inputs = vec![input.clone(), input.clone()];
+            // Construct four inputs.
+            let input_constant =
+                StackValue::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+            let input_public = StackValue::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+            let input_private = StackValue::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+            let input_record = StackValue::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.
-            let input_types = vec![ValueType::Record(Identifier::from_str("token")?); 2];
+            let input_types = vec![
+                ValueType::from_str("amount.constant").unwrap(),
+                ValueType::from_str("amount.public").unwrap(),
+                ValueType::from_str("amount.private").unwrap(),
+                ValueType::from_str("token.record").unwrap(),
+            ];
 
             // Compute the signed request.
             let request = Request::sign(&sk_sig, &pr_sig, program_id, function_name, inputs, &input_types, rng)?;
