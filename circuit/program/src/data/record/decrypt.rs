@@ -93,7 +93,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
 mod tests {
     use super::*;
     use crate::{Circuit, Literal};
-    use snarkvm_circuit_types::{Field, U64};
+    use snarkvm_circuit_types::{Address, Field, U64};
     use snarkvm_utilities::{test_crypto_rng, test_rng, Uniform};
 
     use anyhow::Result;
@@ -151,7 +151,7 @@ mod tests {
 
             // Initialize a view key and address.
             let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
-            let owner = Address::<Circuit>::new(Mode::Public, address);
+            let owner = address;
 
             // Public owner and public balance.
             {

@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 27867, 0, 0, 0)
+        check_verify(Mode::Constant, 27963, 0, 0, 0)
     }
 
     #[test]

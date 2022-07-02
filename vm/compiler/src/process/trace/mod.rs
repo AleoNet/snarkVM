@@ -16,10 +16,9 @@
 
 use console::{
     network::{prelude::*, BHPMerkleTree},
-    types::{Address, Field, Group},
+    types::{Address, Field},
 };
 
-use core::marker::PhantomData;
 use indexmap::IndexMap;
 
 /// N::TRACE_DEPTH
@@ -43,7 +42,7 @@ const TRANSITION_DEPTH: u8 = 4;
 ///       /       \              /       \         /        \              /       \
 /// \[input_0, input_1, ..., input_6, input_7, output_0, output_1, ..., output_6, output_7\]
 /// ```
-pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Trace<N: Network> {
     /// The Merkle tree of transition roots.
     transaction: BHPMerkleTree<N, TRANSACTION_DEPTH>,
     /// The root for the `i-th` transition.
@@ -52,14 +51,6 @@ pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
     leaves: IndexMap<u8, Vec<Option<Field<N>>>>,
     /// The caller of the current transition.
     caller: Address<N>,
-    /// The current transition view key commitment randomizer.
-    r_tcm: Field<N>,
-    /// The current transition view key commitment (i.e. `tcm := Hash(caller, tpk, tvk)`).
-    tcm: Field<N>,
-    /// The current transition public key (i.e. `tpk := Hash(r_tcm) * G`).
-    tpk: Group<N>,
-    /// The current transition view key (i.e. `tvk := tsk * caller`).
-    tvk: Group<N>,
     /// The tracker for the current transition index.
     transition_index: u8,
     /// The tracker for the current input index.
@@ -68,30 +59,20 @@ pub struct Trace<N: Network, A: circuit::Aleo<Network = N>> {
     output_index: u8,
     /// The boolean indicator if the trace is finalized.
     is_finalized: bool,
-    /// PhantomData.
-    _phantom: PhantomData<A>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
+impl<N: Network> Trace<N> {
     /// Initializes a new stack trace.
-    pub fn new<R: Rng + CryptoRng>(caller: Address<N>, rng: &mut R) -> Result<Self> {
-        // Compute the transition view key.
-        let (r_tcm, tcm, tpk, tvk) = Self::compute_tvk::<R>(caller, rng)?;
-
+    pub fn new(caller: Address<N>) -> Result<Self> {
         Ok(Self {
             transaction: N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?,
             roots: IndexMap::new(),
             leaves: IndexMap::new(),
             caller,
-            r_tcm,
-            tcm,
-            tpk,
-            tvk,
             transition_index: 0,
             input_index: 0,
             output_index: 0,
             is_finalized: false,
-            _phantom: PhantomData,
         })
     }
 
@@ -108,26 +89,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
     /// Returns the current caller.
     pub const fn caller(&self) -> &Address<N> {
         &self.caller
-    }
-
-    /// Returns the current transition view key commitment randomizer.
-    pub const fn r_tcm(&self) -> &Field<N> {
-        &self.r_tcm
-    }
-
-    /// Returns the current transition view key commitment.
-    pub const fn tcm(&self) -> &Field<N> {
-        &self.tcm
-    }
-
-    /// Returns the current transition public key.
-    pub const fn tpk(&self) -> &Group<N> {
-        &self.tpk
-    }
-
-    /// Returns the current transition view key.
-    pub const fn tvk(&self) -> &Group<N> {
-        &self.tvk
     }
 
     /// Adds an input to the trace.
@@ -178,7 +139,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
     }
 
     /// Updates the current caller, transition view key, transition index, input index, and output index.
-    pub fn next_transition<R: Rng + CryptoRng>(&mut self, caller: Address<N>, rng: &mut R) -> Result<()> {
+    pub fn next_transition(&mut self, caller: Address<N>) -> Result<()> {
         // Ensure the trace is not finalized.
         ensure!(!self.is_finalized, "Trace is finalized, cannot call next transition");
         // Ensure the number of transition roots is correct.
@@ -214,13 +175,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
 
         // Update the caller.
         self.caller = caller;
-
-        // Update the transition view key.
-        let (r_tcm, tcm, tpk, tvk) = Self::compute_tvk::<R>(caller, rng)?;
-        self.r_tcm = r_tcm;
-        self.tcm = tcm;
-        self.tpk = tpk;
-        self.tvk = tvk;
 
         // Increment the transition index.
         self.transition_index += 1;
@@ -329,41 +283,4 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Trace<N, A> {
             false => bail!("Trace has an incorrect transaction root: expected {expected_root}, found {root}"),
         }
     }
-
-    /// Returns the transition view key, given the caller address and an RNG.
-    #[allow(clippy::type_complexity)]
-    pub(crate) fn compute_tvk<R: Rng + CryptoRng>(
-        caller: Address<N>,
-        rng: &mut R,
-    ) -> Result<(Field<N>, Field<N>, Group<N>, Group<N>)> {
-        // Sample a random nonce.
-        let r_tcm = Uniform::rand(rng);
-        // Compute the transition secret key `tsk` as `HashToScalar(r_tcm)`.
-        // TODO (howardwu): Domain separator.
-        // let tsk = N::hash_to_scalar_psd2(&[N::tvk_domain(), r_tcm])?;
-        let tsk = N::hash_to_scalar_psd2(&[r_tcm])?;
-        // Compute the transition public key `tpk` as `tsk * G`.
-        let tpk = N::g_scalar_multiply(&tsk);
-        // Compute the transition view key `tvk` as `tsk * caller`.
-        let tvk = *caller * tsk;
-        // Compute the transition view key commitment `tcm` := `Hash(tvk)`.
-        // TODO (howardwu): Domain separator.
-        // Compute the transition view key commitment `tcm` as `Hash(caller, tpk, tvk)`.
-        let tcm = N::hash_psd4(&[*caller, tpk, tvk].map(|c| c.to_x_coordinate()))?;
-        Ok((r_tcm, tcm, tpk, tvk))
-    }
-
-    // /// Returns the encryption randomizer for the given input index.
-    // pub(crate) fn compute_input_randomizer(&self, input_index: u16) -> Result<Field<N>> {
-    //     // Compute the encryption randomizer as `Hash(tvk || index)`.
-    //     N::hash_psd2(&[self.tvk.to_x_coordinate(), U16::new(input_index).to_field()?])
-    // }
-
-    // /// Returns the encryption randomizer for the given output index.
-    // pub(crate) fn compute_output_randomizer(&self, index: u16) -> Result<Field<N>> {
-    //     // Compute the index.
-    //     let index = U16::new(N::MAX_OUTPUTS as u16 + index).to_field()?;
-    //     // Compute the encryption randomizer as `Hash(tvk || index)`.
-    //     N::hash_psd2(&[self.tvk.to_x_coordinate(), index])
-    // }
 }

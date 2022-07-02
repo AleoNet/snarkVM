@@ -31,12 +31,7 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given inputs.
     #[inline]
-    pub fn evaluate<R: Rng + CryptoRng>(
-        &self,
-        call: &Call<N>,
-        inputs: &[StackValue<N>],
-        rng: &mut R,
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    pub fn evaluate(&self, call: &Call<N>, inputs: &[StackValue<N>]) -> Result<Vec<Value<N, Plaintext<N>>>> {
         // Retrieve the number of inputs.
         let num_inputs = inputs.len();
         // Retrieve the function from the program.
@@ -47,7 +42,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         }
 
         // Initialize the trace.
-        let mut trace = Trace::<N, A>::new(*call.caller(), rng)?;
+        let mut trace = Trace::<N>::new(*call.caller())?;
 
         // Prepare the inputs.
         function
@@ -176,11 +171,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Executes a program function on the given inputs.
     #[inline]
-    pub fn execute<R: Rng + CryptoRng>(
+    pub fn execute(
         &self,
         call: &Call<N>,
         inputs: &[StackValue<N>],
-        rng: &mut R,
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Retrieve the number of inputs.
         let num_inputs = inputs.len();
@@ -192,15 +186,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         }
 
         // Initialize the trace.
-        let mut trace = Trace::<N, A>::new(*call.caller(), rng)?;
+        let mut trace = Trace::<N>::new(*call.caller())?;
 
         // Ensure the circuit environment is clean.
         A::reset();
 
         use circuit::Inject;
 
+        // Inject the transition view key `tvk` as `Mode::Public`.
+        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, call.tvk().clone());
         // Inject the call as `Mode::Private`.
         let call = circuit::Call::new(circuit::Mode::Private, call.clone());
+        // Ensure the `tvk` matches.
+        A::assert_eq(call.tvk(), tvk);
         // Ensure the call has a valid signature and serial numbers.
         A::assert(call.verify());
 
@@ -566,7 +564,7 @@ function compute:
         use circuit::Eject;
 
         // Re-run to ensure state continues to work.
-        let candidate = process.execute(&call, &inputs, rng).unwrap();
+        let candidate = process.execute(&call, &inputs).unwrap();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[1].eject_value());
         assert_eq!(r4, candidate[2].eject_value());
@@ -579,9 +577,9 @@ function compute:
         // assert_eq!(26472, CurrentAleo::num_constraints());
         // assert_eq!(90497, CurrentAleo::num_gates());
         assert_eq!(37145, CurrentAleo::num_constants());
-        assert_eq!(10, CurrentAleo::num_public());
+        assert_eq!(11, CurrentAleo::num_public());
         assert_eq!(39541, CurrentAleo::num_private());
-        assert_eq!(39577, CurrentAleo::num_constraints());
-        assert_eq!(132219, CurrentAleo::num_gates());
+        assert_eq!(39578, CurrentAleo::num_constraints());
+        assert_eq!(132220, CurrentAleo::num_gates());
     }
 }
