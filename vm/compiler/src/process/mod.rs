@@ -52,7 +52,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Evaluate the function.
-        let outputs = stack.evaluate_function(&function, &inputs)?;
+        let outputs = stack.evaluate_function(&function, inputs)?;
 
         // Load the output types.
         let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
