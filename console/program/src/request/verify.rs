@@ -22,15 +22,6 @@ impl<N: Network> Request<N> {
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
     pub fn verify(&self) -> bool {
-        // Construct the input IDs as field elements.
-        let input_ids = match self.input_ids.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>() {
-            Ok(input_ids) => input_ids,
-            Err(error) => {
-                eprintln!("Failed to construct the input IDs: {error}");
-                return false;
-            }
-        };
-
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
             &[
@@ -50,11 +41,14 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Construct the signature message as `[tvk, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(1 + input_ids.len());
-        message.push(self.tvk);
-        message.push(function_id);
-        message.extend(input_ids.into_iter().flatten());
+        // Construct the input IDs as field elements.
+        let input_ids = match self.input_ids.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>() {
+            Ok(input_ids) => input_ids,
+            Err(error) => {
+                eprintln!("Failed to construct the input IDs: {error}");
+                return false;
+            }
+        };
 
         // Retrieve the challenge from the signature.
         let challenge = self.signature.challenge();
@@ -136,6 +130,12 @@ impl<N: Network> Request<N> {
             eprintln!("Request verification failed on input checks: {error}");
             return false;
         }
+
+        // Construct the signature message as `[tvk, function ID, input IDs]`.
+        let mut message = Vec::with_capacity(1 + input_ids.len());
+        message.push(self.tvk);
+        message.push(function_id);
+        message.extend(input_ids.into_iter().flatten());
 
         // Verify the signature.
         self.signature.verify(&self.caller, &message)
