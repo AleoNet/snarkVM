@@ -16,14 +16,14 @@
 
 use super::*;
 
-impl<N: Network> Trace<N> {
+impl<N: Network> Call<N> {
     /// Returns `true` if the signature is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
     pub fn verify(&self) -> bool {
         // Construct the input IDs as field elements.
-        let input_ids = match self.inputs.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>() {
+        let input_ids = match self.input_ids.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>() {
             Ok(input_ids) => input_ids,
             Err(error) => {
                 eprintln!("Failed to construct the input IDs: {error}");
@@ -42,7 +42,7 @@ impl<N: Network> Trace<N> {
         let response = self.signature.response();
 
         // Verify each serial number is computed correctly.
-        for input in self.inputs.iter() {
+        for input in self.input_ids.iter() {
             match input {
                 InputID::Constant(..) | InputID::Public(..) | InputID::Private(..) => continue,
                 InputID::Record(commitment, h, h_r, gamma, serial_number) => {
@@ -145,9 +145,9 @@ mod tests {
             let sk_sig = private_key.sk_sig();
             let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();
 
-            // Compute the trace by signing the request.
-            let trace = Trace::sign(&request, &input_types, &sk_sig, &pr_sig, rng)?;
-            assert!(trace.verify());
+            // Compute the call by signing the request.
+            let call = Call::sign(&request, &input_types, &sk_sig, &pr_sig, rng)?;
+            assert!(call.verify());
         }
         Ok(())
     }

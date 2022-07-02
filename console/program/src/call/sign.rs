@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Trace<N> {
-    /// Returns the trace for a given request, list of input types, private key, and RNG, where:
+impl<N: Network> Call<N> {
+    /// Returns the call for a given request, list of input types, private key, and RNG, where:
     ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
@@ -131,7 +131,7 @@ impl<N: Network> Trace<N> {
             caller,
             program_id: *request.program_id(),
             function_name: *request.function_name(),
-            inputs,
+            input_ids: inputs,
             signature: Signature::from((challenge, response, compute_key)),
             tvk,
         })

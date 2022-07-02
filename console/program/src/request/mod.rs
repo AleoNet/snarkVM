@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 // mod bytes;
+mod to_call;
 mod to_fields;
-mod to_trace;
 
-use crate::{Identifier, ProgramID, StackValue, Trace, ValueType};
+use crate::{Call, Identifier, ProgramID, StackValue, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 

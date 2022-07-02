@@ -17,10 +17,10 @@
 use super::*;
 
 impl<A: Aleo> Record<A, Plaintext<A>> {
-    /// Encrypts `self` under the given Aleo address and randomizer.
-    pub fn encrypt(&self, address: &Address<A>, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
+    /// Encrypts `self` for the record owner under the given randomizer.
+    pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
         // Compute the record view key.
-        let record_view_key = (address.to_group() * randomizer).to_x_coordinate();
+        let record_view_key = ((*self.owner).to_group() * randomizer).to_x_coordinate();
         // Encrypt the record.
         self.encrypt_symmetric(record_view_key)
     }

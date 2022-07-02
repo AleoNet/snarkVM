@@ -17,14 +17,14 @@
 use super::*;
 
 impl<N: Network> Request<N> {
-    /// Signs the request and returns the trace corresponding to this request.
-    pub fn to_trace<R: Rng + CryptoRng>(
+    /// Signs the request and returns the call for this request.
+    pub fn to_call<R: Rng + CryptoRng>(
         &self,
         input_types: &[ValueType<N>],
         sk_sig: &Scalar<N>,
         pr_sig: &Group<N>,
         rng: &mut R,
-    ) -> Result<Trace<N>> {
-        Trace::sign(self, input_types, sk_sig, pr_sig, rng)
+    ) -> Result<Call<N>> {
+        Call::sign(self, input_types, sk_sig, pr_sig, rng)
     }
 }

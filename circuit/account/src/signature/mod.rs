@@ -47,6 +47,16 @@ impl<A: Aleo> Inject for Signature<A> {
 }
 
 impl<A: Aleo> Signature<A> {
+    /// Returns the challenge.
+    pub const fn challenge(&self) -> &Scalar<A> {
+        &self.challenge
+    }
+
+    /// Returns the response.
+    pub const fn response(&self) -> &Scalar<A> {
+        &self.response
+    }
+
     /// Returns the account compute key.
     pub const fn compute_key(&self) -> &ComputeKey<A> {
         &self.compute_key

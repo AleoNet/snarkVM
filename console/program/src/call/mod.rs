@@ -22,8 +22,6 @@ use snarkvm_console_account::{Address, ComputeKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-use indexmap::IndexMap;
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum InputID<N: Network> {
     /// The hash of the constant input.
@@ -69,7 +67,7 @@ impl<N: Network> ToFields for InputID<N> {
 // }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Trace<N: Network> {
+pub struct Call<N: Network> {
     /// The caller for the transition.
     caller: Address<N>,
     /// The program ID for the transition.
@@ -77,14 +75,30 @@ pub struct Trace<N: Network> {
     /// The function name for the transition.
     function_name: Identifier<N>,
     /// The input ID for the transition.
-    inputs: Vec<InputID<N>>,
+    input_ids: Vec<InputID<N>>,
     /// The signature for the transition.
     signature: Signature<N>,
     /// The transition view key.
     tvk: Field<N>,
 }
 
-impl<N: Network> Trace<N> {
+impl<N: Network> From<(Address<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Signature<N>, Field<N>)> for Call<N> {
+    /// Note: See `Call::sign` to create the call. This method is used to eject from a circuit.
+    fn from(
+        (caller, program_id, function_name, input_ids, signature, tvk): (
+            Address<N>,
+            ProgramID<N>,
+            Identifier<N>,
+            Vec<InputID<N>>,
+            Signature<N>,
+            Field<N>,
+        ),
+    ) -> Self {
+        Self { caller, program_id, function_name, input_ids, signature, tvk }
+    }
+}
+
+impl<N: Network> Call<N> {
     /// Returns the caller for the transition.
     pub const fn caller(&self) -> &Address<N> {
         &self.caller
@@ -101,8 +115,8 @@ impl<N: Network> Trace<N> {
     }
 
     /// Returns the input ID for the transition.
-    pub fn inputs(&self) -> &Vec<InputID<N>> {
-        &self.inputs
+    pub fn input_ids(&self) -> &Vec<InputID<N>> {
+        &self.input_ids
     }
 
     /// Returns the signature for the transition.

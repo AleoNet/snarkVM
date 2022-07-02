@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<A: Aleo> Trace<A> {
+impl<A: Aleo> Call<A> {
     /// Returns `true` if the signature is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
@@ -75,7 +75,7 @@ impl<A: Aleo> Trace<A> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{test_crypto_rng, Uniform};
+    use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;
 
@@ -114,15 +114,15 @@ mod tests {
             let sk_sig = private_key.sk_sig();
             let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
 
-            // Compute the trace by signing the request.
-            let trace = console::Trace::sign(&request, &input_types, &sk_sig, &pr_sig, rng)?;
-            assert!(trace.verify());
+            // Compute the call by signing the request.
+            let call = console::Call::sign(&request, &input_types, &sk_sig, &pr_sig, rng)?;
+            assert!(call.verify());
 
-            // Inject the trace into a circuit.
-            let trace = Trace::<Circuit>::new(mode, trace);
+            // Inject the call into a circuit.
+            let call = Call::<Circuit>::new(mode, call);
 
-            Circuit::scope(format!("Trace {i}"), || {
-                let candidate = trace.verify();
+            Circuit::scope(format!("Call {i}"), || {
+                let candidate = call.verify();
                 assert!(candidate.eject_value());
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
             })

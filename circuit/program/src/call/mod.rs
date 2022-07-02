@@ -19,10 +19,10 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 mod verify;
 
-use crate::{Identifier, ProgramID, Request};
+use crate::{Identifier, ProgramID};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group};
 
 pub enum InputID<A: Aleo> {
     /// The hash of the constant input.
@@ -112,7 +112,7 @@ impl<A: Aleo> ToFields for InputID<A> {
     }
 }
 
-pub struct Trace<A: Aleo> {
+pub struct Call<A: Aleo> {
     /// The request caller.
     caller: Address<A>,
     /// The program ID.
@@ -128,23 +128,23 @@ pub struct Trace<A: Aleo> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> Inject for Trace<A> {
-    type Primitive = console::Trace<A::Network>;
+impl<A: Aleo> Inject for Call<A> {
+    type Primitive = console::Call<A::Network>;
 
-    /// Initializes the trace from the given mode and console trace.
-    fn new(mode: Mode, trace: Self::Primitive) -> Self {
+    /// Initializes the call from the given mode and console call.
+    fn new(mode: Mode, call: Self::Primitive) -> Self {
         Self {
-            caller: Address::new(mode, *trace.caller()),
-            program_id: ProgramID::new(mode, *trace.program_id()),
-            function_name: Identifier::new(mode, *trace.function_name()),
-            input_ids: trace.input_ids().iter().map(|input_id| InputID::new(mode, input_id.clone())).collect(),
-            signature: Signature::new(mode, trace.signature().clone()),
-            tvk: Field::new(mode, *trace.tvk()),
+            caller: Address::new(mode, *call.caller()),
+            program_id: ProgramID::new(mode, *call.program_id()),
+            function_name: Identifier::new(mode, *call.function_name()),
+            input_ids: call.input_ids().iter().map(|input_id| InputID::new(mode, input_id.clone())).collect(),
+            signature: Signature::new(mode, call.signature().clone()),
+            tvk: Field::new(mode, *call.tvk()),
         }
     }
 }
 
-impl<A: Aleo> Trace<A> {
+impl<A: Aleo> Call<A> {
     /// Returns the request caller.
     pub const fn caller(&self) -> &Address<A> {
         &self.caller
@@ -177,10 +177,10 @@ impl<A: Aleo> Trace<A> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> Eject for Trace<A> {
-    type Primitive = console::Trace<A::Network>;
+impl<A: Aleo> Eject for Call<A> {
+    type Primitive = console::Call<A::Network>;
 
-    /// Ejects the mode of the trace.
+    /// Ejects the mode of the call.
     fn eject_mode(&self) -> Mode {
         Mode::combine(self.caller.eject_mode(), [
             self.program_id.eject_mode(),
@@ -191,7 +191,7 @@ impl<A: Aleo> Eject for Trace<A> {
         ])
     }
 
-    /// Ejects the trace as a primitive.
+    /// Ejects the call as a primitive.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::from((
             self.caller.eject_value(),
