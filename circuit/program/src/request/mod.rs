@@ -93,12 +93,15 @@ impl<A: Aleo> Eject for Request<A> {
 
     /// Ejects the request as a primitive.
     fn eject_value(&self) -> Self::Primitive {
-        console::Request::new(
-            self.caller.eject_value(),
-            *self.network_id.eject_value(),
-            self.program_id.eject_value(),
-            self.function_name.eject_value(),
-            self.inputs.eject_value(),
-        )
+        // Ensure the network ID is correct.
+        match *self.network_id.eject_value() == <A::Network as console::Network>::ID {
+            true => console::Request::new(
+                self.caller.eject_value(),
+                self.program_id.eject_value(),
+                self.function_name.eject_value(),
+                self.inputs.eject_value(),
+            ),
+            false => A::halt("Invalid network ID in request (circuit)."),
+        }
     }
 }
