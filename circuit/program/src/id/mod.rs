@@ -36,12 +36,9 @@ impl<A: Aleo> Inject for ProgramID<A> {
 
     /// Injects a program ID with the given primitive.
     fn new(_: Mode, id: Self::Primitive) -> Self {
-        match id.network() {
-            Ok(network) => Self {
-                name: Identifier::new(Mode::Constant, *id.name()),
-                network: Identifier::new(Mode::Constant, network),
-            },
-            _ => A::halt("Program ID must have a network-level domain."),
+        Self {
+            name: Identifier::new(Mode::Constant, *id.name()),
+            network: Identifier::new(Mode::Constant, id.network()),
         }
     }
 }

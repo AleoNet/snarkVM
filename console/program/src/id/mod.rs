@@ -55,10 +55,10 @@ impl<N: Network> ProgramID<N> {
 
     /// Returns the network-level domain (NLD).
     #[inline]
-    pub fn network(&self) -> Result<Identifier<N>> {
+    pub fn network(&self) -> Identifier<N> {
         match self.network {
-            Some(network) => Ok(network),
-            None => Identifier::from_str("aleo"),
+            Some(network) => network,
+            None => Identifier::from_str("aleo").expect("Failed to parse Aleo domain"),
         }
     }
 }

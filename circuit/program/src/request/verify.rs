@@ -16,18 +16,32 @@
 
 use super::*;
 
-impl<A: Aleo> Call<A> {
+impl<A: Aleo> Request<A> {
     /// Returns `true` if the signature is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
     pub fn verify(&self) -> Boolean<A> {
         // Construct the input IDs as field elements.
         let input_ids = self.input_ids.iter().map(|input| input.to_fields()).collect::<Vec<_>>();
 
-        // Construct the signature message as `[tvk, input IDs]`.
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id = A::hash_bhp1024(
+            &[
+                self.network_id.to_bits_le(),
+                self.program_id.name().to_bits_le(),
+                self.program_id.network().to_bits_le(),
+                self.function_name.to_bits_le(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        );
+
+        // Construct the signature message as `[tvk, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + 2 * input_ids.len());
         message.push(self.tvk.clone());
+        message.push(function_id);
         message.extend(input_ids.into_iter().flatten());
 
         // Retrieve the challenge from the signature.
@@ -116,6 +130,10 @@ mod tests {
             let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
             let caller = console::Address::try_from(&private_key)?;
 
+            // Retrieve `sk_sig` and `pr_sig`.
+            let sk_sig = private_key.sk_sig();
+            let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
+
             // Construct a program ID and function name.
             let program_id = console::ProgramID::from_str("token.aleo")?;
             let function_name = console::Identifier::from_str("transfer")?;
@@ -128,22 +146,16 @@ mod tests {
             // Construct the input types.
             let input_types = vec![console::ValueType::Record(console::Identifier::from_str("token")?); 2];
 
-            // Construct the request.
-            let request = console::Request::new(caller, program_id, function_name, inputs);
+            // Compute the signed request.
+            let request =
+                console::Request::sign(&sk_sig, &pr_sig, program_id, function_name, inputs, &input_types, rng)?;
+            assert!(request.verify());
 
-            // Retrieve `sk_sig` and `pr_sig`.
-            let sk_sig = private_key.sk_sig();
-            let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
+            // Inject the request into a circuit.
+            let request = Request::<Circuit>::new(mode, request);
 
-            // Compute the call by signing the request.
-            let call = console::Call::sign(&request, &input_types, &sk_sig, &pr_sig, rng)?;
-            assert!(call.verify());
-
-            // Inject the call into a circuit.
-            let call = Call::<Circuit>::new(mode, call);
-
-            Circuit::scope(format!("Call {i}"), || {
-                let candidate = call.verify();
+            Circuit::scope(format!("Request {i}"), || {
+                let candidate = request.verify();
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
@@ -158,16 +170,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 36311, 0, 21761, 21817)
+        check_verify(Mode::Constant, 36939, 0, 21761, 21817)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 33824, 0, 30092, 30152)
+        check_verify(Mode::Public, 34442, 0, 30087, 30147)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 33824, 0, 30092, 30152)
+        check_verify(Mode::Private, 34442, 0, 30087, 30147)
     }
 }

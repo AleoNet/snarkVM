@@ -20,9 +20,6 @@
 #[cfg(test)]
 use snarkvm_circuit_network::AleoV0 as Circuit;
 
-mod call;
-pub use call::Call;
-
 mod data;
 pub use data::*;
 

@@ -16,7 +16,7 @@
 
 use console::{
     network::{prelude::*, BHPMerkleTree},
-    program::{Call, InputID},
+    program::{InputID, Request},
     types::{Address, Field},
 };
 
@@ -64,13 +64,13 @@ pub struct Trace<N: Network> {
 
 impl<N: Network> Trace<N> {
     /// Initializes a new stack trace.
-    pub fn new(call: &Call<N>) -> Result<Self> {
+    pub fn new(request: &Request<N>) -> Result<Self> {
         // Initialize a new trace with the caller.
         let mut trace = Self {
             transaction: N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?,
             roots: IndexMap::new(),
             leaves: IndexMap::new(),
-            caller: *call.caller(),
+            caller: *request.caller(),
             transition_index: 0,
             input_index: 0,
             output_index: 0,
@@ -78,7 +78,7 @@ impl<N: Network> Trace<N> {
         };
 
         // Add the inputs.
-        call.input_ids().iter().try_for_each(|input_id| {
+        request.input_ids().iter().try_for_each(|input_id| {
             match input_id {
                 // A constant input is hashed to a field element.
                 InputID::Constant(input_hash) => trace.add_input(*input_hash),

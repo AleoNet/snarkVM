@@ -21,6 +21,6 @@ impl<N: Network> ToFields for ProgramID<N> {
 
     /// Returns this program ID as a list of field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
-        Ok(vec![self.name().to_field()?, self.network()?.to_field()?])
+        Ok(vec![self.name().to_field()?, self.network().to_field()?])
     }
 }

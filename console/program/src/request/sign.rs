@@ -16,15 +16,17 @@
 
 use super::*;
 
-impl<N: Network> Call<N> {
-    /// Returns the call for a given request, list of input types, private key, and RNG, where:
+impl<N: Network> Request<N> {
+    /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
     ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
-        request: &Request<N>,
-        input_types: &[ValueType<N>],
         sk_sig: &Scalar<N>,
         pr_sig: &Group<N>,
+        program_id: ProgramID<N>,
+        function_name: Identifier<N>,
+        inputs: Vec<StackValue<N>>,
+        input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
         // Sample a random nonce.
@@ -38,24 +40,35 @@ impl<N: Network> Call<N> {
         let pk_sig = N::g_scalar_multiply(sk_sig);
         // Derive the compute key.
         let compute_key = ComputeKey::try_from((pk_sig, *pr_sig))?;
-        // Derive the address from the compute key.
+        // Derive the caller from the compute key.
         let caller = Address::try_from(compute_key)?;
-        // Ensure the signer matches the request caller.
-        ensure!(caller == *request.caller(), "Signer is not the caller of the request");
 
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
 
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, input IDs])`.
-        let mut preimage = Vec::with_capacity(5 + 2 * request.inputs().len());
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id = N::hash_bhp1024(
+            &[
+                U16::<N>::new(N::ID).to_bits_le(),
+                program_id.name().to_bits_le(),
+                program_id.network().to_bits_le(),
+                function_name.to_bits_le(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        )?;
+
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, function ID, input IDs])`.
+        let mut preimage = Vec::with_capacity(5 + 2 * inputs.len());
         preimage.extend([g_r, pk_sig, *pr_sig, *caller].map(|point| point.to_x_coordinate()));
-        preimage.push(tvk);
+        preimage.extend([tvk, function_id]);
 
         // Initialize a vector to store the input IDs.
-        let mut input_ids = Vec::with_capacity(request.inputs().len());
+        let mut input_ids = Vec::with_capacity(inputs.len());
 
         // Prepare the inputs.
-        for (index, (input, input_type)) in request.inputs().iter().zip_eq(input_types).enumerate() {
+        for (index, (input, input_type)) in inputs.iter().zip_eq(input_types).enumerate() {
             match input_type {
                 // A constant input is hashed to a field element.
                 ValueType::Constant(..) => {
@@ -119,8 +132,7 @@ impl<N: Network> Call<N> {
             }
         }
         // Append the input IDs to the preimage.
-        preimage
-            .extend(input_ids.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>()?.into_iter().flatten());
+        preimage.extend(input_ids.iter().map(ToFields::to_fields).collect::<Result<Vec<_>>>()?.into_iter().flatten());
 
         // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, input IDs])`.
         let challenge = N::hash_to_scalar_psd8(&preimage)?;
@@ -129,10 +141,11 @@ impl<N: Network> Call<N> {
 
         Ok(Self {
             caller,
-            program_id: *request.program_id(),
-            function_name: *request.function_name(),
+            network_id: U16::new(N::ID),
+            program_id,
+            function_name,
             input_ids,
-            inputs: request.inputs().to_vec(),
+            inputs: inputs.to_vec(),
             signature: Signature::from((challenge, response, compute_key)),
             tvk,
         })

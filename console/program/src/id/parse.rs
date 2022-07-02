@@ -77,24 +77,24 @@ mod tests {
 
     #[test]
     fn test_import_parse() -> Result<()> {
-        let import = ProgramID::<CurrentNetwork>::parse("bar.aleo").unwrap().1;
-        assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
-        assert_eq!(import.network()?, Identifier::<CurrentNetwork>::from_str("aleo")?);
+        let id = ProgramID::<CurrentNetwork>::parse("bar.aleo").unwrap().1;
+        assert_eq!(id.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
+        assert_eq!(id.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
 
-        let import = ProgramID::<CurrentNetwork>::parse("foo").unwrap().1;
-        assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("foo")?);
-        assert_eq!(import.network()?, Identifier::<CurrentNetwork>::from_str("aleo")?);
+        let id = ProgramID::<CurrentNetwork>::parse("foo").unwrap().1;
+        assert_eq!(id.name(), &Identifier::<CurrentNetwork>::from_str("foo")?);
+        assert_eq!(id.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
 
         Ok(())
     }
 
     #[test]
     fn test_import_display() -> Result<()> {
-        let import = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
-        assert_eq!("bar.aleo", import.to_string());
+        let id = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
+        assert_eq!("bar.aleo", id.to_string());
 
-        let import = ProgramID::<CurrentNetwork>::from_str("foo")?;
-        assert_eq!("foo.aleo", import.to_string());
+        let id = ProgramID::<CurrentNetwork>::from_str("foo")?;
+        assert_eq!("foo.aleo", id.to_string());
 
         Ok(())
     }

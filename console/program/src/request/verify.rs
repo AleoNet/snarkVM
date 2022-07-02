@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<N: Network> Call<N> {
-    /// Returns `true` if the signature is valid, and `false` otherwise.
+impl<N: Network> Request<N> {
+    /// Returns `true` if the request is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
@@ -31,9 +31,29 @@ impl<N: Network> Call<N> {
             }
         };
 
-        // Construct the signature message as `[tvk, input IDs]`.
+        // Compute the function ID as `Hash(network_id, program_id, function_name)`.
+        let function_id = match N::hash_bhp1024(
+            &[
+                U16::<N>::new(N::ID).to_bits_le(),
+                self.program_id.name().to_bits_le(),
+                self.program_id.network().to_bits_le(),
+                self.function_name.to_bits_le(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        ) {
+            Ok(function_id) => function_id,
+            Err(error) => {
+                eprintln!("Failed to construct the function ID: {error}");
+                return false;
+            }
+        };
+
+        // Construct the signature message as `[tvk, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + input_ids.len());
         message.push(self.tvk);
+        message.push(function_id);
         message.extend(input_ids.into_iter().flatten());
 
         // Retrieve the challenge from the signature.
@@ -107,7 +127,7 @@ impl<N: Network> Call<N> {
             }
             Ok(())
         }) {
-            eprintln!("Call verification failed on input checks: {error}");
+            eprintln!("Request verification failed on input checks: {error}");
             return false;
         }
 
@@ -136,6 +156,10 @@ mod tests {
             let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
             let caller = Address::try_from(&private_key)?;
 
+            // Retrieve `sk_sig` and `pr_sig`.
+            let sk_sig = private_key.sk_sig();
+            let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();
+
             // Construct a program ID and function name.
             let program_id = ProgramID::from_str("token.aleo")?;
             let function_name = Identifier::from_str("transfer")?;
@@ -148,16 +172,9 @@ mod tests {
             // Construct the input types.
             let input_types = vec![ValueType::Record(Identifier::from_str("token")?); 2];
 
-            // Construct the request.
-            let request = Request::new(caller, program_id, function_name, inputs);
-
-            // Retrieve `sk_sig` and `pr_sig`.
-            let sk_sig = private_key.sk_sig();
-            let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();
-
-            // Compute the call by signing the request.
-            let call = Call::sign(&request, &input_types, &sk_sig, &pr_sig, rng)?;
-            assert!(call.verify());
+            // Compute the signed request.
+            let request = Request::sign(&sk_sig, &pr_sig, program_id, function_name, inputs, &input_types, rng)?;
+            assert!(request.verify());
         }
         Ok(())
     }

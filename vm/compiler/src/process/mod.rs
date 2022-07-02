@@ -20,7 +20,7 @@ use trace::*;
 use crate::{Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Call, InputID, Plaintext, StackValue, Value, ValueType},
+    program::{InputID, Plaintext, Request, StackValue, Value, ValueType},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -31,23 +31,23 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given inputs.
     #[inline]
-    pub fn evaluate(&self, call: &Call<N>) -> Result<Vec<Value<N, Plaintext<N>>>> {
-        // Ensure the call is well-formed.
-        ensure!(call.verify(), "Call is invalid");
+    pub fn evaluate(&self, request: &Request<N>) -> Result<Vec<Value<N, Plaintext<N>>>> {
+        // Ensure the request is well-formed.
+        ensure!(request.verify(), "Request is invalid");
 
         // Retrieve the inputs.
-        let inputs = call.inputs();
+        let inputs = request.inputs();
         // Retrieve the number of inputs.
         let num_inputs = inputs.len();
         // Retrieve the function from the program.
-        let function = self.program.get_function(call.function_name())?;
+        let function = self.program.get_function(request.function_name())?;
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != num_inputs {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
         // Initialize the trace.
-        let mut trace = Trace::<N>::new(call)?;
+        let mut trace = Trace::<N>::new(request)?;
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
@@ -76,7 +76,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Construct the (console) output index as a field element.
                     let index = console::types::Field::from_u16((num_inputs + index) as u16);
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[*call.tvk(), index])?;
+                    let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
                     // Commit the output to a field element.
                     let commitment = N::commit_bhp1024(&output.to_bits_le(), &randomizer)?;
                     // Add the output commitment to the trace.
@@ -93,7 +93,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Construct the (console) output index as a field element.
                     let index = console::types::Field::from_u16((num_inputs + index) as u16);
                     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[*call.tvk(), index])?;
+                    let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
 
                     // Compute the record nonce.
                     let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -118,23 +118,23 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Executes a program function on the given inputs.
     #[inline]
-    pub fn execute(&self, call: &Call<N>) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
-        // Ensure the call is well-formed.
-        ensure!(call.verify(), "Call is invalid");
+    pub fn execute(&self, request: &Request<N>) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+        // Ensure the request is well-formed.
+        ensure!(request.verify(), "Request is invalid");
 
         // Retrieve the inputs.
-        let inputs = call.inputs();
+        let inputs = request.inputs();
         // Retrieve the number of inputs.
         let num_inputs = inputs.len();
         // Retrieve the function from the program.
-        let function = self.program.get_function(call.function_name())?;
+        let function = self.program.get_function(request.function_name())?;
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != num_inputs {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
         // Initialize the trace.
-        let mut trace = Trace::<N>::new(call)?;
+        let mut trace = Trace::<N>::new(request)?;
 
         // Ensure the circuit environment is clean.
         A::reset();
@@ -142,21 +142,21 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         use circuit::Inject;
 
         // Inject the transition view key `tvk` as `Mode::Public`.
-        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, call.tvk().clone());
-        // Inject the call as `Mode::Private`.
-        let call = circuit::Call::new(circuit::Mode::Private, call.clone());
+        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, request.tvk().clone());
+        // Inject the request as `Mode::Private`.
+        let request = circuit::Request::new(circuit::Mode::Private, request.clone());
         // Ensure the `tvk` matches.
-        A::assert_eq(call.tvk(), tvk);
-        // Ensure the call has a valid signature and serial numbers.
-        A::assert(call.verify());
+        A::assert_eq(request.tvk(), tvk);
+        // Ensure the request has a valid signature and serial numbers.
+        A::assert(request.verify());
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Call Authentication");
+        Self::log_circuit("Request Authentication");
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Execute the function.
-        let outputs = stack.execute_function(&function, call.inputs())?;
+        let outputs = stack.execute_function(&function, request.inputs())?;
 
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function {}", function.name()));
@@ -206,7 +206,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Inject the output index as `Mode::Private`.
                     let output_index = circuit::Field::new(circuit::Mode::Private, index);
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[call.tvk().clone(), output_index]);
+                    let randomizer = A::hash_to_scalar_psd2(&[request.tvk().clone(), output_index]);
 
                     // Commit the output to a field element.
                     let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
@@ -239,7 +239,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Inject the output index as `Mode::Private`.
                     let output_index = circuit::Field::new(circuit::Mode::Private, index);
                     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[call.tvk().clone(), output_index]);
+                    let randomizer = A::hash_to_scalar_psd2(&[request.tvk().clone(), output_index]);
 
                     // Compute the record nonce.
                     let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -371,10 +371,17 @@ function compute:
             ValueType::from_str("token.record").unwrap(),
         ];
 
-        // Construct the call via a request.
-        let call = Request::new(caller, *program.id(), function_name, inputs)
-            .to_call(&input_types, &caller_private_key.sk_sig(), &caller_compute_key.pr_sig(), rng)
-            .unwrap();
+        // Compute the signed request.
+        let request = Request::sign(
+            &caller_private_key.sk_sig(),
+            &caller_compute_key.pr_sig(),
+            *program.id(),
+            function_name,
+            inputs,
+            &input_types,
+            rng,
+        )
+        .unwrap();
 
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo> { program };
@@ -389,7 +396,7 @@ function compute:
         use circuit::Eject;
 
         // Re-run to ensure state continues to work.
-        let candidate = process.execute(&call).unwrap();
+        let candidate = process.execute(&request).unwrap();
         assert_eq!(4, candidate.len());
         assert_eq!(r3, candidate[1].eject_value());
         assert_eq!(r4, candidate[2].eject_value());
@@ -401,10 +408,10 @@ function compute:
         // assert_eq!(26454, CurrentAleo::num_private());
         // assert_eq!(26472, CurrentAleo::num_constraints());
         // assert_eq!(90497, CurrentAleo::num_gates());
-        assert_eq!(37145, CurrentAleo::num_constants());
+        assert_eq!(37767, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(39547, CurrentAleo::num_private());
-        assert_eq!(39587, CurrentAleo::num_constraints());
-        assert_eq!(132247, CurrentAleo::num_gates());
+        assert_eq!(39542, CurrentAleo::num_private());
+        assert_eq!(39582, CurrentAleo::num_constraints());
+        assert_eq!(132215, CurrentAleo::num_gates());
     }
 }

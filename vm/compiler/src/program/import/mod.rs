@@ -45,7 +45,7 @@ impl<N: Network> Import<N> {
 
     /// Returns the imported network-level domain (NLD).
     #[inline]
-    pub fn network(&self) -> Result<Identifier<N>> {
+    pub fn network(&self) -> Identifier<N> {
         self.id.network()
     }
 }

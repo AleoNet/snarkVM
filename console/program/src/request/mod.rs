@@ -15,12 +15,45 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 // mod bytes;
-mod to_call;
-mod to_fields;
+mod sign;
+mod verify;
 
-use crate::{Call, Identifier, ProgramID, StackValue, ValueType};
+use crate::{Identifier, ProgramID, StackValue, ValueType};
+use snarkvm_console_account::{Address, ComputeKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum InputID<N: Network> {
+    /// The hash of the constant input.
+    Constant(Field<N>),
+    /// The hash of the public input.
+    Public(Field<N>),
+    /// The index and commitment of the private input.
+    Private(Field<N>, Field<N>),
+    /// The `(commitment, H, r * H, gamma, serial_number)` tuple of the record input.
+    Record(Field<N>, Group<N>, Group<N>, Group<N>, Field<N>),
+}
+
+impl<N: Network> ToFields for InputID<N> {
+    type Field = Field<N>;
+
+    /// Returns the input as a list of field elements.
+    fn to_fields(&self) -> Result<Vec<Self::Field>> {
+        match self {
+            InputID::Constant(field) => Ok(vec![*field]),
+            InputID::Public(field) => Ok(vec![*field]),
+            InputID::Private(index, field) => Ok(vec![*index, *field]),
+            InputID::Record(commitment, h, h_r, gamma, serial_number) => Ok(vec![
+                *commitment,
+                h.to_x_coordinate(),
+                h_r.to_x_coordinate(),
+                gamma.to_x_coordinate(),
+                *serial_number,
+            ]),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Request<N: Network> {
@@ -32,21 +65,38 @@ pub struct Request<N: Network> {
     program_id: ProgramID<N>,
     /// The function name.
     function_name: Identifier<N>,
+    /// The input ID for the transition.
+    input_ids: Vec<InputID<N>>,
     /// The function inputs.
     inputs: Vec<StackValue<N>>,
+    /// The signature for the transition.
+    signature: Signature<N>,
+    /// The transition view key.
+    tvk: Field<N>,
+}
+
+impl<N: Network>
+    From<(Address<N>, U16<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Vec<StackValue<N>>, Signature<N>, Field<N>)>
+    for Request<N>
+{
+    /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
+    fn from(
+        (caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk): (
+            Address<N>,
+            U16<N>,
+            ProgramID<N>,
+            Identifier<N>,
+            Vec<InputID<N>>,
+            Vec<StackValue<N>>,
+            Signature<N>,
+            Field<N>,
+        ),
+    ) -> Self {
+        Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk }
+    }
 }
 
 impl<N: Network> Request<N> {
-    /// Initializes a new request.
-    pub const fn new(
-        caller: Address<N>,
-        program_id: ProgramID<N>,
-        function_name: Identifier<N>,
-        inputs: Vec<StackValue<N>>,
-    ) -> Self {
-        Self { caller, network_id: U16::new(N::ID), program_id, function_name, inputs }
-    }
-
     /// Returns the request caller.
     pub const fn caller(&self) -> &Address<N> {
         &self.caller
@@ -67,8 +117,35 @@ impl<N: Network> Request<N> {
         &self.function_name
     }
 
+    /// Returns the input ID for the transition.
+    pub fn input_ids(&self) -> &[InputID<N>] {
+        &self.input_ids
+    }
+
     /// Returns the function inputs.
     pub fn inputs(&self) -> &[StackValue<N>] {
         &self.inputs
+    }
+
+    /// Returns the signature for the transition.
+    pub const fn signature(&self) -> &Signature<N> {
+        &self.signature
+    }
+
+    /// Returns the transition view key `tvk`.
+    pub const fn tvk(&self) -> &Field<N> {
+        &self.tvk
+    }
+
+    /// Returns the transition public key `tpk`.
+    pub fn to_tpk(&self) -> Group<N> {
+        // Retrieve the challenge from the signature.
+        let challenge = self.signature.challenge();
+        // Retrieve the response from the signature.
+        let response = self.signature.response();
+        // Retrieve `pk_sig` from the signature.
+        let pk_sig = self.signature.compute_key().pk_sig();
+        // Compute `tpk` as `(challenge * pk_sig) + (response * G)`, equivalent to `r * G`.
+        (pk_sig * challenge) + N::g_scalar_multiply(&response)
     }
 }
