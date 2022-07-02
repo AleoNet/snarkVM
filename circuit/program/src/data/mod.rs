@@ -29,8 +29,5 @@ pub use plaintext::Plaintext;
 mod record;
 pub use record::{Balance, Entry, Owner, Record};
 
-mod value;
-pub use value::Value;
-
 mod circuit_value;
-pub use circuit_value::*;
+pub use circuit_value::CircuitValue;

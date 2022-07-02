@@ -37,7 +37,6 @@ use console::{
         Register,
         RegisterType,
         StackValue,
-        Value,
         ValueType,
     },
 };

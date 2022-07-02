@@ -34,7 +34,7 @@ impl<A: Aleo> Inject for Balance<A, Plaintext<A>> {
     /// Initializes plaintext balance from a primitive.
     fn new(_: Mode, owner: Self::Primitive) -> Self {
         match owner {
-            console::Balance::Public(balance) => Self::Public(U64::new(Mode::Public, balance)),
+            console::Balance::Public(balance) => Self::Public(U64::new(Mode::Private, balance)),
             console::Balance::Private(console::Plaintext::Literal(console::Literal::U64(balance), ..)) => {
                 Self::Private(Plaintext::Literal(Literal::U64(U64::new(Mode::Private, balance)), Default::default()))
             }
@@ -50,7 +50,7 @@ impl<A: Aleo> Inject for Balance<A, Ciphertext<A>> {
     /// Initializes ciphertext balance from a primitive.
     fn new(_: Mode, owner: Self::Primitive) -> Self {
         match owner {
-            console::Balance::Public(balance) => Self::Public(U64::new(Mode::Public, balance)),
+            console::Balance::Public(balance) => Self::Public(U64::new(Mode::Private, balance)),
             console::Balance::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext)),
         }
     }

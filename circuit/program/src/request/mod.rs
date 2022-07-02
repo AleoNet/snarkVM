@@ -46,13 +46,13 @@ impl<A: Aleo> Inject for InputID<A> {
             console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
             // Inject the expected hash as `Mode::Public`.
             console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
-            // Inject the expected index as `Mode::Private` and ciphertext hash as `Mode::Public`.
+            // Inject the expected index as `Mode::Constant` and ciphertext hash as `Mode::Public`.
             console::InputID::Private(index, field) => {
-                Self::Private(Field::new(Mode::Private, index), Field::new(Mode::Public, field))
+                Self::Private(Field::new(Mode::Constant, index), Field::new(Mode::Public, field))
             }
             // Inject the expected serial number as `Mode::Public`, and all other values as `Mode::Private`.
             console::InputID::Record(index, commitment, h, h_r, gamma, serial_number) => Self::Record(
-                Field::new(Mode::Private, index),
+                Field::new(Mode::Constant, index),
                 Field::new(Mode::Private, commitment),
                 Group::new(Mode::Private, h),
                 Group::new(Mode::Private, h_r),

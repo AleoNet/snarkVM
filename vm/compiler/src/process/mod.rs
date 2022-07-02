@@ -20,7 +20,7 @@ use trace::*;
 use crate::{Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Plaintext, Request, Response, Value},
+    program::{Request, Response},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -263,7 +263,7 @@ mod tests {
     use console::{
         account::{ComputeKey, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, Record, Request, StackValue, ValueType},
+        program::{Identifier, Plaintext, Record, Request, StackValue, ValueType},
     };
 
     type CurrentNetwork = Testnet3;
@@ -372,10 +372,10 @@ function compute:
         // assert_eq!(26454, CurrentAleo::num_private());
         // assert_eq!(26472, CurrentAleo::num_constraints());
         // assert_eq!(90497, CurrentAleo::num_gates());
-        assert_eq!(38988, CurrentAleo::num_constants());
+        assert_eq!(38990, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(46214, CurrentAleo::num_private());
-        assert_eq!(46256, CurrentAleo::num_constraints());
-        assert_eq!(154719, CurrentAleo::num_gates());
+        assert_eq!(46197, CurrentAleo::num_private());
+        assert_eq!(46241, CurrentAleo::num_constraints());
+        assert_eq!(154647, CurrentAleo::num_gates());
     }
 }

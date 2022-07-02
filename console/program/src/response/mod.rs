@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Ciphertext, Identifier, ProgramID, Record, StackValue, ValueType};
-use snarkvm_console_account::{Address, ComputeKey, Signature};
+use crate::{StackValue, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -27,8 +26,8 @@ pub enum OutputID<N: Network> {
     Public(Field<N>),
     /// The index and ciphertext hash of the private output.
     Private(Field<N>, Field<N>),
-    /// The `(index, commitment, nonce, encrypted_record, checksum)` tuple of the record output.
-    Record(Field<N>, Field<N>, Field<N>, Record<N, Ciphertext<N>>, Field<N>),
+    /// The `(index, commitment, nonce, checksum)` tuple of the record output.
+    Record(Field<N>, Field<N>, Field<N>, Field<N>),
 }
 
 #[derive(Clone)]
@@ -118,7 +117,7 @@ impl<N: Network> Response<N> {
                         let checksum = N::hash_bhp1024(&encrypted_record.to_bits_le())?;
 
                         // Return the output ID.
-                        Ok(OutputID::Record(index, commitment, nonce, encrypted_record, checksum))
+                        Ok(OutputID::Record(index, commitment, nonce, checksum))
                     }
                 }
             })

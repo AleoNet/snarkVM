@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod find;
 mod to_bits;
 mod to_fields;
 
-use crate::{Plaintext, Record};
+use crate::{Entry, Identifier, Plaintext, Record};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 
@@ -36,7 +37,7 @@ impl<A: Aleo> Inject for CircuitValue<A> {
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
             console::StackValue::Plaintext(plaintext) => CircuitValue::Plaintext(Plaintext::new(mode, plaintext)),
-            console::StackValue::Record(record) => CircuitValue::Record(Record::new(mode, record)),
+            console::StackValue::Record(record) => CircuitValue::Record(Record::new(Mode::Private, record)),
         }
     }
 }
