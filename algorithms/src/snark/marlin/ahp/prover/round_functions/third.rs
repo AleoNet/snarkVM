@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    fft::DensePolynomial,
+    fft::{DensePolynomial, Evaluations},
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{indexer::CircuitInfo, verifier, AHPForR1CS},
@@ -62,21 +62,77 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .expect("prover::State should include verifier_first_msg when prover_third_round is called");
 
         let zeta_squared = state.index.zeta.square();
+        let one_plus_delta = F::one() + state.index.delta;
+        let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
+        let l_1_evals = {
+            let mut x_evals = vec![F::zero(); constraint_domain.size()];
+            x_evals[0] = F::one();
+            x_evals
+        };
 
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
             .map(|(b, combiner)| {
+                let f = b.f_poly.polynomial().as_dense().unwrap();
+                let lookup_poly = {
+                    let s_1 = b.s_1_poly.polynomial().as_dense().unwrap();
+                    let s_2 = b.s_2_poly.polynomial().as_dense().unwrap();
+                    let z_2 = b.z_2_poly.polynomial().as_dense().unwrap();
+                    let mut s_1_evals = s_1.evaluate_over_domain_by_ref(constraint_domain);
+                    s_1_evals.evaluations.push(s_1_evals[0]);
+                    let s_2_evals = s_2.evaluate_over_domain_by_ref(constraint_domain);
+                    let mut z_2_evals = z_2.evaluate_over_domain_by_ref(constraint_domain);
+                    z_2_evals.evaluations.push(z_2_evals[0]);
+                    let f_evals = f.evaluate_over_domain_by_ref(constraint_domain);
+                    let mut t_evals =
+                        state.index.t.polynomial().as_dense().unwrap().evaluate_over_domain_by_ref(constraint_domain);
+                    t_evals.evaluations.push(t_evals[0]);
+                    Evaluations::from_vec_and_domain(
+                        f_evals
+                            .evaluations
+                            .iter()
+                            .enumerate()
+                            .zip(z_2_evals.evaluations.clone())
+                            .zip(t_evals.evaluations.clone())
+                            .zip(s_1_evals.evaluations.clone())
+                            .zip(s_2_evals.evaluations)
+                            .zip(l_1_evals.clone())
+                            .take(constraint_domain.size())
+                            .map(|((((((i, f), z_2), t), s_1), s_2), l_1)| {
+                                let b = {
+                                    let b_0 = state.index.epsilon + f;
+                                    let b_1 = epsilon_one_plus_delta + t + state.index.delta * t_evals[i + 1];
+                                    z_2 * one_plus_delta * b_0 * b_1
+                                };
+
+                                let c = {
+                                    let c_0 = epsilon_one_plus_delta + s_1 + state.index.delta * s_2;
+                                    let c_1 = epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1];
+
+                                    -z_2_evals[i + 1] * c_0 * c_1
+                                };
+
+                                let d = (z_2 - F::one()) * l_1;
+
+                                b + c + d
+                            })
+                            .collect(),
+                        constraint_domain,
+                    )
+                    .interpolate_with_pc_by_ref(state.ifft_precomputation())
+                };
+
                 let mut row_check = {
                     let z_a = b.z_a_poly.polynomial().as_dense().unwrap();
                     let mut z_b = b.z_b_poly.polynomial().as_dense().unwrap().clone();
                     let mut z_c = b.z_c_poly.polynomial().as_dense().unwrap().clone();
-                    let f = b.f_poly.polynomial().as_dense().unwrap();
                     let mul_check = state.index.s_m.polynomial().as_dense().unwrap() * &(&(z_a * &z_b) - &z_c);
                     cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.index.zeta);
                     cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= zeta_squared);
                     let lookup_check =
                         state.index.s_l.polynomial().as_dense().unwrap() * &(&(&(z_a + &z_b) + &z_c) - f);
-                    &mul_check + &lookup_check
+
+                    &(&mul_check + &lookup_check) + &lookup_poly
                 };
 
                 // Apply linear combination coefficient
