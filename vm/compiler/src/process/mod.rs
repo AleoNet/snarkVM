@@ -47,21 +47,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         }
 
         // Initialize the trace.
-        let mut trace = Trace::<N>::new(*call.caller())?;
-
-        // Prepare the inputs.
-        call.input_ids().iter().try_for_each(|input_id| {
-            match input_id {
-                // A constant input is hashed to a field element.
-                InputID::Constant(input_hash) => trace.add_input(*input_hash),
-                // A public input is hashed to a field element.
-                InputID::Public(input_hash) => trace.add_input(*input_hash),
-                // A private input is committed (using `tvk`) to a field element.
-                InputID::Private(_, commitment) => trace.add_input(*commitment),
-                // An input record is computed to its serial number.
-                InputID::Record(_, _, _, _, serial_number) => trace.add_input(*serial_number),
-            }
-        })?;
+        let mut trace = Trace::<N>::new(call)?;
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
@@ -148,21 +134,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         }
 
         // Initialize the trace.
-        let mut trace = Trace::<N>::new(*call.caller())?;
-
-        // Prepare the inputs.
-        call.input_ids().iter().try_for_each(|input_id| {
-            match input_id {
-                // A constant input is hashed to a field element.
-                InputID::Constant(input_hash) => trace.add_input(*input_hash),
-                // A public input is hashed to a field element.
-                InputID::Public(input_hash) => trace.add_input(*input_hash),
-                // A private input is committed (using `tvk`) to a field element.
-                InputID::Private(_, commitment) => trace.add_input(*commitment),
-                // An input record is computed to its serial number.
-                InputID::Record(_, _, _, _, serial_number) => trace.add_input(*serial_number),
-            }
-        })?;
+        let mut trace = Trace::<N>::new(call)?;
 
         // Ensure the circuit environment is clean.
         A::reset();
