@@ -14,18 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod parse;
-mod to_bits;
-mod to_fields;
+use super::*;
 
-use crate::{Plaintext, Record};
-use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
+impl<N: Network> Debug for StackValue<N> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum StackValue<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+impl<N: Network> Display for StackValue<N> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // TODO (howardwu): Handle how to print plaintext vs record case.
+        match self {
+            StackValue::Plaintext(plaintext) => write!(f, "{plaintext}"),
+            StackValue::Record(record) => write!(f, "{record}"),
+        }
+    }
 }

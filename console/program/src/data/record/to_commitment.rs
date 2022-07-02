@@ -20,7 +20,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the record commitment.
     pub fn to_commitment(&self, randomizer: &Scalar<N>) -> Result<Field<N>> {
         // Compute the BHP commitment of the program record.
-        N::commit_bhp1024(&self.to_bits_le(), &randomizer)
+        N::commit_bhp1024(&self.to_bits_le(), randomizer)
     }
 }
 

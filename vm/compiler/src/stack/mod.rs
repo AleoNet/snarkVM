@@ -201,7 +201,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         function: &Function<N, A>,
         inputs: &[StackValue<N>],
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    ) -> Result<Vec<StackValue<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -224,17 +224,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {
             // Retrieve the stack value from the register.
-            let stack_value = self.load(&Operand::Register(output.register().clone()))?;
-            // Convert the stack value to the output value type.
-            let output = match (stack_value, output.value_type()) {
-                (StackValue::Plaintext(plaintext), ValueType::Constant(..)) => Value::Constant(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Public(..)) => Value::Public(plaintext),
-                (StackValue::Plaintext(plaintext), ValueType::Private(..)) => Value::Private(plaintext),
-                (StackValue::Record(record), ValueType::Record(..)) => Value::Record(record),
-                _ => bail!("Stack value does not match the expected output type"),
-            };
-            // Return the output.
-            Ok(output)
+            self.load(&Operand::Register(output.register().clone()))
         });
 
         outputs.collect()
@@ -249,7 +239,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         function: &Function<N, A>,
         inputs: &[circuit::CircuitValue<A>],
-    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+    ) -> Result<Vec<circuit::CircuitValue<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -283,23 +273,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {
             // Retrieve the circuit output from the register.
-            let circuit_output = self.load_circuit(&Operand::Register(output.register().clone()))?;
-            // Construct the circuit output value.
-            let output = match (circuit_output, output.value_type()) {
-                (circuit::CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => {
-                    circuit::Value::Constant(plaintext)
-                }
-                (circuit::CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => {
-                    circuit::Value::Public(plaintext)
-                }
-                (circuit::CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => {
-                    circuit::Value::Private(plaintext)
-                }
-                (circuit::CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
-                _ => bail!("Circuit value does not match the expected output type"),
-            };
-            // Return the output.
-            Ok(output)
+            self.load_circuit(&Operand::Register(output.register().clone()))
         });
 
         outputs.collect()
@@ -314,7 +288,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
-    ) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    ) -> Result<Vec<StackValue<N>>> {
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
         // Evaluate the function.
@@ -332,7 +306,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
-    ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+    ) -> Result<Vec<circuit::CircuitValue<A>>> {
         // Ensure the circuit environment is clean.
         A::reset();
 

@@ -20,7 +20,7 @@ use trace::*;
 use crate::{Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Plaintext, Request, Value},
+    program::{Plaintext, Request, Response, Value},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -31,7 +31,7 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given inputs.
     #[inline]
-    pub fn evaluate(&self, request: &Request<N>) -> Result<Vec<Value<N, Plaintext<N>>>> {
+    pub fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
@@ -54,70 +54,22 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, &inputs)?;
 
-        // Load the outputs.
-        outputs.iter().enumerate().try_for_each(|(index, output)| {
-            match output {
-                // For a constant output, compute the hash of the output.
-                Value::Constant(output) => {
-                    // Hash the output to a field element.
-                    let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
-                    // Add the output hash to the trace.
-                    trace.add_output(output_hash)?;
-                }
-                // For a public output, compute the hash of the output.
-                Value::Public(output) => {
-                    // Hash the output to a field element.
-                    let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
-                    // Add the output hash to the trace.
-                    trace.add_output(output_hash)?;
-                }
-                // For a private output, compute the commitment (using `tvk`) for the output.
-                Value::Private(output) => {
-                    // Construct the (console) output index as a field element.
-                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
-                    // Commit the output to a field element.
-                    let commitment = N::commit_bhp1024(&output.to_bits_le(), &randomizer)?;
-                    // Add the output commitment to the trace.
-                    trace.add_output(commitment)?;
-                }
-                // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
-                // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
-                Value::Record(record) => {
-                    // Construct the (console) output index as a field element.
-                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
-                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
-                    // Compute the record commitment.
-                    let commitment = record.to_commitment(&randomizer)?;
-                    // Add the record commitment to the trace.
-                    trace.add_output(commitment)?;
+        // Load the output types.
+        let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
 
-                    // Compute the record nonce.
-                    let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
-
-                    // Encrypt the record, using the randomizer.
-                    let encrypted_record = record.encrypt(randomizer)?;
-                    // Compute the record checksum, as the hash of the encrypted record.
-                    let checksum = N::hash_bhp1024(&encrypted_record.to_bits_le())?;
-                }
-            };
-
-            Ok::<_, Error>(())
-        })?;
+        let response = Response::new(num_inputs, request.tvk(), outputs, &output_types)?;
 
         // Finalize the trace.
         trace.finalize()?;
 
         println!("{:?}", trace.leaves());
 
-        Ok(outputs)
+        Ok(response)
     }
 
     /// Executes a program function on the given inputs.
     #[inline]
-    pub fn execute(&self, request: &Request<N>) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
+    pub fn execute(&self, request: &Request<N>) -> Result<Vec<circuit::CircuitValue<A>>> {
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
@@ -141,7 +93,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         use circuit::Inject;
 
         // Inject the transition view key `tvk` as `Mode::Public`.
-        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, request.tvk().clone());
+        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, request.clone());
         // Ensure the `tvk` matches.
@@ -160,14 +112,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function {}", function.name()));
 
+        // Load the output types.
+        let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
+
+        use console::program::ValueType;
+
         // Load the outputs.
-        outputs.iter().enumerate().try_for_each(|(index, output)| {
+        outputs.iter().zip_eq(&output_types).enumerate().try_for_each(|(index, (output, output_types))| {
             use circuit::{Eject, ToBits};
 
-            match output {
+            match output_types {
                 // For a constant output, compute the hash of the output.
                 // An expected hash is injected as `Mode::Constant`, and compared to the computed hash.
-                circuit::Value::Constant(output) => {
+                ValueType::Constant(..) => {
                     // Hash the output to a field element.
                     let output_hash = A::hash_bhp1024(&output.to_bits_le());
                     // Inject the expected hash as `Mode::Public`.
@@ -183,7 +140,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 }
                 // For a public output, compute the hash of the output.
                 // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
-                circuit::Value::Public(output) => {
+                ValueType::Public(..) => {
                     // Hash the output to a field element.
                     let output_hash = A::hash_bhp1024(&output.to_bits_le());
                     // Inject the expected hash as `Mode::Public`.
@@ -199,7 +156,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 }
                 // For a private output, compute the commitment (using `tvk`) for the output.
                 // An expected commitment is injected as `Mode::Public`, and compared to the commitment.
-                circuit::Value::Private(output) => {
+                ValueType::Private(..) => {
                     // Construct the (console) output index as a field element.
                     let index = console::types::Field::from_u16((num_inputs + index) as u16);
                     // Inject the output index as `Mode::Private`.
@@ -222,7 +179,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 }
                 // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
                 // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
-                circuit::Value::Record(record) => {
+                ValueType::Record(..) => {
+                    // Retrieve the record.
+                    let record = match &output {
+                        circuit::CircuitValue::Record(record) => record,
+                        // Ensure the input is a record.
+                        circuit::CircuitValue::Plaintext(..) => {
+                            bail!("Expected a record input, found a plaintext input")
+                        }
+                    };
+
                     // Construct the (console) output index as a field element.
                     let index = console::types::Field::from_u16((num_inputs + index) as u16);
                     // Inject the output index as `Mode::Private`.
@@ -349,9 +315,9 @@ function compute:
             StackValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
 
         // Declare the expected output value.
-        let r3 = Value::Private(Plaintext::from_str("19field").unwrap());
-        let r4 = Value::Private(Plaintext::from_str("11field").unwrap());
-        let r5 = Value::Private(Plaintext::from_str("8field").unwrap());
+        let r3 = StackValue::Plaintext(Plaintext::from_str("19field").unwrap());
+        let r4 = StackValue::Plaintext(Plaintext::from_str("11field").unwrap());
+        let r5 = StackValue::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Initialize the RNG.
         let rng = &mut test_crypto_rng();
@@ -406,10 +372,10 @@ function compute:
         // assert_eq!(26454, CurrentAleo::num_private());
         // assert_eq!(26472, CurrentAleo::num_constraints());
         // assert_eq!(90497, CurrentAleo::num_gates());
-        assert_eq!(37987, CurrentAleo::num_constants());
+        assert_eq!(38988, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(42690, CurrentAleo::num_private());
-        assert_eq!(42732, CurrentAleo::num_constraints());
-        assert_eq!(144046, CurrentAleo::num_gates());
+        assert_eq!(46214, CurrentAleo::num_private());
+        assert_eq!(46256, CurrentAleo::num_constraints());
+        assert_eq!(154719, CurrentAleo::num_gates());
     }
 }

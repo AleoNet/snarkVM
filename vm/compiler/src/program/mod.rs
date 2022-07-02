@@ -603,7 +603,7 @@ function compute:
         let mut stack = Stack::new(Some(program)).unwrap();
 
         // Run the function.
-        let expected = Value::Private(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
+        let expected = StackValue::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
         let candidate = stack.test_evaluate(&function_name, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
@@ -639,7 +639,7 @@ function compute:
         let input =
             StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("{ first: 2field, second: 3field }").unwrap());
         // Declare the expected output value.
-        let expected = Value::Private(Plaintext::from_str("5field").unwrap());
+        let expected = StackValue::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Prepare the stack.
         let mut stack = Stack::new(Some(program)).unwrap();
@@ -681,7 +681,7 @@ function compute:
         let input =
             StackValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
         // Declare the expected output value.
-        let expected = Value::Private(Plaintext::from_str("200u64").unwrap());
+        let expected = StackValue::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Prepare the stack.
         let mut stack = Stack::new(Some(program)).unwrap();
@@ -734,9 +734,9 @@ function compute:
         let r1 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Declare the expected output value.
-        let r2 = Value::Private(Plaintext::from_str("19field").unwrap());
-        let r3 = Value::Private(Plaintext::from_str("11field").unwrap());
-        let r4 = Value::Private(Plaintext::from_str("8field").unwrap());
+        let r2 = StackValue::Plaintext(Plaintext::from_str("19field").unwrap());
+        let r3 = StackValue::Plaintext(Plaintext::from_str("11field").unwrap());
+        let r4 = StackValue::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Prepare the stack.
         let mut stack = Stack::new(Some(program)).unwrap();
@@ -791,7 +791,7 @@ function compute:
         let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap();
         let input = StackValue::<CurrentNetwork>::Record(input_record.clone());
         // Declare the expected output value.
-        let expected = Value::Record(input_record);
+        let expected = StackValue::Record(input_record);
 
         // Prepare the stack.
         let mut stack = Stack::new(Some(program)).unwrap();

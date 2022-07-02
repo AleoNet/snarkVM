@@ -41,10 +41,10 @@ impl<N: Network> ToFields for InputID<N> {
     /// Returns the input as a list of field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
         match self {
-            InputID::Constant(field) => Ok(vec![*field]),
-            InputID::Public(field) => Ok(vec![*field]),
-            InputID::Private(index, field) => Ok(vec![*index, *field]),
-            InputID::Record(index, commitment, h, h_r, gamma, serial_number) => Ok(vec![
+            Self::Constant(field) => Ok(vec![*field]),
+            Self::Public(field) => Ok(vec![*field]),
+            Self::Private(index, field) => Ok(vec![*index, *field]),
+            Self::Record(index, commitment, h, h_r, gamma, serial_number) => Ok(vec![
                 *index,
                 *commitment,
                 h.to_x_coordinate(),
