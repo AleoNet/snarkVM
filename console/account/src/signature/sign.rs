@@ -24,8 +24,8 @@ impl<N: Network> Signature<N> {
     pub fn sign<R: Rng + CryptoRng>(private_key: &PrivateKey<N>, message: &[Field<N>], rng: &mut R) -> Result<Self> {
         // Sample a random nonce from the scalar field.
         let nonce = Scalar::rand(rng);
-        // Compute `g_nonce` as `nonce * G`.
-        let g_nonce = N::g_scalar_multiply(&nonce);
+        // Compute `g_r` as `nonce * G`.
+        let g_r = N::g_scalar_multiply(&nonce);
 
         // Derive the compute key from the private key.
         let compute_key = ComputeKey::try_from(private_key)?;
@@ -37,9 +37,9 @@ impl<N: Network> Signature<N> {
         // Derive the address from the compute key.
         let address = Address::try_from(compute_key)?;
 
-        // Construct the hash input as (nonce * G, pk_sig, pr_sig, address, message).
+        // Construct the hash input as (r * G, pk_sig, pr_sig, address, message).
         let mut preimage = Vec::with_capacity(4 + message.len());
-        preimage.extend([g_nonce, pk_sig, pr_sig, *address].map(|point| point.to_x_coordinate()));
+        preimage.extend([g_r, pk_sig, pr_sig, *address].map(|point| point.to_x_coordinate()));
         preimage.extend(message);
 
         // Compute the verifier challenge.
@@ -59,12 +59,12 @@ impl<N: Network> Signature<N> {
         // Retrieve pr_sig.
         let pr_sig = self.compute_key.pr_sig();
 
-        // Compute `g_nonce` := (response * G) + (challenge * pk_sig).
-        let g_nonce = N::g_scalar_multiply(&self.response) + (pk_sig * self.challenge);
+        // Compute `g_r` := (response * G) + (challenge * pk_sig).
+        let g_r = N::g_scalar_multiply(&self.response) + (pk_sig * self.challenge);
 
-        // Construct the hash input as (nonce * G, address, pk_sig, pr_sig, message).
+        // Construct the hash input as (r * G, pk_sig, pr_sig, address, message).
         let mut preimage = Vec::with_capacity(4 + message.len());
-        preimage.extend([g_nonce, pk_sig, pr_sig, **address].map(|point| point.to_x_coordinate()));
+        preimage.extend([g_r, pk_sig, pr_sig, **address].map(|point| point.to_x_coordinate()));
         preimage.extend(message);
 
         // Hash to derive the verifier challenge, and return `false` if this operation fails.
