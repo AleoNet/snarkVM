@@ -93,10 +93,12 @@ impl<N: Network> Request<N> {
                     ensure!(*input_hash == candidate_input_hash, "Expected a private input with the same commitment");
                 }
                 // An input record is computed to its serial number.
-                InputID::Record(commitment, h, h_r, gamma, serial_number) => {
+                InputID::Record(index, commitment, h, h_r, gamma, serial_number) => {
+                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = N::hash_to_scalar_psd2(&[self.tvk, *index])?;
                     // Compute the record commitment.
                     let candidate_commitment = match &input {
-                        StackValue::Record(record) => record.to_commitment()?,
+                        StackValue::Record(record) => record.to_commitment(&randomizer)?,
                         // Ensure the input is a record.
                         StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
@@ -160,7 +162,6 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a random private key and address.
             let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
-            let caller = Address::try_from(&private_key)?;
 
             // Retrieve `sk_sig` and `pr_sig`.
             let sk_sig = private_key.sk_sig();

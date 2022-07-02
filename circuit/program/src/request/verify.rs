@@ -77,10 +77,12 @@ impl<A: Aleo> Request<A> {
                     input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                 }
                 // An input record is computed to its serial number.
-                InputID::Record(commitment, h, h_r, gamma, serial_number) => {
+                InputID::Record(input_index, commitment, h, h_r, gamma, serial_number) => {
+                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index.clone()]);
                     // Compute the record commitment.
                     let candidate_commitment = match &input {
-                        CircuitValue::Record(record) => record.to_commitment(),
+                        CircuitValue::Record(record) => record.to_commitment(&randomizer),
                         // Ensure the input is a record.
                         CircuitValue::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                     };
@@ -134,7 +136,6 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random private key and address.
             let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
-            let caller = console::Address::try_from(&private_key)?;
 
             // Retrieve `sk_sig` and `pr_sig`.
             let sk_sig = private_key.sk_sig();
@@ -180,7 +181,8 @@ mod tests {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
                     false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
                 }
-            })
+            });
+            Circuit::reset();
         }
         Ok(())
     }
@@ -189,16 +191,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 35544, 0, 16595, 16629)
+        check_verify(Mode::Constant, 36039, 0, 18613, 18648)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 33054, 0, 24665, 24703)
+        check_verify(Mode::Public, 33555, 0, 26688, 26727)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 33054, 0, 24665, 24703)
+        check_verify(Mode::Private, 33555, 0, 26688, 26727)
     }
 }

@@ -281,3 +281,18 @@ impl Network for Testnet3 {
         MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_g_scalar_multiply() {
+        // Compute G^r.
+        let scalar = Scalar::rand(&mut test_rng());
+        let group = CurrentNetwork::g_scalar_multiply(&scalar);
+        assert_eq!(group, CurrentNetwork::g_powers()[0] * scalar);
+    }
+}

@@ -18,9 +18,9 @@ use super::*;
 
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Returns the record commitment.
-    pub fn to_commitment(&self) -> Field<A> {
-        // Compute the BHP hash of the program record.
-        A::hash_bhp1024(&self.to_bits_le())
+    pub fn to_commitment(&self, randomizer: &Scalar<A>) -> Field<A> {
+        // Compute the BHP commitment of the program record.
+        A::commit_bhp1024(&self.to_bits_le(), randomizer)
     }
 }
 

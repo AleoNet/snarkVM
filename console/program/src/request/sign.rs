@@ -110,9 +110,13 @@ impl<N: Network> Request<N> {
                 }
                 // An input record is computed to its serial number.
                 ValueType::Record(..) => {
+                    // Construct the (console) input index as a field element.
+                    let index = Field::from_u16(index as u16);
+                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
                     // Compute the record commitment.
                     let commitment = match &input {
-                        StackValue::Record(record) => record.to_commitment()?,
+                        StackValue::Record(record) => record.to_commitment(&randomizer)?,
                         // Ensure the input is a record.
                         StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
@@ -134,7 +138,7 @@ impl<N: Network> Request<N> {
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
 
                     // Add the commitment, H, r * H, gamma, and serial number to the inputs.
-                    input_ids.push(InputID::Record(commitment, h, h_r, gamma, serial_number));
+                    input_ids.push(InputID::Record(index, commitment, h, h_r, gamma, serial_number));
                 }
             }
         }

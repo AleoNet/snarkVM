@@ -31,8 +31,8 @@ pub enum InputID<N: Network> {
     Public(Field<N>),
     /// The index and ciphertext hash of the private input.
     Private(Field<N>, Field<N>),
-    /// The `(commitment, H, r * H, gamma, serial_number)` tuple of the record input.
-    Record(Field<N>, Group<N>, Group<N>, Group<N>, Field<N>),
+    /// The `(index, commitment, H, r * H, gamma, serial_number)` tuple of the record input.
+    Record(Field<N>, Field<N>, Group<N>, Group<N>, Group<N>, Field<N>),
 }
 
 impl<N: Network> ToFields for InputID<N> {
@@ -44,7 +44,8 @@ impl<N: Network> ToFields for InputID<N> {
             InputID::Constant(field) => Ok(vec![*field]),
             InputID::Public(field) => Ok(vec![*field]),
             InputID::Private(index, field) => Ok(vec![*index, *field]),
-            InputID::Record(commitment, h, h_r, gamma, serial_number) => Ok(vec![
+            InputID::Record(index, commitment, h, h_r, gamma, serial_number) => Ok(vec![
+                *index,
                 *commitment,
                 h.to_x_coordinate(),
                 h_r.to_x_coordinate(),

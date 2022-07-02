@@ -85,15 +85,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
                 // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
                 Value::Record(record) => {
-                    // Compute the record commitment.
-                    let commitment = record.to_commitment()?;
-                    // Add the record commitment to the trace.
-                    trace.add_output(commitment)?;
-
                     // Construct the (console) output index as a field element.
                     let index = console::types::Field::from_u16((num_inputs + index) as u16);
                     // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                     let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
+                    // Compute the record commitment.
+                    let commitment = record.to_commitment(&randomizer)?;
+                    // Add the record commitment to the trace.
+                    trace.add_output(commitment)?;
 
                     // Compute the record nonce.
                     let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -224,8 +223,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
                 // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
                 circuit::Value::Record(record) => {
+                    // Construct the (console) output index as a field element.
+                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
+                    // Inject the output index as `Mode::Private`.
+                    let output_index = circuit::Field::new(circuit::Mode::Private, index);
+                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                    let randomizer = A::hash_to_scalar_psd2(&[request.tvk().clone(), output_index]);
+
                     // Compute the record commitment.
-                    let commitment = record.to_commitment();
+                    let commitment = record.to_commitment(&randomizer);
                     // Inject the expected record commitment as `Mode::Public`.
                     let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
                     // Ensure the computed record commitment matches the expected record commitment.
@@ -233,13 +239,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
                     // Add the record commitment to the trace.
                     trace.add_output(commitment.eject_value())?;
-
-                    // Construct the (console) output index as a field element.
-                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
-                    // Inject the output index as `Mode::Private`.
-                    let output_index = circuit::Field::new(circuit::Mode::Private, index);
-                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[request.tvk().clone(), output_index]);
 
                     // Compute the record nonce.
                     let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();

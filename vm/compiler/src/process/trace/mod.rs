@@ -87,7 +87,7 @@ impl<N: Network> Trace<N> {
                 // A private input is committed (using `tvk`) to a field element.
                 InputID::Private(_, commitment) => trace.add_input(*commitment),
                 // An input record is computed to its serial number.
-                InputID::Record(_, _, _, _, serial_number) => trace.add_input(*serial_number),
+                InputID::Record(_, _, _, _, _, serial_number) => trace.add_input(*serial_number),
             }
         })?;
 
