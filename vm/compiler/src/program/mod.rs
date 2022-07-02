@@ -20,9 +20,6 @@ pub use closure::*;
 mod function;
 pub use function::*;
 
-mod id;
-pub use id::*;
-
 mod import;
 pub use import::*;
 
@@ -33,7 +30,6 @@ mod bytes;
 mod matches;
 mod parse;
 
-use crate::StackValue;
 use console::{
     network::prelude::*,
     program::{
@@ -42,9 +38,11 @@ use console::{
         Interface,
         Plaintext,
         PlaintextType,
+        ProgramID,
         Record,
         RecordType,
         RegisterType,
+        StackValue,
         Value,
         ValueType,
     },

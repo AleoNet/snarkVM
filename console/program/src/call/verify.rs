@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> SerialNumbers<N> {
+impl<N: Network> Call<N> {
     /// Returns `true` if the signature is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
@@ -127,7 +127,7 @@ mod tests {
             let address = Address::try_from(&private_key)?;
 
             let serial_numbers =
-                SerialNumbers::<CurrentNetwork>::sign(&sk_sig, &pr_sig, &commitments, &commitments, rng)?;
+                Call::<CurrentNetwork>::sign(&sk_sig, &pr_sig, &commitments, &commitments, rng)?;
             assert!(serial_numbers.verify(&address, &commitments, &commitments));
         }
         Ok(())

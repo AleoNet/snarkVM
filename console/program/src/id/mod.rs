@@ -16,8 +16,11 @@
 
 mod bytes;
 mod parse;
+mod to_fields;
 
-use console::{network::prelude::*, program::Identifier};
+use crate::Identifier;
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::Field;
 
 /// A program ID is of the form `{name}.{network}`.
 /// If no `network`-level domain is specified, the default network is used.
@@ -27,6 +30,20 @@ pub struct ProgramID<N: Network> {
     name: Identifier<N>,
     /// The network-level domain (NLD).
     network: Option<Identifier<N>>,
+}
+
+impl<N: Network> From<Identifier<N>> for ProgramID<N> {
+    /// Initializes a program ID from a name identifier.
+    fn from(name: Identifier<N>) -> Self {
+        Self { name, network: None }
+    }
+}
+
+impl<N: Network> From<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
+    /// Initializes a program ID from a name and network-level domain identifier.
+    fn from((name, network): (Identifier<N>, Identifier<N>)) -> Self {
+        Self { name, network: Some(network) }
+    }
 }
 
 impl<N: Network> ProgramID<N> {
@@ -71,7 +88,7 @@ impl<N: Network> PartialOrd for ProgramID<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
+    use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 

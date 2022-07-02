@@ -17,34 +17,35 @@
 mod to_bits;
 mod to_fields;
 
-use crate::StackValue;
-use circuit::{ToBits, ToFields};
+use crate::{Plaintext, Record};
+use snarkvm_circuit_network::Aleo;
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 
 #[derive(Clone)]
-pub enum CircuitValue<A: circuit::Aleo> {
+pub enum CircuitValue<A: Aleo> {
     /// A plaintext value.
-    Plaintext(circuit::Plaintext<A>),
+    Plaintext(Plaintext<A>),
     /// A record value.
-    Record(circuit::program::Record<A, circuit::Plaintext<A>>),
+    Record(Record<A, Plaintext<A>>),
 }
 
-impl<A: circuit::Aleo> circuit::Inject for CircuitValue<A> {
-    type Primitive = StackValue<A::Network>;
+impl<A: Aleo> Inject for CircuitValue<A> {
+    type Primitive = console::StackValue<A::Network>;
 
     /// Initializes a circuit of the given mode and value.
-    fn new(mode: circuit::Mode, value: Self::Primitive) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
-            StackValue::Plaintext(plaintext) => CircuitValue::Plaintext(circuit::Plaintext::new(mode, plaintext)),
-            StackValue::Record(record) => CircuitValue::Record(circuit::program::Record::new(mode, record)),
+            console::StackValue::Plaintext(plaintext) => CircuitValue::Plaintext(Plaintext::new(mode, plaintext)),
+            console::StackValue::Record(record) => CircuitValue::Record(Record::new(mode, record)),
         }
     }
 }
 
-impl<A: circuit::Aleo> circuit::Eject for CircuitValue<A> {
-    type Primitive = StackValue<A::Network>;
+impl<A: Aleo> Eject for CircuitValue<A> {
+    type Primitive = console::StackValue<A::Network>;
 
     /// Ejects the mode of the circuit value.
-    fn eject_mode(&self) -> circuit::Mode {
+    fn eject_mode(&self) -> Mode {
         match self {
             CircuitValue::Plaintext(plaintext) => plaintext.eject_mode(),
             CircuitValue::Record(record) => record.eject_mode(),
@@ -54,8 +55,8 @@ impl<A: circuit::Aleo> circuit::Eject for CircuitValue<A> {
     /// Ejects the circuit value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            CircuitValue::Plaintext(plaintext) => StackValue::Plaintext(plaintext.eject_value()),
-            CircuitValue::Record(record) => StackValue::Record(record.eject_value()),
+            CircuitValue::Plaintext(plaintext) => console::StackValue::Plaintext(plaintext.eject_value()),
+            CircuitValue::Record(record) => console::StackValue::Record(record.eject_value()),
         }
     }
 }

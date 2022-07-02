@@ -14,23 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+use super::*;
 
-mod identifier;
-pub use identifier::Identifier;
+impl<A: Aleo> ToBits for CircuitValue<A> {
+    type Boolean = Boolean<A>;
 
-mod literal;
-pub use literal::Literal;
+    /// Returns the circuit value as a list of **little-endian** bits.
+    #[inline]
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
+        match self {
+            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_le(),
+            CircuitValue::Record(record) => record.to_bits_le(),
+        }
+    }
 
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Balance, Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
-
-mod circuit_value;
-pub use circuit_value::*;
+    /// Returns the circuit value as a list of **big-endian** bits.
+    #[inline]
+    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+        match self {
+            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_be(),
+            CircuitValue::Record(record) => record.to_bits_be(),
+        }
+    }
+}

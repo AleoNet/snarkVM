@@ -17,33 +17,42 @@
 mod sign;
 mod verify;
 
+use crate::Request;
 use snarkvm_console_account::{Address, ComputeKey};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
 #[derive(Clone)]
-pub struct SerialNumbers<N: Network> {
+pub struct Call<N: Network> {
+    /// The request for the call.
+    request: Request<N>,
     /// The serial numbers of the record.
     serial_numbers: Vec<Field<N>>,
     /// The signature for the serial number: `(challenge, response, compute_key, gamma)`.
     signature: (Scalar<N>, Scalar<N>, ComputeKey<N>, Vec<Group<N>>),
 }
 
-impl<N: Network> From<(Vec<Field<N>>, (Scalar<N>, Scalar<N>, ComputeKey<N>, Vec<Group<N>>))> for SerialNumbers<N> {
-    /// Note: See `SerialNumber::prove` to create a serial number. This method is used to eject from a circuit.
+impl<N: Network> From<(Request<N>, Vec<Field<N>>, (Scalar<N>, Scalar<N>, ComputeKey<N>, Vec<Group<N>>))> for Call<N> {
+    /// Note: See `Call::sign` to create the call. This method is used to eject from a circuit.
     fn from(
-        (serial_numbers, (challenge, response, compute_key, gammas)): (
+        (request, serial_numbers, (challenge, response, compute_key, gammas)): (
+            Request<N>,
             Vec<Field<N>>,
             (Scalar<N>, Scalar<N>, ComputeKey<N>, Vec<Group<N>>),
         ),
     ) -> Self {
-        Self { serial_numbers, signature: (challenge, response, compute_key, gammas) }
+        Self { request, serial_numbers, signature: (challenge, response, compute_key, gammas) }
     }
 }
 
-impl<N: Network> SerialNumbers<N> {
+impl<N: Network> Call<N> {
+    /// Returns the request for the call.
+    pub const fn request(&self) -> &Request<N> {
+        &self.request
+    }
+
     /// Returns the serial numbers.
-    pub fn value(&self) -> &[Field<N>] {
+    pub fn serial_numbers(&self) -> &[Field<N>] {
         &self.serial_numbers
     }
 

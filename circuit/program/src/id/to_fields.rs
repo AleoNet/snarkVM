@@ -14,19 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod to_bits;
-mod to_fields;
+use super::*;
 
-use console::{
-    network::prelude::*,
-    program::{Plaintext, Record},
-    types::Field,
-};
+impl<A: Aleo> ToFields for ProgramID<A> {
+    type Field = Field<A>;
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum StackValue<N: Network> {
-    /// A plaintext value.
-    Plaintext(Plaintext<N>),
-    /// A record value.
-    Record(Record<N, Plaintext<N>>),
+    /// Returns this program ID as a list of field elements.
+    fn to_fields(&self) -> Vec<Self::Field> {
+        vec![self.name.to_field(), self.network.to_field()]
+    }
 }

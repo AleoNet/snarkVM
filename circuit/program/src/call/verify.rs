@@ -16,12 +16,12 @@
 
 use super::*;
 
-impl<A: Aleo> SerialNumbers<A> {
+impl<A: Aleo> Call<A> {
     /// Returns `true` if the signature is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, address, function_call, ∀ \[H, r * H, gamma\])
-    pub fn verify(&self, address: &Address<A>, function_call: &[Field<A>], commitments: &[Field<A>]) -> Boolean<A> {
+    pub fn verify(&self, request: &Request<A>, commitments: &[Field<A>]) -> Boolean<A> {
         // Retrieve the proof components.
         let (challenge, response, compute_key, gammas) = &self.signature;
 
@@ -36,7 +36,7 @@ impl<A: Aleo> SerialNumbers<A> {
         let mut preimage = Vec::with_capacity(4 + (3 * commitments.len()) + function_call.len());
         preimage.push(A::serial_number_domain());
         preimage.extend([&g_r, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
-        preimage.push(address.to_field());
+        preimage.push(request.caller().to_field());
         preimage.extend_from_slice(function_call);
 
         for ((gamma, commitment), serial_number) in gammas.into_iter().zip_eq(commitments).zip_eq(&self.serial_numbers)
@@ -71,7 +71,7 @@ impl<A: Aleo> SerialNumbers<A> {
         let candidate_address = compute_key.to_address();
 
         // Return `true` if the challenge and address are valid.
-        challenge.is_equal(&candidate_challenge) & address.is_equal(&candidate_address)
+        challenge.is_equal(&candidate_challenge) & request.caller().is_equal(&candidate_address)
     }
 }
 
@@ -103,7 +103,7 @@ mod tests {
             let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
             let address = snarkvm_console_account::Address::try_from(&private_key)?;
 
-            let serial_numbers = console::SerialNumbers::<<Circuit as Environment>::Network>::sign(
+            let serial_numbers = console::Call::<<Circuit as Environment>::Network>::sign(
                 &sk_sig,
                 &pr_sig,
                 &commitments,
@@ -112,13 +112,13 @@ mod tests {
             )?;
             assert!(serial_numbers.verify(&address, &commitments, &commitments));
 
-            // Inject the serial number and its arguments into circuits.
+            // Inject the call into a circuit.
             let address = Address::<Circuit>::new(mode, address);
             let commitments: Vec<_> = Inject::new(mode, commitments);
-            let serial_numbers = SerialNumbers::new(mode, serial_numbers);
+            let call = Call::new(mode, serial_numbers);
 
             Circuit::scope(format!("SerialNumbers {i}"), || {
-                let candidate = serial_numbers.verify(&address, &commitments, &commitments);
+                let candidate = call.verify(&address, &commitments, &commitments);
                 assert!(candidate.eject_value());
                 assert_scope!(<=num_constants, num_public, num_private, num_constraints);
             })

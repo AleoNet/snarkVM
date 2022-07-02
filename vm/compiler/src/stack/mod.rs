@@ -14,19 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod circuit_value;
-pub(crate) use circuit_value::*;
-
 mod register_types;
 pub use register_types::*;
-
-mod stack_value;
-pub use stack_value::*;
 
 mod load;
 mod store;
 
-use crate::{Closure, Function, Instruction, Opcode, Operand, Program, ProgramID};
+use crate::{Closure, Function, Instruction, Opcode, Operand, Program};
 use console::{
     network::prelude::*,
     program::{
@@ -38,9 +32,11 @@ use console::{
         LiteralType,
         Plaintext,
         PlaintextType,
+        ProgramID,
         RecordType,
         Register,
         RegisterType,
+        StackValue,
         Value,
         ValueType,
     },
@@ -58,7 +54,7 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The mapping of assigned console registers to their values.
     console_registers: IndexMap<u64, StackValue<N>>,
     /// The mapping of assigned circuit registers to their values.
-    circuit_registers: IndexMap<u64, CircuitValue<A>>,
+    circuit_registers: IndexMap<u64, circuit::CircuitValue<A>>,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
@@ -155,8 +151,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn execute_closure(
         &mut self,
         closure: &Closure<N, A>,
-        inputs: &[CircuitValue<A>],
-    ) -> Result<Vec<CircuitValue<A>>> {
+        inputs: &[circuit::CircuitValue<A>],
+    ) -> Result<Vec<circuit::CircuitValue<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -252,7 +248,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn execute_function(
         &mut self,
         function: &Function<N, A>,
-        inputs: &[CircuitValue<A>],
+        inputs: &[circuit::CircuitValue<A>],
     ) -> Result<Vec<circuit::Value<A, circuit::Plaintext<A>>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
@@ -290,10 +286,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             let circuit_output = self.load_circuit(&Operand::Register(output.register().clone()))?;
             // Construct the circuit output value.
             let output = match (circuit_output, output.value_type()) {
-                (CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => circuit::Value::Constant(plaintext),
-                (CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => circuit::Value::Public(plaintext),
-                (CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => circuit::Value::Private(plaintext),
-                (CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
+                (circuit::CircuitValue::Plaintext(plaintext), ValueType::Constant(..)) => {
+                    circuit::Value::Constant(plaintext)
+                }
+                (circuit::CircuitValue::Plaintext(plaintext), ValueType::Public(..)) => {
+                    circuit::Value::Public(plaintext)
+                }
+                (circuit::CircuitValue::Plaintext(plaintext), ValueType::Private(..)) => {
+                    circuit::Value::Private(plaintext)
+                }
+                (circuit::CircuitValue::Record(record), ValueType::Record(..)) => circuit::Value::Record(record),
                 _ => bail!("Circuit value does not match the expected output type"),
             };
             // Return the output.

@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitValue, Opcode, Operand, Program, Stack, StackValue};
+use crate::{Opcode, Operand, Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType},
+    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, StackValue},
 };
 
 use core::marker::PhantomData;
@@ -154,8 +154,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
-        let output =
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
+        let output = circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(
+            circuit::Literal::Field(output),
+            Default::default(),
+        ));
         // Store the output.
         stack.store_circuit(&self.destination, output)
     }

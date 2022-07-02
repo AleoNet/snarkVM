@@ -23,8 +23,5 @@ use snarkvm_circuit_network::AleoV0 as Circuit;
 mod record;
 pub use record::{Record, SerialNumber};
 
-mod serial_numbers;
-pub use serial_numbers::SerialNumbers;
-
 mod state;
 pub use state::{Randomizer, State};

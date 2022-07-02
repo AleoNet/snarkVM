@@ -14,23 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+mod to_bits;
+mod to_fields;
 
-mod identifier;
-pub use identifier::Identifier;
+use crate::{Plaintext, Record};
+use snarkvm_console_network::Network;
+use snarkvm_console_types::prelude::*;
 
-mod literal;
-pub use literal::Literal;
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Balance, Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
-
-mod circuit_value;
-pub use circuit_value::*;
+#[derive(Clone, PartialEq, Eq)]
+pub enum StackValue<N: Network> {
+    /// A plaintext value.
+    Plaintext(Plaintext<N>),
+    /// A record value.
+    Record(Record<N, Plaintext<N>>),
+}

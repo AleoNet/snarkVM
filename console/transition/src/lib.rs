@@ -22,8 +22,5 @@ pub use snarkvm_console_types::prelude::*;
 mod record;
 pub use record::*;
 
-mod serial_numbers;
-pub use serial_numbers::*;
-
 mod state;
 pub use state::*;

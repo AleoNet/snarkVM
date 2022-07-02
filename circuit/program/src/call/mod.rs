@@ -22,8 +22,11 @@ mod verify;
 use snarkvm_circuit_account::ComputeKey;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar};
+use crate::Request;
 
-pub struct SerialNumbers<A: Aleo> {
+pub struct Call<A: Aleo> {
+    /// The request for the call.
+    request: Request<A>,
     /// The serial numbers.
     serial_numbers: Vec<Field<A>>,
     /// The signature for the serial numbers: `(challenge, response, compute_key, gammas)`.
@@ -31,41 +34,47 @@ pub struct SerialNumbers<A: Aleo> {
 }
 
 #[cfg(console)]
-impl<A: Aleo> Inject for SerialNumbers<A> {
-    type Primitive = console::SerialNumbers<A::Network>;
+impl<A: Aleo> Inject for Call<A> {
+    type Primitive = console::Call<A::Network>;
 
-    /// Initializes the serial numbers from the given mode and native serial numbers.
-    fn new(mode: Mode, serial_numbers: Self::Primitive) -> SerialNumbers<A> {
+    /// Initializes the call from the given mode and console call.
+    fn new(mode: Mode, call: Self::Primitive) -> Call<A> {
         Self {
-            serial_numbers: Inject::new(mode, serial_numbers.value().to_vec()),
+            request: Request::new(mode, call.request().clone()),
+            serial_numbers: Inject::new(mode, call.serial_numbers().to_vec()),
             signature: (
-                Scalar::new(mode, serial_numbers.signature().0),
-                Scalar::new(mode, serial_numbers.signature().1),
-                ComputeKey::new(mode, serial_numbers.signature().2),
-                Inject::new(mode, serial_numbers.signature().3.to_vec()),
+                Scalar::new(mode, call.signature().0),
+                Scalar::new(mode, call.signature().1),
+                ComputeKey::new(mode, call.signature().2),
+                Inject::new(mode, call.signature().3.to_vec()),
             ),
         }
     }
 }
 
 #[cfg(console)]
-impl<A: Aleo> Eject for SerialNumbers<A> {
-    type Primitive = console::SerialNumbers<A::Network>;
+impl<A: Aleo> Eject for Call<A> {
+    type Primitive = console::Call<A::Network>;
 
-    /// Ejects the mode of the serial numbers.
+    /// Ejects the mode of the call.
     fn eject_mode(&self) -> Mode {
-        (&self.serial_numbers, &self.signature.0, &self.signature.1, &self.signature.2, &self.signature.3).eject_mode()
+        (&self.request, &self.serial_numbers, &self.signature.0, &self.signature.1, &self.signature.2, &self.signature.3).eject_mode()
     }
 
-    /// Ejects the serial numbers.
+    /// Ejects the call as a primitive.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from((self.serial_numbers.eject_value(), (&self.signature).eject_value()))
+        Self::Primitive::from((self.request.eject_value(), self.serial_numbers.eject_value(), (&self.signature).eject_value()))
     }
 }
 
-impl<A: Aleo> SerialNumbers<A> {
+impl<A: Aleo> Call<A> {
+    /// Returns the request for the call.
+    pub const fn request(&self) -> &Request<A> {
+        &self.request
+    }
+
     /// Returns the serial numbers.
-    pub fn value(&self) -> &[Field<A>] {
+    pub fn serial_numbers(&self) -> &[Field<A>] {
         &self.serial_numbers
     }
 

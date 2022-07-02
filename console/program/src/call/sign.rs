@@ -16,14 +16,14 @@
 
 use super::*;
 
-impl<N: Network> SerialNumbers<N> {
-    /// Returns the serial numbers and signature `(challenge, response, compute_key, gammas)` for a given function call, commitments, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, address, function_call, ∀ \[H, r * H, gamma\])
+impl<N: Network> Call<N> {
+    /// Returns the request, serial numbers, and signature `(challenge, response, compute_key, gammas)` for a given call and RNG, where:
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, address, request, ∀ \[H, r * H, gamma\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         sk_sig: &Scalar<N>,
         pr_sig: &Group<N>,
-        function_call: &[Field<N>],
+        request: &Request<N>,
         commitments: &[Field<N>],
         rng: &mut R,
     ) -> Result<Self> {

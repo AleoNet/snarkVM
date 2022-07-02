@@ -14,23 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod ciphertext;
-pub use ciphertext::Ciphertext;
+use super::*;
 
-mod identifier;
-pub use identifier::Identifier;
-
-mod literal;
-pub use literal::Literal;
-
-mod plaintext;
-pub use plaintext::Plaintext;
-
-mod record;
-pub use record::{Balance, Entry, Owner, Record};
-
-mod value;
-pub use value::Value;
-
-mod circuit_value;
-pub use circuit_value::*;
+impl<N: Network> Request<N> {
+    /// Returns the input commitments from this request.
+    pub fn to_commitments(&self) -> Result<Vec<Field<N>>> {
+        self.inputs
+            .iter()
+            .flat_map(|input| match input {
+                StackValue::Plaintext(..) => None,
+                StackValue::Record(record) => Some(record),
+            })
+            .map(|record| record.to_commitment())
+            .collect()
+    }
+}

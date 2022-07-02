@@ -16,24 +16,11 @@
 
 use super::*;
 
-impl<A: circuit::Aleo> ToBits for CircuitValue<A> {
-    type Boolean = circuit::types::Boolean<A>;
+impl<N: Network> ToFields for ProgramID<N> {
+    type Field = Field<N>;
 
-    /// Returns the circuit value as a list of **little-endian** bits.
-    #[inline]
-    fn to_bits_le(&self) -> Vec<circuit::types::Boolean<A>> {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_le(),
-            CircuitValue::Record(record) => record.to_bits_le(),
-        }
-    }
-
-    /// Returns the circuit value as a list of **big-endian** bits.
-    #[inline]
-    fn to_bits_be(&self) -> Vec<circuit::types::Boolean<A>> {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_be(),
-            CircuitValue::Record(record) => record.to_bits_be(),
-        }
+    /// Returns this program ID as a list of field elements.
+    fn to_fields(&self) -> Result<Vec<Self::Field>> {
+        Ok(vec![self.name().to_field()?, self.network()?.to_field()?])
     }
 }

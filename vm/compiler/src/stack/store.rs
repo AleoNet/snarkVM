@@ -78,7 +78,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register is already used.
     #[inline]
     pub fn store_literal_circuit(&mut self, register: &Register<N>, literal: circuit::Literal<A>) -> Result<()> {
-        self.store_circuit(register, CircuitValue::Plaintext(circuit::Plaintext::from(literal)))
+        self.store_circuit(register, circuit::CircuitValue::Plaintext(circuit::Plaintext::from(literal)))
     }
 
     /// Assigns the given value to the given register, assuming the register is not already assigned.
@@ -88,7 +88,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store_circuit(&mut self, register: &Register<N>, circuit_value: CircuitValue<A>) -> Result<()> {
+    pub fn store_circuit(&mut self, register: &Register<N>, circuit_value: circuit::CircuitValue<A>) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.

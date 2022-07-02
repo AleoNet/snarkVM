@@ -17,12 +17,11 @@
 mod trace;
 use trace::*;
 
-use crate::{CircuitValue, Program, Stack, StackValue};
+use crate::{Program, Stack, StackValue};
 use console::{
     account::Address,
     network::prelude::*,
-    program::{Identifier, Plaintext, Value, ValueType},
-    transition::SerialNumbers,
+    program::{Identifier, Call, Plaintext, Value, ValueType},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -197,7 +196,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     pub fn execute<R: Rng + CryptoRng>(
         &self,
         caller: Address<N>,
-        // signature: &SerialNumbers<N>,
+        signature: &Call<N>,
         function_name: &Identifier<N>,
         inputs: &[StackValue<N>],
         rng: &mut R,
@@ -269,9 +268,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // An expected hash is injected as `Mode::Constant`, and compared to the computed hash.
                     ValueType::Constant(..) => {
                         // Inject the input as `Mode::Constant`.
-                        let input = CircuitValue::new(circuit::Mode::Constant, input.clone());
+                        let input = circuit::CircuitValue::new(circuit::Mode::Constant, input.clone());
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, circuit::CircuitValue::Plaintext(..)), "Expected a plaintext input");
 
                         // Hash the input to a field element.
                         let input_hash = A::hash_bhp1024(&input.to_bits_le());
@@ -292,9 +291,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
                     ValueType::Public(..) => {
                         // Inject the input as `Mode::Private`.
-                        let input = CircuitValue::new(circuit::Mode::Private, input.clone());
+                        let input = circuit::CircuitValue::new(circuit::Mode::Private, input.clone());
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, circuit::CircuitValue::Plaintext(..)), "Expected a plaintext input");
 
                         // Hash the input to a field element.
                         let input_hash = A::hash_bhp1024(&input.to_bits_le());
@@ -315,9 +314,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // An expected commitment is injected as `Mode::Public`, and compared to the commitment.
                     ValueType::Private(..) => {
                         // Inject the input as `Mode::Private`.
-                        let input = CircuitValue::new(circuit::Mode::Private, input.clone());
+                        let input = circuit::CircuitValue::new(circuit::Mode::Private, input.clone());
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, circuit::CircuitValue::Plaintext(..)), "Expected a plaintext input");
 
                         // Construct the (console) input index as a field element.
                         let index = console::types::Field::from_u16(index as u16);
@@ -345,12 +344,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // An expected serial number is injected as `Mode::Public`, and compared to the computed serial number.
                     ValueType::Record(..) => {
                         // Inject the input as `Mode::Private`.
-                        let input = CircuitValue::new(circuit::Mode::Private, input.clone());
+                        let input = circuit::CircuitValue::new(circuit::Mode::Private, input.clone());
                         // Retrieve the record from the input.
                         let record = match &input {
-                            CircuitValue::Record(record) => record,
+                            circuit::CircuitValue::Record(record) => record,
                             // Ensure the input is a record.
-                            CircuitValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                            circuit::CircuitValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
 
                         // Compute the record commitment.
@@ -374,6 +373,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 }
             })
             .collect::<Result<Vec<_>>>()?;
+
+
+        // Inject the call signature as `Mode::Private`.
+        let signature = circuit::CallSignature::new(circuit::Mode::Private, signature.clone());
+
+        signature.verify(&caller, )
 
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
@@ -602,5 +607,12 @@ function compute:
         assert_eq!(r3, candidate[1].eject_value());
         assert_eq!(r4, candidate[2].eject_value());
         assert_eq!(r5, candidate[3].eject_value());
+
+        use circuit::Environment;
+        assert_eq!(24537, CurrentAleo::num_constants());
+        assert_eq!(13, CurrentAleo::num_public());
+        assert_eq!(26454, CurrentAleo::num_private());
+        assert_eq!(26472, CurrentAleo::num_constraints());
+        assert_eq!(90497, CurrentAleo::num_gates());
     }
 }

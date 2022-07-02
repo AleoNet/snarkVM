@@ -92,9 +92,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn load_literal_circuit(&self, operand: &Operand<N>) -> Result<circuit::program::Literal<A>> {
         match self.load_circuit(operand)? {
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
-            CircuitValue::Plaintext(circuit::Plaintext::Interface(..)) => bail!("Operand must be a literal"),
-            CircuitValue::Record(..) => bail!("Operand must be a literal"),
+            circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
+            circuit::CircuitValue::Plaintext(circuit::Plaintext::Interface(..)) => bail!("Operand must be a literal"),
+            circuit::CircuitValue::Record(..) => bail!("Operand must be a literal"),
         }
     }
 
@@ -104,14 +104,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_circuit(&self, operand: &Operand<N>) -> Result<CircuitValue<A>> {
+    pub fn load_circuit(&self, operand: &Operand<N>) -> Result<circuit::CircuitValue<A>> {
         use circuit::Inject;
 
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
             Operand::Literal(literal) => {
-                return Ok(CircuitValue::Plaintext(circuit::Plaintext::from(circuit::Literal::constant(
+                return Ok(circuit::CircuitValue::Plaintext(circuit::Plaintext::from(circuit::Literal::constant(
                     literal.clone(),
                 ))));
             }
@@ -134,12 +134,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
                 match circuit_value {
                     // Retrieve the plaintext member from the path.
-                    CircuitValue::Plaintext(plaintext) => CircuitValue::Plaintext(plaintext.find(&path)?),
+                    circuit::CircuitValue::Plaintext(plaintext) => {
+                        circuit::CircuitValue::Plaintext(plaintext.find(&path)?)
+                    }
                     // Retrieve the record entry from the path.
-                    CircuitValue::Record(record) => match record.find(&path)? {
+                    circuit::CircuitValue::Record(record) => match record.find(&path)? {
                         circuit::Entry::Constant(plaintext)
                         | circuit::Entry::Public(plaintext)
-                        | circuit::Entry::Private(plaintext) => CircuitValue::Plaintext(plaintext),
+                        | circuit::Entry::Private(plaintext) => circuit::CircuitValue::Plaintext(plaintext),
                     },
                 }
             }

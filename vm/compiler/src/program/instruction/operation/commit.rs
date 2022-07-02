@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitValue, Opcode, Operand, Program, Stack, StackValue};
+use crate::{Opcode, Operand, Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType},
+    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, StackValue},
 };
 
 use core::marker::PhantomData;
@@ -30,7 +30,10 @@ pub trait CommitOperation<N: Network, A: circuit::Aleo<Network = N>> {
     fn evaluate(input: StackValue<N>, randomizer: StackValue<N>) -> Result<StackValue<N>>;
 
     /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute(input: CircuitValue<A>, randomizer: CircuitValue<A>) -> Result<CircuitValue<A>>;
+    fn execute(
+        input: circuit::CircuitValue<A>,
+        randomizer: circuit::CircuitValue<A>,
+    ) -> Result<circuit::CircuitValue<A>>;
 
     /// Returns the output type from the given input types.
     fn output_type() -> Result<RegisterType<N>>;
@@ -82,12 +85,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
     }
 
     /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute(input: CircuitValue<A>, randomizer: CircuitValue<A>) -> Result<CircuitValue<A>> {
+    fn execute(
+        input: circuit::CircuitValue<A>,
+        randomizer: circuit::CircuitValue<A>,
+    ) -> Result<circuit::CircuitValue<A>> {
         use circuit::ToBits;
 
         // Retrieve the randomizer.
         let randomizer = match randomizer {
-            CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
+            circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
                 randomizer
             }
             _ => bail!("Invalid randomizer type for BHP commit"),
@@ -101,7 +107,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
             _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.
-        Ok(CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default())))
+        Ok(circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(
+            circuit::Literal::Field(output),
+            Default::default(),
+        )))
     }
 
     /// Returns the output type from the given input types.
