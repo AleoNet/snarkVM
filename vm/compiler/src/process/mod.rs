@@ -20,7 +20,7 @@ use trace::*;
 use crate::{Program, Stack};
 use console::{
     network::prelude::*,
-    program::{InputID, Plaintext, Request, StackValue, Value, ValueType},
+    program::{Plaintext, Request, Value},
 };
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -296,9 +296,9 @@ mod tests {
     use super::*;
     use circuit::network::AleoV0;
     use console::{
-        account::{Address, ComputeKey, PrivateKey, ViewKey},
+        account::{ComputeKey, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, ProgramID, Record, Request},
+        program::{Identifier, Record, Request, StackValue, ValueType},
     };
 
     type CurrentNetwork = Testnet3;
@@ -361,7 +361,6 @@ function compute:
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let caller_compute_key = ComputeKey::try_from(&caller_private_key).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
-        let caller = Address::try_from(&caller_private_key).unwrap();
 
         // Construct the inputs and input types.
         let inputs = vec![r0, r1, r2];
@@ -408,10 +407,10 @@ function compute:
         // assert_eq!(26454, CurrentAleo::num_private());
         // assert_eq!(26472, CurrentAleo::num_constraints());
         // assert_eq!(90497, CurrentAleo::num_gates());
-        assert_eq!(37767, CurrentAleo::num_constants());
+        assert_eq!(37987, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(39542, CurrentAleo::num_private());
-        assert_eq!(39582, CurrentAleo::num_constraints());
-        assert_eq!(132215, CurrentAleo::num_gates());
+        assert_eq!(42690, CurrentAleo::num_private());
+        assert_eq!(42732, CurrentAleo::num_constraints());
+        assert_eq!(144046, CurrentAleo::num_gates());
     }
 }
