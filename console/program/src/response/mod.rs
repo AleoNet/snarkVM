@@ -18,7 +18,7 @@ use crate::{Value, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OutputID<N: Network> {
     /// The hash of the constant output.
     Constant(Field<N>),

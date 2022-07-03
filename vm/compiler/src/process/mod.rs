@@ -17,7 +17,7 @@
 mod trace;
 use trace::*;
 
-use crate::{Program, ProvingKey, Stack, UniversalSRS, VerifyingKey};
+use crate::{Function, Program, ProvingKey, Stack, UniversalSRS, VerifyingKey};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -83,8 +83,6 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             let function = program.get_function(function_name)?;
             // Retrieve the function input types.
             let input_types = function.input_types();
-            // Retrieve the function output types.
-            let output_types = function.output_types();
 
             // Initialize an RNG.
             let rng = &mut rand::thread_rng();
@@ -108,45 +106,44 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
 
+            // // Synthesize the circuit.
+            // let assignment = {
+            //     use circuit::Inject;
+            //     // Ensure the circuit environment is clean.
+            //     A::reset();
+            //
+            //     // Inject the transition view key `tvk` as `Mode::Public`.
+            //     let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
+            //     // Inject the request as `Mode::Private`.
+            //     let request = circuit::Request::new(circuit::Mode::Private, request.clone());
+            //     // Ensure the `tvk` matches.
+            //     A::assert_eq(request.tvk(), tvk);
+            //     // Ensure the request has a valid signature and serial numbers.
+            //     A::assert(request.verify());
+            //
+            //     #[cfg(debug_assertions)]
+            //     Self::log_circuit("Request Authentication");
+            //
+            //     // Prepare the stack.
+            //     let mut stack = Stack::<N, A>::new(program)?;
+            //     // Execute the function.
+            //     let outputs = stack.execute_function(&function, request.inputs())?;
+            //
+            //     #[cfg(debug_assertions)]
+            //     Self::log_circuit(format!("Function '{}()'", function.name()));
+            //
+            //     // Construct the response.
+            //     let _response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
+            //
+            //     #[cfg(debug_assertions)]
+            //     Self::log_circuit("Response");
+            //
+            //     // Finalize the circuit into an assignment.
+            //     A::eject_assignment_and_reset()
+            // };
+
             // Synthesize the circuit.
-            let assignment = {
-                use circuit::Inject;
-                // Ensure the circuit environment is clean.
-                A::reset();
-
-                // Inject the transition view key `tvk` as `Mode::Public`.
-                let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
-                // Inject the request as `Mode::Private`.
-                let request = circuit::Request::new(circuit::Mode::Private, request.clone());
-                // Ensure the `tvk` matches.
-                A::assert_eq(request.tvk(), tvk);
-                // Ensure the request has a valid signature and serial numbers.
-                A::assert(request.verify());
-
-                #[cfg(debug_assertions)]
-                Self::log_circuit("Request Authentication");
-
-                // Prepare the stack.
-                let mut stack = Stack::<N, A>::new(Some(program))?;
-                // Execute the function.
-                let outputs = stack.execute_function(&function, request.inputs())?;
-
-                #[cfg(debug_assertions)]
-                Self::log_circuit(format!("Function '{}()'", function.name()));
-
-                // Construct the response.
-                let _response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
-
-                #[cfg(debug_assertions)]
-                Self::log_circuit("Response");
-
-                // Finalize the circuit into an assignment.
-                let assignment = A::eject_assignment_and_reset();
-                // Ensure the circuit environment is clean.
-                A::reset();
-                // Return the assignment.
-                assignment
-            };
+            let (_response, assignment) = Self::synthesize(program, &function, &request)?;
 
             // Derive the circuit key.
             let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(&assignment)?;
@@ -178,7 +175,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         }
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(Some(program))?;
+        let mut stack = Stack::<N, A>::new(program)?;
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
@@ -195,7 +192,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
     /// Executes a program function on the given request.
     #[inline]
-    pub fn execute<R: Rng + CryptoRng>(&self, request: &Request<N>, rng: &mut R) -> Result<circuit::Response<A>> {
+    pub fn execute<R: Rng + CryptoRng>(&self, request: &Request<N>, rng: &mut R) -> Result<Response<N>> {
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
@@ -211,57 +208,14 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
-        // Retrieve the output types.
-        let output_types = function.output_types();
-
-        // Ensure the circuit environment is clean.
-        A::reset();
-
-        let response = {
-            use circuit::Inject;
-
-            // Inject the transition view key `tvk` as `Mode::Public`.
-            let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
-            // Inject the request as `Mode::Private`.
-            let request = circuit::Request::new(circuit::Mode::Private, request.clone());
-            // Ensure the `tvk` matches.
-            A::assert_eq(request.tvk(), tvk);
-            // Ensure the request has a valid signature and serial numbers.
-            A::assert(request.verify());
-
-            #[cfg(debug_assertions)]
-            Self::log_circuit("Request Authentication");
-
-            // Prepare the stack.
-            let mut stack = Stack::<N, A>::new(Some(program))?;
-            // Execute the function.
-            let outputs = stack.execute_function(&function, request.inputs())?;
-
-            #[cfg(debug_assertions)]
-            Self::log_circuit(format!("Function '{}()'", function.name()));
-
-            // Construct the response.
-            let response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
-
-            #[cfg(debug_assertions)]
-            Self::log_circuit("Response");
-
-            response
-        };
-
-        // Finalize the circuit into an assignment.
-        let assignment = A::eject_assignment_and_reset();
-        // Ensure the circuit environment is clean.
-        A::reset();
-
         // Retrieve the proving and verifying key.
         let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
+        // Synthesize the circuit.
+        let (response, assignment) = Self::synthesize(program, &function, request)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
         ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
-
-        // A::assert(response.verify(num_inputs, request.caller(), request.tvk()));
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
@@ -270,6 +224,55 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // println!("{:?}", trace.leaves());
 
         Ok(response)
+    }
+
+    /// Synthesizes the given request on the specified function.
+    fn synthesize(
+        program: Program<N, A>,
+        function: &Function<N, A>,
+        request: &Request<N>,
+    ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
+        // Retrieve the number of inputs.
+        let num_inputs = function.inputs().len();
+        // Retrieve the function output types.
+        let output_types = function.output_types();
+
+        use circuit::Inject;
+        // Ensure the circuit environment is clean.
+        A::reset();
+
+        // Inject the transition view key `tvk` as `Mode::Public`.
+        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
+        // Inject the request as `Mode::Private`.
+        let request = circuit::Request::new(circuit::Mode::Private, request.clone());
+        // Ensure the `tvk` matches.
+        A::assert_eq(request.tvk(), tvk);
+        // Ensure the request has a valid signature and serial numbers.
+        A::assert(request.verify());
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Request Authentication");
+
+        // Prepare the stack.
+        let mut stack = Stack::<N, A>::new(program)?;
+        // Execute the function.
+        let outputs = stack.execute_function(function, request.inputs())?;
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit(format!("Function '{}()'", function.name()));
+
+        // Construct the response.
+        let response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Response");
+
+        // Eject the response.
+        let response = circuit::Eject::eject_value(&response);
+        // Finalize the circuit into an assignment.
+        let assignment = A::eject_assignment_and_reset();
+        // Return the response and assignment.
+        Ok((response, assignment))
     }
 
     /// Prints the current state of the circuit.
@@ -295,7 +298,7 @@ mod tests {
     use super::*;
     use circuit::network::AleoV0;
     use console::{
-        account::{ComputeKey, PrivateKey, ViewKey},
+        account::{PrivateKey, ViewKey},
         network::Testnet3,
         program::{Identifier, Plaintext, Record, Request, Value, ValueType},
     };
@@ -382,16 +385,14 @@ function compute:
         // assert_eq!(r3, candidate[1]);
         // assert_eq!(r4, candidate[2]);
 
-        use circuit::Eject;
-
         // Execute the request.
         let response = process.execute(&request, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
-        assert_eq!(r2, candidate[0].eject_value());
-        assert_eq!(r3, candidate[1].eject_value());
-        assert_eq!(r4, candidate[2].eject_value());
-        assert_eq!(r5, candidate[3].eject_value());
+        assert_eq!(r2, candidate[0]);
+        assert_eq!(r3, candidate[1]);
+        assert_eq!(r4, candidate[2]);
+        assert_eq!(r5, candidate[3]);
 
         use circuit::Environment;
 

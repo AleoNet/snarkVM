@@ -59,18 +59,15 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(main: Option<Program<N, A>>) -> Result<Self> {
+    pub fn new(program: Program<N, A>) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
-        match main {
-            Some(program) => Ok(Self {
-                program,
-                imports: IndexMap::new(),
-                register_types: RegisterTypes::new(),
-                console_registers: IndexMap::new(),
-                circuit_registers: IndexMap::new(),
-            }),
-            None => bail!("No main program was provided"),
-        }
+        Ok(Self {
+            program,
+            imports: IndexMap::new(),
+            register_types: RegisterTypes::new(),
+            console_registers: IndexMap::new(),
+            circuit_registers: IndexMap::new(),
+        })
     }
 
     /// Adds a new imported program to the stack.

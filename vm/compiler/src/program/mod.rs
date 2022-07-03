@@ -606,7 +606,7 @@ function compute:
         ];
 
         // Prepare the stack.
-        let mut stack = Stack::new(Some(program)).unwrap();
+        let mut stack = Stack::new(program).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
@@ -648,7 +648,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::new(Some(program)).unwrap();
+        let mut stack = Stack::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
@@ -690,7 +690,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::new(Some(program)).unwrap();
+        let mut stack = Stack::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
@@ -745,7 +745,7 @@ function compute:
         let r4 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::new(Some(program)).unwrap();
+        let mut stack = Stack::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
@@ -800,7 +800,7 @@ function compute:
         let expected = Value::Record(input_record);
 
         // Prepare the stack.
-        let mut stack = Stack::new(Some(program)).unwrap();
+        let mut stack = Stack::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();

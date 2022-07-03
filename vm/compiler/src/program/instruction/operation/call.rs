@@ -77,7 +77,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         }
 
         // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(Some(stack.program().clone()))?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone())?;
 
         // Evaluate the closure, and load the outputs.
         let outputs = closure_stack.evaluate_closure(&closure, &inputs)?;
@@ -105,7 +105,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
         }
 
         // Initialize the closure stack.
-        let mut closure_stack = Stack::<N, A>::new(Some(stack.program().clone()))?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone())?;
 
         // Execute the closure, and load the outputs.
         let outputs = closure_stack.execute_closure(&closure, &inputs)?;
