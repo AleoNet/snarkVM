@@ -31,24 +31,6 @@ thread_local! {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
-impl Circuit {
-    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
-    ///  Circuits should not have easy access to this during synthesis.
-    /// Returns the R1CS assignment of the circuit.
-    pub fn eject() -> Assignment<Field> {
-        CIRCUIT.with(|circuit| {
-            // Eject the R1CS instance.
-            let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
-            assert_eq!(0, (**circuit).borrow().num_constants());
-            assert_eq!(1, (**circuit).borrow().num_public());
-            assert_eq!(0, (**circuit).borrow().num_private());
-            assert_eq!(0, (**circuit).borrow().num_constraints());
-            // Convert the R1CS instance to an assignment.
-            Assignment::from(r1cs)
-        })
-    }
-}
-
 impl Environment for Circuit {
     type Affine = <console::Testnet3 as console::Environment>::Affine;
     type AffineParameters = <console::Testnet3 as console::Environment>::AffineParameters;
@@ -269,6 +251,22 @@ impl Environment for Circuit {
         let error = message.into();
         // eprintln!("{}", &error);
         panic!("{}", &error)
+    }
+
+    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
+    ///  Circuits should not have easy access to this during synthesis.
+    /// Returns the R1CS assignment of the circuit, resetting the circuit.
+    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+        CIRCUIT.with(|circuit| {
+            // Eject the R1CS instance.
+            let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
+            assert_eq!(0, (**circuit).borrow().num_constants());
+            assert_eq!(1, (**circuit).borrow().num_public());
+            assert_eq!(0, (**circuit).borrow().num_private());
+            assert_eq!(0, (**circuit).borrow().num_constraints());
+            // Convert the R1CS instance to an assignment.
+            Assignment::from(r1cs)
+        })
     }
 
     /// Clears the circuit and initializes an empty environment.

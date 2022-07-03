@@ -17,44 +17,172 @@
 mod trace;
 use trace::*;
 
-use crate::{Program, Stack};
+use crate::{Program, ProvingKey, Stack, UniversalSRS, VerifyingKey};
 use console::{
+    account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Request, Response},
+    program::{Identifier, Literal, PlaintextType, ProgramID, Request, Response, Value, ValueType},
 };
 
+use indexmap::IndexMap;
+use parking_lot::RwLock;
+use std::sync::Arc;
+
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
-    /// The program (record types, interfaces, functions).
-    program: Program<N, A>,
+    /// The universal SRS.
+    universal_srs: UniversalSRS<N>,
+    /// The mapping of program IDs to programs.
+    programs: IndexMap<ProgramID<N>, Program<N, A>>,
+    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
+    circuit_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), (ProvingKey<N>, VerifyingKey<N>)>>>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
+    /// Initializes a new process.
+    #[inline]
+    pub fn new(program: Program<N, A>) -> Result<Self> {
+        // TODO (howardwu): Load the universal SRS remotely.
+        let universal_srs = UniversalSRS::load(100_000)?;
+        // Return the process.
+        Ok(Self {
+            universal_srs,
+            programs: [(*program.id(), program)].into_iter().collect(),
+            circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
+        })
+    }
+
+    /// Returns the program for the given program ID.
+    #[inline]
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N, A>> {
+        self.programs.get(program_id).ok_or_else(|| anyhow!("Program not found: {program_id}"))
+    }
+
+    /// Returns the proving key and verifying key for the given program ID and function name.
+    #[inline]
+    pub fn circuit_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+    ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
+        // Determine if the circuit key already exists.
+        let exists = self.circuit_keys.read().contains_key(&(program_id.clone(), function_name.clone()));
+        // If the circuit key exists, retrieve and return it.
+        if exists {
+            // Return the circuit key.
+            self.circuit_keys
+                .read()
+                .get(&(program_id.clone(), function_name.clone()))
+                .cloned()
+                .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
+        }
+        // If the circuit key does not exist, synthesize and return it.
+        else {
+            // Retrieve the program.
+            let program = self.get_program(program_id)?.clone();
+            // Retrieve the function from the program.
+            let function = program.get_function(function_name)?;
+            // Retrieve the function input types.
+            let input_types = function.input_types();
+            // Retrieve the function output types.
+            let output_types = function.output_types();
+
+            // Initialize an RNG.
+            let rng = &mut rand::thread_rng();
+            // Sample the inputs.
+            let inputs = input_types
+                .iter()
+                .map(|input_type| program.sample_value(input_type, rng))
+                .collect::<Result<Vec<_>>>()?;
+
+            // Retrieve the number of inputs.
+            let num_inputs = inputs.len();
+            // Ensure the number of inputs matches the number of input statements.
+            if function.inputs().len() != num_inputs {
+                bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
+            }
+
+            // Initialize a burner private key.
+            let private_key = PrivateKey::new(rng)?;
+            // Sign a request.
+            let request = Request::sign(&private_key, *program_id, *function_name, inputs, &input_types, rng)?;
+            // Ensure the request is well-formed.
+            ensure!(request.verify(), "Request is invalid");
+
+            // Synthesize the circuit.
+            let assignment = {
+                use circuit::Inject;
+                // Ensure the circuit environment is clean.
+                A::reset();
+
+                // Inject the transition view key `tvk` as `Mode::Public`.
+                let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
+                // Inject the request as `Mode::Private`.
+                let request = circuit::Request::new(circuit::Mode::Private, request.clone());
+                // Ensure the `tvk` matches.
+                A::assert_eq(request.tvk(), tvk);
+                // Ensure the request has a valid signature and serial numbers.
+                A::assert(request.verify());
+
+                #[cfg(debug_assertions)]
+                Self::log_circuit("Request Authentication");
+
+                // Prepare the stack.
+                let mut stack = Stack::<N, A>::new(Some(program))?;
+                // Execute the function.
+                let outputs = stack.execute_function(&function, request.inputs())?;
+
+                #[cfg(debug_assertions)]
+                Self::log_circuit(format!("Function '{}()'", function.name()));
+
+                // Construct the response.
+                let _response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
+
+                #[cfg(debug_assertions)]
+                Self::log_circuit("Response");
+
+                // Finalize the circuit into an assignment.
+                let assignment = A::eject_assignment_and_reset();
+                // Ensure the circuit environment is clean.
+                A::reset();
+                // Return the assignment.
+                assignment
+            };
+
+            // Derive the circuit key.
+            let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(&assignment)?;
+            // Add the circuit key to the mapping.
+            self.circuit_keys
+                .write()
+                .insert((program_id.clone(), function_name.clone()), (proving_key.clone(), verifying_key.clone()));
+            // Return the circuit key.
+            Ok((proving_key, verifying_key))
+        }
+    }
+
     /// Evaluates a program function on the given request.
     #[inline]
     pub fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
-        // Retrieve the inputs.
-        let inputs = request.inputs();
-        // Retrieve the number of inputs.
-        let num_inputs = inputs.len();
+        // Retrieve the program.
+        let program = self.get_program(request.program_id())?.clone();
         // Retrieve the function from the program.
-        let function = self.program.get_function(request.function_name())?;
+        let function = program.get_function(request.function_name())?;
+
+        // Retrieve the number of inputs.
+        let num_inputs = request.inputs().len();
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != num_inputs {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
+        let mut stack = Stack::<N, A>::new(Some(program))?;
         // Evaluate the function.
-        let outputs = stack.evaluate_function(&function, inputs)?;
-
-        // Load the output types.
-        let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
+        let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
-        let response = Response::new(num_inputs, request.tvk(), outputs, &output_types)?;
+        let response = Response::new(num_inputs, request.tvk(), outputs, &function.output_types())?;
 
         // Initialize the trace.
         let mut trace = Trace::<N>::new(request, &response)?;
@@ -67,22 +195,24 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Executes a program function on the given request.
     #[inline]
-    pub fn execute(&self, request: &Request<N>) -> Result<circuit::Response<A>> {
+    pub fn execute<R: Rng + CryptoRng>(&self, request: &Request<N>, rng: &mut R) -> Result<circuit::Response<A>> {
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
-        // Retrieve the inputs.
-        let inputs = request.inputs();
-        // Retrieve the number of inputs.
-        let num_inputs = inputs.len();
+        // Retrieve the program.
+        let program = self.get_program(request.program_id())?.clone();
         // Retrieve the function from the program.
-        let function = self.program.get_function(request.function_name())?;
+        let function = program.get_function(request.function_name())?;
+
+        // Retrieve the number of inputs.
+        let num_inputs = request.inputs().len();
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != num_inputs {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
-        // Load the output types.
-        let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
+
+        // Retrieve the output types.
+        let output_types = function.output_types();
 
         // Ensure the circuit environment is clean.
         A::reset();
@@ -103,7 +233,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             Self::log_circuit("Request Authentication");
 
             // Prepare the stack.
-            let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
+            let mut stack = Stack::<N, A>::new(Some(program))?;
             // Execute the function.
             let outputs = stack.execute_function(&function, request.inputs())?;
 
@@ -118,6 +248,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
             response
         };
+
+        // Finalize the circuit into an assignment.
+        let assignment = A::eject_assignment_and_reset();
+        // Ensure the circuit environment is clean.
+        A::reset();
+
+        // Retrieve the proving and verifying key.
+        let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
+        // Execute the circuit.
+        let proof = proving_key.prove(&assignment, rng)?;
+        // Verify the proof.
+        ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
 
         // A::assert(response.verify(num_inputs, request.caller(), request.tvk()));
 
@@ -231,7 +373,7 @@ function compute:
             Request::sign(&caller_private_key, *program.id(), function_name, inputs, &input_types, rng).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo> { program };
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // // Compute the output value.
         // let candidate = program.evaluate(&function_name, &inputs).unwrap();
@@ -243,7 +385,7 @@ function compute:
         use circuit::Eject;
 
         // Execute the request.
-        let response = process.execute(&request).unwrap();
+        let response = process.execute(&request, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r2, candidate[0].eject_value());

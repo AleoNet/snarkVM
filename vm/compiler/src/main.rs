@@ -227,7 +227,7 @@ where
         );
 
         let timer = Instant::now();
-        let assignment = circuit::Circuit::eject();
+        let assignment = <circuit::Circuit as circuit::Environment>::eject_assignment_and_reset();
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
         let proof = snark::execute(assignment)?;
@@ -323,7 +323,7 @@ where
         );
 
         let timer = Instant::now();
-        let assignment = circuit::Circuit::eject();
+        let assignment = <circuit::Circuit as circuit::Environment>::eject_assignment_and_reset();
         println!("Convert to assignment: {} ms", timer.elapsed().as_millis());
 
         let proof = snark::execute(assignment)?;

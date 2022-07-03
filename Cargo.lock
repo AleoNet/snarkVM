@@ -2265,6 +2265,7 @@ dependencies = [
  "anyhow",
  "colored",
  "indexmap",
+ "parking_lot 0.12.1",
  "paste",
  "rand",
  "snarkvm-algorithms",

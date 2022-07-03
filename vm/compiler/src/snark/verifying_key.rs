@@ -16,30 +16,31 @@
 
 use super::*;
 
+#[derive(Clone)]
 pub struct VerifyingKey<N: Network> {
     /// The verifying key for the function.
-    verifying_key: marlin::CircuitVerifyingKey<Bls12_377, marlin::MarlinHidingMode>,
-    /// PhantomData
-    _phantom: PhantomData<N>,
+    verifying_key: marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>,
 }
 
 impl<N: Network> VerifyingKey<N> {
     /// Initializes a new verifying key.
-    pub(super) const fn new(verifying_key: marlin::CircuitVerifyingKey<Bls12_377, marlin::MarlinHidingMode>) -> Self {
-        Self { verifying_key, _phantom: PhantomData }
+    pub(super) const fn new(
+        verifying_key: marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>,
+    ) -> Self {
+        Self { verifying_key }
     }
 
     /// Returns `true` if the proof is valid for the given public inputs.
-    fn verify(&self, inputs: &[Fr], proof: Proof<N>) -> bool {
+    pub fn verify(&self, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         let timer = std::time::Instant::now();
-        let is_valid = Marlin::verify_batch(self, std::slice::from_ref(&inputs), &*proof).unwrap();
+        let is_valid = Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), &**proof).unwrap();
         println!("Called verifier: {} ms", timer.elapsed().as_millis());
         is_valid
     }
 }
 
 impl<N: Network> Deref for VerifyingKey<N> {
-    type Target = marlin::CircuitVerifyingKey<Bls12_377, marlin::MarlinHidingMode>;
+    type Target = marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>;
 
     fn deref(&self) -> &Self::Target {
         &self.verifying_key

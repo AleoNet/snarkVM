@@ -64,6 +64,35 @@ pub enum Literal<N: Network> {
     String(StringType<N>),
 }
 
+impl<N: Network> Literal<N> {
+    /// Returns a randomly-sampled literal of the given literal type.
+    pub fn sample<R: Rng + CryptoRng>(literal_type: LiteralType, rng: &mut R) -> Self {
+        match literal_type {
+            LiteralType::Address => Literal::Address(Address::new(Group::rand(rng))),
+            LiteralType::Boolean => Literal::Boolean(Boolean::rand(rng)),
+            LiteralType::Field => Literal::Field(Field::rand(rng)),
+            LiteralType::Group => Literal::Group(Group::rand(rng)),
+            LiteralType::I8 => Literal::I8(I8::rand(rng)),
+            LiteralType::I16 => Literal::I16(I16::rand(rng)),
+            LiteralType::I32 => Literal::I32(I32::rand(rng)),
+            LiteralType::I64 => Literal::I64(I64::rand(rng)),
+            LiteralType::I128 => Literal::I128(I128::rand(rng)),
+            LiteralType::U8 => Literal::U8(U8::rand(rng)),
+            LiteralType::U16 => Literal::U16(U16::rand(rng)),
+            LiteralType::U32 => Literal::U32(U32::rand(rng)),
+            LiteralType::U64 => Literal::U64(U64::rand(rng)),
+            LiteralType::U128 => Literal::U128(U128::rand(rng)),
+            LiteralType::Scalar => Literal::Scalar(Scalar::rand(rng)),
+            LiteralType::String => Literal::String(StringType::new(
+                &rng.sample_iter(&Alphanumeric)
+                    .take((N::MAX_STRING_BYTES / 4) as usize)
+                    .map(char::from)
+                    .collect::<String>(),
+            )),
+        }
+    }
+}
+
 impl<N: Network> FromBytes for Literal<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;

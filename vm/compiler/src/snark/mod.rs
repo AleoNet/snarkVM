@@ -16,16 +16,12 @@
 
 use console::network::prelude::*;
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
-use snarkvm_curves::{bls12_377::Bls12_377, PairingEngine};
+use snarkvm_curves::PairingEngine;
 
-use core::marker::PhantomData;
-
-type Fq = <Bls12_377 as PairingEngine>::Fq;
-type Fr = <Bls12_377 as PairingEngine>::Fr;
-
-// TODO (howardwu): Replace me.
-type FS = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-type Marlin = marlin::MarlinSNARK<Bls12_377, FS, marlin::MarlinHidingMode, [Fr]>;
+type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
+type Fr<N> = <N as Environment>::Field;
+type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
+type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, marlin::MarlinHidingMode, [Fr<N>]>;
 
 mod proof;
 pub use proof::Proof;

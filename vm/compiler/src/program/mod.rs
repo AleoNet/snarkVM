@@ -29,14 +29,19 @@ pub use instruction::*;
 mod bytes;
 mod matches;
 mod parse;
+mod sample;
 
 use console::{
+    account::PrivateKey,
     network::prelude::*,
     program::{
+        Balance,
         Entry,
         EntryType,
         Identifier,
         Interface,
+        Literal,
+        Owner,
         Plaintext,
         PlaintextType,
         ProgramID,
@@ -46,6 +51,7 @@ use console::{
         Value,
         ValueType,
     },
+    types::{Address, U64},
 };
 
 use indexmap::IndexMap;

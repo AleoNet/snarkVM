@@ -53,6 +53,9 @@ version = "2"
 [dependencies.indexmap]
 version = "1.8"
 
+[dependencies.parking_lot]
+version = "0.12"
+
 [dependencies.paste]
 version = "1.0.7"
 

@@ -26,7 +26,7 @@ mod parse;
 use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{Identifier, Register},
+    program::{Identifier, Register, ValueType},
 };
 
 use indexmap::IndexSet;
@@ -60,6 +60,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
         &self.inputs
     }
 
+    /// Returns the function input types.
+    pub fn input_types(&self) -> Vec<ValueType<N>> {
+        self.inputs.iter().map(|input| *input.value_type()).collect()
+    }
+
     /// Returns the function instructions.
     pub fn instructions(&self) -> &[Instruction<N, A>] {
         &self.instructions
@@ -68,6 +73,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Function<N, A> {
     /// Returns the function outputs.
     pub const fn outputs(&self) -> &IndexSet<Output<N>> {
         &self.outputs
+    }
+
+    /// Returns the function output types.
+    pub fn output_types(&self) -> Vec<ValueType<N>> {
+        self.outputs.iter().map(|output| *output.value_type()).collect()
     }
 }
 

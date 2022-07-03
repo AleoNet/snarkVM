@@ -92,6 +92,7 @@ impl Environment for Testnet3 {
     type AffineParameters = <Console as Environment>::AffineParameters;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
+    type PairingCurve = <Console as Environment>::PairingCurve;
     type Projective = <Console as Environment>::Projective;
     type Scalar = <Console as Environment>::Scalar;
 }

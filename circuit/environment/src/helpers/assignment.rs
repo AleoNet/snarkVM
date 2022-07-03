@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn test_constraint_converter() {
         let _candidate_output = create_example_circuit::<Circuit>();
-        let assignment = Circuit::eject();
+        let assignment = Circuit::eject_assignment_and_reset();
         assert_eq!(0, Circuit::num_constants());
         assert_eq!(1, Circuit::num_public());
         assert_eq!(0, Circuit::num_private());
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn test_marlin() {
         let _candidate_output = create_example_circuit::<Circuit>();
-        let assignment = Circuit::eject();
+        let assignment = Circuit::eject_assignment_and_reset();
         assert_eq!(0, Circuit::num_constants());
         assert_eq!(1, Circuit::num_public());
         assert_eq!(0, Circuit::num_private());

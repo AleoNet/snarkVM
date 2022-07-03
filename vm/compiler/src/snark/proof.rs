@@ -16,22 +16,21 @@
 
 use super::*;
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct Proof<N: Network> {
     /// The proof.
-    proof: marlin::Proof<Bls12_377>,
-    /// PhantomData
-    _phantom: PhantomData<N>,
+    proof: marlin::Proof<N::PairingCurve>,
 }
 
 impl<N: Network> Proof<N> {
     /// Initializes a new proof.
-    pub(super) const fn new(proof: marlin::Proof<Bls12_377>) -> Self {
-        Self { proof, _phantom: PhantomData }
+    pub(super) const fn new(proof: marlin::Proof<N::PairingCurve>) -> Self {
+        Self { proof }
     }
 }
 
 impl<N: Network> Deref for Proof<N> {
-    type Target = marlin::Proof<Bls12_377>;
+    type Target = marlin::Proof<N::PairingCurve>;
 
     fn deref(&self) -> &Self::Target {
         &self.proof

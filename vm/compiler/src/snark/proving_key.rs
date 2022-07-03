@@ -16,30 +16,33 @@
 
 use super::*;
 
+#[derive(Clone)]
 pub struct ProvingKey<N: Network> {
     /// The proving key for the function.
-    proving_key: marlin::CircuitProvingKey<Bls12_377, marlin::MarlinHidingMode>,
-    /// PhantomData
-    _phantom: PhantomData<N>,
+    proving_key: marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>,
 }
 
 impl<N: Network> ProvingKey<N> {
     /// Initializes a new proving key.
-    pub(super) const fn new(proving_key: marlin::CircuitProvingKey<Bls12_377, marlin::MarlinHidingMode>) -> Self {
-        Self { proving_key, _phantom: PhantomData }
+    pub(super) const fn new(proving_key: marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>) -> Self {
+        Self { proving_key }
     }
 
     /// Returns a proof for the given assignment on the circuit.
-    fn prove<R: Rng + CryptoRng>(&self, assignment: circuit::Assignment<Fr>, rng: &mut R) -> Result<Proof<N>> {
+    pub fn prove<R: Rng + CryptoRng>(
+        &self,
+        assignment: &circuit::Assignment<N::Field>,
+        rng: &mut R,
+    ) -> Result<Proof<N>> {
         let timer = std::time::Instant::now();
-        let proof = Proof::new(Marlin::prove_batch(self, std::slice::from_ref(&assignment), rng)?);
+        let proof = Proof::new(Marlin::<N>::prove_batch(self, std::slice::from_ref(assignment), rng)?);
         println!("Called prover: {} ms", timer.elapsed().as_millis());
         Ok(proof)
     }
 }
 
 impl<N: Network> Deref for ProvingKey<N> {
-    type Target = marlin::CircuitProvingKey<Bls12_377, marlin::MarlinHidingMode>;
+    type Target = marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>;
 
     fn deref(&self) -> &Self::Target {
         &self.proving_key
