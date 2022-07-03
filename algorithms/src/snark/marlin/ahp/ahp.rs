@@ -194,22 +194,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut linear_combinations = BTreeMap::new();
 
         // Lincheck sumcheck:
-        let z_a_s = (0..state.batch_size)
-            .map(|i| {
-                let z_a_i = witness_label("z_a", i);
-                LinearCombination::new(z_a_i.clone(), [(F::one(), z_a_i)])
-            })
-            .collect::<Vec<_>>();
         let z_b_s = (0..state.batch_size)
             .map(|i| {
                 let z_b_i = witness_label("z_b", i);
                 LinearCombination::new(z_b_i.clone(), [(F::one(), z_b_i)])
-            })
-            .collect::<Vec<_>>();
-        let z_c_s = (0..state.batch_size)
-            .map(|i| {
-                let z_c_i = witness_label("z_c", i);
-                LinearCombination::new(z_c_i.clone(), [(F::one(), z_c_i)])
             })
             .collect::<Vec<_>>();
         let f_s = (0..state.batch_size)
@@ -218,6 +206,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 LinearCombination::new(f_i.clone(), [(F::one(), f_i)])
             })
             .collect::<Vec<_>>();
+        let s_m = LinearCombination::new("s_m", [(F::one(), "s_m")]);
+        let s_l = LinearCombination::new("s_l", [(F::one(), "s_l")]);
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
@@ -225,17 +215,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
-        let z_a_s_at_beta = z_a_s.iter().map(|z_a| evals.get_lc_eval(z_a, beta)).collect::<Result<Vec<_>, _>>()?;
         let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<_>, _>>()?;
-        let z_c_s_at_beta = z_c_s.iter().map(|z_c| evals.get_lc_eval(z_c, beta)).collect::<Result<Vec<_>, _>>()?;
         let f_s_at_beta = f_s.iter().map(|f| evals.get_lc_eval(f, beta)).collect::<Result<Vec<_>, _>>()?;
 
-        let batch_z_a_at_beta: F =
-            z_a_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_a_at_beta, combiner)| *z_a_at_beta * combiner).sum();
         let batch_z_b_at_beta: F =
             z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
-        let batch_z_c_at_beta: F =
-            z_c_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_c_at_beta, combiner)| *z_c_at_beta * combiner).sum();
+        let s_m_at_beta = evals.get_lc_eval(&s_m, beta)?;
+        let s_l_at_beta = evals.get_lc_eval(&s_l, beta)?;
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
@@ -253,22 +239,25 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             // Add rowcheck
             let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
             for (i, combiner) in batch_combiners.iter().enumerate() {
-            rowcheck
-                .add((z_a_s_at_beta[i] * z_b_s_at_beta[i] - z_c_s_at_beta[i]) * combiner, "s_m")
-                .add((z_a_s_at_beta[i] + zeta * z_b_s_at_beta[i] + zeta_squared
-                    * z_c_s_at_beta[i] - f_s_at_beta[i]) * combiner, "s_l");
+                rowcheck
+                    .add(z_b_s_at_beta[i] * s_m_at_beta * combiner, witness_label("z_a", i))
+                    .add(s_m_at_beta * combiner * -F::one() , witness_label("z_c", i))
+                    .add(s_l_at_beta * combiner , witness_label("z_a", i))
+                    .add(zeta * z_b_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
+                    .add(zeta_squared * s_l_at_beta * combiner, witness_label("z_c", i))
+                    .add(-f_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One);
             }
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
             for (i, combiner) in batch_combiners.iter().enumerate() {
                 lincheck_sumcheck
+                    .add(r_alpha_at_beta * combiner, witness_label("z_a", i))
+                    .add(r_alpha_at_beta * eta_c * combiner, witness_label("z_c", i))
                     .add(-t_at_beta * v_X_at_beta * combiner, witness_label("w", i));
             }
             lincheck_sumcheck
-                .add(r_alpha_at_beta * batch_z_a_at_beta, LCTerm::One)
                 .add(r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One)
-                .add(r_alpha_at_beta * eta_c * batch_z_c_at_beta, LCTerm::One)
                 .add(-t_at_beta * combined_x_at_beta, LCTerm::One)
                 .add(-beta * g_1_at_beta, LCTerm::One);
             rowcheck += (theta, &lincheck_sumcheck);
@@ -278,18 +267,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        for z_a in z_a_s {
-            linear_combinations.insert(z_a.label.clone(), z_a);
-        }
         for z_b in z_b_s {
             linear_combinations.insert(z_b.label.clone(), z_b);
-        }
-        for z_c in z_c_s {
-            linear_combinations.insert(z_c.label.clone(), z_c);
         }
         for f in f_s {
             linear_combinations.insert(f.label.clone(), f);
         }
+        linear_combinations.insert("s_m".into(), s_m);
+        linear_combinations.insert("s_l".into(), s_l);
         linear_combinations.insert("g_1".into(), g_1);
         linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
 
