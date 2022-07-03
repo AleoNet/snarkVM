@@ -73,7 +73,20 @@ pub trait ConstraintSystem<F: Field>: Sized {
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>;
 
     /// Lookup a value given an input.
-    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError>;
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>;
 
     /// Create a new (sub)namespace and enter into it. Not intended
     /// for downstream use; use `namespace` instead.
@@ -162,8 +175,22 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
     }
 
     #[inline]
-    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
-        (**self).lookup(key, table_index)
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        (**self).enforce_lookup(annotation, a, b, c, table_index)
     }
 
     #[inline]

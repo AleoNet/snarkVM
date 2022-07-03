@@ -64,11 +64,16 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         self.num_constraints += 1;
     }
 
-    fn lookup(&mut self, _: &[LinearCombination<ConstraintF>], _: usize) -> Result<Variable, SynthesisError> {
+    fn enforce_lookup<A, AR, LA, LB, LC>(&mut self, _: A, _: LA, _: LB, _: LC, _: usize) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
+        LB: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
+        LC: FnOnce(LinearCombination<ConstraintF>) -> LinearCombination<ConstraintF>,
+    {
         self.num_constraints += 1;
-        let var = Variable::new_unchecked(Index::Private(self.num_private_variables));
-        self.num_private_variables += 1;
-        Ok(var)
+        Ok(())
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

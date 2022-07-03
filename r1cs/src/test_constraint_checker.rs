@@ -145,10 +145,27 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         }
     }
 
-    fn lookup(&mut self, key: &[LinearCombination<F>], _table_index: usize) -> Result<Variable, SynthesisError> {
-        let lookup_key = key.iter().map(|lc| self.eval_lc(lc)).collect::<Vec<F>>();
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        _: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        _table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        let a = self.eval_lc(&a(LinearCombination::zero()));
+        let b = self.eval_lc(&b(LinearCombination::zero()));
+        let c = self.eval_lc(&c(LinearCombination::zero()));
+
         let res = if let Some(lookup_table) = &self.lookup_table {
-            *lookup_table.lookup(&lookup_key).ok_or(SynthesisError::LookupValueMissing)?
+            *lookup_table.lookup(&[a, b]).ok_or(SynthesisError::LookupValueMissing)?
         } else {
             if self.first_unsatisfied_constraint.is_none() {
                 self.found_unsatisfactory_constraint = true;
@@ -157,8 +174,12 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
             return Err(SynthesisError::LookupTableMissing);
         };
 
-        self.num_constraints += 1;
-        self.alloc(|| "lookup_table", || Ok(res))
+        if c == res {
+            self.num_constraints += 1;
+            Ok(())
+        } else {
+            Err(SynthesisError::LookupValueMissing)
+        }
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {

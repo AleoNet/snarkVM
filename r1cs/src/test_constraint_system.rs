@@ -56,26 +56,11 @@ pub struct InternedPath {
 }
 
 #[derive(PartialEq, Eq, Hash)]
-pub enum TestEntry<F: Field> {
-    TestConstraint {
-        interned_path: InternedPath,
-        a: Vec<(Variable, InternedField)>,
-        b: Vec<(Variable, InternedField)>,
-        c: Vec<(Variable, InternedField)>,
-    },
-    TestLookup {
-        key: Vec<LinearCombination<F>>,
-        val: Variable,
-    },
-}
-
-impl<F: Field> TestEntry<F> {
-    fn interned_path(&self) -> InternedPath {
-        match self {
-            TestEntry::TestConstraint { interned_path, .. } => *interned_path,
-            TestEntry::TestLookup { .. } => InternedPath { parent_namespace: 0, last_segment: 0 },
-        }
-    }
+pub struct TestConstraint {
+    interned_path: InternedPath,
+    a: Vec<(Variable, InternedField)>,
+    b: Vec<(Variable, InternedField)>,
+    c: Vec<(Variable, InternedField)>,
 }
 
 #[derive(Default, Debug)]
@@ -112,7 +97,7 @@ pub struct TestConstraintSystem<F: Field> {
     // the currently applicable lookup table
     lookup_table: Option<LookupTable<F>>,
     // the list of currently applicable constraints
-    constraints: OptionalVec<TestEntry<F>>,
+    constraints: OptionalVec<TestConstraint>,
     // the list of currently applicable input variables
     public_variables: OptionalVec<InternedField>,
     // the list of currently applicable auxiliary variables
@@ -168,42 +153,27 @@ impl<F: Field> TestConstraintSystem<F> {
     /// Prints the constraint at which `self` and `other` differ.
     pub fn diff(&self, other: &Self) {
         for (i, (self_c, other_c)) in self.constraints.iter().zip(other.constraints.iter()).enumerate() {
-            match (self_c, other_c) {
-                (
-                    TestEntry::TestConstraint { interned_path: self_interned_path, a: self_a, b: self_b, c: self_c },
-                    TestEntry::TestConstraint {
-                        interned_path: other_interned_path,
-                        a: other_a,
-                        b: other_b,
-                        c: other_c,
-                    },
-                ) => {
-                    if self_a != other_a {
-                        println!("A row {} is different:", i);
-                        println!("self: {}", self.unintern_path(*self_interned_path));
-                        println!("other: {}", other.unintern_path(*other_interned_path));
-                        break;
-                    }
+            let self_interned_path = self_c.interned_path;
+            let other_interned_path = other_c.interned_path;
+            if self_c.a != other_c.a {
+                println!("A row {} is different:", i);
+                println!("self: {}", self.unintern_path(self_interned_path));
+                println!("other: {}", other.unintern_path(other_interned_path));
+                break;
+            }
 
-                    if self_b != other_b {
-                        println!("B row {} is different:", i);
-                        println!("self: {}", self.unintern_path(*self_interned_path));
-                        println!("other: {}", other.unintern_path(*other_interned_path));
-                        break;
-                    }
+            if self_c.b != other_c.b {
+                println!("B row {} is different:", i);
+                println!("self: {}", self.unintern_path(self_interned_path));
+                println!("other: {}", other.unintern_path(other_interned_path));
+                break;
+            }
 
-                    if self_c != other_c {
-                        println!("C row {} is different:", i);
-                        println!("self: {}", self.unintern_path(*self_interned_path));
-                        println!("other: {}", other.unintern_path(*other_interned_path));
-                        break;
-                    }
-                }
-                (
-                    TestEntry::TestLookup { key: _self_key, val: _self_val },
-                    TestEntry::TestLookup { key: _other_key, val: _other_val },
-                ) => {}
-                _ => panic!("constraint systems aren't equal"),
+            if self_c.c != other_c.c {
+                println!("C row {} is different:", i);
+                println!("self: {}", self.unintern_path(self_interned_path));
+                println!("other: {}", other.unintern_path(other_interned_path));
+                break;
             }
         }
     }
@@ -236,10 +206,8 @@ impl<F: Field> TestConstraintSystem<F> {
     }
 
     pub fn print_named_objects(&self) {
-        for entry in self.constraints.iter() {
-            if let TestEntry::TestConstraint { interned_path, .. } = entry {
-                println!("{}", self.unintern_path(*interned_path));
-            }
+        for TestConstraint { interned_path, .. } in self.constraints.iter() {
+            println!("{}", self.unintern_path(*interned_path));
         }
     }
 
@@ -271,17 +239,15 @@ impl<F: Field> TestConstraintSystem<F> {
     }
 
     pub fn which_is_unsatisfied(&self) -> Option<String> {
-        for entry in self.constraints.iter() {
-            if let TestEntry::TestConstraint { interned_path, a, b, c } = entry {
-                let mut a = self.eval_lc(a.as_ref());
-                let b = self.eval_lc(b.as_ref());
-                let c = self.eval_lc(c.as_ref());
+        for TestConstraint { interned_path, a, b, c } in self.constraints.iter() {
+            let mut a = self.eval_lc(a.as_ref());
+            let b = self.eval_lc(b.as_ref());
+            let c = self.eval_lc(c.as_ref());
 
-                a.mul_assign(&b);
+            a.mul_assign(&b);
 
-                if a != c {
-                    return Some(self.unintern_path(*interned_path));
-                }
+            if a != c {
+                return Some(self.unintern_path(*interned_path));
             }
         }
 
@@ -298,12 +264,10 @@ impl<F: Field> TestConstraintSystem<F> {
         let mut non_zero_a = 0;
         let mut non_zero_b = 0;
         let mut non_zero_c = 0;
-        for entry in self.constraints.iter() {
-            if let TestEntry::TestConstraint { a, b, c, .. } = entry {
-                non_zero_a += a.len();
-                non_zero_b += b.len();
-                non_zero_c += c.len();
-            }
+        for TestConstraint { a, b, c, .. } in self.constraints.iter() {
+            non_zero_a += a.len();
+            non_zero_b += b.len();
+            non_zero_c += c.len();
         }
         (non_zero_a, non_zero_b, non_zero_c)
     }
@@ -315,7 +279,7 @@ impl<F: Field> TestConstraintSystem<F> {
 
     #[inline]
     pub fn get_constraint_path(&self, i: usize) -> String {
-        self.unintern_path(self.constraints.iter().nth(i).unwrap().interned_path())
+        self.unintern_path(self.constraints.iter().nth(i).unwrap().interned_path)
     }
 
     pub fn set(&mut self, path: &str, to: F) {
@@ -479,27 +443,42 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
         let b = self.intern_fields(&b(LinearCombination::zero()));
         let c = self.intern_fields(&c(LinearCombination::zero()));
 
-        self.constraints.insert(TestEntry::TestConstraint { interned_path, a, b, c });
+        self.constraints.insert(TestConstraint { interned_path, a, b, c });
     }
 
-    fn lookup(&mut self, key: &[LinearCombination<F>], _table_index: usize) -> Result<Variable, SynthesisError> {
-        let lookup_key = key
-            .iter()
-            .map(|lc| {
-                let interned = self.intern_fields(lc);
-                self.eval_lc(&interned)
-            })
-            .collect::<Vec<F>>();
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        annotation: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        _table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        let interned_path = self.compute_path(annotation().as_ref());
+        let a = self.intern_fields(&a(LinearCombination::zero()));
+        let b = self.intern_fields(&b(LinearCombination::zero()));
+        let c = self.intern_fields(&c(LinearCombination::zero()));
+        let evaluated = vec![a.clone(), b.clone(), c.clone()].iter().map(|lc| self.eval_lc(lc)).collect::<Vec<F>>();
 
         let res = if let Some(lookup_table) = &self.lookup_table {
-            *lookup_table.lookup(&lookup_key).ok_or(SynthesisError::LookupValueMissing)?
+            *lookup_table.lookup(&evaluated[..1]).ok_or(SynthesisError::LookupValueMissing)?
         } else {
             return Err(SynthesisError::LookupTableMissing);
         };
 
-        let ret = self.alloc(|| "lookup_table", || Ok(res))?;
-        self.constraints.insert(TestEntry::TestLookup { key: key.to_vec(), val: ret });
-        Ok(ret)
+        if res == evaluated[2] {
+            self.constraints.insert(TestConstraint { interned_path, a, b, c });
+            Ok(())
+        } else {
+            Err(SynthesisError::LookupValueMissing)
+        }
     }
 
     fn push_namespace<NR: AsRef<str>, N: FnOnce() -> NR>(&mut self, name_fn: N) {
