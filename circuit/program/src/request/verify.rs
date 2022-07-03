@@ -22,9 +22,6 @@ impl<A: Aleo> Request<A> {
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
     pub fn verify(&self) -> Boolean<A> {
-        // Construct the input IDs as field elements.
-        let input_ids = self.input_ids.iter().map(|input| input.to_fields()).collect::<Vec<_>>();
-
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &[
@@ -39,7 +36,7 @@ impl<A: Aleo> Request<A> {
         );
 
         // Construct the signature message as `[tvk, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(1 + 2 * input_ids.len());
+        let mut message = Vec::with_capacity(1 + 2 * self.input_ids.len());
         message.push(self.tvk.clone());
         message.push(function_id);
 
