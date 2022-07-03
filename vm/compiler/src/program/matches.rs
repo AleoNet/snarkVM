@@ -124,7 +124,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                     // Ensure the member name is valid.
                     ensure!(!self.is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
-                    self.matches_entry_internal(&member_entry, expected_type, depth + 1)?
+                    self.matches_entry_internal(member_entry, expected_type, depth + 1)?
                 }
                 None => bail!("'{record_name}' is missing member '{expected_name}'"),
             }
