@@ -158,23 +158,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
         );
 
-        // Compute t poly
-        let mut t_evals = vec![vec![]; 3];
-        ics.lookup_constraints.iter().for_each(|entry| {
-            entry.table.table.keys().zip(entry.table.table.values()).for_each(|(key, value)| {
-                t_evals[0].push(key[0]);
-                t_evals[1].push(key[1]);
-                t_evals[2].push(*value);
-            });
-        });
-
         let zeta_squared = zeta.square();
 
-        let mut t_evals = t_evals[0]
+        // Compute t poly
+        let mut t_evals = ics
+            .lookup_constraints
             .iter()
-            .zip(t_evals[1].iter())
-            .zip(t_evals[2].iter())
-            .map(|((first, second), third)| *first + zeta * second + zeta_squared * third)
+            .flat_map(|entry| {
+                entry
+                    .table
+                    .table
+                    .iter()
+                    .map(|(key, value)| key[0] + zeta * key[1] + zeta_squared * value)
+                    .collect::<Vec<F>>()
+            })
             .collect::<Vec<F>>();
         t_evals.resize(num_constraints, F::zero());
 
