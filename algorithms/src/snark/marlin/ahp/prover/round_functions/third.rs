@@ -77,8 +77,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .zip_eq(&state.plookup_evals)
             .map(|((b, combiner), evals)| {
                 let lookup_poly = {
-                    let mut f_evals = evals[0].clone();
-                    f_evals.push(f_evals[0]);
                     let mut s_1_evals = evals[1].clone();
                     s_1_evals.push(s_1_evals[0]);
                     let mut s_2_evals = evals[2].clone();
