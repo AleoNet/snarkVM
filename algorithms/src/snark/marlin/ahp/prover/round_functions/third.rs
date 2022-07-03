@@ -79,13 +79,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let s_2 = b.s_2_poly.polynomial().as_dense().unwrap();
                     let z_2 = b.z_2_poly.polynomial().as_dense().unwrap();
                     let mut s_1_evals = s_1.evaluate_over_domain_by_ref(constraint_domain);
+                    s_1_evals.evaluations.resize(state.index.index_info.num_constraints, F::zero());
                     s_1_evals.evaluations.push(s_1_evals[0]);
                     let s_2_evals = s_2.evaluate_over_domain_by_ref(constraint_domain);
                     let mut z_2_evals = z_2.evaluate_over_domain_by_ref(constraint_domain);
+                    z_2_evals.evaluations.resize(state.index.index_info.num_constraints, F::zero());
                     z_2_evals.evaluations.push(z_2_evals[0]);
                     let f_evals = f.evaluate_over_domain_by_ref(constraint_domain);
                     let mut t_evals =
                         state.index.t.polynomial().as_dense().unwrap().evaluate_over_domain_by_ref(constraint_domain);
+                    t_evals.evaluations.resize(state.index.index_info.num_constraints, F::zero());
                     t_evals.evaluations.push(t_evals[0]);
                     Evaluations::from_vec_and_domain(
                         f_evals
@@ -97,7 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             .zip(s_1_evals.evaluations.clone())
                             .zip(s_2_evals.evaluations)
                             .zip(l_1_evals.clone())
-                            .take(constraint_domain.size())
+                            .take(state.index.index_info.num_constraints)
                             .map(|((((((i, f), z_2), t), s_1), s_2), l_1)| {
                                 let b = {
                                     let b_0 = state.index.epsilon + f;
