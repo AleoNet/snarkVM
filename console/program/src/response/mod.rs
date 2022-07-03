@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{StackValue, ValueType};
+use crate::{Value, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -35,12 +35,12 @@ pub struct Response<N: Network> {
     /// The output ID for the transition.
     output_ids: Vec<OutputID<N>>,
     /// The function outputs.
-    outputs: Vec<StackValue<N>>,
+    outputs: Vec<Value<N>>,
 }
 
-impl<N: Network> From<(Vec<OutputID<N>>, Vec<StackValue<N>>)> for Response<N> {
+impl<N: Network> From<(Vec<OutputID<N>>, Vec<Value<N>>)> for Response<N> {
     /// Note: This method is used to eject from a circuit.
-    fn from((output_ids, outputs): (Vec<OutputID<N>>, Vec<StackValue<N>>)) -> Self {
+    fn from((output_ids, outputs): (Vec<OutputID<N>>, Vec<Value<N>>)) -> Self {
         Self { output_ids, outputs }
     }
 }
@@ -50,7 +50,7 @@ impl<N: Network> Response<N> {
     pub fn new(
         num_inputs: usize,
         tvk: &Field<N>,
-        outputs: Vec<StackValue<N>>,
+        outputs: Vec<Value<N>>,
         output_types: &[ValueType<N>],
     ) -> Result<Self> {
         // Compute the output IDs.
@@ -63,7 +63,7 @@ impl<N: Network> Response<N> {
                     // For a constant output, compute the hash of the output.
                     ValueType::Constant(..) => {
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, StackValue::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Hash the output to a field element.
                         let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
                         // Return the output ID.
@@ -72,7 +72,7 @@ impl<N: Network> Response<N> {
                     // For a public output, compute the hash of the output.
                     ValueType::Public(..) => {
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, StackValue::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Hash the output to a field element.
                         let output_hash = N::hash_bhp1024(&output.to_bits_le())?;
                         // Return the output ID.
@@ -81,16 +81,16 @@ impl<N: Network> Response<N> {
                     // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
                     ValueType::Private(..) => {
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, StackValue::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
                         // Compute the output view key as `Hash(tvk || index)`.
                         let output_view_key = N::hash_psd2(&[*tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &output {
-                            StackValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
+                            Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
                             // Ensure the output is a plaintext.
-                            StackValue::Record(..) => bail!("Expected a plaintext output, found a record output"),
+                            Value::Record(..) => bail!("Expected a plaintext output, found a record output"),
                         };
                         // Hash the ciphertext to a field element.
                         let output_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
@@ -102,9 +102,9 @@ impl<N: Network> Response<N> {
                     ValueType::Record(..) => {
                         // Retrieve the record.
                         let record = match &output {
-                            StackValue::Record(record) => record,
+                            Value::Record(record) => record,
                             // Ensure the input is a record.
-                            StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                            Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
 
                         // Construct the (console) output index as a field element.
@@ -138,7 +138,7 @@ impl<N: Network> Response<N> {
     }
 
     /// Returns the function outputs.
-    pub fn outputs(&self) -> &[StackValue<N>] {
+    pub fn outputs(&self) -> &[Value<N>] {
         &self.outputs
     }
 }

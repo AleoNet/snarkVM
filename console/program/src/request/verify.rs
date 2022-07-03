@@ -66,7 +66,7 @@ impl<N: Network> Request<N> {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Hash the input to a field element.
                         let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
                         // Ensure the input hash matches.
@@ -77,7 +77,7 @@ impl<N: Network> Request<N> {
                     // A public input is hashed to a field element.
                     InputID::Public(input_hash) => {
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Hash the input to a field element.
                         let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
                         // Ensure the input hash matches.
@@ -88,16 +88,16 @@ impl<N: Network> Request<N> {
                     // A private input is encrypted (using `tvk`) and hashed to a field element.
                     InputID::Private(input_hash) => {
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Prepare the index as a constant field element.
                         let index = Field::from_u16(index as u16);
                         // Compute the input view key as `Hash(tvk || index)`.
                         let input_view_key = N::hash_psd2(&[self.tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &input {
-                            StackValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
+                            Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
                             // Ensure the input is a plaintext.
-                            StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                            Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
                         };
                         // Hash the ciphertext to a field element.
                         let candidate_input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
@@ -117,9 +117,9 @@ impl<N: Network> Request<N> {
                         let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
                         // Compute the record commitment.
                         let commitment = match &input {
-                            StackValue::Record(record) => record.to_commitment(&randomizer)?,
+                            Value::Record(record) => record.to_commitment(&randomizer)?,
                             // Ensure the input is a record.
-                            StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                            Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -181,11 +181,10 @@ mod tests {
             let function_name = Identifier::from_str("transfer")?;
 
             // Construct four inputs.
-            let input_constant =
-                StackValue::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_public = StackValue::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_private = StackValue::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_record = StackValue::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+            let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+            let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+            let input_record = Value::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
             let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.

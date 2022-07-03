@@ -25,7 +25,7 @@ impl<N: Network> Request<N> {
         pr_sig: &Group<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
-        inputs: Vec<StackValue<N>>,
+        inputs: Vec<Value<N>>,
         input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
@@ -73,7 +73,7 @@ impl<N: Network> Request<N> {
                 // A constant input is hashed to a field element.
                 ValueType::Constant(..) => {
                     // Ensure the input is a plaintext.
-                    ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                    ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                     // Hash the input to a field element.
                     let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
                     // Add the input hash to the preimage.
@@ -84,7 +84,7 @@ impl<N: Network> Request<N> {
                 // A public input is hashed to a field element.
                 ValueType::Public(..) => {
                     // Ensure the input is a plaintext.
-                    ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                    ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                     // Hash the input to a field element.
                     let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
                     // Add the input hash to the preimage.
@@ -95,16 +95,16 @@ impl<N: Network> Request<N> {
                 // A private input is encrypted (using `tvk`) and hashed to a field element.
                 ValueType::Private(..) => {
                     // Ensure the input is a plaintext.
-                    ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                    ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(index as u16);
                     // Compute the input view key as `Hash(tvk || index)`.
                     let input_view_key = N::hash_psd2(&[tvk, index])?;
                     // Compute the ciphertext.
                     let ciphertext = match &input {
-                        StackValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
+                        Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
                         // Ensure the input is a plaintext.
-                        StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                        Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
                     };
                     // Hash the ciphertext to a field element.
                     let input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
@@ -121,9 +121,9 @@ impl<N: Network> Request<N> {
                     let randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
                     // Compute the record commitment.
                     let commitment = match &input {
-                        StackValue::Record(record) => record.to_commitment(&randomizer)?,
+                        Value::Record(record) => record.to_commitment(&randomizer)?,
                         // Ensure the input is a record.
-                        StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                        Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
 
                     // Compute the generator `H` as `HashToGroup(commitment)`.

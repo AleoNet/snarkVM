@@ -20,7 +20,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod from_outputs;
 mod verify;
 
-use crate::CircuitValue;
+use crate::Value;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field};
 
@@ -137,7 +137,7 @@ pub struct Response<A: Aleo> {
     /// The function output IDs.
     output_ids: Vec<OutputID<A>>,
     /// The function outputs.
-    outputs: Vec<CircuitValue<A>>,
+    outputs: Vec<Value<A>>,
 }
 
 #[cfg(console)]
@@ -156,36 +156,36 @@ impl<A: Aleo> Inject for Response<A> {
                     // A constant output is injected as `Mode::Constant`.
                     console::OutputID::Constant(..) => {
                         // Inject the output as `Mode::Constant`.
-                        let output = CircuitValue::new(Mode::Constant, output.clone());
+                        let output = Value::new(Mode::Constant, output.clone());
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, CircuitValue::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Return the output.
                         Ok(output)
                     }
                     // A public output is injected as `Mode::Private`.
                     console::OutputID::Public(..) => {
                         // Inject the output as `Mode::Private`.
-                        let output = CircuitValue::new(Mode::Private, output.clone());
+                        let output = Value::new(Mode::Private, output.clone());
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, CircuitValue::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Return the output.
                         Ok(output)
                     }
                     // A private output is injected as `Mode::Private`.
                     console::OutputID::Private(..) => {
                         // Inject the output as `Mode::Private`.
-                        let output = CircuitValue::new(Mode::Private, output.clone());
+                        let output = Value::new(Mode::Private, output.clone());
                         // Ensure the output is a plaintext.
-                        ensure!(matches!(output, CircuitValue::Plaintext(..)), "Expected a plaintext output");
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
                         // Return the output.
                         Ok(output)
                     }
                     // An output record is injected as `Mode::Private`.
                     console::OutputID::Record(..) => {
                         // Inject the output as `Mode::Private`.
-                        let output = CircuitValue::new(Mode::Private, output.clone());
+                        let output = Value::new(Mode::Private, output.clone());
                         // Ensure the output is a record.
-                        ensure!(matches!(output, CircuitValue::Record(..)), "Expected a record output");
+                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
                         // Return the output.
                         Ok(output)
                     }
@@ -215,7 +215,7 @@ impl<A: Aleo> Response<A> {
     }
 
     /// Returns the function outputs.
-    pub fn outputs(&self) -> &[CircuitValue<A>] {
+    pub fn outputs(&self) -> &[Value<A>] {
         &self.outputs
     }
 }

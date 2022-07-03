@@ -26,9 +26,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
         match self.load(operand)? {
-            StackValue::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
-            StackValue::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
-            StackValue::Record(..) => bail!("Operand must be a literal"),
+            Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
+            Value::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
+            Value::Record(..) => bail!("Operand must be a literal"),
         }
     }
 
@@ -38,11 +38,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load(&self, operand: &Operand<N>) -> Result<StackValue<N>> {
+    pub fn load(&self, operand: &Operand<N>) -> Result<Value<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
-            Operand::Literal(literal) => return Ok(StackValue::Plaintext(Plaintext::from(literal))),
+            Operand::Literal(literal) => return Ok(Value::Plaintext(Plaintext::from(literal))),
             // If the operand is a register, load the value from the register.
             Operand::Register(register) => register,
         };
@@ -59,11 +59,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             Register::Member(_, ref path) => {
                 match stack_value {
                     // Retrieve the plaintext member from the path.
-                    StackValue::Plaintext(plaintext) => StackValue::Plaintext(plaintext.find(path)?),
+                    Value::Plaintext(plaintext) => Value::Plaintext(plaintext.find(path)?),
                     // Retrieve the record entry from the path.
-                    StackValue::Record(record) => match record.find(path)? {
+                    Value::Record(record) => match record.find(path)? {
                         Entry::Constant(plaintext) | Entry::Public(plaintext) | Entry::Private(plaintext) => {
-                            StackValue::Plaintext(plaintext)
+                            Value::Plaintext(plaintext)
                         }
                     },
                 }
@@ -92,9 +92,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn load_literal_circuit(&self, operand: &Operand<N>) -> Result<circuit::program::Literal<A>> {
         match self.load_circuit(operand)? {
-            circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
-            circuit::CircuitValue::Plaintext(circuit::Plaintext::Interface(..)) => bail!("Operand must be a literal"),
-            circuit::CircuitValue::Record(..) => bail!("Operand must be a literal"),
+            circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
+            circuit::Value::Plaintext(circuit::Plaintext::Interface(..)) => bail!("Operand must be a literal"),
+            circuit::Value::Record(..) => bail!("Operand must be a literal"),
         }
     }
 
@@ -104,14 +104,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_circuit(&self, operand: &Operand<N>) -> Result<circuit::CircuitValue<A>> {
+    pub fn load_circuit(&self, operand: &Operand<N>) -> Result<circuit::Value<A>> {
         use circuit::Inject;
 
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
             Operand::Literal(literal) => {
-                return Ok(circuit::CircuitValue::Plaintext(circuit::Plaintext::from(circuit::Literal::constant(
+                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::constant(
                     literal.clone(),
                 ))));
             }
@@ -134,14 +134,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
                 match circuit_value {
                     // Retrieve the plaintext member from the path.
-                    circuit::CircuitValue::Plaintext(plaintext) => {
-                        circuit::CircuitValue::Plaintext(plaintext.find(&path)?)
-                    }
+                    circuit::Value::Plaintext(plaintext) => circuit::Value::Plaintext(plaintext.find(&path)?),
                     // Retrieve the record entry from the path.
-                    circuit::CircuitValue::Record(record) => match record.find(&path)? {
+                    circuit::Value::Record(record) => match record.find(&path)? {
                         circuit::Entry::Constant(plaintext)
                         | circuit::Entry::Public(plaintext)
-                        | circuit::Entry::Private(plaintext) => circuit::CircuitValue::Plaintext(plaintext),
+                        | circuit::Entry::Private(plaintext) => circuit::Value::Plaintext(plaintext),
                     },
                 }
             }

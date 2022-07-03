@@ -36,7 +36,7 @@ use console::{
         RecordType,
         Register,
         RegisterType,
-        StackValue,
+        Value,
         ValueType,
     },
 };
@@ -51,9 +51,9 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N, A>,
     /// The mapping of assigned console registers to their values.
-    console_registers: IndexMap<u64, StackValue<N>>,
+    console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
-    circuit_registers: IndexMap<u64, circuit::CircuitValue<A>>,
+    circuit_registers: IndexMap<u64, circuit::Value<A>>,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
@@ -109,11 +109,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_closure(
-        &mut self,
-        closure: &Closure<N, A>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<StackValue<N>>> {
+    pub fn evaluate_closure(&mut self, closure: &Closure<N, A>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -150,8 +146,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn execute_closure(
         &mut self,
         closure: &Closure<N, A>,
-        inputs: &[circuit::CircuitValue<A>],
-    ) -> Result<Vec<circuit::CircuitValue<A>>> {
+        inputs: &[circuit::Value<A>],
+    ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -196,11 +192,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_function(
-        &mut self,
-        function: &Function<N, A>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<StackValue<N>>> {
+    pub fn evaluate_function(&mut self, function: &Function<N, A>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -237,8 +229,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn execute_function(
         &mut self,
         function: &Function<N, A>,
-        inputs: &[circuit::CircuitValue<A>],
-    ) -> Result<Vec<circuit::CircuitValue<A>>> {
+        inputs: &[circuit::Value<A>],
+    ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -283,11 +275,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn test_evaluate(
-        &mut self,
-        function_name: &Identifier<N>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<StackValue<N>>> {
+    pub fn test_evaluate(&mut self, function_name: &Identifier<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Retrieve the function from the program.
         let function = self.program.get_function(function_name)?;
         // Evaluate the function.
@@ -304,8 +292,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn test_execute(
         &mut self,
         function_name: &Identifier<N>,
-        inputs: &[StackValue<N>],
-    ) -> Result<Vec<circuit::CircuitValue<A>>> {
+        inputs: &[Value<N>],
+    ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the circuit environment is clean.
         A::reset();
 

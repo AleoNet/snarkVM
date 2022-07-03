@@ -16,20 +16,21 @@
 
 use super::*;
 
-impl<N: Network> Debug for StackValue<N> {
-    /// Prints the value as a string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for StackValue<N> {
-    /// Prints the value as a string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // TODO (howardwu): Handle how to print plaintext vs record case.
+impl<A: Aleo> Value<A> {
+    /// Returns the value from the given path.
+    pub fn find(&self, path: &[Identifier<A>]) -> Result<Self> {
         match self {
-            StackValue::Plaintext(plaintext) => write!(f, "{plaintext}"),
-            StackValue::Record(record) => write!(f, "{record}"),
+            Self::Plaintext(plaintext) => Ok(Self::Plaintext(plaintext.find(path)?)),
+            Self::Record(record) => {
+                // Find the entry.
+                let entry = record.find(path)?;
+                // Extract the plaintext from the entry.
+                match entry {
+                    Entry::Constant(plaintext) => Ok(Self::Plaintext(plaintext)),
+                    Entry::Public(plaintext) => Ok(Self::Plaintext(plaintext)),
+                    Entry::Private(plaintext) => Ok(Self::Plaintext(plaintext)),
+                }
+            }
         }
     }
 }

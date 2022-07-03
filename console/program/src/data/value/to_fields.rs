@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> ToFields for StackValue<N> {
+impl<N: Network> ToFields for Value<N> {
     type Field = Field<N>;
 
     /// Returns the stack value as a list of fields.
@@ -54,8 +54,8 @@ impl<N: Network> ToFields for StackValue<N> {
         // };
 
         match self {
-            StackValue::Plaintext(plaintext) => plaintext.to_fields(),
-            StackValue::Record(record) => record.to_fields(),
+            Self::Plaintext(plaintext) => plaintext.to_fields(),
+            Self::Record(record) => record.to_fields(),
         }
     }
 }

@@ -25,7 +25,7 @@ impl<N: Network> FromBytes for Request<N> {
         let function_name = Identifier::read_le(&mut reader)?;
 
         let inputs_len = u16::read_le(&mut reader)? as usize;
-        let inputs = (0..inputs_len).map(|_| StackValue::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
+        let inputs = (0..inputs_len).map(|_| Value::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self {
             caller,

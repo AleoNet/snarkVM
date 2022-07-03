@@ -16,22 +16,15 @@
 
 use super::*;
 
-impl<N: Network> ToBits for StackValue<N> {
-    /// Returns the stack value as a list of **little-endian** bits.
-    #[inline]
-    fn to_bits_le(&self) -> Vec<bool> {
-        match self {
-            StackValue::Plaintext(plaintext) => plaintext.to_bits_le(),
-            StackValue::Record(record) => record.to_bits_le(),
-        }
-    }
+impl<A: Aleo> ToFields for Value<A> {
+    type Field = Field<A>;
 
-    /// Returns the stack value as a list of **big-endian** bits.
+    /// Returns the circuit value as a list of fields.
     #[inline]
-    fn to_bits_be(&self) -> Vec<bool> {
+    fn to_fields(&self) -> Vec<Field<A>> {
         match self {
-            StackValue::Plaintext(plaintext) => plaintext.to_bits_be(),
-            StackValue::Record(record) => record.to_bits_be(),
+            Self::Plaintext(plaintext) => plaintext.to_fields(),
+            Self::Record(record) => record.to_fields(),
         }
     }
 }

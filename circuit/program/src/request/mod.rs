@@ -19,7 +19,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 
 mod verify;
 
-use crate::{CircuitValue, Identifier, ProgramID};
+use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, U16};
@@ -109,7 +109,7 @@ pub struct Request<A: Aleo> {
     /// The function input IDs.
     input_ids: Vec<InputID<A>>,
     /// The function inputs.
-    inputs: Vec<CircuitValue<A>>,
+    inputs: Vec<Value<A>>,
     /// The signature for the transition.
     signature: Signature<A>,
     /// The transition view key.
@@ -132,36 +132,36 @@ impl<A: Aleo> Inject for Request<A> {
                     // A constant input is injected as `Mode::Constant`.
                     console::InputID::Constant(..) => {
                         // Inject the input as `Mode::Constant`.
-                        let input = CircuitValue::new(Mode::Constant, input.clone());
+                        let input = Value::new(Mode::Constant, input.clone());
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Return the input.
                         Ok(input)
                     }
                     // A public input is injected as `Mode::Private`.
                     console::InputID::Public(..) => {
                         // Inject the input as `Mode::Private`.
-                        let input = CircuitValue::new(Mode::Private, input.clone());
+                        let input = Value::new(Mode::Private, input.clone());
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Return the input.
                         Ok(input)
                     }
                     // A private input is injected as `Mode::Private`.
                     console::InputID::Private(..) => {
                         // Inject the input as `Mode::Private`.
-                        let input = CircuitValue::new(Mode::Private, input.clone());
+                        let input = Value::new(Mode::Private, input.clone());
                         // Ensure the input is a plaintext.
-                        ensure!(matches!(input, CircuitValue::Plaintext(..)), "Expected a plaintext input");
+                        ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Return the input.
                         Ok(input)
                     }
                     // An input record is injected as `Mode::Private`.
                     console::InputID::Record(..) => {
                         // Inject the input as `Mode::Private`.
-                        let input = CircuitValue::new(Mode::Private, input.clone());
+                        let input = Value::new(Mode::Private, input.clone());
                         // Ensure the input is a record.
-                        ensure!(matches!(input, CircuitValue::Record(..)), "Expected a record input");
+                        ensure!(matches!(input, Value::Record(..)), "Expected a record input");
                         // Return the input.
                         Ok(input)
                     }
@@ -213,7 +213,7 @@ impl<A: Aleo> Request<A> {
     }
 
     /// Returns the function inputs.
-    pub fn inputs(&self) -> &[CircuitValue<A>] {
+    pub fn inputs(&self) -> &[Value<A>] {
         &self.inputs
     }
 

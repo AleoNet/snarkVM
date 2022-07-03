@@ -23,41 +23,41 @@ use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 
 #[derive(Clone)]
-pub enum CircuitValue<A: Aleo> {
+pub enum Value<A: Aleo> {
     /// A plaintext value.
     Plaintext(Plaintext<A>),
     /// A record value.
     Record(Record<A, Plaintext<A>>),
 }
 
-impl<A: Aleo> Inject for CircuitValue<A> {
-    type Primitive = console::StackValue<A::Network>;
+impl<A: Aleo> Inject for Value<A> {
+    type Primitive = console::Value<A::Network>;
 
     /// Initializes a circuit of the given mode and value.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         match value {
-            console::StackValue::Plaintext(plaintext) => CircuitValue::Plaintext(Plaintext::new(mode, plaintext)),
-            console::StackValue::Record(record) => CircuitValue::Record(Record::new(Mode::Private, record)),
+            console::Value::Plaintext(plaintext) => Value::Plaintext(Plaintext::new(mode, plaintext)),
+            console::Value::Record(record) => Value::Record(Record::new(Mode::Private, record)),
         }
     }
 }
 
-impl<A: Aleo> Eject for CircuitValue<A> {
-    type Primitive = console::StackValue<A::Network>;
+impl<A: Aleo> Eject for Value<A> {
+    type Primitive = console::Value<A::Network>;
 
     /// Ejects the mode of the circuit value.
     fn eject_mode(&self) -> Mode {
         match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.eject_mode(),
-            CircuitValue::Record(record) => record.eject_mode(),
+            Value::Plaintext(plaintext) => plaintext.eject_mode(),
+            Value::Record(record) => record.eject_mode(),
         }
     }
 
     /// Ejects the circuit value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            CircuitValue::Plaintext(plaintext) => console::StackValue::Plaintext(plaintext.eject_value()),
-            CircuitValue::Record(record) => console::StackValue::Record(record.eject_value()),
+            Value::Plaintext(plaintext) => console::Value::Plaintext(plaintext.eject_value()),
+            Value::Record(record) => console::Value::Record(record.eject_value()),
         }
     }
 }

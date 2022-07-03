@@ -21,7 +21,7 @@ impl<A: Aleo> Response<A> {
     pub fn from_outputs(
         num_inputs: usize,
         tvk: &Field<A>,
-        outputs: Vec<CircuitValue<A>>,
+        outputs: Vec<Value<A>>,
         output_types: &[console::ValueType<A::Network>],
     ) -> Self {
         // Compute the output IDs.
@@ -53,9 +53,9 @@ impl<A: Aleo> Response<A> {
                         let output_view_key = A::hash_psd2(&[tvk.clone(), output_index]);
                         // Compute the ciphertext.
                         let ciphertext = match &output {
-                            CircuitValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key),
+                            Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key),
                             // Ensure the output is a plaintext.
-                            CircuitValue::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                            Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
                         };
                         // Hash the ciphertext to a field element.
                         let output_hash = A::hash_bhp1024(&ciphertext.to_bits_le());
@@ -66,11 +66,9 @@ impl<A: Aleo> Response<A> {
                     console::ValueType::Record(..) => {
                         // Retrieve the record.
                         let record = match &output {
-                            CircuitValue::Record(record) => record,
+                            Value::Record(record) => record,
                             // Ensure the output is a record.
-                            CircuitValue::Plaintext(..) => {
-                                A::halt("Expected a record output, found a plaintext output")
-                            }
+                            Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
                         };
 
                         // Prepare the index as a constant field element.
@@ -115,16 +113,16 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Construct four outputs.
-            let output_constant = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+            let output_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_public = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+            let output_public = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_private = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+            let output_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_record = console::StackValue::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
             let outputs = vec![output_constant, output_public, output_private, output_record];
 
             // Construct the output types.

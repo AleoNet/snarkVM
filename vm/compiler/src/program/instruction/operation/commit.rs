@@ -17,7 +17,7 @@
 use crate::{Opcode, Operand, Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, StackValue},
+    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
 };
 
 use core::marker::PhantomData;
@@ -27,13 +27,10 @@ pub trait CommitOperation<N: Network, A: circuit::Aleo<Network = N>> {
     const OPCODE: Opcode;
 
     /// Returns the result of committing to the given input and randomizer.
-    fn evaluate(input: StackValue<N>, randomizer: StackValue<N>) -> Result<StackValue<N>>;
+    fn evaluate(input: Value<N>, randomizer: Value<N>) -> Result<Value<N>>;
 
     /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute(
-        input: circuit::CircuitValue<A>,
-        randomizer: circuit::CircuitValue<A>,
-    ) -> Result<circuit::CircuitValue<A>>;
+    fn execute(input: circuit::Value<A>, randomizer: circuit::Value<A>) -> Result<circuit::Value<A>>;
 
     /// Returns the output type from the given input types.
     fn output_type() -> Result<RegisterType<N>>;
@@ -66,10 +63,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
     };
 
     /// Returns the result of committing to the given input and randomizer.
-    fn evaluate(input: StackValue<N>, randomizer: StackValue<N>) -> Result<StackValue<N>> {
+    fn evaluate(input: Value<N>, randomizer: Value<N>) -> Result<Value<N>> {
         // Retrieve the randomizer.
         let randomizer = match randomizer {
-            StackValue::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
+            Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
             _ => bail!("Invalid randomizer type for BHP commit"),
         };
         // Compute the commitment.
@@ -81,19 +78,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
             _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.
-        Ok(StackValue::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default())))
+        Ok(Value::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default())))
     }
 
     /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute(
-        input: circuit::CircuitValue<A>,
-        randomizer: circuit::CircuitValue<A>,
-    ) -> Result<circuit::CircuitValue<A>> {
+    fn execute(input: circuit::Value<A>, randomizer: circuit::Value<A>) -> Result<circuit::Value<A>> {
         use circuit::ToBits;
 
         // Retrieve the randomizer.
         let randomizer = match randomizer {
-            circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
+            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
                 randomizer
             }
             _ => bail!("Invalid randomizer type for BHP commit"),
@@ -107,10 +101,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
             _ => bail!("Invalid BHP commitment variant: BHP{}", NUM_BITS),
         };
         // Return the output as a stack value.
-        Ok(circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(
-            circuit::Literal::Field(output),
-            Default::default(),
-        )))
+        Ok(circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default())))
     }
 
     /// Returns the output type from the given input types.

@@ -18,7 +18,7 @@
 mod sign;
 mod verify;
 
-use crate::{Identifier, ProgramID, StackValue, ValueType};
+use crate::{Identifier, ProgramID, Value, ValueType};
 use snarkvm_console_account::{Address, ComputeKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
@@ -62,7 +62,7 @@ pub struct Request<N: Network> {
     /// The input ID for the transition.
     input_ids: Vec<InputID<N>>,
     /// The function inputs.
-    inputs: Vec<StackValue<N>>,
+    inputs: Vec<Value<N>>,
     /// The signature for the transition.
     signature: Signature<N>,
     /// The transition view key.
@@ -70,7 +70,7 @@ pub struct Request<N: Network> {
 }
 
 impl<N: Network>
-    From<(Address<N>, U16<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Vec<StackValue<N>>, Signature<N>, Field<N>)>
+    From<(Address<N>, U16<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Vec<Value<N>>, Signature<N>, Field<N>)>
     for Request<N>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
@@ -81,7 +81,7 @@ impl<N: Network>
             ProgramID<N>,
             Identifier<N>,
             Vec<InputID<N>>,
-            Vec<StackValue<N>>,
+            Vec<Value<N>>,
             Signature<N>,
             Field<N>,
         ),
@@ -117,7 +117,7 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the function inputs.
-    pub fn inputs(&self) -> &[StackValue<N>] {
+    pub fn inputs(&self) -> &[Value<N>] {
         &self.inputs
     }
 

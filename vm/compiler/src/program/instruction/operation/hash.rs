@@ -17,7 +17,7 @@
 use crate::{Opcode, Operand, Program, Stack};
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, StackValue},
+    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
 };
 
 use core::marker::PhantomData;
@@ -124,7 +124,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
-        let output = StackValue::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default()));
+        let output = Value::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default()));
         // Store the output.
         stack.store(&self.destination, output)
     }
@@ -154,10 +154,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const VARIANT: u8> HashInstructi
             _ => bail!("Invalid hash variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
-        let output = circuit::CircuitValue::Plaintext(circuit::Plaintext::Literal(
-            circuit::Literal::Field(output),
-            Default::default(),
-        ));
+        let output =
+            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
         // Store the output.
         stack.store_circuit(&self.destination, output)
     }

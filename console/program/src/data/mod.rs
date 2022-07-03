@@ -32,5 +32,5 @@ pub use record::{Balance, Entry, Owner, Record};
 mod register;
 pub use register::Register;
 
-mod stack_value;
-pub use stack_value::StackValue;
+mod value;
+pub use value::Value;

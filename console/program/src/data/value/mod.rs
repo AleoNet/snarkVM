@@ -24,7 +24,7 @@ use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum StackValue<N: Network> {
+pub enum Value<N: Network> {
     /// A plaintext value.
     Plaintext(Plaintext<N>),
     /// A record value.

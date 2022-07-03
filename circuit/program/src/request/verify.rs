@@ -78,9 +78,9 @@ impl<A: Aleo> Request<A> {
                         let input_view_key = A::hash_psd2(&[self.tvk.clone(), input_index]);
                         // Compute the ciphertext.
                         let ciphertext = match &input {
-                            CircuitValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
+                            Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
                             // Ensure the input is a plaintext.
-                            CircuitValue::Record(..) => A::halt("Expected a plaintext input, found a record input"),
+                            Value::Record(..) => A::halt("Expected a plaintext input, found a record input"),
                         };
                         // Ensure the expected hash matches the computed hash.
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
@@ -93,9 +93,9 @@ impl<A: Aleo> Request<A> {
                         let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
                         // Compute the record commitment.
                         let commitment = match &input {
-                            CircuitValue::Record(record) => record.to_commitment(&randomizer),
+                            Value::Record(record) => record.to_commitment(&randomizer),
                             // Ensure the input is a record.
-                            CircuitValue::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                            Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
@@ -157,16 +157,16 @@ mod tests {
             let function_name = console::Identifier::from_str("transfer")?;
 
             // Construct four inputs.
-            let input_constant = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+            let input_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let input_public = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+            let input_public = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let input_private = console::StackValue::<<Circuit as Environment>::Network>::Plaintext(
+            let input_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let input_record = console::StackValue::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let input_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
             let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.

@@ -16,21 +16,24 @@
 
 use super::*;
 
-impl<A: Aleo> CircuitValue<A> {
-    /// Returns the value from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Self> {
+impl<A: Aleo> ToBits for Value<A> {
+    type Boolean = Boolean<A>;
+
+    /// Returns the circuit value as a list of **little-endian** bits.
+    #[inline]
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
         match self {
-            Self::Plaintext(plaintext) => Ok(Self::Plaintext(plaintext.find(path)?)),
-            Self::Record(record) => {
-                // Find the entry.
-                let entry = record.find(path)?;
-                // Extract the plaintext from the entry.
-                match entry {
-                    Entry::Constant(plaintext) => Ok(Self::Plaintext(plaintext)),
-                    Entry::Public(plaintext) => Ok(Self::Plaintext(plaintext)),
-                    Entry::Private(plaintext) => Ok(Self::Plaintext(plaintext)),
-                }
-            }
+            Self::Plaintext(plaintext) => plaintext.to_bits_le(),
+            Self::Record(record) => record.to_bits_le(),
+        }
+    }
+
+    /// Returns the circuit value as a list of **big-endian** bits.
+    #[inline]
+    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+        match self {
+            Self::Plaintext(plaintext) => plaintext.to_bits_be(),
+            Self::Record(record) => record.to_bits_be(),
         }
     }
 }

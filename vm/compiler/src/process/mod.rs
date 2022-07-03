@@ -156,7 +156,7 @@ mod tests {
     use console::{
         account::{ComputeKey, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, Plaintext, Record, Request, StackValue, ValueType},
+        program::{Identifier, Plaintext, Record, Request, Value, ValueType},
     };
 
     type CurrentNetwork = Testnet3;
@@ -202,15 +202,15 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
 
         // Declare the input value.
-        let r0 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
-        let r1 = StackValue::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
+        let r0 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
+        let r1 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
         let r2 =
-            StackValue::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
 
         // Declare the expected output value.
-        let r3 = StackValue::Plaintext(Plaintext::from_str("19field").unwrap());
-        let r4 = StackValue::Plaintext(Plaintext::from_str("11field").unwrap());
-        let r5 = StackValue::Plaintext(Plaintext::from_str("8field").unwrap());
+        let r3 = Value::Plaintext(Plaintext::from_str("19field").unwrap());
+        let r4 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
+        let r5 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Initialize the RNG.
         let rng = &mut test_crypto_rng();

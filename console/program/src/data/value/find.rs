@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> StackValue<N> {
+impl<N: Network> Value<N> {
     /// Returns the value from the given path.
     pub fn find(&self, path: &[Identifier<N>]) -> Result<Self> {
         match self {

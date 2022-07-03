@@ -18,26 +18,26 @@ use super::*;
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Checks that the given input value matches the layout of the value type.
-    pub fn matches_input(&self, input: &StackValue<N>, value_type: &ValueType<N>) -> Result<()> {
+    pub fn matches_input(&self, input: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the input value matches the declared type in the register.
         match (input, value_type) {
-            (StackValue::Plaintext(plaintext), ValueType::Constant(plaintext_type))
-            | (StackValue::Plaintext(plaintext), ValueType::Public(plaintext_type))
-            | (StackValue::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
+            (Value::Plaintext(plaintext), ValueType::Constant(plaintext_type))
+            | (Value::Plaintext(plaintext), ValueType::Public(plaintext_type))
+            | (Value::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
                 self.matches_plaintext(plaintext, plaintext_type)
             }
-            (StackValue::Record(record), ValueType::Record(record_name)) => self.matches_record(record, record_name),
+            (Value::Record(record), ValueType::Record(record_name)) => self.matches_record(record, record_name),
             _ => bail!("Input value does not match the input register type '{value_type}'"),
         }
     }
 
     /// Checks that the given stack value matches the layout of the register type.
-    pub fn matches_register(&self, stack_value: &StackValue<N>, register_type: &RegisterType<N>) -> Result<()> {
+    pub fn matches_register(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
         match (stack_value, register_type) {
-            (StackValue::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
+            (Value::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
                 self.matches_plaintext(plaintext, plaintext_type)
             }
-            (StackValue::Record(record), RegisterType::Record(record_name)) => self.matches_record(record, record_name),
+            (Value::Record(record), RegisterType::Record(record_name)) => self.matches_record(record, record_name),
             _ => bail!("Stack value does not match the register type '{register_type}'"),
         }
     }

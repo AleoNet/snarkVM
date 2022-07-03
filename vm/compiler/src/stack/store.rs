@@ -25,7 +25,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register is already used.
     #[inline]
     pub fn store_literal(&mut self, register: &Register<N>, literal: Literal<N>) -> Result<()> {
-        self.store(register, StackValue::Plaintext(Plaintext::from(literal)))
+        self.store(register, Value::Plaintext(Plaintext::from(literal)))
     }
 
     /// Assigns the given value to the given register, assuming the register is not already assigned.
@@ -35,7 +35,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store(&mut self, register: &Register<N>, stack_value: StackValue<N>) -> Result<()> {
+    pub fn store(&mut self, register: &Register<N>, stack_value: Value<N>) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.
@@ -78,7 +78,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register is already used.
     #[inline]
     pub fn store_literal_circuit(&mut self, register: &Register<N>, literal: circuit::Literal<A>) -> Result<()> {
-        self.store_circuit(register, circuit::CircuitValue::Plaintext(circuit::Plaintext::from(literal)))
+        self.store_circuit(register, circuit::Value::Plaintext(circuit::Plaintext::from(literal)))
     }
 
     /// Assigns the given value to the given register, assuming the register is not already assigned.
@@ -88,7 +88,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the given register is an input register.
     /// This method will halt if the register is already used.
     #[inline]
-    pub fn store_circuit(&mut self, register: &Register<N>, circuit_value: circuit::CircuitValue<A>) -> Result<()> {
+    pub fn store_circuit(&mut self, register: &Register<N>, circuit_value: circuit::Value<A>) -> Result<()> {
         match register {
             Register::Locator(locator) => {
                 // Ensure the register assignments are monotonically increasing.

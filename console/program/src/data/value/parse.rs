@@ -16,24 +16,20 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for CircuitValue<A> {
-    type Boolean = Boolean<A>;
-
-    /// Returns the circuit value as a list of **little-endian** bits.
-    #[inline]
-    fn to_bits_le(&self) -> Vec<Boolean<A>> {
-        match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_le(),
-            CircuitValue::Record(record) => record.to_bits_le(),
-        }
+impl<N: Network> Debug for Value<N> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
     }
+}
 
-    /// Returns the circuit value as a list of **big-endian** bits.
-    #[inline]
-    fn to_bits_be(&self) -> Vec<Boolean<A>> {
+impl<N: Network> Display for Value<N> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // TODO (howardwu): Handle how to print plaintext vs record case.
         match self {
-            CircuitValue::Plaintext(plaintext) => plaintext.to_bits_be(),
-            CircuitValue::Record(record) => record.to_bits_be(),
+            Self::Plaintext(plaintext) => write!(f, "{plaintext}"),
+            Self::Record(record) => write!(f, "{record}"),
         }
     }
 }
