@@ -18,12 +18,12 @@
 mod sign;
 mod verify;
 
-use crate::{Identifier, ProgramID, Value, ValueType};
+use crate::{Ciphertext, Identifier, ProgramID, Value, ValueType};
 use snarkvm_console_account::{Address, ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum InputID<N: Network> {
     /// The hash of the constant input.
     Constant(Field<N>),
@@ -33,20 +33,6 @@ pub enum InputID<N: Network> {
     Private(Field<N>),
     /// The gamma value and serial number of the record input.
     Record(Group<N>, Field<N>),
-}
-
-impl<N: Network> ToFields for InputID<N> {
-    type Field = Field<N>;
-
-    /// Returns the input as a list of field elements.
-    fn to_fields(&self) -> Result<Vec<Self::Field>> {
-        match self {
-            Self::Constant(field) => Ok(vec![*field]),
-            Self::Public(field) => Ok(vec![*field]),
-            Self::Private(field) => Ok(vec![*field]),
-            Self::Record(gamma, serial_number) => Ok(vec![gamma.to_x_coordinate(), *serial_number]),
-        }
-    }
 }
 
 #[derive(Clone)]

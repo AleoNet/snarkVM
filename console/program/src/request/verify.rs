@@ -41,17 +41,8 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Construct the input IDs as field elements.
-        let input_ids = match self.input_ids.iter().map(|input| input.to_fields()).collect::<Result<Vec<_>>>() {
-            Ok(input_ids) => input_ids,
-            Err(error) => {
-                eprintln!("Failed to construct the input IDs: {error}");
-                return false;
-            }
-        };
-
         // Construct the signature message as `[tvk, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(1 + input_ids.len());
+        let mut message = Vec::with_capacity(1 + self.input_ids.len());
         message.push(self.tvk);
         message.push(function_id);
 

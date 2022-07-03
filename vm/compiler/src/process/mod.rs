@@ -24,12 +24,59 @@ use crate::{Function, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Identifier, ProgramID, Request, Response},
+    program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value},
 };
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+
+use crate::Proof;
+use console::{
+    program::{Ciphertext, Plaintext, Record},
+    types::{Field, Group},
+};
+
+/// The transition input.
+pub enum Input<N: Network> {
+    /// The plaintext hash and (optional) plaintext.
+    Constant(Field<N>, Option<Plaintext<N>>),
+    /// The plaintext hash and (optional) plaintext.
+    Public(Field<N>, Option<Plaintext<N>>),
+    /// The ciphertext hash and (optional) ciphertext.
+    Private(Field<N>, Option<Ciphertext<N>>),
+    /// The serial number.
+    Record(Field<N>),
+}
+
+/// The transition output.
+pub enum Output<N: Network> {
+    /// The plaintext hash and (optional) plaintext.
+    Constant(Field<N>, Option<Plaintext<N>>),
+    /// The plaintext hash and (optional) plaintext.
+    Public(Field<N>, Option<Plaintext<N>>),
+    /// The ciphertext hash and (optional) ciphertext.
+    Private(Field<N>, Option<Ciphertext<N>>),
+    /// The commitment, nonce, checksum, and (optional) record ciphertext.
+    Record(Field<N>, Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
+}
+
+pub struct Transition<N: Network> {
+    /// The program ID.
+    program_id: ProgramID<N>,
+    /// The function name.
+    function_name: Identifier<N>,
+    /// The transition inputs.
+    inputs: Vec<Input<N>>,
+    /// The transition outputs.
+    outputs: Vec<Output<N>>,
+    /// The transition proof.
+    proof: Proof<N>,
+    /// The transition public key.
+    tpk: Group<N>,
+    /// The network fee.
+    fee: i64,
+}
 
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     /// The universal SRS.
@@ -163,6 +210,115 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Verify the proof.
         ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
 
+        let inputs = request
+            .input_ids()
+            .iter()
+            .zip_eq(request.inputs())
+            .enumerate()
+            .map(|(index, (input_id, input))| {
+                // Construct the transition input.
+                match (input_id, input) {
+                    (InputID::Constant(input_hash), Value::Plaintext(plaintext)) => {
+                        // Compute the plaintext hash.
+                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
+                        // Ensure the plaintext hash matches.
+                        ensure!(*input_hash == plaintext_hash, "The constant input plaintext hash is incorrect");
+                        // Return the constant input.
+                        Ok(Input::Constant(*input_hash, Some(plaintext.clone())))
+                    }
+                    (InputID::Public(input_hash), Value::Plaintext(plaintext)) => {
+                        // Compute the plaintext hash.
+                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
+                        // Ensure the plaintext hash matches.
+                        ensure!(*input_hash == plaintext_hash, "The public input plaintext hash is incorrect");
+                        // Return the public input.
+                        Ok(Input::Public(*input_hash, Some(plaintext.clone())))
+                    }
+                    (InputID::Private(input_hash), Value::Plaintext(plaintext)) => {
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
+                        let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
+                        // Compute the ciphertext hash.
+                        let ciphertext_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        // Ensure the ciphertext hash matches.
+                        ensure!(*input_hash == ciphertext_hash, "The input ciphertext hash is incorrect");
+                        // Return the private input.
+                        Ok(Input::Private(*input_hash, Some(ciphertext)))
+                    }
+                    (InputID::Record(_, serial_number), Value::Record(..)) => Ok(Input::Record(*serial_number)),
+                    _ => bail!("Malformed request input: {:?}, {input}", input_id),
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let num_inputs = inputs.len();
+        let outputs = response
+            .output_ids()
+            .iter()
+            .zip_eq(response.outputs())
+            .enumerate()
+            .map(|(index, (output_id, output))| {
+                // Construct the transition output.
+                match (output_id, output) {
+                    (OutputID::Constant(output_hash), Value::Plaintext(plaintext)) => {
+                        // Compute the plaintext hash.
+                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
+                        // Ensure the plaintext hash matches.
+                        ensure!(*output_hash == plaintext_hash, "The constant output plaintext hash is incorrect");
+                        // Return the constant output.
+                        Ok(Output::Constant(*output_hash, Some(plaintext.clone())))
+                    }
+                    (OutputID::Public(output_hash), Value::Plaintext(plaintext)) => {
+                        // Compute the plaintext hash.
+                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
+                        // Ensure the plaintext hash matches.
+                        ensure!(*output_hash == plaintext_hash, "The public output plaintext hash is incorrect");
+                        // Return the public output.
+                        Ok(Output::Public(*output_hash, Some(plaintext.clone())))
+                    }
+                    (OutputID::Private(output_hash), Value::Plaintext(plaintext)) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16((num_inputs + index) as u16);
+                        // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
+                        let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
+                        // Compute the ciphertext hash.
+                        let ciphertext_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        // Ensure the ciphertext hash matches.
+                        ensure!(*output_hash == ciphertext_hash, "The output ciphertext hash is incorrect");
+                        // Return the private output.
+                        Ok(Output::Private(*output_hash, Some(ciphertext)))
+                    }
+                    (OutputID::Record(commitment, nonce, checksum), Value::Record(record)) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16((num_inputs + index) as u16);
+                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
+                        // Compute the record commitment.
+                        let candidate_cm = record.to_commitment(&randomizer)?;
+                        // Ensure the commitment matches.
+                        ensure!(*commitment == candidate_cm, "The output record commitment is incorrect");
+
+                        // Compute the record nonce.
+                        let candidate_nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
+                        // Ensure the nonce matches.
+                        ensure!(*nonce == candidate_nonce, "The output record nonce is incorrect");
+
+                        // Encrypt the record, using the randomizer.
+                        let record_ciphertext = record.encrypt(randomizer)?;
+                        // Compute the record checksum, as the hash of the encrypted record.
+                        let ciphertext_checksum = N::hash_bhp1024(&record_ciphertext.to_bits_le())?;
+                        // Ensure the checksum matches.
+                        ensure!(*checksum == ciphertext_checksum, "The output record ciphertext checksum is incorrect");
+
+                        // Return the record output.
+                        Ok(Output::Record(*commitment, *nonce, *checksum, Some(record_ciphertext)))
+                    }
+                    _ => bail!("Malformed response output: {:?}, {output}", output_id),
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
         // // Finalize the trace.
@@ -194,12 +350,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // Inject the transition view key `tvk` as `Mode::Public`.
-        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
+        // Inject the transition view key `tpk` as `Mode::Public`.
+        let tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
+        // TODO (howardwu): Check relationship to tvk.
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, request.clone());
-        // Ensure the `tvk` matches.
-        A::assert_eq(request.tvk(), tvk);
         // Ensure the request has a valid signature and serial numbers.
         A::assert(request.verify());
 
