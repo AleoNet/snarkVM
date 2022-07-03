@@ -17,7 +17,8 @@
 use super::*;
 
 impl<A: Aleo> Request<A> {
-    /// Returns `true` if the signature is valid, and `false` otherwise.
+    /// Returns `true` if the input IDs are derived correctly, the input records all belong to the caller,
+    /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
@@ -91,12 +92,15 @@ impl<A: Aleo> Request<A> {
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
-                        // Compute the record commitment.
-                        let commitment = match &input {
-                            Value::Record(record) => record.to_commitment(&randomizer),
+                        // Retrieve the record.
+                        let record = match &input {
+                            Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(&randomizer);
+
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
@@ -109,12 +113,16 @@ impl<A: Aleo> Request<A> {
                             A::serial_number_domain(),
                             gamma.mul_by_cofactor().to_x_coordinate(),
                         ]);
-                        // Compute `candidate_serial_number` as `Commit(commitment, serial_number_nonce)`.
+                        // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
                         let candidate_serial_number =
                             A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
+                            // Ensure the record belongs to the caller.
+                            & record.owner().is_equal(&self.caller)
+                            // Ensure the record balance is less than or equal to 2^52.
+                            & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
                 }
             })
@@ -145,12 +153,17 @@ mod tests {
         let rng = &mut test_crypto_rng();
 
         for i in 0..ITERATIONS {
-            // Sample a random private key.
+            // Sample a random private key and address.
             let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
+            let address = snarkvm_console_account::Address::try_from(&private_key).unwrap();
 
             // Construct a program ID and function name.
             let program_id = console::ProgramID::from_str("token.aleo")?;
             let function_name = console::Identifier::from_str("transfer")?;
+
+            // Prepare a record belonging to the address.
+            let record_string =
+                format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
             let input_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
@@ -162,7 +175,9 @@ mod tests {
             let input_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let input_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let input_record = console::Value::<<Circuit as Environment>::Network>::Record(
+                console::Record::from_str(&record_string).unwrap(),
+            );
             let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.
@@ -202,11 +217,11 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 33557, 0, 26663, 26697)
+        check_verify(Mode::Public, 32810, 0, 23189, 23224)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 33557, 0, 26663, 26697)
+        check_verify(Mode::Private, 32810, 0, 23189, 23224)
     }
 }

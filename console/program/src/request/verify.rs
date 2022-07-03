@@ -115,12 +115,20 @@ impl<N: Network> Request<N> {
                         let index = Field::from_u16(index as u16);
                         // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
-                        // Compute the record commitment.
-                        let commitment = match &input {
-                            Value::Record(record) => record.to_commitment(&randomizer)?,
+                        // Retrieve the record.
+                        let record = match &input {
+                            Value::Record(record) => record,
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(&randomizer)?;
+                        // Ensure the record belongs to the caller.
+                        ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
+                        // Ensure the record balance is less than or equal to 2^52.
+                        if !(**record.balance()).to_bits_le()[52..].iter().all(|bit| !bit) {
+                            bail!("Input record contains an invalid balance: {}", record.balance());
+                        }
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
@@ -165,22 +173,27 @@ mod tests {
     pub(crate) const ITERATIONS: usize = 1000;
 
     #[test]
-    fn test_sign_and_verify() -> Result<()> {
+    fn test_sign_and_verify() {
         let rng = &mut test_crypto_rng();
 
         for _ in 0..ITERATIONS {
             // Sample a random private key and address.
-            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
+            let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+            let address = Address::try_from(&private_key).unwrap();
 
             // Construct a program ID and function name.
-            let program_id = ProgramID::from_str("token.aleo")?;
-            let function_name = Identifier::from_str("transfer")?;
+            let program_id = ProgramID::from_str("token.aleo").unwrap();
+            let function_name = Identifier::from_str("transfer").unwrap();
+
+            // Prepare a record belonging to the address.
+            let record_string =
+                format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
             let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
             let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
             let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_record = Value::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let input_record = Value::Record(Record::from_str(&record_string).unwrap());
             let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.
@@ -192,9 +205,8 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng)?;
+            let request = Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng).unwrap();
             assert!(request.verify());
         }
-        Ok(())
     }
 }

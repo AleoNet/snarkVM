@@ -22,7 +22,7 @@ pub(crate) use stack::*;
 
 use crate::{Function, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
-    account::PrivateKey,
+    account::{Address, PrivateKey},
     network::prelude::*,
     program::{Identifier, ProgramID, Request, Response},
 };
@@ -89,14 +89,17 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
             // Initialize an RNG.
             let rng = &mut rand::thread_rng();
+            // Initialize a burner private key.
+            let burner_private_key = PrivateKey::new(rng)?;
+            // Compute the burner address.
+            let burner_address = Address::try_from(&burner_private_key)?;
             // Sample the inputs.
             let inputs = input_types
                 .iter()
-                .map(|input_type| program.sample_value(input_type, rng))
+                .map(|input_type| program.sample_value(&burner_address, input_type, rng))
                 .collect::<Result<Vec<_>>>()?;
-
             // Sign a request, with a burner private key.
-            let request = program.sign(&PrivateKey::new(rng)?, *function_name, inputs, rng)?;
+            let request = program.sign(&burner_private_key, *function_name, inputs, rng)?;
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
 
@@ -248,7 +251,7 @@ mod tests {
     use super::*;
     use circuit::network::AleoV0;
     use console::{
-        account::{PrivateKey, ViewKey},
+        account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
         program::{Identifier, Plaintext, Record, Value},
     };
@@ -295,23 +298,34 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
 
-        // Declare the input value.
-        let r0 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
-        let r1 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
-        let r2 =
-            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
-
-        // Declare the expected output value.
-        let r3 = Value::Plaintext(Plaintext::from_str("19field").unwrap());
-        let r4 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
-        let r5 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
-
         // Initialize the RNG.
         let rng = &mut test_crypto_rng();
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Prepare a record belonging to the address.
+        let record_string =
+            format!("{{ owner: {caller}.private, balance: 5u64.private, token_amount: 100u64.private }}");
+
+        // // Construct four inputs.
+        // let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+        // let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+        // let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
+        // let input_record = Value::Record(Record::from_str(&record_string).unwrap());
+        // let inputs = vec![input_constant, input_public, input_private, input_record];
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
+        let r1 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
+        let r2 = Value::<CurrentNetwork>::Record(Record::from_str(&record_string).unwrap());
+
+        // Declare the expected output value.
+        let r3 = Value::Plaintext(Plaintext::from_str("19field").unwrap());
+        let r4 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
+        let r5 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Construct the inputs and input types.
         let inputs = vec![r0, r1, r2.clone()];
@@ -345,8 +359,8 @@ function compute:
 
         assert_eq!(36662, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(41630, CurrentAleo::num_private());
-        assert_eq!(41678, CurrentAleo::num_constraints());
-        assert_eq!(159119, CurrentAleo::num_gates());
+        assert_eq!(41648, CurrentAleo::num_private());
+        assert_eq!(41698, CurrentAleo::num_constraints());
+        assert_eq!(159183, CurrentAleo::num_gates());
     }
 }

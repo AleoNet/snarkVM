@@ -127,12 +127,20 @@ impl<N: Network> Request<N> {
                     let index = Field::from_u16(index as u16);
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                     let randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
-                    // Compute the record commitment.
-                    let commitment = match &input {
-                        Value::Record(record) => record.to_commitment(&randomizer)?,
+                    // Retrieve the record.
+                    let record = match &input {
+                        Value::Record(record) => record,
                         // Ensure the input is a record.
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
+                    // Compute the record commitment.
+                    let commitment = record.to_commitment(&randomizer)?;
+                    // Ensure the record belongs to the caller.
+                    ensure!(**record.owner() == caller, "Input record does not belong to the signer");
+                    // Ensure the record balance is less than or equal to 2^52.
+                    if !(**record.balance()).to_bits_le()[52..].iter().all(|bit| !bit) {
+                        bail!("Input record contains an invalid balance: {}", record.balance());
+                    }
 
                     // Compute the generator `H` as `HashToGroup(commitment)`.
                     let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;

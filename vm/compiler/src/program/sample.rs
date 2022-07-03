@@ -18,23 +18,31 @@ use super::*;
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// Returns a value for the given value type.
-    pub fn sample_value<R: Rng + CryptoRng>(&self, value_type: &ValueType<N>, rng: &mut R) -> Result<Value<N>> {
+    pub fn sample_value<R: Rng + CryptoRng>(
+        &self,
+        burner_address: &Address<N>,
+        value_type: &ValueType<N>,
+        rng: &mut R,
+    ) -> Result<Value<N>> {
         match value_type {
             ValueType::Constant(plaintext_type)
             | ValueType::Public(plaintext_type)
             | ValueType::Private(plaintext_type) => Ok(Value::Plaintext(self.sample_plaintext(plaintext_type, rng)?)),
-            ValueType::Record(record_name) => Ok(Value::Record(self.sample_record(record_name, rng)?)),
+            ValueType::Record(record_name) => {
+                Ok(Value::Record(self.sample_record(burner_address, record_name, rng)?))
+            }
         }
     }
 
-    /// Returns a record for the given record name.
+    /// Returns a record for the given record name, with the given burner address.
     pub fn sample_record<R: Rng + CryptoRng>(
         &self,
+        burner_address: &Address<N>,
         record_name: &Identifier<N>,
         rng: &mut R,
     ) -> Result<Record<N, Plaintext<N>>> {
         // Sample a record.
-        let record = self.sample_record_internal(record_name, 0, rng)?;
+        let record = self.sample_record_internal(burner_address, record_name, 0, rng)?;
         // Ensure the record matches the value type.
         self.matches_record(&record, record_name)?;
         // Return the record.
@@ -61,6 +69,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(
         &self,
+        burner_address: &Address<N>,
         record_name: &Identifier<N>,
         depth: usize,
         rng: &mut R,
@@ -71,15 +80,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         // Retrieve the record type from the program.
         let record_type = self.get_record(record_name)?;
 
-        // Initialize a burner private key.
-        let private_key = PrivateKey::new(rng)?;
-        // Derive the burner address.
-        let burner_address = Address::try_from(private_key)?;
-
         // Initialize the owner based on the visibility.
         let owner = match record_type.owner().is_public() {
-            true => Owner::Public(burner_address),
-            false => Owner::Private(Plaintext::Literal(Literal::Address(burner_address), Default::default())),
+            true => Owner::Public(*burner_address),
+            false => Owner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
         };
 
         // Initialize the balance based on the visibility.
