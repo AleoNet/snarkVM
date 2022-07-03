@@ -21,14 +21,22 @@ impl<N: Network> Request<N> {
     ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
-        sk_sig: &Scalar<N>,
-        pr_sig: &Group<N>,
+        private_key: &PrivateKey<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         inputs: Vec<Value<N>>,
         input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
+        // Retrieve `sk_sig`.
+        let sk_sig = private_key.sk_sig();
+        // Derive the compute key.
+        let compute_key = ComputeKey::try_from(private_key)?;
+        // Retrieve `pk_sig`.
+        let pk_sig = compute_key.pk_sig();
+        // Retrieve `pr_sig`.
+        let pr_sig = compute_key.pr_sig();
+
         // Sample a random nonce.
         let nonce = Field::<N>::rand(rng);
         // Compute a `r` as `HashToScalar(sk_sig || nonce)`.
@@ -36,13 +44,8 @@ impl<N: Network> Request<N> {
         // Compute `g_r` as `r * G`. Note: This is the transition public key `tpk`.
         let g_r = N::g_scalar_multiply(&r);
 
-        // Compute `pk_sig` as `sk_sig * G`.
-        let pk_sig = N::g_scalar_multiply(sk_sig);
-        // Derive the compute key.
-        let compute_key = ComputeKey::try_from((pk_sig, *pr_sig))?;
         // Derive the caller from the compute key.
         let caller = Address::try_from(compute_key)?;
-
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
 
@@ -61,7 +64,7 @@ impl<N: Network> Request<N> {
 
         // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, function ID, input IDs])`.
         let mut preimage = Vec::with_capacity(5 + 2 * inputs.len());
-        preimage.extend([g_r, pk_sig, *pr_sig, *caller].map(|point| point.to_x_coordinate()));
+        preimage.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
         preimage.extend([tvk, function_id]);
 
         // Initialize a vector to store the input IDs.

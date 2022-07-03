@@ -19,7 +19,7 @@ mod sign;
 mod verify;
 
 use crate::{Identifier, ProgramID, Value, ValueType};
-use snarkvm_console_account::{Address, ComputeKey, Signature};
+use snarkvm_console_account::{Address, ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 

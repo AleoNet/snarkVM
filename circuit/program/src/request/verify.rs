@@ -148,10 +148,6 @@ mod tests {
             // Sample a random private key.
             let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
 
-            // Retrieve `sk_sig` and `pr_sig`.
-            let sk_sig = private_key.sk_sig();
-            let pr_sig = snarkvm_console_account::ComputeKey::try_from(&private_key)?.pr_sig();
-
             // Construct a program ID and function name.
             let program_id = console::ProgramID::from_str("token.aleo")?;
             let function_name = console::Identifier::from_str("transfer")?;
@@ -178,8 +174,7 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request =
-                console::Request::sign(&sk_sig, &pr_sig, program_id, function_name, inputs, &input_types, rng)?;
+            let request = console::Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng)?;
             assert!(request.verify());
 
             // Inject the request into a circuit.

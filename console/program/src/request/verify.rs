@@ -172,10 +172,6 @@ mod tests {
             // Sample a random private key and address.
             let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
 
-            // Retrieve `sk_sig` and `pr_sig`.
-            let sk_sig = private_key.sk_sig();
-            let pr_sig = ComputeKey::try_from(&private_key)?.pr_sig();
-
             // Construct a program ID and function name.
             let program_id = ProgramID::from_str("token.aleo")?;
             let function_name = Identifier::from_str("transfer")?;
@@ -196,7 +192,7 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = Request::sign(&sk_sig, &pr_sig, program_id, function_name, inputs, &input_types, rng)?;
+            let request = Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng)?;
             assert!(request.verify());
         }
         Ok(())

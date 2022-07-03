@@ -216,7 +216,6 @@ function compute:
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-        let caller_compute_key = ComputeKey::try_from(&caller_private_key).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
         // Construct the inputs and input types.
@@ -228,16 +227,8 @@ function compute:
         ];
 
         // Compute the signed request.
-        let request = Request::sign(
-            &caller_private_key.sk_sig(),
-            &caller_compute_key.pr_sig(),
-            *program.id(),
-            function_name,
-            inputs,
-            &input_types,
-            rng,
-        )
-        .unwrap();
+        let request =
+            Request::sign(&caller_private_key, *program.id(), function_name, inputs, &input_types, rng).unwrap();
 
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo> { program };
