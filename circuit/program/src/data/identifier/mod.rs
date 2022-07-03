@@ -140,6 +140,20 @@ impl<A: Aleo> core::hash::Hash for Identifier<A> {
     }
 }
 
+impl<A: Aleo> From<Identifier<A>> for LinearCombination<A::BaseField> {
+    /// Note: Identifier is always `Mode::Constant`.
+    fn from(identifier: Identifier<A>) -> Self {
+        From::from(&identifier)
+    }
+}
+
+impl<A: Aleo> From<&Identifier<A>> for LinearCombination<A::BaseField> {
+    /// Note: Identifier is always `Mode::Constant`.
+    fn from(identifier: &Identifier<A>) -> Self {
+        LinearCombination::from(&identifier.0)
+    }
+}
+
 #[cfg(all(test, console))]
 pub(super) mod tests {
     use super::*;
