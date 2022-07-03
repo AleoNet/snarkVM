@@ -17,6 +17,7 @@
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
+mod from_outputs;
 mod verify;
 
 use crate::CircuitValue;
@@ -28,10 +29,10 @@ pub enum OutputID<A: Aleo> {
     Constant(Field<A>),
     /// The hash of the public output.
     Public(Field<A>),
-    /// The index and ciphertext hash of the private output.
-    Private(Field<A>, Field<A>),
-    /// The `(index, commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<A>, Field<A>, Field<A>, Field<A>),
+    /// The ciphertext hash of the private output.
+    Private(Field<A>),
+    /// The `(commitment, nonce, checksum)` tuple of the record output.
+    Record(Field<A>, Field<A>, Field<A>),
 }
 
 #[cfg(console)]
@@ -45,18 +46,61 @@ impl<A: Aleo> Inject for OutputID<A> {
             console::OutputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
             // Inject the expected hash as `Mode::Public`.
             console::OutputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
-            // Inject the expected index as `Mode::Private` and ciphertext hash as `Mode::Public`.
-            console::OutputID::Private(index, field) => {
-                Self::Private(Field::new(Mode::Constant, index), Field::new(Mode::Public, field))
-            }
+            // Inject the ciphertext hash as `Mode::Public`.
+            console::OutputID::Private(field) => Self::Private(Field::new(Mode::Public, field)),
             // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
-            console::OutputID::Record(index, commitment, nonce, checksum) => Self::Record(
-                Field::new(Mode::Constant, index),
+            console::OutputID::Record(commitment, nonce, checksum) => Self::Record(
                 Field::new(Mode::Public, commitment),
                 Field::new(Mode::Public, nonce),
                 Field::new(Mode::Public, checksum),
             ),
         }
+    }
+}
+
+impl<A: Aleo> OutputID<A> {
+    /// Initializes a constant output ID.
+    fn constant(expected_hash: Field<A>) -> Self {
+        // Inject the expected hash as `Mode::Constant`.
+        let output_hash = Field::new(Mode::Constant, expected_hash.eject_value());
+        // Ensure the injected hash matches the given hash.
+        A::assert_eq(&output_hash, expected_hash);
+        // Return the output ID.
+        Self::Constant(output_hash)
+    }
+
+    /// Initializes a public output ID.
+    fn public(expected_hash: Field<A>) -> Self {
+        // Inject the expected hash as `Mode::Public`.
+        let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
+        // Ensure the injected hash matches the given hash.
+        A::assert_eq(&output_hash, expected_hash);
+        // Return the output ID.
+        Self::Public(output_hash)
+    }
+
+    /// Initializes a private output ID.
+    fn private(expected_hash: Field<A>) -> Self {
+        // Inject the ciphertext hash as `Mode::Public`.
+        let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
+        // Ensure the injected hash matches the given hash.
+        A::assert_eq(&output_hash, expected_hash);
+        // Return the output ID.
+        Self::Private(output_hash)
+    }
+
+    /// Initializes a record output ID.
+    fn record(expected_commitment: Field<A>, expected_nonce: Field<A>, expected_checksum: Field<A>) -> Self {
+        // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
+        let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
+        let output_nonce = Field::new(Mode::Public, expected_nonce.eject_value());
+        let output_checksum = Field::new(Mode::Public, expected_checksum.eject_value());
+        // Ensure the injected commitment, nonce, and checksum match the given commitment, nonce, and checksum.
+        A::assert_eq(&output_commitment, expected_commitment);
+        A::assert_eq(&output_nonce, expected_nonce);
+        A::assert_eq(&output_checksum, expected_checksum);
+        // Return the output ID.
+        Self::Record(output_commitment, output_nonce, output_checksum)
     }
 }
 
@@ -69,9 +113,9 @@ impl<A: Aleo> Eject for OutputID<A> {
         match self {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
-            Self::Private(index, field) => (index, field).eject_mode(),
-            Self::Record(index, commitment, nonce, checksum) => {
-                Mode::combine(index.eject_mode(), [commitment.eject_mode(), nonce.eject_mode(), checksum.eject_mode()])
+            Self::Private(field) => field.eject_mode(),
+            Self::Record(commitment, nonce, checksum) => {
+                Mode::combine(commitment.eject_mode(), [nonce.eject_mode(), checksum.eject_mode()])
             }
         }
     }
@@ -81,13 +125,10 @@ impl<A: Aleo> Eject for OutputID<A> {
         match self {
             Self::Constant(field) => console::OutputID::Constant(field.eject_value()),
             Self::Public(field) => console::OutputID::Public(field.eject_value()),
-            Self::Private(index, field) => console::OutputID::Private(index.eject_value(), field.eject_value()),
-            Self::Record(index, commitment, nonce, checksum) => console::OutputID::Record(
-                index.eject_value(),
-                commitment.eject_value(),
-                nonce.eject_value(),
-                checksum.eject_value(),
-            ),
+            Self::Private(field) => console::OutputID::Private(field.eject_value()),
+            Self::Record(commitment, nonce, checksum) => {
+                console::OutputID::Record(commitment.eject_value(), nonce.eject_value(), checksum.eject_value())
+            }
         }
     }
 }

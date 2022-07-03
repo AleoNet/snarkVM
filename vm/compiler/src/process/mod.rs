@@ -29,7 +29,7 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
-    /// Evaluates a program function on the given inputs.
+    /// Evaluates a program function on the given request.
     #[inline]
     pub fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
         // Ensure the request is well-formed.
@@ -46,9 +46,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
-        // Initialize the trace.
-        let mut trace = Trace::<N>::new(request)?;
-
         // Prepare the stack.
         let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
         // Evaluate the function.
@@ -56,20 +53,21 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
         // Load the output types.
         let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
-
+        // Compute the response.
         let response = Response::new(num_inputs, request.tvk(), outputs, &output_types)?;
 
+        // Initialize the trace.
+        let mut trace = Trace::<N>::new(request, &response)?;
         // Finalize the trace.
         trace.finalize()?;
-
         println!("{:?}", trace.leaves());
 
         Ok(response)
     }
 
-    /// Executes a program function on the given inputs.
+    /// Executes a program function on the given request.
     #[inline]
-    pub fn execute(&self, request: &Request<N>) -> Result<Vec<circuit::CircuitValue<A>>> {
+    pub fn execute(&self, request: &Request<N>) -> Result<circuit::Response<A>> {
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
@@ -84,158 +82,50 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
 
-        // Initialize the trace.
-        let mut trace = Trace::<N>::new(request)?;
-
         // Ensure the circuit environment is clean.
         A::reset();
 
-        use circuit::Inject;
+        let response = {
+            use circuit::Inject;
 
-        // Inject the transition view key `tvk` as `Mode::Public`.
-        let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
-        // Inject the request as `Mode::Private`.
-        let request = circuit::Request::new(circuit::Mode::Private, request.clone());
-        // Ensure the `tvk` matches.
-        A::assert_eq(request.tvk(), tvk);
-        // Ensure the request has a valid signature and serial numbers.
-        A::assert(request.verify());
+            // Inject the transition view key `tvk` as `Mode::Public`.
+            let tvk = circuit::Field::<A>::new(circuit::Mode::Public, *request.tvk());
+            // Inject the request as `Mode::Private`.
+            let request = circuit::Request::new(circuit::Mode::Private, request.clone());
+            // Ensure the `tvk` matches.
+            A::assert_eq(request.tvk(), tvk);
+            // Ensure the request has a valid signature and serial numbers.
+            A::assert(request.verify());
+
+            #[cfg(debug_assertions)]
+            Self::log_circuit("Request Authentication");
+
+            // Prepare the stack.
+            let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
+            // Execute the function.
+            let outputs = stack.execute_function(&function, request.inputs())?;
+
+            #[cfg(debug_assertions)]
+            Self::log_circuit(format!("Function '{}()'", function.name()));
+
+            // Load the output types.
+            let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
+
+            circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types)
+        };
+
+        // A::assert(response.verify(num_inputs, request.caller(), request.tvk()));
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Request Authentication");
+        Self::log_circuit("Response");
 
-        // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(Some(self.program.clone()))?;
-        // Execute the function.
-        let outputs = stack.execute_function(&function, request.inputs())?;
+        // // Initialize the trace.
+        // let mut trace = Trace::<N>::new(request, &response)?;
+        // // Finalize the trace.
+        // trace.finalize()?;
+        // println!("{:?}", trace.leaves());
 
-        #[cfg(debug_assertions)]
-        Self::log_circuit(format!("Function {}", function.name()));
-
-        // Load the output types.
-        let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
-
-        use console::program::ValueType;
-
-        // Load the outputs.
-        outputs.iter().zip_eq(&output_types).enumerate().try_for_each(|(index, (output, output_types))| {
-            use circuit::{Eject, ToBits};
-
-            match output_types {
-                // For a constant output, compute the hash of the output.
-                // An expected hash is injected as `Mode::Constant`, and compared to the computed hash.
-                ValueType::Constant(..) => {
-                    // Hash the output to a field element.
-                    let output_hash = A::hash_bhp1024(&output.to_bits_le());
-                    // Inject the expected hash as `Mode::Public`.
-                    let expected_hash = circuit::Field::<A>::new(circuit::Mode::Constant, output_hash.eject_value());
-                    // Ensure the computed hash matches the expected hash.
-                    A::assert_eq(&output_hash, expected_hash);
-
-                    #[cfg(debug_assertions)]
-                    Self::log_circuit("Constant Output");
-
-                    // Add the output hash to the trace.
-                    trace.add_output(output_hash.eject_value())?;
-                }
-                // For a public output, compute the hash of the output.
-                // An expected hash is injected as `Mode::Public`, and compared to the computed hash.
-                ValueType::Public(..) => {
-                    // Hash the output to a field element.
-                    let output_hash = A::hash_bhp1024(&output.to_bits_le());
-                    // Inject the expected hash as `Mode::Public`.
-                    let expected_hash = circuit::Field::<A>::new(circuit::Mode::Public, output_hash.eject_value());
-                    // Ensure the computed hash matches the expected hash.
-                    A::assert_eq(&output_hash, expected_hash);
-
-                    #[cfg(debug_assertions)]
-                    Self::log_circuit("Public Output");
-
-                    // Add the output hash to the trace.
-                    trace.add_output(output_hash.eject_value())?;
-                }
-                // For a private output, compute the commitment (using `tvk`) for the output.
-                // An expected commitment is injected as `Mode::Public`, and compared to the commitment.
-                ValueType::Private(..) => {
-                    // Construct the (console) output index as a field element.
-                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
-                    // Inject the output index as `Mode::Private`.
-                    let output_index = circuit::Field::new(circuit::Mode::Private, index);
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[request.tvk().clone(), output_index]);
-
-                    // Commit the output to a field element.
-                    let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
-                    // Inject the expected commitment as `Mode::Public`.
-                    let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
-                    // Ensure the computed commitment matches the expected commitment.
-                    A::assert_eq(&commitment, expected_cm);
-
-                    #[cfg(debug_assertions)]
-                    Self::log_circuit("Private Output");
-
-                    // Add the output commitment to the trace.
-                    trace.add_output(commitment.eject_value())?;
-                }
-                // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
-                // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
-                ValueType::Record(..) => {
-                    // Retrieve the record.
-                    let record = match &output {
-                        circuit::CircuitValue::Record(record) => record,
-                        // Ensure the input is a record.
-                        circuit::CircuitValue::Plaintext(..) => {
-                            bail!("Expected a record input, found a plaintext input")
-                        }
-                    };
-
-                    // Construct the (console) output index as a field element.
-                    let index = console::types::Field::from_u16((num_inputs + index) as u16);
-                    // Inject the output index as `Mode::Private`.
-                    let output_index = circuit::Field::new(circuit::Mode::Private, index);
-                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[request.tvk().clone(), output_index]);
-
-                    // Compute the record commitment.
-                    let commitment = record.to_commitment(&randomizer);
-                    // Inject the expected record commitment as `Mode::Public`.
-                    let expected_cm = circuit::Field::<A>::new(circuit::Mode::Public, commitment.eject_value());
-                    // Ensure the computed record commitment matches the expected record commitment.
-                    A::assert_eq(&commitment, expected_cm);
-
-                    // Add the record commitment to the trace.
-                    trace.add_output(commitment.eject_value())?;
-
-                    // Compute the record nonce.
-                    let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
-                    // Inject the expected nonce as `Mode::Public`.
-                    let expected_nonce = circuit::Field::<A>::new(circuit::Mode::Public, nonce.eject_value());
-                    // Ensure the computed nonce matches the expected nonce.
-                    A::assert_eq(&nonce, expected_nonce);
-
-                    // Encrypt the record, using the randomizer.
-                    let encrypted_record = record.encrypt(&randomizer);
-                    // Compute the record checksum, as the hash of the encrypted record.
-                    let checksum = A::hash_bhp1024(&encrypted_record.to_bits_le());
-                    // Inject the expected record checksum as `Mode::Public`.
-                    let expected_checksum = circuit::Field::<A>::new(circuit::Mode::Public, checksum.eject_value());
-                    // Ensure the computed record checksum matches the expected record checksum.
-                    A::assert_eq(&checksum, expected_checksum);
-
-                    #[cfg(debug_assertions)]
-                    Self::log_circuit("Record Output");
-                }
-            };
-
-            Ok::<_, Error>(())
-        })?;
-
-        // Finalize the trace.
-        trace.finalize()?;
-
-        println!("{:?}", trace.leaves());
-
-        Ok(outputs)
+        Ok(response)
     }
 
     /// Prints the current state of the circuit.
@@ -328,7 +218,7 @@ function compute:
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
 
         // Construct the inputs and input types.
-        let inputs = vec![r0, r1, r2];
+        let inputs = vec![r0, r1, r2.clone()];
         let input_types = vec![
             ValueType::from_str("field.private").unwrap(),
             ValueType::from_str("field.public").unwrap(),
@@ -359,23 +249,21 @@ function compute:
 
         use circuit::Eject;
 
-        // Re-run to ensure state continues to work.
-        let candidate = process.execute(&request).unwrap();
+        // Execute the request.
+        let response = process.execute(&request).unwrap();
+        let candidate = response.outputs();
         assert_eq!(4, candidate.len());
+        assert_eq!(r2, candidate[0].eject_value());
         assert_eq!(r3, candidate[1].eject_value());
         assert_eq!(r4, candidate[2].eject_value());
         assert_eq!(r5, candidate[3].eject_value());
 
         use circuit::Environment;
-        // assert_eq!(24537, CurrentAleo::num_constants());
-        // assert_eq!(13, CurrentAleo::num_public());
-        // assert_eq!(26454, CurrentAleo::num_private());
-        // assert_eq!(26472, CurrentAleo::num_constraints());
-        // assert_eq!(90497, CurrentAleo::num_gates());
-        assert_eq!(38986, CurrentAleo::num_constants());
+
+        assert_eq!(36662, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(46178, CurrentAleo::num_private());
-        assert_eq!(46220, CurrentAleo::num_constraints());
-        assert_eq!(154618, CurrentAleo::num_gates());
+        assert_eq!(41630, CurrentAleo::num_private());
+        assert_eq!(41678, CurrentAleo::num_constraints());
+        assert_eq!(159119, CurrentAleo::num_gates());
     }
 }

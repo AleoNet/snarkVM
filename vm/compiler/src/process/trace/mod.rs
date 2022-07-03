@@ -16,7 +16,7 @@
 
 use console::{
     network::{prelude::*, BHPMerkleTree},
-    program::{InputID, Request},
+    program::{InputID, OutputID, Request, Response},
     types::{Address, Field},
 };
 
@@ -64,7 +64,7 @@ pub struct Trace<N: Network> {
 
 impl<N: Network> Trace<N> {
     /// Initializes a new stack trace.
-    pub fn new(request: &Request<N>) -> Result<Self> {
+    pub fn new(request: &Request<N>, response: &Response<N>) -> Result<Self> {
         // Initialize a new trace with the caller.
         let mut trace = Self {
             transaction: N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&[])?,
@@ -88,6 +88,19 @@ impl<N: Network> Trace<N> {
                 InputID::Private(input_hash) => trace.add_input(*input_hash),
                 // An input record is computed to its serial number.
                 InputID::Record(_, serial_number) => trace.add_input(*serial_number),
+            }
+        })?;
+
+        response.output_ids().iter().try_for_each(|output_id| {
+            match output_id {
+                // A constant output is hashed to a field element.
+                OutputID::Constant(output_hash) => trace.add_output(*output_hash),
+                // A public output is hashed to a field element.
+                OutputID::Public(output_hash) => trace.add_output(*output_hash),
+                // A private output is encrypted (using `tvk`) and hashed to a field element.
+                OutputID::Private(output_hash) => trace.add_output(*output_hash),
+                // An output record is encrypted (using `tvk`) and hashed to a field element.
+                OutputID::Record(commitment, _, _) => trace.add_input(*commitment),
             }
         })?;
 

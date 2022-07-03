@@ -77,11 +77,11 @@ impl<A: Aleo> Request<A> {
 
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
+                        // Compute the input view key as `Hash(tvk || index)`.
+                        let input_view_key = A::hash_psd2(&[self.tvk.clone(), input_index]);
                         // Compute the ciphertext.
                         let ciphertext = match &input {
-                            CircuitValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer),
+                            CircuitValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
                             // Ensure the input is a plaintext.
                             CircuitValue::Record(..) => A::halt("Expected a plaintext input, found a record input"),
                         };
@@ -148,7 +148,7 @@ mod tests {
         let rng = &mut test_crypto_rng();
 
         for i in 0..ITERATIONS {
-            // Sample a random private key and address.
+            // Sample a random private key.
             let private_key = snarkvm_console_account::PrivateKey::<<Circuit as Environment>::Network>::new(rng)?;
 
             // Retrieve `sk_sig` and `pr_sig`.

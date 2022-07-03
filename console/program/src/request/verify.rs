@@ -91,11 +91,11 @@ impl<N: Network> Request<N> {
                         ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
                         // Prepare the index as a constant field element.
                         let index = Field::from_u16(index as u16);
-                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
+                        // Compute the input view key as `Hash(tvk || index)`.
+                        let input_view_key = N::hash_psd2(&[self.tvk, index])?;
                         // Compute the ciphertext.
                         let ciphertext = match &input {
-                            StackValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer)?,
+                            StackValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key)?,
                             // Ensure the input is a plaintext.
                             StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
                         };

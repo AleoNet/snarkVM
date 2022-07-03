@@ -24,10 +24,10 @@ pub enum OutputID<N: Network> {
     Constant(Field<N>),
     /// The hash of the public output.
     Public(Field<N>),
-    /// The index and ciphertext hash of the private output.
-    Private(Field<N>, Field<N>),
-    /// The `(index, commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<N>, Field<N>, Field<N>, Field<N>),
+    /// The ciphertext hash of the private output.
+    Private(Field<N>),
+    /// The `(commitment, nonce, checksum)` tuple of the record output.
+    Record(Field<N>, Field<N>, Field<N>),
 }
 
 #[derive(Clone)]
@@ -78,18 +78,24 @@ impl<N: Network> Response<N> {
                         // Return the output ID.
                         Ok(OutputID::Public(output_hash))
                     }
-                    // For a private output, compute the commitment (using `tvk`) for the output.
+                    // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
                     ValueType::Private(..) => {
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, StackValue::Plaintext(..)), "Expected a plaintext output");
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
-                        // Commit the output to a field element.
-                        let commitment = N::commit_bhp1024(&output.to_bits_le(), &randomizer)?;
+                        // Compute the output view key as `Hash(tvk || index)`.
+                        let output_view_key = N::hash_psd2(&[*tvk, index])?;
+                        // Compute the ciphertext.
+                        let ciphertext = match &output {
+                            StackValue::Plaintext(plaintext) => plaintext.encrypt_symmetric(output_view_key)?,
+                            // Ensure the output is a plaintext.
+                            StackValue::Record(..) => bail!("Expected a plaintext output, found a record output"),
+                        };
+                        // Hash the ciphertext to a field element.
+                        let output_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
                         // Return the output ID.
-                        Ok(OutputID::Private(index, commitment))
+                        Ok(OutputID::Private(output_hash))
                     }
                     // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
                     // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
@@ -117,7 +123,7 @@ impl<N: Network> Response<N> {
                         let checksum = N::hash_bhp1024(&encrypted_record.to_bits_le())?;
 
                         // Return the output ID.
-                        Ok(OutputID::Record(index, commitment, nonce, checksum))
+                        Ok(OutputID::Record(commitment, nonce, checksum))
                     }
                 }
             })
