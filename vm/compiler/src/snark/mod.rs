@@ -14,27 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![allow(dead_code)]
+use console::network::prelude::*;
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
+use snarkvm_curves::{bls12_377::Bls12_377, PairingEngine};
 
-#[allow(dead_code, unused_imports)]
-mod ledger;
-pub use ledger::*;
+use core::marker::PhantomData;
 
-mod process;
-pub use process::*;
+type Fq = <Bls12_377 as PairingEngine>::Fq;
+type Fr = <Bls12_377 as PairingEngine>::Fr;
 
-mod program;
-pub use program::*;
+// TODO (howardwu): Replace me.
+type FS = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+type Marlin = marlin::MarlinSNARK<Bls12_377, FS, marlin::MarlinHidingMode, [Fr]>;
 
-mod snark;
-pub use snark::*;
+mod proof;
+pub use proof::Proof;
 
-mod stack;
-pub use stack::*;
+mod proving_key;
+pub use proving_key::ProvingKey;
 
-mod transition;
-pub use transition::*;
+mod universal_srs;
+pub use universal_srs::UniversalSRS;
+
+mod verifying_key;
+pub use verifying_key::VerifyingKey;

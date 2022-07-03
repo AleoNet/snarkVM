@@ -14,27 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![allow(dead_code)]
+use super::*;
 
-#[allow(dead_code, unused_imports)]
-mod ledger;
-pub use ledger::*;
+pub struct Proof<N: Network> {
+    /// The proof.
+    proof: marlin::Proof<Bls12_377>,
+    /// PhantomData
+    _phantom: PhantomData<N>,
+}
 
-mod process;
-pub use process::*;
+impl<N: Network> Proof<N> {
+    /// Initializes a new proof.
+    pub(super) const fn new(proof: marlin::Proof<Bls12_377>) -> Self {
+        Self { proof, _phantom: PhantomData }
+    }
+}
 
-mod program;
-pub use program::*;
+impl<N: Network> Deref for Proof<N> {
+    type Target = marlin::Proof<Bls12_377>;
 
-mod snark;
-pub use snark::*;
-
-mod stack;
-pub use stack::*;
-
-mod transition;
-pub use transition::*;
+    fn deref(&self) -> &Self::Target {
+        &self.proof
+    }
+}

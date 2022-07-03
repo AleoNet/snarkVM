@@ -20,8 +20,6 @@ use input::*;
 pub mod output;
 use output::*;
 
-pub mod proof;
-
 use console::{
     network::{prelude::*, Network},
     types::{Field, Group, Scalar},
