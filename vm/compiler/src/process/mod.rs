@@ -59,6 +59,35 @@ impl<N: Network> Input<N> {
             Input::Record(id) => *id,
         }
     }
+
+    /// Returns `true` if the input is well-formed.
+    /// If the optional value exists, this method checks that it hashes to the input ID.
+    pub fn verify(&self) -> bool {
+        match self {
+            Input::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => hash == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            Input::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => hash == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            Input::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => hash == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            _ => true,
+        }
+    }
 }
 
 /// The transition output.
@@ -81,6 +110,42 @@ impl<N: Network> Output<N> {
             Output::Public(id, ..) => vec![*id],
             Output::Private(id, ..) => vec![*id],
             Output::Record(commitment, nonce, checksum, _) => vec![*commitment, *nonce, *checksum],
+        }
+    }
+
+    /// Returns `true` if the output is well-formed.
+    /// If the optional value exists, this method checks that it hashes to the input ID.
+    pub fn verify(&self) -> bool {
+        match self {
+            Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => hash == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => hash == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => hash == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            Output::Record(_, _, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => checksum == &candidate_hash,
+                Err(error) => {
+                    eprintln!("{error}");
+                    false
+                }
+            },
+            _ => true,
         }
     }
 }
@@ -237,6 +302,17 @@ impl<N: Network> Transition<N> {
 
     /// Returns `true` if the transition is valid.
     pub fn verify(&self, verifying_key: &VerifyingKey<N>) -> bool {
+        // Ensure each input is valid.
+        if self.inputs.iter().any(|input| !input.verify()) {
+            eprintln!("Failed to verify a transition input");
+            return false;
+        }
+        // Ensure each output is valid.
+        if self.outputs.iter().any(|output| !output.verify()) {
+            eprintln!("Failed to verify a transition output");
+            return false;
+        }
+
         // Compute the x- and y-coordinate of `tpk`.
         let (tpk_x, tpk_y) = self.tpk.to_xy_coordinate();
         // Construct the public inputs to verify the proof.
