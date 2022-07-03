@@ -381,7 +381,7 @@ where
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(first_round_oracles.iter_for_open()) // 8 * batch_size + (MM::ZK as usize) items
+            .chain(first_round_oracles.iter_for_open()) // 10 * batch_size + (MM::ZK as usize) items
             .chain(second_oracles.iter())// 1 item
             .chain(third_oracles.iter())// 1 item
             .chain(fourth_oracles.iter())// 3 items
@@ -391,7 +391,7 @@ where
         Self::terminate(terminator)?;
 
         // Gather commitments in one vector.
-        let witness_commitments = first_commitments.chunks_exact(8);
+        let witness_commitments = first_commitments.chunks_exact(10);
         let mask_poly = MM::ZK.then(|| *witness_commitments.remainder()[0].commitment());
         let witness_commitments = witness_commitments
             .map(|c| proof::WitnessCommitments {
@@ -403,6 +403,8 @@ where
                 s_1: *c[5].commitment(),
                 s_2: *c[6].commitment(),
                 z_2: *c[7].commitment(),
+                s_1_omega: *c[8].commitment(),
+                z_2_omega: *c[9].commitment(),
             })
             .collect();
 
@@ -542,6 +544,8 @@ where
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("s_1", i)], c.s_1),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("s_2", i)], c.s_2),
                     LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_2", i)], c.z_2),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("omega_s_1", i)], c.s_1_omega),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("omega_z_2", i)], c.z_2_omega),
                 ]
             })
             .collect::<Vec<_>>();

@@ -76,6 +76,8 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             fourth_round_message: None,
             gamma: None,
             zeta: Some(TargetField::one()),
+            delta: Some(TargetField::one()),
+            epsilon: Some(TargetField::one()),
             mode: PhantomData,
         };
 

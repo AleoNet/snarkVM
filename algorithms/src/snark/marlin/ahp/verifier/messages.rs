@@ -61,6 +61,12 @@ pub struct QuerySet<F> {
     pub g_1_query: (String, F),
     pub z_b_query: (String, F),
     pub f_query: (String, F),
+    pub s_1_query: (String, F),
+    pub s_2_query: (String, F),
+    pub z_2_query: (String, F),
+    pub s_1_omega_query: (String, F),
+    pub t_query: (String, F),
+    pub delta_t_omega_query: (String, F),
     pub s_m_query: (String, F),
     pub s_l_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
@@ -88,6 +94,12 @@ impl<F: PrimeField> QuerySet<F> {
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             f_query: ("beta".into(), beta),
+            s_1_query: ("beta".into(), beta),
+            s_2_query: ("beta".into(), beta),
+            z_2_query: ("beta".into(), beta),
+            s_1_omega_query: ("beta".into(), beta),
+            t_query: ("beta".into(), beta),
+            delta_t_omega_query: ("beta".into(), beta),
             s_m_query: ("beta".into(), beta),
             s_l_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
@@ -109,7 +121,21 @@ impl<F: PrimeField> QuerySet<F> {
         for i in 0..self.batch_size {
             query_set.insert((witness_label("f", i), self.f_query.clone()));
         }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("s_1", i), self.s_1_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("s_2", i), self.s_2_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("z_2", i), self.z_2_query.clone()));
+        }
+        for i in 0..self.batch_size {
+            query_set.insert((witness_label("omega_s_1", i), self.s_1_omega_query.clone()));
+        }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
+        query_set.insert(("t".into(), self.t_query.clone()));
+        query_set.insert(("delta_t_omega".into(), self.delta_t_omega_query.clone()));
         query_set.insert(("s_m".into(), self.s_m_query.clone()));
         query_set.insert(("s_l".into(), self.s_l_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));

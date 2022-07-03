@@ -65,6 +65,10 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) s_2: LabeledPolynomialWithBasis<'a, F>,
     /// The evaluations of `z_2`.
     pub(super) z_2: LabeledPolynomialWithBasis<'a, F>,
+    /// The evaluations of `s_1_omega`.
+    pub(super) s_1_omega: LabeledPolynomialWithBasis<'a, F>,
+    /// The evaluations of `z_2_omega`.
+    pub(super) z_2_omega: LabeledPolynomialWithBasis<'a, F>,
     /// The LDE of `w`.
     pub(super) w_poly: LabeledPolynomial<F>,
     /// The LDE of `Az`.
@@ -81,6 +85,10 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     pub(super) s_2_poly: LabeledPolynomial<F>,
     /// Plookup permutation poly.
     pub(super) z_2_poly: LabeledPolynomial<F>,
+    /// The shifted first half of the concatenated lookup polynomial.
+    pub(super) s_1_omega_poly: LabeledPolynomial<F>,
+    /// Shifted plookup permutation poly.
+    pub(super) z_2_omega_poly: LabeledPolynomial<F>,
 }
 
 impl<'a, F: PrimeField> SingleEntry<'a, F> {
@@ -110,7 +118,13 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
         let z_2 = self.z_2.clone();
         self.z_2 = LabeledPolynomialWithBasis { polynomial: vec![], info: z_2.info().clone() };
 
-        [w_poly.into(), z_a, z_b, z_c, f, s_1, s_2, z_2].into_iter()
+        let s_1_omega = self.s_1_omega.clone();
+        self.s_1_omega = LabeledPolynomialWithBasis { polynomial: vec![], info: s_1_omega.info().clone() };
+
+        let z_2_omega = self.z_2_omega.clone();
+        self.z_2_omega = LabeledPolynomialWithBasis { polynomial: vec![], info: z_2_omega.info().clone() };
+
+        [w_poly.into(), z_a, z_b, z_c, f, s_1, s_2, z_2, s_1_omega, z_2_omega].into_iter()
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
@@ -125,6 +139,8 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
             &self.s_1_poly,
             &self.s_2_poly,
             &self.z_2_poly,
+            &self.s_1_omega_poly,
+            &self.z_2_omega_poly,
         ]
         .into_iter()
     }
@@ -138,6 +154,8 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
             && Some(self.s_1.info()) == info.get(self.s_1.label())
             && Some(self.s_2.info()) == info.get(self.s_2.label())
             && Some(self.z_2.info()) == info.get(self.z_2.label())
+            && Some(self.s_1_omega.info()) == info.get(self.s_1_omega.label())
+            && Some(self.z_2_omega.info()) == info.get(self.z_2_omega.label())
             && Some(self.z_a_poly.info()) == info.get(self.z_a_poly.label())
             && Some(self.z_b_poly.info()) == info.get(self.z_b_poly.label())
             && Some(self.z_c_poly.info()) == info.get(self.z_c_poly.label())
@@ -145,6 +163,8 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
             && Some(self.s_1_poly.info()) == info.get(self.s_1_poly.label())
             && Some(self.s_2_poly.info()) == info.get(self.s_2_poly.label())
             && Some(self.z_2_poly.info()) == info.get(self.z_2_poly.label())
+            && Some(self.s_1_omega_poly.info()) == info.get(self.s_1_omega_poly.label())
+            && Some(self.z_2_omega_poly.info()) == info.get(self.z_2_omega_poly.label())
     }
 }
 

@@ -119,6 +119,10 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub s_2: sonic_pc::Commitment<E>,
     /// Commitment to the `z_2` polynomial.
     pub z_2: sonic_pc::Commitment<E>,
+    /// Commitment to the `s_1_omega` polynomial.
+    pub s_1_omega: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_2_omega` polynomial.
+    pub z_2_omega: sonic_pc::Commitment<E>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -127,6 +131,18 @@ pub struct Evaluations<F: PrimeField> {
     pub z_b_evals: Vec<F>,
     /// Evaluation of `f_i`'s at `beta`.
     pub f_evals: Vec<F>,
+    /// Evaluation of `s_1_i`'s at `beta`.
+    pub s_1_evals: Vec<F>,
+    /// Evaluation of `s_2_i`'s at `beta`.
+    pub s_2_evals: Vec<F>,
+    /// Evaluation of `z_2_i`'s at `beta`.
+    pub z_2_evals: Vec<F>,
+    /// Evaluation of `s_1_omega_i`'s at `beta`.
+    pub s_1_omega_evals: Vec<F>,
+    /// Evaluation of `t` at `beta`.
+    pub t_eval: F,
+    /// Evaluation of `delta_t_omega` at `beta`.
+    pub delta_t_omega_eval: F,
     /// Evaluation of `s_m` at `beta`.
     pub s_m_eval: F,
     /// Evaluation of `s_l` at `beta`.
@@ -153,6 +169,20 @@ impl<F: PrimeField> Evaluations<F> {
         for f_eval in &self.f_evals {
             CanonicalSerialize::serialize_with_mode(f_eval, &mut writer, compress)?;
         }
+        for s_1_eval in &self.s_1_evals {
+            CanonicalSerialize::serialize_with_mode(s_1_eval, &mut writer, compress)?;
+        }
+        for s_2_eval in &self.s_2_evals {
+            CanonicalSerialize::serialize_with_mode(s_2_eval, &mut writer, compress)?;
+        }
+        for z_2_eval in &self.z_2_evals {
+            CanonicalSerialize::serialize_with_mode(z_2_eval, &mut writer, compress)?;
+        }
+        for s_1_omega_eval in &self.s_1_omega_evals {
+            CanonicalSerialize::serialize_with_mode(s_1_omega_eval, &mut writer, compress)?;
+        }
+        CanonicalSerialize::serialize_with_mode(&self.t_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.delta_t_omega_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.s_m_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.s_l_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
@@ -166,6 +196,12 @@ impl<F: PrimeField> Evaluations<F> {
         let mut size = 0;
         size += self.z_b_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.f_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_1_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.z_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.s_1_omega_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += CanonicalSerialize::serialized_size(&self.t_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.delta_t_omega_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.s_m_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.s_l_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
@@ -189,9 +225,31 @@ impl<F: PrimeField> Evaluations<F> {
         for _ in 0..batch_size {
             f_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
+        let mut s_1_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_1_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut s_2_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_2_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut z_2_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            z_2_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
+        let mut s_1_omega_evals = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            s_1_omega_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
         Ok(Evaluations {
             z_b_evals,
             f_evals,
+            s_1_evals,
+            s_2_evals,
+            z_2_evals,
+            s_1_omega_evals,
+            t_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta_t_omega_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_m_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -206,10 +264,21 @@ impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
         let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then(|| *v)).collect::<Vec<_>>();
         let f_evals = map.iter().filter_map(|(k, v)| k.starts_with("f_").then(|| *v)).collect::<Vec<_>>();
+        let s_1_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_1_").then(|| *v)).collect::<Vec<_>>();
+        let s_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_2_").then(|| *v)).collect::<Vec<_>>();
+        let z_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_2_").then(|| *v)).collect::<Vec<_>>();
+        let s_1_omega_evals =
+            map.iter().filter_map(|(k, v)| k.starts_with("omega_s_1_").then(|| *v)).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_size);
         Self {
             z_b_evals,
             f_evals,
+            s_1_evals,
+            s_2_evals,
+            z_2_evals,
+            s_1_omega_evals,
+            t_eval: map["t"],
+            delta_t_omega_eval: map["delta_t_omega"],
             s_m_eval: map["s_m"],
             s_l_eval: map["s_l"],
             g_1_eval: map["g_1"],
@@ -226,8 +295,22 @@ impl<F: PrimeField> Evaluations<F> {
         } else if label.starts_with("f_") {
             let index = label.strip_prefix("f_").expect("should be able to strip identified prefix");
             self.f_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("s_1_") {
+            let index = label.strip_prefix("s_1_").expect("should be able to strip identified prefix");
+            self.s_1_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("s_2_") {
+            let index = label.strip_prefix("s_2_").expect("should be able to strip identified prefix");
+            self.s_2_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("z_2_") {
+            let index = label.strip_prefix("z_2_").expect("should be able to strip identified prefix");
+            self.z_2_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("omega_s_1_") {
+            let index = label.strip_prefix("omega_s_1_").expect("should be able to strip identified prefix");
+            self.s_1_omega_evals.get(index.parse::<usize>().unwrap()).copied()
         } else {
             match label {
+                "t" => Some(self.t_eval),
+                "delta_t_omega" => Some(self.delta_t_omega_eval),
                 "s_m" => Some(self.s_m_eval),
                 "s_l" => Some(self.s_l_eval),
                 "g_1" => Some(self.g_1_eval),
@@ -244,6 +327,12 @@ impl<F: PrimeField> Valid for Evaluations<F> {
     fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
         self.z_b_evals.check()?;
         self.f_evals.check()?;
+        self.s_1_evals.check()?;
+        self.s_2_evals.check()?;
+        self.z_2_evals.check()?;
+        self.s_1_omega_evals.check()?;
+        self.t_eval.check()?;
+        self.delta_t_omega_eval.check()?;
         self.s_m_eval.check()?;
         self.s_l_eval.check()?;
         self.g_1_eval.check()?;
@@ -257,7 +346,20 @@ impl<F: PrimeField> Evaluations<F> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
         result.extend(self.f_evals.iter());
-        result.extend([self.s_m_eval, self.s_l_eval, self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
+        result.extend(self.s_1_evals.iter());
+        result.extend(self.s_2_evals.iter());
+        result.extend(self.z_2_evals.iter());
+        result.extend(self.s_1_omega_evals.iter());
+        result.extend([
+            self.t_eval,
+            self.delta_t_omega_eval,
+            self.s_m_eval,
+            self.s_l_eval,
+            self.g_1_eval,
+            self.g_a_eval,
+            self.g_b_eval,
+            self.g_c_eval,
+        ]);
         result
     }
 }

@@ -69,8 +69,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             x_evals[0] = F::one();
             x_evals
         };
-        let mut t_evals = state.index.t_evals.clone();
-        t_evals.push(t_evals[0]);
 
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
@@ -92,11 +90,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             .zip(&evals[3])
                             .zip(&state.index.t_evals)
                             .zip(&l_1_evals)
+                            .zip(&state.index.delta_t_omega_evals)
                             .take(state.index.index_info.num_constraints)
-                            .map(|((((((i, f), s_1), s_2), z_2), t), l_1)| {
+                            .map(|(((((((i, f), s_1), s_2), z_2), t), l_1), delta_t_omega)| {
                                 let first = {
                                     let a = state.index.epsilon + f;
-                                    let b = epsilon_one_plus_delta + t + state.index.delta * t_evals[i + 1];
+                                    let b = epsilon_one_plus_delta + t + delta_t_omega;
                                     *z_2 * one_plus_delta * a * b
                                 };
 

@@ -41,5 +41,7 @@ pub struct State<F: PrimeField, MM: MarlinMode> {
 
     pub(crate) gamma: Option<F>,
     pub(crate) zeta: Option<F>,
+    pub(crate) delta: Option<F>,
+    pub(crate) epsilon: Option<F>,
     pub(crate) mode: PhantomData<MM>,
 }

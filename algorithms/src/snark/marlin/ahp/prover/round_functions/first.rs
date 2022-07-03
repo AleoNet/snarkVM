@@ -44,7 +44,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        8 * batch_size + (MM::ZK as usize)
+        10 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -60,6 +60,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_2", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("omega_s_1", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("omega_z_2", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
@@ -105,6 +107,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     witness_label("s_1", i),
                     witness_label("s_2", i),
                     witness_label("z_2", i),
+                    witness_label("omega_s_1", i),
+                    witness_label("omega_z_2", i),
                     z_a,
                     z_b,
                     z_c,
@@ -143,6 +147,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     s_1: table_polys[1].1.clone(),
                     s_2: table_polys[2].1.clone(),
                     z_2: table_polys[3].1.clone(),
+                    s_1_omega: table_polys[4].1.clone(),
+                    z_2_omega: table_polys[5].1.clone(),
                     w_poly,
                     z_a_poly,
                     z_b_poly,
@@ -151,6 +157,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     s_1_poly: table_polys[1].0.clone(),
                     s_2_poly: table_polys[2].0.clone(),
                     z_2_poly: table_polys[3].0.clone(),
+                    s_1_omega_poly: table_polys[4].0.clone(),
+                    z_2_omega_poly: table_polys[5].0.clone(),
                 }
             })
             .collect::<Vec<_>>();
@@ -305,6 +313,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label_s_1: impl ToString,
         label_s_2: impl ToString,
         label_z_2: impl ToString,
+        label_s_1_omega: impl ToString,
+        label_z_2_omega: impl ToString,
         z_a: &[F],
         z_b: &[F],
         z_c: &[F],
@@ -344,14 +354,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .zip(&state.index.t_evals)
             .zip(&s_1_evals)
             .zip(&s_2_evals)
+            .zip(&state.index.delta_t_omega_evals)
             .take(f_evals.len() - 1)
-            .map(|((((i, f), t), s_1), s_2)| {
+            .map(|(((((i, f), t), s_1), s_2), delta_t_omega)| {
                 let one_plus_delta = F::one() + state.index.delta;
                 let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
                 one_plus_delta
                     * (state.index.epsilon + f)
-                    * (epsilon_one_plus_delta + t + state.index.delta * state.index.t_evals[i + 1])
-                    * ((epsilon_one_plus_delta + s_1 + *s_2 * state.index.delta)
+                    * (epsilon_one_plus_delta + t + delta_t_omega)
+                    * ((epsilon_one_plus_delta + s_1 + state.index.delta * *s_2)
                         * (epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1]))
                         .inverse()
                         .unwrap()
@@ -370,11 +381,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let z_2 = Self::calculate_opening_and_commitment_polys(label_z_2, &z_2_evals, will_be_evaluated, state, r);
 
+        let s_1_omega_evals = &[&s_1_evals[1..], &[s_1_evals[0]]].concat();
+        let s_1_omega =
+            Self::calculate_opening_and_commitment_polys(label_s_1_omega, s_1_omega_evals, will_be_evaluated, state, r);
+
+        let z_2_omega_evals = &[&z_2_evals[1..], &[z_2_evals[0]]].concat();
+        let z_2_omega =
+            Self::calculate_opening_and_commitment_polys(label_z_2_omega, z_2_omega_evals, will_be_evaluated, state, r);
+
         PoolResult::TablePolys(vec![
             (f.0, f.1, f_evals),
             (s_1.0, s_1.1, s_1_evals),
             (s_2.0, s_2.1, s_2_evals),
             (z_2.0, z_2.1, z_2_evals),
+            (s_1_omega.0, s_1_omega.1, s_1_omega_evals.to_vec()),
+            (z_2_omega.0, z_2_omega.1, z_2_omega_evals.to_vec()),
         ])
     }
 }
