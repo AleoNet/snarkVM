@@ -495,11 +495,11 @@ function compute:
         let response = process.evaluate(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
-        // println!("{} {} {}", r2, candidate[0], r2 == candidate[0]);
-        // assert_eq!(r2, candidate[0]);
-        // assert_eq!(r3, candidate[1]);
-        // assert_eq!(r4, candidate[2]);
-        // assert_eq!(r5, candidate[3]);
+        println!("{} {} {}", r2, candidate[0], r2 == candidate[0]);
+        assert_eq!(r2, candidate[0]);
+        assert_eq!(r3, candidate[1]);
+        assert_eq!(r4, candidate[2]);
+        assert_eq!(r5, candidate[3]);
 
         // Execute the request.
         let response = process.execute(&request, rng).unwrap();
