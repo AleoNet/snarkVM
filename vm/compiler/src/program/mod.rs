@@ -33,6 +33,7 @@ mod parse;
 use console::{
     network::prelude::*,
     program::{
+        Entry,
         EntryType,
         Identifier,
         Interface,
@@ -43,7 +44,6 @@ use console::{
         RecordType,
         RegisterType,
         StackValue,
-        Value,
         ValueType,
     },
 };

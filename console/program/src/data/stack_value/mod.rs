@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod find;
 mod parse;
 mod to_bits;
 mod to_fields;
 
-use crate::{Plaintext, Record};
+use crate::{Entry, Identifier, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 

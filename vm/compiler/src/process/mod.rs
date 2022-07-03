@@ -111,13 +111,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             // Load the output types.
             let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
 
-            circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types)
+            // Construct the response.
+            let response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
+
+            #[cfg(debug_assertions)]
+            Self::log_circuit("Response");
+
+            response
         };
 
         // A::assert(response.verify(num_inputs, request.caller(), request.tvk()));
-
-        #[cfg(debug_assertions)]
-        Self::log_circuit("Response");
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;

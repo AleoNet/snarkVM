@@ -42,11 +42,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         }
     }
 
-    /// Checks that the given value matches the layout of the value type.
-    pub fn matches_value(&self, value: &Value<N, Plaintext<N>>, value_type: &ValueType<N>) -> Result<()> {
-        self.matches_value_internal(value, value_type, 0)
-    }
-
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
@@ -62,28 +57,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
-    /// Checks that the given value matches the layout of the value type.
-    ///
-    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
-    fn matches_value_internal(
-        &self,
-        value: &Value<N, Plaintext<N>>,
-        value_type: &ValueType<N>,
-        depth: usize,
-    ) -> Result<()> {
-        match (value, value_type) {
-            (Value::Constant(plaintext), ValueType::Constant(plaintext_type))
-            | (Value::Public(plaintext), ValueType::Public(plaintext_type))
-            | (Value::Private(plaintext), ValueType::Private(plaintext_type)) => {
-                self.matches_plaintext_internal(plaintext, plaintext_type, depth)
-            }
-            (Value::Record(record), ValueType::Record(record_name)) => {
-                self.matches_record_internal(record, record_name, depth)
-            }
-            _ => bail!("Invalid value: function expected '{value_type}'"),
-        }
-    }
-
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
@@ -151,16 +124,31 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
                     // Ensure the member name is valid.
                     ensure!(!self.is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
-                    self.matches_value_internal(
-                        &Value::from(member_entry.clone()),
-                        &ValueType::from(*expected_type),
-                        depth + 1,
-                    )?
+                    self.matches_entry_internal(&member_entry, expected_type, depth + 1)?
                 }
                 None => bail!("'{record_name}' is missing member '{expected_name}'"),
             }
         }
         Ok(())
+    }
+
+    /// Checks that the given entry matches the layout of the entry type.
+    ///
+    /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
+    fn matches_entry_internal(
+        &self,
+        entry: &Entry<N, Plaintext<N>>,
+        entry_type: &EntryType<N>,
+        depth: usize,
+    ) -> Result<()> {
+        match (entry, entry_type) {
+            (Entry::Constant(plaintext), EntryType::Constant(plaintext_type))
+            | (Entry::Public(plaintext), EntryType::Public(plaintext_type))
+            | (Entry::Private(plaintext), EntryType::Private(plaintext_type)) => {
+                self.matches_plaintext_internal(plaintext, plaintext_type, depth)
+            }
+            _ => bail!("Invalid entry: function expected '{entry_type}'"),
+        }
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
