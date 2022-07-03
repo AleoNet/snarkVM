@@ -100,7 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             }
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), z_c, true, state_ref, Some(r_b)));
             job_pool.add_job(move || {
-                Self::calculate_f(
+                Self::calculate_table_polys(
                     witness_label("f", i),
                     witness_label("s_1", i),
                     witness_label("s_2", i),
@@ -120,18 +120,25 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .execute_all()
             .into_iter()
             .tuples()
-            .map(|(w, z_a, z_b, z_c, f)| {
+            .map(|(w, z_a, z_b, z_c, table_polys)| {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
                 let (z_c_poly, z_c) = z_c.z_m().unwrap();
-                let table_polys = f.table_polys().unwrap();
+                let table_polys = table_polys.table_polys().unwrap();
+
+                // TODO: can we avoid the excessive cloning related to table_polys?
+                state.plookup_evals.push([
+                    table_polys[0].2.clone(),
+                    table_polys[1].2.clone(),
+                    table_polys[2].2.clone(),
+                    table_polys[3].2.clone(),
+                ]);
 
                 prover::SingleEntry {
                     z_a,
                     z_b,
                     z_c,
-                    // TODO: this looks really ugly and can probably be done better
                     f: table_polys[0].1.clone(),
                     s_1: table_polys[1].1.clone(),
                     s_2: table_polys[2].1.clone(),
@@ -235,6 +242,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
     ) -> PoolResult<'a, F> {
+        let (poly_for_opening, poly_for_committing) =
+            Self::calculate_opening_and_commitment_polys(label, evaluations, will_be_evaluated, state, r);
+        PoolResult::MatrixPoly(poly_for_opening, poly_for_committing)
+    }
+
+    fn calculate_opening_and_commitment_polys<'a>(
+        label: impl ToString,
+        evaluations: &[F],
+        will_be_evaluated: bool,
+        state: &prover::State<'a, F, MM>,
+        r: Option<F>,
+    ) -> (LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>) {
         let constraint_domain = state.constraint_domain;
         let v_H = constraint_domain.vanishing_polynomial();
         let should_randomize = MM::ZK && will_be_evaluated;
@@ -277,12 +296,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         end_timer!(poly_time);
 
-        PoolResult::MatrixPoly(poly_for_opening, poly_for_committing)
+        (poly_for_opening, poly_for_committing)
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn calculate_f<'a>(
-        label: impl ToString,
+    fn calculate_table_polys<'a>(
+        label_f: impl ToString,
         label_s_1: impl ToString,
         label_s_2: impl ToString,
         label_z_2: impl ToString,
@@ -309,49 +328,54 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect::<Vec<F>>();
 
-        let f = Self::calculate_z_m(label, &f_evals, will_be_evaluated, state, r);
+        let f = Self::calculate_opening_and_commitment_polys(label_f, &f_evals, will_be_evaluated, state, r);
         let mut s_evals = f_evals.clone();
         s_evals.extend(state.index.t_evals.clone());
         // Split into alternating halves.
         let (s_1_evals, s_2_evals): (Vec<F>, Vec<F>) = s_evals.chunks(2).map(|els| (els[0], els[1])).unzip();
-        let s_1 = Self::calculate_z_m(label_s_1, &s_1_evals, will_be_evaluated, state, r);
-        let s_2 = Self::calculate_z_m(label_s_2, &s_2_evals, will_be_evaluated, state, r);
-        let z_2 = {
-            // Compute divisions for each constraint
-            let product_arguments = f_evals
-                .iter()
-                .enumerate()
-                .zip(state.index.t_evals.clone())
-                .zip(s_1_evals.clone())
-                .zip(s_2_evals)
-                .take(f_evals.len() - 1)
-                .map(|((((i, f), t), s_1), s_2)| {
-                    let one_plus_delta = F::one() + state.index.delta;
-                    let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
-                    one_plus_delta
-                        * (state.index.epsilon + f)
-                        * (epsilon_one_plus_delta + t + (state.index.delta * state.index.t_evals[i + 1]))
-                        * ((epsilon_one_plus_delta + s_1 + (s_2 * state.index.delta))
-                            * (epsilon_one_plus_delta + s_2 + (s_1_evals[i + 1] * state.index.delta)))
-                            .inverse()
-                            .unwrap()
-                })
-                .collect::<Vec<F>>();
+        let s_1 = Self::calculate_opening_and_commitment_polys(label_s_1, &s_1_evals, will_be_evaluated, state, r);
+        let s_2 = Self::calculate_opening_and_commitment_polys(label_s_2, &s_2_evals, will_be_evaluated, state, r);
 
-            // Create evaluations for z_2
-            // First element is one
-            let mut l_1 = F::one();
-            let mut z_2_evals = Vec::with_capacity(constraint_domain.size());
+        // Calculate z_2
+        // Compute divisions for each constraint
+        let product_arguments = f_evals
+            .iter()
+            .enumerate()
+            .zip(&state.index.t_evals)
+            .zip(&s_1_evals)
+            .zip(&s_2_evals)
+            .take(f_evals.len() - 1)
+            .map(|((((i, f), t), s_1), s_2)| {
+                let one_plus_delta = F::one() + state.index.delta;
+                let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
+                one_plus_delta
+                    * (state.index.epsilon + f)
+                    * (epsilon_one_plus_delta + t + (state.index.delta * state.index.t_evals[i + 1]))
+                    * ((epsilon_one_plus_delta + s_1 + (*s_2 * state.index.delta))
+                        * (epsilon_one_plus_delta + s_2 + (s_1_evals[i + 1] * state.index.delta)))
+                        .inverse()
+                        .unwrap()
+            })
+            .collect::<Vec<F>>();
+
+        // Create evaluations for z_2
+        // First element is one
+        let mut l_1 = F::one();
+        let mut z_2_evals = Vec::with_capacity(constraint_domain.size());
+        z_2_evals.push(l_1);
+        for s in product_arguments {
+            l_1 *= s;
             z_2_evals.push(l_1);
-            for s in product_arguments {
-                l_1 *= s;
-                z_2_evals.push(l_1);
-            }
+        }
 
-            Self::calculate_z_m(label_z_2, &z_2_evals, will_be_evaluated, state, r)
-        };
+        let z_2 = Self::calculate_opening_and_commitment_polys(label_z_2, &z_2_evals, will_be_evaluated, state, r);
 
-        PoolResult::TablePolys(vec![f.z_m().unwrap(), s_1.z_m().unwrap(), s_2.z_m().unwrap(), z_2.z_m().unwrap()])
+        PoolResult::TablePolys(vec![
+            (f.0, f.1, f_evals),
+            (s_1.0, s_1.1, s_1_evals),
+            (s_2.0, s_2.1, s_2_evals),
+            (z_2.0, z_2.1, z_2_evals),
+        ])
     }
 }
 
@@ -359,7 +383,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 pub enum PoolResult<'a, F: PrimeField> {
     Witness(LabeledPolynomial<F>),
     MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
-    TablePolys(Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>),
+    TablePolys(Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>, Vec<F>)>),
 }
 
 impl<'a, F: PrimeField> PoolResult<'a, F> {
@@ -377,7 +401,7 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
         }
     }
 
-    fn table_polys(self) -> Option<Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>> {
+    fn table_polys(self) -> Option<Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>, Vec<F>)>> {
         match self {
             Self::TablePolys(polys) => Some(polys),
             _ => None,

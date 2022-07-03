@@ -69,55 +69,49 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             x_evals[0] = F::one();
             x_evals
         };
+        let mut t_evals = state.index.t_evals.clone();
+        t_evals.push(t_evals[0]);
 
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
-            .map(|(b, combiner)| {
-                let f = b.f_poly.polynomial().as_dense().unwrap();
+            .zip_eq(&state.plookup_evals)
+            .map(|((b, combiner), evals)| {
                 let lookup_poly = {
-                    let s_1 = b.s_1_poly.polynomial().as_dense().unwrap();
-                    let s_2 = b.s_2_poly.polynomial().as_dense().unwrap();
-                    let z_2 = b.z_2_poly.polynomial().as_dense().unwrap();
-                    let mut s_1_evals = s_1.evaluate_over_domain_by_ref(constraint_domain);
-                    s_1_evals.evaluations.resize(state.index.index_info.num_constraints, F::zero());
-                    s_1_evals.evaluations.push(s_1_evals[0]);
-                    let s_2_evals = s_2.evaluate_over_domain_by_ref(constraint_domain);
-                    let mut z_2_evals = z_2.evaluate_over_domain_by_ref(constraint_domain);
-                    z_2_evals.evaluations.resize(state.index.index_info.num_constraints, F::zero());
-                    z_2_evals.evaluations.push(z_2_evals[0]);
-                    let f_evals = f.evaluate_over_domain_by_ref(constraint_domain);
-                    let mut t_evals =
-                        state.index.t.polynomial().as_dense().unwrap().evaluate_over_domain_by_ref(constraint_domain);
-                    t_evals.evaluations.resize(state.index.index_info.num_constraints, F::zero());
-                    t_evals.evaluations.push(t_evals[0]);
+                    let mut f_evals = evals[0].clone();
+                    f_evals.push(f_evals[0]);
+                    let mut s_1_evals = evals[1].clone();
+                    s_1_evals.push(s_1_evals[0]);
+                    let mut s_2_evals = evals[2].clone();
+                    s_2_evals.push(s_2_evals[0]);
+                    let mut z_2_evals = evals[3].clone();
+                    z_2_evals.push(z_2_evals[0]);
                     Evaluations::from_vec_and_domain(
-                        f_evals
-                            .evaluations
+                        evals[0]
                             .iter()
                             .enumerate()
-                            .zip(z_2_evals.evaluations.clone())
-                            .zip(t_evals.evaluations.clone())
-                            .zip(s_1_evals.evaluations.clone())
-                            .zip(s_2_evals.evaluations)
-                            .zip(l_1_evals.clone())
+                            .zip(&evals[1])
+                            .zip(&evals[2])
+                            .zip(&evals[3])
+                            .zip(&state.index.t_evals)
+                            .zip(&l_1_evals)
                             .take(state.index.index_info.num_constraints)
-                            .map(|((((((i, f), z_2), t), s_1), s_2), l_1)| {
-                                let b = {
-                                    let b_0 = state.index.epsilon + f;
-                                    let b_1 = epsilon_one_plus_delta + t + state.index.delta * t_evals[i + 1];
-                                    z_2 * one_plus_delta * b_0 * b_1
+                            .map(|((((((i, f), s_1), s_2), z_2), t), l_1)| {
+                                let first = {
+                                    let a = state.index.epsilon + f;
+                                    let b = epsilon_one_plus_delta + t + state.index.delta * t_evals[i + 1];
+                                    *z_2 * one_plus_delta * a * b
                                 };
 
-                                let c = {
-                                    let c_0 = epsilon_one_plus_delta + s_1 + state.index.delta * s_2;
-                                    let c_1 = epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1];
+                                let second = {
+                                    let a = epsilon_one_plus_delta + s_1 + state.index.delta * s_2;
+                                    let b = epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1];
 
-                                    -z_2_evals[i + 1] * c_0 * c_1
+                                    -z_2_evals[i + 1] * a * b
                                 };
 
-                                let d = (z_2 - F::one()) * l_1;
+                                let third = (*z_2 - F::one()) * *l_1;
 
-                                b + c + d
+                                first + second + third
                             })
                             .collect(),
                         constraint_domain,
@@ -129,6 +123,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let z_a = b.z_a_poly.polynomial().as_dense().unwrap();
                     let mut z_b = b.z_b_poly.polynomial().as_dense().unwrap().clone();
                     let mut z_c = b.z_c_poly.polynomial().as_dense().unwrap().clone();
+                    let f = b.f_poly.polynomial().as_dense().unwrap();
                     let mul_check = state.index.s_m.polynomial().as_dense().unwrap() * &(&(z_a * &z_b) - &z_c);
                     cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.index.zeta);
                     cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= zeta_squared);
