@@ -66,7 +66,7 @@ impl<N: Network> UniversalSRS<N> {
         type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
         let timer = std::time::Instant::now();
-        let (proving_key, verifying_key) = Marlin::circuit_setup(&*self, &assignment).unwrap();
+        let (proving_key, verifying_key) = Marlin::circuit_setup(self, &assignment).unwrap();
         println!("Called setup: {} ms", timer.elapsed().as_millis());
 
         Ok(FunctionKey {
@@ -130,7 +130,7 @@ impl<N: Network> ProvingKey<N> {
         type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
         let timer = std::time::Instant::now();
-        let proof = Marlin::prove_batch(&*self, std::slice::from_ref(&assignment), rng).unwrap();
+        let proof = Marlin::prove_batch(self, std::slice::from_ref(&assignment), rng).unwrap();
         println!("Called prover: {} ms", timer.elapsed().as_millis());
 
         Ok(Proof { proof, _phantom: PhantomData })
@@ -172,7 +172,7 @@ impl<N: Network> VerifyingKey<N> {
         type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
         let timer = std::time::Instant::now();
-        let is_valid = Marlin::verify_batch(&*self, std::slice::from_ref(&inputs), &*proof).unwrap();
+        let is_valid = Marlin::verify_batch(self, std::slice::from_ref(&inputs), &*proof).unwrap();
         println!("Called verifier: {} ms", timer.elapsed().as_millis());
         is_valid
     }
