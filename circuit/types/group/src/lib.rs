@@ -57,8 +57,9 @@ impl<E: Environment> Inject for Group<E> {
     /// regardless of whether the y-coordinate was recovered.
     fn new(mode: Mode, group: Self::Primitive) -> Self {
         // Initialize the x- and y-coordinate field elements.
-        let x = Field::new(mode, group.to_x_coordinate());
-        let y = Field::new(mode, group.to_y_coordinate());
+        let (x, y) = group.to_xy_coordinate();
+        let x = Field::new(mode, x);
+        let y = Field::new(mode, y);
 
         Self::from_xy_coordinates(x, y)
     }

@@ -18,7 +18,7 @@
 mod sign;
 mod verify;
 
-use crate::{Ciphertext, Identifier, ProgramID, Value, ValueType};
+use crate::{Identifier, ProgramID, Value, ValueType};
 use snarkvm_console_account::{Address, ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
