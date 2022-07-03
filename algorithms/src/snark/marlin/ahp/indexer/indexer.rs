@@ -160,11 +160,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         // Compute t poly
         let mut t_evals = vec![vec![]; 3];
-        ics.lookup_constraints.iter().enumerate().for_each(|(i, entry)| {
-            entry.table.table.keys().zip(entry.table.table.values()).enumerate().for_each(|(j, (key, value))| {
-                t_evals[0][j * (i + 1)] = key[0];
-                t_evals[1][j * (i + 1)] = key[1];
-                t_evals[2][j * (i + 1)] = *value;
+        ics.lookup_constraints.iter().for_each(|entry| {
+            entry.table.table.keys().zip(entry.table.table.values()).for_each(|(key, value)| {
+                t_evals[0].push(key[0]);
+                t_evals[1].push(key[1]);
+                t_evals[2].push(*value);
             });
         });
 
