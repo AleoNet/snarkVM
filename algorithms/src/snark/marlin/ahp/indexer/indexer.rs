@@ -173,7 +173,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     .collect::<Vec<F>>()
             })
             .collect::<Vec<F>>();
-        t_evals.resize(num_constraints, F::zero());
+        // If the vector isn't empty we need to fill it with one of its elements.
+        if !t_evals.is_empty() {
+            t_evals.resize(num_constraints, t_evals[0]);
+        } else {
+            t_evals.resize(num_constraints, F::zero());
+        }
 
         let t = LabeledPolynomial::new(
             "t".to_string(),

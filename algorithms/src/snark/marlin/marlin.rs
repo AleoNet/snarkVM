@@ -796,7 +796,23 @@ mod lookup_test {
             cs.add_lookup_table(self.table.clone());
             let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
-            let c = cs.lookup(&[LinearCombination::from(a), LinearCombination::from(b)], 0)?;
+            let c = cs.alloc_input(
+                || "c",
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
+            cs.enforce_lookup(
+                || "c_lookup",
+                |lc| lc + LinearCombination::from(a),
+                |lc| lc + LinearCombination::from(b),
+                |lc| lc + LinearCombination::from(c),
+                0,
+            )?;
 
             for i in 0..(self.num_variables - 3) {
                 let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;

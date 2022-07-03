@@ -70,25 +70,6 @@ impl<F: Field> ConstraintSystem<F> {
         make_matrices_square(self, num_variables);
         assert_eq!(self.num_public_variables + self.num_private_variables, self.num_constraints, "padding failed!");
     }
-
-    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<F, SynthesisError> {
-        let lookup_values = key
-            .iter()
-            .map(|lc| {
-                lc.0.iter()
-                    .map(|(var, coeff)| {
-                        let value = match var.get_unchecked() {
-                            VarIndex::Public(index) => self.public_variables[index],
-                            VarIndex::Private(index) => self.private_variables[index],
-                        };
-                        value * coeff
-                    })
-                    .sum::<F>()
-            })
-            .collect::<Vec<F>>();
-        // TODO: should this table lookup be done with identifiers instead of indices?
-        Ok(*self.lookup_constraints[table_index].lookup(&lookup_values).ok_or(SynthesisError::LookupValueMissing)?)
-    }
 }
 
 impl<F: Field> CS<F> for ConstraintSystem<F> {
@@ -140,12 +121,48 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
     }
 
     #[inline]
-    fn lookup(&mut self, key: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
-        let res = self.lookup(key, table_index)?;
-
-        self.lookup_constraints[table_index].insert(self.num_constraints);
-        self.num_constraints += 1;
-        self.alloc(|| "lookup_table", || Ok(res))
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        _: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        let a = a(LinearCombination::zero());
+        let b = b(LinearCombination::zero());
+        let c = c(LinearCombination::zero());
+        let table = self.lookup_constraints.get_mut(table_index).ok_or(SynthesisError::LookupTableMissing)?;
+        let evaluated_values = vec![a, b, c]
+            .iter()
+            .map(|lc| {
+                lc.0.iter()
+                    .map(|(var, coeff)| {
+                        let value = match var.get_unchecked() {
+                            VarIndex::Public(index) => self.public_variables[index],
+                            VarIndex::Private(index) => self.private_variables[index],
+                        };
+                        value * coeff
+                    })
+                    .sum::<F>()
+            })
+            .collect::<Vec<F>>();
+        let value =
+            table.lookup(&[evaluated_values[0], evaluated_values[1]]).ok_or(SynthesisError::LookupValueMissing)?;
+        if evaluated_values[2] == *value {
+            table.insert(self.num_constraints);
+            self.num_constraints += 1;
+            Ok(())
+        } else {
+            Err(SynthesisError::LookupValueMissing)
+        }
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

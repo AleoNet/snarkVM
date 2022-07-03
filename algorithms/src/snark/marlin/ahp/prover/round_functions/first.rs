@@ -314,16 +314,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         r: Option<F>,
     ) -> PoolResult<'a, F> {
         let constraint_domain = state.constraint_domain;
+        let zeta_squared = state.index.zeta.square();
         let f_evals = cfg_iter!(z_a)
             .zip(z_b)
             .zip(z_c)
             .zip(s_l)
-            .enumerate()
-            .map(|(i, (((a, b), c), s))| {
+            .map(|(((a, b), c), s)| {
                 if s.is_zero() {
-                    state.index.t_evals[i]
+                    state.index.t_evals[state.index.t_evals.len() - 1]
                 } else {
-                    *a + state.index.zeta * b + state.index.zeta.square() * c
+                    *a + state.index.zeta * b + zeta_squared * c
                 }
             })
             .collect::<Vec<F>>();
@@ -350,9 +350,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
                 one_plus_delta
                     * (state.index.epsilon + f)
-                    * (epsilon_one_plus_delta + t + (state.index.delta * state.index.t_evals[i + 1]))
-                    * ((epsilon_one_plus_delta + s_1 + (*s_2 * state.index.delta))
-                        * (epsilon_one_plus_delta + s_2 + (s_1_evals[i + 1] * state.index.delta)))
+                    * (epsilon_one_plus_delta + t + state.index.delta * state.index.t_evals[i + 1])
+                    * ((epsilon_one_plus_delta + s_1 + *s_2 * state.index.delta)
+                        * (epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1]))
                         .inverse()
                         .unwrap()
             })

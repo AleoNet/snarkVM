@@ -145,14 +145,31 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         self.num_constraints += 1;
     }
 
-    fn lookup(&mut self, _: &[LinearCombination<F>], table_index: usize) -> Result<Variable, SynthesisError> {
-        self.a.push(Self::make_row(&LinearCombination::zero()));
-        self.b.push(Self::make_row(&LinearCombination::zero()));
-        self.c.push(Self::make_row(&LinearCombination::zero()));
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        _: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        self.a.push(Self::make_row(&a(LinearCombination::zero())));
+        self.b.push(Self::make_row(&b(LinearCombination::zero())));
+        self.c.push(Self::make_row(&c(LinearCombination::zero())));
 
-        self.lookup_constraints[table_index].insert(self.num_constraints);
+        self.lookup_constraints
+            .get_mut(table_index)
+            .ok_or(SynthesisError::LookupTableMissing)?
+            .insert(self.num_constraints);
         self.num_constraints += 1;
-        self.alloc(|| "", || Ok(F::zero()))
+        Ok(())
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)
