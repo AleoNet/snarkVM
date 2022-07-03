@@ -350,7 +350,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // Inject the transition view key `tpk` as `Mode::Public`.
+        // Inject the transition public key `tpk` as `Mode::Public`.
         let tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
         // TODO (howardwu): Check relationship to tvk.
         // Inject the request as `Mode::Private`.
