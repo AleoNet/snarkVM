@@ -84,10 +84,10 @@ impl<N: Network> Trace<N> {
                 InputID::Constant(input_hash) => trace.add_input(*input_hash),
                 // A public input is hashed to a field element.
                 InputID::Public(input_hash) => trace.add_input(*input_hash),
-                // A private input is committed (using `tvk`) to a field element.
-                InputID::Private(_, commitment) => trace.add_input(*commitment),
+                // A private input is encrypted (using `tvk`) and hashed to a field element.
+                InputID::Private(input_hash) => trace.add_input(*input_hash),
                 // An input record is computed to its serial number.
-                InputID::Record(_, _, _, _, _, serial_number) => trace.add_input(*serial_number),
+                InputID::Record(_, serial_number) => trace.add_input(*serial_number),
             }
         })?;
 

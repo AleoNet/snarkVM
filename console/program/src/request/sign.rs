@@ -76,6 +76,8 @@ impl<N: Network> Request<N> {
                     ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
                     // Hash the input to a field element.
                     let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                    // Add the input hash to the preimage.
+                    preimage.push(input_hash);
                     // Add the input ID to the inputs.
                     input_ids.push(InputID::Constant(input_hash));
                 }
@@ -85,6 +87,8 @@ impl<N: Network> Request<N> {
                     ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
                     // Hash the input to a field element.
                     let input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                    // Add the input hash to the preimage.
+                    preimage.push(input_hash);
                     // Add the input ID to the inputs.
                     input_ids.push(InputID::Public(input_hash));
                 }
@@ -105,8 +109,10 @@ impl<N: Network> Request<N> {
                     };
                     // Hash the ciphertext to a field element.
                     let input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                    // Add the input hash to the preimage.
+                    preimage.push(input_hash);
                     // Add the input hash to the inputs.
-                    input_ids.push(InputID::Private(index, input_hash));
+                    input_ids.push(InputID::Private(input_hash));
                 }
                 // An input record is computed to its serial number.
                 ValueType::Record(..) => {
@@ -127,6 +133,8 @@ impl<N: Network> Request<N> {
                     let h_r = h * r;
                     // Compute `gamma` as `sk_sig * H`.
                     let gamma = h * sk_sig;
+                    // Add `H`, `r * H`, and `gamma` to the preimage.
+                    preimage.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));
 
                     // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
                     let sn_nonce = N::hash_to_scalar_psd2(&[
@@ -136,14 +144,11 @@ impl<N: Network> Request<N> {
                     // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
                     let serial_number =
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
-
-                    // Add the commitment, H, r * H, gamma, and serial number to the inputs.
-                    input_ids.push(InputID::Record(index, commitment, h, h_r, gamma, serial_number));
+                    // Add gamma and the serial number to the inputs.
+                    input_ids.push(InputID::Record(gamma, serial_number));
                 }
             }
         }
-        // Append the input IDs to the preimage.
-        preimage.extend(input_ids.iter().map(ToFields::to_fields).collect::<Result<Vec<_>>>()?.into_iter().flatten());
 
         // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, input IDs])`.
         let challenge = N::hash_to_scalar_psd8(&preimage)?;

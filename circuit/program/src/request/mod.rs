@@ -29,10 +29,10 @@ pub enum InputID<A: Aleo> {
     Constant(Field<A>),
     /// The hash of the public input.
     Public(Field<A>),
-    /// The index and ciphertext hash of the private input.
-    Private(Field<A>, Field<A>),
-    /// The `(index, commitment, H, r * H, gamma, serial_number)` tuple of the record input.
-    Record(Field<A>, Field<A>, Group<A>, Group<A>, Group<A>, Field<A>),
+    /// The ciphertext hash of the private input.
+    Private(Field<A>),
+    /// The `(gamma, serial_number)` tuple of the record input.
+    Record(Group<A>, Field<A>),
 }
 
 #[cfg(console)]
@@ -47,18 +47,11 @@ impl<A: Aleo> Inject for InputID<A> {
             // Inject the expected hash as `Mode::Public`.
             console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the expected index as `Mode::Constant` and ciphertext hash as `Mode::Public`.
-            console::InputID::Private(index, field) => {
-                Self::Private(Field::new(Mode::Constant, index), Field::new(Mode::Public, field))
+            console::InputID::Private(field) => Self::Private(Field::new(Mode::Public, field)),
+            // Inject gamma as `Mode::Private` and the expected serial number as `Mode::Public`.
+            console::InputID::Record(gamma, serial_number) => {
+                Self::Record(Group::new(Mode::Private, gamma), Field::new(Mode::Public, serial_number))
             }
-            // Inject the expected serial number as `Mode::Public`, and all other values as `Mode::Private`.
-            console::InputID::Record(index, commitment, h, h_r, gamma, serial_number) => Self::Record(
-                Field::new(Mode::Constant, index),
-                Field::new(Mode::Private, commitment),
-                Group::new(Mode::Private, h),
-                Group::new(Mode::Private, h_r),
-                Group::new(Mode::Private, gamma),
-                Field::new(Mode::Public, serial_number),
-            ),
         }
     }
 }
@@ -72,14 +65,8 @@ impl<A: Aleo> Eject for InputID<A> {
         match self {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
-            Self::Private(index, field) => (index, field).eject_mode(),
-            Self::Record(index, commitment, h, h_r, gamma, serial_number) => Mode::combine(index.eject_mode(), [
-                commitment.eject_mode(),
-                h.eject_mode(),
-                h_r.eject_mode(),
-                gamma.eject_mode(),
-                serial_number.eject_mode(),
-            ]),
+            Self::Private(field) => field.eject_mode(),
+            Self::Record(gamma, serial_number) => Mode::combine(gamma.eject_mode(), [serial_number.eject_mode()]),
         }
     }
 
@@ -88,15 +75,10 @@ impl<A: Aleo> Eject for InputID<A> {
         match self {
             Self::Constant(field) => console::InputID::Constant(field.eject_value()),
             Self::Public(field) => console::InputID::Public(field.eject_value()),
-            Self::Private(index, field) => console::InputID::Private(index.eject_value(), field.eject_value()),
-            Self::Record(index, commitment, h, h_r, gamma, serial_number) => console::InputID::Record(
-                index.eject_value(),
-                commitment.eject_value(),
-                h.eject_value(),
-                h_r.eject_value(),
-                gamma.eject_value(),
-                serial_number.eject_value(),
-            ),
+            Self::Private(field) => console::InputID::Private(field.eject_value()),
+            Self::Record(gamma, serial_number) => {
+                console::InputID::Record(gamma.eject_value(), serial_number.eject_value())
+            }
         }
     }
 }
@@ -109,15 +91,8 @@ impl<A: Aleo> ToFields for InputID<A> {
         match self {
             InputID::Constant(field) => vec![field.clone()],
             InputID::Public(field) => vec![field.clone()],
-            InputID::Private(index, field) => vec![index.clone(), field.clone()],
-            InputID::Record(index, commitment, h, h_r, gamma, serial_number) => vec![
-                index.clone(),
-                commitment.clone(),
-                h.to_x_coordinate(),
-                h_r.to_x_coordinate(),
-                gamma.to_x_coordinate(),
-                serial_number.clone(),
-            ],
+            InputID::Private(field) => vec![field.clone()],
+            InputID::Record(gamma, serial_number) => vec![gamma.to_x_coordinate(), serial_number.clone()],
         }
     }
 }

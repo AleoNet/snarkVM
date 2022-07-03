@@ -50,94 +50,103 @@ impl<N: Network> Request<N> {
             }
         };
 
+        // Construct the signature message as `[tvk, function ID, input IDs]`.
+        let mut message = Vec::with_capacity(1 + input_ids.len());
+        message.push(self.tvk);
+        message.push(function_id);
+
         // Retrieve the challenge from the signature.
         let challenge = self.signature.challenge();
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).try_for_each(|(input_id, input)| {
-            match input_id {
-                // A constant input is hashed to a field element.
-                InputID::Constant(input_hash) => {
-                    // Ensure the input is a plaintext.
-                    ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                    // Hash the input to a field element.
-                    let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
-                    // Ensure the input hash matches.
-                    ensure!(*input_hash == candidate_input_hash, "Expected a constant input with the same hash");
-                }
-                // A public input is hashed to a field element.
-                InputID::Public(input_hash) => {
-                    // Ensure the input is a plaintext.
-                    ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                    // Hash the input to a field element.
-                    let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
-                    // Ensure the input hash matches.
-                    ensure!(*input_hash == candidate_input_hash, "Expected a public input with the same hash");
-                }
-                // A private input is encrypted (using `tvk`) and hashed to a field element.
-                InputID::Private(index, input_hash) => {
-                    // Ensure the input is a plaintext.
-                    ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
-                    // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[self.tvk, *index])?;
-                    // Compute the ciphertext.
-                    let ciphertext = match &input {
-                        StackValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer)?,
+        if let Err(error) =
+            self.input_ids.iter().zip_eq(&self.inputs).enumerate().try_for_each(|(index, (input_id, input))| {
+                match input_id {
+                    // A constant input is hashed to a field element.
+                    InputID::Constant(input_hash) => {
                         // Ensure the input is a plaintext.
-                        StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
-                    };
-                    // Hash the ciphertext to a field element.
-                    let candidate_input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
-                    // Ensure the input hash matches.
-                    ensure!(*input_hash == candidate_input_hash, "Expected a private input with the same commitment");
+                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        // Hash the input to a field element.
+                        let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        // Ensure the input hash matches.
+                        ensure!(*input_hash == candidate_input_hash, "Expected a constant input with the same hash");
+                        // Add the input hash to the message.
+                        message.push(candidate_input_hash);
+                    }
+                    // A public input is hashed to a field element.
+                    InputID::Public(input_hash) => {
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        // Hash the input to a field element.
+                        let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        // Ensure the input hash matches.
+                        ensure!(*input_hash == candidate_input_hash, "Expected a public input with the same hash");
+                        // Add the input hash to the message.
+                        message.push(candidate_input_hash);
+                    }
+                    // A private input is encrypted (using `tvk`) and hashed to a field element.
+                    InputID::Private(input_hash) => {
+                        // Ensure the input is a plaintext.
+                        ensure!(matches!(input, StackValue::Plaintext(..)), "Expected a plaintext input");
+                        // Prepare the index as a constant field element.
+                        let index = Field::from_u16(index as u16);
+                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
+                        // Compute the ciphertext.
+                        let ciphertext = match &input {
+                            StackValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer)?,
+                            // Ensure the input is a plaintext.
+                            StackValue::Record(..) => bail!("Expected a plaintext input, found a record input"),
+                        };
+                        // Hash the ciphertext to a field element.
+                        let candidate_input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        // Ensure the input hash matches.
+                        ensure!(
+                            *input_hash == candidate_input_hash,
+                            "Expected a private input with the same commitment"
+                        );
+                        // Add the input hash to the message.
+                        message.push(candidate_input_hash);
+                    }
+                    // An input record is computed to its serial number.
+                    InputID::Record(gamma, serial_number) => {
+                        // Prepare the index as a constant field element.
+                        let index = Field::from_u16(index as u16);
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
+                        // Compute the record commitment.
+                        let commitment = match &input {
+                            StackValue::Record(record) => record.to_commitment(&randomizer)?,
+                            // Ensure the input is a record.
+                            StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                        };
+
+                        // Compute the generator `H` as `HashToGroup(commitment)`.
+                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
+                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+                        let h_r = (*gamma * challenge) + (h * response);
+                        // Add `H`, `r * H`, and `gamma` to the message.
+                        message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
+
+                        // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
+                        let sn_nonce = N::hash_to_scalar_psd2(&[
+                            N::serial_number_domain(),
+                            gamma.mul_by_cofactor().to_x_coordinate(),
+                        ])?;
+                        // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
+                        let candidate_sn =
+                            N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
+                        // Ensure the serial number matches.
+                        ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
+                    }
                 }
-                // An input record is computed to its serial number.
-                InputID::Record(index, commitment, h, h_r, gamma, serial_number) => {
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[self.tvk, *index])?;
-                    // Compute the record commitment.
-                    let candidate_commitment = match &input {
-                        StackValue::Record(record) => record.to_commitment(&randomizer)?,
-                        // Ensure the input is a record.
-                        StackValue::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
-                    };
-                    // Ensure the commitment matches.
-                    ensure!(*commitment == candidate_commitment, "Expected a record input with the same commitment");
-
-                    // Compute the generator `H` as `HashToGroup(commitment)`.
-                    let candidate_h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
-                    // Ensure the generator H matches.
-                    ensure!(*h == candidate_h, "Expected a record input with the same generator H");
-
-                    // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                    let candidate_h_r = (*gamma * challenge) + (*h * response);
-                    // Ensure the generator `h_r` matches.
-                    ensure!(*h_r == candidate_h_r, "Expected a record input with the same generator h_r");
-
-                    // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                    let sn_nonce = N::hash_to_scalar_psd2(&[
-                        N::serial_number_domain(),
-                        gamma.mul_by_cofactor().to_x_coordinate(),
-                    ])?;
-                    // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                    let candidate_sn =
-                        N::commit_bhp512(&(N::serial_number_domain(), *commitment).to_bits_le(), &sn_nonce)?;
-                    // Ensure the serial number matches.
-                    ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
-                }
-            }
-            Ok(())
-        }) {
+                Ok(())
+            })
+        {
             eprintln!("Request verification failed on input checks: {error}");
             return false;
         }
-
-        // Construct the signature message as `[tvk, function ID, input IDs]`.
-        let mut message = Vec::with_capacity(1 + input_ids.len());
-        message.push(self.tvk);
-        message.push(function_id);
-        message.extend(input_ids.into_iter().flatten());
 
         // Verify the signature.
         self.signature.verify(&self.caller, &message)

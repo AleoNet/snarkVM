@@ -42,7 +42,6 @@ impl<A: Aleo> Request<A> {
         let mut message = Vec::with_capacity(1 + 2 * input_ids.len());
         message.push(self.tvk.clone());
         message.push(function_id);
-        message.extend(input_ids.into_iter().flatten());
 
         // Retrieve the challenge from the signature.
         let challenge = self.signature.challenge();
@@ -50,67 +49,82 @@ impl<A: Aleo> Request<A> {
         let response = self.signature.response();
 
         // Initialize an iterator for the input checks.
-        let input_checks = self.input_ids.iter().zip_eq(&self.inputs).map(|(input_id, input)| {
-            match input_id {
-                // A constant input is hashed to a field element.
-                InputID::Constant(input_hash) => {
-                    // Ensure the expected hash matches the computed hash.
-                    // input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
-                    A::hash_bhp1024(&input.to_bits_le()).is_equal(input_hash)
-                }
-                // A public input is hashed to a field element.
-                InputID::Public(input_hash) => {
-                    // Ensure the expected hash matches the computed hash.
-                    input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
-                }
-                // A private input is encrypted (using `tvk`) and hashed to a field element.
-                InputID::Private(input_index, input_hash) => {
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index.clone()]);
-                    // Compute the ciphertext.
-                    let ciphertext = match &input {
-                        CircuitValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer),
-                        // Ensure the input is a plaintext.
-                        CircuitValue::Record(..) => A::halt("Expected a plaintext input, found a record input"),
-                    };
-                    // Ensure the expected hash matches the computed hash.
-                    input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
-                }
-                // An input record is computed to its serial number.
-                InputID::Record(input_index, commitment, h, h_r, gamma, serial_number) => {
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index.clone()]);
-                    // Compute the record commitment.
-                    let candidate_commitment = match &input {
-                        CircuitValue::Record(record) => record.to_commitment(&randomizer),
-                        // Ensure the input is a record.
-                        CircuitValue::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
-                    };
-                    // Compute the generator `H` as `HashToGroup(commitment)`.
-                    let candidate_h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
-                    // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                    let candidate_h_r = (gamma * challenge) + (&candidate_h * response);
-                    // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
-                    let sn_nonce =
-                        A::hash_to_scalar_psd2(&[A::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()]);
-                    // Compute `candidate_serial_number` as `Commit(commitment, serial_number_nonce)`.
-                    let candidate_serial_number =
-                        A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
+        let input_checks = self
+            .input_ids
+            .iter()
+            .zip_eq(&self.inputs)
+            .enumerate()
+            .map(|(index, (input_id, input))| {
+                match input_id {
+                    // A constant input is hashed to a field element.
+                    InputID::Constant(input_hash) => {
+                        // Add the input hash to the message.
+                        message.push(input_hash.clone());
+                        // Ensure the expected hash matches the computed hash.
+                        input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
+                    }
+                    // A public input is hashed to a field element.
+                    InputID::Public(input_hash) => {
+                        // Add the input hash to the message.
+                        message.push(input_hash.clone());
+                        // Ensure the expected hash matches the computed hash.
+                        input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
+                    }
+                    // A private input is encrypted (using `tvk`) and hashed to a field element.
+                    InputID::Private(input_hash) => {
+                        // Add the input hash to the message.
+                        message.push(input_hash.clone());
 
-                    // Ensure the commitment matches.
-                    commitment.is_equal(&candidate_commitment)
-                        // Ensure the candidate H matches the expected H.
-                        & h.is_equal(&candidate_h)
-                        // Ensure `h_r` matches.
-                        & h_r.is_equal(&candidate_h_r)
+                        // Prepare the index as a constant field element.
+                        let input_index = Field::constant(console::Field::from_u16(index as u16));
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
+                        // Compute the ciphertext.
+                        let ciphertext = match &input {
+                            CircuitValue::Plaintext(plaintext) => plaintext.encrypt(&self.caller, randomizer),
+                            // Ensure the input is a plaintext.
+                            CircuitValue::Record(..) => A::halt("Expected a plaintext input, found a record input"),
+                        };
+                        // Ensure the expected hash matches the computed hash.
+                        input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
+                    }
+                    // An input record is computed to its serial number.
+                    InputID::Record(gamma, serial_number) => {
+                        // Prepare the index as a constant field element.
+                        let input_index = Field::constant(console::Field::from_u16(index as u16));
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
+                        // Compute the record commitment.
+                        let commitment = match &input {
+                            CircuitValue::Record(record) => record.to_commitment(&randomizer),
+                            // Ensure the input is a record.
+                            CircuitValue::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                        };
+                        // Compute the generator `H` as `HashToGroup(commitment)`.
+                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
+                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+                        let h_r = (gamma * challenge) + (&h * response);
+                        // Add `H`, `r * H`, and `gamma` to the message.
+                        message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
+
+                        // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
+                        let sn_nonce = A::hash_to_scalar_psd2(&[
+                            A::serial_number_domain(),
+                            gamma.mul_by_cofactor().to_x_coordinate(),
+                        ]);
+                        // Compute `candidate_serial_number` as `Commit(commitment, serial_number_nonce)`.
+                        let candidate_serial_number =
+                            A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
+
                         // Ensure the candidate serial number matches the expected serial number.
-                        & serial_number.is_equal(&candidate_serial_number)
+                        serial_number.is_equal(&candidate_serial_number)
+                    }
                 }
-            }
-        });
+            })
+            .fold(Boolean::constant(true), |acc, x| acc & x);
 
         // Verify the signature and serial numbers are valid.
-        self.signature.verify(&self.caller, &message) & input_checks.fold(Boolean::constant(true), |acc, x| acc & x)
+        self.signature.verify(&self.caller, &message) & input_checks
     }
 }
 
@@ -191,16 +205,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 36039, 0, 18613, 18648)
+        check_verify(Mode::Constant, 37400, 0, 13600, 13600)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 33555, 0, 26688, 26727)
+        check_verify(Mode::Public, 33557, 0, 26663, 26697)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 33555, 0, 26688, 26727)
+        check_verify(Mode::Private, 33557, 0, 26663, 26697)
     }
 }

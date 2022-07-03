@@ -372,10 +372,10 @@ function compute:
         // assert_eq!(26454, CurrentAleo::num_private());
         // assert_eq!(26472, CurrentAleo::num_constraints());
         // assert_eq!(90497, CurrentAleo::num_gates());
-        assert_eq!(38990, CurrentAleo::num_constants());
+        assert_eq!(38986, CurrentAleo::num_constants());
         assert_eq!(11, CurrentAleo::num_public());
-        assert_eq!(46197, CurrentAleo::num_private());
-        assert_eq!(46241, CurrentAleo::num_constraints());
-        assert_eq!(154647, CurrentAleo::num_gates());
+        assert_eq!(46178, CurrentAleo::num_private());
+        assert_eq!(46220, CurrentAleo::num_constraints());
+        assert_eq!(154618, CurrentAleo::num_gates());
     }
 }

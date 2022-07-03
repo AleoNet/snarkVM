@@ -17,15 +17,15 @@
 use super::*;
 
 impl<A: Aleo> Record<A, Ciphertext<A>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce.
+    /// Decrypts `self` into a plaintext record using the given view key & nonce.
     pub fn decrypt(&self, view_key: &ViewKey<A>, nonce: &Group<A>) -> Record<A, Plaintext<A>> {
-        // Compute the data view key.
-        let data_view_key = (&**view_key * nonce).to_x_coordinate();
-        // Decrypt the data.
-        self.decrypt_symmetric(data_view_key)
+        // Compute the record view key.
+        let record_view_key = (&**view_key * nonce).to_x_coordinate();
+        // Decrypt the record.
+        self.decrypt_symmetric(record_view_key)
     }
 
-    /// Decrypts `self` into plaintext using the given record view key.
+    /// Decrypts `self` into a plaintext record using the given record view key.
     pub fn decrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Plaintext<A>> {
         // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers();
@@ -35,7 +35,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
         self.decrypt_with_randomizers(&randomizers)
     }
 
-    /// Decrypts `self` into plaintext using the given randomizers.
+    /// Decrypts `self` into a plaintext record using the given randomizers.
     fn decrypt_with_randomizers(&self, randomizers: &[Field<A>]) -> Record<A, Plaintext<A>> {
         // Initialize an index to keep track of the randomizer index.
         let mut index: usize = 0;
