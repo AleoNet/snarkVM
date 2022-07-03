@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod find;
-mod parse;
 mod to_bits;
 mod to_fields;
 
@@ -23,10 +22,21 @@ use crate::{Entry, Identifier, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Value<N: Network> {
     /// A plaintext value.
     Plaintext(Plaintext<N>),
     /// A record value.
     Record(Record<N, Plaintext<N>>),
+}
+
+impl<N: Network> Display for Value<N> {
+    /// Prints the value as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // TODO (howardwu): Handle how to print plaintext vs record case.
+        match self {
+            Self::Plaintext(plaintext) => write!(f, "{plaintext}"),
+            Self::Record(record) => write!(f, "{record}"),
+        }
+    }
 }

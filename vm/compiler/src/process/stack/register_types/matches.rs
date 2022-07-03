@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::stack::*;
+use crate::process::stack::*;
 
 impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
     /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.

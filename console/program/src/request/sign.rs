@@ -28,6 +28,11 @@ impl<N: Network> Request<N> {
         input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
+        // Ensure the number of inputs matches the number of input types.
+        if inputs.len() != input_types.len() {
+            bail!("Expected {} inputs, found {}", input_types.len(), inputs.len())
+        }
+
         // Retrieve `sk_sig`.
         let sk_sig = private_key.sk_sig();
         // Derive the compute key.

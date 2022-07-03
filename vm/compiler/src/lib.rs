@@ -33,8 +33,5 @@ pub use program::*;
 mod snark;
 pub use snark::*;
 
-mod stack;
-pub use stack::*;
-
 mod transition;
 pub use transition::*;

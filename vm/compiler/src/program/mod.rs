@@ -48,6 +48,7 @@ use console::{
         Record,
         RecordType,
         RegisterType,
+        Request,
         Value,
         ValueType,
     },
@@ -99,6 +100,21 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
             closures: IndexMap::new(),
             functions: IndexMap::new(),
         }
+    }
+
+    /// Signs a request to execute a program function.
+    #[inline]
+    pub fn sign<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        function_name: Identifier<N>,
+        inputs: Vec<Value<N>>,
+        rng: &mut R,
+    ) -> Result<Request<N>> {
+        // Retrieve the function from the program.
+        let function = self.get_function(&function_name)?;
+        // Compute the signed request.
+        Request::sign(&private_key, self.id, function_name, inputs, &function.input_types(), rng)
     }
 
     /// Returns the ID of the program.
