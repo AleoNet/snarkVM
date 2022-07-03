@@ -24,10 +24,6 @@
 mod ledger;
 pub use ledger::*;
 
-#[allow(dead_code, unused_imports)]
-mod program_circuit;
-pub use program_circuit::*;
-
 mod process;
 pub use process::*;
 

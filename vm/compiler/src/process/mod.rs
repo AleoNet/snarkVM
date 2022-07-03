@@ -81,6 +81,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         if function.inputs().len() != num_inputs {
             bail!("Expected {} inputs, found {num_inputs}", function.inputs().len())
         }
+        // Load the output types.
+        let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
 
         // Ensure the circuit environment is clean.
         A::reset();
@@ -107,9 +109,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
             #[cfg(debug_assertions)]
             Self::log_circuit(format!("Function '{}()'", function.name()));
-
-            // Load the output types.
-            let output_types = function.outputs().iter().map(|output| *output.value_type()).collect::<Vec<_>>();
 
             // Construct the response.
             let response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);

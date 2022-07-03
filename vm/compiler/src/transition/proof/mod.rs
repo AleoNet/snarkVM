@@ -14,55 +14,177 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod snark {
-    use snarkvm_algorithms::{
-        crypto_hash::PoseidonSponge,
-        snark::marlin::{
-            ahp::AHPForR1CS,
-            fiat_shamir::FiatShamirAlgebraicSpongeRng,
-            MarlinHidingMode,
-            MarlinSNARK,
-            Proof,
-        },
-        SNARK,
-    };
-    use snarkvm_curves::{bls12_377::Bls12_377, PairingEngine};
+use console::network::prelude::*;
+use snarkvm_curves::{bls12_377::Bls12_377, PairingEngine};
 
-    use anyhow::{ensure, Result};
-    use std::time::Instant;
+use core::marker::PhantomData;
 
-    type EC = Bls12_377;
-    type Fq = <EC as PairingEngine>::Fq;
-    type Fr = <EC as PairingEngine>::Fr;
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    type Marlin = MarlinSNARK<EC, FS, MarlinHidingMode, [Fr]>;
+type Fq = <Bls12_377 as PairingEngine>::Fq;
+type Fr = <Bls12_377 as PairingEngine>::Fr;
 
-    // Runs Marlin setup, prove, and verify.
-    pub fn execute(assignment: circuit::Assignment<Fr>) -> Result<Proof<Bls12_377>> {
+pub struct UniversalSRS<N: Network> {
+    /// The universal SRS parameter.
+    srs: snarkvm_algorithms::snark::marlin::UniversalSRS<Bls12_377>,
+    /// PhantomData
+    _phantom: PhantomData<N>,
+}
+
+impl<N: Network> UniversalSRS<N> {
+    /// Initializes the universal SRS.
+    pub fn new(num_gates: usize) -> Result<Self> {
+        // TODO (howardwu): Replace me.
+        use snarkvm_algorithms::{
+            crypto_hash::PoseidonSponge,
+            snark::marlin::{ahp::AHPForR1CS, fiat_shamir, MarlinHidingMode, MarlinSNARK},
+            SNARK,
+        };
+
+        // TODO (howardwu): Replace me.
+        type FS = fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+        type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+
         let mut rng = rand::thread_rng();
 
-        let timer = Instant::now();
-        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-        let universal_srs = Marlin::universal_setup(&max_degree, &mut rng).unwrap();
+        let timer = std::time::Instant::now();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates).unwrap();
+        let universal_srs = Marlin::universal_setup(&max_degree, &mut rng)?;
         println!("Called universal setup: {} ms", timer.elapsed().as_millis());
 
-        ensure!(<circuit::Circuit as circuit::Environment>::is_satisfied(), "Circuit is not satisfied");
+        Ok(Self { srs: universal_srs, _phantom: PhantomData })
+    }
 
-        let timer = Instant::now();
-        let (index_pk, index_vk) = Marlin::circuit_setup(&universal_srs, &assignment).unwrap();
+    /// Returns the function key.
+    pub fn function_key(&self, assignment: circuit::Assignment<Fr>) -> Result<FunctionKey<N>> {
+        // TODO (howardwu): Replace me.
+        use snarkvm_algorithms::{
+            crypto_hash::PoseidonSponge,
+            snark::marlin::{fiat_shamir, MarlinHidingMode, MarlinSNARK},
+        };
+
+        // TODO (howardwu): Replace me.
+        type FS = fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+        type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+
+        let timer = std::time::Instant::now();
+        let (proving_key, verifying_key) = Marlin::circuit_setup(&*self, &assignment).unwrap();
         println!("Called setup: {} ms", timer.elapsed().as_millis());
 
-        let timer = Instant::now();
-        let proof = Marlin::prove_batch(&index_pk, std::slice::from_ref(&assignment), &mut rng).unwrap();
+        Ok(FunctionKey {
+            proving_key: ProvingKey { proving_key, _phantom: PhantomData },
+            verifying_key: VerifyingKey { verifying_key, _phantom: PhantomData },
+        })
+    }
+}
+
+impl<N: Network> Deref for UniversalSRS<N> {
+    type Target = snarkvm_algorithms::snark::marlin::UniversalSRS<Bls12_377>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.srs
+    }
+}
+
+pub struct Proof<N: Network> {
+    /// The proof.
+    proof: snarkvm_algorithms::snark::marlin::Proof<Bls12_377>,
+    /// PhantomData
+    _phantom: PhantomData<N>,
+}
+
+impl<N: Network> Deref for Proof<N> {
+    type Target = snarkvm_algorithms::snark::marlin::Proof<Bls12_377>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.proof
+    }
+}
+
+pub struct FunctionKey<N: Network> {
+    /// The proving key for the function.
+    proving_key: ProvingKey<N>,
+    /// The verifying key for the function.
+    verifying_key: VerifyingKey<N>,
+}
+
+pub struct ProvingKey<N: Network> {
+    /// The proving key for the function.
+    proving_key: snarkvm_algorithms::snark::marlin::CircuitProvingKey<
+        Bls12_377,
+        snarkvm_algorithms::snark::marlin::MarlinHidingMode,
+    >,
+    /// PhantomData
+    _phantom: PhantomData<N>,
+}
+
+impl<N: Network> ProvingKey<N> {
+    fn prove<R: Rng + CryptoRng>(&self, assignment: circuit::Assignment<Fr>, rng: &mut R) -> Result<Proof<N>> {
+        // TODO (howardwu): Replace me.
+        use snarkvm_algorithms::{
+            crypto_hash::PoseidonSponge,
+            snark::marlin::{fiat_shamir, MarlinHidingMode, MarlinSNARK},
+            SNARK,
+        };
+
+        // TODO (howardwu): Replace me.
+        type FS = fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+        type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+
+        let timer = std::time::Instant::now();
+        let proof = Marlin::prove_batch(&*self, std::slice::from_ref(&assignment), rng).unwrap();
         println!("Called prover: {} ms", timer.elapsed().as_millis());
 
-        let inputs = assignment.public_inputs();
-        println!("{} inputs: {:?}", inputs.len(), inputs);
+        Ok(Proof { proof, _phantom: PhantomData })
+    }
+}
 
-        let timer = Instant::now();
-        assert!(Marlin::verify(&index_vk, inputs, &proof).unwrap());
+impl<N: Network> Deref for ProvingKey<N> {
+    type Target = snarkvm_algorithms::snark::marlin::CircuitProvingKey<
+        Bls12_377,
+        snarkvm_algorithms::snark::marlin::MarlinHidingMode,
+    >;
+
+    fn deref(&self) -> &Self::Target {
+        &self.proving_key
+    }
+}
+
+pub struct VerifyingKey<N: Network> {
+    /// The verifying key for the function.
+    verifying_key: snarkvm_algorithms::snark::marlin::CircuitVerifyingKey<
+        Bls12_377,
+        snarkvm_algorithms::snark::marlin::MarlinHidingMode,
+    >,
+    /// PhantomData
+    _phantom: PhantomData<N>,
+}
+
+impl<N: Network> VerifyingKey<N> {
+    fn verify(&self, inputs: &[Fr], proof: Proof<N>) -> bool {
+        // TODO (howardwu): Replace me.
+        use snarkvm_algorithms::{
+            crypto_hash::PoseidonSponge,
+            snark::marlin::{fiat_shamir, MarlinHidingMode, MarlinSNARK},
+            SNARK,
+        };
+
+        // TODO (howardwu): Replace me.
+        type FS = fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+        type Marlin = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+
+        let timer = std::time::Instant::now();
+        let is_valid = Marlin::verify_batch(&*self, std::slice::from_ref(&inputs), &*proof).unwrap();
         println!("Called verifier: {} ms", timer.elapsed().as_millis());
+        is_valid
+    }
+}
 
-        Ok(proof)
+impl<N: Network> Deref for VerifyingKey<N> {
+    type Target = snarkvm_algorithms::snark::marlin::CircuitVerifyingKey<
+        Bls12_377,
+        snarkvm_algorithms::snark::marlin::MarlinHidingMode,
+    >;
+
+    fn deref(&self) -> &Self::Target {
+        &self.verifying_key
     }
 }
