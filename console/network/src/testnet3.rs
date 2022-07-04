@@ -67,7 +67,7 @@ lazy_static! {
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Testnet3;
 
 impl Testnet3 {
@@ -98,8 +98,15 @@ impl Environment for Testnet3 {
 }
 
 impl Network for Testnet3 {
+    /// The block hash type.
+    type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
+    /// The transaction ID type.
+    type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+
     /// The network ID.
     const ID: u16 = 3;
+    /// The network name.
+    const NAME: &'static str = "Aleo Testnet3";
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self> {

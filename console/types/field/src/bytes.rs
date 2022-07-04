@@ -16,18 +16,18 @@
 
 use super::*;
 
-impl<E: Environment> SizeInBits for Scalar<E> {
-    /// Returns the scalar size in bits.
+impl<E: Environment> FromBytes for Field<E> {
+    /// Reads the field from a buffer.
     #[inline]
-    fn size_in_bits() -> usize {
-        E::Scalar::SIZE_IN_BITS
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self::new(FromBytes::read_le(&mut reader)?))
     }
 }
 
-impl<E: Environment> SizeInDataBits for Scalar<E> {
-    /// Returns the scalar capacity for data bits.
+impl<E: Environment> ToBytes for Field<E> {
+    /// Writes the field to a buffer.
     #[inline]
-    fn size_in_data_bits() -> usize {
-        E::Scalar::SIZE_IN_DATA_BITS
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.field.write_le(&mut writer)
     }
 }

@@ -23,3 +23,13 @@ pub trait FromBits: Sized {
     /// Reads `Self` from a boolean array in big-endian order.
     fn from_bits_be(bits: &[bool]) -> Result<Self>;
 }
+
+pub trait SizeInBits {
+    /// Returns the field size in bits.
+    fn size_in_bits() -> usize;
+}
+
+pub trait SizeInDataBits {
+    /// Returns the field capacity for data bits.
+    fn size_in_data_bits() -> usize;
+}

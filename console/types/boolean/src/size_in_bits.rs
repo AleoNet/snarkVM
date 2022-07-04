@@ -16,16 +16,18 @@
 
 use super::*;
 
-impl<E: Environment> Boolean<E> {
+impl<E: Environment> SizeInBits for Boolean<E> {
     /// Returns the field size in bits.
     #[inline]
-    pub const fn size_in_bits() -> usize {
+    fn size_in_bits() -> usize {
         1
     }
+}
 
+impl<E: Environment> SizeInDataBits for Boolean<E> {
     /// Returns the field capacity for data bits.
     #[inline]
-    pub const fn size_in_data_bits() -> usize {
+    fn size_in_data_bits() -> usize {
         1
     }
 }

@@ -21,7 +21,7 @@ mod trace;
 use trace::*;
 
 mod transition;
-use transition::*;
+pub use transition::*;
 
 use crate::{Function, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{

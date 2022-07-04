@@ -22,7 +22,7 @@ use crate::ComputeKey;
 #[cfg(feature = "private_key")]
 use crate::PrivateKey;
 
-use crate::Address;
+use crate::address::Address;
 use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Field, Scalar};
 

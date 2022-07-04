@@ -14,20 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
-impl<E: Environment> SizeInBits for Scalar<E> {
-    /// Returns the scalar size in bits.
-    #[inline]
-    fn size_in_bits() -> usize {
-        E::Scalar::SIZE_IN_BITS
-    }
-}
-
-impl<E: Environment> SizeInDataBits for Scalar<E> {
-    /// Returns the scalar capacity for data bits.
-    #[inline]
-    fn size_in_data_bits() -> usize {
-        E::Scalar::SIZE_IN_DATA_BITS
-    }
-}
+mod id;
+pub use id::*;

@@ -16,16 +16,18 @@
 
 use super::*;
 
-impl<E: Environment> Field<E> {
+impl<E: Environment> SizeInBits for Field<E> {
     /// Returns the field size in bits.
     #[inline]
-    pub const fn size_in_bits() -> usize {
-        E::Field::SIZE_IN_BITS
+    fn size_in_bits() -> usize {
+        Self::SIZE_IN_BITS
     }
+}
 
+impl<E: Environment> SizeInDataBits for Field<E> {
     /// Returns the field capacity for data bits.
     #[inline]
-    pub const fn size_in_data_bits() -> usize {
-        E::Field::SIZE_IN_DATA_BITS
+    fn size_in_data_bits() -> usize {
+        Self::SIZE_IN_DATA_BITS
     }
 }

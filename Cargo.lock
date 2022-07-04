@@ -2335,6 +2335,7 @@ dependencies = [
  "anyhow",
  "itertools",
  "lazy_static",
+ "serde",
  "snarkvm-console-algorithms",
  "snarkvm-console-collections",
  "snarkvm-console-network-environment",

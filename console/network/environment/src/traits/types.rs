@@ -18,7 +18,7 @@ use crate::prelude::*;
 
 /// Representation of an address.
 pub trait AddressTrait:
-    Copy + Clone + Compare + Debug + Deref + Eq + Equal + Parser + Send + Sync + TypeName + Visibility
+    Copy + Clone + Compare + Debug + Deref + Eq + Equal + Parser + Send + SizeInBits + Sync + TypeName + Visibility
 {
 }
 
@@ -69,6 +69,8 @@ pub trait FieldTrait:
     + Double<Output = Self>
     + Eq
     + Equal
+    + FromBytes
+    + core::hash::Hash
     + Inverse<Output = Self>
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
@@ -83,6 +85,8 @@ pub trait FieldTrait:
     + Product<Self>
     + for<'a> Product<&'a Self>
     + Send
+    + SizeInBits
+    + SizeInDataBits
     + Sync
     + Square<Output = Self>
     + SquareRoot<Output = Self>
@@ -92,8 +96,9 @@ pub trait FieldTrait:
     + for<'a> SubAssign<&'a Self>
     + Sum<Self>
     + for<'a> Sum<&'a Self>
-    + Uniform
+    + ToBytes
     + TypeName
+    + Uniform
     + Zero
 {
 }
@@ -118,6 +123,7 @@ pub trait GroupTrait<S: ScalarTrait>:
     + Neg<Output = Self>
     + Parser
     + Send
+    + SizeInBits
     + Sync
     + Sub<Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
@@ -164,6 +170,8 @@ pub trait ScalarTrait:
     + Product<Self>
     + for<'a> Product<&'a Self>
     + Send
+    + SizeInBits
+    + SizeInDataBits
     + Sync
     + Square<Output = Self>
     + Sub<Self, Output = Self>
@@ -255,6 +263,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + One
     + Parser
     + Send
+    + SizeInBits
     + Sync
     + Sub<Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
