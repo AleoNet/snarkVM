@@ -117,6 +117,7 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
+    #[allow(clippy::needless_borrow)]
     fn check_or<I: IntegerType + BitOr<Output = I>>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,

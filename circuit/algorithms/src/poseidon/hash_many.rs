@@ -39,6 +39,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
     }
 }
 
+#[allow(clippy::needless_borrow)]
 impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Absorbs the input elements into state.
     #[inline]
