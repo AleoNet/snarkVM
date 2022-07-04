@@ -22,6 +22,10 @@ impl<E: Environment> FromBytes for StringType<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of bytes.
         let num_bytes = u16::read_le(&mut reader)?;
+        // Ensure the number of bytes is within the allowed bounds.
+        if num_bytes as u32 > E::MAX_STRING_BYTES {
+            return Err(error(format!("String literal exceeds maximum length of {} bytes.", E::MAX_STRING_BYTES)));
+        }
         // Read the bytes.
         let mut bytes = vec![0u8; num_bytes as usize];
         reader.read_exact(&mut bytes)?;
@@ -34,6 +38,10 @@ impl<E: Environment> ToBytes for StringType<E> {
     /// Writes the string to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Ensure the number of bytes is within the allowed bounds.
+        if self.string.len() > E::MAX_STRING_BYTES as usize {
+            return Err(error(format!("String literal exceeds maximum length of {} bytes.", E::MAX_STRING_BYTES)));
+        }
         // Write the number of bytes.
         (self.string.len() as u16).write_le(&mut writer)?;
         // Write the bytes.
