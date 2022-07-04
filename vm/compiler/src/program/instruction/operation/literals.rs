@@ -33,7 +33,7 @@ pub type TernaryLiteral<N, A, O> = Literals<N, A, O, 3>;
 pub struct Literals<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > {
     /// The operands.
@@ -47,7 +47,7 @@ pub struct Literals<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > Literals<N, A, O, NUM_OPERANDS>
 {
@@ -73,7 +73,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > Literals<N, A, O, NUM_OPERANDS>
 {
@@ -177,7 +177,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > Parser for Literals<N, A, O, NUM_OPERANDS>
 {
@@ -226,7 +226,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > FromStr for Literals<N, A, O, NUM_OPERANDS>
 {
@@ -250,7 +250,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > Debug for Literals<N, A, O, NUM_OPERANDS>
 {
@@ -263,7 +263,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > Display for Literals<N, A, O, NUM_OPERANDS>
 {
@@ -289,7 +289,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > FromBytes for Literals<N, A, O, NUM_OPERANDS>
 {
@@ -317,7 +317,7 @@ impl<
 impl<
     N: Network,
     A: circuit::Aleo<Network = N>,
-    O: Operation<N, Literal<N>, circuit::Literal<A>, LiteralType, NUM_OPERANDS>,
+    O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>,
     const NUM_OPERANDS: usize,
 > ToBytes for Literals<N, A, O, NUM_OPERANDS>
 {
