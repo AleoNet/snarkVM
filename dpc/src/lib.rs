@@ -18,10 +18,10 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
+#![allow(clippy::explicit_auto_deref)]
 
 #[macro_use]
 extern crate derivative;
-
 #[macro_use]
 extern crate thiserror;
 

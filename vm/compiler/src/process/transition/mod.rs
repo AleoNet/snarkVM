@@ -14,126 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod input;
+use input::*;
+
+mod output;
+use output::*;
+
 use crate::{Proof, VerifyingKey};
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Identifier, InputID, OutputID, Plaintext, ProgramID, Record, Request, Response, Value},
+    program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value},
     types::{Field, Group},
 };
 
-/// The transition input.
-pub enum Input<N: Network> {
-    /// The plaintext hash and (optional) plaintext.
-    Constant(Field<N>, Option<Plaintext<N>>),
-    /// The plaintext hash and (optional) plaintext.
-    Public(Field<N>, Option<Plaintext<N>>),
-    /// The ciphertext hash and (optional) ciphertext.
-    Private(Field<N>, Option<Ciphertext<N>>),
-    /// The serial number.
-    Record(Field<N>),
-}
-
-impl<N: Network> Input<N> {
-    /// Returns the ID of the input.
-    pub fn id(&self) -> Field<N> {
-        match self {
-            Input::Constant(id, _) => *id,
-            Input::Public(id, _) => *id,
-            Input::Private(id, _) => *id,
-            Input::Record(id) => *id,
-        }
-    }
-
-    /// Returns `true` if the input is well-formed.
-    /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self) -> bool {
-        match self {
-            Input::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Input::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Input::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            _ => true,
-        }
-    }
-}
-
-/// The transition output.
-pub enum Output<N: Network> {
-    /// The plaintext hash and (optional) plaintext.
-    Constant(Field<N>, Option<Plaintext<N>>),
-    /// The plaintext hash and (optional) plaintext.
-    Public(Field<N>, Option<Plaintext<N>>),
-    /// The ciphertext hash and (optional) ciphertext.
-    Private(Field<N>, Option<Ciphertext<N>>),
-    /// The commitment, nonce, checksum, and (optional) record ciphertext.
-    Record(Field<N>, Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
-}
-
-impl<N: Network> Output<N> {
-    /// Returns the ID(s) of the output.
-    pub fn id(&self) -> Vec<Field<N>> {
-        match self {
-            Output::Constant(id, ..) => vec![*id],
-            Output::Public(id, ..) => vec![*id],
-            Output::Private(id, ..) => vec![*id],
-            Output::Record(commitment, nonce, checksum, _) => vec![*commitment, *nonce, *checksum],
-        }
-    }
-
-    /// Returns `true` if the output is well-formed.
-    /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self) -> bool {
-        match self {
-            Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Output::Record(_, _, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => checksum == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            _ => true,
-        }
-    }
-}
-
+#[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
     /// The program ID.
     program_id: ProgramID<N>,
