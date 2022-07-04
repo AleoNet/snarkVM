@@ -83,12 +83,7 @@ impl<N: Network> Literal<N> {
             LiteralType::U64 => Literal::U64(U64::rand(rng)),
             LiteralType::U128 => Literal::U128(U128::rand(rng)),
             LiteralType::Scalar => Literal::Scalar(Scalar::rand(rng)),
-            LiteralType::String => Literal::String(StringType::new(
-                &rng.sample_iter(&Alphanumeric)
-                    .take((N::MAX_STRING_BYTES / 4) as usize)
-                    .map(char::from)
-                    .collect::<String>(),
-            )),
+            LiteralType::String => Literal::String(StringType::rand(rng)),
         }
     }
 }

@@ -16,18 +16,28 @@
 
 use super::*;
 
-impl<E: Environment> FromBytes for Address<E> {
-    /// Reads in an account address from a buffer.
+impl<E: Environment> FromBytes for StringType<E> {
+    /// Reads the string from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Address::new(FromBytes::read_le(&mut reader)?))
+        // Read the number of bytes.
+        let num_bytes = u16::read_le(&mut reader)?;
+        // Read the bytes.
+        let mut bytes = vec![0u8; num_bytes as usize];
+        reader.read_exact(&mut bytes)?;
+        // Return the string.
+        Ok(Self::new(&String::from_utf8(bytes).map_err(|e| error(e.to_string()))?))
     }
 }
 
-impl<E: Environment> ToBytes for Address<E> {
-    /// Writes an account address to a buffer.
+impl<E: Environment> ToBytes for StringType<E> {
+    /// Writes the string to a buffer.
+    #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)
+        // Write the number of bytes.
+        (self.string.len() as u16).write_le(&mut writer)?;
+        // Write the bytes.
+        self.string.as_bytes().write_le(&mut writer)
     }
 }
 
@@ -43,13 +53,13 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         for _ in 0..ITERATIONS {
-            // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            // Sample a new string.
+            let expected = StringType::<CurrentEnvironment>::rand(&mut test_rng());
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, Address::read_le(&expected_bytes[..])?);
-            assert!(Address::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, StringType::read_le(&expected_bytes[..])?);
+            assert!(StringType::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

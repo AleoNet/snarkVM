@@ -16,19 +16,19 @@
 
 use super::*;
 
-impl<E: Environment> FromBytes for Field<E> {
-    /// Reads the field from a buffer.
+impl<E: Environment, I: IntegerType> FromBytes for Integer<E, I> {
+    /// Reads the integer from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self::new(FromBytes::read_le(&mut reader)?))
     }
 }
 
-impl<E: Environment> ToBytes for Field<E> {
-    /// Writes the field to a buffer.
+impl<E: Environment, I: IntegerType> ToBytes for Integer<E, I> {
+    /// Writes the integer to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.field.write_le(&mut writer)
+        self.integer.write_le(&mut writer)
     }
 }
 
@@ -41,17 +41,39 @@ mod tests {
 
     const ITERATIONS: u64 = 10_000;
 
-    #[test]
-    fn test_bytes() -> Result<()> {
+    fn check_bytes<I: IntegerType>() -> Result<()> {
         for _ in 0..ITERATIONS {
-            // Sample a new field.
-            let expected = Field::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            // Sample a random integer.
+            let expected: Integer<CurrentEnvironment, I> = Uniform::rand(&mut test_rng());
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, Field::read_le(&expected_bytes[..])?);
-            assert!(Field::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Integer::read_le(&expected_bytes[..])?);
+            assert!(Integer::<CurrentEnvironment, I>::read_le(&expected_bytes[1..]).is_err());
+
+            // Dereference the integer and compare bytes.
+            let deref_bytes = (*expected).to_bytes_le()?;
+            for (expected, candidate) in expected_bytes.iter().zip_eq(&deref_bytes) {
+                assert_eq!(expected, candidate);
+            }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_bytes() -> Result<()> {
+        check_bytes::<u8>()?;
+        check_bytes::<u16>()?;
+        check_bytes::<u32>()?;
+        check_bytes::<u64>()?;
+        check_bytes::<u128>()?;
+
+        check_bytes::<i8>()?;
+        check_bytes::<i16>()?;
+        check_bytes::<i32>()?;
+        check_bytes::<i64>()?;
+        check_bytes::<i128>()?;
+
         Ok(())
     }
 }

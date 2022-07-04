@@ -16,12 +16,14 @@
 
 mod arithmetic;
 mod bitwise;
+mod bytes;
 mod compare;
 mod from_bits;
 mod one;
 mod parse;
 mod random;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_bits;
 mod to_field;
 mod zero;
@@ -39,6 +41,13 @@ pub struct Scalar<E: Environment> {
 impl<E: Environment> ScalarTrait for Scalar<E> {}
 
 impl<E: Environment> Scalar<E> {
+    /// The scalar size in bits.
+    pub const SIZE_IN_BITS: usize = E::Scalar::SIZE_IN_BITS;
+    /// The scalar size in bytes.
+    pub const SIZE_IN_BYTES: usize = (E::Scalar::SIZE_IN_BITS + 7) / 8;
+    /// The scalar capacity for data bits.
+    pub const SIZE_IN_DATA_BITS: usize = E::Scalar::SIZE_IN_DATA_BITS;
+
     /// Initializes a new scalar.
     pub const fn new(scalar: E::Scalar) -> Self {
         Self { scalar }

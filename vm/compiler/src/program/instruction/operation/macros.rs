@@ -357,13 +357,7 @@ mod tests {
                 console::program::Literal::U64(U64::rand($rng)),
                 console::program::Literal::U128(U128::rand($rng)),
                 console::program::Literal::Scalar(Scalar::rand($rng)),
-                console::program::Literal::String(StringType::new(
-                    &$rng
-                        .sample_iter(&Alphanumeric)
-                        .take((<$network as Environment>::MAX_STRING_BYTES / 4) as usize)
-                        .map(char::from)
-                        .collect::<String>(),
-                )),
+                console::program::Literal::String(StringType::rand($rng)),
             ]
         };
     }

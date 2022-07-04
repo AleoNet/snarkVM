@@ -18,7 +18,20 @@ use crate::prelude::*;
 
 /// Representation of an address.
 pub trait AddressTrait:
-    Copy + Clone + Compare + Debug + Deref + Eq + Equal + Parser + Send + SizeInBits + Sync + TypeName + Visibility
+    Copy
+    + Clone
+    + Compare
+    + Debug
+    + Deref
+    + Eq
+    + Equal
+    + Parser
+    + Send
+    + SizeInBits
+    + SizeInBytes
+    + Sync
+    + TypeName
+    + Visibility
 {
 }
 
@@ -44,6 +57,9 @@ pub trait BooleanTrait:
     + Not
     + Parser
     + Send
+    + SizeInBits
+    + SizeInDataBits
+    + SizeInBytes
     + Sync
     + TypeName
     + Uniform
@@ -87,6 +103,7 @@ pub trait FieldTrait:
     + Send
     + SizeInBits
     + SizeInDataBits
+    + SizeInBytes
     + Sync
     + Square<Output = Self>
     + SquareRoot<Output = Self>
@@ -124,6 +141,7 @@ pub trait GroupTrait<S: ScalarTrait>:
     + Parser
     + Send
     + SizeInBits
+    + SizeInBytes
     + Sync
     + Sub<Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
@@ -172,6 +190,7 @@ pub trait ScalarTrait:
     + Send
     + SizeInBits
     + SizeInDataBits
+    + SizeInBytes
     + Sync
     + Square<Output = Self>
     + Sub<Self, Output = Self>
@@ -187,7 +206,10 @@ pub trait ScalarTrait:
 }
 
 /// Representation of a string.
-pub trait StringTrait: Clone + Debug + Display + Eq + Equal + Parser + Send + Sync + TypeName {}
+pub trait StringTrait:
+    Clone + Debug + Display + Eq + Equal + FromBytes + Parser + Send + Sync + ToBytes + TypeName + Uniform
+{
+}
 
 /// Representation of an integer.
 pub trait IntegerTrait<I: integer_type::IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16>, U32: IntegerCore<u32>>:
@@ -264,6 +286,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + Parser
     + Send
     + SizeInBits
+    + SizeInBytes
     + Sync
     + Sub<Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
@@ -277,7 +300,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
 }
 
 pub(super) mod integer_type {
-    use snarkvm_utilities::{FromBits, ToBits, Uniform};
+    use snarkvm_utilities::{FromBits, FromBytes, ToBits, ToBytes, Uniform};
 
     use core::{
         fmt::{Debug, Display},
@@ -314,6 +337,7 @@ pub(super) mod integer_type {
         + Default
         + Display
         + FromBits
+        + FromBytes
         + FromStr<Err = ParseIntError>
         + Hash
         + NumZero
@@ -321,6 +345,7 @@ pub(super) mod integer_type {
         + Send
         + Sync
         + ToBits
+        + ToBytes
         + ToPrimitive
         + Uniform
         + WrappingAbs

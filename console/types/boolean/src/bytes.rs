@@ -16,18 +16,19 @@
 
 use super::*;
 
-impl<E: Environment> FromBytes for Address<E> {
-    /// Reads in an account address from a buffer.
+impl<E: Environment> FromBytes for Boolean<E> {
+    /// Reads the boolean from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Address::new(FromBytes::read_le(&mut reader)?))
+        Ok(Self::new(FromBytes::read_le(&mut reader)?))
     }
 }
 
-impl<E: Environment> ToBytes for Address<E> {
-    /// Writes an account address to a buffer.
+impl<E: Environment> ToBytes for Boolean<E> {
+    /// Writes the boolean to a buffer.
+    #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)
+        self.boolean.write_le(&mut writer)
     }
 }
 
@@ -43,13 +44,13 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         for _ in 0..ITERATIONS {
-            // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            // Sample a new boolean.
+            let expected = Boolean::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, Address::read_le(&expected_bytes[..])?);
-            assert!(Address::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Boolean::read_le(&expected_bytes[..])?);
+            assert!(Boolean::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

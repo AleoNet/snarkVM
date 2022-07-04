@@ -14,27 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::Result;
+use super::*;
 
-pub trait FromBits: Sized {
-    /// Reads `Self` from a boolean array in little-endian order.
-    fn from_bits_le(bits: &[bool]) -> Result<Self>;
-
-    /// Reads `Self` from a boolean array in big-endian order.
-    fn from_bits_be(bits: &[bool]) -> Result<Self>;
-}
-
-pub trait SizeInBits {
-    /// Returns the size in bits.
-    fn size_in_bits() -> usize;
-}
-
-pub trait SizeInDataBits {
-    /// Returns the capacity for data bits.
-    fn size_in_data_bits() -> usize;
-}
-
-pub trait SizeInBytes {
-    /// Returns the size in bytes.
-    fn size_in_bytes() -> usize;
+impl<E: Environment, I: IntegerType> SizeInBytes for Integer<E, I> {
+    /// Returns the integer size in bytes.
+    #[inline]
+    fn size_in_bytes() -> usize {
+        ((I::BITS + 7) / 8) as usize
+    }
 }

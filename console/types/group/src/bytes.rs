@@ -16,18 +16,19 @@
 
 use super::*;
 
-impl<E: Environment> FromBytes for Address<E> {
-    /// Reads in an account address from a buffer.
+impl<E: Environment> FromBytes for Group<E> {
+    /// Reads the group from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Address::new(FromBytes::read_le(&mut reader)?))
+        Ok(Self::from_x_coordinate(FromBytes::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?)
     }
 }
 
-impl<E: Environment> ToBytes for Address<E> {
-    /// Writes an account address to a buffer.
+impl<E: Environment> ToBytes for Group<E> {
+    /// Writes the group to a buffer.
+    #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.write_le(&mut writer)
+        self.to_x_coordinate().write_le(&mut writer)
     }
 }
 
@@ -43,13 +44,13 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         for _ in 0..ITERATIONS {
-            // Sample a new address.
-            let expected = Address::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
+            // Sample a new group.
+            let expected = Group::<CurrentEnvironment>::new(Uniform::rand(&mut test_rng()));
 
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, Address::read_le(&expected_bytes[..])?);
-            assert!(Address::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Group::read_le(&expected_bytes[..])?);
+            assert!(Group::<CurrentEnvironment>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }
