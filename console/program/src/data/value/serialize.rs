@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Serialize for Value<N> {
-    /// Serializes an value into string or bytes.
+    /// Serializes the value into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
@@ -27,7 +27,7 @@ impl<N: Network> Serialize for Value<N> {
 }
 
 impl<'de, N: Network> Deserialize<'de> for Value<N> {
-    /// Deserializes an value from a string or bytes.
+    /// Deserializes the value from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),

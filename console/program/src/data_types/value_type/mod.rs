@@ -16,6 +16,7 @@
 
 mod bytes;
 mod parse;
+mod serialize;
 
 use crate::{EntryType, Identifier, PlaintextType};
 use snarkvm_console_network::prelude::*;
