@@ -20,7 +20,7 @@ impl<E: Environment> Inv for Field<E> {
     type Output = Self;
 
     fn inv(self) -> Self::Output {
-        (&self).inverse()
+        self.inverse()
     }
 }
 

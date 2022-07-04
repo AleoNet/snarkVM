@@ -77,7 +77,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
                 Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
                 // Private entries are decrypted with the given randomizers.
                 Entry::Private(private) => Entry::Private(Plaintext::from_fields(
-                    &*private
+                    &private
                         .iter()
                         .zip_eq(randomizers)
                         .map(|(ciphertext, randomizer)| *ciphertext - randomizer)

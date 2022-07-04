@@ -21,7 +21,7 @@ impl<E: Environment> FromBoolean for Field<E> {
 
     /// Initializes a base field from a boolean.
     fn from_boolean(boolean: &Self::Boolean) -> Self {
-        (&**boolean).into()
+        Self::from((**boolean).clone())
     }
 }
 
