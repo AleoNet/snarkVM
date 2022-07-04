@@ -148,7 +148,7 @@ pub struct Transition<N: Network> {
     /// The transition public key.
     tpk: Group<N>,
     /// The network fee.
-    fee: i64,
+    fee: u64,
 }
 
 impl<N: Network> Transition<N> {
@@ -160,13 +160,13 @@ impl<N: Network> Transition<N> {
         outputs: Vec<Output<N>>,
         proof: Proof<N>,
         tpk: Group<N>,
-        fee: i64,
+        fee: u64,
     ) -> Self {
         Self { program_id, function_name, inputs, outputs, proof, tpk, fee }
     }
 
     /// Initializes a new transition from a request and response.
-    pub fn from(request: &Request<N>, response: &Response<N>, proof: Proof<N>, fee: i64) -> Result<Self> {
+    pub fn from(request: &Request<N>, response: &Response<N>, proof: Proof<N>, fee: u64) -> Result<Self> {
         let program_id = *request.program_id();
         let function_name = *request.function_name();
         let num_inputs = request.inputs().len();

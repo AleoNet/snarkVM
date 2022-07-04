@@ -173,7 +173,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
 
         // Initialize the transition.
-        let transition = Transition::from(request, &response, proof, 0i64)?;
+        let transition = Transition::from(request, &response, proof, 0u64)?;
         // Verify the transition.
         ensure!(transition.verify(&verifying_key), "Transition is invalid");
 
