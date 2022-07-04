@@ -114,7 +114,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         // Retrieve the function from the program.
         let function = self.get_function(&function_name)?;
         // Compute the signed request.
-        Request::sign(&private_key, self.id, function_name, inputs, &function.input_types(), rng)
+        Request::sign(private_key, self.id, function_name, inputs, &function.input_types(), rng)
     }
 
     /// Returns the ID of the program.

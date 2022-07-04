@@ -71,13 +71,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         function_name: &Identifier<N>,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         // Determine if the circuit key already exists.
-        let exists = self.circuit_keys.read().contains_key(&(program_id.clone(), function_name.clone()));
+        let exists = self.circuit_keys.read().contains_key(&(*program_id, *function_name));
         // If the circuit key exists, retrieve and return it.
         if exists {
             // Return the circuit key.
             self.circuit_keys
                 .read()
-                .get(&(program_id.clone(), function_name.clone()))
+                .get(&(*program_id, *function_name))
                 .cloned()
                 .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
         }
@@ -113,7 +113,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             // Add the circuit key to the mapping.
             self.circuit_keys
                 .write()
-                .insert((program_id.clone(), function_name.clone()), (proving_key.clone(), verifying_key.clone()));
+                .insert((*program_id, *function_name), (proving_key.clone(), verifying_key.clone()));
             // Return the circuit key.
             Ok((proving_key, verifying_key))
         }

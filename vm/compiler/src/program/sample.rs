@@ -157,7 +157,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
             // Sample an interface.
             PlaintextType::Interface(interface_name) => {
                 // Retrieve the interface.
-                let interface = self.get_interface(&interface_name)?;
+                let interface = self.get_interface(interface_name)?;
                 // Sample each member of the interface.
                 let members = interface
                     .members()
