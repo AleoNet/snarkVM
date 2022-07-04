@@ -20,7 +20,7 @@ impl<E: Environment> FromBytes for Group<E> {
     /// Reads the group from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self::from_x_coordinate(FromBytes::read_le(&mut reader)?).map_err(|e| error(e.to_string()))?)
+        Self::from_x_coordinate(FromBytes::read_le(&mut reader)?).map_err(|e| error(e.to_string()))
     }
 }
 
