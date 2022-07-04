@@ -20,23 +20,19 @@ use console::{
     program::{Identifier, Register, RegisterType},
 };
 
-use core::marker::PhantomData;
-
 /// Calls the operands into the declared type.
 /// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Call<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Call<N: Network> {
     /// The name of the closure.
     name: Identifier<N>,
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination registers.
     destinations: Vec<Register<N>>,
-    /// PhantomData.
-    _phantom: PhantomData<A>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
+impl<N: Network> Call<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -62,10 +58,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
+impl<N: Network> Call<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
 
@@ -93,7 +89,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
@@ -121,11 +117,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(
-        &self,
-        program: &Program<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the closure.
         let closure = program.get_closure(&self.name)?;
 
@@ -147,7 +139,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Call<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Call<N, A> {
+impl<N: Network> Parser for Call<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -198,11 +190,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Call<N, A> {
             }
         })(string)?;
 
-        Ok((string, Self { name, operands, destinations, _phantom: PhantomData }))
+        Ok((string, Self { name, operands, destinations }))
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Call<N, A> {
+impl<N: Network> FromStr for Call<N> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -220,14 +212,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Call<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Call<N, A> {
+impl<N: Network> Debug for Call<N> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Display for Call<N, A> {
+impl<N: Network> Display for Call<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -248,7 +240,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Call<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Call<N, A> {
+impl<N: Network> FromBytes for Call<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the name of the call.
@@ -283,11 +275,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Call<N, A> {
         }
 
         // Return the operation.
-        Ok(Self { name, operands, destinations, _phantom: PhantomData })
+        Ok(Self { name, operands, destinations })
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Call<N, A> {
+impl<N: Network> ToBytes for Call<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
@@ -323,10 +315,8 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, call) = Call::<CurrentNetwork, CurrentAleo>::parse(
-            "call transfer r0.owner r0.balance r0.token_amount into r1 r2 r3",
-        )
-        .unwrap();
+        let (string, call) =
+            Call::<CurrentNetwork>::parse("call transfer r0.owner r0.balance r0.token_amount into r1 r2 r3").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(call.name, Identifier::from_str("transfer").unwrap(), "The name of the call is incorrect");
         assert_eq!(call.operands.len(), 3, "The number of operands is incorrect");

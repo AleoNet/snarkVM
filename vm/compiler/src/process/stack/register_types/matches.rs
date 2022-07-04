@@ -16,11 +16,11 @@
 
 use crate::process::stack::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
+impl<N: Network> RegisterTypes<N> {
     /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.
     pub fn matches_interface(
         &self,
-        program: &Program<N, A>,
+        program: &Program<N>,
         operands: &[Operand<N>],
         interface: &Interface<N>,
     ) -> Result<()> {
@@ -65,7 +65,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(
         &self,
-        program: &Program<N, A>,
+        program: &Program<N>,
         operands: &[Operand<N>],
         record_type: &RecordType<N>,
     ) -> Result<()> {

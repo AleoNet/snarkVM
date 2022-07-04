@@ -22,23 +22,20 @@ use console::{
     program::{EntryType, Identifier, LiteralType, PlaintextType, Register, RegisterType},
 };
 
-use core::marker::PhantomData;
 use indexmap::IndexMap;
 
 #[derive(Default)]
-pub struct RegisterTypes<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all destination registers to their defined types.
     destinations: IndexMap<u64, RegisterType<N>>,
-    /// PhantomData.
-    _phantom: PhantomData<A>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
+impl<N: Network> RegisterTypes<N> {
     /// Initializes a new instance of `RegisterTypes`.
     pub fn new() -> Self {
-        Self { inputs: IndexMap::new(), destinations: IndexMap::new(), _phantom: PhantomData }
+        Self { inputs: IndexMap::new(), destinations: IndexMap::new() }
     }
 
     /// Returns `true` if the given register exists.
@@ -104,7 +101,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> RegisterTypes<N, A> {
     }
 
     /// Returns the register type of the given register.
-    pub fn get_type(&self, program: &Program<N, A>, register: &Register<N>) -> Result<RegisterType<N>> {
+    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.

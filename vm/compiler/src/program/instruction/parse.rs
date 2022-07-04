@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Instruction<N, A> {
+impl<N: Network> Parser for Instruction<N> {
     /// Parses a string into an instruction.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -66,7 +66,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Instruction<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Instruction<N, A> {
+impl<N: Network> FromStr for Instruction<N> {
     type Err = Error;
 
     /// Parses a string into an instruction.
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_parse() -> Result<()> {
         let instruction = "add r0 r1 into r2;";
-        let (remainder, candidate) = Instruction::<CurrentNetwork, CurrentAleo>::parse(instruction)?;
+        let (remainder, candidate) = Instruction::<CurrentNetwork>::parse(instruction)?;
         assert_eq!("", remainder);
         assert_eq!(instruction, candidate.to_string());
         Ok(())

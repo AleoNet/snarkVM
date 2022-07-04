@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     /// Returns a value for the given value type.
     pub fn sample_value<R: Rng + CryptoRng>(
         &self,
@@ -64,7 +64,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     /// Returns a record for the given record name.
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(

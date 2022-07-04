@@ -30,6 +30,7 @@ use console::{
     program::{Identifier, ProgramID, Request, Response},
 };
 
+use core::marker::PhantomData;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -38,15 +39,17 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to programs.
-    programs: IndexMap<ProgramID<N>, Program<N, A>>,
+    programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
     circuit_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), (ProvingKey<N>, VerifyingKey<N>)>>>,
+    /// PhantomData
+    _phantom: PhantomData<A>,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
     /// Initializes a new process.
     #[inline]
-    pub fn new(program: Program<N, A>) -> Result<Self> {
+    pub fn new(program: Program<N>) -> Result<Self> {
         // TODO (howardwu): Load the universal SRS remotely.
         let universal_srs = UniversalSRS::load(100_000)?;
         // Return the process.
@@ -54,12 +57,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             universal_srs: Arc::new(universal_srs),
             programs: [(*program.id(), program)].into_iter().collect(),
             circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
+            _phantom: PhantomData,
         })
     }
 
     /// Returns the program for the given program ID.
     #[inline]
-    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N, A>> {
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
         self.programs.get(program_id).ok_or_else(|| anyhow!("Program not found: {program_id}"))
     }
 
@@ -190,8 +194,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
     /// Synthesizes the given request on the specified function.
     fn synthesize(
-        program: Program<N, A>,
-        function: &Function<N, A>,
+        program: Program<N>,
+        function: &Function<N>,
         request: &Request<N>,
     ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
         // Retrieve the number of inputs.
@@ -276,7 +280,7 @@ mod tests {
     #[test]
     fn test_process_execute_call() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
+        let (string, program) = Program::<CurrentNetwork>::parse(
             r"
 program token;
 

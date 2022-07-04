@@ -70,7 +70,7 @@ enum ProgramDefinition {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Program<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Program<N: Network> {
     /// The ID of the program.
     id: ProgramID<N>,
     /// A map of the declared imports for the program.
@@ -82,12 +82,12 @@ pub struct Program<N: Network, A: circuit::Aleo<Network = N>> {
     /// A map of the declared record types for the program.
     records: IndexMap<Identifier<N>, RecordType<N>>,
     /// A map of the declared closures for the program.
-    closures: IndexMap<Identifier<N>, Closure<N, A>>,
+    closures: IndexMap<Identifier<N>, Closure<N>>,
     /// A map of the declared functions for the program.
-    functions: IndexMap<Identifier<N>, Function<N, A>>,
+    functions: IndexMap<Identifier<N>, Function<N>>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     /// Initializes an empty program.
     #[inline]
     pub fn new(id: ProgramID<N>) -> Self {
@@ -123,12 +123,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 
     /// Returns the closures in the program.
-    pub const fn closures(&self) -> &IndexMap<Identifier<N>, Closure<N, A>> {
+    pub const fn closures(&self) -> &IndexMap<Identifier<N>, Closure<N>> {
         &self.closures
     }
 
     /// Returns the functions in the program.
-    pub const fn functions(&self) -> &IndexMap<Identifier<N>, Function<N, A>> {
+    pub const fn functions(&self) -> &IndexMap<Identifier<N>, Function<N>> {
         &self.functions
     }
 
@@ -169,7 +169,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 
     /// Returns the closure with the given name.
-    pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N, A>> {
+    pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
         // Attempt to retrieve the closure.
         let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
         // Ensure there are input statements in the closure.
@@ -185,7 +185,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 
     /// Returns the function with the given name.
-    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N, A>> {
+    pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
         // Attempt to retrieve the function.
         let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
         // Ensure there are input statements in the function.
@@ -201,7 +201,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     /// Adds a new import statement to the program.
     ///
     /// # Errors
@@ -346,7 +346,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
     #[inline]
-    fn add_closure(&mut self, closure: Closure<N, A>) -> Result<()> {
+    fn add_closure(&mut self, closure: Closure<N>) -> Result<()> {
         // Retrieve the closure name.
         let closure_name = *closure.name();
 
@@ -391,7 +391,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     /// This method will halt if an output register does not already exist.
     /// This method will halt if an output type references a non-existent definition.
     #[inline]
-    fn add_function(&mut self, function: Function<N, A>) -> Result<()> {
+    fn add_function(&mut self, function: Function<N>) -> Result<()> {
         // Retrieve the function name.
         let function_name = *function.name();
 
@@ -423,7 +423,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     #[rustfmt::skip]
     const KEYWORDS: &'static [&'static str] = &[
         // Mode
@@ -495,7 +495,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the given name matches the root of any opcode (the first part, up to the first '.').
-        Instruction::<N, A>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
+        Instruction::<N>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
@@ -507,7 +507,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> TypeName for Program<N, A> {
+impl<N: Network> TypeName for Program<N> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -536,7 +536,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -561,7 +561,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -576,7 +576,7 @@ record foo:
     #[test]
     fn test_program_function() -> Result<()> {
         // Create a new function.
-        let function = Function::<CurrentNetwork, CurrentAleo>::from_str(
+        let function = Function::<CurrentNetwork>::from_str(
             r"
 function compute:
     input r0 as field.public;
@@ -586,7 +586,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork, CurrentAleo>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
 
         // Add the function to the program.
         program.add_function(function.clone())?;
@@ -600,7 +600,7 @@ function compute:
 
     #[test]
     fn test_program_evaluate_function() {
-        let program = Program::<CurrentNetwork, CurrentAleo>::from_str(
+        let program = Program::<CurrentNetwork>::from_str(
             r"
     program example;
 
@@ -622,7 +622,7 @@ function compute:
         ];
 
         // Prepare the stack.
-        let mut stack = Stack::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
@@ -639,7 +639,7 @@ function compute:
     #[test]
     fn test_program_evaluate_interface_and_function() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
+        let (string, program) = Program::<CurrentNetwork>::parse(
             r"
 program example;
 
@@ -664,7 +664,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
@@ -680,7 +680,7 @@ function compute:
     #[test]
     fn test_program_evaluate_record_and_function() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
+        let (string, program) = Program::<CurrentNetwork>::parse(
             r"
 program token;
 
@@ -706,7 +706,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
@@ -722,7 +722,7 @@ function compute:
     #[test]
     fn test_program_evaluate_call() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
+        let (string, program) = Program::<CurrentNetwork>::parse(
             r"
 program example_call;
 
@@ -761,7 +761,7 @@ function compute:
         let r4 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
@@ -790,7 +790,7 @@ function compute:
     #[test]
     fn test_program_evaluate_cast() {
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(
+        let (string, program) = Program::<CurrentNetwork>::parse(
             r"
 program token_with_cast;
 
@@ -816,7 +816,7 @@ function compute:
         let expected = Value::Record(input_record);
 
         // Prepare the stack.
-        let mut stack = Stack::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();

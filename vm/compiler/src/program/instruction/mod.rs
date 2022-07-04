@@ -58,29 +58,29 @@ use console::{
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
+pub enum Instruction<N: Network> {
     /// Compute the absolute value of `first`, checking for overflow, and storing the outcome in `destination`.
-    Abs(Abs<N, A>),
+    Abs(Abs<N>),
     /// Compute the absolute value of `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    AbsWrapped(AbsWrapped<N, A>),
+    AbsWrapped(AbsWrapped<N>),
     /// Adds `first` with `second`, storing the outcome in `destination`.
-    Add(Add<N, A>),
+    Add(Add<N>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    AddWrapped(AddWrapped<N, A>),
+    AddWrapped(AddWrapped<N>),
     /// Performs a bitwise `and` operation on `first` and `second`, storing the outcome in `destination`.
-    And(And<N, A>),
+    And(And<N>),
     /// Calls a closure on the operands.
-    Call(Call<N, A>),
+    Call(Call<N>),
     /// Casts the operands into the declared type.
-    Cast(Cast<N, A>),
+    Cast(Cast<N>),
     /// Performs a BHP commitment on inputs of 256-bit chunks.
-    CommitBHP256(CommitBHP256<N, A>),
+    CommitBHP256(CommitBHP256<N>),
     /// Performs a BHP commitment on inputs of 512-bit chunks.
-    CommitBHP512(CommitBHP512<N, A>),
+    CommitBHP512(CommitBHP512<N>),
     /// Performs a BHP commitment on inputs of 768-bit chunks.
-    CommitBHP768(CommitBHP768<N, A>),
+    CommitBHP768(CommitBHP768<N>),
     /// Performs a BHP commitment on inputs of 1024-bit chunks.
-    CommitBHP1024(CommitBHP1024<N, A>),
+    CommitBHP1024(CommitBHP1024<N>),
     // /// Performs a Pedersen commitment on up to a 64-bit input.
     // CommitPed64(CommitPed64<N, A>),
     // /// Performs a Pedersen commitment on up to a 128-bit input.
@@ -90,77 +90,77 @@ pub enum Instruction<N: Network, A: circuit::Aleo<Network = N>> {
     // /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     // DivWrapped(DivWrapped<N, A>),
     /// Doubles `first`, storing the outcome in `destination`.
-    Double(Double<N, A>),
+    Double(Double<N>),
     /// Computes whether `first` is greater than `second` as a boolean, storing the outcome in `destination`.
-    GreaterThan(GreaterThan<N, A>),
+    GreaterThan(GreaterThan<N>),
     /// Computes whether `first` is greater than or equal to `second` as a boolean, storing the outcome in `destination`.
-    GreaterThanOrEqual(GreaterThanOrEqual<N, A>),
+    GreaterThanOrEqual(GreaterThanOrEqual<N>),
     /// Performs a BHP hash on inputs of 256-bit chunks.
-    HashBHP256(HashBHP256<N, A>),
+    HashBHP256(HashBHP256<N>),
     /// Performs a BHP hash on inputs of 512-bit chunks.
-    HashBHP512(HashBHP512<N, A>),
+    HashBHP512(HashBHP512<N>),
     /// Performs a BHP hash on inputs of 768-bit chunks.
-    HashBHP768(HashBHP768<N, A>),
+    HashBHP768(HashBHP768<N>),
     /// Performs a BHP hash on inputs of 1024-bit chunks.
-    HashBHP1024(HashBHP1024<N, A>),
+    HashBHP1024(HashBHP1024<N>),
     /// Performs a Pedersen hash on up to a 64-bit input.
-    HashPED64(HashPED64<N, A>),
+    HashPED64(HashPED64<N>),
     /// Performs a Pedersen hash on up to a 128-bit input.
-    HashPED128(HashPED128<N, A>),
+    HashPED128(HashPED128<N>),
     /// Performs a Poseidon hash with an input rate of 2.
-    HashPSD2(HashPSD2<N, A>),
+    HashPSD2(HashPSD2<N>),
     /// Performs a Poseidon hash with an input rate of 4.
-    HashPSD4(HashPSD4<N, A>),
+    HashPSD4(HashPSD4<N>),
     /// Performs a Poseidon hash with an input rate of 8.
-    HashPSD8(HashPSD8<N, A>),
+    HashPSD8(HashPSD8<N>),
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
-    Inv(Inv<N, A>),
+    Inv(Inv<N>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
-    IsEqual(IsEqual<N, A>),
+    IsEqual(IsEqual<N>),
     /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
-    IsNotEqual(IsNotEqual<N, A>),
+    IsNotEqual(IsNotEqual<N>),
     /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
-    LessThan(LessThan<N, A>),
+    LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
-    LessThanOrEqual(LessThanOrEqual<N, A>),
+    LessThanOrEqual(LessThanOrEqual<N>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
-    Mul(Mul<N, A>),
+    Mul(Mul<N>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    MulWrapped(MulWrapped<N, A>),
+    MulWrapped(MulWrapped<N>),
     /// Returns `false` if `first` and `second` are true, storing the outcome in `destination`.
-    Nand(Nand<N, A>),
+    Nand(Nand<N>),
     /// Negates `first`, storing the outcome in `destination`.
-    Neg(Neg<N, A>),
+    Neg(Neg<N>),
     /// Returns `true` if neither `first` nor `second` is `true`, storing the outcome in `destination`.
-    Nor(Nor<N, A>),
+    Nor(Nor<N>),
     /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
-    Not(Not<N, A>),
+    Not(Not<N>),
     /// Performs a bitwise `or` on `first` and `second`, storing the outcome in `destination`.
-    Or(Or<N, A>),
+    Or(Or<N>),
     /// Raises `first` to the power of `second`, storing the outcome in `destination`.
-    Pow(Pow<N, A>),
+    Pow(Pow<N>),
     /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-    PowWrapped(PowWrapped<N, A>),
+    PowWrapped(PowWrapped<N>),
     /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
-    Shl(Shl<N, A>),
+    Shl(Shl<N>),
     /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
-    ShlWrapped(ShlWrapped<N, A>),
+    ShlWrapped(ShlWrapped<N>),
     /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
-    Shr(Shr<N, A>),
+    Shr(Shr<N>),
     /// Shifts `first` right by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
-    ShrWrapped(ShrWrapped<N, A>),
+    ShrWrapped(ShrWrapped<N>),
     /// Squares 'first', storing the outcome in `destination`.
-    Square(Square<N, A>),
+    Square(Square<N>),
     /// Compute the square root of 'first', storing the outcome in `destination`.
-    SquareRoot(SquareRoot<N, A>),
+    SquareRoot(SquareRoot<N>),
     /// Computes `first - second`, storing the outcome in `destination`.
-    Sub(Sub<N, A>),
+    Sub(Sub<N>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
-    SubWrapped(SubWrapped<N, A>),
+    SubWrapped(SubWrapped<N>),
     /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
-    Ternary(Ternary<N, A>),
+    Ternary(Ternary<N>),
     /// Performs a bitwise `xor` on `first` and `second`, storing the outcome in `destination`.
-    Xor(Xor<N, A>),
+    Xor(Xor<N>),
 }
 
 /// Creates a match statement that applies the given operation for each instruction.
@@ -263,7 +263,7 @@ macro_rules! instruction {
         match $object {
             $( Self::$variant(..) => {{
                 // Set the variant to be called `InstructionMember`.
-                type InstructionMember<N, A> = $variant<N, A>;
+                type InstructionMember<N> = $variant<N>;
                 // Perform the operation.
                 $operation
             }} ),+
@@ -295,9 +295,9 @@ macro_rules! instruction {
 /// ```
 macro_rules! derive_from_operation {
     ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {
-        $(impl<N: Network, A: circuit::Aleo<Network = N>> From<$variant<N, A>> for Instruction<N, A> {
+        $(impl<N: Network> From<$variant<N>> for Instruction<N> {
             #[inline]
-            fn from(operation: $variant<N, A>) -> Self {
+            fn from(operation: $variant<N>) -> Self {
                 Self::$variant(operation)
             }
         })+
@@ -312,17 +312,17 @@ instruction!(derive_from_operation, Instruction, |None| {});
 /// opcodes!(Instruction, |None| {}, { Add, Sub, Mul, Div })
 /// ```
 macro_rules! opcodes {
-    ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => { [$( $variant::<N, A>::opcode() ),+] }
+    ($_object:expr, |$_reader:ident| $_operation:block, { $( $variant:ident, )+ }) => { [$( $variant::<N>::opcode() ),+] }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Instruction<N, A> {
+impl<N: Network> Instruction<N> {
     /// The list of all instruction opcodes.
     pub const OPCODES: &'static [Opcode] = &instruction!(opcodes, Instruction, |None| {});
 
     /// Returns the opcode of the instruction.
     #[inline]
     pub const fn opcode(&self) -> Opcode {
-        instruction!(self, |InstructionMember| InstructionMember::<N, A>::opcode())
+        instruction!(self, |InstructionMember| InstructionMember::<N>::opcode())
     }
 
     /// Returns the operands of the instruction.
@@ -339,35 +339,31 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Instruction<N, A> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
-        instruction!(self, |instruction| instruction.evaluate(stack))
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+        instruction!(self, |instruction| instruction.evaluate::<A>(stack))
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
-        instruction!(self, |instruction| instruction.execute(stack))
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+        instruction!(self, |instruction| instruction.execute::<A>(stack))
     }
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub fn output_types(
-        &self,
-        program: &Program<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         instruction!(self, |instruction| instruction.output_types(program, input_types))
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Instruction<N, A> {
+impl<N: Network> Debug for Instruction<N> {
     /// Prints the instruction as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Display for Instruction<N, A> {
+impl<N: Network> Display for Instruction<N> {
     /// Prints the instruction as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         instruction!(self, |instruction| write!(f, "{};", instruction))
@@ -388,7 +384,7 @@ mod tests {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
             47,
-            Instruction::<CurrentNetwork, CurrentAleo>::OPCODES.len(),
+            Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
     }

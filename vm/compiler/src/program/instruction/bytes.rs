@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Instruction<N, A> {
+impl<N: Network> FromBytes for Instruction<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         /// Creates a match statement that produces the `FromBytes` implementation for the given instruction.
         ///
@@ -30,7 +30,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Instruction<N, A> 
                 let index = u16::read_le(&mut $reader)?;
 
                 // Build the cases for all instructions.
-                $(if Instruction::<N, A>::OPCODES[index as usize] == $variant::<N, A>::opcode() {
+                $(if Instruction::<N>::OPCODES[index as usize] == $variant::<N>::opcode() {
                     // Read the instruction.
                     let instruction = $variant::read_le(&mut $reader)?;
                     // Return the instruction.
@@ -45,7 +45,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Instruction<N, A> 
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Instruction<N, A> {
+impl<N: Network> ToBytes for Instruction<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         /// Creates a match statement that produces the `ToBytes` implementation for the given instruction.
         ///
@@ -60,7 +60,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Instruction<N, A> {
                     $(Self::$variant(instruction) => {
                         // Retrieve the opcode index.
                         // Note: This unwrap is guaranteed to succeed because the opcode variant is known to exist.
-                        let index = Instruction::<N, A>::OPCODES.iter().position(|&opcode| $variant::<N, A>::opcode() == opcode).unwrap();
+                        let index = Instruction::<N>::OPCODES.iter().position(|&opcode| $variant::<N>::opcode() == opcode).unwrap();
 
                         // Serialize the instruction.
                         u16::write_le(&(index as u16),&mut $writer)?;
@@ -87,10 +87,10 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let instruction = "add r0 r1 into r2;";
-        let expected = Instruction::<CurrentNetwork, CurrentAleo>::from_str(instruction)?;
+        let expected = Instruction::<CurrentNetwork>::from_str(instruction)?;
         let expected_bytes = expected.to_bytes_le()?;
 
-        let candidate = Instruction::<CurrentNetwork, CurrentAleo>::from_bytes_le(&expected_bytes)?;
+        let candidate = Instruction::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
         assert_eq!(expected_bytes, candidate.to_bytes_le()?);
         Ok(())
     }

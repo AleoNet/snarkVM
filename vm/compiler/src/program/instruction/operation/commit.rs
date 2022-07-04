@@ -22,7 +22,7 @@ use console::{
 
 use core::marker::PhantomData;
 
-pub trait CommitOperation<N: Network, A: circuit::Aleo<Network = N>> {
+pub trait CommitOperation<N: Network> {
     /// The opcode of the operation.
     const OPCODE: Opcode;
 
@@ -30,29 +30,30 @@ pub trait CommitOperation<N: Network, A: circuit::Aleo<Network = N>> {
     fn evaluate(input: Value<N>, randomizer: Value<N>) -> Result<Value<N>>;
 
     /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute(input: circuit::Value<A>, randomizer: circuit::Value<A>) -> Result<circuit::Value<A>>;
+    fn execute<A: circuit::Aleo<Network = N>>(
+        input: circuit::Value<A>,
+        randomizer: circuit::Value<A>,
+    ) -> Result<circuit::Value<A>>;
 
     /// Returns the output type from the given input types.
     fn output_type() -> Result<RegisterType<N>>;
 }
 
 /// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
-pub type CommitBHP256<N, A> = CommitInstruction<N, A, BHPCommitOperation<N, A, 256>>;
+pub type CommitBHP256<N> = CommitInstruction<N, BHPCommitOperation<N, 256>>;
 /// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
-pub type CommitBHP512<N, A> = CommitInstruction<N, A, BHPCommitOperation<N, A, 512>>;
+pub type CommitBHP512<N> = CommitInstruction<N, BHPCommitOperation<N, 512>>;
 /// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
-pub type CommitBHP768<N, A> = CommitInstruction<N, A, BHPCommitOperation<N, A, 768>>;
+pub type CommitBHP768<N> = CommitInstruction<N, BHPCommitOperation<N, 768>>;
 /// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
-pub type CommitBHP1024<N, A> = CommitInstruction<N, A, BHPCommitOperation<N, A, 1024>>;
+pub type CommitBHP1024<N> = CommitInstruction<N, BHPCommitOperation<N, 1024>>;
 
 /// The BHP commitment operation template.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct BHPCommitOperation<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16>(PhantomData<(N, A)>);
+pub struct BHPCommitOperation<N: Network, const NUM_BITS: u16>(PhantomData<N>);
 
-impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOperation<N, A>
-    for BHPCommitOperation<N, A, NUM_BITS>
-{
+impl<N: Network, const NUM_BITS: u16> CommitOperation<N> for BHPCommitOperation<N, NUM_BITS> {
     /// The opcode of the operation.
     const OPCODE: Opcode = match NUM_BITS {
         256 => Opcode::Commit("commit.bhp256"),
@@ -82,7 +83,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
     }
 
     /// Returns the result of committing to the given circuit input and randomizer.
-    fn execute(input: circuit::Value<A>, randomizer: circuit::Value<A>) -> Result<circuit::Value<A>> {
+    fn execute<A: circuit::Aleo<Network = N>>(
+        input: circuit::Value<A>,
+        randomizer: circuit::Value<A>,
+    ) -> Result<circuit::Value<A>> {
         use circuit::ToBits;
 
         // Retrieve the randomizer.
@@ -112,16 +116,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>, const NUM_BITS: u16> CommitOpera
 
 /// Commits the operand into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct CommitInstruction<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> {
+pub struct CommitInstruction<N: Network, O: CommitOperation<N>> {
     /// The operands as `(input, randomizer)`.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
     /// PhantomData.
-    _phantom: PhantomData<(A, O)>,
+    _phantom: PhantomData<O>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -144,10 +148,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Commit
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -164,7 +168,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Commit
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -181,11 +185,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Commit
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(
-        &self,
-        _program: &Program<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, _program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != 2 {
             bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
@@ -201,7 +201,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Commit
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Parser for CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> Parser for CommitInstruction<N, O> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -228,7 +228,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Parser
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> FromStr for CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> FromStr for CommitInstruction<N, O> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -246,14 +246,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> FromSt
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Debug for CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> Debug for CommitInstruction<N, O> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Display for CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> Display for CommitInstruction<N, O> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is 2.
@@ -268,7 +268,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> Displa
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> FromBytes for CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> FromBytes for CommitInstruction<N, O> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Initialize the vector for the operands.
@@ -285,7 +285,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> FromBy
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> ToBytes for CommitInstruction<N, A, O> {
+impl<N: Network, O: CommitOperation<N>> ToBytes for CommitInstruction<N, O> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is 2.
@@ -302,16 +302,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>, O: CommitOperation<N, A>> ToByte
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_parse() {
-        let (string, commit) =
-            CommitBHP512::<CurrentNetwork, CurrentAleo>::parse("commit.bhp512 r0 r1 into r2").unwrap();
+        let (string, commit) = CommitBHP512::<CurrentNetwork>::parse("commit.bhp512 r0 r1 into r2").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(commit.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(commit.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");

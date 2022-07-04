@@ -36,7 +36,7 @@ pub struct AleoFile {
     /// The program as a string.
     program_string: String,
     /// The program.
-    program: Program<N, A>,
+    program: Program<N>,
 }
 
 impl FromStr for AleoFile {
@@ -91,7 +91,7 @@ impl AleoFile {
     }
 
     /// Returns the program.
-    pub const fn program(&self) -> &Program<N, A> {
+    pub const fn program(&self) -> &Program<N> {
         &self.program
     }
 
@@ -156,7 +156,6 @@ mod tests {
     use crate::prelude::Parser;
 
     type CurrentNetwork = N;
-    type CurrentAleo = A;
 
     fn temp_dir() -> std::path::PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
@@ -178,7 +177,7 @@ function compute:
     output r1 as u64.private;";
 
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(program_string).unwrap();
+        let (string, program) = Program::<CurrentNetwork>::parse(program_string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Read the program from the string.
@@ -215,7 +214,7 @@ function compute:
         let file = AleoFile::from_path(&path).unwrap();
 
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(program_string).unwrap();
+        let (string, program) = Program::<CurrentNetwork>::parse(program_string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         assert_eq!("token", file.file_name());

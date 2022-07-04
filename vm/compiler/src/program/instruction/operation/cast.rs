@@ -34,23 +34,20 @@ use console::{
     },
 };
 
-use core::marker::PhantomData;
 use indexmap::IndexMap;
 
 /// Casts the operands into the declared type.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Cast<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Cast<N: Network> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
     /// The casted register type.
     register_type: RegisterType<N>,
-    /// PhantomData.
-    _phantom: PhantomData<A>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
+impl<N: Network> Cast<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
@@ -76,10 +73,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
+impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
 
@@ -188,7 +185,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
         // Load the operands values.
@@ -316,11 +313,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(
-        &self,
-        program: &Program<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -397,7 +390,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Cast<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Cast<N, A> {
+impl<N: Network> Parser for Cast<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -436,11 +429,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Parser for Cast<N, A> {
         // Parse the register type from the string.
         let (string, register_type) = RegisterType::parse(string)?;
 
-        Ok((string, Self { operands, destination, register_type, _phantom: PhantomData }))
+        Ok((string, Self { operands, destination, register_type }))
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Cast<N, A> {
+impl<N: Network> FromStr for Cast<N> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -458,14 +451,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromStr for Cast<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Debug for Cast<N, A> {
+impl<N: Network> Debug for Cast<N> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Display for Cast<N, A> {
+impl<N: Network> Display for Cast<N> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is within the bounds.
@@ -480,7 +473,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Display for Cast<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Cast<N, A> {
+impl<N: Network> FromBytes for Cast<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the number of operands.
@@ -505,11 +498,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Cast<N, A> {
         let register_type = RegisterType::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination, register_type, _phantom: PhantomData })
+        Ok(Self { operands, destination, register_type })
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Cast<N, A> {
+impl<N: Network> ToBytes for Cast<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is within the bounds.
@@ -539,10 +532,8 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, cast) = Cast::<CurrentNetwork, CurrentAleo>::parse(
-            "cast r0.owner r0.balance r0.token_amount into r1 as token.record",
-        )
-        .unwrap();
+        let (string, cast) =
+            Cast::<CurrentNetwork>::parse("cast r0.owner r0.balance r0.token_amount into r1 as token.record").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(cast.operands.len(), 3, "The number of operands is incorrect");
         assert_eq!(

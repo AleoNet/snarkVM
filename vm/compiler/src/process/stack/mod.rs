@@ -45,11 +45,11 @@ use indexmap::IndexMap;
 
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
-    program: Program<N, A>,
+    program: Program<N>,
     /// The mapping of imported programs as `(program ID, program)`.
-    imports: IndexMap<ProgramID<N>, Program<N, A>>,
+    imports: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of all registers to their defined types.
-    register_types: RegisterTypes<N, A>,
+    register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
     console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
@@ -59,7 +59,7 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(program: Program<N, A>) -> Result<Self> {
+    pub fn new(program: Program<N>) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
         Ok(Self {
             program,
@@ -72,7 +72,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Adds a new imported program to the stack.
     #[inline]
-    pub fn import_program(&mut self, program: &Program<N, A>) -> Result<()> {
+    pub fn import_program(&mut self, program: &Program<N>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = program.id();
         // Ensure the program is not already added.
@@ -97,7 +97,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Returns the program.
     #[inline]
-    pub const fn program(&self) -> &Program<N, A> {
+    pub const fn program(&self) -> &Program<N> {
         &self.program
     }
 
@@ -106,7 +106,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_closure(&mut self, closure: &Closure<N, A>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_closure(&mut self, closure: &Closure<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -142,7 +142,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn execute_closure(
         &mut self,
-        closure: &Closure<N, A>,
+        closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
@@ -189,7 +189,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_function(&mut self, function: &Function<N, A>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_function(&mut self, function: &Function<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -225,7 +225,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub fn execute_function(
         &mut self,
-        function: &Function<N, A>,
+        function: &Function<N>,
         inputs: &[circuit::Value<A>],
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
@@ -322,7 +322,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Checks that the given closure is well-formed for the given program. If `is_main` is `true`,
     /// the register types will be set in the `Stack` for use as the main call.
-    fn process_closure(&mut self, program: &Program<N, A>, closure: &Closure<N, A>, is_main: bool) -> Result<()> {
+    fn process_closure(&mut self, program: &Program<N>, closure: &Closure<N>, is_main: bool) -> Result<()> {
         // // Initialize a stack for the closure.
         // let mut stack = Stack::new();
         //
@@ -362,7 +362,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Checks that the given function is well-formed for the given program. If `is_main` is `true`,
     /// the register types will be set in the `Stack` for use as the main call.
-    fn process_function(&mut self, program: &Program<N, A>, function: &Function<N, A>, is_main: bool) -> Result<()> {
+    fn process_function(&mut self, program: &Program<N>, function: &Function<N>, is_main: bool) -> Result<()> {
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
@@ -404,8 +404,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Ensure the given input register is well-formed.
     fn check_input(
-        program: &Program<N, A>,
-        register_types: &mut RegisterTypes<N, A>,
+        program: &Program<N>,
+        register_types: &mut RegisterTypes<N>,
         register: &Register<N>,
         register_type: &RegisterType<N>,
     ) -> Result<()> {
@@ -438,8 +438,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Ensure the given output register is well-formed.
     fn check_output(
-        program: &Program<N, A>,
-        register_types: &RegisterTypes<N, A>,
+        program: &Program<N>,
+        register_types: &RegisterTypes<N>,
         register: &Register<N>,
         register_type: &RegisterType<N>,
     ) -> Result<()> {
@@ -474,9 +474,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Ensures the given instruction is well-formed.
     fn check_instruction(
-        program: &Program<N, A>,
-        register_types: &mut RegisterTypes<N, A>,
-        instruction: &Instruction<N, A>,
+        program: &Program<N>,
+        register_types: &mut RegisterTypes<N>,
+        instruction: &Instruction<N>,
     ) -> Result<()> {
         // Ensure the opcode is well-formed.
         Self::check_instruction_opcode(program, register_types, instruction)?;
@@ -510,9 +510,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Ensures the opcode is a valid opcode and corresponds to the correct instruction.
     /// This method is called when adding a new closure or function to the program.
     fn check_instruction_opcode(
-        program: &Program<N, A>,
-        register_types: &RegisterTypes<N, A>,
-        instruction: &Instruction<N, A>,
+        program: &Program<N>,
+        register_types: &RegisterTypes<N>,
+        instruction: &Instruction<N>,
     ) -> Result<()> {
         match instruction.opcode() {
             Opcode::Literal(opcode) => {
@@ -640,6 +640,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the given name matches the root of any opcode (the first part, up to the first '.').
-        Instruction::<N, A>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
+        Instruction::<N>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
     }
 }

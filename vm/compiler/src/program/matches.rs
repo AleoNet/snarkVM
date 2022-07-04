@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     /// Checks that the given input value matches the layout of the value type.
     pub fn matches_input(&self, input: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the input value matches the declared type in the register.
@@ -56,7 +56,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Program<N, A> {
+impl<N: Network> Program<N> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.

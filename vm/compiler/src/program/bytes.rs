@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Program<N, A> {
+impl<N: Network> FromBytes for Program<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the program ID.
         let id = ProgramID::read_le(&mut reader)?;
@@ -55,7 +55,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Program<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Program<N, A> {
+impl<N: Network> ToBytes for Program<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the program ID.
         self.id.write_le(&mut writer)?;
@@ -118,11 +118,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Program<N, A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_bytes() -> Result<()> {
@@ -140,12 +138,12 @@ function compute:
     output r1 as u64.private;";
 
         // Initialize a new program.
-        let (string, expected) = Program::<CurrentNetwork, CurrentAleo>::parse(program).unwrap();
+        let (string, expected) = Program::<CurrentNetwork>::parse(program).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         let expected_bytes = expected.to_bytes_le()?;
 
-        let candidate = Program::<CurrentNetwork, CurrentAleo>::from_bytes_le(&expected_bytes)?;
+        let candidate = Program::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
         assert_eq!(expected, candidate);
         assert_eq!(expected_bytes, candidate.to_bytes_le()?);
 
