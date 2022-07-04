@@ -18,6 +18,7 @@ mod bytes;
 mod from_bits;
 mod parse;
 mod sample;
+mod serialize;
 mod size_in_bits;
 mod to_bits;
 mod to_type;
@@ -27,10 +28,8 @@ use crate::LiteralType;
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Boolean};
 
-use enum_index::EnumIndex;
-
 /// The literal enum represents all supported types in snarkVM.
-#[derive(Clone, PartialEq, Eq, Hash, EnumIndex)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Literal<N: Network> {
     /// The Aleo address type.
     Address(Address<N>),

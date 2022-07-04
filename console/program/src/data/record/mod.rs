@@ -26,6 +26,7 @@ mod encrypt;
 mod find;
 mod num_randomizers;
 mod parse;
+mod serialize;
 mod to_bits;
 mod to_commitment;
 mod to_fields;

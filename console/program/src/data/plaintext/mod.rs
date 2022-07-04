@@ -21,6 +21,7 @@ mod from_bits;
 mod from_fields;
 mod num_randomizers;
 mod parse;
+mod serialize;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
@@ -29,11 +30,10 @@ use crate::{Ciphertext, Identifier, Literal};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-use enum_index::EnumIndex;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 
-#[derive(Clone, EnumIndex)]
+#[derive(Clone)]
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),

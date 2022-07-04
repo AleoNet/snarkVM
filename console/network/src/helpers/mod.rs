@@ -16,3 +16,6 @@
 
 mod id;
 pub use id::*;
+
+mod object;
+pub use object::*;
