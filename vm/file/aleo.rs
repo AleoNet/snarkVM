@@ -153,7 +153,7 @@ impl AleoFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::Parser;
+    use snarkvm_circuit::Parser;
 
     type CurrentNetwork = N;
 
