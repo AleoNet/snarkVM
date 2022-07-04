@@ -38,7 +38,7 @@ impl<E: Environment> Pow<&Field<E>> for Field<E> {
     type Output = Field<E>;
 
     fn pow(self, exponent: &Field<E>) -> Self::Output {
-        self.pow(exponent)
+        (&self).pow(exponent)
     }
 }
 

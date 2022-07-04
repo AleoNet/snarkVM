@@ -61,3 +61,6 @@ version = "1.0.7"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.tracing]
+version = "0.1"

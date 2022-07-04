@@ -20,6 +20,9 @@
 #![allow(clippy::print_in_format_impl)]
 #![allow(dead_code)]
 
+#[macro_use]
+extern crate tracing;
+
 #[allow(dead_code, unused_imports)]
 mod ledger;
 pub use ledger::*;

@@ -153,6 +153,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         request: &Request<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Transition<N>)> {
+        trace!("Starting execute");
+
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
 
