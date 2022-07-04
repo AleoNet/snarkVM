@@ -302,7 +302,7 @@ impl<N: Network> Transition<N> {
         // Construct the public inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
         inputs.extend(self.inputs.iter().map(|input| *input.id()));
-        inputs.extend(self.outputs.iter().map(Output::id).flatten().map(|id| *id));
+        inputs.extend(self.outputs.iter().flat_map(Output::id).map(|id| *id));
         // Verify the proof.
         verifying_key.verify(&inputs, &self.proof)
     }

@@ -35,6 +35,7 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[allow(clippy::type_complexity)]
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
@@ -213,7 +214,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         A::reset();
 
         // Inject the transition public key `tpk` as `Mode::Public`.
-        let tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
+        let _tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
 
         // TODO (howardwu): Check relationship to tvk.
         // Inject the request as `Mode::Private`.
@@ -371,6 +372,9 @@ function compute:
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
+
+        let (_, verifying_key) = process.circuit_key(request.program_id(), request.function_name()).unwrap();
+        assert!(transition.verify(&verifying_key));
 
         use circuit::Environment;
 
