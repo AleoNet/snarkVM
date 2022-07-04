@@ -17,8 +17,9 @@
 use super::*;
 
 impl<N: Network> FromBytes for Literal<N> {
+    /// Reads the literal from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index = u16::read_le(&mut reader)?;
+        let index = u32::read_le(&mut reader)?;
         let literal = match index {
             0 => Self::Address(Address::read_le(&mut reader)?),
             1 => Self::Boolean(Boolean::read_le(&mut reader)?),
@@ -36,15 +37,16 @@ impl<N: Network> FromBytes for Literal<N> {
             13 => Self::U128(U128::read_le(&mut reader)?),
             14 => Self::Scalar(Scalar::read_le(&mut reader)?),
             15 => Self::String(StringType::read_le(&mut reader)?),
-            16.. => return Err(error(format!("Failed to deserialize literal variant {index}"))),
+            16.. => return Err(error(format!("Failed to decode literal variant {index}"))),
         };
         Ok(literal)
     }
 }
 
 impl<N: Network> ToBytes for Literal<N> {
+    /// Writes the literal to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.enum_index() as u16).write_le(&mut writer)?;
+        (self.enum_index() as u32).write_le(&mut writer)?;
         match self {
             Self::Address(primitive) => primitive.write_le(&mut writer),
             Self::Boolean(primitive) => primitive.write_le(&mut writer),
@@ -63,5 +65,70 @@ impl<N: Network> ToBytes for Literal<N> {
             Self::Scalar(primitive) => primitive.write_le(&mut writer),
             Self::String(primitive) => primitive.write_le(&mut writer),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u32 = 1000;
+
+    fn check_bytes(expected: Literal<CurrentNetwork>) -> Result<()> {
+        // Check the byte representation.
+        let expected_bytes = expected.to_bytes_le()?;
+        assert_eq!(expected, Literal::read_le(&expected_bytes[..])?);
+        assert!(Literal::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert!(Literal::<CurrentNetwork>::read_le(&expected_bytes[2..]).is_err());
+        assert!(Literal::<CurrentNetwork>::read_le(&expected_bytes[3..]).is_err());
+        assert!(Literal::<CurrentNetwork>::read_le(&expected_bytes[4..]).is_err());
+        assert!(Literal::<CurrentNetwork>::read_le(&expected_bytes[5..]).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_bytes() -> Result<()> {
+        let rng = &mut test_rng();
+
+        for _ in 0..ITERATIONS {
+            let private_key = snarkvm_console_account::PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+
+            // Address
+            check_bytes(Literal::<CurrentNetwork>::Address(Address::try_from(private_key)?))?;
+            // Boolean
+            check_bytes(Literal::<CurrentNetwork>::Boolean(Boolean::new(Uniform::rand(rng))))?;
+            // Field
+            check_bytes(Literal::<CurrentNetwork>::Field(Uniform::rand(rng)))?;
+            // Group
+            check_bytes(Literal::<CurrentNetwork>::Group(Uniform::rand(rng)))?;
+            // I8
+            check_bytes(Literal::<CurrentNetwork>::I8(I8::new(Uniform::rand(rng))))?;
+            // I16
+            check_bytes(Literal::<CurrentNetwork>::I16(I16::new(Uniform::rand(rng))))?;
+            // I32
+            check_bytes(Literal::<CurrentNetwork>::I32(I32::new(Uniform::rand(rng))))?;
+            // I64
+            check_bytes(Literal::<CurrentNetwork>::I64(I64::new(Uniform::rand(rng))))?;
+            // I128
+            check_bytes(Literal::<CurrentNetwork>::I128(I128::new(Uniform::rand(rng))))?;
+            // U8
+            check_bytes(Literal::<CurrentNetwork>::U8(U8::new(Uniform::rand(rng))))?;
+            // U16
+            check_bytes(Literal::<CurrentNetwork>::U16(U16::new(Uniform::rand(rng))))?;
+            // U32
+            check_bytes(Literal::<CurrentNetwork>::U32(U32::new(Uniform::rand(rng))))?;
+            // U64
+            check_bytes(Literal::<CurrentNetwork>::U64(U64::new(Uniform::rand(rng))))?;
+            // U128
+            check_bytes(Literal::<CurrentNetwork>::U128(U128::new(Uniform::rand(rng))))?;
+            // Scalar
+            check_bytes(Literal::<CurrentNetwork>::Scalar(Uniform::rand(rng)))?;
+            // String
+            check_bytes(Literal::<CurrentNetwork>::String(StringType::rand(rng)))?;
+        }
+        Ok(())
     }
 }

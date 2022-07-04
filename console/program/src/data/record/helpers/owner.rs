@@ -40,7 +40,7 @@ impl<N: Network, Private: Visibility> Owner<N, Private> {
 }
 
 impl<N: Network> Owner<N, Plaintext<N>> {
-    /// Returns the balance as an `Entry`.
+    /// Returns the owner as an `Entry`.
     pub fn to_entry(&self) -> Entry<N, Plaintext<N>> {
         match self {
             Self::Public(owner) => Entry::Public(Plaintext::from(Literal::Address(*owner))),
@@ -181,6 +181,37 @@ impl<N: Network> Display for Owner<N, Plaintext<N>> {
             Self::Public(owner) => write!(f, "{owner}.public"),
             Self::Private(Plaintext::Literal(Literal::Address(owner), ..)) => write!(f, "{owner}.private"),
             _ => N::halt("Internal error: plaintext fmt corrupted in record owner"),
+        }
+    }
+}
+
+impl<N: Network, Private: Visibility> FromBytes for Owner<N, Private> {
+    /// Reads the owner from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the index.
+        let index = u8::read_le(&mut reader)?;
+        // Read the owner.
+        let owner = match index {
+            0 => Self::Public(Address::read_le(&mut reader)?),
+            1 => Self::Private(Private::read_le(&mut reader)?),
+            2.. => return Err(error(format!("Failed to decode owner variant {index}"))),
+        };
+        Ok(owner)
+    }
+}
+
+impl<N: Network, Private: Visibility> ToBytes for Owner<N, Private> {
+    /// Writes the owner to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Public(owner) => {
+                0u8.write_le(&mut writer)?;
+                owner.write_le(&mut writer)
+            }
+            Self::Private(owner) => {
+                1u8.write_le(&mut writer)?;
+                owner.write_le(&mut writer)
+            }
         }
     }
 }

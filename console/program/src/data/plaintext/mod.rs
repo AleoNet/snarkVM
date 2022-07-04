@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod encrypt;
 mod find;
 mod from_bits;
@@ -28,10 +29,11 @@ use crate::{Ciphertext, Identifier, Literal};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
+use enum_index::EnumIndex;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 
-#[derive(Clone)]
+#[derive(Clone, EnumIndex)]
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),

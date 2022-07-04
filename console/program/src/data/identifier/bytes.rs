@@ -27,7 +27,7 @@ impl<N: Network> FromBytes for Identifier<N> {
         reader.read_exact(&mut buffer)?;
 
         // from_str the identifier.
-        Self::from_str(&String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?)
+        Self::from_str(&String::from_utf8(buffer).map_err(|e| error(format!("Failed to decode identifier: {e}")))?)
             .map_err(|e| error(format!("{e}")))
     }
 }

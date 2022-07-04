@@ -88,7 +88,7 @@ pub trait Network:
     /// The depth of the Merkle tree for the transactions in a block.
     const BLOCK_DEPTH: u8 = 16;
 
-    /// The maximum number of bits in data (must not exceed u16::MAX).
+    /// The maximum number of fields in data (must not exceed u16::MAX).
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
     /// The block hash type.

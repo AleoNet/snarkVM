@@ -20,6 +20,7 @@ pub use entry::Entry;
 mod helpers;
 pub use helpers::{Balance, Owner};
 
+mod bytes;
 mod decrypt;
 mod encrypt;
 mod find;

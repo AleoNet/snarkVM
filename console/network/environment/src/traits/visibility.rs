@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::prelude::*;
 
-use anyhow::Result;
-
-pub trait Visibility: ToBits + FromBits + ToFields + FromFields {
+pub trait Visibility: ToBytes + FromBytes + ToBits + FromBits + ToFields + FromFields {
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16>;
 }
