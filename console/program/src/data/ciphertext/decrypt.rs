@@ -17,6 +17,14 @@
 use super::*;
 
 impl<N: Network> Ciphertext<N> {
+    /// Decrypts `self` into plaintext using the given account view key & nonce.
+    pub fn decrypt(&self, view_key: ViewKey<N>, nonce: Group<N>) -> Result<Plaintext<N>> {
+        // Compute the plaintext view key.
+        let plaintext_view_key = (nonce * *view_key).to_x_coordinate();
+        // Decrypt the record.
+        self.decrypt_symmetric(plaintext_view_key)
+    }
+
     /// Decrypts `self` into plaintext using the given plaintext view key.
     pub fn decrypt_symmetric(&self, plaintext_view_key: Field<N>) -> Result<Plaintext<N>> {
         // Determine the number of randomizers needed to encrypt the plaintext.
@@ -44,6 +52,7 @@ impl<N: Network> Ciphertext<N> {
 mod tests {
     use super::*;
     use crate::Literal;
+    use snarkvm_console_account::{Address, PrivateKey};
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -51,6 +60,50 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_encrypt_and_decrypt<N: Network>() -> Result<()> {
+        // Prepare the plaintext.
+        let plaintext_string = r"{
+  foo: 5u8,
+  bar: {
+    baz: 10field,
+    qux: {
+      quux: {
+        corge: {
+          grault: {
+            garply: {
+              waldo: {
+                fred: {
+                  plugh: {
+                    xyzzy: {
+                      thud: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}";
+        let plaintext = Plaintext::<N>::from_str(plaintext_string)?;
+
+        // Sample a random address.
+        let private_key = PrivateKey::<N>::new(&mut test_crypto_rng())?;
+        let view_key = ViewKey::<N>::try_from(private_key)?;
+        let address = Address::<N>::try_from(view_key)?;
+
+        // Encrypt the plaintext.
+        let randomizer = Uniform::rand(&mut test_rng());
+        let ciphertext = plaintext.encrypt(&address, randomizer)?;
+
+        // Decrypt the plaintext.
+        let nonce = N::g_scalar_multiply(&randomizer);
+        assert_eq!(plaintext, ciphertext.decrypt(view_key, nonce)?);
+        Ok(())
+    }
+
+    fn check_encrypt_and_decrypt_symmetric<N: Network>() -> Result<()> {
         // Prepare the plaintext.
         let plaintext = Plaintext::<N>::from(Literal::Field(Uniform::rand(&mut test_rng())));
 
@@ -66,6 +119,7 @@ mod tests {
     fn test_encrypt_and_decrypt() -> Result<()> {
         for _ in 0..ITERATIONS {
             check_encrypt_and_decrypt::<CurrentNetwork>()?;
+            check_encrypt_and_decrypt_symmetric::<CurrentNetwork>()?;
         }
         Ok(())
     }

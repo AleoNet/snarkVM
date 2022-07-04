@@ -16,126 +16,48 @@
 
 mod find;
 mod to_bits;
+mod to_fields;
 
-use crate::{Ciphertext, Entry, Identifier, Plaintext, Record, Visibility};
+use crate::{Entry, Identifier, Plaintext, Record};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 
-/// A value stored in program data.
 #[derive(Clone)]
-pub enum Value<A: Aleo, Private: Visibility<A>> {
-    /// A constant value.
-    Constant(Plaintext<A>),
-    /// A publicly-visible value.
-    Public(Plaintext<A>),
-    /// A private value encrypted under the account owner's address.
-    Private(Private),
-    /// A record value inherits its visibility from its record definition.
-    Record(Record<A, Private>),
+pub enum Value<A: Aleo> {
+    /// A plaintext value.
+    Plaintext(Plaintext<A>),
+    /// A record value.
+    Record(Record<A, Plaintext<A>>),
 }
 
-#[cfg(console)]
-impl<A: Aleo> Inject for Value<A, Plaintext<A>> {
-    type Primitive = console::Value<A::Network, console::Plaintext<A::Network>>;
+impl<A: Aleo> Inject for Value<A> {
+    type Primitive = console::Value<A::Network>;
 
-    /// Initializes a new plaintext value from a primitive.
-    fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
-        match plaintext {
-            Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
-            Self::Primitive::Public(plaintext) => Self::Public(Plaintext::new(mode, plaintext)),
-            Self::Primitive::Private(plaintext) => Self::Private(Plaintext::new(mode, plaintext)),
-            Self::Primitive::Record(record) => Self::Record(Record::new(mode, record)),
+    /// Initializes a circuit of the given mode and value.
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        match value {
+            console::Value::Plaintext(plaintext) => Value::Plaintext(Plaintext::new(mode, plaintext)),
+            console::Value::Record(record) => Value::Record(Record::new(Mode::Private, record)),
         }
     }
 }
 
-#[cfg(console)]
-impl<A: Aleo> Inject for Value<A, Ciphertext<A>> {
-    type Primitive = console::Value<A::Network, console::Ciphertext<A::Network>>;
+impl<A: Aleo> Eject for Value<A> {
+    type Primitive = console::Value<A::Network>;
 
-    /// Initializes a new ciphertext value from a primitive.
-    fn new(mode: Mode, plaintext: Self::Primitive) -> Self {
-        match plaintext {
-            Self::Primitive::Constant(plaintext) => Self::Constant(Plaintext::new(mode, plaintext)),
-            Self::Primitive::Public(plaintext) => Self::Public(Plaintext::new(mode, plaintext)),
-            Self::Primitive::Private(ciphertext) => Self::Private(Ciphertext::new(mode, ciphertext)),
-            Self::Primitive::Record(record) => Self::Record(Record::new(mode, record)),
-        }
-    }
-}
-
-#[cfg(console)]
-impl<A: Aleo> Eject for Value<A, Plaintext<A>> {
-    type Primitive = console::Value<A::Network, console::Plaintext<A::Network>>;
-
-    /// Ejects the mode of the value.
+    /// Ejects the mode of the circuit value.
     fn eject_mode(&self) -> Mode {
         match self {
-            Value::Constant(_) => Mode::Constant,
-            Value::Public(_) => Mode::Public,
-            Value::Private(_) => Mode::Private,
+            Value::Plaintext(plaintext) => plaintext.eject_mode(),
             Value::Record(record) => record.eject_mode(),
         }
     }
 
-    /// Ejects the value.
+    /// Ejects the circuit value.
     fn eject_value(&self) -> Self::Primitive {
         match self {
-            Value::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
-            Value::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
-            Value::Private(plaintext) => Self::Primitive::Private(plaintext.eject_value()),
-            Value::Record(record) => Self::Primitive::Record(record.eject_value()),
+            Value::Plaintext(plaintext) => console::Value::Plaintext(plaintext.eject_value()),
+            Value::Record(record) => console::Value::Record(record.eject_value()),
         }
     }
 }
-
-#[cfg(console)]
-impl<A: Aleo> Eject for Value<A, Ciphertext<A>> {
-    type Primitive = console::Value<A::Network, console::Ciphertext<A::Network>>;
-
-    /// Ejects the mode of the value.
-    fn eject_mode(&self) -> Mode {
-        match self {
-            Value::Constant(_) => Mode::Constant,
-            Value::Public(_) => Mode::Public,
-            Value::Private(_) => Mode::Private,
-            Value::Record(record) => record.eject_mode(),
-        }
-    }
-
-    /// Ejects the value.
-    fn eject_value(&self) -> Self::Primitive {
-        match self {
-            Value::Constant(plaintext) => Self::Primitive::Constant(plaintext.eject_value()),
-            Value::Public(plaintext) => Self::Primitive::Public(plaintext.eject_value()),
-            Value::Private(ciphertext) => Self::Primitive::Private(ciphertext.eject_value()),
-            Value::Record(record) => Self::Primitive::Record(record.eject_value()),
-        }
-    }
-}
-
-impl<A: Aleo, Private: Visibility<A>> From<Entry<A, Private>> for Value<A, Private> {
-    fn from(entry: Entry<A, Private>) -> Self {
-        match entry {
-            Entry::Constant(plaintext) => Value::Constant(plaintext),
-            Entry::Public(plaintext) => Value::Public(plaintext),
-            Entry::Private(private) => Value::Private(private),
-        }
-    }
-}
-
-// impl<A: Aleo, Literal: EntryMode<A>> Entry<A, Literal> {
-//     // /// Returns the recursive depth of this value.
-//     // /// Note: Once `generic_const_exprs` is stabilized, this can be replaced with `const DEPTH: u8`.
-//     // fn depth(&self, counter: usize) -> usize {
-//     //     match self {
-//     //         Self::Literal(..) => 1,
-//     //         Self::Composite(composite) => {
-//     //             // Determine the maximum depth of the composite.
-//     //             let max_depth = composite.iter().map(|(_, value)| value.depth(counter)).fold(0, |a, b| a.max(b));
-//     //             // Add `1` to the depth of the member with the largest depth.
-//     //             max_depth.saturating_add(1)
-//     //         }
-//     //     }
-//     // }
-// }

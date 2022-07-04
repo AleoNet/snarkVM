@@ -16,6 +16,7 @@
 
 mod arithmetic;
 mod bitwise;
+mod bytes;
 mod compare;
 mod from_bits;
 mod from_field;
@@ -23,7 +24,9 @@ mod from_fields;
 mod one;
 mod parse;
 mod random;
+mod serialize;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_bits;
 mod to_field;
 mod to_fields;

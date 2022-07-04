@@ -29,7 +29,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowWrapped<Integer<E, M>> for
         } else {
             let mut result = Self::one();
             for bit in other.bits_le.iter().rev() {
-                result = (&result).mul_wrapped(&result);
+                result = result.mul_wrapped(&result);
                 result = Self::ternary(bit, &result.mul_wrapped(self), &result);
             }
             result

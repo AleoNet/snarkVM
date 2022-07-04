@@ -34,7 +34,7 @@ mod to_fields;
 use crate::{Ciphertext, Identifier, Plaintext, Visibility};
 use snarkvm_circuit_account::ViewKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U32};
+use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field, Group, Scalar, U32};
 
 #[derive(Clone)]
 pub struct Record<A: Aleo, Private: Visibility<A>> {
@@ -50,12 +50,12 @@ pub struct Record<A: Aleo, Private: Visibility<A>> {
 impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
     type Primitive = console::Record<A::Network, console::Plaintext<A::Network>>;
 
-    /// Initializes plaintext record from a primitive.
-    fn new(_mode: Mode, record: Self::Primitive) -> Self {
+    /// Initializes a plaintext record from a primitive.
+    fn new(_: Mode, record: Self::Primitive) -> Self {
         Self {
-            owner: Owner::new(_mode, record.owner().clone()),
-            balance: Balance::new(_mode, record.balance().clone()),
-            data: Inject::new(_mode, record.data().clone()),
+            owner: Owner::new(Mode::Private, record.owner().clone()),
+            balance: Balance::new(Mode::Private, record.balance().clone()),
+            data: Inject::new(Mode::Private, record.data().clone()),
         }
     }
 }
@@ -64,12 +64,12 @@ impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
 impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
     type Primitive = console::Record<A::Network, console::Ciphertext<A::Network>>;
 
-    /// Initializes ciphertext record from a primitive.
-    fn new(_mode: Mode, record: Self::Primitive) -> Self {
+    /// Initializes a ciphertext record from a primitive.
+    fn new(_: Mode, record: Self::Primitive) -> Self {
         Self {
-            owner: Owner::new(_mode, record.owner().clone()),
-            balance: Balance::new(_mode, record.balance().clone()),
-            data: Inject::new(_mode, record.data().clone()),
+            owner: Owner::new(Mode::Private, record.owner().clone()),
+            balance: Balance::new(Mode::Private, record.balance().clone()),
+            data: Inject::new(Mode::Private, record.data().clone()),
         }
     }
 }

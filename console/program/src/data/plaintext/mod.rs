@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod encrypt;
 mod find;
 mod from_bits;
 mod from_fields;
 mod num_randomizers;
 mod parse;
+mod serialize;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
@@ -31,7 +33,7 @@ use snarkvm_console_types::prelude::*;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum Plaintext<N: Network> {
     /// A literal.
     Literal(Literal<N>, OnceCell<Vec<bool>>),
@@ -52,6 +54,19 @@ impl<N: Network> From<&Literal<N>> for Plaintext<N> {
         Self::Literal(literal.clone(), OnceCell::new())
     }
 }
+
+impl<N: Network> PartialEq for Plaintext<N> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Literal(l1, _), Self::Literal(l2, _)) => l1 == l2,
+            (Self::Interface(i1, _), Self::Interface(i2, _)) => i1 == i2,
+            _ => false,
+        }
+    }
+}
+
+impl<N: Network> Eq for Plaintext<N> {}
 
 #[cfg(test)]
 mod tests {

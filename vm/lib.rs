@@ -47,6 +47,8 @@ pub use snarkvm_r1cs as r1cs;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
 
+pub use snarkvm_compiler as compiler;
+
 pub mod errors {
     #[cfg(feature = "algorithms")]
     pub use crate::algorithms::errors::*;
@@ -54,14 +56,8 @@ pub mod errors {
     #[cfg(feature = "curves")]
     pub use crate::curves::errors::*;
 
-    #[cfg(feature = "dpc")]
-    pub use crate::dpc::errors::*;
-
     #[cfg(feature = "fields")]
     pub use crate::fields::errors::*;
-
-    #[cfg(feature = "gadgets")]
-    pub use crate::gadgets::errors::*;
 
     #[cfg(feature = "parameters")]
     pub use crate::parameters::errors::*;
@@ -76,9 +72,6 @@ pub mod traits {
 
     #[cfg(feature = "curves")]
     pub use crate::curves::traits::*;
-
-    #[cfg(feature = "dpc")]
-    pub use crate::dpc::traits::*;
 
     #[cfg(feature = "fields")]
     pub use crate::fields::traits::*;
@@ -96,14 +89,8 @@ pub mod prelude {
     #[cfg(feature = "algorithms")]
     pub use crate::algorithms::prelude::*;
 
-    #[cfg(feature = "circuit")]
-    pub use crate::circuit::prelude::*;
-
     #[cfg(feature = "console")]
-    pub use crate::console::prelude::*;
-
-    #[cfg(feature = "dpc")]
-    pub use crate::dpc::prelude::*;
+    pub use crate::console::{account::*, network::*, prelude::*, program::*};
 
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Closure<N, A> {
+impl<N: Network> FromBytes for Closure<N> {
     /// Reads the closure from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -57,7 +57,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> FromBytes for Closure<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Closure<N, A> {
+impl<N: Network> ToBytes for Closure<N> {
     /// Writes the closure to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -107,11 +107,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> ToBytes for Closure<N, A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_closure_bytes() -> Result<()> {
@@ -131,11 +129,11 @@ closure main:
     add r0 r1 into r11;
     output r11 as field;";
 
-        let expected = Closure::<CurrentNetwork, CurrentAleo>::from_str(closure_string)?;
+        let expected = Closure::<CurrentNetwork>::from_str(closure_string)?;
         let expected_bytes = expected.to_bytes_le()?;
         println!("String size: {:?}, Bytecode size: {:?}", closure_string.as_bytes().len(), expected_bytes.len());
 
-        let candidate = Closure::<CurrentNetwork, CurrentAleo>::from_bytes_le(&expected_bytes)?;
+        let candidate = Closure::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
         assert_eq!(expected.to_string(), candidate.to_string());
         assert_eq!(expected_bytes, candidate.to_bytes_le()?);
         Ok(())

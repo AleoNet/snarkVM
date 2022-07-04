@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod decrypt;
 mod from_bits;
 mod from_fields;
 mod num_randomizers;
+mod parse;
+mod serialize;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
 use crate::Plaintext;
+use snarkvm_console_account::ViewKey;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Field;
+use snarkvm_console_types::{Field, Group};
 
 use core::ops::Deref;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Ciphertext<N: Network>(Vec<Field<N>>);
 
 impl<N: Network> Deref for Ciphertext<N> {

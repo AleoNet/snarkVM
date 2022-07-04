@@ -17,10 +17,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub use snarkvm_console_types::{environment::prelude::*, Field, Group, Scalar};
+pub use snarkvm_console_types::{environment::prelude::*, Address, Field, Group, Scalar};
 
 pub mod address;
-pub use address::*;
 
 #[cfg(feature = "compute_key")]
 pub mod compute_key;

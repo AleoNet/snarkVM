@@ -18,15 +18,15 @@ use super::*;
 
 impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the record commitment.
-    pub fn to_commitment(&self) -> Result<Field<N>> {
-        // Compute the BHP hash of the program record.
-        N::hash_bhp1024(&self.to_bits_le())
+    pub fn to_commitment(&self, randomizer: &Scalar<N>) -> Result<Field<N>> {
+        // Compute the BHP commitment of the program record.
+        N::commit_bhp1024(&self.to_bits_le(), randomizer)
     }
 }
 
 impl<N: Network> Record<N, Ciphertext<N>> {
     /// Returns the record commitment.
-    pub fn to_commitment(&self) -> Result<Field<N>> {
+    pub fn to_commitment(&self, _randomizer: &Scalar<N>) -> Result<Field<N>> {
         bail!("Illegal operation: Record::to_commitment() cannot be invoked on the `Ciphertext` variant.")
     }
 }

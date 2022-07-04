@@ -16,12 +16,15 @@
 
 mod arithmetic;
 mod bitwise;
+mod bytes;
 mod compare;
 mod from_bits;
 mod one;
 mod parse;
 mod random;
+mod serialize;
 mod size_in_bits;
+mod size_in_bytes;
 mod to_bits;
 mod zero;
 
@@ -37,6 +40,13 @@ pub struct Field<E: Environment> {
 impl<E: Environment> FieldTrait for Field<E> {}
 
 impl<E: Environment> Field<E> {
+    /// The field size in bits.
+    pub const SIZE_IN_BITS: usize = E::Field::SIZE_IN_BITS;
+    /// The field size in bytes.
+    pub const SIZE_IN_BYTES: usize = (E::Field::SIZE_IN_BITS + 7) / 8;
+    /// The field capacity for data bits.
+    pub const SIZE_IN_DATA_BITS: usize = E::Field::SIZE_IN_DATA_BITS;
+
     /// Initializes a new field.
     pub const fn new(field: E::Field) -> Self {
         Self { field }

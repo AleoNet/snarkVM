@@ -16,16 +16,18 @@
 
 use super::*;
 
-impl<E: Environment> Scalar<E> {
+impl<E: Environment> SizeInBits for Scalar<E> {
     /// Returns the scalar size in bits.
     #[inline]
-    pub const fn size_in_bits() -> usize {
-        E::Scalar::SIZE_IN_BITS
+    fn size_in_bits() -> usize {
+        Self::SIZE_IN_BITS
     }
+}
 
+impl<E: Environment> SizeInDataBits for Scalar<E> {
     /// Returns the scalar capacity for data bits.
     #[inline]
-    pub const fn size_in_data_bits() -> usize {
-        E::Scalar::SIZE_IN_DATA_BITS
+    fn size_in_data_bits() -> usize {
+        Self::SIZE_IN_DATA_BITS
     }
 }

@@ -34,7 +34,7 @@ use snarkvm_circuit_algorithms::{
 };
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
-    environment::{prelude::*, Circuit},
+    environment::{prelude::*, Assignment, Circuit},
     Boolean,
     Field,
     Group,
@@ -386,14 +386,19 @@ impl Environment for AleoV0 {
         E::halt(message)
     }
 
+    /// Returns the R1CS assignment of the circuit, resetting the circuit.
+    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+        E::eject_assignment_and_reset()
+    }
+
     /// Clears the circuit and initializes an empty environment.
     fn reset() {
         E::reset()
     }
 }
 
-impl fmt::Display for AleoV0 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for AleoV0 {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
         fmt::Display::fmt(&Circuit, f)
     }

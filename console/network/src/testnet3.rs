@@ -67,7 +67,7 @@ lazy_static! {
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Testnet3;
 
 impl Testnet3 {
@@ -92,13 +92,21 @@ impl Environment for Testnet3 {
     type AffineParameters = <Console as Environment>::AffineParameters;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
+    type PairingCurve = <Console as Environment>::PairingCurve;
     type Projective = <Console as Environment>::Projective;
     type Scalar = <Console as Environment>::Scalar;
 }
 
 impl Network for Testnet3 {
+    /// The block hash type.
+    type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
+    /// The transaction ID type.
+    type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+
     /// The network ID.
     const ID: u16 = 3;
+    /// The network name.
+    const NAME: &'static str = "Aleo Testnet3";
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self> {
@@ -279,5 +287,20 @@ impl Network for Testnet3 {
         leaves: &[Vec<Field<Self>>],
     ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>> {
         MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_g_scalar_multiply() {
+        // Compute G^r.
+        let scalar = Scalar::rand(&mut test_rng());
+        let group = CurrentNetwork::g_scalar_multiply(&scalar);
+        assert_eq!(group, CurrentNetwork::g_powers()[0] * scalar);
     }
 }

@@ -81,11 +81,11 @@ mod tests {
     fn test_import_parse() -> Result<()> {
         let import = Import::<CurrentNetwork>::parse("import bar.aleo;").unwrap().1;
         assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
-        assert_eq!(import.network()?, Identifier::<CurrentNetwork>::from_str("aleo")?);
+        assert_eq!(import.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
 
         let import = Import::<CurrentNetwork>::parse("import foo.aleo;").unwrap().1;
         assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("foo")?);
-        assert_eq!(import.network()?, Identifier::<CurrentNetwork>::from_str("aleo")?);
+        assert_eq!(import.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
 
         Ok(())
     }

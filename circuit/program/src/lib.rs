@@ -23,6 +23,15 @@ use snarkvm_circuit_network::AleoV0 as Circuit;
 mod data;
 pub use data::*;
 
+mod id;
+pub use id::*;
+
+mod request;
+pub use request::*;
+
+mod response;
+pub use response::*;
+
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean};
 

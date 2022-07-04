@@ -34,6 +34,7 @@ impl<E: Environment> Pow<Field<E>> for &Field<E> {
     }
 }
 
+#[allow(clippy::needless_borrow)]
 impl<E: Environment> Pow<&Field<E>> for Field<E> {
     type Output = Field<E>;
 

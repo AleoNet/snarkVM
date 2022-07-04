@@ -17,8 +17,10 @@
 mod bytes;
 mod parse;
 
-use crate::ProgramID;
-use console::{network::prelude::*, program::Identifier};
+use console::{
+    network::prelude::*,
+    program::{Identifier, ProgramID},
+};
 
 /// An import statement defines an imported program, and is of the form `import {name}.{network};`.
 /// If no `network`-level domain is specified, the default network is used.
@@ -43,7 +45,7 @@ impl<N: Network> Import<N> {
 
     /// Returns the imported network-level domain (NLD).
     #[inline]
-    pub fn network(&self) -> Result<Identifier<N>> {
+    pub fn network(&self) -> Identifier<N> {
         self.id.network()
     }
 }

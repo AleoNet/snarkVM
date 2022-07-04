@@ -14,33 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
 mod find;
 mod parse;
+mod serialize;
 mod to_bits;
+mod to_fields;
 
-use crate::{Ciphertext, Entry, Identifier, Plaintext, Record};
+use crate::{Entry, Identifier, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-/// A value stored in program data.
 #[derive(Clone, PartialEq, Eq)]
-pub enum Value<N: Network, Private: Visibility> {
-    /// A constant value.
-    Constant(Plaintext<N>),
-    /// A publicly-visible value.
-    Public(Plaintext<N>),
-    /// A private value encrypted under the address of the record owner.
-    Private(Private),
-    /// A record value inherits its visibility from its record definition.
-    Record(Record<N, Private>),
-}
-
-impl<N: Network, Private: Visibility> From<Entry<N, Private>> for Value<N, Private> {
-    fn from(entry: Entry<N, Private>) -> Self {
-        match entry {
-            Entry::Constant(plaintext) => Value::Constant(plaintext),
-            Entry::Public(plaintext) => Value::Public(plaintext),
-            Entry::Private(private) => Value::Private(private),
-        }
-    }
+pub enum Value<N: Network> {
+    /// A plaintext value.
+    Plaintext(Plaintext<N>),
+    /// A record value.
+    Record(Record<N, Plaintext<N>>),
 }

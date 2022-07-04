@@ -77,7 +77,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
                 Entry::Public(plaintext) => Entry::Public(plaintext.clone()),
                 // Private entries are decrypted with the given randomizers.
                 Entry::Private(private) => Entry::Private(Plaintext::from_fields(
-                    &*private
+                    &private
                         .iter()
                         .zip_eq(randomizers)
                         .map(|(ciphertext, randomizer)| *ciphertext - randomizer)
@@ -110,7 +110,6 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_encrypt_and_decrypt<N: Network>(
-        address: Address<N>,
         view_key: ViewKey<N>,
         owner: Owner<N, Plaintext<N>>,
         balance: Balance<N, Plaintext<N>>,
@@ -135,7 +134,7 @@ mod tests {
         };
         // Encrypt the record.
         let randomizer = Scalar::rand(&mut test_rng());
-        let ciphertext = record.encrypt(address, randomizer)?;
+        let ciphertext = record.encrypt(randomizer)?;
         // Decrypt the record.
         let nonce = N::g_scalar_multiply(&randomizer);
         assert_eq!(record, ciphertext.decrypt(view_key, nonce)?);
@@ -153,22 +152,22 @@ mod tests {
             // Public owner and public balance.
             let owner = Owner::Public(address);
             let balance = Balance::Public(U64::new(u64::rand(&mut test_rng()) >> 12));
-            check_encrypt_and_decrypt::<CurrentNetwork>(address, view_key, owner, balance)?;
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
 
             // Private owner and public balance.
             let owner = Owner::Private(Plaintext::from(Literal::Address(address)));
             let balance = Balance::Public(U64::new(u64::rand(&mut test_rng()) >> 12));
-            check_encrypt_and_decrypt::<CurrentNetwork>(address, view_key, owner, balance)?;
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
 
             // Public owner and private balance.
             let owner = Owner::Public(address);
             let balance = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut test_rng()) >> 12))));
-            check_encrypt_and_decrypt::<CurrentNetwork>(address, view_key, owner, balance)?;
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
 
             // Private owner and private balance.
             let owner = Owner::Private(Plaintext::from(Literal::Address(address)));
             let balance = Balance::Private(Plaintext::from(Literal::U64(U64::new(u64::rand(&mut test_rng()) >> 12))));
-            check_encrypt_and_decrypt::<CurrentNetwork>(address, view_key, owner, balance)?;
+            check_encrypt_and_decrypt::<CurrentNetwork>(view_key, owner, balance)?;
         }
         Ok(())
     }

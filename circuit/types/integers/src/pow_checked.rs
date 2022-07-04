@@ -58,7 +58,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
             //  in general we do not need to check for overflow until we have found
             //  the second bit that has been set. Optimize.
             for bit in other.bits_le.iter().rev() {
-                result = (&result).mul_checked(&result);
+                result = result.mul_checked(&result);
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.

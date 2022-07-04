@@ -34,7 +34,7 @@ pub struct AVMFile {
     /// The file name (without the extension).
     file_name: String,
     /// The program.
-    program: Program<N, A>,
+    program: Program<N>,
 }
 
 impl AVMFile {
@@ -65,7 +65,7 @@ impl AVMFile {
     }
 
     /// Returns the program.
-    pub const fn program(&self) -> &Program<N, A> {
+    pub const fn program(&self) -> &Program<N> {
         &self.program
     }
 
@@ -127,10 +127,9 @@ impl AVMFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::Parser;
+    use snarkvm_circuit::Parser;
 
     type CurrentNetwork = N;
-    type CurrentAleo = A;
 
     fn temp_dir() -> std::path::PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
@@ -155,7 +154,7 @@ function compute:
     output r1 as u64.private;";
 
         // Initialize a new program.
-        let (string, program) = Program::<CurrentNetwork, CurrentAleo>::parse(program_string).unwrap();
+        let (string, program) = Program::<CurrentNetwork>::parse(program_string).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Write the program bytes to a file in the temporary directory.

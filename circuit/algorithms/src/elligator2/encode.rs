@@ -32,8 +32,8 @@ impl<E: Environment> Elligator2<E> {
         // Define the Montgomery curve coefficients A and B.
         let montgomery_a = Field::constant(console::Group::<E::Network>::MONTGOMERY_A);
         let montgomery_b = Field::constant(console::Group::<E::Network>::MONTGOMERY_B);
-        let montgomery_b_inverse = (&montgomery_b).inverse();
-        let montgomery_b2 = (&montgomery_b).square();
+        let montgomery_b_inverse = montgomery_b.inverse();
+        let montgomery_b2 = montgomery_b.square();
         let montgomery_b3 = &montgomery_b2 * &montgomery_b;
 
         // Define the twisted Edwards curve coefficient D.

@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod bitwise;
+mod bytes;
 mod parse;
+mod random;
+mod serialize;
 
 pub use snarkvm_console_network_environment::prelude::*;
 pub use snarkvm_console_types_boolean::Boolean;

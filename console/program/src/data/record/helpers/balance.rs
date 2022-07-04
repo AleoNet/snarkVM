@@ -192,3 +192,34 @@ impl<N: Network> Display for Balance<N, Plaintext<N>> {
         }
     }
 }
+
+impl<N: Network, Private: Visibility> FromBytes for Balance<N, Private> {
+    /// Reads the balance from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the index.
+        let index = u8::read_le(&mut reader)?;
+        // Read the balance.
+        let balance = match index {
+            0 => Self::Public(U64::read_le(&mut reader)?),
+            1 => Self::Private(Private::read_le(&mut reader)?),
+            2.. => return Err(error(format!("Failed to decode balance variant {index}"))),
+        };
+        Ok(balance)
+    }
+}
+
+impl<N: Network, Private: Visibility> ToBytes for Balance<N, Private> {
+    /// Writes the balance to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Public(balance) => {
+                0u8.write_le(&mut writer)?;
+                balance.write_le(&mut writer)
+            }
+            Self::Private(balance) => {
+                1u8.write_le(&mut writer)?;
+                balance.write_le(&mut writer)
+            }
+        }
+    }
+}

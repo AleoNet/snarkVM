@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::prelude::{Deserialize, DeserializeOwned, Serialize};
 use snarkvm_curves::{
+    bls12_377::Bls12_377,
     edwards_bls12::{EdwardsAffine, EdwardsParameters},
     AffineCurve,
     MontgomeryParameters,
+    PairingEngine,
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
@@ -26,7 +29,9 @@ use snarkvm_utilities::BigInteger;
 
 use core::{fmt::Debug, hash::Hash};
 
-pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync {
+pub trait Environment:
+    'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync
+{
     type Affine: AffineCurve<
         Projective = Self::Projective,
         BaseField = Self::Field,
@@ -37,6 +42,7 @@ pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + 
         + TwistedEdwardsParameters<BaseField = Self::Field>;
     type BigInteger: BigInteger;
     type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
+    type PairingCurve: PairingEngine<Fr = Self::Field>;
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
     type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
 
@@ -49,7 +55,7 @@ pub trait Environment: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + 
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Console;
 
 impl Environment for Console {
@@ -57,6 +63,7 @@ impl Environment for Console {
     type AffineParameters = EdwardsParameters;
     type BigInteger = <Self::Field as PrimeField>::BigInteger;
     type Field = <Self::Affine as AffineCurve>::BaseField;
+    type PairingCurve = Bls12_377;
     type Projective = <Self::Affine as AffineCurve>::Projective;
     type Scalar = <Self::Affine as AffineCurve>::ScalarField;
 }

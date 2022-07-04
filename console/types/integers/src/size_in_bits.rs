@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType> Integer<E, I> {
+impl<E: Environment, I: IntegerType> SizeInBits for Integer<E, I> {
     /// Returns the integer size in bits.
     #[inline]
-    pub const fn size_in_bits() -> usize {
+    fn size_in_bits() -> usize {
         I::BITS as usize
     }
 }

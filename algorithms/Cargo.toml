@@ -105,6 +105,7 @@ default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.14"
+default-features = false
 
 [dependencies.anyhow]
 version = "1.0"

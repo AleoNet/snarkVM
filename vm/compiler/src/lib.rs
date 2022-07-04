@@ -20,13 +20,12 @@
 #![allow(clippy::print_in_format_impl)]
 #![allow(dead_code)]
 
+#[macro_use]
+extern crate tracing;
+
 #[allow(dead_code, unused_imports)]
 mod ledger;
 pub use ledger::*;
-
-#[allow(dead_code, unused_imports)]
-mod program_circuit;
-pub use program_circuit::*;
 
 mod process;
 pub use process::*;
@@ -34,8 +33,7 @@ pub use process::*;
 mod program;
 pub use program::*;
 
-mod stack;
-pub use stack::*;
+mod snark;
+pub use snark::*;
 
-mod transition;
-pub use transition::*;
+pub mod transition;

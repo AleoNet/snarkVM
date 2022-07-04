@@ -47,11 +47,20 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.57"
 
+[dependencies.colored]
+version = "2"
+
 [dependencies.indexmap]
 version = "1.8"
+
+[dependencies.parking_lot]
+version = "0.12"
 
 [dependencies.paste]
 version = "1.0.7"
 
 [dependencies.rand]
 version = "0.8"
+
+[dependencies.tracing]
+version = "0.1"

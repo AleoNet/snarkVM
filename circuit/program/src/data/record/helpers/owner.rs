@@ -34,7 +34,7 @@ impl<A: Aleo> Inject for Owner<A, Plaintext<A>> {
     /// Initializes plaintext owner from a primitive.
     fn new(_: Mode, owner: Self::Primitive) -> Self {
         match owner {
-            console::Owner::Public(owner) => Self::Public(Address::new(Mode::Public, owner)),
+            console::Owner::Public(owner) => Self::Public(Address::new(Mode::Private, owner)),
             console::Owner::Private(console::Plaintext::Literal(console::Literal::Address(owner), ..)) => {
                 Self::Private(Plaintext::Literal(
                     Literal::Address(Address::new(Mode::Private, owner)),
@@ -53,7 +53,7 @@ impl<A: Aleo> Inject for Owner<A, Ciphertext<A>> {
     /// Initializes ciphertext owner from a primitive.
     fn new(_: Mode, owner: Self::Primitive) -> Self {
         match owner {
-            console::Owner::Public(owner) => Self::Public(Address::new(Mode::Public, owner)),
+            console::Owner::Public(owner) => Self::Public(Address::new(Mode::Private, owner)),
             console::Owner::Private(ciphertext) => Self::Private(Ciphertext::new(Mode::Private, ciphertext)),
         }
     }

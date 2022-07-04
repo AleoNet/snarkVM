@@ -119,6 +119,7 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
+    #[allow(clippy::needless_borrow)]
     fn check_and<I: IntegerType + BitAnd<Output = I>>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,

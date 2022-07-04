@@ -17,21 +17,21 @@
 use super::*;
 
 impl<A: Aleo> Record<A, Plaintext<A>> {
-    /// Encrypts `self` under the given Aleo address and randomizer.
-    pub fn encrypt(&self, address: &Address<A>, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
-        // Compute the data view key.
-        let record_view_key = (address.to_group() * randomizer).to_x_coordinate();
-        // Encrypt the data.
+    /// Encrypts `self` for the record owner under the given randomizer.
+    pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
+        // Compute the record view key.
+        let record_view_key = ((*self.owner).to_group() * randomizer).to_x_coordinate();
+        // Encrypt the record.
         self.encrypt_symmetric(record_view_key)
     }
 
     /// Encrypts `self` under the given record view key.
     pub fn encrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Ciphertext<A>> {
-        // Determine the number of randomizers needed to encrypt the data.
+        // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers();
         // Prepare a randomizer for each field element.
         let randomizers = A::hash_many_psd8(&[A::encryption_domain(), record_view_key], num_randomizers);
-        // Encrypt the data.
+        // Encrypt the record.
         self.encrypt_with_randomizers(&randomizers)
     }
 

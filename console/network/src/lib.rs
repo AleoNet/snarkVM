@@ -23,7 +23,10 @@ extern crate lazy_static;
 pub use snarkvm_console_network_environment as environment;
 pub use snarkvm_console_network_environment::*;
 
-pub mod testnet3;
+mod helpers;
+pub use helpers::*;
+
+mod testnet3;
 pub use testnet3::*;
 
 pub mod prelude {
@@ -41,10 +44,24 @@ pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
 
 pub trait Network:
-    'static + Environment + Copy + Clone + Debug + Eq + PartialEq + core::hash::Hash + Send + Sync
+    'static
+    + Environment
+    + Copy
+    + Clone
+    + Debug
+    + Eq
+    + PartialEq
+    + core::hash::Hash
+    + Serialize
+    + DeserializeOwned
+    + for<'a> Deserialize<'a>
+    + Send
+    + Sync
 {
     /// The network ID.
     const ID: u16;
+    /// The network name.
+    const NAME: &'static str;
 
     /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.
@@ -68,9 +85,16 @@ pub trait Network:
 
     /// The depth of the Merkle tree for the transitions trace.
     const TRACE_DEPTH: u8 = 8;
+    /// The depth of the Merkle tree for the transactions in a block.
+    const BLOCK_DEPTH: u8 = 16;
 
-    /// The maximum number of bits in data (must not exceed u16::MAX).
-    const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::size_in_data_bits()) as u32;
+    /// The maximum number of fields in data (must not exceed u16::MAX).
+    const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
+
+    /// The block hash type.
+    type BlockHash: Bech32ID<Field<Self>>;
+    /// The transaction ID type.
+    type TransactionID: Bech32ID<Field<Self>>;
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self>;

@@ -16,14 +16,21 @@
 
 use super::*;
 
-impl<A: Aleo> Value<A, Plaintext<A>> {
+impl<A: Aleo> Value<A> {
     /// Returns the value from the given path.
-    pub fn find(&self, path: &[Identifier<A>]) -> Result<Value<A, Plaintext<A>>> {
+    pub fn find(&self, path: &[Identifier<A>]) -> Result<Self> {
         match self {
-            Value::Constant(plaintext) => Ok(Value::Constant(plaintext.find(path)?)),
-            Value::Public(plaintext) => Ok(Value::Public(plaintext.find(path)?)),
-            Value::Private(plaintext) => Ok(Value::Private(plaintext.find(path)?)),
-            Value::Record(record) => Ok(Value::from(record.find(path)?)),
+            Self::Plaintext(plaintext) => Ok(Self::Plaintext(plaintext.find(path)?)),
+            Self::Record(record) => {
+                // Find the entry.
+                let entry = record.find(path)?;
+                // Extract the plaintext from the entry.
+                match entry {
+                    Entry::Constant(plaintext) => Ok(Self::Plaintext(plaintext)),
+                    Entry::Public(plaintext) => Ok(Self::Plaintext(plaintext)),
+                    Entry::Private(plaintext) => Ok(Self::Plaintext(plaintext)),
+                }
+            }
         }
     }
 }

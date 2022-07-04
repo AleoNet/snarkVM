@@ -20,15 +20,14 @@ impl<E: Environment> FromBytes for Address<E> {
     /// Reads in an account address from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = FromBytes::read_le(&mut reader)?;
-        Ok(Address::new(Group::from_x_coordinate(Field::new(x_coordinate)).map_err(|e| error(format!("{e}")))?))
+        Ok(Address::new(FromBytes::read_le(&mut reader)?))
     }
 }
 
 impl<E: Environment> ToBytes for Address<E> {
     /// Writes an account address to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.address.to_x_coordinate().write_le(&mut writer)
+        self.address.write_le(&mut writer)
     }
 }
 
@@ -39,7 +38,7 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 1000;
+    const ITERATIONS: u64 = 10_000;
 
     #[test]
     fn test_bytes() -> Result<()> {

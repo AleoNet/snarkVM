@@ -23,34 +23,34 @@ use console::{
 use indexmap::{IndexMap, IndexSet};
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Deploy<N: Network, A: circuit::Aleo<Network = N>> {
-    program: Program<N, A>,
+pub struct Deploy<N: Network> {
+    program: Program<N>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum Transaction<N: Network, A: circuit::Aleo<Network = N>> {
-    Deploy(Deploy<N, A>),
+pub enum Transaction<N: Network> {
+    Deploy(Deploy<N>),
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Block<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Block<N: Network> {
     /// The transactions in this block.
-    transactions: Vec<Transaction<N, A>>,
+    transactions: Vec<Transaction<N>>,
 }
 
 #[derive(Clone, Default)]
-pub struct Ledger<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Ledger<N: Network> {
     /// The mapping of program IDs to their programs.
-    programs: IndexMap<u64, Program<N, A>>,
+    programs: IndexMap<u64, Program<N>>,
     /// The mapping of program IDs to their global state.
     states: IndexMap<u64, IndexMap<Identifier<N>, Plaintext<N>>>,
     /// The mapping of block numbers to blocks.
-    blocks: IndexMap<u32, Block<N, A>>,
+    blocks: IndexMap<u32, Block<N>>,
     /// The memory pool of unconfirmed transactions.
-    memory_pool: IndexSet<Transaction<N, A>>,
+    memory_pool: IndexSet<Transaction<N>>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Ledger<N, A> {
+impl<N: Network> Ledger<N> {
     /// Initializes a new ledger.
     pub fn new() -> Self {
         Self {
@@ -69,12 +69,11 @@ mod tests {
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_deploy() -> Result<()> {
         // Initialize a new ledger.
-        let _ledger = Ledger::<CurrentNetwork, CurrentAleo>::new();
+        let _ledger = Ledger::<CurrentNetwork>::new();
 
         Ok(())
     }

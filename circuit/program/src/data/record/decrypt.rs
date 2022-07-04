@@ -17,15 +17,15 @@
 use super::*;
 
 impl<A: Aleo> Record<A, Ciphertext<A>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce.
+    /// Decrypts `self` into a plaintext record using the given view key & nonce.
     pub fn decrypt(&self, view_key: &ViewKey<A>, nonce: &Group<A>) -> Record<A, Plaintext<A>> {
-        // Compute the data view key.
-        let data_view_key = (&**view_key * nonce).to_x_coordinate();
-        // Decrypt the data.
-        self.decrypt_symmetric(data_view_key)
+        // Compute the record view key.
+        let record_view_key = (&**view_key * nonce).to_x_coordinate();
+        // Decrypt the record.
+        self.decrypt_symmetric(record_view_key)
     }
 
-    /// Decrypts `self` into plaintext using the given record view key.
+    /// Decrypts `self` into a plaintext record using the given record view key.
     pub fn decrypt_symmetric(&self, record_view_key: Field<A>) -> Record<A, Plaintext<A>> {
         // Determine the number of randomizers needed to encrypt the record.
         let num_randomizers = self.num_randomizers();
@@ -35,7 +35,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
         self.decrypt_with_randomizers(&randomizers)
     }
 
-    /// Decrypts `self` into plaintext using the given randomizers.
+    /// Decrypts `self` into a plaintext record using the given randomizers.
     fn decrypt_with_randomizers(&self, randomizers: &[Field<A>]) -> Record<A, Plaintext<A>> {
         // Initialize an index to keep track of the randomizer index.
         let mut index: usize = 0;
@@ -93,7 +93,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
 mod tests {
     use super::*;
     use crate::{Circuit, Literal};
-    use snarkvm_circuit_types::{Field, U64};
+    use snarkvm_circuit_types::{Address, Field, U64};
     use snarkvm_utilities::{test_crypto_rng, test_rng, Uniform};
 
     use anyhow::Result;
@@ -101,7 +101,6 @@ mod tests {
     const ITERATIONS: u64 = 100;
 
     fn check_encrypt_and_decrypt<A: Aleo>(
-        address: &Address<A>,
         view_key: &ViewKey<A>,
         owner: Owner<A, Plaintext<A>>,
         balance: Balance<A, Plaintext<A>>,
@@ -133,7 +132,7 @@ mod tests {
 
         // Encrypt the record.
         let randomizer = Scalar::new(Mode::Private, Uniform::rand(&mut test_rng()));
-        let ciphertext = record.encrypt(address, &randomizer);
+        let ciphertext = record.encrypt(&randomizer);
         // Decrypt the record.
         let nonce = A::g_scalar_multiply(&randomizer);
         assert_eq!(record.eject(), ciphertext.decrypt(view_key, &nonce).eject());
@@ -153,14 +152,13 @@ mod tests {
             // Initialize a view key and address.
             let view_key = ViewKey::<Circuit>::new(Mode::Private, view_key);
             let owner = address;
-            let address = Address::<Circuit>::new(Mode::Public, address);
 
             // Public owner and public balance.
             {
                 let owner = Owner::Public(Address::<Circuit>::new(Mode::Public, owner));
                 let balance =
                     Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut test_rng()) >> 12)));
-                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, balance)?;
             }
 
             // Private owner and public balance.
@@ -169,7 +167,7 @@ mod tests {
                     Owner::Private(Plaintext::from(Literal::Address(Address::<Circuit>::new(Mode::Private, owner))));
                 let balance =
                     Balance::Public(U64::new(Mode::Public, console::U64::new(u64::rand(&mut test_rng()) >> 12)));
-                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, balance)?;
             }
 
             // Public owner and private balance.
@@ -179,7 +177,7 @@ mod tests {
                     Mode::Private,
                     console::U64::new(u64::rand(&mut test_rng()) >> 12),
                 ))));
-                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, balance)?;
             }
 
             // Private owner and private balance.
@@ -190,7 +188,7 @@ mod tests {
                     Mode::Private,
                     console::U64::new(u64::rand(&mut test_rng()) >> 12),
                 ))));
-                check_encrypt_and_decrypt::<Circuit>(&address, &view_key, owner, balance)?;
+                check_encrypt_and_decrypt::<Circuit>(&view_key, owner, balance)?;
             }
         }
         Ok(())

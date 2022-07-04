@@ -16,78 +16,24 @@
 
 use super::*;
 
-impl<A: Aleo> ToBits for Value<A, Plaintext<A>> {
+impl<A: Aleo> ToBits for Value<A> {
     type Boolean = Boolean<A>;
 
-    /// Returns this value as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
-            Self::Record(..) => vec![Boolean::constant(true), Boolean::constant(true)],
-        };
+    /// Returns the circuit value as a list of **little-endian** bits.
+    #[inline]
+    fn to_bits_le(&self) -> Vec<Boolean<A>> {
         match self {
-            Self::Constant(value) => bits_le.extend(value.to_bits_le()),
-            Self::Public(value) => bits_le.extend(value.to_bits_le()),
-            Self::Private(value) => bits_le.extend(value.to_bits_le()),
-            Self::Record(value) => bits_le.extend(value.to_bits_le()),
+            Self::Plaintext(plaintext) => plaintext.to_bits_le(),
+            Self::Record(record) => record.to_bits_le(),
         }
-        bits_le
     }
 
-    /// Returns this value as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
-            Self::Record(..) => vec![Boolean::constant(true), Boolean::constant(true)],
-        };
+    /// Returns the circuit value as a list of **big-endian** bits.
+    #[inline]
+    fn to_bits_be(&self) -> Vec<Boolean<A>> {
         match self {
-            Self::Constant(value) => bits_be.extend(value.to_bits_be()),
-            Self::Public(value) => bits_be.extend(value.to_bits_be()),
-            Self::Private(value) => bits_be.extend(value.to_bits_be()),
-            Self::Record(value) => bits_be.extend(value.to_bits_be()),
+            Self::Plaintext(plaintext) => plaintext.to_bits_be(),
+            Self::Record(record) => record.to_bits_be(),
         }
-        bits_be
-    }
-}
-
-impl<A: Aleo> ToBits for Value<A, Ciphertext<A>> {
-    type Boolean = Boolean<A>;
-
-    /// Returns this value as a list of **little-endian** bits.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mut bits_le = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
-            Self::Record(..) => vec![Boolean::constant(true), Boolean::constant(true)],
-        };
-        match self {
-            Self::Constant(value) => bits_le.extend(value.to_bits_le()),
-            Self::Public(value) => bits_le.extend(value.to_bits_le()),
-            Self::Private(value) => bits_le.extend(value.to_bits_le()),
-            Self::Record(value) => bits_le.extend(value.to_bits_le()),
-        }
-        bits_le
-    }
-
-    /// Returns this value as a list of **big-endian** bits.
-    fn to_bits_be(&self) -> Vec<Self::Boolean> {
-        let mut bits_be = match self {
-            Self::Constant(..) => vec![Boolean::constant(false), Boolean::constant(false)],
-            Self::Public(..) => vec![Boolean::constant(false), Boolean::constant(true)],
-            Self::Private(..) => vec![Boolean::constant(true), Boolean::constant(false)],
-            Self::Record(..) => vec![Boolean::constant(true), Boolean::constant(true)],
-        };
-        match self {
-            Self::Constant(value) => bits_be.extend(value.to_bits_be()),
-            Self::Public(value) => bits_be.extend(value.to_bits_be()),
-            Self::Private(value) => bits_be.extend(value.to_bits_be()),
-            Self::Record(value) => bits_be.extend(value.to_bits_be()),
-        }
-        bits_be
     }
 }

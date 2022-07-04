@@ -111,6 +111,7 @@ mod tests {
 
     const ITERATIONS: u64 = 128;
 
+    #[allow(clippy::needless_borrow)]
     fn check_bitxor<I: IntegerType + BitXor<Output = I>>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,
