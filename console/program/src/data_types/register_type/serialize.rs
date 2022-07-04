@@ -44,7 +44,7 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &'static [&'static str] = &[
+    const TEST_CASES: &[&str] = &[
         // Literal
         "address",
         "boolean",
