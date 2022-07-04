@@ -16,6 +16,7 @@
 
 mod bytes;
 mod parse;
+mod serialize;
 mod to_fields;
 
 use crate::Identifier;
