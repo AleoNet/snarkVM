@@ -22,6 +22,7 @@ mod from_bits;
 mod one;
 mod parse;
 mod random;
+mod serialize;
 mod size_in_bits;
 mod size_in_bytes;
 mod to_bits;

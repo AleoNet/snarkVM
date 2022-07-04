@@ -2418,6 +2418,8 @@ dependencies = [
 name = "snarkvm-console-types-boolean"
 version = "0.7.5"
 dependencies = [
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
 ]
 
@@ -2425,6 +2427,8 @@ dependencies = [
 name = "snarkvm-console-types-field"
 version = "0.7.5"
 dependencies = [
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
 ]
@@ -2433,6 +2437,8 @@ dependencies = [
 name = "snarkvm-console-types-group"
 version = "0.7.5"
 dependencies = [
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
@@ -2443,6 +2449,8 @@ dependencies = [
 name = "snarkvm-console-types-integers"
 version = "0.7.5"
 dependencies = [
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
@@ -2452,6 +2460,8 @@ dependencies = [
 name = "snarkvm-console-types-scalar"
 version = "0.7.5"
 dependencies = [
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
@@ -2461,6 +2471,8 @@ dependencies = [
 name = "snarkvm-console-types-string"
 version = "0.7.5"
 dependencies = [
+ "bincode",
+ "serde_json",
  "snarkvm-console-network-environment",
  "snarkvm-console-types-boolean",
  "snarkvm-console-types-field",
