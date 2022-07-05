@@ -17,9 +17,6 @@
 pub mod cli;
 pub use cli::*;
 
-pub mod commands;
-pub use commands::*;
-
 pub mod errors;
 pub use errors::*;
 
