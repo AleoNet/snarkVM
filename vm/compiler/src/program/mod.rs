@@ -108,7 +108,7 @@ impl<N: Network> Program<N> {
         &self,
         private_key: &PrivateKey<N>,
         function_name: Identifier<N>,
-        inputs: Vec<Value<N>>,
+        inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Request<N>> {
         // Retrieve the function from the program.

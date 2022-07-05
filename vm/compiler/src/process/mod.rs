@@ -107,7 +107,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                 .map(|input_type| program.sample_value(&burner_address, input_type, rng))
                 .collect::<Result<Vec<_>>>()?;
             // Sign a request, with a burner private key.
-            let request = program.sign(&burner_private_key, *function_name, inputs, rng)?;
+            let request = program.sign(&burner_private_key, *function_name, &inputs, rng)?;
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
 
@@ -272,7 +272,7 @@ mod tests {
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, Plaintext, Record, Value},
+        program::{Identifier, Value},
     };
 
     type CurrentNetwork = Testnet3;
@@ -329,28 +329,18 @@ function compute:
         let record_string =
             format!("{{ owner: {caller}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
-        // // Construct four inputs.
-        // let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-        // let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-        // let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-        // let input_record = Value::Record(Record::from_str(&record_string).unwrap());
-        // let inputs = vec![input_constant, input_public, input_private, input_record];
-
         // Declare the input value.
-        let r0 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
-        let r1 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
-        let r2 = Value::<CurrentNetwork>::Record(Record::from_str(&record_string).unwrap());
+        let r0 = Value::<CurrentNetwork>::from_str("3field").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("5field").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str(&record_string).unwrap();
 
         // Declare the expected output value.
-        let r3 = Value::Plaintext(Plaintext::from_str("19field").unwrap());
-        let r4 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
-        let r5 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
-
-        // Construct the inputs and input types.
-        let inputs = vec![r0, r1, r2.clone()];
+        let r3 = Value::from_str("19field").unwrap();
+        let r4 = Value::from_str("11field").unwrap();
+        let r5 = Value::from_str("8field").unwrap();
 
         // Compute the signed request.
-        let request = program.sign(&caller_private_key, function_name, inputs, rng).unwrap();
+        let request = program.sign(&caller_private_key, function_name, &[r0, r1, r2.clone()], rng).unwrap();
 
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program).unwrap();

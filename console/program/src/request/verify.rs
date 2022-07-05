@@ -155,7 +155,6 @@ impl<N: Network> Request<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Plaintext, Record};
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
 
@@ -181,10 +180,10 @@ mod tests {
                 format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
-            let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_record = Value::Record(Record::from_str(&record_string).unwrap());
+            let input_constant = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
+            let input_public = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
+            let input_private = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
+            let input_record = Value::from_str(&record_string).unwrap();
             let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.
@@ -196,7 +195,7 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng).unwrap();
+            let request = Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
             assert!(request.verify());
         }
     }

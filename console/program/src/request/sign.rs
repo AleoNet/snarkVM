@@ -24,7 +24,7 @@ impl<N: Network> Request<N> {
         private_key: &PrivateKey<N>,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
-        inputs: Vec<Value<N>>,
+        inputs: &[Value<N>],
         input_types: &[ValueType<N>],
         rng: &mut R,
     ) -> Result<Self> {
