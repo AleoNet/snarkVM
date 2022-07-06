@@ -62,7 +62,6 @@ impl<N: Network> VerifierFile<N> {
 
         // Create the file name.
         let file_name = format!("{}.{VERIFIER_FILE_EXTENSION}", function_name);
-
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
@@ -83,10 +82,14 @@ impl<N: Network> VerifierFile<N> {
         Ok(verifier)
     }
 
-    /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, file_path: &Path) -> bool {
+    /// Returns `true` if the verifier file for the given function name exists at the given directory.
+    pub fn exists_at(directory: &Path, function_name: &Identifier<N>) -> bool {
+        // Create the file name.
+        let file_name = format!("{}.{VERIFIER_FILE_EXTENSION}", function_name);
+        // Construct the file path.
+        let path = directory.join(file_name);
         // Ensure the path is well-formed.
-        Self::check_path(file_path).is_ok() && file_path.exists()
+        Self::check_path(&path).is_ok() && path.exists()
     }
 
     /// Returns the function name.

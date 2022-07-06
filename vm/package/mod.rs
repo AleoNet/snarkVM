@@ -15,9 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod build;
+mod is_build_stale;
 
 use crate::{
-    file::{AVMFile, AleoFile, Manifest, README},
+    file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
     prelude::{Network, ProgramID, ToBytes},
 };
 use snarkvm_compiler::{Process, Program};

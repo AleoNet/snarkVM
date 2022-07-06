@@ -31,7 +31,7 @@ impl<N: Network> UniversalSRS<N> {
             marlin::ahp::AHPForR1CS::<N::Field, marlin::MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates)
                 .unwrap();
         let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
-        println!("\t• Called universal setup: {} ms", timer.elapsed().as_millis());
+        println!(" • Called universal setup: {} ms", timer.elapsed().as_millis());
 
         Ok(Self { srs: universal_srs })
     }
@@ -43,7 +43,7 @@ impl<N: Network> UniversalSRS<N> {
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         let timer = std::time::Instant::now();
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
-        println!("\t• Called setup: {} ms", timer.elapsed().as_millis());
+        println!(" • Called setup: {} ms", timer.elapsed().as_millis());
 
         Ok((ProvingKey::new(proving_key), VerifyingKey::new(verifying_key)))
     }

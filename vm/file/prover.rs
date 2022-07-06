@@ -60,21 +60,16 @@ impl<N: Network> ProverFile<N> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
-        println!("A");
         // Create the file name.
         let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
-
-        println!("B");
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
         ensure!(path.exists(), "The prover file is missing: '{}'", path.display());
 
-        println!("C");
         // Load the prover file.
         let prover = Self::from_filepath(&path)?;
 
-        println!("D");
         // Ensure the function name matches.
         if prover.function_name() != function_name {
             bail!(
@@ -84,14 +79,17 @@ impl<N: Network> ProverFile<N> {
             );
         }
 
-        println!("E");
         Ok(prover)
     }
 
-    /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, file_path: &Path) -> bool {
+    /// Returns `true` if the prover file for the given function name exists at the given directory.
+    pub fn exists_at(directory: &Path, function_name: &Identifier<N>) -> bool {
+        // Create the file name.
+        let file_name = format!("{}.{PROVER_FILE_EXTENSION}", function_name);
+        // Construct the file path.
+        let path = directory.join(file_name);
         // Ensure the path is well-formed.
-        Self::check_path(file_path).is_ok() && file_path.exists()
+        Self::check_path(&path).is_ok() && path.exists()
     }
 
     /// Returns the function name.
