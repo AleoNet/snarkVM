@@ -34,8 +34,23 @@ impl<N: Network> VerifyingKey<N> {
     pub fn verify(&self, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         let timer = std::time::Instant::now();
         let is_valid = Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof).unwrap();
-        println!("Called verifier: {} ms", timer.elapsed().as_millis());
+        println!("\t• Called verifier: {} ms", timer.elapsed().as_millis());
         is_valid
+    }
+}
+
+impl<N: Network> FromBytes for VerifyingKey<N> {
+    /// Reads the verifying key from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let verifying_key = FromBytes::read_le(&mut reader)?;
+        Ok(Self { verifying_key })
+    }
+}
+
+impl<N: Network> ToBytes for VerifyingKey<N> {
+    /// Writes the verifying key to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.verifying_key.write_le(&mut writer)
     }
 }
 

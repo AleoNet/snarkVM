@@ -56,7 +56,7 @@ impl<N: Network> AVMFile<N> {
         // Write the file (overwriting if it already exists).
         File::create(&path)?.write_all(&program.to_bytes_le()?)?;
 
-        Ok(Self { file_name: program.id().name().to_string(), program })
+        Self::from_filepath(&path)
     }
 
     /// Opens the AVM program file, given the directory path, program ID, and `is_main` indicator.
@@ -84,12 +84,12 @@ impl<N: Network> AVMFile<N> {
     }
 
     /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, path: &Path) -> bool {
+    pub fn exists_at(&self, file_path: &Path) -> bool {
         // Ensure the path is well-formed.
-        Self::check_path(path).is_ok() && path.exists()
+        Self::check_path(file_path).is_ok() && file_path.exists()
     }
 
-    /// Returns `true` if the main program file exists at the given path.
+    /// Returns `true` if the main program file exists at the given directory path.
     pub fn main_exists_at(directory: &Path) -> bool {
         // Construct the file path.
         let path = directory.join(Self::main_file_name());
@@ -142,7 +142,7 @@ impl<N: Network> AVMFile<N> {
         Ok(())
     }
 
-    /// Reads the program from the given file path, if it exists.
+    /// Reads the AVM program from the given file path, if it exists.
     fn from_filepath(file: &Path) -> Result<Self> {
         // Ensure the path is well-formed.
         Self::check_path(file)?;
@@ -155,15 +155,15 @@ impl<N: Network> AVMFile<N> {
             .ok_or_else(|| anyhow!("File name not found."))?
             .to_string();
 
-        // Read the program string.
+        // Read the program bytes.
         let program_bytes = fs::read(&file)?;
-        // Parse the program string.
+        // Parse the program bytes.
         let program = Program::from_bytes_le(&program_bytes)?;
 
         Ok(Self { file_name, program })
     }
 
-    /// Writes the program string to the file.
+    /// Writes the AVM program to the file.
     pub fn write_to(&self, path: &Path) -> Result<()> {
         // Ensure the path is well-formed.
         Self::check_path(path)?;

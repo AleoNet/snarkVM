@@ -23,5 +23,11 @@ pub use avm::AVMFile;
 mod manifest;
 pub use manifest::Manifest;
 
+mod prover;
+pub use prover::ProverFile;
+
 mod readme_file;
 pub use readme_file::README;
+
+mod verifier;
+pub use verifier::VerifierFile;

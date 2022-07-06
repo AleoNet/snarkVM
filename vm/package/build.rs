@@ -24,12 +24,36 @@ impl<N: Network> Package<N> {
         // Retrieve the program ID.
         let program_id = program.id();
 
+        // Prepare the build directory.
+        let mut build_directory = self.directory.clone();
+        build_directory.push("build");
+
+        // Create the build directory.
+        if !build_directory.exists() {
+            std::fs::create_dir_all(&build_directory)?;
+        }
+
+        // If the main AVM file exists, check if its program checksum matches, to determine if we can skip.
+        if AVMFile::<N>::main_exists_at(&build_directory) {
+            // Retrieve the main AVM file.
+            let candidate = AVMFile::open(&build_directory, &self.program_id, true)?;
+            // Check if the program bytes matches.
+            if candidate.program().to_bytes_le()? == program.to_bytes_le()? {
+                // The program bytes matches, so we can skip the build.
+                return Ok(());
+            }
+        }
+
+        // Write the AVM file.
+        let avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
+
         // Create the process.
         let process = Process::<N, A>::new(program.clone())?;
 
         // Load each function circuit.
         for function_name in program.functions().keys() {
-            process.circuit_key(program_id, function_name)?;
+            // Synthesize the proving and verifying key.
+            let (proving_key, verifying_key) = process.circuit_key(program_id, function_name)?;
         }
 
         Ok(())

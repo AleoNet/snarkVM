@@ -133,9 +133,9 @@ function hello_world:
     }
 
     /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, path: &Path) -> bool {
+    pub fn exists_at(&self, file_path: &Path) -> bool {
         // Ensure the path is well-formed.
-        Self::check_path(path).is_ok() && path.exists()
+        Self::check_path(file_path).is_ok() && file_path.exists()
     }
 
     /// Returns `true` if the main program file exists at the given path.

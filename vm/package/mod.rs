@@ -17,8 +17,8 @@
 mod build;
 
 use crate::{
-    file::{AleoFile, Manifest, README},
-    prelude::{Network, ProgramID},
+    file::{AVMFile, AleoFile, Manifest, README},
+    prelude::{Network, ProgramID, ToBytes},
 };
 use snarkvm_compiler::{Process, Program};
 
