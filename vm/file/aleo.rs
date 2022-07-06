@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::prelude::{Network, ProgramID};
 use snarkvm_compiler::Program;
 
 use anyhow::{anyhow, ensure, Result};
@@ -24,13 +25,9 @@ use std::{
     path::Path,
 };
 
-// TODO (howardwu): Unify these higher up.
-type A = snarkvm_circuit::AleoV0;
-type N = <A as snarkvm_circuit::Environment>::Network;
+pub static ALEO_FILE_EXTENSION: &str = "aleo";
 
-static ALEO_FILE_EXTENSION: &str = "aleo";
-
-pub struct AleoFile {
+pub struct AleoFile<N: Network> {
     /// The file name (without the extension).
     file_name: String,
     /// The program as a string.
@@ -39,7 +36,7 @@ pub struct AleoFile {
     program: Program<N>,
 }
 
-impl FromStr for AleoFile {
+impl<N: Network> FromStr for AleoFile<N> {
     type Err = anyhow::Error;
 
     /// Reads the file from a string.
@@ -58,14 +55,53 @@ impl FromStr for AleoFile {
     }
 }
 
-impl AleoFile {
+impl<N: Network> AleoFile<N> {
+    /// Creates a new Aleo program file with the given directory path and program ID.
+    pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
+        // Ensure the program name is valid.
+        ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
+
+        // Construct the initial program string.
+        let program_string = format!(
+            r#"// The '{id}' program.
+program {id};
+
+function hello_world:
+    input r0 as u32.public;
+    input r1 as u32.private;
+    add r0 r1 into r2;
+    output r2 as u32.private;
+"#
+        );
+
+        // Create the file.
+        let file_name = match id.is_aleo() {
+            true => id.to_string(),
+            false => format!("{id}.{ALEO_FILE_EXTENSION}"),
+        };
+
+        // Construct the file path.
+        let path = directory.join(file_name);
+
+        // Ensure the file path does not already exist.
+        ensure!(!path.exists(), "Program file already exists: {}", path.display());
+
+        // Write the file.
+        File::create(&path)?.write_all(program_string.as_bytes())?;
+
+        // Return the Aleo file.
+        Self::from_filepath(&path)
+    }
+
     /// Reads the program from the given file path, if it exists.
-    pub fn from_path(path: &Path) -> Result<Self> {
+    pub fn from_filepath(file: &Path) -> Result<Self> {
         // Ensure the path is well-formed.
-        Self::check_path(path)?;
+        Self::check_path(file)?;
 
         // Retrieve the file name.
-        let file_name = path
+        let file_name = file
             .file_stem()
             .ok_or_else(|| anyhow!("File name not found."))?
             .to_str()
@@ -73,7 +109,7 @@ impl AleoFile {
             .to_string();
 
         // Read the program string.
-        let program_string = fs::read_to_string(&path)?;
+        let program_string = fs::read_to_string(&file)?;
         // Parse the program string.
         let program = Program::from_str(&program_string)?;
 
@@ -133,7 +169,7 @@ impl AleoFile {
     }
 }
 
-impl AleoFile {
+impl<N: Network> AleoFile<N> {
     /// Checks that the given path has the correct file extension.
     fn check_path(path: &Path) -> Result<()> {
         // Ensure the given path is a file.
@@ -155,7 +191,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit::Parser;
 
-    type CurrentNetwork = N;
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
 
     fn temp_dir() -> std::path::PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
@@ -211,7 +247,7 @@ function compute:
         file.write_all(program_string.as_bytes()).unwrap();
 
         // Read the program from the path.
-        let file = AleoFile::from_path(&path).unwrap();
+        let file = AleoFile::from_filepath(&path).unwrap();
 
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(program_string).unwrap();

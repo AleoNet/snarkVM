@@ -25,8 +25,7 @@ use std::{
 };
 
 // TODO (howardwu): Unify these higher up.
-type A = snarkvm_circuit::AleoV0;
-type N = <A as snarkvm_circuit::Environment>::Network;
+type N = snarkvm_console::network::Testnet3;
 
 static AVM_FILE_EXTENSION: &str = "avm";
 
@@ -39,12 +38,12 @@ pub struct AVMFile {
 
 impl AVMFile {
     /// Reads the program from the given file path, if it exists.
-    pub fn from_path(path: &Path) -> Result<Self> {
+    pub fn from_filepath(file: &Path) -> Result<Self> {
         // Ensure the path is well-formed.
-        Self::check_path(path)?;
+        Self::check_path(file)?;
 
         // Retrieve the file name.
-        let file_name = path
+        let file_name = file
             .file_stem()
             .ok_or_else(|| anyhow!("File name not found."))?
             .to_str()
@@ -52,7 +51,7 @@ impl AVMFile {
             .to_string();
 
         // Read the program string.
-        let program_bytes = fs::read(&path)?;
+        let program_bytes = fs::read(&file)?;
         // Parse the program string.
         let program = Program::from_bytes_le(&program_bytes)?;
 
@@ -163,7 +162,7 @@ function compute:
         file.write_all(&program.to_bytes_le().unwrap()).unwrap();
 
         // Read the program from the path.
-        let file = AVMFile::from_path(&path).unwrap();
+        let file = AVMFile::from_filepath(&path).unwrap();
 
         assert_eq!("token", file.file_name());
         assert_eq!(&program, file.program());

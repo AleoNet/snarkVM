@@ -75,12 +75,11 @@ path = "vm/cli/main.rs"
 required-features = ["cli"]
 
 [features]
-default = ["cli", "file"]
+default = ["cli"]
 full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM CLI ##
-cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
-file = ["circuit", "utilities"]
+cli = ["anyhow", "console", "clap", "colored", "self_update", "thiserror", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]

@@ -502,7 +502,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
-    fn is_reserved_keyword(name: &Identifier<N>) -> bool {
+    pub fn is_reserved_keyword(name: &Identifier<N>) -> bool {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the name is a keyword.
