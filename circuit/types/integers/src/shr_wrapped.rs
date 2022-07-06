@@ -100,8 +100,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                         quotient_unsigned.to_field() * divisor_unsigned.to_field() + &remainder_field,
                     );
 
-                    // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(console::Integer::MIN)?
-                    //  This is implicitly true since the dividend <= abs(console::Integer::MIN) and 0 <= quotient <= dividend.
+                    // Ensure that the remainder is less than the divisor.
+                    E::assert(remainder_unsigned.is_less_than(&divisor_unsigned));
+
+                    // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
                     let quotient = Self { bits_le: quotient_unsigned.bits_le, phantom: Default::default() };
                     let negated_quotient = &(!&quotient).add_wrapped(&Self::one());
 
