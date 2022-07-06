@@ -137,6 +137,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     table_polys[1].2.clone(),
                     table_polys[2].2.clone(),
                     table_polys[3].2.clone(),
+                    table_polys[4].2.clone(),
+                    table_polys[5].2.clone(),
                 ]);
 
                 prover::SingleEntry {

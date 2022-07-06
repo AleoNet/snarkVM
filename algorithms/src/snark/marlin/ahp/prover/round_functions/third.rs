@@ -75,24 +75,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .zip_eq(&state.plookup_evals)
             .map(|((b, combiner), evals)| {
                 let lookup_poly = {
-                    let mut s_1_evals = evals[1].clone();
-                    s_1_evals.push(s_1_evals[0]);
-                    let mut s_2_evals = evals[2].clone();
-                    s_2_evals.push(s_2_evals[0]);
-                    let mut z_2_evals = evals[3].clone();
-                    z_2_evals.push(z_2_evals[0]);
                     Evaluations::from_vec_and_domain(
                         evals[0]
                             .iter()
-                            .enumerate()
                             .zip(&evals[1])
                             .zip(&evals[2])
                             .zip(&evals[3])
+                            .zip(&evals[4])
+                            .zip(&evals[5])
                             .zip(&state.index.t_evals)
-                            .zip(&l_1_evals)
                             .zip(&state.index.delta_t_omega_evals)
+                            .zip(&l_1_evals)
                             .take(state.index.index_info.num_constraints)
-                            .map(|(((((((i, f), s_1), s_2), z_2), t), l_1), delta_t_omega)| {
+                            .map(|((((((((f, s_1), s_2), z_2), s_1_omega), z_2_omega), t), delta_t_omega), l_1)| {
                                 let first = {
                                     let a = state.index.epsilon + f;
                                     let b = epsilon_one_plus_delta + t + delta_t_omega;
@@ -101,9 +96,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
                                 let second = {
                                     let a = epsilon_one_plus_delta + s_1 + state.index.delta * s_2;
-                                    let b = epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1];
-
-                                    -z_2_evals[i + 1] * a * b
+                                    let b = epsilon_one_plus_delta + s_2 + state.index.delta * s_1_omega;
+                                    -(*z_2_omega) * a * b
                                 };
 
                                 let third = (*z_2 - F::one()) * *l_1;

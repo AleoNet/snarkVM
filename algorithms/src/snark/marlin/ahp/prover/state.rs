@@ -94,7 +94,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// A collection of evaluations for polynomials created in the first round.
     /// These evaluations are later re-used in the third round for creating the plookup
     /// quotient check, and keeping them in memory saves us from having to recover the evaluations.
-    pub(super) plookup_evals: Vec<[Vec<F>; 4]>,
+    pub(super) plookup_evals: Vec<[Vec<F>; 6]>,
 
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,

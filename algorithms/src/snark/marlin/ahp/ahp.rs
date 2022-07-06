@@ -19,6 +19,7 @@ use crate::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         DensePolynomial,
         EvaluationDomain,
+        Evaluations,
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
@@ -260,14 +261,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let s_l_at_beta = evals.get_lc_eval(&s_l, beta)?;
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
-        // TODO: is it okay to do this here?
-        let l_1_at_beta = {
-            let mut x_evals = vec![F::zero(); constraint_domain.size()];
-            x_evals[0] = F::one();
-            constraint_domain.ifft_in_place(&mut x_evals);
-            let poly = DensePolynomial::<F>::from_coefficients_vec(x_evals);
-            poly.evaluate(beta)
-        };
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
         let combined_x_at_beta = batch_combiners
             .iter()
@@ -281,15 +274,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let lincheck_sumcheck = {
             let one_plus_delta = F::one() + delta;
             let epsilon_one_plus_delta = epsilon * one_plus_delta;
+            // TODO: is it okay to do this here?
+            let l_1_at_beta = {
+                let mut x_evals = vec![F::zero(); constraint_domain.size()];
+                x_evals[0] = F::one();
+                let poly = Evaluations::from_vec_and_domain(x_evals, constraint_domain).interpolate();
+                poly.evaluate(beta)
+            };
             let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
             for (i, combiner) in batch_combiners.iter().enumerate() {
                 rowcheck
-                    .add(z_b_s_at_beta[i] * s_m_at_beta * combiner, witness_label("z_a", i))
-                    .add(s_m_at_beta * combiner * -F::one() , witness_label("z_c", i))
-                    .add(s_l_at_beta * combiner , witness_label("z_a", i))
-                    .add(zeta * z_b_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
-                    .add(zeta_squared * s_l_at_beta * combiner, witness_label("z_c", i))
-                    .add(-f_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
+                    // Plookup terms
                     .add(one_plus_delta
                         * (epsilon + f_s_at_beta[i])
                         * (epsilon_one_plus_delta + table_at_beta + delta_t_omega_at_beta)
@@ -299,7 +294,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         // multiplications
                         * (epsilon_one_plus_delta + s_2_s_at_beta[i] + delta * s_1_omega_s_at_beta[i])
                         * combiner * -F::one(), witness_label("omega_z_2", i))
-                    .add((z_2_s_at_beta[i] - F::one()) * l_1_at_beta * combiner, LCTerm::One);
+                    .add((z_2_s_at_beta[i] - F::one()) * l_1_at_beta * combiner, LCTerm::One)
+                    .add(s_l_at_beta * combiner , witness_label("z_a", i))
+                    .add(zeta * z_b_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
+                    .add(zeta_squared * s_l_at_beta * combiner, witness_label("z_c", i))
+                    .add(-f_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
+                    // Rowcheck
+                    .add(z_b_s_at_beta[i] * s_m_at_beta * combiner, witness_label("z_a", i))
+                    .add(s_m_at_beta * combiner * -F::one() , witness_label("z_c", i));
             }
 
             let mut lincheck_sumcheck = LinearCombination::empty("placeholder");
