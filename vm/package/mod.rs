@@ -25,24 +25,22 @@ use std::path::{Path, PathBuf};
 
 pub struct Package<N: Network> {
     /// The program ID.
-    id: ProgramID<N>,
+    program_id: ProgramID<N>,
     /// The directory path.
     directory: PathBuf,
     /// The manifest file.
     manifest_file: Manifest<N>,
     /// The program file.
     program_file: AleoFile<N>,
-    /// The README file.
-    readme_file: README<N>,
 }
 
 impl<N: Network> Package<N> {
     /// Creates a new package, at the given directory with the given program name.
-    pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+    pub fn create(directory: &Path, program_id: &ProgramID<N>) -> Result<Self> {
         // Ensure the directory path does not exist.
         ensure!(!directory.exists(), "The program directory already exists: {}", directory.display());
         // Ensure the program name is valid.
-        ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
+        ensure!(!Program::is_reserved_keyword(program_id.name()), "Program name is invalid (reserved): {program_id}");
 
         // Create the program directory.
         if !directory.exists() {
@@ -50,12 +48,50 @@ impl<N: Network> Package<N> {
         }
 
         // Create the manifest file.
-        let manifest_file = Manifest::new(directory, id)?;
+        let manifest_file = Manifest::create(directory, program_id)?;
         // Create the program file.
-        let program_file = AleoFile::new(directory, id, true)?;
+        let program_file = AleoFile::create(directory, program_id, true)?;
         // Create the README file.
-        let readme_file = README::new(directory, id)?;
+        let _readme_file = README::create(directory, program_id)?;
 
-        Ok(Self { id: *id, directory: directory.to_path_buf(), manifest_file, program_file, readme_file })
+        Ok(Self { program_id: *program_id, directory: directory.to_path_buf(), manifest_file, program_file })
+    }
+
+    /// Opens the package at the given directory with the given program name.
+    pub fn open(directory: &Path) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
+
+        // Create the manifest file.
+        let manifest_file = Manifest::open(directory)?;
+        // Retrieve the program ID.
+        let program_id = *manifest_file.program_id();
+        // Ensure the program name is valid.
+        ensure!(!Program::is_reserved_keyword(program_id.name()), "Program name is invalid (reserved): {program_id}");
+
+        // Create the program file.
+        let program_file = AleoFile::open(directory, &program_id, true)?;
+
+        Ok(Self { program_id, directory: directory.to_path_buf(), manifest_file, program_file })
+    }
+
+    /// Returns the program ID.
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        &self.program_id
+    }
+
+    /// Returns the directory path.
+    pub const fn directory(&self) -> &PathBuf {
+        &self.directory
+    }
+
+    /// Returns the manifest file.
+    pub const fn manifest_file(&self) -> &Manifest<N> {
+        &self.manifest_file
+    }
+
+    /// Returns the program file.
+    pub const fn program_file(&self) -> &AleoFile<N> {
+        &self.program_file
     }
 }

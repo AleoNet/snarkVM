@@ -1988,6 +1988,7 @@ dependencies = [
  "colored",
  "rusty-hook",
  "self_update",
+ "serde_json",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-compiler",

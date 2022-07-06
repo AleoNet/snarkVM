@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{Network, ProgramID};
+use crate::{
+    file::Manifest,
+    prelude::{Network, ProgramID},
+};
 use snarkvm_compiler::Program;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use core::str::FromStr;
 use std::{
     fs::{self, File},
@@ -57,16 +60,16 @@ impl<N: Network> FromStr for AleoFile<N> {
 
 impl<N: Network> AleoFile<N> {
     /// Creates a new Aleo program file with the given directory path, program ID, and `is_main` indicator.
-    pub fn new(directory: &Path, id: &ProgramID<N>, is_main: bool) -> Result<Self> {
+    pub fn create(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
         // Ensure the directory path exists.
-        ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
         // Ensure the program name is valid.
-        ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
+        ensure!(!Program::is_reserved_keyword(program_id.name()), "Program name is invalid (reserved): '{program_id}'");
 
         // Construct the initial program string.
         let program_string = format!(
-            r#"// The '{id}' program.
-program {id};
+            r#"// The '{program_id}' program.
+program {program_id};
 
 function hello_world:
     input r0 as u32.public;
@@ -78,17 +81,16 @@ function hello_world:
 
         // Create the file.
         let file_name = if is_main {
-            format!("main.{}", ALEO_FILE_EXTENSION)
+            Self::main_file_name()
         } else {
-            match id.is_aleo() {
-                true => id.to_string(),
-                false => format!("{id}.{ALEO_FILE_EXTENSION}"),
+            match program_id.is_aleo() {
+                true => program_id.to_string(),
+                false => format!("{program_id}.{ALEO_FILE_EXTENSION}"),
             }
         };
 
         // Construct the file path.
         let path = directory.join(file_name);
-
         // Ensure the file path does not already exist.
         ensure!(!path.exists(), "Program file already exists: {}", path.display());
 
@@ -97,6 +99,37 @@ function hello_world:
 
         // Return the Aleo file.
         Self::from_filepath(&path)
+    }
+
+    /// Opens the Aleo program file for reading, given directory path, program ID, and `is_main` indicator.
+    pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+
+        // Create the file.
+        let file_name = if is_main {
+            Self::main_file_name()
+        } else {
+            match program_id.is_aleo() {
+                true => program_id.to_string(),
+                false => format!("{program_id}.{ALEO_FILE_EXTENSION}"),
+            }
+        };
+
+        // Construct the file path.
+        let path = directory.join(file_name);
+        // Ensure the file path exists.
+        ensure!(path.exists(), "Program file is missing: '{}'", path.display());
+
+        // Load the Aleo file.
+        let aleo_file = Self::from_filepath(&path)?;
+
+        // Ensure the program ID matches, if this is the main file.
+        if is_main && aleo_file.program.id() != program_id {
+            bail!("The program ID from `{}` does not match in '{}'", Manifest::<N>::file_name(), path.display())
+        }
+
+        Ok(aleo_file)
     }
 
     /// Reads the program from the given file path, if it exists.
@@ -120,6 +153,11 @@ function hello_world:
         Ok(Self { file_name, program_string, program })
     }
 
+    /// Returns the main Aleo program file name.
+    pub fn main_file_name() -> String {
+        format!("main.{ALEO_FILE_EXTENSION}")
+    }
+
     /// Returns the file name.
     pub fn file_name(&self) -> &str {
         &self.file_name
@@ -139,6 +177,14 @@ function hello_world:
     pub fn exists_at(&self, path: &Path) -> bool {
         // Ensure the path is well-formed.
         Self::check_path(path).is_ok() && path.exists()
+    }
+
+    /// Returns `true` if the main program file exists at the given path.
+    pub fn main_exists_at(directory: &Path) -> bool {
+        // Construct the file path.
+        let path = directory.join(Self::main_file_name());
+        // Return the result.
+        path.is_file() && path.exists()
     }
 
     /// Writes the program string to the file.

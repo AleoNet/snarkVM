@@ -33,7 +33,7 @@ pub struct README<N: Network> {
 
 impl<N: Network> README<N> {
     /// Creates a new README file with the given directory path and program ID.
-    pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+    pub fn create(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
         // Ensure the program name is valid.

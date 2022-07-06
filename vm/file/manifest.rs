@@ -17,25 +17,28 @@
 use crate::prelude::{Network, ProgramID};
 use snarkvm_compiler::Program;
 
-use anyhow::{ensure, Result};
+use anyhow::{anyhow, ensure, Result};
+use core::str::FromStr;
 use std::{
-    fs::File,
+    fs::{self, File},
     io::Write,
     path::{Path, PathBuf},
 };
 
+const MANIFEST_FILE_NAME: &str = "program.json";
+
 pub struct Manifest<N: Network> {
     /// The program ID.
-    id: ProgramID<N>,
+    program_id: ProgramID<N>,
     /// The file path.
     path: PathBuf,
 }
 
 impl<N: Network> Manifest<N> {
     /// Creates a new manifest file with the given directory path and program ID.
-    pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+    pub fn create(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
         // Ensure the directory path exists.
-        ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
 
@@ -49,19 +52,63 @@ impl<N: Network> Manifest<N> {
 }}"#
         );
 
-        // Construct the file name.
-        let file_name = "program.json".to_string();
-
         // Construct the file path.
-        let path = directory.join(file_name);
-
+        let path = directory.join(MANIFEST_FILE_NAME);
         // Ensure the file path does not already exist.
-        ensure!(!path.exists(), "Manifest file already exists: {}", path.display());
+        ensure!(!path.exists(), "Manifest file already exists: '{}'", path.display());
 
         // Write the file.
         File::create(&path)?.write_all(manifest_string.as_bytes())?;
 
         // Return the manifest file.
-        Ok(Self { id: *id, path })
+        Ok(Self { program_id: *id, path })
+    }
+
+    /// Opens the manifest file for reading.
+    pub fn open(directory: &Path) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+
+        // Construct the file path.
+        let path = directory.join(MANIFEST_FILE_NAME);
+        // Ensure the file path already exists
+        ensure!(!path.exists(), "Manifest file is missing: '{}'", path.display());
+
+        // Read the file to a string.
+        let manifest_string = fs::read_to_string(&path)?;
+        let json: serde_json::Value = serde_json::from_str(&manifest_string)?;
+
+        // Retrieve the program ID.
+        let id_string = json["program"].as_str().ok_or_else(|| anyhow!("Program ID not found."))?;
+        let id = ProgramID::from_str(id_string)?;
+
+        // Ensure the program name is valid.
+        ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
+
+        // Return the manifest file.
+        Ok(Self { program_id: id, path })
+    }
+
+    /// Returns `true` if the manifest file exists at the given path.
+    pub fn exists_at(directory: &Path) -> bool {
+        // Construct the file path.
+        let path = directory.join(MANIFEST_FILE_NAME);
+        // Return the result.
+        path.is_file() && path.exists()
+    }
+
+    /// Returns the manifest file name.
+    pub const fn file_name() -> &'static str {
+        MANIFEST_FILE_NAME
+    }
+
+    /// Returns the program ID.
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        &self.program_id
+    }
+
+    /// Returns the file path.
+    pub const fn path(&self) -> &PathBuf {
+        &self.path
     }
 }
