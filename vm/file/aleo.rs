@@ -92,7 +92,7 @@ function hello_world:
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path does not already exist.
-        ensure!(!path.exists(), "Program file already exists: {}", path.display());
+        ensure!(!path.exists(), "The Aleo file already exists: {}", path.display());
 
         // Write the file.
         File::create(&path)?.write_all(program_string.as_bytes())?;
@@ -101,7 +101,7 @@ function hello_world:
         Self::from_filepath(&path)
     }
 
-    /// Opens the Aleo program file for reading, given directory path, program ID, and `is_main` indicator.
+    /// Opens the Aleo program file, given the directory path, program ID, and `is_main` indicator.
     pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
@@ -119,7 +119,7 @@ function hello_world:
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
-        ensure!(path.exists(), "Program file is missing: '{}'", path.display());
+        ensure!(path.exists(), "The Aleo file is missing: '{}'", path.display());
 
         // Load the Aleo file.
         let aleo_file = Self::from_filepath(&path)?;

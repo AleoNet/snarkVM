@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{FromBytes, Network, ToBytes};
+use crate::{
+    file::Manifest,
+    prelude::{FromBytes, Network, ProgramID, ToBytes},
+};
 use snarkvm_compiler::Program;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use std::{
     fs::{self, File},
     io::Write,
@@ -34,25 +37,69 @@ pub struct AVMFile<N: Network> {
 }
 
 impl<N: Network> AVMFile<N> {
-    /// Reads the program from the given file path, if it exists.
-    pub fn from_filepath(file: &Path) -> Result<Self> {
+    /// Creates a new AVM program file, given the directory path, program ID, and `is_main` indicator.
+    pub fn create(directory: &Path, program: Program<N>, is_main: bool) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+        // Ensure the program name is valid.
+        ensure!(
+            !Program::is_reserved_keyword(&program.id().name()),
+            "Program name is invalid (reserved): {}",
+            program.id()
+        );
+
+        // Create the file.
+        let file_name = if is_main { Self::main_file_name() } else { format!("{}.{AVM_FILE_EXTENSION}", program.id()) };
+
+        // Construct the file path.
+        let path = directory.join(file_name);
+        // Write the file (overwriting if it already exists).
+        File::create(&path)?.write_all(&program.to_bytes_le()?)?;
+
+        Ok(Self { file_name: program.id().name().to_string(), program })
+    }
+
+    /// Opens the AVM program file, given the directory path, program ID, and `is_main` indicator.
+    pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+
+        // Create the file.
+        let file_name = if is_main { Self::main_file_name() } else { format!("{program_id}.{AVM_FILE_EXTENSION}") };
+
+        // Construct the file path.
+        let path = directory.join(file_name);
+        // Ensure the file path exists.
+        ensure!(path.exists(), "The AVM file is missing: '{}'", path.display());
+
+        // Load the AVM file.
+        let avm_file = Self::from_filepath(&path)?;
+
+        // Ensure the program ID matches, if this is the main file.
+        if is_main && avm_file.program.id() != program_id {
+            bail!("The program ID from `{}` does not match in '{}'", Manifest::<N>::file_name(), path.display())
+        }
+
+        Ok(avm_file)
+    }
+
+    /// Returns `true` if the file exists at the given path.
+    pub fn exists_at(&self, path: &Path) -> bool {
         // Ensure the path is well-formed.
-        Self::check_path(file)?;
+        Self::check_path(path).is_ok() && path.exists()
+    }
 
-        // Retrieve the file name.
-        let file_name = file
-            .file_stem()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_str()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_string();
+    /// Returns `true` if the main program file exists at the given path.
+    pub fn main_exists_at(directory: &Path) -> bool {
+        // Construct the file path.
+        let path = directory.join(Self::main_file_name());
+        // Return the result.
+        path.is_file() && path.exists()
+    }
 
-        // Read the program string.
-        let program_bytes = fs::read(&file)?;
-        // Parse the program string.
-        let program = Program::from_bytes_le(&program_bytes)?;
-
-        Ok(Self { file_name, program })
+    /// Returns the main AVM program file name.
+    pub fn main_file_name() -> String {
+        format!("main.{AVM_FILE_EXTENSION}")
     }
 
     /// Returns the file name.
@@ -63,30 +110,6 @@ impl<N: Network> AVMFile<N> {
     /// Returns the program.
     pub const fn program(&self) -> &Program<N> {
         &self.program
-    }
-
-    /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, path: &Path) -> bool {
-        // Ensure the path is well-formed.
-        Self::check_path(path).is_ok() && path.exists()
-    }
-
-    /// Writes the program string to the file.
-    pub fn write_to(&self, path: &Path) -> Result<()> {
-        // Ensure the path is well-formed.
-        Self::check_path(path)?;
-
-        // Retrieve the file name.
-        let file_name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_str()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_string();
-        // Ensure the file name matches the expected file name.
-        ensure!(file_name == self.file_name, "File name does not match.");
-
-        Ok(File::create(&path)?.write_all(&self.program.to_bytes_le()?)?)
     }
 
     /// Removes the file at the given path, if it exists.
@@ -117,6 +140,45 @@ impl<N: Network> AVMFile<N> {
         ensure!(path.exists(), "File does not exist: {}", path.display());
 
         Ok(())
+    }
+
+    /// Reads the program from the given file path, if it exists.
+    fn from_filepath(file: &Path) -> Result<Self> {
+        // Ensure the path is well-formed.
+        Self::check_path(file)?;
+
+        // Retrieve the file name.
+        let file_name = file
+            .file_stem()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_str()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_string();
+
+        // Read the program string.
+        let program_bytes = fs::read(&file)?;
+        // Parse the program string.
+        let program = Program::from_bytes_le(&program_bytes)?;
+
+        Ok(Self { file_name, program })
+    }
+
+    /// Writes the program string to the file.
+    pub fn write_to(&self, path: &Path) -> Result<()> {
+        // Ensure the path is well-formed.
+        Self::check_path(path)?;
+
+        // Retrieve the file name.
+        let file_name = path
+            .file_stem()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_str()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_string();
+        // Ensure the file name matches the expected file name.
+        ensure!(file_name == self.file_name, "File name does not match.");
+
+        Ok(File::create(&path)?.write_all(&self.program.to_bytes_le()?)?)
     }
 }
 
