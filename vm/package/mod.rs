@@ -61,6 +61,20 @@ impl<N: Network> Package<N> {
     pub fn open(directory: &Path) -> Result<Self> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
+        // Ensure the manifest file exists.
+        ensure!(
+            Manifest::<N>::exists_at(&directory),
+            "Missing '{}' at '{}'",
+            Manifest::<N>::file_name(),
+            directory.display()
+        );
+        // Ensure the main program file exists.
+        ensure!(
+            AleoFile::<N>::main_exists_at(&directory),
+            "Missing '{}' at '{}'",
+            AleoFile::<N>::main_file_name(),
+            directory.display()
+        );
 
         // Create the manifest file.
         let manifest_file = Manifest::open(directory)?;
