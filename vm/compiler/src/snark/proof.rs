@@ -29,6 +29,21 @@ impl<N: Network> Proof<N> {
     }
 }
 
+impl<N: Network> FromBytes for Proof<N> {
+    /// Reads the proof from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let proof = FromBytes::read_le(&mut reader)?;
+        Ok(Self { proof })
+    }
+}
+
+impl<N: Network> ToBytes for Proof<N> {
+    /// Writes the proof to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.proof.write_le(&mut writer)
+    }
+}
+
 impl<N: Network> Deref for Proof<N> {
     type Target = marlin::Proof<N::PairingCurve>;
 

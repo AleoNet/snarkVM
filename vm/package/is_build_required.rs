@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Package<N> {
-    /// Returns `true` if the package is built.
+    /// Returns `true` if the package is stale or has not been built.
     pub fn is_build_required<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(&self) -> Result<bool> {
         // Retrieve the main program.
         let program = self.program_file.program();

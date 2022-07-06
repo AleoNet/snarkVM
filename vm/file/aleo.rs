@@ -88,7 +88,6 @@ function hello_world:
                 false => format!("{program_id}.{ALEO_FILE_EXTENSION}"),
             }
         };
-
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path does not already exist.
@@ -115,7 +114,6 @@ function hello_world:
                 false => format!("{program_id}.{ALEO_FILE_EXTENSION}"),
             }
         };
-
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.

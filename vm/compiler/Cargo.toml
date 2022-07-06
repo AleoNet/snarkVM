@@ -56,6 +56,9 @@ version = "1.8"
 [dependencies.parking_lot]
 version = "0.12"
 
+[dependencies.once_cell]
+version = "1.13"
+
 [dependencies.paste]
 version = "1.0.7"
 

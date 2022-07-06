@@ -32,13 +32,14 @@ use console::{
 
 use core::marker::PhantomData;
 use indexmap::IndexMap;
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[allow(clippy::type_complexity)]
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     /// The universal SRS.
-    universal_srs: Arc<UniversalSRS<N>>,
+    universal_srs: OnceCell<UniversalSRS<N>>,
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
@@ -51,11 +52,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     /// Initializes a new process.
     #[inline]
     pub fn new(program: Program<N>) -> Result<Self> {
-        // TODO (howardwu): Load the universal SRS remotely.
-        let universal_srs = UniversalSRS::load(100_000)?;
         // Return the process.
         Ok(Self {
-            universal_srs: Arc::new(universal_srs),
+            universal_srs: OnceCell::new(),
             programs: [(*program.id(), program)].into_iter().collect(),
             circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
             _phantom: PhantomData,
@@ -114,7 +113,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             // Synthesize the circuit.
             let (_response, assignment) = Self::synthesize(program, &function, &request, true)?;
             // Derive the circuit key.
-            let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(&assignment)?;
+            // TODO (howardwu): Load the universal SRS remotely.
+            let (proving_key, verifying_key) =
+                self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
             // Add the circuit key to the mapping.
             self.circuit_keys
                 .write()
@@ -170,6 +171,46 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Retrieve the proving and verifying key.
         let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
+        // Synthesize the circuit.
+        let (response, assignment) = Self::synthesize(program, &function, request, false)?;
+        // Execute the circuit.
+        let proof = proving_key.prove(&assignment, rng)?;
+        // Verify the proof.
+        ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
+
+        // Initialize the transition.
+        let transition = Transition::from(request, &response, proof, 0u64)?;
+        // Verify the transition.
+        ensure!(transition.verify(&verifying_key), "Transition is invalid");
+
+        // // Initialize the trace.
+        // let mut trace = Trace::<N>::new(request, &response)?;
+        // // Finalize the trace.
+        // trace.finalize()?;
+        // println!("{:?}", trace.leaves());
+
+        Ok((response, transition))
+    }
+
+    /// Executes a program function on the given request, proving key, and verifying key.
+    #[inline]
+    pub fn execute_synthesized<R: Rng + CryptoRng>(
+        &self,
+        request: &Request<N>,
+        proving_key: &ProvingKey<N>,
+        verifying_key: &VerifyingKey<N>,
+        rng: &mut R,
+    ) -> Result<(Response<N>, Transition<N>)> {
+        trace!("Starting execute");
+
+        // Ensure the request is well-formed.
+        ensure!(request.verify(), "Request is invalid");
+
+        // Retrieve the program.
+        let program = self.get_program(request.program_id())?.clone();
+        // Retrieve the function from the program.
+        let function = program.get_function(request.function_name())?;
+
         // Synthesize the circuit.
         let (response, assignment) = Self::synthesize(program, &function, request, false)?;
         // Execute the circuit.

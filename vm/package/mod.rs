@@ -15,15 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod build;
-mod is_build_stale;
+mod is_build_required;
+mod run;
 
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
-    prelude::{Network, ProgramID, ToBytes},
+    prelude::{Network, ProgramID, Request, Response, ToBytes},
 };
-use snarkvm_compiler::{Process, Program};
+use snarkvm_compiler::{Process, Program, Transition};
 
-use anyhow::{ensure, Result};
+use anyhow::{bail, ensure, Result};
 use std::path::{Path, PathBuf};
 
 pub struct Package<N: Network> {

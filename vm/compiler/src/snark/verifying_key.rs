@@ -34,7 +34,7 @@ impl<N: Network> VerifyingKey<N> {
     pub fn verify(&self, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         let timer = std::time::Instant::now();
         let is_valid = Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof).unwrap();
-        println!(" • Called verifier: {} ms", timer.elapsed().as_millis());
+        println!("{}", format!(" • Called verifier: {} ms", timer.elapsed().as_millis()).dimmed());
         is_valid
     }
 }

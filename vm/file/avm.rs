@@ -50,7 +50,6 @@ impl<N: Network> AVMFile<N> {
 
         // Create the file.
         let file_name = if is_main { Self::main_file_name() } else { format!("{}.{AVM_FILE_EXTENSION}", program.id()) };
-
         // Construct the file path.
         let path = directory.join(file_name);
         // Write the file (overwriting if it already exists).
@@ -66,7 +65,6 @@ impl<N: Network> AVMFile<N> {
 
         // Create the file.
         let file_name = if is_main { Self::main_file_name() } else { format!("{program_id}.{AVM_FILE_EXTENSION}") };
-
         // Construct the file path.
         let path = directory.join(file_name);
         // Ensure the file path exists.
