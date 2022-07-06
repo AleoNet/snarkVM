@@ -221,7 +221,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Initialize the transition.
         let transition = Transition::from(request, &response, proof, 0u64)?;
         // Verify the transition.
-        ensure!(transition.verify(&verifying_key), "Transition is invalid");
+        ensure!(transition.verify(verifying_key), "Transition is invalid");
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
