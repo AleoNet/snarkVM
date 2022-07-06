@@ -36,8 +36,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             let unsigned_divisor = other.abs_wrapped().cast_as_dual();
             let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
-            // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(console::Integer::MIN)?
-            //  This is implicitly true since the dividend <= abs(console::Integer::MIN) and 0 <= quotient <= dividend.
+            //  Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
             let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
             let operands_same_sign = &self.msb().is_equal(other.msb());
             let signed_quotient =
@@ -55,11 +54,15 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             // Eject the dividend and divisor, to compute the quotient as a witness.
             let dividend_value = self.eject_value();
             // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
+            // let divisor_value = match other.eject_value().is_zero() {
+            //     true => match self.eject_value().is_zero() {
+            //         true => console::Integer::one(),
+            //         false => console::Integer::zero(),
+            //     },
+            //     false => other.eject_value(),
+            // };
             let divisor_value = match other.eject_value().is_zero() {
-                true => match self.eject_value().is_zero() {
-                    true => console::Integer::one(),
-                    false => console::Integer::zero(),
-                },
+                true => console::Integer::one(),
                 false => other.eject_value(),
             };
 
@@ -71,6 +74,9 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 
             // Ensure that Euclidean division holds for these values in the base field.
             E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
+
+            // Ensure that the remainder is less than the divisor.
+            E::assert(remainder.is_less_than(&other));
 
             // Return the quotient of `self` and `other`.
             quotient
@@ -84,16 +90,16 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Outpu
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
             true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
+                    Count::less_than(9 * I::BITS, 0, (8 * I::BITS) + 2, (8 * I::BITS) + 12)
                 }
-                (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 16),
+                (_, _) => Count::is(8 * I::BITS, 0, (10 * I::BITS) + 15, (10 * I::BITS) + 27),
             },
             false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
-                (Mode::Constant, _) | (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+                (Mode::Constant, Mode::Constant) => Count::is(2 * I::BITS, 0, 0, 0),
+                (_, Mode::Constant) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 1, (3 * I::BITS) + 4),
+                (Mode::Constant, _) | (_, _) => Count::is(2 * I::BITS, 0, (3 * I::BITS) + 4, (3 * I::BITS) + 9),
             },
         }
     }
@@ -133,7 +139,13 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         if second == console::Integer::zero() {
-            check_operation_halts(&a, &b, Integer::div_wrapped);
+            match mode_b {
+                Mode::Constant => check_operation_halts(&a, &b, Integer::div_wrapped),
+                _ => Circuit::scope(name, || {
+                    let _candidate = a.div_wrapped(&b);
+                    assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                }),
+            }
         } else {
             let expected = first.wrapping_div(&second);
             Circuit::scope(name, || {
