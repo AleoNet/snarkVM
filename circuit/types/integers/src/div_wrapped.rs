@@ -76,7 +76,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
 
             // Ensure that the remainder is less than the divisor.
-            E::assert(remainder.is_less_than(&other));
+            E::assert(remainder.is_less_than(other));
 
             // Return the quotient of `self` and `other`.
             quotient
