@@ -48,7 +48,7 @@ impl<N: Network> Manifest<N> {
     "program": "{id}",
     "version": "0.0.0",
     "description": "",
-    "license": "MIT",
+    "license": "MIT"
 }}
 "#
         );
@@ -72,7 +72,7 @@ impl<N: Network> Manifest<N> {
 
         // Construct the file path.
         let path = directory.join(MANIFEST_FILE_NAME);
-        // Ensure the file path already exists
+        // Ensure the file path exists.
         ensure!(path.exists(), "Manifest file is missing: '{}'", path.display());
 
         // Read the file to a string.
