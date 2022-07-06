@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the comparison and return the new constant.
-            Self::Output::new(Mode::Constant, self.eject_value() < other.eject_value())
+            witness!(|self, other| self < other)
         } else if I::is_signed() {
             // Compute the less than operation via a sign and overflow check.
             // If sign(a) != sign(b), then a < b, if a is negative and b is positive.
@@ -36,6 +36,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
                     + Field::one();
             match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => Self::Output::ternary(&same_sign, &!bit, &self_is_negative_and_other_is_positive),
+                // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
                 None => E::halt("Malformed expression detected during signed integer comparison."),
             }
         } else {
@@ -46,6 +47,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
                     + Field::one();
             match max_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => !bit,
+                // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
                 None => E::halt("Malformed expression detected during unsigned integer comparison."),
             }
         }

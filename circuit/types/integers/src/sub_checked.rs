@@ -84,6 +84,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
             // Extract the integer bits from the field element, with a carry bit.
             let (difference, carry) = match difference.to_lower_bits_le(I::BITS as usize + 1).split_last() {
                 Some((carry, bits_le)) => (Integer::from_bits_le(bits_le), carry.clone()),
+                // Note: `E::halt` should never be invoked as `I::BITS as usize + 1` is greater than zero.
                 None => E::halt("Malformed difference detected during integer subtraction"),
             };
 

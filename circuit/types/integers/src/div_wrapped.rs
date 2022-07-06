@@ -26,7 +26,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             // Halt on division by zero.
             E::assert(other.is_not_equal(&Self::zero()));
             // Compute the quotient and return the new constant.
-            Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_div(&other.eject_value())))
+            witness!(|self, other| console::Integer::new(self.wrapping_div(&other)))
         } else if I::is_signed() {
             // Ensure this is not a division by zero.
             E::assert(other.is_not_equal(&Self::zero()));

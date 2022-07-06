@@ -23,11 +23,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
     fn shl_wrapped(&self, rhs: &Integer<E, M>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && rhs.is_constant() {
-            // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
-            Integer::new(
-                Mode::Constant,
-                console::Integer::new(self.eject_value().wrapping_shl(rhs.eject_value().to_u32().unwrap())),
-            )
+            // Note: Casting `rhs` to a `u32` is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
+            witness!(|self, rhs| console::Integer::new(self.wrapping_shl(rhs.to_u32().unwrap())))
         } else {
             // Index of the first upper bit of rhs that we mask.
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
