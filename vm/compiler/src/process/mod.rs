@@ -112,7 +112,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             ensure!(request.verify(), "Request is invalid");
 
             // Synthesize the circuit.
-            let (_response, assignment) = Self::synthesize(program, &function, &request)?;
+            let (_response, assignment) = Self::synthesize(program, &function, &request, true)?;
             // Derive the circuit key.
             let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(&assignment)?;
             // Add the circuit key to the mapping.
@@ -136,7 +136,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let function = program.get_function(request.function_name())?;
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(program)?;
+        let mut stack = Stack::<N, A>::new(program, false)?;
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
@@ -171,7 +171,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Retrieve the proving and verifying key.
         let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(program, &function, request)?;
+        let (response, assignment) = Self::synthesize(program, &function, request, false)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
@@ -198,6 +198,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         program: Program<N>,
         function: &Function<N>,
         request: &Request<N>,
+        is_setup: bool,
     ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
         // Retrieve the number of inputs.
         let num_inputs = function.inputs().len();
@@ -226,7 +227,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         Self::log_circuit("Request Authentication");
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(program)?;
+        let mut stack = Stack::<N, A>::new(program, is_setup)?;
         // Execute the function.
         let outputs = stack.execute_function(function, request.inputs())?;
 

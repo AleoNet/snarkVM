@@ -73,7 +73,7 @@ impl<N: Network> Call<N> {
         }
 
         // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone())?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
 
         // Evaluate the closure, and load the outputs.
         let outputs = closure_stack.evaluate_closure(&closure, &inputs)?;
@@ -101,7 +101,7 @@ impl<N: Network> Call<N> {
         }
 
         // Initialize the closure stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone())?;
+        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
 
         // Execute the closure, and load the outputs.
         let outputs = closure_stack.execute_closure(&closure, &inputs)?;
