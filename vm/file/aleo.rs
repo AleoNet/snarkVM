@@ -56,8 +56,8 @@ impl<N: Network> FromStr for AleoFile<N> {
 }
 
 impl<N: Network> AleoFile<N> {
-    /// Creates a new Aleo program file with the given directory path and program ID.
-    pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+    /// Creates a new Aleo program file with the given directory path, program ID, and `is_main` indicator.
+    pub fn new(directory: &Path, id: &ProgramID<N>, is_main: bool) -> Result<Self> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
         // Ensure the program name is valid.
@@ -77,9 +77,13 @@ function hello_world:
         );
 
         // Create the file.
-        let file_name = match id.is_aleo() {
-            true => id.to_string(),
-            false => format!("{id}.{ALEO_FILE_EXTENSION}"),
+        let file_name = if is_main {
+            format!("main.{}", ALEO_FILE_EXTENSION)
+        } else {
+            match id.is_aleo() {
+                true => id.to_string(),
+                false => format!("{id}.{ALEO_FILE_EXTENSION}"),
+            }
         };
 
         // Construct the file path.
@@ -189,7 +193,7 @@ impl<N: Network> AleoFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuit::Parser;
+    use crate::prelude::Parser;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
 

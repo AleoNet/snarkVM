@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    file::AleoFile,
+    file::{AleoFile, Manifest, README},
     prelude::{Network, ProgramID},
 };
 use snarkvm_compiler::Program;
@@ -28,15 +28,19 @@ pub struct Package<N: Network> {
     id: ProgramID<N>,
     /// The directory path.
     directory: PathBuf,
+    /// The manifest file.
+    manifest_file: Manifest<N>,
     /// The program file.
     program_file: AleoFile<N>,
+    /// The README file.
+    readme_file: README<N>,
 }
 
 impl<N: Network> Package<N> {
     /// Creates a new package, at the given directory with the given program name.
     pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
-        // // Ensure the directory path does not exist.
-        // ensure!(!directory.exists(), "The program directory already exists: {}", directory.display());
+        // Ensure the directory path does not exist.
+        ensure!(!directory.exists(), "The program directory already exists: {}", directory.display());
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
 
@@ -45,9 +49,13 @@ impl<N: Network> Package<N> {
             std::fs::create_dir_all(directory)?;
         }
 
+        // Create the manifest file.
+        let manifest_file = Manifest::new(directory, id)?;
         // Create the program file.
-        let program_file = AleoFile::new(directory, id)?;
+        let program_file = AleoFile::new(directory, id, true)?;
+        // Create the README file.
+        let readme_file = README::new(directory, id)?;
 
-        Ok(Self { id: *id, directory: directory.to_path_buf(), program_file })
+        Ok(Self { id: *id, directory: directory.to_path_buf(), manifest_file, program_file, readme_file })
     }
 }

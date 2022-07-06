@@ -123,7 +123,7 @@ impl<N: Network> AVMFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuit::Parser;
+    use crate::prelude::Parser;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
 

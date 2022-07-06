@@ -19,3 +19,9 @@ pub use aleo::AleoFile;
 
 mod avm;
 pub use avm::AVMFile;
+
+mod manifest;
+pub use manifest::Manifest;
+
+mod readme_file;
+pub use readme_file::README;
