@@ -35,13 +35,15 @@ pub struct Package<N: Network> {
 impl<N: Network> Package<N> {
     /// Creates a new package, at the given directory with the given program name.
     pub fn new(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
-        // Ensure the directory path does not exist.
-        ensure!(!directory.exists(), "The program directory already exists: {}", directory.display());
+        // // Ensure the directory path does not exist.
+        // ensure!(!directory.exists(), "The program directory already exists: {}", directory.display());
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
 
         // Create the program directory.
-        std::fs::create_dir_all(directory)?;
+        if !directory.exists() {
+            std::fs::create_dir_all(directory)?;
+        }
 
         // Create the program file.
         let program_file = AleoFile::new(directory, id)?;

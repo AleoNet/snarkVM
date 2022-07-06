@@ -76,7 +76,7 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_import_parse() -> Result<()> {
+    fn test_parse() -> Result<()> {
         let id = ProgramID::<CurrentNetwork>::parse("bar.aleo").unwrap().1;
         assert_eq!(id.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
         assert_eq!(id.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
@@ -89,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn test_import_display() -> Result<()> {
+    fn test_display() -> Result<()> {
         let id = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
         assert_eq!("bar.aleo", id.to_string());
 

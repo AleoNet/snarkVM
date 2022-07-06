@@ -14,29 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-#[macro_use]
-extern crate enum_index_derive;
+impl<N: Network> ToFields for Locator<N> {
+    type Field = Field<N>;
 
-pub use snarkvm_console_network::Network;
-pub use snarkvm_console_types::prelude::*;
-
-mod data;
-pub use data::*;
-
-mod data_types;
-pub use data_types::*;
-
-mod id;
-pub use id::*;
-
-mod locator;
-pub use locator::*;
-
-mod request;
-pub use request::*;
-
-mod response;
-pub use response::*;
+    /// Returns this locator as a list of field elements.
+    fn to_fields(&self) -> Result<Vec<Self::Field>> {
+        let mut fields = self.id.to_fields()?;
+        if let Some(resource) = &self.resource {
+            fields.push(resource.to_field()?);
+        }
+        Ok(fields)
+    }
+}
