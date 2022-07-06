@@ -52,7 +52,7 @@ impl<N: Network> Package<N> {
         // Create the program file.
         let program_file = AleoFile::create(directory, program_id, true)?;
         // Create the README file.
-        let _readme_file = README::create(directory, program_id)?;
+        let _readme_file = README::create::<N>(directory, program_id)?;
 
         Ok(Self { program_id: *program_id, directory: directory.to_path_buf(), manifest_file, program_file })
     }

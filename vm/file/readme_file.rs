@@ -24,16 +24,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub struct README<N: Network> {
-    /// The program ID.
-    id: ProgramID<N>,
+pub struct README {
     /// The file path.
     path: PathBuf,
 }
 
-impl<N: Network> README<N> {
+impl README {
     /// Creates a new README file with the given directory path and program ID.
-    pub fn create(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
+    pub fn create<N: Network>(directory: &Path, id: &ProgramID<N>) -> Result<Self> {
         // Ensure the directory path exists.
         ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
         // Ensure the program name is valid.
@@ -63,6 +61,11 @@ aleo build
         File::create(&path)?.write_all(readme_string.as_bytes())?;
 
         // Return the README file.
-        Ok(Self { id: *id, path })
+        Ok(Self { path })
+    }
+
+    /// Returns the file path.
+    pub const fn path(&self) -> &PathBuf {
+        &self.path
     }
 }
