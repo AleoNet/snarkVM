@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::prelude::{FromBytes, Network, ToBytes};
 use snarkvm_compiler::Program;
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::{anyhow, ensure, Result};
 use std::{
@@ -24,19 +24,16 @@ use std::{
     path::Path,
 };
 
-// TODO (howardwu): Unify these higher up.
-type N = snarkvm_console::network::Testnet3;
-
 static AVM_FILE_EXTENSION: &str = "avm";
 
-pub struct AVMFile {
+pub struct AVMFile<N: Network> {
     /// The file name (without the extension).
     file_name: String,
     /// The program.
     program: Program<N>,
 }
 
-impl AVMFile {
+impl<N: Network> AVMFile<N> {
     /// Reads the program from the given file path, if it exists.
     pub fn from_filepath(file: &Path) -> Result<Self> {
         // Ensure the path is well-formed.
@@ -106,7 +103,7 @@ impl AVMFile {
     }
 }
 
-impl AVMFile {
+impl<N: Network> AVMFile<N> {
     /// Checks that the given path has the correct file extension.
     fn check_path(path: &Path) -> Result<()> {
         // Ensure the given path is a file.
@@ -128,7 +125,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit::Parser;
 
-    type CurrentNetwork = N;
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
 
     fn temp_dir() -> std::path::PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()

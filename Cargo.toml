@@ -79,7 +79,7 @@ default = ["cli"]
 full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM CLI ##
-cli = ["anyhow", "console", "clap", "colored", "self_update", "thiserror", "utilities"]
+cli = ["anyhow", "console", "clap", "colored", "self_update", "thiserror"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]

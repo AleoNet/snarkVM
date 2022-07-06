@@ -25,7 +25,7 @@ use std::{
     path::Path,
 };
 
-pub static ALEO_FILE_EXTENSION: &str = "aleo";
+static ALEO_FILE_EXTENSION: &str = "aleo";
 
 pub struct AleoFile<N: Network> {
     /// The file name (without the extension).
