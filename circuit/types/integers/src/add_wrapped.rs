@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the sum and return the new constant.
-            Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_add(&other.eject_value())))
+            witness!(|self, other| console::Integer::new(self.wrapping_add(&other)))
         } else {
             // Instead of adding the bits of `self` and `other` directly, the integers are
             // converted into a field elements, and summed, before converting back to integers.

@@ -23,6 +23,7 @@ impl<E: Environment, I: IntegerType> MSB for Integer<E, I> {
     fn msb(&self) -> &Self::Boolean {
         match self.bits_le.last() {
             Some(msb) => msb,
+            // Note: `E::halt` should never be invoked as `self.bits_le.len()` is greater than zero.
             None => E::halt("Malformed integer detected while retrieving the MSB"),
         }
     }

@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the difference and return the new constant.
-            Integer::new(Mode::Constant, console::Integer::new(self.eject_value().wrapping_sub(&other.eject_value())))
+            witness!(|self, other| console::Integer::new(self.wrapping_sub(&other)))
         } else {
             // Instead of subtracting the bits of `self` and `other` directly, the integers are
             // converted into field elements to perform the operation, before converting back to integers.
