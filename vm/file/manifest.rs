@@ -73,7 +73,7 @@ impl<N: Network> Manifest<N> {
         // Construct the file path.
         let path = directory.join(MANIFEST_FILE_NAME);
         // Ensure the file path already exists
-        ensure!(!path.exists(), "Manifest file is missing: '{}'", path.display());
+        ensure!(path.exists(), "Manifest file is missing: '{}'", path.display());
 
         // Read the file to a string.
         let manifest_string = fs::read_to_string(&path)?;

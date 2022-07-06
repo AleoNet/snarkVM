@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod build;
+
 use crate::{
     file::{AleoFile, Manifest, README},
     prelude::{Network, ProgramID},
 };
-use snarkvm_compiler::Program;
+use snarkvm_compiler::{Process, Program};
 
 use anyhow::{ensure, Result};
 use std::path::{Path, PathBuf};
