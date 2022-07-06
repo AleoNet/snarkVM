@@ -43,7 +43,7 @@ impl<N: Network> AVMFile<N> {
         ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
         // Ensure the program name is valid.
         ensure!(
-            !Program::is_reserved_keyword(&program.id().name()),
+            !Program::is_reserved_keyword(program.id().name()),
             "Program name is invalid (reserved): {}",
             program.id()
         );
