@@ -49,7 +49,7 @@ impl<N: Network> FromStr for AleoFile<N> {
         let program_string = s.to_string();
 
         // The file name is defined as the string up to the extension (excluding the extension).
-        let file_name = match program.id().network().to_string() == *ALEO_FILE_EXTENSION {
+        let file_name = match program.id().is_aleo() {
             true => program.id().name().to_string(),
             false => program.id().to_string(),
         };
