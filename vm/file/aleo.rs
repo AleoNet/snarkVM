@@ -132,25 +132,18 @@ function hello_world:
         Ok(aleo_file)
     }
 
-    /// Reads the program from the given file path, if it exists.
-    pub fn from_filepath(file: &Path) -> Result<Self> {
+    /// Returns `true` if the file exists at the given path.
+    pub fn exists_at(&self, path: &Path) -> bool {
         // Ensure the path is well-formed.
-        Self::check_path(file)?;
+        Self::check_path(path).is_ok() && path.exists()
+    }
 
-        // Retrieve the file name.
-        let file_name = file
-            .file_stem()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_str()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_string();
-
-        // Read the program string.
-        let program_string = fs::read_to_string(&file)?;
-        // Parse the program string.
-        let program = Program::from_str(&program_string)?;
-
-        Ok(Self { file_name, program_string, program })
+    /// Returns `true` if the main program file exists at the given path.
+    pub fn main_exists_at(directory: &Path) -> bool {
+        // Construct the file path.
+        let path = directory.join(Self::main_file_name());
+        // Return the result.
+        path.is_file() && path.exists()
     }
 
     /// Returns the main Aleo program file name.
@@ -171,38 +164,6 @@ function hello_world:
     /// Returns the program.
     pub const fn program(&self) -> &Program<N> {
         &self.program
-    }
-
-    /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, path: &Path) -> bool {
-        // Ensure the path is well-formed.
-        Self::check_path(path).is_ok() && path.exists()
-    }
-
-    /// Returns `true` if the main program file exists at the given path.
-    pub fn main_exists_at(directory: &Path) -> bool {
-        // Construct the file path.
-        let path = directory.join(Self::main_file_name());
-        // Return the result.
-        path.is_file() && path.exists()
-    }
-
-    /// Writes the program string to the file.
-    pub fn write_to(&self, path: &Path) -> Result<()> {
-        // Ensure the path is well-formed.
-        Self::check_path(path)?;
-
-        // Retrieve the file name.
-        let file_name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_str()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_string();
-        // Ensure the file name matches the expected file name.
-        ensure!(file_name == self.file_name, "File name does not match.");
-
-        Ok(File::create(&path)?.write_all(self.program_string.as_bytes())?)
     }
 
     /// Removes the file at the given path, if it exists.
@@ -233,6 +194,45 @@ impl<N: Network> AleoFile<N> {
         ensure!(path.exists(), "File does not exist: {}", path.display());
 
         Ok(())
+    }
+
+    /// Reads the program from the given file path, if it exists.
+    fn from_filepath(file: &Path) -> Result<Self> {
+        // Ensure the path is well-formed.
+        Self::check_path(file)?;
+
+        // Retrieve the file name.
+        let file_name = file
+            .file_stem()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_str()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_string();
+
+        // Read the program string.
+        let program_string = fs::read_to_string(&file)?;
+        // Parse the program string.
+        let program = Program::from_str(&program_string)?;
+
+        Ok(Self { file_name, program_string, program })
+    }
+
+    /// Writes the program string to the file.
+    pub fn write_to(&self, path: &Path) -> Result<()> {
+        // Ensure the path is well-formed.
+        Self::check_path(path)?;
+
+        // Retrieve the file name.
+        let file_name = path
+            .file_stem()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_str()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_string();
+        // Ensure the file name matches the expected file name.
+        ensure!(file_name == self.file_name, "File name does not match.");
+
+        Ok(File::create(&path)?.write_all(self.program_string.as_bytes())?)
     }
 }
 
