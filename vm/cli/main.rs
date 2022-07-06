@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     // Run the updater.
     println!("{}", Updater::print_cli());
     // Run the CLI.
-    println!("{}", cli.start()?);
+    println!("{}", cli.command.start()?);
 
     Ok(())
 }

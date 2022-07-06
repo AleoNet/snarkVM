@@ -20,25 +20,14 @@ use anyhow::Result;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>")]
+#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>", setting = clap::AppSettings::ColoredHelp)]
 pub struct CLI {
     /// Specify the verbosity of the CLI [options: 0, 1, 2, 3]
     #[clap(default_value = "2", long = "verbosity")]
     pub verbosity: u8,
     /// Specify a subcommand.
     #[clap(subcommand)]
-    pub command: Option<Command>,
-}
-
-impl CLI {
-    /// Parse the given arguments.
-    pub fn start(self) -> Result<String> {
-        // Parse optional subcommands first.
-        match self.command {
-            Some(command) => command.start(),
-            None => Ok(String::new()),
-        }
-    }
+    pub command: Command,
 }
 
 #[derive(Debug, Parser)]
