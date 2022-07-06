@@ -166,18 +166,16 @@ mod tests {
                 format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
-            let input_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
-                console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
-            );
-            let input_public = console::Value::<<Circuit as Environment>::Network>::Plaintext(
-                console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
-            );
-            let input_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
-                console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
-            );
-            let input_record = console::Value::<<Circuit as Environment>::Network>::Record(
-                console::Record::from_str(&record_string).unwrap(),
-            );
+            let input_constant =
+                console::Value::<<Circuit as Environment>::Network>::from_str("{ token_amount: 9876543210u128 }")
+                    .unwrap();
+            let input_public =
+                console::Value::<<Circuit as Environment>::Network>::from_str("{ token_amount: 9876543210u128 }")
+                    .unwrap();
+            let input_private =
+                console::Value::<<Circuit as Environment>::Network>::from_str("{ token_amount: 9876543210u128 }")
+                    .unwrap();
+            let input_record = console::Value::<<Circuit as Environment>::Network>::from_str(&record_string).unwrap();
             let inputs = vec![input_constant, input_public, input_private, input_record];
 
             // Construct the input types.
@@ -189,7 +187,7 @@ mod tests {
             ];
 
             // Compute the signed request.
-            let request = console::Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng)?;
+            let request = console::Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng)?;
             assert!(request.verify());
 
             // Inject the request into a circuit.

@@ -90,8 +90,11 @@ pub struct Program<N: Network> {
 impl<N: Network> Program<N> {
     /// Initializes an empty program.
     #[inline]
-    pub fn new(id: ProgramID<N>) -> Self {
-        Self {
+    pub fn new(id: ProgramID<N>) -> Result<Self> {
+        // Ensure the program name is valid.
+        ensure!(!Self::is_reserved_keyword(id.name()), "Program name is invalid: {}", id.name());
+
+        Ok(Self {
             id,
             imports: IndexMap::new(),
             identifiers: IndexMap::new(),
@@ -99,7 +102,7 @@ impl<N: Network> Program<N> {
             records: IndexMap::new(),
             closures: IndexMap::new(),
             functions: IndexMap::new(),
-        }
+        })
     }
 
     /// Signs a request to execute a program function.
@@ -108,7 +111,7 @@ impl<N: Network> Program<N> {
         &self,
         private_key: &PrivateKey<N>,
         function_name: Identifier<N>,
-        inputs: Vec<Value<N>>,
+        inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Request<N>> {
         // Retrieve the function from the program.
@@ -216,7 +219,7 @@ impl<N: Network> Program<N> {
         // Ensure the import name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&import_name), "'{import_name}' is a reserved opcode.");
         // Ensure the import name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
 
         // Ensure the import is new.
         ensure!(!self.imports.contains_key(import.id()), "Import '{}' is already defined.", import.id());
@@ -245,7 +248,7 @@ impl<N: Network> Program<N> {
         // Ensure the interface name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&interface_name), "'{interface_name}' is a reserved opcode.");
         // Ensure the interface name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
 
         // Ensure the interface contains members.
         ensure!(!interface.members().is_empty(), "Interface '{interface_name}' is missing members.");
@@ -254,7 +257,7 @@ impl<N: Network> Program<N> {
         // Note: This design ensures cyclic references are not possible.
         for (identifier, plaintext_type) in interface.members() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!self.is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
+            ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
                 PlaintextType::Literal(..) => continue,
@@ -298,13 +301,13 @@ impl<N: Network> Program<N> {
         // Ensure the record name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&record_name), "'{record_name}' is a reserved opcode.");
         // Ensure the record name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&record_name), "'{record_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&record_name), "'{record_name}' is a reserved keyword.");
 
         // Ensure all record entries are well-formed.
         // Note: This design ensures cyclic references are not possible.
         for (identifier, entry_type) in record.entries() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!self.is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
+            ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match entry_type {
                 // Ensure the plaintext type is already defined.
@@ -355,7 +358,7 @@ impl<N: Network> Program<N> {
         // Ensure the closure name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&closure_name), "'{closure_name}' is a reserved opcode.");
         // Ensure the closure name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
 
         // Ensure there are input statements in the closure.
         ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
@@ -400,7 +403,7 @@ impl<N: Network> Program<N> {
         // Ensure the function name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&function_name), "'{function_name}' is a reserved opcode.");
         // Ensure the function name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
         // Ensure there are input statements in the function.
         ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
@@ -499,7 +502,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
-    fn is_reserved_keyword(&self, name: &Identifier<N>) -> bool {
+    pub fn is_reserved_keyword(name: &Identifier<N>) -> bool {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the name is a keyword.
@@ -536,7 +539,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?)?;
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -561,7 +564,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?)?;
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -586,7 +589,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?)?;
 
         // Add the function to the program.
         program.add_function(function.clone())?;
@@ -622,7 +625,7 @@ function compute:
         ];
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
@@ -664,7 +667,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
@@ -706,7 +709,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
@@ -761,7 +764,7 @@ function compute:
         let r4 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
@@ -816,7 +819,7 @@ function compute:
         let expected = Value::Record(input_record);
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
 
         // Compute the output value.
         let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();

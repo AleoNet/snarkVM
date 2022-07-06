@@ -72,7 +72,7 @@ impl<N: Network> Program<N> {
         ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
 
         // Ensure the record name is valid.
-        ensure!(!self.is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
+        ensure!(!Self::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Retrieve the record type from the program.
         let record_type = match self.get_record(record_name) {
@@ -122,7 +122,7 @@ impl<N: Network> Program<N> {
                 // Ensure the member type matches.
                 Some((member_name, member_entry)) => {
                     // Ensure the member name is valid.
-                    ensure!(!self.is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
+                    ensure!(!Self::is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
                     self.matches_entry_internal(member_entry, expected_type, depth + 1)?
                 }
@@ -180,7 +180,7 @@ impl<N: Network> Program<N> {
             },
             PlaintextType::Interface(interface_name) => {
                 // Ensure the interface name is valid.
-                ensure!(!self.is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
+                ensure!(!Self::is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
 
                 // Retrieve the interface from the program.
                 let interface = match self.get_interface(interface_name) {
@@ -220,7 +220,7 @@ impl<N: Network> Program<N> {
                         // Ensure the member type matches.
                         Some((member_name, member_plaintext)) => {
                             // Ensure the member name is valid.
-                            ensure!(!self.is_reserved_keyword(member_name), "Member '{member_name}' is reserved");
+                            ensure!(!Self::is_reserved_keyword(member_name), "Member '{member_name}' is reserved");
                             // Ensure the member plaintext matches (recursive call).
                             self.matches_plaintext_internal(member_plaintext, expected_type, depth + 1)?
                         }

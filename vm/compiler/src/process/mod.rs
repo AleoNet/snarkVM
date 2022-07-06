@@ -32,13 +32,14 @@ use console::{
 
 use core::marker::PhantomData;
 use indexmap::IndexMap;
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[allow(clippy::type_complexity)]
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     /// The universal SRS.
-    universal_srs: Arc<UniversalSRS<N>>,
+    universal_srs: OnceCell<UniversalSRS<N>>,
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
@@ -51,11 +52,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     /// Initializes a new process.
     #[inline]
     pub fn new(program: Program<N>) -> Result<Self> {
-        // TODO (howardwu): Load the universal SRS remotely.
-        let universal_srs = UniversalSRS::load(100_000)?;
         // Return the process.
         Ok(Self {
-            universal_srs: Arc::new(universal_srs),
+            universal_srs: OnceCell::new(),
             programs: [(*program.id(), program)].into_iter().collect(),
             circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
             _phantom: PhantomData,
@@ -107,14 +106,16 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                 .map(|input_type| program.sample_value(&burner_address, input_type, rng))
                 .collect::<Result<Vec<_>>>()?;
             // Sign a request, with a burner private key.
-            let request = program.sign(&burner_private_key, *function_name, inputs, rng)?;
+            let request = program.sign(&burner_private_key, *function_name, &inputs, rng)?;
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
 
             // Synthesize the circuit.
-            let (_response, assignment) = Self::synthesize(program, &function, &request)?;
+            let (_response, assignment) = Self::synthesize(program, &function, &request, true)?;
             // Derive the circuit key.
-            let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(&assignment)?;
+            // TODO (howardwu): Load the universal SRS remotely.
+            let (proving_key, verifying_key) =
+                self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
             // Add the circuit key to the mapping.
             self.circuit_keys
                 .write()
@@ -136,7 +137,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let function = program.get_function(request.function_name())?;
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(program)?;
+        let mut stack = Stack::<N, A>::new(program, false)?;
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
@@ -171,7 +172,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Retrieve the proving and verifying key.
         let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(program, &function, request)?;
+        let (response, assignment) = Self::synthesize(program, &function, request, false)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
@@ -190,6 +191,46 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         Ok((response, transition))
     }
+
+    /// Executes a program function on the given request, proving key, and verifying key.
+    #[inline]
+    pub fn execute_synthesized<R: Rng + CryptoRng>(
+        &self,
+        request: &Request<N>,
+        proving_key: &ProvingKey<N>,
+        verifying_key: &VerifyingKey<N>,
+        rng: &mut R,
+    ) -> Result<(Response<N>, Transition<N>)> {
+        trace!("Starting execute");
+
+        // Ensure the request is well-formed.
+        ensure!(request.verify(), "Request is invalid");
+
+        // Retrieve the program.
+        let program = self.get_program(request.program_id())?.clone();
+        // Retrieve the function from the program.
+        let function = program.get_function(request.function_name())?;
+
+        // Synthesize the circuit.
+        let (response, assignment) = Self::synthesize(program, &function, request, false)?;
+        // Execute the circuit.
+        let proof = proving_key.prove(&assignment, rng)?;
+        // Verify the proof.
+        ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
+
+        // Initialize the transition.
+        let transition = Transition::from(request, &response, proof, 0u64)?;
+        // Verify the transition.
+        ensure!(transition.verify(verifying_key), "Transition is invalid");
+
+        // // Initialize the trace.
+        // let mut trace = Trace::<N>::new(request, &response)?;
+        // // Finalize the trace.
+        // trace.finalize()?;
+        // println!("{:?}", trace.leaves());
+
+        Ok((response, transition))
+    }
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
@@ -198,6 +239,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         program: Program<N>,
         function: &Function<N>,
         request: &Request<N>,
+        is_setup: bool,
     ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
         // Retrieve the number of inputs.
         let num_inputs = function.inputs().len();
@@ -226,7 +268,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         Self::log_circuit("Request Authentication");
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(program)?;
+        let mut stack = Stack::<N, A>::new(program, is_setup)?;
         // Execute the function.
         let outputs = stack.execute_function(function, request.inputs())?;
 
@@ -272,7 +314,7 @@ mod tests {
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, Plaintext, Record, Value},
+        program::{Identifier, Value},
     };
 
     type CurrentNetwork = Testnet3;
@@ -329,28 +371,18 @@ function compute:
         let record_string =
             format!("{{ owner: {caller}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
-        // // Construct four inputs.
-        // let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-        // let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-        // let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-        // let input_record = Value::Record(Record::from_str(&record_string).unwrap());
-        // let inputs = vec![input_constant, input_public, input_private, input_record];
-
         // Declare the input value.
-        let r0 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("3field").unwrap());
-        let r1 = Value::<CurrentNetwork>::Plaintext(Plaintext::from_str("5field").unwrap());
-        let r2 = Value::<CurrentNetwork>::Record(Record::from_str(&record_string).unwrap());
+        let r0 = Value::<CurrentNetwork>::from_str("3field").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("5field").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str(&record_string).unwrap();
 
         // Declare the expected output value.
-        let r3 = Value::Plaintext(Plaintext::from_str("19field").unwrap());
-        let r4 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
-        let r5 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
-
-        // Construct the inputs and input types.
-        let inputs = vec![r0, r1, r2.clone()];
+        let r3 = Value::from_str("19field").unwrap();
+        let r4 = Value::from_str("11field").unwrap();
+        let r5 = Value::from_str("8field").unwrap();
 
         // Compute the signed request.
-        let request = program.sign(&caller_private_key, function_name, inputs, rng).unwrap();
+        let request = program.sign(&caller_private_key, function_name, &[r0, r1, r2.clone()], rng).unwrap();
 
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program).unwrap();

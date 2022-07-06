@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm::cli::{parse, Updater, CLI};
+use snarkvm::cli::{Updater, CLI};
 
 use clap::Parser;
 
 fn main() -> anyhow::Result<()> {
+    // Parse the given arguments.
     let cli = CLI::parse();
-
-    if cli.debug {
-        println!("\n{:#?}\n", cli);
-    }
-
+    // Run the updater.
     println!("{}", Updater::print_cli());
-
-    println!("{}", parse(cli.command)?);
+    // Run the CLI.
+    println!("{}", cli.command.start()?);
 
     Ok(())
 }

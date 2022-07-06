@@ -18,6 +18,8 @@ use console::network::prelude::*;
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
 use snarkvm_curves::PairingEngine;
 
+use colored::Colorize;
+
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 type Fr<N> = <N as Environment>::Field;
 type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;

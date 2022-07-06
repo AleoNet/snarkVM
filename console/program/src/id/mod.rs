@@ -62,6 +62,12 @@ impl<N: Network> ProgramID<N> {
             None => Identifier::from_str("aleo").expect("Failed to parse Aleo domain"),
         }
     }
+
+    /// Returns `true` if the network-level domain is `aleo`.
+    #[inline]
+    pub fn is_aleo(&self) -> bool {
+        self.network() == Identifier::from_str("aleo").expect("Failed to parse Aleo domain")
+    }
 }
 
 impl<N: Network> Ord for ProgramID<N> {

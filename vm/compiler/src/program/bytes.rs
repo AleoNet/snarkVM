@@ -22,7 +22,7 @@ impl<N: Network> FromBytes for Program<N> {
         let id = ProgramID::read_le(&mut reader)?;
 
         // Initialize the program.
-        let mut program = Program::new(id);
+        let mut program = Program::new(id).map_err(|e| error(e.to_string()))?;
 
         // Read the number of program imports.
         let imports_len = u8::read_le(&mut reader)?;

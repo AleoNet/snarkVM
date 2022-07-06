@@ -36,8 +36,23 @@ impl<N: Network> ProvingKey<N> {
     ) -> Result<Proof<N>> {
         let timer = std::time::Instant::now();
         let proof = Proof::new(Marlin::<N>::prove_batch(self, std::slice::from_ref(assignment), rng)?);
-        println!("Called prover: {} ms", timer.elapsed().as_millis());
+        println!("{}", format!(" • Called prover: {} ms", timer.elapsed().as_millis()).dimmed());
         Ok(proof)
+    }
+}
+
+impl<N: Network> FromBytes for ProvingKey<N> {
+    /// Reads the proving key from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let proving_key = FromBytes::read_le(&mut reader)?;
+        Ok(Self { proving_key })
+    }
+}
+
+impl<N: Network> ToBytes for ProvingKey<N> {
+    /// Writes the proving key to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.proving_key.write_le(&mut writer)
     }
 }
 

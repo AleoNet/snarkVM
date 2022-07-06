@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod aleo;
-pub use aleo::AleoFile;
+use super::*;
 
-mod avm;
-pub use avm::AVMFile;
+impl<N: Network> ToFields for Locator<N> {
+    type Field = Field<N>;
 
-mod manifest;
-pub use manifest::Manifest;
-
-mod prover;
-pub use prover::ProverFile;
-
-mod readme_file;
-pub use readme_file::README;
-
-mod verifier;
-pub use verifier::VerifierFile;
+    /// Returns this locator as a list of field elements.
+    fn to_fields(&self) -> Result<Vec<Self::Field>> {
+        let mut fields = self.id.to_fields()?;
+        if let Some(resource) = &self.resource {
+            fields.push(resource.to_field()?);
+        }
+        Ok(fields)
+    }
+}

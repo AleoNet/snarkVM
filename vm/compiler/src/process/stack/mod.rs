@@ -54,12 +54,14 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
     circuit_registers: IndexMap<u64, circuit::Value<A>>,
+    /// The boolean indicator if the stack is for a setup.
+    is_setup: bool,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(program: Program<N>) -> Result<Self> {
+    pub fn new(program: Program<N>, is_setup: bool) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
         Ok(Self {
             program,
@@ -67,6 +69,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
+            is_setup,
         })
     }
 
@@ -93,6 +96,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Return success.
         Ok(())
+    }
+
+    /// Returns if the stack is for a setup.
+    #[inline]
+    pub const fn is_setup(&self) -> bool {
+        self.is_setup
     }
 
     /// Returns the program.
@@ -162,14 +171,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             use circuit::Eject;
 
-            // Assign the console input to the register.
-            self.store(register, input.eject_value())?;
+            if !self.is_setup {
+                // Assign the console input to the register.
+                self.store(register, input.eject_value())?;
+            }
             // Assign the circuit input to the register.
             self.store_circuit(register, input.clone())
         })?;
 
+        // If the circuit is not for a setup, then evaluate the instructions.
+        if !self.is_setup {
+            closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        }
         // Execute the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
 
         // Ensure the number of public variables remains the same.
@@ -245,14 +259,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             use circuit::Eject;
 
-            // Assign the console input to the register.
-            self.store(register, input.eject_value())?;
+            if !self.is_setup {
+                // Assign the console input to the register.
+                self.store(register, input.eject_value())?;
+            }
             // Assign the circuit input to the register.
             self.store_circuit(register, input.clone())
         })?;
 
+        // If the circuit is not for a setup, then evaluate the instructions.
+        if !self.is_setup {
+            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        }
         // Execute the instructions.
-        function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         function.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
 
         // Ensure the number of public variables remains the same.

@@ -16,6 +16,7 @@
 
 use crate::cli::errors::UpdaterError;
 
+use anyhow::Result;
 use colored::Colorize;
 use self_update::{backends::github, version::bump_is_greater, Status};
 
@@ -29,7 +30,7 @@ impl Updater {
 
     /// Show all available releases for `snarkvm`.
     #[allow(clippy::format_push_string)]
-    pub fn show_available_releases() -> Result<String, UpdaterError> {
+    pub fn show_available_releases() -> Result<String> {
         let releases = github::ReleaseList::configure()
             .repo_owner(Self::SNARKVM_REPO_OWNER)
             .repo_name(Self::SNARKVM_REPO_NAME)
@@ -44,7 +45,7 @@ impl Updater {
     }
 
     /// Update `snarkvm` to the latest release.
-    pub fn update_to_latest_release(show_output: bool) -> Result<Status, UpdaterError> {
+    pub fn update_to_latest_release(show_output: bool) -> Result<Status> {
         let status = github::Update::configure()
             .repo_owner(Self::SNARKVM_REPO_OWNER)
             .repo_name(Self::SNARKVM_REPO_NAME)
