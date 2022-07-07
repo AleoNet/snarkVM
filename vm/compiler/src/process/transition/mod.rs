@@ -17,6 +17,8 @@
 mod input;
 use input::*;
 
+mod bytes;
+
 mod output;
 use output::*;
 
