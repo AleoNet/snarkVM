@@ -84,4 +84,12 @@ pub use rand::{
     CryptoRng,
     Rng,
 };
-pub use serde::{de, de::DeserializeOwned, Deserialize, Deserializer, Serialize, Serializer};
+pub use serde::{
+    de,
+    de::DeserializeOwned,
+    ser::{self, SerializeStruct},
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};

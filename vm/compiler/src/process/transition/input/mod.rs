@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod bytes;
+mod serialize;
 
 use console::{
     network::prelude::*,
@@ -23,7 +24,7 @@ use console::{
 };
 
 /// The transition input.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Input<N: Network> {
     /// The plaintext hash and (optional) plaintext.
     Constant(Field<N>, Option<Plaintext<N>>),
@@ -73,5 +74,28 @@ impl<N: Network> Input<N> {
             },
             _ => true,
         }
+    }
+}
+
+impl<N: Network> FromStr for Input<N> {
+    type Err = Error;
+
+    /// Initializes the input from a JSON-string.
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(input)?)
+    }
+}
+
+impl<N: Network> Debug for Input<N> {
+    /// Prints the input as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Input<N> {
+    /// Displays the input as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
