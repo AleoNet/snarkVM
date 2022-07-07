@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
+
 use console::{
     network::prelude::*,
     program::{Ciphertext, Plaintext},
@@ -21,7 +23,7 @@ use console::{
 };
 
 /// The transition input.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Input<N: Network> {
     /// The plaintext hash and (optional) plaintext.
     Constant(Field<N>, Option<Plaintext<N>>),
