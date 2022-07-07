@@ -528,7 +528,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Compute the destination register types.
-        let destination_types = instruction.output_types(&self, &operand_types)?;
+        let destination_types = instruction.output_types(self, &operand_types)?;
 
         // Insert the destination register.
         for (destination, destination_type) in

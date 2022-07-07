@@ -93,6 +93,8 @@ impl<N: Network> Program<N> {
     pub fn new(id: ProgramID<N>) -> Result<Self> {
         // Ensure the program name is valid.
         ensure!(!Self::is_reserved_keyword(id.name()), "Program name is invalid: {}", id.name());
+        // Ensure the program network-level domain is `aleo`.
+        ensure!(id.is_aleo(), "Program network is invalid: {}", id.network());
 
         Ok(Self {
             id,
@@ -539,7 +541,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?)?;
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -564,7 +566,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?)?;
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -589,7 +591,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?)?;
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
         // Add the function to the program.
         program.add_function(function.clone())?;
@@ -605,7 +607,7 @@ function compute:
     fn test_program_evaluate_function() {
         let program = Program::<CurrentNetwork>::from_str(
             r"
-    program example;
+    program example.aleo;
 
     function foo:
         input r0 as field.public;
@@ -644,7 +646,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program example;
+program example.aleo;
 
 interface message:
     first as field;
@@ -685,7 +687,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;
@@ -727,7 +729,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program example_call;
+program example_call.aleo;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
 closure execute:
@@ -795,7 +797,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program token_with_cast;
+program token_with_cast.aleo;
 
 record token:
     owner as address.private;
