@@ -41,13 +41,13 @@ impl<N: Network> FromBytes for Output<N> {
                 Self::Public(plaintext_hash, plaintext)
             }
             2 => {
-                let plaintext_hash: Field<N> = FromBytes::read_le(&mut reader)?;
+                let ciphertext_hash: Field<N> = FromBytes::read_le(&mut reader)?;
                 let ciphertext_exists: bool = FromBytes::read_le(&mut reader)?;
                 let ciphertext = match ciphertext_exists {
                     true => Some(FromBytes::read_le(&mut reader)?),
                     false => None,
                 };
-                Self::Private(plaintext_hash, ciphertext)
+                Self::Private(ciphertext_hash, ciphertext)
             }
             3 => {
                 let commitment = FromBytes::read_le(&mut reader)?;
@@ -94,9 +94,9 @@ impl<N: Network> ToBytes for Output<N> {
                     None => false.write_le(&mut writer),
                 }
             }
-            Self::Private(plaintext_hash, ciphertext) => {
+            Self::Private(ciphertext_hash, ciphertext) => {
                 (2 as Size).write_le(&mut writer)?;
-                plaintext_hash.write_le(&mut writer)?;
+                ciphertext_hash.write_le(&mut writer)?;
                 match ciphertext {
                     Some(ciphertext) => {
                         true.write_le(&mut writer)?;
