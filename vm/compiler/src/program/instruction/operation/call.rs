@@ -14,18 +14,104 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Program, Stack};
+use crate::{Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, RegisterType},
+    program::{Identifier, Locator, Register, RegisterType, ValueType},
 };
+
+/// The operator references a function name or closure name.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum CallOperator<N: Network> {
+    /// The reference to a non-local function or closure.
+    Locator(Locator<N>),
+    /// The reference to a local function or closure.
+    Resource(Identifier<N>),
+}
+
+impl<N: Network> Parser for CallOperator<N> {
+    /// Parses a string into an operator.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        alt((map(Identifier::parse, CallOperator::Resource), map(Locator::parse, CallOperator::Locator)))(string)
+    }
+}
+
+impl<N: Network> FromStr for CallOperator<N> {
+    type Err = Error;
+
+    /// Parses a string into an operator.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+impl<N: Network> Debug for CallOperator<N> {
+    /// Prints the operator as a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for CallOperator<N> {
+    /// Prints the operator to a string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            CallOperator::Locator(locator) => Display::fmt(locator, f),
+            CallOperator::Resource(resource) => Display::fmt(resource, f),
+        }
+    }
+}
+
+impl<N: Network> FromBytes for CallOperator<N> {
+    /// Reads the operation from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the variant.
+        let variant = u8::read_le(&mut reader)?;
+        // Match the variant.
+        match variant {
+            0 => Ok(CallOperator::Locator(Locator::read_le(&mut reader)?)),
+            1 => Ok(CallOperator::Resource(Identifier::read_le(&mut reader)?)),
+            _ => Err(error("Failed to read CallOperator. Invalid variant.")),
+        }
+    }
+}
+
+impl<N: Network> ToBytes for CallOperator<N> {
+    /// Writes the operation to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            CallOperator::Locator(locator) => {
+                // Write the variant.
+                0u8.write_le(&mut writer)?;
+                // Write the locator.
+                locator.write_le(&mut writer)
+            }
+            CallOperator::Resource(resource) => {
+                // Write the variant.
+                1u8.write_le(&mut writer)?;
+                // Write the resource.
+                resource.write_le(&mut writer)
+            }
+        }
+    }
+}
 
 /// Calls the operands into the declared type.
 /// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Call<N: Network> {
-    /// The name of the closure.
-    name: Identifier<N>,
+    /// The reference.
+    operator: CallOperator<N>,
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination registers.
@@ -39,10 +125,10 @@ impl<N: Network> Call<N> {
         Opcode::Call
     }
 
-    /// Return the name of the closure.
+    /// Return the operator.
     #[inline]
-    pub const fn name(&self) -> &Identifier<N> {
-        &self.name
+    pub const fn operator(&self) -> &CallOperator<N> {
+        &self.operator
     }
 
     /// Returns the operands in the operation.
@@ -65,18 +151,37 @@ impl<N: Network> Call<N> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
 
-        // Retrieve the closure from the program.
-        let closure = stack.program().get_closure(&self.name)?;
-        // Ensure the number of inputs matches the number of input statements.
-        if closure.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
+        // Retrieve the program and resource.
+        let (program, resource) = match &self.operator {
+            // Retrieve the program and resource from the locator.
+            CallOperator::Locator(locator) => match locator.resource() {
+                Some(resource) => (stack.get_program(locator.program_id())?, resource),
+                // Ensure the locator contains a resource name.
+                None => bail!("Locator '{locator}' must reference a function or closure."),
+            },
+            CallOperator::Resource(resource) => (stack.program(), resource),
+        };
+
+        // If the operator is a closure, retrieve the closure and compute the output.
+        let outputs = if let Ok(closure) = program.get_closure(resource) {
+            // Ensure the number of inputs matches the number of input statements.
+            if closure.inputs().len() != inputs.len() {
+                bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
+            }
+
+            // Initialize the stack.
+            let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
+            // Evaluate the closure, and load the outputs.
+            closure_stack.evaluate_closure(&closure, &inputs)?
         }
-
-        // Initialize the stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
-
-        // Evaluate the closure, and load the outputs.
-        let outputs = closure_stack.evaluate_closure(&closure, &inputs)?;
+        // If the operator is a function, retrieve the function and compute the output.
+        else if let Ok(function) = program.get_function(resource) {
+            bail!("Calls to function are currently unsupported.")
+        }
+        // Else, throw an error.
+        else {
+            bail!("Call operator '{}' is invalid or unsupported.", self.operator)
+        };
 
         // Assign the outputs to the destination registers.
         for (output, register) in outputs.into_iter().zip_eq(&self.destinations) {
@@ -93,18 +198,37 @@ impl<N: Network> Call<N> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
-        // Retrieve the closure from the program.
-        let closure = stack.program().get_closure(&self.name)?;
-        // Ensure the number of inputs matches the number of input statements.
-        if closure.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
+        // Retrieve the program and resource.
+        let (program, resource) = match &self.operator {
+            // Retrieve the program and resource from the locator.
+            CallOperator::Locator(locator) => match locator.resource() {
+                Some(resource) => (stack.get_program(locator.program_id())?, resource),
+                // Ensure the locator contains a resource name.
+                None => bail!("Locator '{locator}' must reference a function or closure."),
+            },
+            CallOperator::Resource(resource) => (stack.program(), resource),
+        };
+
+        // If the operator is a closure, retrieve the closure and compute the output.
+        let outputs = if let Ok(closure) = program.get_closure(resource) {
+            // Ensure the number of inputs matches the number of input statements.
+            if closure.inputs().len() != inputs.len() {
+                bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
+            }
+
+            // Initialize the closure stack.
+            let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
+            // Execute the closure, and load the outputs.
+            closure_stack.execute_closure(&closure, &inputs)?
         }
-
-        // Initialize the closure stack.
-        let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
-
-        // Execute the closure, and load the outputs.
-        let outputs = closure_stack.execute_closure(&closure, &inputs)?;
+        // If the operator is a function, retrieve the function and compute the output.
+        else if let Ok(function) = program.get_function(resource) {
+            bail!("Calls to function are currently unsupported.")
+        }
+        // Else, throw an error.
+        else {
+            bail!("Call operator '{}' is invalid or unsupported.", self.operator)
+        };
 
         // Assign the outputs to the destination registers.
         for (output, register) in outputs.into_iter().zip_eq(&self.destinations) {
@@ -117,25 +241,69 @@ impl<N: Network> Call<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
-        // Retrieve the closure.
-        let closure = program.get_closure(&self.name)?;
+    pub fn output_types<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
+        // Retrieve the program and resource.
+        let (program, resource) = match &self.operator {
+            // Retrieve the program and resource from the locator.
+            CallOperator::Locator(locator) => match locator.resource() {
+                Some(resource) => (stack.get_program(locator.program_id())?, resource),
+                // Ensure the locator contains a resource name.
+                None => bail!("Locator '{locator}' must reference a function or closure."),
+            },
+            CallOperator::Resource(resource) => (stack.program(), resource),
+        };
 
-        // Ensure the number of operands matches the number of input statements.
-        if closure.inputs().len() != self.operands.len() {
-            bail!("Expected {} inputs, found {}", closure.inputs().len(), self.operands.len())
+        // If the operator is a closure, retrieve the closure and compute the output types.
+        if let Ok(closure) = program.get_closure(resource) {
+            // Ensure the number of operands matches the number of input statements.
+            if closure.inputs().len() != self.operands.len() {
+                bail!("Expected {} inputs, found {}", closure.inputs().len(), self.operands.len())
+            }
+            // Ensure the number of inputs matches the number of input statements.
+            if closure.inputs().len() != input_types.len() {
+                bail!("Expected {} input types, found {}", closure.inputs().len(), input_types.len())
+            }
+            // Ensure the number of destinations matches the number of output statements.
+            if closure.outputs().len() != self.destinations.len() {
+                bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
+            }
+            // Return the output register types.
+            Ok(closure.outputs().iter().map(|output| *output.register_type()).collect())
         }
-        // Ensure the number of inputs matches the number of input statements.
-        if closure.inputs().len() != input_types.len() {
-            bail!("Expected {} inputs, found {}", closure.inputs().len(), input_types.len())
+        // If the operator is a function, retrieve the function and compute the output types.
+        else if let Ok(function) = program.get_function(resource) {
+            // Ensure the number of operands matches the number of input statements.
+            if function.inputs().len() != self.operands.len() {
+                bail!("Expected {} inputs, found {}", function.inputs().len(), self.operands.len())
+            }
+            // Ensure the number of inputs matches the number of input statements.
+            if function.inputs().len() != input_types.len() {
+                bail!("Expected {} input types, found {}", function.inputs().len(), input_types.len())
+            }
+            // Ensure the number of destinations matches the number of output statements.
+            if function.outputs().len() != self.destinations.len() {
+                bail!("Expected {} outputs, found {}", function.outputs().len(), self.destinations.len())
+            }
+            // Return the output register types.
+            Ok(function
+                .outputs()
+                .iter()
+                .map(|output| match output.value_type() {
+                    ValueType::Constant(plaintext) | ValueType::Public(plaintext) | ValueType::Private(plaintext) => {
+                        RegisterType::Plaintext(*plaintext)
+                    }
+                    ValueType::Record(record_name) => RegisterType::Record(*record_name),
+                })
+                .collect())
         }
-        // Ensure the number of destinations matches the number of output statements.
-        if closure.outputs().len() != self.destinations.len() {
-            bail!("Expected {} outputs, found {}", closure.outputs().len(), self.destinations.len())
+        // Else, throw an error.
+        else {
+            bail!("Call operator '{}' is invalid or unsupported.", self.operator)
         }
-
-        // Return the output register types.
-        Ok(closure.outputs().iter().map(|output| *output.register_type()).collect())
     }
 }
 
@@ -164,7 +332,7 @@ impl<N: Network> Parser for Call<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the name of the call from the string.
-        let (string, name) = Identifier::parse(string)?;
+        let (string, operator) = CallOperator::parse(string)?;
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the operands from the string.
@@ -190,7 +358,7 @@ impl<N: Network> Parser for Call<N> {
             }
         })(string)?;
 
-        Ok((string, Self { name, operands, destinations }))
+        Ok((string, Self { operator, operands, destinations }))
     }
 }
 
@@ -233,7 +401,7 @@ impl<N: Network> Display for Call<N> {
             return Err(fmt::Error);
         }
         // Print the operation.
-        write!(f, "{} {}", Self::opcode(), self.name)?;
+        write!(f, "{} {}", Self::opcode(), self.operator)?;
         self.operands.iter().try_for_each(|operand| write!(f, " {operand}"))?;
         write!(f, " into")?;
         self.destinations.iter().try_for_each(|destination| write!(f, " {destination}"))
@@ -243,8 +411,8 @@ impl<N: Network> Display for Call<N> {
 impl<N: Network> FromBytes for Call<N> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the name of the call.
-        let name = Identifier::read_le(&mut reader)?;
+        // Read the operator of the call.
+        let operator = CallOperator::read_le(&mut reader)?;
 
         // Read the number of operands.
         let num_operands = u8::read_le(&mut reader)? as usize;
@@ -275,7 +443,7 @@ impl<N: Network> FromBytes for Call<N> {
         }
 
         // Return the operation.
-        Ok(Self { name, operands, destinations })
+        Ok(Self { operator, operands, destinations })
     }
 }
 
@@ -292,7 +460,7 @@ impl<N: Network> ToBytes for Call<N> {
         }
 
         // Write the name of the call.
-        self.name.write_le(&mut writer)?;
+        self.operator.write_le(&mut writer)?;
         // Write the number of operands.
         (self.operands.len() as u8).write_le(&mut writer)?;
         // Write the operands.
@@ -318,7 +486,7 @@ mod tests {
         let (string, call) =
             Call::<CurrentNetwork>::parse("call transfer r0.owner r0.balance r0.token_amount into r1 r2 r3").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(call.name, Identifier::from_str("transfer").unwrap(), "The name of the call is incorrect");
+        assert_eq!(call.operator, CallOperator::from_str("transfer").unwrap(), "The call operator is incorrect");
         assert_eq!(call.operands.len(), 3, "The number of operands is incorrect");
         assert_eq!(
             call.operands[0],

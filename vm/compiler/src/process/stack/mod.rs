@@ -20,7 +20,7 @@ pub use register_types::*;
 mod load;
 mod store;
 
-use crate::{Closure, Function, Instruction, Opcode, Operand, Program};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program};
 use console::{
     network::prelude::*,
     program::{
@@ -108,6 +108,21 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub const fn program(&self) -> &Program<N> {
         &self.program
+    }
+
+    /// Returns `true` if the stack contains the program (including imported programs).
+    #[inline]
+    pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
+        self.program.id() == program_id || self.imports.contains_key(program_id)
+    }
+
+    /// Returns the program (including an imported program) for the given program ID.
+    #[inline]
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+        match self.program.id() == program_id {
+            true => Ok(&self.program),
+            false => self.imports.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist.")),
+        }
     }
 
     /// Evaluates a program closure on the given inputs.
@@ -362,7 +377,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
             // Check the instruction opcode, operands, and destinations.
-            Self::check_instruction(program, &mut register_types, instruction)?;
+            self.check_instruction(program, &mut register_types, instruction)?;
         }
 
         // Step 3. Check the outputs are well-formed.
@@ -399,7 +414,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Step 2. Check the instructions are well-formed.
         for instruction in function.instructions() {
             // Check the instruction opcode, operands, and destinations.
-            Self::check_instruction(program, &mut register_types, instruction)?;
+            self.check_instruction(program, &mut register_types, instruction)?;
         }
 
         // Step 3. Check the outputs are well-formed.
@@ -493,12 +508,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Ensures the given instruction is well-formed.
     fn check_instruction(
+        &self,
         program: &Program<N>,
         register_types: &mut RegisterTypes<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {
         // Ensure the opcode is well-formed.
-        Self::check_instruction_opcode(program, register_types, instruction)?;
+        self.check_instruction_opcode(program, register_types, instruction)?;
 
         // Initialize a vector to store the register types of the operands.
         let mut operand_types = Vec::with_capacity(instruction.operands().len());
@@ -512,7 +528,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Compute the destination register types.
-        let destination_types = instruction.output_types(program, &operand_types)?;
+        let destination_types = instruction.output_types(&self, &operand_types)?;
 
         // Insert the destination register.
         for (destination, destination_type) in
@@ -529,6 +545,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Ensures the opcode is a valid opcode and corresponds to the correct instruction.
     /// This method is called when adding a new closure or function to the program.
     fn check_instruction_opcode(
+        &self,
         program: &Program<N>,
         register_types: &RegisterTypes<N>,
         instruction: &Instruction<N>,
@@ -552,11 +569,32 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                     _ => bail!("Instruction '{instruction}' is not a call operation."),
                 };
 
-                // Retrieve the closure name.
-                let closure_name = operation.name();
-                // Ensure the operation is defined.
-                if !program.contains_closure(closure_name) {
-                    bail!("Closure '{closure_name}' is not defined.")
+                // Retrieve the operator.
+                let operator = operation.operator();
+                match operator {
+                    CallOperator::Locator(locator) => {
+                        // Retrieve the program ID.
+                        let program_id = locator.program_id();
+                        // Retrieve the resource from the locator.
+                        let resource = match locator.resource() {
+                            Some(resource) => resource,
+                            // Ensure the locator contains a resource name.
+                            None => bail!("Locator '{locator}' must reference a function or closure."),
+                        };
+
+                        // Retrieve the program.
+                        let program = self.get_program(program_id)?;
+                        // Ensure the function or closure exists in the program.
+                        if !program.contains_function(resource) && !program.contains_closure(resource) {
+                            bail!("'{resource}' is not defined in '{}'.", program.id())
+                        }
+                    }
+                    CallOperator::Resource(resource) => {
+                        // Ensure the function or closure exists in the program.
+                        if !program.contains_function(resource) && !program.contains_closure(resource) {
+                            bail!("'{resource}' is not defined in '{}'.", program.id())
+                        }
+                    }
                 }
             }
             Opcode::Cast => {
