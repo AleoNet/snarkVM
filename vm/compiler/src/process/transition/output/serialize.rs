@@ -16,43 +16,48 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Input<N> {
-    /// Serializes the transition input into string or bytes.
+impl<N: Network> Serialize for Output<N> {
+    /// Serializes the transition output into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
                 Self::Constant(id, value) => {
-                    let mut input = serializer.serialize_struct("Input", 3)?;
-                    input.serialize_field("type", "constant")?;
-                    input.serialize_field("id", &id)?;
+                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    output.serialize_field("type", "constant")?;
+                    output.serialize_field("id", &id)?;
                     if let Some(value) = value {
-                        input.serialize_field("value", &value)?;
+                        output.serialize_field("value", &value)?;
                     }
-                    input.end()
+                    output.end()
                 }
                 Self::Public(id, value) => {
-                    let mut input = serializer.serialize_struct("Input", 3)?;
-                    input.serialize_field("type", "public")?;
-                    input.serialize_field("id", &id)?;
+                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    output.serialize_field("type", "public")?;
+                    output.serialize_field("id", &id)?;
                     if let Some(value) = value {
-                        input.serialize_field("value", &value)?;
+                        output.serialize_field("value", &value)?;
                     }
-                    input.end()
+                    output.end()
                 }
                 Self::Private(id, value) => {
-                    let mut input = serializer.serialize_struct("Input", 3)?;
-                    input.serialize_field("type", "private")?;
-                    input.serialize_field("id", &id)?;
+                    let mut output = serializer.serialize_struct("Output", 3)?;
+                    output.serialize_field("type", "private")?;
+                    output.serialize_field("id", &id)?;
                     if let Some(value) = value {
-                        input.serialize_field("value", &value)?;
+                        output.serialize_field("value", &value)?;
                     }
-                    input.end()
+                    output.end()
                 }
-                Self::Record(id) => {
-                    let mut input = serializer.serialize_struct("Input", 2)?;
-                    input.serialize_field("type", "record")?;
-                    input.serialize_field("id", &id)?;
-                    input.end()
+                Self::Record(id, nonce, checksum, value) => {
+                    let mut output = serializer.serialize_struct("Output", 5)?;
+                    output.serialize_field("type", "record")?;
+                    output.serialize_field("id", &id)?;
+                    output.serialize_field("nonce", &nonce)?;
+                    output.serialize_field("checksum", &checksum)?;
+                    if let Some(value) = value {
+                        output.serialize_field("value", &value)?;
+                    }
+                    output.end()
                 }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -60,42 +65,56 @@ impl<N: Network> Serialize for Input<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Input<N> {
-    /// Deserializes the transition input from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for Output<N> {
+    /// Deserializes the transition output from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                // Parse the input from a string into a value.
-                let input = serde_json::Value::deserialize(deserializer)?;
+                // Parse the output from a string into a value.
+                let output = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?;
+                let id: Field<N> = serde_json::from_value(output["id"].clone()).map_err(de::Error::custom)?;
 
-                // Recover the input.
-                let input = match input["type"].as_str() {
-                    Some("constant") => Input::Constant(id, match input["value"].as_str() {
+                // Recover the output.
+                let output = match output["type"].as_str() {
+                    Some("constant") => Output::Constant(id, match output["value"].as_str() {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("public") => Input::Public(id, match input["value"].as_str() {
+                    Some("public") => Output::Public(id, match output["value"].as_str() {
                         Some(value) => Some(Plaintext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("private") => Input::Private(id, match input["value"].as_str() {
+                    Some("private") => Output::Private(id, match output["value"].as_str() {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("record") => Input::Record(id),
-                    _ => return Err(de::Error::custom("Invalid input type")),
+                    Some("record") => {
+                        // Retrieve the nonce.
+                        let nonce: Field<N> =
+                            serde_json::from_value(output["nonce"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the checksum.
+                        let checksum: Field<N> =
+                            serde_json::from_value(output["checksum"].clone()).map_err(de::Error::custom)?;
+                        // Return the record.
+                        Output::Record(id, nonce, checksum, match output["value"].as_str() {
+                            Some(value) => {
+                                Some(Record::<N, Ciphertext<N>>::from_str(value).map_err(de::Error::custom)?)
+                            }
+                            None => None,
+                        })
+                    }
+                    _ => return Err(de::Error::custom("Invalid output type")),
                 };
 
-                // Ensure the input is well-formed.
-                match input.verify() {
-                    true => Ok(input),
-                    false => Err(error("Transition input verification failed, possible data corruption"))
+                // Ensure the output is well-formed.
+                match output.verify() {
+                    true => Ok(output),
+                    false => Err(error("Transition output verification failed, possible data corruption"))
                         .map_err(de::Error::custom),
                 }
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition input"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition output"),
         }
     }
 }
@@ -112,7 +131,7 @@ mod tests {
         "{\"type\":\"constant\",\"id\":\"5field\"}",
         "{\"type\":\"public\",\"id\":\"0field\"}",
         "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\"}",
+        "{\"type\":\"record\",\"id\":\"123456789field\", \"nonce\":\"123456789field\", \"checksum\":\"123456789field\"}",
     ];
 
     fn check_serde_json<
@@ -151,14 +170,14 @@ mod tests {
     #[test]
     fn test_serde_json() {
         for case in TEST_CASES.iter() {
-            check_serde_json(Input::<CurrentNetwork>::from_str(case).unwrap());
+            check_serde_json(Output::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 
     #[test]
     fn test_bincode() {
         for case in TEST_CASES.iter() {
-            check_bincode(Input::<CurrentNetwork>::from_str(case).unwrap());
+            check_bincode(Output::<CurrentNetwork>::from_str(case).unwrap());
         }
     }
 }
