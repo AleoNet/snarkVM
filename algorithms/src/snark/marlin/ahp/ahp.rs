@@ -284,7 +284,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
             for (i, combiner) in batch_combiners.iter().enumerate() {
                 rowcheck
-                    // Plookup terms
+                    // Plookup table checks
                     .add(one_plus_delta
                         * (epsilon + f_s_at_beta[i])
                         * (epsilon_one_plus_delta + table_at_beta + delta_t_omega_at_beta)
@@ -295,6 +295,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         * (epsilon_one_plus_delta + s_2_s_at_beta[i] + delta * s_1_omega_s_at_beta[i])
                         * combiner * -F::one(), witness_label("omega_z_2", i))
                     .add((z_2_s_at_beta[i] - F::one()) * l_1_at_beta * combiner, LCTerm::One)
+                    // Plookup rowcheck
                     .add(s_l_at_beta * combiner , witness_label("z_a", i))
                     .add(zeta * z_b_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
                     .add(zeta_squared * s_l_at_beta * combiner, witness_label("z_c", i))
@@ -303,6 +304,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     .add(z_b_s_at_beta[i] * s_m_at_beta * combiner, witness_label("z_a", i))
                     .add(s_m_at_beta * combiner * -F::one() , witness_label("z_c", i));
             }
+
 
             let mut lincheck_sumcheck = LinearCombination::empty("placeholder");
             if MM::ZK {

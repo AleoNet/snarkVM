@@ -193,7 +193,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let delta_t_omega = LabeledPolynomial::new(
             "delta_t_omega".to_string(),
-            Evaluations::from_vec_and_domain(t_evals.clone(), constraint_domain)
+            Evaluations::from_vec_and_domain(delta_t_omega_evals.clone(), constraint_domain)
                 .interpolate_with_pc_by_ref(&ifft_precomputation),
             None,
             None,
