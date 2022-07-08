@@ -99,7 +99,7 @@ impl<A: Aleo> Request<A> {
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&randomizer);
+                        let commitment = record.to_commitment(&self.program_id, &randomizer);
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
@@ -215,11 +215,11 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 32810, 0, 23189, 23224)
+        check_verify(Mode::Public, 32986, 0, 23114, 23149)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 32810, 0, 23189, 23224)
+        check_verify(Mode::Private, 32986, 0, 23114, 23149)
     }
 }
