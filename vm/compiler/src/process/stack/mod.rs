@@ -301,18 +301,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         outputs.collect()
     }
 
-    /// Evaluates a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn test_evaluate(&mut self, function_name: &Identifier<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
-        // Retrieve the function from the program.
-        let function = self.program.get_function(function_name)?;
-        // Evaluate the function.
-        self.evaluate_function(&function, inputs)
-    }
-
     /// Executes a program function on the given inputs.
     ///
     /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
