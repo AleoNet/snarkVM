@@ -154,11 +154,7 @@ impl<N: Network> Call<N> {
         // Retrieve the program and resource.
         let (program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
-            CallOperator::Locator(locator) => match locator.resource() {
-                Some(resource) => (stack.get_program(locator.program_id())?, resource),
-                // Ensure the locator contains a resource name.
-                None => bail!("Locator '{locator}' must reference a function or closure."),
-            },
+            CallOperator::Locator(locator) => (stack.get_program(locator.program_id())?, locator.resource()),
             CallOperator::Resource(resource) => (stack.program(), resource),
         };
 
@@ -209,11 +205,7 @@ impl<N: Network> Call<N> {
         // Retrieve the program and resource.
         let (program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
-            CallOperator::Locator(locator) => match locator.resource() {
-                Some(resource) => (stack.get_program(locator.program_id())?, resource),
-                // Ensure the locator contains a resource name.
-                None => bail!("Locator '{locator}' must reference a function or closure."),
-            },
+            CallOperator::Locator(locator) => (stack.get_program(locator.program_id())?, locator.resource()),
             CallOperator::Resource(resource) => (stack.program(), resource),
         };
 
@@ -326,11 +318,7 @@ impl<N: Network> Call<N> {
         // Retrieve the program and resource.
         let (program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
-            CallOperator::Locator(locator) => match locator.resource() {
-                Some(resource) => (stack.get_program(locator.program_id())?, resource),
-                // Ensure the locator contains a resource name.
-                None => bail!("Locator '{locator}' must reference a function or closure."),
-            },
+            CallOperator::Locator(locator) => (stack.get_program(locator.program_id())?, locator.resource()),
             CallOperator::Resource(resource) => (stack.program(), resource),
         };
 

@@ -20,16 +20,8 @@ impl<N: Network> FromBytes for Locator<N> {
     /// Reads the locator from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let id = FromBytes::read_le(&mut reader)?;
-
-        let variant = u8::read_le(&mut reader)?;
-        match variant {
-            0 => Ok(Self { id, resource: None }),
-            1 => {
-                let resource = FromBytes::read_le(&mut reader)?;
-                Ok(Self { id, resource: Some(resource) })
-            }
-            _ => Err(error(format!("Failed to parse the locator. Invalid variant '{variant}'"))),
-        }
+        let resource = FromBytes::read_le(&mut reader)?;
+        Ok(Self { id, resource })
     }
 }
 
@@ -37,12 +29,6 @@ impl<N: Network> ToBytes for Locator<N> {
     /// Writes the locator to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.id.write_le(&mut writer)?;
-        match self.resource {
-            None => 0u8.write_le(&mut writer),
-            Some(ref resource) => {
-                1u8.write_le(&mut writer)?;
-                resource.write_le(&mut writer)
-            }
-        }
+        self.resource.write_le(&mut writer)
     }
 }

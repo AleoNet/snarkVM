@@ -29,7 +29,7 @@ pub struct Locator<N: Network> {
     /// The program ID.
     id: ProgramID<N>,
     /// The program resource.
-    resource: Option<Identifier<N>>,
+    resource: Identifier<N>,
 }
 
 impl<N: Network> Locator<N> {
@@ -53,13 +53,7 @@ impl<N: Network> Locator<N> {
 
     /// Returns the resource name.
     #[inline]
-    pub const fn resource(&self) -> &Option<Identifier<N>> {
+    pub const fn resource(&self) -> &Identifier<N> {
         &self.resource
-    }
-
-    /// Returns `true` if the locator has a resource.
-    #[inline]
-    pub const fn has_resource(&self) -> bool {
-        self.resource.is_some()
     }
 }

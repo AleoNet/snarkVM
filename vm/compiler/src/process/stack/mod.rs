@@ -578,11 +578,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                         // Retrieve the program ID.
                         let program_id = locator.program_id();
                         // Retrieve the resource from the locator.
-                        let resource = match locator.resource() {
-                            Some(resource) => resource,
-                            // Ensure the locator contains a resource name.
-                            None => bail!("Locator '{locator}' must reference a function or closure."),
-                        };
+                        let resource = locator.resource();
 
                         // Retrieve the program.
                         let program = self.get_program(program_id)?;
