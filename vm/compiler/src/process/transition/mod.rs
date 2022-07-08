@@ -21,6 +21,7 @@ mod output;
 use output::*;
 
 mod bytes;
+mod serialize;
 
 use crate::{Proof, VerifyingKey};
 use console::{
@@ -31,6 +32,8 @@ use console::{
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
+    /// The transition ID.
+    id: Field<N>,
     /// The program ID.
     program_id: ProgramID<N>,
     /// The function name.
@@ -57,8 +60,16 @@ impl<N: Network> Transition<N> {
         proof: Proof<N>,
         tpk: Group<N>,
         fee: u64,
-    ) -> Self {
-        Self { program_id, function_name, inputs, outputs, proof, tpk, fee }
+    ) -> Result<Self> {
+        // Compute the transition ID.
+        let id = N::hash_bhp1024(
+            &inputs
+                .iter()
+                .flat_map(|input| input.id().to_bits_le())
+                .chain(outputs.iter().flat_map(|output| output.id().to_bits_le()))
+                .collect::<Vec<_>>(),
+        )?;
+        Ok(Self { id, program_id, function_name, inputs, outputs, proof, tpk, fee })
     }
 
     /// Initializes a new transition from a request and response.
@@ -177,7 +188,7 @@ impl<N: Network> Transition<N> {
 
         let tpk = request.to_tpk();
 
-        Ok(Self { program_id, function_name, inputs, outputs, proof, tpk, fee })
+        Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
     }
 
     /// Returns `true` if the transition is valid.
@@ -201,5 +212,38 @@ impl<N: Network> Transition<N> {
         inputs.extend(self.outputs.iter().flat_map(Output::id).map(|id| *id));
         // Verify the proof.
         verifying_key.verify(&inputs, &self.proof)
+    }
+
+    /// Returns the transition ID.
+    pub const fn id(&self) -> &Field<N> {
+        &self.id
+    }
+
+    /// Returns the proof.
+    pub const fn proof(&self) -> &Proof<N> {
+        &self.proof
+    }
+}
+
+impl<N: Network> FromStr for Transition<N> {
+    type Err = Error;
+
+    /// Initializes the transition from a JSON-string.
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(input)?)
+    }
+}
+
+impl<N: Network> Debug for Transition<N> {
+    /// Prints the transition as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Transition<N> {
+    /// Displays the transition as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

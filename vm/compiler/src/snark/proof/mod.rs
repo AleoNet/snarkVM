@@ -16,6 +16,10 @@
 
 use super::*;
 
+mod bytes;
+mod parse;
+mod serialize;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Proof<N: Network> {
     /// The proof.
@@ -29,25 +33,33 @@ impl<N: Network> Proof<N> {
     }
 }
 
-impl<N: Network> FromBytes for Proof<N> {
-    /// Reads the proof from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let proof = FromBytes::read_le(&mut reader)?;
-        Ok(Self { proof })
-    }
-}
-
-impl<N: Network> ToBytes for Proof<N> {
-    /// Writes the proof to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.proof.write_le(&mut writer)
-    }
-}
-
 impl<N: Network> Deref for Proof<N> {
     type Target = marlin::Proof<N::PairingCurve>;
 
     fn deref(&self) -> &Self::Target {
         &self.proof
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console::network::Testnet3;
+
+    use once_cell::sync::OnceCell;
+
+    type CurrentNetwork = Testnet3;
+    type CurrentAleo = circuit::network::AleoV0;
+
+    pub(super) fn sample_proof() -> Proof<CurrentNetwork> {
+        static INSTANCE: OnceCell<Proof<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Sample a transition.
+                let transition = crate::process::test_helpers::sample_transition();
+                // Return the proof.
+                transition.proof().clone()
+            })
+            .clone()
     }
 }

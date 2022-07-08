@@ -315,6 +315,70 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 }
 
 #[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use crate::{Process, Program};
+    use console::{
+        account::PrivateKey,
+        network::Testnet3,
+        program::{Identifier, Value},
+    };
+
+    use once_cell::sync::OnceCell;
+
+    type CurrentNetwork = Testnet3;
+    type CurrentAleo = circuit::network::AleoV0;
+
+    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transition<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                let (string, program) = Program::<CurrentNetwork>::parse(
+                    r"
+program testing.aleo;
+
+function compute:
+    input r0 as u32.private;
+    input r1 as u32.public;
+    add r0 r1 into r2;
+    output r2 as u32.public;",
+                )
+                .unwrap();
+                assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+                // Declare the function name.
+                let function_name = Identifier::from_str("compute").unwrap();
+
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+                // Initialize a new caller account.
+                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                // Compute the signed request.
+                let request = program
+                    .sign(
+                        &caller_private_key,
+                        function_name,
+                        &[
+                            Value::<CurrentNetwork>::from_str("5u32").unwrap(),
+                            Value::<CurrentNetwork>::from_str("10u32").unwrap(),
+                        ],
+                        rng,
+                    )
+                    .unwrap();
+
+                // Construct the process.
+                let process = Process::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+                // Execute the request.
+                let (_response, transition) = process.execute(&request, rng).unwrap();
+                // Return the transition.
+                transition
+            })
+            .clone()
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use circuit::network::AleoV0;

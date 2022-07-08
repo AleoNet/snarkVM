@@ -19,6 +19,7 @@ use super::*;
 impl<N: Network> FromBytes for Transition<N> {
     /// Reads the output from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let transition_id = Field::read_le(&mut reader)?;
         let program_id = FromBytes::read_le(&mut reader)?;
         let function_name = FromBytes::read_le(&mut reader)?;
 
@@ -38,13 +39,21 @@ impl<N: Network> FromBytes for Transition<N> {
         let tpk = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
 
-        Ok(Transition::new(program_id, function_name, inputs, outputs, proof, tpk, fee))
+        // Construct the candidate transition.
+        let transition = Transition::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
+            .map_err(|e| error(e.to_string()))?;
+        // Ensure the transition ID matches the expected ID.
+        match transition_id == *transition.id() {
+            true => Ok(transition),
+            false => Err(error("Transition ID is incorrect, possible data corruption")),
+        }
     }
 }
 
 impl<N: Network> ToBytes for Transition<N> {
     /// Writes the literal to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.id.write_le(&mut writer)?;
         self.program_id.write_le(&mut writer)?;
         self.function_name.write_le(&mut writer)?;
 
@@ -67,98 +76,18 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u32 = 1000;
+    const ITERATIONS: u64 = 1000;
 
-    fn check_bytes(expected: Transition<CurrentNetwork>) -> Result<()> {
+    #[test]
+    fn test_bytes() -> Result<()> {
+        // Sample the transition.
+        let expected = crate::process::test_helpers::sample_transition();
+
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert!(expected == Transition::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, Transition::read_le(&expected_bytes[..])?);
         assert!(Transition::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+
         Ok(())
     }
-
-    // #[test]
-    // fn test_bytes() -> Result<()> {
-    //     let rng = &mut test_rng();
-    //
-    //     for _ in 0..ITERATIONS {
-    //         let program_id = ProgramID::<CurrentNetwork>::from_str("bar.aleo").unwrap();
-    //         let (_, function_name) = Identifier::<CurrentNetwork>::parse("foo_bar1").unwrap();
-    //
-    //         // TODO (raychu86): Sample a proof for testing.
-    //         let proof = snark::execute(assignment).unwrap();
-    //
-    //         // Constant
-    //         let constant_inputs =
-    //             (0..10).map(|_| Input::<CurrentNetwork>::Constant(Uniform::rand(rng), None)).collect::<Vec<_>>();
-    //         let constant_outputs =
-    //             (0..10).map(|_| Output::<CurrentNetwork>::Constant(Uniform::rand(rng), None)).collect::<Vec<_>>();
-    //         let transition: Transition<CurrentNetwork> = Transition::new(
-    //             program_id.clone(),
-    //             function_name.clone(),
-    //             constant_inputs,
-    //             constant_outputs,
-    //             proof.clone(),
-    //             Uniform::rand(rng),
-    //             Uniform::rand(rng),
-    //         );
-    //
-    //         check_bytes(transition).unwrap();
-    //
-    //         // Public
-    //         let public_inputs =
-    //             (0..10).map(|_| Input::<CurrentNetwork>::Public(Uniform::rand(rng), None)).collect::<Vec<_>>();
-    //         let public_outputs =
-    //             (0..10).map(|_| Output::<CurrentNetwork>::Public(Uniform::rand(rng), None)).collect::<Vec<_>>();
-    //         let transition: Transition<CurrentNetwork> = Transition::new(
-    //             program_id.clone(),
-    //             function_name.clone(),
-    //             public_inputs,
-    //             public_outputs,
-    //             proof.clone(),
-    //             Uniform::rand(rng),
-    //             Uniform::rand(rng),
-    //         );
-    //
-    //         check_bytes(transition).unwrap();
-    //
-    //         // Private
-    //         let private_inputs =
-    //             (0..10).map(|_| Input::<CurrentNetwork>::Private(Uniform::rand(rng), None)).collect::<Vec<_>>();
-    //         let private_outputs =
-    //             (0..10).map(|_| Output::<CurrentNetwork>::Private(Uniform::rand(rng), None)).collect::<Vec<_>>();
-    //         let transition: Transition<CurrentNetwork> = Transition::new(
-    //             program_id.clone(),
-    //             function_name.clone(),
-    //             private_inputs,
-    //             private_outputs,
-    //             proof.clone(),
-    //             Uniform::rand(rng),
-    //             Uniform::rand(rng),
-    //         );
-    //
-    //         check_bytes(transition).unwrap();
-    //
-    //         // Record
-    //         let record_inputs =
-    //             (0..10).map(|_| Input::<CurrentNetwork>::Record(Uniform::rand(rng))).collect::<Vec<_>>();
-    //         let record_outputs = (0..10)
-    //             .map(|_| {
-    //                 Output::<CurrentNetwork>::Record(Uniform::rand(rng), Uniform::rand(rng), Uniform::rand(rng), None)
-    //             })
-    //             .collect::<Vec<_>>();
-    //         let transition: Transition<CurrentNetwork> = Transition::new(
-    //             program_id,
-    //             function_name,
-    //             record_inputs,
-    //             record_outputs,
-    //             proof,
-    //             Uniform::rand(rng),
-    //             Uniform::rand(rng),
-    //         );
-    //
-    //         check_bytes(transition).unwrap();
-    //     }
-    //     Ok(())
-    // }
 }
