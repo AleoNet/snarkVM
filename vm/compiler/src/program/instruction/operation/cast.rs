@@ -98,7 +98,9 @@ impl<N: Network> Cast<N> {
                     let plaintext = match member {
                         Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.program().matches_register(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            stack
+                                .program()
+                                .matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -160,7 +162,9 @@ impl<N: Network> Cast<N> {
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.program().matches_register(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            stack
+                                .program()
+                                .matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -179,6 +183,9 @@ impl<N: Network> Cast<N> {
                 let record = Record::from_plaintext(owner, balance, entries)?;
                 // Store the record.
                 stack.store(&self.destination, Value::Record(record))
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
     }
@@ -209,7 +216,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match member {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.program().matches_register(
+                            stack.program().matches_register_type(
                                 &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
                                 &register_type,
                             )?;
@@ -283,7 +290,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match entry {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.program().matches_register(
+                            stack.program().matches_register_type(
                                 &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
                                 &register_type,
                             )?;
@@ -307,6 +314,9 @@ impl<N: Network> Cast<N> {
                 let record = circuit::program::Record::from_plaintext(owner, balance, entries)?;
                 // Store the record.
                 stack.store_circuit(&self.destination, circuit::Value::Record(record))
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
     }
@@ -347,6 +357,10 @@ impl<N: Network> Cast<N> {
                         RegisterType::Record(record_name) => bail!(
                             "Interface '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
                         ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
+                        ),
                     }
                 }
             }
@@ -385,8 +399,15 @@ impl<N: Network> Cast<N> {
                         RegisterType::Record(record_name) => bail!(
                             "Record '{record_name}' entry type mismatch: expected '{entry_type}', found record '{record_name}'"
                         ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Record '{record_name}' entry type mismatch: expected '{entry_type}', found external record '{locator}'"
+                        ),
                     }
                 }
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
 

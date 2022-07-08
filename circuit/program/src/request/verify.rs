@@ -86,7 +86,7 @@ impl<A: Aleo> Request<A> {
                         // Ensure the expected hash matches the computed hash.
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
-                    // An input record is computed to its serial number.
+                    // A record input is computed to its serial number.
                     InputID::Record(gamma, serial_number) => {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
@@ -123,6 +123,18 @@ impl<A: Aleo> Request<A> {
                             & record.owner().is_equal(&self.caller)
                             // Ensure the record balance is less than or equal to 2^52.
                             & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                    }
+                    // An external record input is committed (using `tvk`) to a field element.
+                    InputID::ExternalRecord(input_commitment) => {
+                        // Add the input hash to the message.
+                        message.push(input_commitment.clone());
+
+                        // Prepare the index as a constant field element.
+                        let input_index = Field::constant(console::Field::from_u16(index as u16));
+                        // Compute the input randomizer as `HashToScalar(tvk || index)`.
+                        let input_randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
+                        // Ensure the expected commitment matches the computed commitment.
+                        input_commitment.is_equal(&A::commit_bhp1024(&input.to_bits_le(), &input_randomizer))
                     }
                 }
             })
@@ -176,7 +188,9 @@ mod tests {
                 console::Value::<<Circuit as Environment>::Network>::from_str("{ token_amount: 9876543210u128 }")
                     .unwrap();
             let input_record = console::Value::<<Circuit as Environment>::Network>::from_str(&record_string).unwrap();
-            let inputs = vec![input_constant, input_public, input_private, input_record];
+            let input_external_record =
+                console::Value::<<Circuit as Environment>::Network>::from_str(&record_string).unwrap();
+            let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
 
             // Construct the input types.
             let input_types = vec![
@@ -184,6 +198,7 @@ mod tests {
                 console::ValueType::from_str("amount.public").unwrap(),
                 console::ValueType::from_str("amount.private").unwrap(),
                 console::ValueType::from_str("token.record").unwrap(),
+                console::ValueType::from_str("token.aleo/token").unwrap(),
             ];
 
             // Compute the signed request.
@@ -210,16 +225,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 37400, 0, 13600, 13600)
+        check_verify(Mode::Constant, 36700, 0, 14900, 14900)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 32986, 0, 23114, 23149)
+        check_verify(Mode::Public, 34087, 0, 26136, 26174)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 32986, 0, 23114, 23149)
+        check_verify(Mode::Private, 34087, 0, 26136, 26174)
     }
 }

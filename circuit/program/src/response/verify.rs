@@ -57,7 +57,7 @@ impl<A: Aleo> Response<A> {
                         // Ensure the computed hash matches the expected hash.
                         output_hash.is_equal(expected_hash)
                     }
-                    // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
+                    // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
                     // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
                     OutputID::Record(expected_cm, expected_nonce, expected_checksum) => {
                         // Retrieve the record.
@@ -88,6 +88,17 @@ impl<A: Aleo> Response<A> {
                         & nonce.is_equal(expected_nonce)
                         // Ensure the computed record checksum matches the expected record checksum.
                         & checksum.is_equal(expected_checksum)
+                    }
+                    // For an external record output, compute the commitment (using `tvk`) of the output.
+                    OutputID::ExternalRecord(expected_commitment) => {
+                        // Prepare the index as a constant field element.
+                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
+                        // Commit the output to a field element.
+                        let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
+                        // Ensure the computed commitment matches the expected commitment.
+                        commitment.is_equal(expected_commitment)
                     }
                 }
             })
@@ -126,7 +137,8 @@ mod tests {
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
             let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
-            let outputs = vec![output_constant, output_public, output_private, output_record];
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
             let output_types = vec![
@@ -134,6 +146,7 @@ mod tests {
                 console::ValueType::from_str("amount.public").unwrap(),
                 console::ValueType::from_str("amount.private").unwrap(),
                 console::ValueType::from_str("token.record").unwrap(),
+                console::ValueType::from_str("token.aleo/token").unwrap(),
             ];
 
             // Sample a `tvk`.
@@ -168,16 +181,16 @@ mod tests {
     fn test_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 21000, 0, 8450, 8450)
+        check_verify(Mode::Constant, 22100, 0, 9800, 9800)
     }
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 20449, 0, 12429, 12442)
+        check_verify(Mode::Public, 21550, 0, 15451, 15467)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 20449, 0, 12429, 12442)
+        check_verify(Mode::Private, 21550, 0, 15451, 15467)
     }
 }

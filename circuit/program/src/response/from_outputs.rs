@@ -63,7 +63,7 @@ impl<A: Aleo> Response<A> {
                         // Return the output ID.
                         OutputID::private(output_hash)
                     }
-                    // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
+                    // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
                     console::ValueType::Record(..) => {
                         // Retrieve the record.
                         let record = match &output {
@@ -89,6 +89,17 @@ impl<A: Aleo> Response<A> {
 
                         // Return the output ID.
                         OutputID::record(commitment, nonce, checksum)
+                    }
+                    // For an external record output, compute the commitment (using `tvk`) of the output.
+                    console::ValueType::ExternalRecord(..) => {
+                        // Prepare the index as a constant field element.
+                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
+                        // Commit the output to a field element.
+                        let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
+                        // Return the output ID.
+                        OutputID::external_record(commitment)
                     }
                 }
             })
@@ -124,7 +135,8 @@ mod tests {
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
             let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
-            let outputs = vec![output_constant, output_public, output_private, output_record];
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
             let output_types = vec![
@@ -132,6 +144,7 @@ mod tests {
                 console::ValueType::from_str("amount.public").unwrap(),
                 console::ValueType::from_str("amount.private").unwrap(),
                 console::ValueType::from_str("token.record").unwrap(),
+                console::ValueType::from_str("token.aleo/token").unwrap(),
             ];
 
             // Sample a `tvk`.

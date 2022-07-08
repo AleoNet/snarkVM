@@ -23,14 +23,26 @@ use trace::*;
 mod transition;
 pub use transition::*;
 
-use crate::{Function, Program, ProvingKey, UniversalSRS, VerifyingKey};
+mod add_program;
+
+use crate::{
+    CallOperator,
+    Closure,
+    Function,
+    Instruction,
+    Opcode,
+    Operand,
+    Program,
+    ProvingKey,
+    UniversalSRS,
+    VerifyingKey,
+};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
-    program::{Identifier, ProgramID, Request, Response},
+    program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, ValueType},
 };
 
-use core::marker::PhantomData;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
@@ -42,29 +54,39 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     universal_srs: OnceCell<UniversalSRS<N>>,
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
+    /// The mapping of program IDs to stacks.
+    stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
     circuit_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), (ProvingKey<N>, VerifyingKey<N>)>>>,
-    /// PhantomData
-    _phantom: PhantomData<A>,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
     /// Initializes a new process.
     #[inline]
     pub fn new(program: Program<N>) -> Result<Self> {
-        // Return the process.
-        Ok(Self {
+        // Construct the process.
+        let mut process = Self {
             universal_srs: OnceCell::new(),
-            programs: [(*program.id(), program)].into_iter().collect(),
+            programs: IndexMap::new(),
+            stacks: IndexMap::new(),
             circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
-            _phantom: PhantomData,
-        })
+        };
+        // Add the program to the process.
+        process.add_program(&program)?;
+        // Return the process.
+        Ok(process)
     }
 
     /// Returns the program for the given program ID.
     #[inline]
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
         self.programs.get(program_id).ok_or_else(|| anyhow!("Program not found: {program_id}"))
+    }
+
+    /// Returns the stack for the given program ID.
+    #[inline]
+    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N, A>> {
+        self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
     }
 
     /// Returns the proving key and verifying key for the given program ID and function name.
@@ -103,15 +125,25 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             // Sample the inputs.
             let inputs = input_types
                 .iter()
-                .map(|input_type| program.sample_value(&burner_address, input_type, rng))
+                .map(|input_type| match input_type {
+                    ValueType::ExternalRecord(locator) => {
+                        // Retrieve the external program.
+                        let program = self.get_program(locator.program_id())?;
+                        // Sample the input.
+                        program.sample_value(&burner_address, input_type, rng)
+                    }
+                    _ => program.sample_value(&burner_address, input_type, rng),
+                })
                 .collect::<Result<Vec<_>>>()?;
             // Sign a request, with a burner private key.
             let request = program.sign(&burner_private_key, *function_name, &inputs, rng)?;
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
 
+            // Prepare the stack.
+            let mut stack = self.get_stack(request.program_id())?;
             // Synthesize the circuit.
-            let (_response, assignment) = Self::synthesize(program, &function, &request, true)?;
+            let (_response, assignment) = Self::synthesize(&mut stack, &function, &request, true)?;
             // Derive the circuit key.
             // TODO (howardwu): Load the universal SRS remotely.
             let (proving_key, verifying_key) =
@@ -137,7 +169,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let function = program.get_function(request.function_name())?;
 
         // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(program, false)?;
+        let mut stack = self.get_stack(request.program_id())?;
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
@@ -177,8 +209,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Retrieve the proving and verifying key.
         let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
+
+        // Prepare the stack.
+        let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(program, &function, request, false)?;
+        let (response, assignment) = Self::synthesize(&mut stack, &function, request, false)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
@@ -217,8 +252,10 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Retrieve the function from the program.
         let function = program.get_function(request.function_name())?;
 
+        // Prepare the stack.
+        let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(program, &function, request, false)?;
+        let (response, assignment) = Self::synthesize(&mut stack, &function, request, false)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
@@ -242,7 +279,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
     /// Synthesizes the given request on the specified function.
     fn synthesize(
-        program: Program<N>,
+        stack: &mut Stack<N, A>,
         function: &Function<N>,
         request: &Request<N>,
         is_setup: bool,
@@ -273,10 +310,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         #[cfg(debug_assertions)]
         Self::log_circuit("Request Authentication");
 
-        // Prepare the stack.
-        let mut stack = Stack::<N, A>::new(program, is_setup)?;
         // Execute the function.
-        let outputs = stack.execute_function(function, request.inputs())?;
+        let outputs = stack.execute_function(function, request.inputs(), is_setup)?;
 
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function '{}()'", function.name()));

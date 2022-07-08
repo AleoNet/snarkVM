@@ -127,6 +127,11 @@ impl<N: Network> Program<N> {
         &self.id
     }
 
+    /// Returns the imports in the program.
+    pub const fn imports(&self) -> &IndexMap<ProgramID<N>, Import<N>> {
+        &self.imports
+    }
+
     /// Returns the closures in the program.
     pub const fn closures(&self) -> &IndexMap<Identifier<N>, Closure<N>> {
         &self.closures
@@ -135,6 +140,11 @@ impl<N: Network> Program<N> {
     /// Returns the functions in the program.
     pub const fn functions(&self) -> &IndexMap<Identifier<N>, Function<N>> {
         &self.functions
+    }
+
+    /// Returns `true` if the program contains an import with the given program ID.
+    pub fn contains_import(&self, id: &ProgramID<N>) -> bool {
+        self.imports.contains_key(id)
     }
 
     /// Returns `true` if the program contains a interface with the given name.
@@ -634,7 +644,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
@@ -679,7 +689,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
@@ -724,7 +734,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
@@ -782,7 +792,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
@@ -801,7 +811,7 @@ function compute:
         use circuit::Eject;
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_execute(&function_name, &[r0, r1]).unwrap();
+        let candidate = stack.test_execute(&function_name, &[r0, r1], false).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0].eject_value());
         assert_eq!(r3, candidate[1].eject_value());
@@ -840,7 +850,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program, false).unwrap();
+        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();

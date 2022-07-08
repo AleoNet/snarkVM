@@ -18,7 +18,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{EntryType, Identifier, PlaintextType};
+use crate::{EntryType, Identifier, Locator, PlaintextType};
 use snarkvm_console_network::prelude::*;
 
 use enum_index::EnumIndex;
@@ -33,6 +33,8 @@ pub enum ValueType<N: Network> {
     Private(PlaintextType<N>),
     /// A record type inherits its visibility from the record definition.
     Record(Identifier<N>),
+    /// An external record type inherits its visibility from its record definition.
+    ExternalRecord(Locator<N>),
 }
 
 impl<N: Network> From<EntryType<N>> for ValueType<N> {

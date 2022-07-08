@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Program<N> {
     /// Checks that the given input value matches the layout of the value type.
-    pub fn matches_input(&self, input: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
+    pub fn matches_value_type(&self, input: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the input value matches the declared type in the register.
         match (input, value_type) {
             (Value::Plaintext(plaintext), ValueType::Constant(plaintext_type))
@@ -32,7 +32,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Checks that the given stack value matches the layout of the register type.
-    pub fn matches_register(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
+    pub fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
         match (stack_value, register_type) {
             (Value::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
                 self.matches_plaintext(plaintext, plaintext_type)

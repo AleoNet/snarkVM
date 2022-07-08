@@ -28,6 +28,8 @@ pub enum OutputID<N: Network> {
     Private(Field<N>),
     /// The `(commitment, nonce, checksum)` tuple of the record output.
     Record(Field<N>, Field<N>, Field<N>),
+    /// The commitment of the external record output.
+    ExternalRecord(Field<N>),
 }
 
 #[derive(Clone)]
@@ -98,13 +100,13 @@ impl<N: Network> Response<N> {
                         // Return the output ID.
                         Ok(OutputID::Private(output_hash))
                     }
-                    // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
+                    // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
                     ValueType::Record(..) => {
                         // Retrieve the record.
                         let record = match &output {
                             Value::Record(record) => record,
                             // Ensure the input is a record.
-                            Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
+                            Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
                         };
 
                         // Construct the (console) output index as a field element.
@@ -124,6 +126,19 @@ impl<N: Network> Response<N> {
 
                         // Return the output ID.
                         Ok(OutputID::Record(commitment, nonce, checksum))
+                    }
+                    // For a locator output, compute the commitment (using `tvk`) of the output.
+                    ValueType::ExternalRecord(..) => {
+                        // Ensure the output is a record.
+                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16((num_inputs + index) as u16);
+                        // Compute the output randomizer as `HashToScalar(tvk || index)`.
+                        let output_randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
+                        // Commit the output to a field element.
+                        let output_commitment = N::commit_bhp1024(&output.to_bits_le(), &output_randomizer)?;
+                        // Return the output ID.
+                        Ok(OutputID::ExternalRecord(output_commitment))
                     }
                 }
             })

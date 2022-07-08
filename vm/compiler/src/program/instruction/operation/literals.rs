@@ -150,6 +150,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
                     bail!("Expected literal type, found '{input_type}'")
                 }
                 RegisterType::Record(..) => bail!("Expected literal type, found '{input_type}'"),
+                RegisterType::ExternalRecord(..) => bail!("Expected literal type, found '{input_type}'"),
             })
             .collect::<Result<Vec<_>>>()?;
 

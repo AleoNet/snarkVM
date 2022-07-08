@@ -152,10 +152,12 @@ impl<N: Network> Call<N> {
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
 
         // Retrieve the program and resource.
-        let (program, resource) = match &self.operator {
+        let (is_external, program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
-            CallOperator::Locator(locator) => (stack.get_program(locator.program_id())?, locator.resource()),
-            CallOperator::Resource(resource) => (stack.program(), resource),
+            CallOperator::Locator(locator) => {
+                (true, stack.get_external_program(locator.program_id())?, locator.resource())
+            }
+            CallOperator::Resource(resource) => (false, stack.program(), resource),
         };
 
         // If the operator is a closure, retrieve the closure and compute the output.
@@ -166,7 +168,10 @@ impl<N: Network> Call<N> {
             }
 
             // Initialize a clean stack for the closure.
-            let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
+            let mut closure_stack = match is_external {
+                true => stack.get_external_stack(program.id())?.clone(),
+                false => stack.clone(),
+            };
             // Evaluate the closure, and load the outputs.
             closure_stack.evaluate_closure(&closure, &inputs)?
         }
@@ -178,7 +183,10 @@ impl<N: Network> Call<N> {
             }
 
             // Initialize a clean stack for the function.
-            let mut function_stack = Stack::<N, A>::new(program.clone(), stack.is_setup())?;
+            let mut function_stack = match is_external {
+                true => stack.get_external_stack(program.id())?.clone(),
+                false => stack.clone(),
+            };
             // Evaluate the function, and load the outputs.
             function_stack.evaluate_function(&function, &inputs)?
         }
@@ -203,10 +211,12 @@ impl<N: Network> Call<N> {
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
         // Retrieve the program and resource.
-        let (program, resource) = match &self.operator {
+        let (is_external, program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
-            CallOperator::Locator(locator) => (stack.get_program(locator.program_id())?, locator.resource()),
-            CallOperator::Resource(resource) => (stack.program(), resource),
+            CallOperator::Locator(locator) => {
+                (true, stack.get_external_program(locator.program_id())?, locator.resource())
+            }
+            CallOperator::Resource(resource) => (false, stack.program(), resource),
         };
 
         // If the operator is a closure, retrieve the closure and compute the output.
@@ -217,9 +227,12 @@ impl<N: Network> Call<N> {
             }
 
             // Initialize a clean stack for the closure.
-            let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
+            let mut closure_stack = match is_external {
+                true => stack.get_external_stack(program.id())?.clone(),
+                false => stack.clone(),
+            };
             // Execute the closure, and load the outputs.
-            closure_stack.execute_closure(&closure, &inputs)?
+            closure_stack.execute_closure(&closure, &inputs, stack.is_setup())?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = program.get_function(resource) {
@@ -237,17 +250,26 @@ impl<N: Network> Call<N> {
                 use circuit::Eject;
 
                 // Initialize a clean stack for the function.
-                let mut function_stack = Stack::<N, A>::new(program.clone(), stack.is_setup())?;
-                // Evaluate the function, and load the outputs.
-                let console_outputs = function_stack.evaluate_function(&function, &inputs.eject_value())?;
+                let mut function_stack = match is_external {
+                    true => stack.get_external_stack(program.id())?.clone(),
+                    false => stack.clone(),
+                };
+
                 // Execute the function, and load the outputs.
-                let circuit_outputs = function_stack.execute_function(&function, &inputs)?;
-                // Ensure the values are equal.
-                if console_outputs == circuit_outputs.eject_value() {
-                    bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                let circuit_outputs = function_stack.execute_function(&function, &inputs, stack.is_setup())?;
+
+                // If the circuit is not for a setup, then evaluate the instructions.
+                if !function_stack.is_setup() {
+                    // Evaluate the function, and load the outputs.
+                    let console_outputs = function_stack.evaluate_function(&function, &inputs.eject_value())?;
+                    // Ensure the values are equal.
+                    if console_outputs == circuit_outputs.eject_value() {
+                        bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                    }
                 }
+
                 // Return the console outputs.
-                console_outputs
+                circuit_outputs.eject_value()
             };
             // Inject the existing circuit.
             A::inject_r1cs(r1cs);
@@ -262,26 +284,35 @@ impl<N: Network> Call<N> {
                     match output_type {
                         ValueType::Constant(plaintext) => {
                             // Ensure the output matches its expected type.
-                            program.matches_register(&output, &RegisterType::Plaintext(*plaintext))?;
+                            program.matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
                             // Inject the constant output as `Mode::Constant`.
                             Ok(circuit::Value::new(circuit::Mode::Constant, output))
                         }
                         ValueType::Public(plaintext) => {
                             // Ensure the output matches its expected type.
-                            program.matches_register(&output, &RegisterType::Plaintext(*plaintext))?;
+                            program.matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
                             // Inject the public output as `Mode::Private`.
                             Ok(circuit::Value::new(circuit::Mode::Private, output))
                         }
                         ValueType::Private(plaintext) => {
                             // Ensure the output matches its expected type.
-                            program.matches_register(&output, &RegisterType::Plaintext(*plaintext))?;
+                            program.matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
                             // Inject the private output as `Mode::Private`.
                             Ok(circuit::Value::new(circuit::Mode::Private, output))
                         }
                         ValueType::Record(record) => {
                             // Ensure the output matches its expected type.
-                            program.matches_register(&output, &RegisterType::Record(*record))?;
+                            program.matches_register_type(&output, &RegisterType::Record(*record))?;
                             // Inject the record output as `Mode::Private`.
+                            Ok(circuit::Value::new(circuit::Mode::Private, output))
+                        }
+                        ValueType::ExternalRecord(locator) => {
+                            // Retrieve the external program.
+                            let external_program = stack.get_external_program(locator.program_id())?;
+                            // Ensure the output matches its expected type from the external program.
+                            external_program
+                                .matches_register_type(&output, &RegisterType::Record(*locator.resource()))?;
+                            // Inject the external record output as `Mode::Private`.
                             Ok(circuit::Value::new(circuit::Mode::Private, output))
                         }
                     }
@@ -318,7 +349,7 @@ impl<N: Network> Call<N> {
         // Retrieve the program and resource.
         let (program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.
-            CallOperator::Locator(locator) => (stack.get_program(locator.program_id())?, locator.resource()),
+            CallOperator::Locator(locator) => (stack.get_external_program(locator.program_id())?, locator.resource()),
             CallOperator::Resource(resource) => (stack.program(), resource),
         };
 
@@ -354,16 +385,7 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} outputs, found {}", function.outputs().len(), self.destinations.len())
             }
             // Return the output register types.
-            Ok(function
-                .outputs()
-                .iter()
-                .map(|output| match output.value_type() {
-                    ValueType::Constant(plaintext) | ValueType::Public(plaintext) | ValueType::Private(plaintext) => {
-                        RegisterType::Plaintext(*plaintext)
-                    }
-                    ValueType::Record(record_name) => RegisterType::Record(*record_name),
-                })
-                .collect())
+            Ok(function.outputs().iter().map(|output| RegisterType::from(*output.value_type())).collect())
         }
         // Else, throw an error.
         else {

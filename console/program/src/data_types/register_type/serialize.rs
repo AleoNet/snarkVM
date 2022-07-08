@@ -72,6 +72,8 @@ mod tests {
         // Record
         "token.record",
         "hello.record",
+        // ExternalRecord
+        "token.aleo/token",
     ];
 
     fn check_serde_json<
