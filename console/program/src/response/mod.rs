@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Value, ValueType};
+use crate::{ProgramID, Value, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -48,6 +48,7 @@ impl<N: Network> From<(Vec<OutputID<N>>, Vec<Value<N>>)> for Response<N> {
 impl<N: Network> Response<N> {
     /// Initializes a new response.
     pub fn new(
+        program_id: &ProgramID<N>,
         num_inputs: usize,
         tvk: &Field<N>,
         outputs: Vec<Value<N>>,
@@ -112,7 +113,7 @@ impl<N: Network> Response<N> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&randomizer)?;
+                        let commitment = record.to_commitment(program_id, &randomizer)?;
 
                         // Compute the record nonce.
                         let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();

@@ -151,7 +151,7 @@ impl<N: Network> Transition<N> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
                         // Compute the record commitment.
-                        let candidate_cm = record.to_commitment(&randomizer)?;
+                        let candidate_cm = record.to_commitment(&program_id, &randomizer)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "The output record commitment is incorrect");
 

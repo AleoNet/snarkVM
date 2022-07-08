@@ -113,7 +113,7 @@ impl<N: Network> Request<N> {
                             Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&randomizer)?;
+                        let commitment = record.to_commitment(&self.program_id, &randomizer)?;
                         // Ensure the record belongs to the caller.
                         ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
                         // Ensure the record balance is less than or equal to 2^52.

@@ -17,7 +17,7 @@
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-mod identifier;
+pub(super) mod identifier;
 pub use identifier::Identifier;
 
 mod literal;

@@ -228,26 +228,6 @@ jobs:
           workspace_member: circuit/program
           cache_key: snarkvm-circuit-program-cache
 
-  circuit-transition:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuit/transition
-          cache_key: snarkvm-circuit-transition-cache
-
-  # This checks that no `console` structs are used in core circuit logic.
-  circuit-transition-noconsole:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuit/transition
-          flags: --no-default-features
-          cache_key: snarkvm-circuit-transition-noconsole-cache
-
   circuit-types:
     docker:
       - image: cimg/rust:1.61
@@ -384,15 +364,6 @@ jobs:
       - run_serial:
           workspace_member: console/program
           cache_key: snarkvm-console-program-cache
-
-  console-transition:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: console/transition
-          cache_key: snarkvm-console-transition-cache
 
   console-types:
     docker:
@@ -621,8 +592,6 @@ workflows:
       - circuit-environment
       - circuit-network
       - circuit-program
-      - circuit-transition
-      - circuit-transition-noconsole
       - circuit-types
       - circuit-types-address
       - circuit-types-boolean
@@ -638,7 +607,6 @@ workflows:
       - console-network
       - console-network-environment
       - console-program
-      - console-transition
       - console-types
       - console-types-address
       - console-types-boolean

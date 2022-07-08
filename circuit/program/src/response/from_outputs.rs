@@ -19,6 +19,7 @@ use super::*;
 impl<A: Aleo> Response<A> {
     /// Initializes a response, given the number of inputs, caller, tvk, outputs, and output types.
     pub fn from_outputs(
+        program_id: &ProgramID<A>,
         num_inputs: usize,
         tvk: &Field<A>,
         outputs: Vec<Value<A>>,
@@ -76,7 +77,7 @@ impl<A: Aleo> Response<A> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&randomizer);
+                        let commitment = record.to_commitment(program_id, &randomizer);
 
                         // Compute the record nonce.
                         let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -136,19 +137,23 @@ mod tests {
             // Sample a `tvk`.
             let tvk = Uniform::rand(rng);
 
+            // Construct a program ID.
+            let program_id = console::ProgramID::from_str("test.aleo")?;
+
             // Construct the response.
-            let response = console::Response::new(4, &tvk, outputs.clone(), &output_types)?;
+            let response = console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types)?;
             // assert!(response.verify());
 
             // Inject the response into a circuit.
+            let program_id = ProgramID::<Circuit>::new(mode, program_id);
             let tvk = Field::<Circuit>::new(mode, tvk);
             let response = Response::<Circuit>::new(mode, response);
-            assert!(response.verify(4, &tvk).eject_value());
+            assert!(response.verify(&program_id, 4, &tvk).eject_value());
 
             // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, outputs);
-            let response = Response::from_outputs(4, &tvk, outputs, &output_types);
-            assert!(response.verify(4, &tvk).eject_value());
+            let response = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
+            assert!(response.verify(&program_id, 4, &tvk).eject_value());
 
             Circuit::reset();
         }

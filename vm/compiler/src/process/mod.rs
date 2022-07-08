@@ -141,7 +141,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
-        let response = Response::new(request.inputs().len(), request.tvk(), outputs, &function.output_types())?;
+        let response = Response::new(
+            request.program_id(),
+            request.inputs().len(),
+            request.tvk(),
+            outputs,
+            &function.output_types(),
+        )?;
 
         // Initialize the trace.
         let mut trace = Trace::<N>::new(request, &response)?;
@@ -276,7 +282,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         Self::log_circuit(format!("Function '{}()'", function.name()));
 
         // Construct the response.
-        let response = circuit::Response::from_outputs(num_inputs, request.tvk(), outputs, &output_types);
+        let response =
+            circuit::Response::from_outputs(request.program_id(), num_inputs, request.tvk(), outputs, &output_types);
 
         #[cfg(debug_assertions)]
         Self::log_circuit("Response");
@@ -410,10 +417,10 @@ function compute:
 
         use circuit::Environment;
 
-        assert_eq!(36664, CurrentAleo::num_constants());
+        assert_eq!(37016, CurrentAleo::num_constants());
         assert_eq!(12, CurrentAleo::num_public());
-        assert_eq!(41650, CurrentAleo::num_private());
-        assert_eq!(41700, CurrentAleo::num_constraints());
-        assert_eq!(159187, CurrentAleo::num_gates());
+        assert_eq!(41500, CurrentAleo::num_private());
+        assert_eq!(41550, CurrentAleo::num_constraints());
+        assert_eq!(158739, CurrentAleo::num_gates());
     }
 }

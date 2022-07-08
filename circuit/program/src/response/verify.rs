@@ -18,7 +18,7 @@ use super::*;
 
 impl<A: Aleo> Response<A> {
     /// Returns `true` if the outputs match their output IDs, and `false` otherwise.
-    pub fn verify(&self, num_inputs: usize, tvk: &Field<A>) -> Boolean<A> {
+    pub fn verify(&self, program_id: &ProgramID<A>, num_inputs: usize, tvk: &Field<A>) -> Boolean<A> {
         // Check the outputs against their output IDs.
         self.output_ids
             .iter()
@@ -72,7 +72,7 @@ impl<A: Aleo> Response<A> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&randomizer);
+                        let commitment = record.to_commitment(program_id, &randomizer);
 
                         // Compute the record nonce.
                         let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -139,16 +139,20 @@ mod tests {
             // Sample a `tvk`.
             let tvk = Uniform::rand(rng);
 
+            // Construct a program ID.
+            let program_id = console::ProgramID::from_str("test.aleo")?;
+
             // Construct the response.
-            let response = console::Response::new(4, &tvk, outputs, &output_types)?;
+            let response = console::Response::new(&program_id, 4, &tvk, outputs, &output_types)?;
             // assert!(response.verify());
 
             // Inject the response into a circuit.
+            let program_id = ProgramID::<Circuit>::new(mode, program_id);
             let tvk = Field::<Circuit>::new(mode, tvk);
             let response = Response::<Circuit>::new(mode, response);
 
             Circuit::scope(format!("Response {i}"), || {
-                let candidate = response.verify(4, &tvk);
+                let candidate = response.verify(&program_id, 4, &tvk);
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
@@ -169,11 +173,11 @@ mod tests {
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 20298, 0, 12485, 12498)
+        check_verify(Mode::Public, 20449, 0, 12429, 12442)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 20298, 0, 12485, 12498)
+        check_verify(Mode::Private, 20449, 0, 12429, 12442)
     }
 }
