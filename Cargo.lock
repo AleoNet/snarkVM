@@ -2061,7 +2061,6 @@ dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-network",
  "snarkvm-circuit-program",
- "snarkvm-circuit-transition",
  "snarkvm-circuit-types",
 ]
 
@@ -2151,20 +2150,6 @@ dependencies = [
  "snarkvm-circuit-types",
  "snarkvm-console-account",
  "snarkvm-console-program",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-circuit-transition"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "snarkvm-circuit-account",
- "snarkvm-circuit-network",
- "snarkvm-circuit-types",
- "snarkvm-console-account",
- "snarkvm-console-network",
- "snarkvm-console-transition",
  "snarkvm-utilities",
 ]
 
@@ -2292,7 +2277,6 @@ dependencies = [
  "snarkvm-console-collections",
  "snarkvm-console-network",
  "snarkvm-console-program",
- "snarkvm-console-transition",
  "snarkvm-console-types",
 ]
 
@@ -2381,15 +2365,6 @@ dependencies = [
  "num-traits",
  "once_cell",
  "serde_json",
- "snarkvm-console-account",
- "snarkvm-console-network",
- "snarkvm-console-types",
-]
-
-[[package]]
-name = "snarkvm-console-transition"
-version = "0.7.5"
-dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",
