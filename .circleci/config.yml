@@ -271,6 +271,30 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-fmt-cache
 
+  bench:
+    machine:
+      # not available - probably due to pricing plan resource_class: gpu.nvidia.medium or small!
+      # resource_class: gpu.nvidia.small
+      image: ubuntu-2004-cuda-11.4:202110-01
+      # image: ubuntu-2004:202101-01
+      resource_class: gpu.nvidia.medium
+    steps:
+      - checkout
+      - run:
+          name: Prepare environment and install dependencies
+          command: |
+            sudo apt-get update -y && sudo apt-get install -y clang llvm-dev llvm pkg-config xz-utils make libssl-dev libssl-dev
+            # wget "https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"
+            # chmod +x rustup-init
+            # ./rustup-init -y
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -sSf | sh -s -- -y         
+      - run:
+          name: Benchmark "cargo bench --features cuda --bench posw"
+          command: |
+            echo "In this directory: $(pwd)"
+            cd dpc && cargo bench  --bench posw
+
+
 workflows:
   version: 2
   main-workflow:
@@ -290,3 +314,4 @@ workflows:
       - r1cs
       - utilities
       - fmt
+      - bench
