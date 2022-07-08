@@ -48,7 +48,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 );
 
                 // Ensure the register type is valid.
-                match self.register_types.get_type(&self, register) {
+                match self.register_types.get_type(self, register) {
                     // Ensure the stack value matches the register type.
                     Ok(register_type) => self.program.matches_register_type(&stack_value, &register_type)?,
                     // Ensure the register is defined.
@@ -101,7 +101,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 );
 
                 // Ensure the register type is valid.
-                match self.register_types.get_type(&self, register) {
+                match self.register_types.get_type(self, register) {
                     // Ensure the stack value matches the register type.
                     Ok(register_type) => self
                         .program

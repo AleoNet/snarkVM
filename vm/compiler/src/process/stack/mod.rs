@@ -20,7 +20,7 @@ pub use register_types::*;
 mod load;
 mod store;
 
-use crate::{CallOperator, Closure, Function, Operand, Program};
+use crate::{Closure, Function, Operand, Program};
 use console::{
     network::prelude::*,
     program::{
