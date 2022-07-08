@@ -175,7 +175,7 @@ impl<N: Network> Call<N> {
             closure_stack.evaluate_closure(&closure, &inputs)?
         }
         // If the operator is a function, retrieve the function and compute the output.
-        else if let Ok(function) = program.get_function(resource) {
+        else if let Ok(_function) = program.get_function(resource) {
             bail!("Calls to function are currently unsupported.")
         }
         // Else, throw an error.
@@ -222,7 +222,7 @@ impl<N: Network> Call<N> {
             closure_stack.execute_closure(&closure, &inputs)?
         }
         // If the operator is a function, retrieve the function and compute the output.
-        else if let Ok(function) = program.get_function(resource) {
+        else if let Ok(_function) = program.get_function(resource) {
             bail!("Calls to function are currently unsupported.")
         }
         // Else, throw an error.
