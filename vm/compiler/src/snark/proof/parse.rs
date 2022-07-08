@@ -106,7 +106,7 @@ mod tests {
         // Check the string representation.
         let candidate = format!("{expected}");
         assert_eq!(expected, Proof::from_str(&candidate)?);
-        assert_eq!(PROOF_PREFIX, candidate.to_string().split('1').next().unwrap());
+        assert_eq!(PROOF_PREFIX, candidate.split('1').next().unwrap());
 
         Ok(())
     }
@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(format!("{expected}"), candidate);
         assert_eq!(PROOF_PREFIX, candidate.split('1').next().unwrap());
 
-        let candidate_recovered = Proof::<CurrentNetwork>::from_str(&candidate.to_string())?;
+        let candidate_recovered = Proof::<CurrentNetwork>::from_str(&candidate)?;
         assert_eq!(expected, candidate_recovered);
 
         Ok(())
