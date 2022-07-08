@@ -84,8 +84,6 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 1000;
-
     #[test]
     fn test_serde_json() -> Result<()> {
         // Sample the transition.

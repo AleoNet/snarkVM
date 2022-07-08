@@ -99,7 +99,6 @@ impl<N: Network> Response<N> {
                         Ok(OutputID::Private(output_hash))
                     }
                     // For an output record, compute the record commitment, and encrypt the record (using `tvk`).
-                    // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
                     ValueType::Record(..) => {
                         // Retrieve the record.
                         let record = match &output {

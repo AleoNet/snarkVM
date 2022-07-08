@@ -43,6 +43,11 @@ use console::{
 
 use indexmap::IndexMap;
 
+// pub struct ExternalCall<N: Network> {
+//     /// The call operator.
+//     operator: CallOperator<N>,
+// }
+
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
     program: Program<N>,
@@ -56,7 +61,16 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     circuit_registers: IndexMap<u64, circuit::Value<A>>,
     /// The boolean indicator if the stack is for a setup.
     is_setup: bool,
+    // /// The list of external calls.
+    // external_calls: Vec<ExternalCall<N>>,
 }
+
+// impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+//     /// Adds the given as an external call to the stack.
+//     pub fn add_external_call(&mut self, operator: CallOperator<N>, inputs: &[Value<N>]) {
+//         self.external_calls.push(external_call);
+//     }
+// }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.

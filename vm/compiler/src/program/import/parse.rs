@@ -34,7 +34,7 @@ impl<N: Network> Parser for Import<N> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the import statement.
-        Ok((string, Self { id }))
+        Ok((string, Self { program_id: id }))
     }
 }
 
@@ -66,7 +66,7 @@ impl<N: Network> Debug for Import<N> {
 impl<N: Network> Display for Import<N> {
     /// Prints the import statement as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{type_} {id};", type_ = Self::type_name(), id = self.id)
+        write!(f, "{type_} {id};", type_ = Self::type_name(), id = self.program_id)
     }
 }
 

@@ -255,6 +255,43 @@ impl Environment for Circuit {
 
     /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
     ///  Circuits should not have easy access to this during synthesis.
+    /// Returns the R1CS circuit, resetting the circuit.
+    fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
+        CIRCUIT.with(|circuit| {
+            // Ensure the circuit is empty before injecting.
+            assert_eq!(0, (**circuit).borrow().num_constants());
+            assert_eq!(1, (**circuit).borrow().num_public());
+            assert_eq!(0, (**circuit).borrow().num_private());
+            assert_eq!(0, (**circuit).borrow().num_constraints());
+            // Inject the R1CS instance.
+            let r1cs = circuit.replace(r1cs);
+            // Ensure the circuit that was replaced is empty.
+            assert_eq!(0, r1cs.num_constants());
+            assert_eq!(1, r1cs.num_public());
+            assert_eq!(0, r1cs.num_private());
+            assert_eq!(0, r1cs.num_constraints());
+        })
+    }
+
+    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
+    ///  Circuits should not have easy access to this during synthesis.
+    /// Returns the R1CS circuit, resetting the circuit.
+    fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
+        CIRCUIT.with(|circuit| {
+            // Eject the R1CS instance.
+            let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());
+            // Ensure the circuit is now empty.
+            assert_eq!(0, (**circuit).borrow().num_constants());
+            assert_eq!(1, (**circuit).borrow().num_public());
+            assert_eq!(0, (**circuit).borrow().num_private());
+            assert_eq!(0, (**circuit).borrow().num_constraints());
+            // Return the R1CS instance.
+            r1cs
+        })
+    }
+
+    /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
+    ///  Circuits should not have easy access to this during synthesis.
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
         CIRCUIT.with(|circuit| {

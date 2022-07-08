@@ -169,14 +169,22 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
 
-            // Initialize the stack.
+            // Initialize a clean stack for the closure.
             let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
             // Evaluate the closure, and load the outputs.
             closure_stack.evaluate_closure(&closure, &inputs)?
         }
         // If the operator is a function, retrieve the function and compute the output.
-        else if let Ok(_function) = program.get_function(resource) {
-            bail!("Calls to function are currently unsupported.")
+        else if let Ok(function) = program.get_function(resource) {
+            // Ensure the number of inputs matches the number of input statements.
+            if function.inputs().len() != inputs.len() {
+                bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+            }
+
+            // Initialize a clean stack for the function.
+            let mut function_stack = Stack::<N, A>::new(program.clone(), stack.is_setup())?;
+            // Evaluate the function, and load the outputs.
+            function_stack.evaluate_function(&function, &inputs)?
         }
         // Else, throw an error.
         else {
@@ -216,14 +224,83 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
 
-            // Initialize the closure stack.
+            // Initialize a clean stack for the closure.
             let mut closure_stack = Stack::<N, A>::new(stack.program().clone(), stack.is_setup())?;
             // Execute the closure, and load the outputs.
             closure_stack.execute_closure(&closure, &inputs)?
         }
         // If the operator is a function, retrieve the function and compute the output.
-        else if let Ok(_function) = program.get_function(resource) {
-            bail!("Calls to function are currently unsupported.")
+        else if let Ok(function) = program.get_function(resource) {
+            // Ensure the number of inputs matches the number of input statements.
+            if function.inputs().len() != inputs.len() {
+                bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+            }
+
+            // Retrieve the number of public variables in the circuit.
+            let num_public = A::num_public();
+
+            // Eject the existing circuit.
+            let r1cs = A::eject_r1cs_and_reset();
+            let console_outputs = {
+                use circuit::Eject;
+
+                // Initialize a clean stack for the function.
+                let mut function_stack = Stack::<N, A>::new(program.clone(), stack.is_setup())?;
+                // Evaluate the function, and load the outputs.
+                let console_outputs = function_stack.evaluate_function(&function, &inputs.eject_value())?;
+                // Execute the function, and load the outputs.
+                let circuit_outputs = function_stack.execute_function(&function, &inputs)?;
+                // Ensure the values are equal.
+                if console_outputs == circuit_outputs.eject_value() {
+                    bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                }
+                // Return the console outputs.
+                console_outputs
+            };
+            // Inject the existing circuit.
+            A::inject_r1cs(r1cs);
+
+            // Inject the circuit outputs.
+            let outputs = console_outputs
+                .into_iter()
+                .zip_eq(&function.output_types())
+                .map(|(output, output_type)| {
+                    use circuit::Inject;
+
+                    match output_type {
+                        ValueType::Constant(plaintext) => {
+                            // Ensure the output matches its expected type.
+                            program.matches_register(&output, &RegisterType::Plaintext(*plaintext))?;
+                            // Inject the constant output as `Mode::Constant`.
+                            Ok(circuit::Value::new(circuit::Mode::Constant, output))
+                        }
+                        ValueType::Public(plaintext) => {
+                            // Ensure the output matches its expected type.
+                            program.matches_register(&output, &RegisterType::Plaintext(*plaintext))?;
+                            // Inject the public output as `Mode::Private`.
+                            Ok(circuit::Value::new(circuit::Mode::Private, output))
+                        }
+                        ValueType::Private(plaintext) => {
+                            // Ensure the output matches its expected type.
+                            program.matches_register(&output, &RegisterType::Plaintext(*plaintext))?;
+                            // Inject the private output as `Mode::Private`.
+                            Ok(circuit::Value::new(circuit::Mode::Private, output))
+                        }
+                        ValueType::Record(record) => {
+                            // Ensure the output matches its expected type.
+                            program.matches_register(&output, &RegisterType::Record(*record))?;
+                            // Inject the record output as `Mode::Private`.
+                            Ok(circuit::Value::new(circuit::Mode::Private, output))
+                        }
+                    }
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            // Ensure the number of public variables remains the same.
+            ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
+
+            // Return the circuit outputs.
+            outputs
         }
         // Else, throw an error.
         else {

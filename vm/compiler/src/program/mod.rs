@@ -224,11 +224,15 @@ impl<N: Network> Program<N> {
         ensure!(!Self::is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
 
         // Ensure the import is new.
-        ensure!(!self.imports.contains_key(import.id()), "Import '{}' is already defined.", import.id());
+        ensure!(
+            !self.imports.contains_key(import.program_id()),
+            "Import '{}' is already defined.",
+            import.program_id()
+        );
 
         // Add the import statement to the program.
-        if self.imports.insert(*import.id(), import.clone()).is_some() {
-            bail!("'{}' already exists in the program.", import.id())
+        if self.imports.insert(*import.program_id(), import.clone()).is_some() {
+            bail!("'{}' already exists in the program.", import.program_id())
         }
         Ok(())
     }

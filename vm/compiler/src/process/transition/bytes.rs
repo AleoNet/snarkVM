@@ -76,8 +76,6 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: u64 = 1000;
-
     #[test]
     fn test_bytes() -> Result<()> {
         // Sample the transition.
