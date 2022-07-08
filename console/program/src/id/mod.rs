@@ -30,20 +30,13 @@ pub struct ProgramID<N: Network> {
     /// The program name.
     name: Identifier<N>,
     /// The network-level domain (NLD).
-    network: Option<Identifier<N>>,
-}
-
-impl<N: Network> From<Identifier<N>> for ProgramID<N> {
-    /// Initializes a program ID from a name identifier.
-    fn from(name: Identifier<N>) -> Self {
-        Self { name, network: None }
-    }
+    network: Identifier<N>,
 }
 
 impl<N: Network> From<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
     /// Initializes a program ID from a name and network-level domain identifier.
     fn from((name, network): (Identifier<N>, Identifier<N>)) -> Self {
-        Self { name, network: Some(network) }
+        Self { name, network }
     }
 }
 
@@ -56,17 +49,14 @@ impl<N: Network> ProgramID<N> {
 
     /// Returns the network-level domain (NLD).
     #[inline]
-    pub fn network(&self) -> Identifier<N> {
-        match self.network {
-            Some(network) => network,
-            None => Identifier::from_str("aleo").expect("Failed to parse Aleo domain"),
-        }
+    pub const fn network(&self) -> &Identifier<N> {
+        &self.network
     }
 
     /// Returns `true` if the network-level domain is `aleo`.
     #[inline]
     pub fn is_aleo(&self) -> bool {
-        self.network() == Identifier::from_str("aleo").expect("Failed to parse Aleo domain")
+        self.network() == &Identifier::from_str("aleo").expect("Failed to parse Aleo domain")
     }
 }
 
@@ -75,12 +65,7 @@ impl<N: Network> Ord for ProgramID<N> {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.network == other.network {
             true => self.name.to_string().cmp(&other.name.to_string()),
-            false => match (self.network, other.network) {
-                (Some(this), Some(that)) => this.to_string().cmp(&that.to_string()),
-                (Some(this), None) => this.to_string().cmp(&"aleo".to_string()),
-                (None, Some(that)) => "aleo".to_string().cmp(&that.to_string()),
-                (None, None) => Ordering::Equal,
-            },
+            false => self.network.to_string().cmp(&other.network.to_string()),
         }
     }
 }

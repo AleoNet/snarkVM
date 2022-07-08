@@ -20,6 +20,8 @@ use input::*;
 mod output;
 use output::*;
 
+mod bytes;
+
 use crate::{Proof, VerifyingKey};
 use console::{
     network::prelude::*,

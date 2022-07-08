@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Program, Stack};
+use crate::{Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
     program::{
@@ -313,7 +313,11 @@ impl<N: Network> Cast<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -328,7 +332,7 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                 // Retrieve the interface and ensure it is defined in the program.
-                let interface = program.get_interface(&interface_name)?;
+                let interface = stack.program().get_interface(&interface_name)?;
                 // Ensure the input types match the interface.
                 for ((_, member_type), input_type) in interface.members().iter().zip_eq(input_types) {
                     match input_type {
@@ -348,7 +352,7 @@ impl<N: Network> Cast<N> {
             }
             RegisterType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
-                let record = program.get_record(&record_name)?;
+                let record = stack.program().get_record(&record_name)?;
 
                 // Ensure the input types length is at least 2.
                 ensure!(input_types.len() >= 2, "Casting to a record requires at least two operands");

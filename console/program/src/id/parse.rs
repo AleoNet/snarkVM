@@ -24,12 +24,9 @@ impl<N: Network> Parser for ProgramID<N> {
         // Parse the name from the string.
         let (string, name) = Identifier::parse(string)?;
         // Parse the optional "." and network-level domain (NLD) from the string.
-        let (string, network) = opt(pair(tag("."), Identifier::parse))(string)?;
+        let (string, (_, network)) = pair(tag("."), Identifier::parse)(string)?;
         // Return the program ID.
-        match network {
-            Some((_, network)) => Ok((string, Self { name, network: Some(network) })),
-            None => Ok((string, Self { name, network: None })),
-        }
+        Ok((string, Self { name, network }))
     }
 }
 
@@ -61,10 +58,7 @@ impl<N: Network> Debug for ProgramID<N> {
 impl<N: Network> Display for ProgramID<N> {
     /// Prints the program ID as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self.network {
-            Some(network) => write!(f, "{name}.{network}", name = self.name, network = network),
-            None => write!(f, "{name}.aleo", name = self.name),
-        }
+        write!(f, "{name}.{network}", name = self.name, network = self.network)
     }
 }
 
@@ -79,11 +73,9 @@ mod tests {
     fn test_parse() -> Result<()> {
         let id = ProgramID::<CurrentNetwork>::parse("bar.aleo").unwrap().1;
         assert_eq!(id.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
-        assert_eq!(id.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
+        assert_eq!(id.network(), &Identifier::<CurrentNetwork>::from_str("aleo")?);
 
-        let id = ProgramID::<CurrentNetwork>::parse("foo").unwrap().1;
-        assert_eq!(id.name(), &Identifier::<CurrentNetwork>::from_str("foo")?);
-        assert_eq!(id.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
+        assert!(ProgramID::<CurrentNetwork>::parse("foo").is_err());
 
         Ok(())
     }
@@ -93,8 +85,7 @@ mod tests {
         let id = ProgramID::<CurrentNetwork>::from_str("bar.aleo")?;
         assert_eq!("bar.aleo", id.to_string());
 
-        let id = ProgramID::<CurrentNetwork>::from_str("foo")?;
-        assert_eq!("foo.aleo", id.to_string());
+        assert!(ProgramID::<CurrentNetwork>::from_str("foo").is_err());
 
         Ok(())
     }

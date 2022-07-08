@@ -26,7 +26,7 @@ pub use operation::*;
 mod bytes;
 mod parse;
 
-use crate::{Program, Stack};
+use crate::Stack;
 use console::{
     network::{
         prelude::{
@@ -351,8 +351,12 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
-        instruction!(self, |instruction| instruction.output_types(program, input_types))
+    pub fn output_types<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
+        instruction!(self, |instruction| instruction.output_types(stack, input_types))
     }
 }
 

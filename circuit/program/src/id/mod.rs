@@ -38,7 +38,7 @@ impl<A: Aleo> Inject for ProgramID<A> {
     fn new(_: Mode, id: Self::Primitive) -> Self {
         Self {
             name: Identifier::new(Mode::Constant, *id.name()),
-            network: Identifier::new(Mode::Constant, id.network()),
+            network: Identifier::new(Mode::Constant, *id.network()),
         }
     }
 }

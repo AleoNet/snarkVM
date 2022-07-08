@@ -325,7 +325,7 @@ mod tests {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;

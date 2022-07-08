@@ -193,7 +193,7 @@ mod tests {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program to_parse;
+program to_parse.aleo;
 
 interface message:
     first as field;

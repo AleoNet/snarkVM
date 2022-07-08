@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         let program = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;
