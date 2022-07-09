@@ -520,7 +520,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Stack;
+    use crate::Process;
     use circuit::network::AleoV0;
     use console::network::Testnet3;
 
@@ -626,8 +626,11 @@ function compute:
         // Retrieve the function from the program.
         let function = program.get_function(&function_name).unwrap();
 
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
@@ -671,8 +674,11 @@ function compute:
         // Retrieve the function from the program.
         let function = program.get_function(&function_name).unwrap();
 
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
@@ -716,8 +722,11 @@ function compute:
         // Retrieve the function from the program.
         let function = program.get_function(&function_name).unwrap();
 
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
@@ -774,8 +783,11 @@ function compute:
         // Retrieve the function from the program.
         let function = program.get_function(&function_name).unwrap();
 
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
@@ -832,8 +844,11 @@ function compute:
         // Retrieve the function from the program.
         let function = program.get_function(&function_name).unwrap();
 
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
