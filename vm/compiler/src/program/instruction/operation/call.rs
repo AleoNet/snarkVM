@@ -232,7 +232,7 @@ impl<N: Network> Call<N> {
             use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
-            let (response, transition) =
+            let response =
                 match stack.call_stack() {
                     // If the circuit is in authorize mode, then add any external calls to the stack.
                     CallStack::Authorize(_, private_key, authorization) => {
@@ -263,16 +263,11 @@ impl<N: Network> Call<N> {
                         // Add the request to the authorization.
                         authorization.write().push(request);
 
-                        // Execute the function.
+                        // Execute the request.
                         substack.execute(call_stack, rng)?
                     }
-                    // If the circuit is in deploy mode, then execute the instructions.
-                    CallStack::Deploy(..) => {
-                        // Execute the function, and load the outputs.
-                        substack.execute(stack.call_stack(), rng)?
-                    }
                     // If the circuit is in execute mode, then evaluate and execute the instructions.
-                    CallStack::Execute(..) => {
+                    CallStack::Execute(_, execution) => {
                         // Eject the circuit inputs.
                         let inputs = inputs.eject_value();
                         // Retrieve the input types.
@@ -284,14 +279,14 @@ impl<N: Network> Call<N> {
 
                         // Evaluate the function, and load the outputs.
                         let console_outputs = substack.evaluate_function(&function, &inputs)?;
-                        // Execute the function, and load the outputs.
-                        let (response, transition) = substack.execute(stack.call_stack(), rng)?;
+                        // Execute the request.
+                        let response = substack.execute(stack.call_stack(), rng)?;
                         // Ensure the values are equal.
                         if console_outputs == response.outputs() {
                             bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
                         }
-                        // Return the response and transition.
-                        (response, transition)
+                        // Return the response.
+                        response
                     }
                 };
             // Inject the existing circuit.

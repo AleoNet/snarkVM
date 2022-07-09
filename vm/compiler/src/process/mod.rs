@@ -18,7 +18,7 @@ mod helpers;
 pub(crate) use helpers::*;
 
 mod stack;
-pub(crate) use stack::*;
+pub use stack::*;
 
 mod trace;
 use trace::*;
@@ -203,15 +203,17 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         &self,
         request: &Request<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>)> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         trace!("Starting execute");
 
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
-        // Synthesize the circuit.
-        let (response, transition) = stack.execute(CallStack::Execute(vec![request.clone()]), rng)?;
+        // Initialize the execution.
+        let execution = Execution::new();
+        // Execute the circuit.
+        let response = stack.execute(CallStack::Execute(vec![request.clone()], execution.clone()), rng)?;
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
@@ -219,7 +221,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // trace.finalize()?;
         // println!("{:?}", trace.leaves());
 
-        Ok((response, transition))
+        Ok((response, execution))
     }
 
     /// Executes a program function on the given request, proving key, and verifying key.
@@ -230,7 +232,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         proving_key: &ProvingKey<N>,
         verifying_key: &VerifyingKey<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>)> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         trace!("Starting execute");
 
         // Ensure the request is well-formed.
@@ -244,8 +246,10 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         );
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
-        // Synthesize the circuit.
-        let (response, transition) = stack.execute(CallStack::Execute(vec![request.clone()]), rng)?;
+        // Initialize the execution.
+        let execution = Execution::new();
+        // Execute the circuit.
+        let response = stack.execute(CallStack::Execute(vec![request.clone()], execution.clone()), rng)?;
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
@@ -253,7 +257,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // trace.finalize()?;
         // println!("{:?}", trace.leaves());
 
-        Ok((response, transition))
+        Ok((response, execution))
     }
 }
 
@@ -316,9 +320,10 @@ function compute:
                 assert_eq!(requests.len(), 1);
                 let request = requests[0].clone();
                 // Execute the request.
-                let (_response, transition) = process.execute(&request, rng).unwrap();
+                let (_response, execution) = process.execute(&request, rng).unwrap();
+                assert_eq!(execution.len(), 1);
                 // Return the transition.
-                transition
+                execution.get(0)
             })
             .clone()
     }
@@ -417,7 +422,7 @@ function compute:
         assert_eq!(r5, candidate[3]);
 
         // Execute the request.
-        let (response, transition) = process.execute(&request, rng).unwrap();
+        let (response, execution) = process.execute(&request, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -425,6 +430,7 @@ function compute:
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
 
+        let transition = execution.get(0);
         let (_, verifying_key) = process.circuit_key(request.program_id(), request.function_name()).unwrap();
         assert!(transition.verify(&verifying_key));
 

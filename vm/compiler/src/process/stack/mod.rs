@@ -50,17 +50,46 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
+pub struct Execution<N: Network>(Arc<RwLock<Vec<Transition<N>>>>);
+
+impl<N: Network> Execution<N> {
+    /// Initialize a new `Execution` instance.
+    pub fn new() -> Self {
+        Self(Arc::new(RwLock::new(Vec::new())))
+    }
+
+    /// Returns the `Transition` at the given index.
+    pub fn get(&self, index: usize) -> Transition<N> {
+        self.0.read()[index].clone()
+    }
+
+    /// Returns the last `Transition` in the execution.
+    pub fn last(&self) -> Transition<N> {
+        self.get(self.len() - 1)
+    }
+
+    /// Returns the number of `Transition`s in the execution.
+    pub fn len(&self) -> usize {
+        self.0.read().len()
+    }
+
+    /// Appends the given `Transition` to the execution.
+    pub fn push(&self, transition: Transition<N>) {
+        self.0.write().push(transition);
+    }
+}
+
+#[derive(Clone)]
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Arc<RwLock<Vec<Request<N>>>>),
-    Deploy(Vec<Request<N>>),
-    Execute(Vec<Request<N>>),
+    Execute(Vec<Request<N>>, Execution<N>),
 }
 
 impl<N: Network> CallStack<N> {
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
-            CallStack::Authorize(requests, ..) | CallStack::Deploy(requests) | CallStack::Execute(requests) => {
+            CallStack::Authorize(requests, ..) | CallStack::Execute(requests, ..) => {
                 requests.push(request);
                 Ok(())
             }
@@ -70,7 +99,7 @@ impl<N: Network> CallStack<N> {
     /// Pops the request from the stack.
     pub fn pop(&mut self) -> Result<Request<N>> {
         match self {
-            CallStack::Authorize(requests, ..) | CallStack::Deploy(requests) | CallStack::Execute(requests) => {
+            CallStack::Authorize(requests, ..) | CallStack::Execute(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
         }
@@ -107,7 +136,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             circuit_keys,
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
-            call_stack: CallStack::Execute(Vec::new()),
+            call_stack: CallStack::Execute(Vec::new(), Execution::new()),
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
@@ -495,33 +524,34 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute<R: Rng + CryptoRng>(
-        &mut self,
-        call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<(Response<N>, Transition<N>)> {
+    pub fn execute<R: Rng + CryptoRng>(&mut self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
         // Synthesize the circuit.
         let (response, assignment) = self.execute_function(call_stack.clone())?;
 
-        // Retrieve the last request.
-        let request = call_stack.clone().pop()?;
+        // If the call stack is an execution, add the transition.
+        if let CallStack::Execute(_, ref execution) = call_stack {
+            // Retrieve the last request.
+            let request = call_stack.clone().pop()?;
 
-        // If the circuit is in deploy mode, then derive the circuit key.
-        if let CallStack::Deploy(..) = call_stack {
-            // Add the circuit key to the mapping.
-            self.circuit_keys.insert_from_assignment(request.program_id(), request.function_name(), &assignment)?;
+            // If the circuit key does not exist, use the assignment to synthesize the circuit key.
+            if !self.circuit_keys.contains_key(request.program_id(), request.function_name()) {
+                // Add the circuit key to the mapping.
+                self.circuit_keys.insert_from_assignment(request.program_id(), request.function_name(), &assignment)?;
+            }
+
+            // Retrieve the proving and verifying key.
+            let (proving_key, verifying_key) = self.circuit_key(request.function_name())?;
+            // Execute the circuit.
+            let proof = proving_key.prove(&assignment, rng)?;
+            // Initialize the transition.
+            let transition = Transition::from(&request, &response, proof, 0u64)?;
+            // Verify the transition.
+            ensure!(transition.verify(&verifying_key), "Transition is invalid");
+            // Add the transition to the execution.
+            execution.push(transition);
         }
 
-        // Retrieve the proving and verifying key.
-        let (proving_key, verifying_key) = self.circuit_key(request.function_name())?;
-        // Execute the circuit.
-        let proof = proving_key.prove(&assignment, rng)?;
-        // Initialize the transition.
-        let transition = Transition::from(&request, &response, proof, 0u64)?;
-        // Verify the transition.
-        ensure!(transition.verify(&verifying_key), "Transition is invalid");
-
-        Ok((response, transition))
+        Ok(response)
     }
 
     /// Prints the current state of the circuit.

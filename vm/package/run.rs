@@ -21,7 +21,7 @@ impl<N: Network> Package<N> {
     pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
         request: &Request<N>,
-    ) -> Result<(Response<N>, Transition<N>)> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         // Ensure the network ID matches.
         ensure!(
             **request.network_id() == N::ID,
@@ -60,14 +60,14 @@ impl<N: Network> Package<N> {
         // Load the verifier.
         let verifier = VerifierFile::open(&build_directory, request.function_name())?;
 
-        // Execute the synthesized circuit.
-        let (response, transition) = process.execute_synthesized(
+        // Execute the circuit.
+        let (response, execution) = process.execute_synthesized(
             request,
             prover.proving_key(),
             verifier.verifying_key(),
             &mut rand::thread_rng(),
         )?;
 
-        Ok((response, transition))
+        Ok((response, execution))
     }
 }

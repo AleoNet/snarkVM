@@ -22,7 +22,7 @@ use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
     prelude::{Network, ProgramID, Request, Response, ToBytes},
 };
-use snarkvm_compiler::{Process, Program, Transition};
+use snarkvm_compiler::{Execution, Process, Program, Transition};
 
 use anyhow::{bail, ensure, Result};
 use std::path::{Path, PathBuf};

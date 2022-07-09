@@ -520,7 +520,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Process};
+    use crate::{CallStack, Execution, Process};
     use circuit::network::AleoV0;
     use console::{account::PrivateKey, network::Testnet3};
 
@@ -821,7 +821,8 @@ function compute:
         let request = requests[0].clone();
 
         // Re-run to ensure state continues to work.
-        let (response, _assignment) = stack.execute_function(CallStack::Execute(vec![request])).unwrap();
+        let (response, _assignment) =
+            stack.execute_function(CallStack::Execute(vec![request], Execution::new())).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
