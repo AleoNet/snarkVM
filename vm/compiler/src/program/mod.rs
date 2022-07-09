@@ -520,7 +520,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Process;
+    use crate::{Process, StackMode};
     use circuit::network::AleoV0;
     use console::network::Testnet3;
 
@@ -806,7 +806,7 @@ function compute:
         use circuit::Eject;
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_execute(&function_name, &[r0, r1], false).unwrap();
+        let candidate = stack.test_execute(&function_name, &[r0, r1], StackMode::Execute).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0].eject_value());
         assert_eq!(r3, candidate[1].eject_value());

@@ -135,15 +135,15 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                     _ => program.sample_value(&burner_address, input_type, rng),
                 })
                 .collect::<Result<Vec<_>>>()?;
-            // Sign a request, with a burner private key.
-            let request = self.sign(&burner_private_key, program_id, *function_name, &inputs, rng)?;
+            // Authorize a request, with a burner private key.
+            let request = self.authorize(&burner_private_key, program_id, *function_name, &inputs, rng)?;
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
 
             // Prepare the stack.
             let mut stack = self.get_stack(request.program_id())?;
             // Synthesize the circuit.
-            let (_response, assignment) = Self::synthesize(&mut stack, &request, true)?;
+            let (_response, assignment) = Self::synthesize(&mut stack, &request, StackMode::Deploy)?;
             // Derive the circuit key.
             // TODO (howardwu): Load the universal SRS remotely.
             let (proving_key, verifying_key) =
@@ -157,9 +157,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         }
     }
 
-    /// Signs a request to execute a program function.
+    /// Authorizes a request to execute a program function.
     #[inline]
-    pub fn sign<R: Rng + CryptoRng>(
+    pub fn authorize<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
@@ -171,8 +171,24 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let program = self.get_program(program_id)?.clone();
         // Retrieve the function from the program.
         let function = program.get_function(&function_name)?;
-        // Compute the signed request.
-        Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng)
+        // Determine the number of external function calls.
+        let mut num_external = 0;
+        for instruction in function.instructions() {
+            if let Instruction::Call(call) = instruction {
+                if let CallOperator::Locator(locator) = call.operator() {
+                    if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
+                        num_external += 1;
+                    }
+                }
+            }
+        }
+        // Return a signed request if there are no external function calls.
+        match num_external == 0 {
+            // Return the request.
+            true => Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng),
+            // Construct the request builder and sign.
+            false => bail!("Unsupported"),
+        }
     }
 
     /// Evaluates a program function on the given request.
@@ -226,7 +242,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(&mut stack, request, false)?;
+        let (response, assignment) = Self::synthesize(&mut stack, request, StackMode::Execute)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
@@ -263,7 +279,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(&mut stack, request, false)?;
+        let (response, assignment) = Self::synthesize(&mut stack, request, StackMode::Execute)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Verify the proof.
@@ -289,7 +305,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     fn synthesize(
         stack: &mut Stack<N, A>,
         request: &Request<N>,
-        is_setup: bool,
+        stack_mode: StackMode,
     ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
         // Retrieve the function from the program.
         let function = stack.program().get_function(request.function_name())?;
@@ -320,7 +336,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         Self::log_circuit("Request Authentication");
 
         // Execute the function.
-        let outputs = stack.execute_function(&function, request.inputs(), is_setup)?;
+        let outputs = stack.execute_function(&function, request.inputs(), stack_mode)?;
 
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function '{}()'", function.name()));
@@ -403,7 +419,7 @@ function compute:
                 let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
                 // Compute the signed request.
                 let request = process
-                    .sign(
+                    .authorize(
                         &caller_private_key,
                         program.id(),
                         function_name,
@@ -502,7 +518,7 @@ function compute:
 
         // Compute the signed request.
         let request =
-            process.sign(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
+            process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
 
         // Compute the output value.
         let response = process.evaluate(&request).unwrap();

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack};
+use crate::{Opcode, Operand, Stack, StackMode};
 use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, ValueType},
@@ -214,7 +214,7 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
             // Execute the closure, and load the outputs.
-            call_stack.execute_closure(&closure, &inputs, stack.is_setup())?
+            call_stack.execute_closure(&closure, &inputs, stack.stack_mode())?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = call_stack.program().get_function(resource) {
@@ -232,10 +232,10 @@ impl<N: Network> Call<N> {
                 use circuit::Eject;
 
                 // Execute the function, and load the outputs.
-                let circuit_outputs = call_stack.execute_function(&function, &inputs, stack.is_setup())?;
+                let circuit_outputs = call_stack.execute_function(&function, &inputs, stack.stack_mode())?;
 
-                // If the circuit is not for a setup, then evaluate the instructions.
-                if !call_stack.is_setup() {
+                // If the circuit is in execute mode, then evaluate the instructions.
+                if call_stack.stack_mode() == StackMode::Execute {
                     // Evaluate the function, and load the outputs.
                     let console_outputs = call_stack.evaluate_function(&function, &inputs.eject_value())?;
                     // Ensure the values are equal.

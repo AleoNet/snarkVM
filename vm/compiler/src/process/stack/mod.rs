@@ -49,6 +49,13 @@ use indexmap::IndexMap;
 //     operator: CallOperator<N>,
 // }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum StackMode {
+    Authorize,
+    Deploy,
+    Execute,
+}
+
 #[derive(Clone)]
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
@@ -57,14 +64,14 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     external_stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    /// The current stack mode.
+    stack_mode: StackMode,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
     console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
     circuit_registers: IndexMap<u64, circuit::Value<A>>,
-    /// The boolean indicator if the stack is for a setup.
-    is_setup: bool,
     // /// The list of external calls.
     // external_calls: Vec<ExternalCall<N>>,
 }
@@ -85,10 +92,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             program,
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
+            stack_mode: StackMode::Authorize,
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
-            is_setup: false,
         })
     }
 
@@ -131,12 +138,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         Ok(())
     }
 
-    /// Returns if the stack is for a setup.
-    #[inline]
-    pub const fn is_setup(&self) -> bool {
-        self.is_setup
-    }
-
     /// Returns the program.
     #[inline]
     pub const fn program(&self) -> &Program<N> {
@@ -147,6 +148,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     #[inline]
     pub const fn program_id(&self) -> &ProgramID<N> {
         self.program.id()
+    }
+
+    /// Returns the stack mode.
+    #[inline]
+    pub const fn stack_mode(&self) -> StackMode {
+        self.stack_mode
     }
 
     /// Returns the register types for the given closure or function name.
@@ -237,7 +244,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
-        is_setup: bool,
+        stack_mode: StackMode,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
@@ -248,16 +255,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let num_public = A::num_public();
 
         // Initialize the stack.
+        self.stack_mode = stack_mode;
         self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
-        self.is_setup = is_setup;
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             use circuit::Eject;
 
-            if !self.is_setup {
+            // If the circuit is in execute mode, then store the console input.
+            if self.stack_mode == StackMode::Execute {
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -265,8 +273,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             self.store_circuit(register, input.clone())
         })?;
 
-        // If the circuit is not for a setup, then evaluate the instructions.
-        if !self.is_setup {
+        // If the circuit is in execute mode, then evaluate the instructions.
+        if self.stack_mode == StackMode::Execute {
             closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         }
         // Execute the instructions.
@@ -327,7 +335,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         function: &Function<N>,
         inputs: &[circuit::Value<A>],
-        is_setup: bool,
+        stack_mode: StackMode,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
@@ -338,16 +346,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let num_public = A::num_public();
 
         // Initialize the stack.
+        self.stack_mode = stack_mode;
         self.register_types = self.get_register_types(function.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
-        self.is_setup = is_setup;
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             use circuit::Eject;
 
-            if !self.is_setup {
+            // If the circuit is in execute mode, then store the console input.
+            if self.stack_mode == StackMode::Execute {
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -355,8 +364,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             self.store_circuit(register, input.clone())
         })?;
 
-        // If the circuit is not for a setup, then evaluate the instructions.
-        if !self.is_setup {
+        // If the circuit is in execute mode, then evaluate the instructions.
+        if self.stack_mode == StackMode::Execute {
             function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         }
         // Execute the instructions.
@@ -385,7 +394,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         &mut self,
         function_name: &Identifier<N>,
         inputs: &[Value<N>],
-        is_setup: bool,
+        stack_mode: StackMode,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the circuit environment is clean.
         A::reset();
@@ -412,6 +421,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .collect::<Vec<_>>();
 
         // Execute the function.
-        self.execute_function(&function, &inputs, is_setup)
+        self.execute_function(&function, &inputs, stack_mode)
     }
 }
