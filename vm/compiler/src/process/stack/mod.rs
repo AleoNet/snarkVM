@@ -37,17 +37,82 @@ use console::{
         RecordType,
         Register,
         RegisterType,
+        Request,
         Value,
         ValueType,
     },
 };
 
+use console::account::PrivateKey;
 use indexmap::IndexMap;
 
-// pub struct ExternalCall<N: Network> {
-//     /// The call operator.
-//     operator: CallOperator<N>,
-// }
+#[derive(Clone, PartialEq, Eq)]
+pub struct StackCall<N: Network> {
+    /// The list of children stack calls.
+    subcalls: Vec<StackCall<N>>,
+    /// The program ID.
+    program_id: ProgramID<N>,
+    /// The function name.
+    function_name: Identifier<N>,
+    /// The function inputs.
+    inputs: Vec<Value<N>>,
+    /// The function input types.
+    input_types: Vec<ValueType<N>>,
+}
+
+impl<N: Network> StackCall<N> {
+    /// Initializes a new stack call request.
+    pub fn new(
+        subcalls: &[StackCall<N>],
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        inputs: Vec<Value<N>>,
+        input_types: Vec<ValueType<N>>,
+    ) -> Self {
+        Self {
+            subcalls: subcalls.to_vec(),
+            program_id: *program_id,
+            function_name: *function_name,
+            inputs,
+            input_types,
+        }
+    }
+
+    /// Returns the list of children stack calls.
+    pub fn subcalls(&self) -> &[StackCall<N>] {
+        &self.subcalls
+    }
+
+    /// Returns the program ID.
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        &self.program_id
+    }
+
+    /// Returns the function name.
+    pub const fn function_name(&self) -> &Identifier<N> {
+        &self.function_name
+    }
+
+    /// Returns the function inputs.
+    pub fn inputs(&self) -> &[Value<N>] {
+        &self.inputs
+    }
+
+    /// Returns the function input types.
+    pub fn input_types(&self) -> &[ValueType<N>] {
+        &self.input_types
+    }
+
+    /// Authorizes an external call, with the given private key, input types, and RNG.
+    pub fn authorize<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Request<N>> {
+        Request::sign(private_key, self.program_id, self.function_name, &self.inputs, &self.input_types, rng)
+    }
+
+    /// Returns an iterator over the stack calls, including the current one (last).
+    pub fn iter(&self) -> impl Iterator<Item = StackCall<N>> {
+        vec![self.subcalls.clone(), vec![self.clone()]].into_iter().flatten()
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum StackMode {
@@ -66,22 +131,15 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The current stack mode.
     stack_mode: StackMode,
+    /// The list of external calls.
+    external_calls: Vec<StackCall<N>>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
     console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
     circuit_registers: IndexMap<u64, circuit::Value<A>>,
-    // /// The list of external calls.
-    // external_calls: Vec<ExternalCall<N>>,
 }
-
-// impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
-//     /// Adds the given as an external call to the stack.
-//     pub fn add_external_call(&mut self, operator: CallOperator<N>, inputs: &[Value<N>]) {
-//         self.external_calls.push(external_call);
-//     }
-// }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
@@ -93,6 +151,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
             stack_mode: StackMode::Authorize,
+            external_calls: Vec::new(),
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
@@ -161,6 +220,24 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
         self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+    }
+
+    /// Returns an iterator over the external calls.
+    #[inline]
+    pub fn external_calls(&self) -> &[StackCall<N>] {
+        &self.external_calls
+    }
+
+    /// Returns an iterator over the (flattened) external calls.
+    #[inline]
+    pub fn external_calls_flattened(&self) -> impl '_ + Iterator<Item = StackCall<N>> {
+        self.external_calls.iter().flat_map(|call| call.iter())
+    }
+
+    /// Adds the given as an external call to the stack.
+    #[inline]
+    pub fn add_external_call(&mut self, external_call: StackCall<N>) {
+        self.external_calls.push(external_call);
     }
 
     /// Returns the external stack for the given program ID.
@@ -328,6 +405,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Executes a program function on the given inputs.
     ///
+    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
+    ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
@@ -390,18 +469,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn test_execute(
+    pub fn execute_function_from_console(
         &mut self,
-        function_name: &Identifier<N>,
+        function: &Function<N>,
         inputs: &[Value<N>],
         stack_mode: StackMode,
     ) -> Result<Vec<circuit::Value<A>>> {
-        // Ensure the circuit environment is clean.
-        A::reset();
-
-        // Retrieve the function from the program.
-        let function = self.program.get_function(function_name)?;
-
         // Inject the inputs to the circuit environment.
         let inputs = function
             .inputs()
@@ -409,17 +482,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .map(|i| i.value_type())
             .zip_eq(inputs)
             .map(|(value_type, input)| {
-                // Inject the inputs according to their value type.
+                // Inject the inputs based on their value type.
                 match value_type {
                     ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
-                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
+                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
                     ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
                     ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
                     ValueType::ExternalRecord(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
                 }
             })
             .collect::<Vec<_>>();
-
         // Execute the function.
         self.execute_function(&function, &inputs, stack_mode)
     }

@@ -803,10 +803,16 @@ function compute:
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
-        use circuit::Eject;
+        use circuit::{Eject, Environment};
+
+        // Ensure the environment is clean.
+        assert_eq!(0, CurrentAleo::num_constants());
+        assert_eq!(1, CurrentAleo::num_public());
+        assert_eq!(0, CurrentAleo::num_private());
+        assert_eq!(0, CurrentAleo::num_constraints());
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_execute(&function_name, &[r0, r1], StackMode::Execute).unwrap();
+        let candidate = stack.execute_function_from_console(&function, &[r0, r1], StackMode::Execute).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0].eject_value());
         assert_eq!(r3, candidate[1].eject_value());

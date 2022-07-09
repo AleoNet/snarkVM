@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack, StackMode};
+use crate::{Opcode, Operand, Stack, StackCall, StackMode};
 use console::{
     network::prelude::*,
     program::{Identifier, Locator, Register, RegisterType, ValueType},
@@ -234,8 +234,20 @@ impl<N: Network> Call<N> {
                 // Execute the function, and load the outputs.
                 let circuit_outputs = call_stack.execute_function(&function, &inputs, stack.stack_mode())?;
 
+                // If the circuit is in authorize mode, then add any external calls to the stack.
+                if stack.stack_mode() == StackMode::Authorize {
+                    // Add the external call to the stack, including external calls from the `call_stack` as subcalls.
+                    stack.add_external_call(StackCall::new(
+                        call_stack.external_calls(),
+                        call_stack.program_id(),
+                        function.name(),
+                        inputs.eject_value(),
+                        function.input_types(),
+                    ));
+                }
+
                 // If the circuit is in execute mode, then evaluate the instructions.
-                if call_stack.stack_mode() == StackMode::Execute {
+                if stack.stack_mode() == StackMode::Execute {
                     // Evaluate the function, and load the outputs.
                     let console_outputs = call_stack.evaluate_function(&function, &inputs.eject_value())?;
                     // Ensure the values are equal.

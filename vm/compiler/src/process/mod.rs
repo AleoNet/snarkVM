@@ -77,6 +77,12 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         Ok(process)
     }
 
+    /// Returns `true` if the process contains the program with the given ID.
+    #[inline]
+    pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
+        self.programs.contains_key(program_id)
+    }
+
     /// Returns the program for the given program ID.
     #[inline]
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
@@ -98,17 +104,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         // Determine if the circuit key already exists.
         let exists = self.circuit_keys.read().contains_key(&(*program_id, *function_name));
-        // If the circuit key exists, retrieve and return it.
-        if exists {
-            // Return the circuit key.
-            self.circuit_keys
-                .read()
-                .get(&(*program_id, *function_name))
-                .cloned()
-                .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
-        }
         // If the circuit key does not exist, synthesize and return it.
-        else {
+        if !exists {
             // Retrieve the program.
             let program = self.get_program(program_id)?.clone();
             // Retrieve the function from the program.
@@ -135,29 +132,36 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                     _ => program.sample_value(&burner_address, input_type, rng),
                 })
                 .collect::<Result<Vec<_>>>()?;
-            // Authorize a request, with a burner private key.
-            let request = self.authorize(&burner_private_key, program_id, *function_name, &inputs, rng)?;
-            // Ensure the request is well-formed.
-            ensure!(request.verify(), "Request is invalid");
-
-            // Prepare the stack.
-            let mut stack = self.get_stack(request.program_id())?;
-            // Synthesize the circuit.
-            let (_response, assignment) = Self::synthesize(&mut stack, &request, StackMode::Deploy)?;
-            // Derive the circuit key.
-            // TODO (howardwu): Load the universal SRS remotely.
-            let (proving_key, verifying_key) =
-                self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
-            // Add the circuit key to the mapping.
-            self.circuit_keys
-                .write()
-                .insert((*program_id, *function_name), (proving_key.clone(), verifying_key.clone()));
-            // Return the circuit key.
-            Ok((proving_key, verifying_key))
+            // Authorize the requests, with a burner private key.
+            let requests = self.authorize(&burner_private_key, program_id, *function_name, &inputs, rng)?;
+            // Synthesize each of the requests.
+            for request in requests {
+                // Ensure the request is well-formed.
+                ensure!(request.verify(), "Request is invalid");
+                // Prepare the stack.
+                let mut stack = self.get_stack(request.program_id())?;
+                // Synthesize the circuit.
+                let (_response, assignment) = Self::synthesize(&mut stack, &request, StackMode::Deploy)?;
+                // Derive the circuit key.
+                // TODO (howardwu): Load the universal SRS remotely.
+                let (proving_key, verifying_key) =
+                    self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
+                // Add the circuit key to the mapping.
+                self.circuit_keys.write().insert(
+                    (*request.program_id(), *request.function_name()),
+                    (proving_key.clone(), verifying_key.clone()),
+                );
+            }
         }
+        // Return the circuit key.
+        self.circuit_keys
+            .read()
+            .get(&(*program_id, *function_name))
+            .cloned()
+            .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
     }
 
-    /// Authorizes a request to execute a program function.
+    /// Authorizes the request(s) to execute the program function.
     #[inline]
     pub fn authorize<R: Rng + CryptoRng>(
         &self,
@@ -166,29 +170,64 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<Request<N>> {
+    ) -> Result<Vec<Request<N>>> {
         // Retrieve the program.
         let program = self.get_program(program_id)?.clone();
         // Retrieve the function from the program.
         let function = program.get_function(&function_name)?;
-        // Determine the number of external function calls.
-        let mut num_external = 0;
+        // Determine if the function contains external function calls.
+        let mut contains_external_calls = false;
         for instruction in function.instructions() {
             if let Instruction::Call(call) = instruction {
                 if let CallOperator::Locator(locator) = call.operator() {
                     if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
-                        num_external += 1;
+                        contains_external_calls = true;
+                        break;
                     }
                 }
             }
         }
-        // Return a signed request if there are no external function calls.
-        match num_external == 0 {
-            // Return the request.
-            true => Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng),
-            // Construct the request builder and sign.
-            false => bail!("Unsupported"),
+        // Initialize a vector for the requests.
+        let mut requests = vec![];
+        // Construct the request builder.
+        if contains_external_calls {
+            // Ensure the circuit environment is clean.
+            A::reset();
+            // Prepare the stack.
+            let mut stack = self.get_stack(program_id)?;
+            // Execute the function.
+            let _outputs = stack.execute_function_from_console(&function, inputs, StackMode::Authorize)?;
+            // Ensure the circuit environment is clean.
+            A::reset();
+
+            // Iterate through the external calls to authorize them.
+            for external_call in stack.external_calls_flattened() {
+                // Ensure the external program exists.
+                ensure!(self.contains_program(external_call.program_id()), "External '{program_id}' not found.");
+                // Retrieve the external program.
+                let external_program = self.get_program(external_call.program_id())?;
+                // Retrieve the external function.
+                let external_function = external_program.get_function(external_call.function_name())?;
+                // Retrieve the external function input types.
+                let input_types = external_function.input_types();
+                // Ensure the claimed input types match the function.
+                ensure!(input_types == external_call.input_types(), "External call has incorrect input types.");
+                // Ensure the inputs match their expected types.
+                external_call
+                    .inputs()
+                    .iter()
+                    .zip_eq(&input_types)
+                    .try_for_each(|(input, input_type)| external_program.matches_value_type(input, input_type))?;
+                // Authorize the request.
+                let request = external_call.authorize(private_key, rng)?;
+                // Append the request to the vector.
+                requests.push(request);
+            }
         }
+        // Append the request to the vector.
+        requests.push(Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng)?);
+        // Return the requests.
+        Ok(requests)
     }
 
     /// Evaluates a program function on the given request.
@@ -245,9 +284,6 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let (response, assignment) = Self::synthesize(&mut stack, request, StackMode::Execute)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
-        // Verify the proof.
-        ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
-
         // Initialize the transition.
         let transition = Transition::from(request, &response, proof, 0u64)?;
         // Verify the transition.
@@ -275,16 +311,12 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
-
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
         let (response, assignment) = Self::synthesize(&mut stack, request, StackMode::Execute)?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
-        // Verify the proof.
-        ensure!(verifying_key.verify(&assignment.public_inputs(), &proof), "Proof is invalid");
-
         // Initialize the transition.
         let transition = Transition::from(request, &response, proof, 0u64)?;
         // Verify the transition.
@@ -417,8 +449,8 @@ function compute:
 
                 // Construct the process.
                 let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
-                // Compute the signed request.
-                let request = process
+                // Authorize the request.
+                let requests = process
                     .authorize(
                         &caller_private_key,
                         program.id(),
@@ -430,6 +462,8 @@ function compute:
                         rng,
                     )
                     .unwrap();
+                assert_eq!(requests.len(), 1);
+                let request = requests[0].clone();
                 // Execute the request.
                 let (_response, transition) = process.execute(&request, rng).unwrap();
                 // Return the transition.
@@ -517,8 +551,10 @@ function compute:
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
 
         // Compute the signed request.
-        let request =
+        let requests =
             process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
+        assert_eq!(requests.len(), 1);
+        let request = requests[0].clone();
 
         // Compute the output value.
         let response = process.evaluate(&request).unwrap();
