@@ -203,7 +203,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         trace!("Starting execute");
 
         // Retrieve the main request.
-        let request = authorization.last();
+        let request = authorization.peek_next();
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Prepare the stack.
@@ -234,7 +234,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         trace!("Starting execute");
 
         // Retrieve the main request.
-        let request = authorization.last();
+        let request = authorization.peek_next();
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Add the circuit key to the mapping.
@@ -259,6 +259,31 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         Ok((response, execution))
     }
+
+    // /// Verifies a program call for the given execution.
+    // #[inline]
+    // pub fn verify(&self, execution: Execution<N>) -> Result<(Response<N>, Execution<N>)> {
+    //     trace!("Starting verify");
+    //
+    //     // Retrieve the main transition.
+    //     let transition = execution.last();
+    //     // Ensure the request is well-formed.
+    //     ensure!(request.verify(), "Request is invalid");
+    //     // Prepare the stack.
+    //     let mut stack = self.get_stack(request.program_id())?;
+    //     // Initialize the execution.
+    //     let execution = Execution::new();
+    //     // Execute the circuit.
+    //     let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
+    //
+    //     // // Initialize the trace.
+    //     // let mut trace = Trace::<N>::new(request, &response)?;
+    //     // // Finalize the trace.
+    //     // trace.finalize()?;
+    //     // println!("{:?}", trace.leaves());
+    //
+    //     Ok((response, execution))
+    // }
 }
 
 #[cfg(test)]

@@ -143,6 +143,91 @@ impl<A: Aleo> Request<A> {
         // Verify the signature and serial numbers are valid.
         self.signature.verify(&self.caller, &message) & input_checks
     }
+
+    /// Returns `true` if the inputs match their input IDs.
+    /// Note: This method does **not** perform signature checks.
+    pub fn check_input_ids(
+        input_ids: &[InputID<A>],
+        inputs: &[Value<A>],
+        caller: &Address<A>,
+        program_id: &ProgramID<A>,
+        tvk: &Field<A>,
+    ) -> Boolean<A> {
+        input_ids
+            .iter()
+            .zip_eq(inputs)
+            .enumerate()
+            .map(|(index, (input_id, input))| {
+                match input_id {
+                    // A constant input is hashed to a field element.
+                    InputID::Constant(input_hash) => {
+                        // Ensure the expected hash matches the computed hash.
+                        input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
+                    }
+                    // A public input is hashed to a field element.
+                    InputID::Public(input_hash) => {
+                        // Ensure the expected hash matches the computed hash.
+                        input_hash.is_equal(&A::hash_bhp1024(&input.to_bits_le()))
+                    }
+                    // A private input is encrypted (using `tvk`) and hashed to a field element.
+                    InputID::Private(input_hash) => {
+                        // Prepare the index as a constant field element.
+                        let input_index = Field::constant(console::Field::from_u16(index as u16));
+                        // Compute the input view key as `Hash(tvk || index)`.
+                        let input_view_key = A::hash_psd2(&[tvk.clone(), input_index]);
+                        // Compute the ciphertext.
+                        let ciphertext = match &input {
+                            Value::Plaintext(plaintext) => plaintext.encrypt_symmetric(input_view_key),
+                            // Ensure the input is a plaintext.
+                            Value::Record(..) => A::halt("Expected a plaintext input, found a record input"),
+                        };
+                        // Ensure the expected hash matches the computed hash.
+                        input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
+                    }
+                    // A record input is computed to its serial number.
+                    InputID::Record(gamma, serial_number) => {
+                        // Prepare the index as a constant field element.
+                        let input_index = Field::constant(console::Field::from_u16(index as u16));
+                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), input_index]);
+                        // Retrieve the record.
+                        let record = match &input {
+                            Value::Record(record) => record,
+                            // Ensure the input is a record.
+                            Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
+                        };
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(program_id, &randomizer);
+
+                        // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
+                        let sn_nonce = A::hash_to_scalar_psd2(&[
+                            A::serial_number_domain(),
+                            gamma.mul_by_cofactor().to_x_coordinate(),
+                        ]);
+                        // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
+                        let candidate_serial_number =
+                            A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
+
+                        // Ensure the candidate serial number matches the expected serial number.
+                        serial_number.is_equal(&candidate_serial_number)
+                            // Ensure the record belongs to the caller.
+                            & record.owner().is_equal(caller)
+                            // Ensure the record balance is less than or equal to 2^52.
+                            & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                    }
+                    // An external record input is committed (using `tvk`) to a field element.
+                    InputID::ExternalRecord(input_commitment) => {
+                        // Prepare the index as a constant field element.
+                        let input_index = Field::constant(console::Field::from_u16(index as u16));
+                        // Compute the input randomizer as `HashToScalar(tvk || index)`.
+                        let input_randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), input_index]);
+                        // Ensure the expected commitment matches the computed commitment.
+                        input_commitment.is_equal(&A::commit_bhp1024(&input.to_bits_le(), &input_randomizer))
+                    }
+                }
+            })
+            .fold(Boolean::constant(true), |acc, x| acc & x)
+    }
 }
 
 #[cfg(all(test, console))]

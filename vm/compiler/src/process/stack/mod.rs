@@ -63,14 +63,14 @@ impl<N: Network> Authorization<N> {
         self.0.read()[index].clone()
     }
 
-    /// Returns the last `Request` in the execution.
-    pub fn last(&self) -> Request<N> {
-        self.get(self.len() - 1)
-    }
-
     /// Returns the number of `Request`s in the execution.
     pub fn len(&self) -> usize {
         self.0.read().len()
+    }
+
+    /// Returns the next `Request` in the execution.
+    pub fn peek_next(&self) -> Request<N> {
+        self.get(self.len() - 1)
     }
 
     /// Appends the given `Request` to the execution.
@@ -98,14 +98,14 @@ impl<N: Network> Execution<N> {
         self.0.read()[index].clone()
     }
 
-    /// Returns the last `Transition` in the execution.
-    pub fn last(&self) -> Transition<N> {
-        self.get(self.len() - 1)
-    }
-
     /// Returns the number of `Transition`s in the execution.
     pub fn len(&self) -> usize {
         self.0.read().len()
+    }
+
+    /// Returns the next `Transition` in the execution.
+    pub fn peek_next(&self) -> Transition<N> {
+        self.get(self.len() - 1)
     }
 
     /// Appends the given `Transition` to the execution.
@@ -153,6 +153,8 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The current call stack.
     call_stack: CallStack<N>,
+    /// The current circuit caller.
+    circuit_caller: Option<circuit::Address<A>>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
@@ -172,6 +174,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
             call_stack: CallStack::Execute(Authorization::new(&[]), Execution::new()),
+            circuit_caller: None,
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
@@ -235,6 +238,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         self.call_stack.clone()
     }
 
+    /// Returns the circuit caller.
+    #[inline]
+    pub fn circuit_caller(&self) -> Result<&circuit::Address<A>> {
+        self.circuit_caller.as_ref().ok_or_else(|| anyhow!("Malformed stack: missing circuit caller"))
+    }
+
     /// Returns the register types for the given closure or function name.
     #[inline]
     pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
@@ -292,6 +301,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Initialize the stack.
+        self.circuit_caller = None;
         self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -326,6 +336,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Initialize the stack.
+        self.circuit_caller = None;
         self.register_types = self.get_register_types(function.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -420,6 +431,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // Initialize the stack.
         self.call_stack = call_stack;
+        self.circuit_caller = None;
         self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -473,6 +485,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         // Initialize the stack.
         self.call_stack = call_stack;
         let request = self.call_stack.pop()?;
+        self.circuit_caller = None;
         self.register_types = self.get_register_types(request.function_name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -493,6 +506,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         let request = circuit::Request::new(circuit::Mode::Private, request);
         // Ensure the request has a valid signature and serial numbers.
         A::assert(request.verify());
+        // Cache the request caller.
+        self.circuit_caller = Some(request.caller().clone());
 
         #[cfg(debug_assertions)]
         Self::log_circuit("Request Authentication");
@@ -563,7 +578,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         // If the call stack is an execution, execute and compute the transition.
         if let CallStack::Execute(ref authorization, ref execution) = call_stack {
             // Retrieve the last request.
-            let request = authorization.last();
+            let request = authorization.peek_next();
 
             // Synthesize the circuit.
             let (response, assignment) = self.execute_function(call_stack.clone())?;

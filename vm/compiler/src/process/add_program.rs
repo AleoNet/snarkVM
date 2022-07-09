@@ -81,6 +81,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
+            // Ensure the closure contains no call instructions.
+            ensure!(instruction.opcode() != Opcode::Call, "A 'call' instruction is not allowed in closures");
             // Check the instruction opcode, operands, and destinations.
             Self::check_instruction(stack, &mut register_types, closure.name(), instruction)?;
         }
