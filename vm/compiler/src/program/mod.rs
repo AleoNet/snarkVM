@@ -803,7 +803,7 @@ function compute:
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
-        use circuit::{Eject, Environment};
+        use circuit::Environment;
 
         // Ensure the environment is clean.
         assert_eq!(0, CurrentAleo::num_constants());

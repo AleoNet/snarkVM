@@ -40,7 +40,6 @@ use console::{
         Request,
         Response,
         Value,
-        ValueType,
     },
 };
 
@@ -376,7 +375,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         let _tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
         // TODO (howardwu): Check relationship to tvk.
         // Inject the request as `Mode::Private`.
-        let request = circuit::Request::new(circuit::Mode::Private, request.clone());
+        let request = circuit::Request::new(circuit::Mode::Private, request);
         // Ensure the request has a valid signature and serial numbers.
         A::assert(request.verify());
 
