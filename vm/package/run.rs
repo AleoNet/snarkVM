@@ -62,7 +62,7 @@ impl<N: Network> Package<N> {
 
         // Execute the circuit.
         let (response, execution) = process.execute_synthesized(
-            request,
+            Authorization::new(&[request.clone()]),
             prover.proving_key(),
             verifier.verifying_key(),
             &mut rand::thread_rng(),

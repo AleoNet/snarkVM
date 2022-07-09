@@ -261,13 +261,13 @@ impl<N: Network> Call<N> {
                         call_stack.push(request.clone())?;
 
                         // Add the request to the authorization.
-                        authorization.write().push(request);
+                        authorization.push(request);
 
                         // Execute the request.
                         substack.execute(call_stack, rng)?
                     }
                     // If the circuit is in execute mode, then evaluate and execute the instructions.
-                    CallStack::Execute(_, execution) => {
+                    CallStack::Execute(..) => {
                         // Eject the circuit inputs.
                         let inputs = inputs.eject_value();
                         // Retrieve the input types.

@@ -50,6 +50,41 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
+pub struct Authorization<N: Network>(Arc<RwLock<Vec<Request<N>>>>);
+
+impl<N: Network> Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given requests.
+    pub fn new(requests: &[Request<N>]) -> Self {
+        Self(Arc::new(RwLock::new(requests.to_vec())))
+    }
+
+    /// Returns the `Request` at the given index.
+    pub fn get(&self, index: usize) -> Request<N> {
+        self.0.read()[index].clone()
+    }
+
+    /// Returns the last `Request` in the execution.
+    pub fn last(&self) -> Request<N> {
+        self.get(self.len() - 1)
+    }
+
+    /// Returns the number of `Request`s in the execution.
+    pub fn len(&self) -> usize {
+        self.0.read().len()
+    }
+
+    /// Appends the given `Request` to the execution.
+    pub fn push(&self, request: Request<N>) {
+        self.0.write().push(request);
+    }
+
+    /// Pops the last `Request` from the execution.
+    pub fn pop(&self) -> Result<Request<N>> {
+        self.0.write().pop().ok_or_else(|| anyhow!("No more requests in the authorization"))
+    }
+}
+
+#[derive(Clone)]
 pub struct Execution<N: Network>(Arc<RwLock<Vec<Transition<N>>>>);
 
 impl<N: Network> Execution<N> {
@@ -81,27 +116,27 @@ impl<N: Network> Execution<N> {
 
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
-    Authorize(Vec<Request<N>>, PrivateKey<N>, Arc<RwLock<Vec<Request<N>>>>),
-    Execute(Vec<Request<N>>, Execution<N>),
+    Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
+    Execute(Authorization<N>, Execution<N>),
 }
 
 impl<N: Network> CallStack<N> {
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
-            CallStack::Authorize(requests, ..) | CallStack::Execute(requests, ..) => {
-                requests.push(request);
-                Ok(())
-            }
+            CallStack::Authorize(requests, ..) => requests.push(request),
+            CallStack::Execute(authorization, ..) => authorization.push(request),
         }
+        Ok(())
     }
 
     /// Pops the request from the stack.
     pub fn pop(&mut self) -> Result<Request<N>> {
         match self {
-            CallStack::Authorize(requests, ..) | CallStack::Execute(requests, ..) => {
+            CallStack::Authorize(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
+            CallStack::Execute(authorization, ..) => authorization.pop(),
         }
     }
 }
@@ -136,7 +171,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             circuit_keys,
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
-            call_stack: CallStack::Execute(Vec::new(), Execution::new()),
+            call_stack: CallStack::Execute(Authorization::new(&[]), Execution::new()),
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
@@ -350,7 +385,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             // Ensure the request is well-formed.
             ensure!(request.verify(), "Request is invalid");
             // Initialize the authorization.
-            let authorization = Arc::new(RwLock::new(vec![request.clone()]));
+            let authorization = Authorization::new(&[request.clone()]);
             // Initialize the call stack.
             let call_stack = CallStack::Authorize(vec![request.clone()], burner_private_key, authorization);
             // Clone the stack.
@@ -525,13 +560,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     pub fn execute<R: Rng + CryptoRng>(&mut self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
-        // Synthesize the circuit.
-        let (response, assignment) = self.execute_function(call_stack.clone())?;
-
-        // If the call stack is an execution, add the transition.
-        if let CallStack::Execute(_, ref execution) = call_stack {
+        // If the call stack is an execution, execute and compute the transition.
+        if let CallStack::Execute(ref authorization, ref execution) = call_stack {
             // Retrieve the last request.
-            let request = call_stack.clone().pop()?;
+            let request = authorization.last();
+
+            // Synthesize the circuit.
+            let (response, assignment) = self.execute_function(call_stack.clone())?;
 
             // If the circuit key does not exist, use the assignment to synthesize the circuit key.
             if !self.circuit_keys.contains_key(request.program_id(), request.function_name()) {
@@ -549,9 +584,14 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             ensure!(transition.verify(&verifying_key), "Transition is invalid");
             // Add the transition to the execution.
             execution.push(transition);
+            // Return the response.
+            Ok(response)
+        } else {
+            // Synthesize the circuit.
+            let (response, assignment) = self.execute_function(call_stack.clone())?;
+            // Return the response.
+            Ok(response)
         }
-
-        Ok(response)
     }
 
     /// Prints the current state of the circuit.

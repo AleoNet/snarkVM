@@ -30,14 +30,12 @@ mod add_program;
 
 use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
 use console::{
-    account::{Address, PrivateKey},
+    account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, Value, ValueType},
+    program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, Value},
 };
 
 use indexmap::IndexMap;
-use parking_lot::RwLock;
-use std::sync::Arc;
 
 #[allow(clippy::type_complexity)]
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
@@ -101,7 +99,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         function_name: Identifier<N>,
         inputs: &[Value<N>],
         rng: &mut R,
-    ) -> Result<Vec<Request<N>>> {
+    ) -> Result<Authorization<N>> {
         // Retrieve the program.
         let program = self.get_program(program_id)?.clone();
         // Retrieve the function from the program.
@@ -111,15 +109,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let request = Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng)?;
 
         // Initialize the authorization.
-        let authorization = Arc::new(RwLock::new(vec![request.clone()]));
+        let authorization = Authorization::new(&[request.clone()]);
 
         // Prepare the stack.
         let mut stack = self.get_stack(program_id)?;
         // Execute the function.
         let (_response, _assignment) =
             stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()))?;
-
-        let requests = authorization.read().clone();
 
         // // Determine if the function contains external function calls.
         // let mut contains_external_calls = false;
@@ -160,8 +156,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         //     // }
         // }
 
-        // Return the requests.
-        Ok(requests)
+        // Return the authorization.
+        Ok(authorization)
     }
 
     /// Evaluates a program function on the given request.
@@ -201,11 +197,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     #[inline]
     pub fn execute<R: Rng + CryptoRng>(
         &self,
-        request: &Request<N>,
+        authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
         trace!("Starting execute");
 
+        // Retrieve the main request.
+        let request = authorization.last();
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Prepare the stack.
@@ -213,7 +211,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Initialize the execution.
         let execution = Execution::new();
         // Execute the circuit.
-        let response = stack.execute(CallStack::Execute(vec![request.clone()], execution.clone()), rng)?;
+        let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
@@ -228,13 +226,15 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     #[inline]
     pub fn execute_synthesized<R: Rng + CryptoRng>(
         &self,
-        request: &Request<N>,
+        authorization: Authorization<N>,
         proving_key: &ProvingKey<N>,
         verifying_key: &VerifyingKey<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
         trace!("Starting execute");
 
+        // Retrieve the main request.
+        let request = authorization.last();
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Add the circuit key to the mapping.
@@ -249,7 +249,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Initialize the execution.
         let execution = Execution::new();
         // Execute the circuit.
-        let response = stack.execute(CallStack::Execute(vec![request.clone()], execution.clone()), rng)?;
+        let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
@@ -304,8 +304,8 @@ function compute:
 
                 // Construct the process.
                 let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
-                // Authorize the request.
-                let requests = process
+                // Authorize the function call.
+                let authorization = process
                     .authorize(
                         &caller_private_key,
                         program.id(),
@@ -317,10 +317,9 @@ function compute:
                         rng,
                     )
                     .unwrap();
-                assert_eq!(requests.len(), 1);
-                let request = requests[0].clone();
+                assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution) = process.execute(&request, rng).unwrap();
+                let (_response, execution) = process.execute(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the transition.
                 execution.get(0)
@@ -406,11 +405,11 @@ function compute:
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
 
-        // Compute the signed request.
-        let requests =
+        // Authorize the function call.
+        let authorization =
             process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
-        assert_eq!(requests.len(), 1);
-        let request = requests[0].clone();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.get(0);
 
         // Compute the output value.
         let response = process.evaluate(&request).unwrap();
@@ -422,7 +421,7 @@ function compute:
         assert_eq!(r5, candidate[3]);
 
         // Execute the request.
-        let (response, execution) = process.execute(&request, rng).unwrap();
+        let (response, execution) = process.execute(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r2, candidate[0]);
