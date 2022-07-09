@@ -20,7 +20,7 @@ pub use register_types::*;
 mod load;
 mod store;
 
-use crate::{CircuitKeys, Closure, Function, Operand, Program, ProvingKey, VerifyingKey};
+use crate::{CircuitKeys, Closure, Function, Operand, Program, ProvingKey, Transition, VerifyingKey};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -324,7 +324,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             let authorization = Arc::new(RwLock::new(vec![request.clone()]));
             // Initialize the call stack.
             let call_stack = CallStack::Authorize(vec![request.clone()], burner_private_key, authorization);
-            // Prepare the stack.
+            // Clone the stack.
             let mut stack = self.clone();
             // Synthesize the circuit.
             let (_response, assignment) = stack.execute_function(call_stack)?;
@@ -406,11 +406,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         // Ensure the circuit environment is clean.
         A::reset();
 
-        self.call_stack = call_stack;
-        // Retrieve the request.
-        let request = self.call_stack.pop()?;
-
         // Initialize the stack.
+        self.call_stack = call_stack;
+        let request = self.call_stack.pop()?;
         self.register_types = self.get_register_types(request.function_name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -484,11 +482,46 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // Eject the response.
         let response = circuit::Eject::eject_value(&response);
-
         // Finalize the circuit into an assignment.
         let assignment = A::eject_assignment_and_reset();
-
+        // Return the response and assignment.
         Ok((response, assignment))
+    }
+
+    /// Executes a program function on the given inputs.
+    ///
+    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn execute<R: Rng + CryptoRng>(
+        &mut self,
+        call_stack: CallStack<N>,
+        rng: &mut R,
+    ) -> Result<(Response<N>, Transition<N>)> {
+        // Synthesize the circuit.
+        let (response, assignment) = self.execute_function(call_stack.clone())?;
+
+        // Retrieve the last request.
+        let request = call_stack.clone().pop()?;
+
+        // If the circuit is in deploy mode, then derive the circuit key.
+        if let CallStack::Deploy(..) = call_stack {
+            // Add the circuit key to the mapping.
+            self.circuit_keys.insert_from_assignment(request.program_id(), request.function_name(), &assignment)?;
+        }
+
+        // Retrieve the proving and verifying key.
+        let (proving_key, verifying_key) = self.circuit_key(request.function_name())?;
+        // Execute the circuit.
+        let proof = proving_key.prove(&assignment, rng)?;
+        // Initialize the transition.
+        let transition = Transition::from(&request, &response, proof, 0u64)?;
+        // Verify the transition.
+        ensure!(transition.verify(&verifying_key), "Transition is invalid");
+
+        Ok((response, transition))
     }
 
     /// Prints the current state of the circuit.

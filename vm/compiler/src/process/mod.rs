@@ -208,18 +208,10 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
-        // Retrieve the proving and verifying key.
-        let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = stack.execute_function(CallStack::Execute(vec![request.clone()]))?;
-        // Execute the circuit.
-        let proof = proving_key.prove(&assignment, rng)?;
-        // Initialize the transition.
-        let transition = Transition::from(request, &response, proof, 0u64)?;
-        // Verify the transition.
-        ensure!(transition.verify(&verifying_key), "Transition is invalid");
+        let (response, transition) = stack.execute(CallStack::Execute(vec![request.clone()]), rng)?;
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
@@ -243,16 +235,17 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
+        // Add the circuit key to the mapping.
+        self.circuit_keys.insert(
+            request.program_id(),
+            request.function_name(),
+            proving_key.clone(),
+            verifying_key.clone(),
+        );
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = stack.execute_function(CallStack::Execute(vec![request.clone()]))?;
-        // Execute the circuit.
-        let proof = proving_key.prove(&assignment, rng)?;
-        // Initialize the transition.
-        let transition = Transition::from(request, &response, proof, 0u64)?;
-        // Verify the transition.
-        ensure!(transition.verify(verifying_key), "Transition is invalid");
+        let (response, transition) = stack.execute(CallStack::Execute(vec![request.clone()]), rng)?;
 
         // // Initialize the trace.
         // let mut trace = Trace::<N>::new(request, &response)?;
