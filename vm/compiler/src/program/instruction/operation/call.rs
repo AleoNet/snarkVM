@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack, StackCall, StackMode};
+use crate::{CallStack, Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
-    program::{Identifier, Locator, Register, RegisterType, ValueType},
+    program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
 };
 
 /// The operator references a function name or closure name.
@@ -194,12 +194,12 @@ impl<N: Network> Call<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
-        // Retrieve the call stack and resource.
-        let (mut call_stack, resource) = match &self.operator {
+        // Retrieve the substack and resource.
+        let (mut substack, resource) = match &self.operator {
             // Retrieve the call stack and resource from the locator.
             CallOperator::Locator(locator) => {
                 (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
@@ -208,16 +208,16 @@ impl<N: Network> Call<N> {
         };
 
         // If the operator is a closure, retrieve the closure and compute the output.
-        let outputs = if let Ok(closure) = call_stack.program().get_closure(resource) {
+        let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
             // Ensure the number of inputs matches the number of input statements.
             if closure.inputs().len() != inputs.len() {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
             // Execute the closure, and load the outputs.
-            call_stack.execute_closure(&closure, &inputs, stack.stack_mode())?
+            substack.execute_closure(&closure, &inputs, stack.call_stack())?
         }
         // If the operator is a function, retrieve the function and compute the output.
-        else if let Ok(function) = call_stack.program().get_function(resource) {
+        else if let Ok(function) = substack.program().get_function(resource) {
             // Ensure the number of inputs matches the number of input statements.
             if function.inputs().len() != inputs.len() {
                 bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
@@ -226,45 +226,79 @@ impl<N: Network> Call<N> {
             // Retrieve the number of public variables in the circuit.
             let num_public = A::num_public();
 
+            use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
-            let console_outputs = {
-                use circuit::Eject;
+            let (response, assignment) =
+                match stack.call_stack() {
+                    // If the circuit is in authorize mode, then add any external calls to the stack.
+                    CallStack::Authorize(_, private_key, authorization) => {
+                        // Eject the circuit inputs.
+                        let inputs = inputs.eject_value();
+                        // Retrieve the input types.
+                        let input_types = function.input_types();
+                        // Ensure the inputs match their expected types.
+                        inputs.iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
+                            substack.program().matches_value_type(input, input_type)
+                        })?;
 
-                // Execute the function, and load the outputs.
-                let circuit_outputs = call_stack.execute_function(&function, &inputs, stack.stack_mode())?;
+                        // Compute the request.
+                        let request = Request::sign(
+                            &private_key,
+                            *substack.program_id(),
+                            *function.name(),
+                            &inputs,
+                            &input_types,
+                            &mut rand::thread_rng(),
+                        )?;
 
-                // If the circuit is in authorize mode, then add any external calls to the stack.
-                if stack.stack_mode() == StackMode::Authorize {
-                    // Add the external call to the stack, including external calls from the `call_stack` as subcalls.
-                    stack.add_external_call(StackCall::new(
-                        call_stack.external_calls(),
-                        call_stack.program_id(),
-                        function.name(),
-                        inputs.eject_value(),
-                        function.input_types(),
-                    ));
-                }
+                        // Retrieve the call stack.
+                        let mut call_stack = stack.call_stack();
+                        // Push the request onto the call stack.
+                        call_stack.push(request.clone())?;
 
-                // If the circuit is in execute mode, then evaluate the instructions.
-                if stack.stack_mode() == StackMode::Execute {
-                    // Evaluate the function, and load the outputs.
-                    let console_outputs = call_stack.evaluate_function(&function, &inputs.eject_value())?;
-                    // Ensure the values are equal.
-                    if console_outputs == circuit_outputs.eject_value() {
-                        bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                        // Add the request to the authorization.
+                        authorization.write().push(request);
+
+                        // Execute the function.
+                        substack.execute_function(call_stack)?
                     }
-                }
+                    // If the circuit is in deploy mode, then execute the instructions.
+                    CallStack::Deploy(..) => {
+                        // Execute the function, and load the outputs.
+                        substack.execute_function(stack.call_stack())?
+                    }
+                    // If the circuit is in execute mode, then evaluate and execute the instructions.
+                    CallStack::Execute(..) => {
+                        // Eject the circuit inputs.
+                        let inputs = inputs.eject_value();
+                        // Retrieve the input types.
+                        let input_types = function.input_types();
+                        // Ensure the inputs match their expected types.
+                        inputs.iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
+                            substack.program().matches_value_type(input, input_type)
+                        })?;
 
-                // Return the console outputs.
-                circuit_outputs.eject_value()
-            };
+                        // Evaluate the function, and load the outputs.
+                        let console_outputs = substack.evaluate_function(&function, &inputs)?;
+                        // Execute the function, and load the outputs.
+                        let (response, assignment) = substack.execute_function(stack.call_stack())?;
+                        // Ensure the values are equal.
+                        if console_outputs == response.outputs() {
+                            bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                        }
+                        // Return the response and assignment.
+                        (response, assignment)
+                    }
+                };
             // Inject the existing circuit.
             A::inject_r1cs(r1cs);
 
             // Inject the circuit outputs.
-            let outputs = console_outputs
-                .into_iter()
+            let outputs = response
+                .outputs()
+                .iter()
+                .cloned()
                 .zip_eq(&function.output_types())
                 .map(|(output, output_type)| {
                     use circuit::Inject;
@@ -272,37 +306,31 @@ impl<N: Network> Call<N> {
                     match output_type {
                         ValueType::Constant(plaintext) => {
                             // Ensure the output matches its expected type.
-                            call_stack
-                                .program()
-                                .matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
+                            substack.program().matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
                             // Inject the constant output as `Mode::Constant`.
                             Ok(circuit::Value::new(circuit::Mode::Constant, output))
                         }
                         ValueType::Public(plaintext) => {
                             // Ensure the output matches its expected type.
-                            call_stack
-                                .program()
-                                .matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
+                            substack.program().matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
                             // Inject the public output as `Mode::Private`.
                             Ok(circuit::Value::new(circuit::Mode::Private, output))
                         }
                         ValueType::Private(plaintext) => {
                             // Ensure the output matches its expected type.
-                            call_stack
-                                .program()
-                                .matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
+                            substack.program().matches_register_type(&output, &RegisterType::Plaintext(*plaintext))?;
                             // Inject the private output as `Mode::Private`.
                             Ok(circuit::Value::new(circuit::Mode::Private, output))
                         }
                         ValueType::Record(record) => {
                             // Ensure the output matches its expected type.
-                            call_stack.program().matches_register_type(&output, &RegisterType::Record(*record))?;
+                            substack.program().matches_register_type(&output, &RegisterType::Record(*record))?;
                             // Inject the record output as `Mode::Private`.
                             Ok(circuit::Value::new(circuit::Mode::Private, output))
                         }
                         ValueType::ExternalRecord(locator) => {
                             // Retrieve the external program.
-                            let external_program = call_stack.get_external_program(locator.program_id())?;
+                            let external_program = substack.get_external_program(locator.program_id())?;
                             // Ensure the output matches its expected type from the external program.
                             external_program
                                 .matches_register_type(&output, &RegisterType::Record(*locator.resource()))?;

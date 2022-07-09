@@ -520,9 +520,9 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, StackMode};
+    use crate::{CallStack, Process};
     use circuit::network::AleoV0;
-    use console::network::Testnet3;
+    use console::{account::PrivateKey, network::Testnet3};
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
@@ -811,12 +811,22 @@ function compute:
         assert_eq!(0, CurrentAleo::num_private());
         assert_eq!(0, CurrentAleo::num_constraints());
 
+        // Initialize an RNG.
+        let rng = &mut rand::thread_rng();
+        // Initialize a burner private key.
+        let burner_private_key = PrivateKey::new(rng).unwrap();
+        // Authorize the requests, with a burner private key.
+        let requests = process.authorize(&burner_private_key, program.id(), function_name, &[r0, r1], rng).unwrap();
+        assert_eq!(requests.len(), 1);
+        let request = requests[0].clone();
+
         // Re-run to ensure state continues to work.
-        let candidate = stack.execute_function_from_console(&function, &[r0, r1], StackMode::Execute).unwrap();
+        let (response, _assignment) = stack.execute_function(CallStack::Execute(vec![request])).unwrap();
+        let candidate = response.outputs();
         assert_eq!(3, candidate.len());
-        assert_eq!(r2, candidate[0].eject_value());
-        assert_eq!(r3, candidate[1].eject_value());
-        assert_eq!(r4, candidate[2].eject_value());
+        assert_eq!(r2, candidate[0]);
+        assert_eq!(r3, candidate[1]);
+        assert_eq!(r4, candidate[2]);
     }
 
     #[test]

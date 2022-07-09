@@ -192,7 +192,7 @@ impl<N: Network> Cast<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
         // Load the operands values.

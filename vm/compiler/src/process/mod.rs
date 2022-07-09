@@ -132,26 +132,25 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                     _ => program.sample_value(&burner_address, input_type, rng),
                 })
                 .collect::<Result<Vec<_>>>()?;
-            // Authorize the requests, with a burner private key.
-            let requests = self.authorize(&burner_private_key, program_id, *function_name, &inputs, rng)?;
-            // Synthesize each of the requests.
-            for request in requests {
-                // Ensure the request is well-formed.
-                ensure!(request.verify(), "Request is invalid");
-                // Prepare the stack.
-                let mut stack = self.get_stack(request.program_id())?;
-                // Synthesize the circuit.
-                let (_response, assignment) = Self::synthesize(&mut stack, &request, StackMode::Deploy)?;
-                // Derive the circuit key.
-                // TODO (howardwu): Load the universal SRS remotely.
-                let (proving_key, verifying_key) =
-                    self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
-                // Add the circuit key to the mapping.
-                self.circuit_keys.write().insert(
-                    (*request.program_id(), *request.function_name()),
-                    (proving_key.clone(), verifying_key.clone()),
-                );
-            }
+
+            // Compute the request, with a burner private key.
+            let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
+            // Ensure the request is well-formed.
+            ensure!(request.verify(), "Request is invalid");
+            // Initialize the authorization.
+            let authorization = Arc::new(RwLock::new(vec![request.clone()]));
+            // Initialize the call stack.
+            let call_stack = CallStack::Authorize(vec![request.clone()], burner_private_key, authorization);
+            // Prepare the stack.
+            let mut stack = self.get_stack(request.program_id())?;
+            // Synthesize the circuit.
+            let (_response, assignment) = stack.execute_function(call_stack)?;
+            // Derive the circuit key.
+            // TODO (howardwu): Load the universal SRS remotely.
+            let (proving_key, verifying_key) =
+                self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
+            // Add the circuit key to the mapping.
+            self.circuit_keys.write().insert((*program_id, *function_name), (proving_key, verifying_key));
         }
         // Return the circuit key.
         self.circuit_keys
@@ -175,57 +174,60 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let program = self.get_program(program_id)?.clone();
         // Retrieve the function from the program.
         let function = program.get_function(&function_name)?;
-        // Determine if the function contains external function calls.
-        let mut contains_external_calls = false;
-        for instruction in function.instructions() {
-            if let Instruction::Call(call) = instruction {
-                if let CallOperator::Locator(locator) = call.operator() {
-                    if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
-                        contains_external_calls = true;
-                        break;
-                    }
-                }
-            }
-        }
-        // Initialize a vector for the requests.
-        let mut requests = vec![];
-        // Construct the request builder.
-        if contains_external_calls {
-            // Ensure the circuit environment is clean.
-            A::reset();
-            // Prepare the stack.
-            let mut stack = self.get_stack(program_id)?;
-            // Execute the function.
-            let _outputs = stack.execute_function_from_console(&function, inputs, StackMode::Authorize)?;
-            // Ensure the circuit environment is clean.
-            A::reset();
 
-            // Iterate through the external calls to authorize them.
-            for external_call in stack.external_calls_flattened() {
-                // Ensure the external program exists.
-                ensure!(self.contains_program(external_call.program_id()), "External '{program_id}' not found.");
-                // Retrieve the external program.
-                let external_program = self.get_program(external_call.program_id())?;
-                // Retrieve the external function.
-                let external_function = external_program.get_function(external_call.function_name())?;
-                // Retrieve the external function input types.
-                let input_types = external_function.input_types();
-                // Ensure the claimed input types match the function.
-                ensure!(input_types == external_call.input_types(), "External call has incorrect input types.");
-                // Ensure the inputs match their expected types.
-                external_call
-                    .inputs()
-                    .iter()
-                    .zip_eq(&input_types)
-                    .try_for_each(|(input, input_type)| external_program.matches_value_type(input, input_type))?;
-                // Authorize the request.
-                let request = external_call.authorize(private_key, rng)?;
-                // Append the request to the vector.
-                requests.push(request);
-            }
-        }
-        // Append the request to the vector.
-        requests.push(Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng)?);
+        // Compute the request.
+        let request = Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng)?;
+
+        // Initialize the authorization.
+        let authorization = Arc::new(RwLock::new(vec![request.clone()]));
+
+        // Prepare the stack.
+        let mut stack = self.get_stack(program_id)?;
+        // Execute the function.
+        let (_response, _assignment) =
+            stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()))?;
+
+        let requests = authorization.read().clone();
+
+        // // Determine if the function contains external function calls.
+        // let mut contains_external_calls = false;
+        // for instruction in function.instructions() {
+        //     if let Instruction::Call(call) = instruction {
+        //         if let CallOperator::Locator(locator) = call.operator() {
+        //             if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
+        //                 contains_external_calls = true;
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
+        // // Construct the request builder.
+        // if contains_external_calls {
+        //     // // Iterate through the external calls to authorize them.
+        //     // for external_call in stack.external_calls_flattened() {
+        //     //     // Ensure the external program exists.
+        //     //     ensure!(self.contains_program(external_call.program_id()), "External '{program_id}' not found.");
+        //     //     // Retrieve the external program.
+        //     //     let external_program = self.get_program(external_call.program_id())?;
+        //     //     // Retrieve the external function.
+        //     //     let external_function = external_program.get_function(external_call.function_name())?;
+        //     //     // Retrieve the external function input types.
+        //     //     let input_types = external_function.input_types();
+        //     //     // Ensure the claimed input types match the function.
+        //     //     ensure!(input_types == external_call.input_types(), "External call has incorrect input types.");
+        //     //     // Ensure the inputs match their expected types.
+        //     //     external_call
+        //     //         .inputs()
+        //     //         .iter()
+        //     //         .zip_eq(&input_types)
+        //     //         .try_for_each(|(input, input_type)| external_program.matches_value_type(input, input_type))?;
+        //     //     // Authorize the request.
+        //     //     let request = external_call.authorize(private_key, rng)?;
+        //     //     // Append the request to the vector.
+        //     //     requests.push(request);
+        //     // }
+        // }
+
         // Return the requests.
         Ok(requests)
     }
@@ -281,7 +283,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(&mut stack, request, StackMode::Execute)?;
+        let (response, assignment) = stack.execute_function(CallStack::Execute(vec![request.clone()]))?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Initialize the transition.
@@ -314,7 +316,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.
-        let (response, assignment) = Self::synthesize(&mut stack, request, StackMode::Execute)?;
+        let (response, assignment) = stack.execute_function(CallStack::Execute(vec![request.clone()]))?;
         // Execute the circuit.
         let proof = proving_key.prove(&assignment, rng)?;
         // Initialize the transition.
@@ -329,80 +331,6 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // println!("{:?}", trace.leaves());
 
         Ok((response, transition))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
-    /// Synthesizes the given request on the specified function.
-    fn synthesize(
-        stack: &mut Stack<N, A>,
-        request: &Request<N>,
-        stack_mode: StackMode,
-    ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
-        // Retrieve the function from the program.
-        let function = stack.program().get_function(request.function_name())?;
-        // Retrieve the number of inputs.
-        let num_inputs = function.inputs().len();
-        // Retrieve the function output types.
-        let output_types = function.output_types();
-
-        // Ensure the number of inputs matches the number of input statements.
-        if num_inputs != request.inputs().len() {
-            bail!("Expected {num_inputs} inputs, found {}", request.inputs().len())
-        }
-
-        use circuit::Inject;
-        // Ensure the circuit environment is clean.
-        A::reset();
-
-        // Inject the transition public key `tpk` as `Mode::Public`.
-        let _tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
-
-        // TODO (howardwu): Check relationship to tvk.
-        // Inject the request as `Mode::Private`.
-        let request = circuit::Request::new(circuit::Mode::Private, request.clone());
-        // Ensure the request has a valid signature and serial numbers.
-        A::assert(request.verify());
-
-        #[cfg(debug_assertions)]
-        Self::log_circuit("Request Authentication");
-
-        // Execute the function.
-        let outputs = stack.execute_function(&function, request.inputs(), stack_mode)?;
-
-        #[cfg(debug_assertions)]
-        Self::log_circuit(format!("Function '{}()'", function.name()));
-
-        // Construct the response.
-        let response =
-            circuit::Response::from_outputs(request.program_id(), num_inputs, request.tvk(), outputs, &output_types);
-
-        #[cfg(debug_assertions)]
-        Self::log_circuit("Response");
-
-        // Eject the response.
-        let response = circuit::Eject::eject_value(&response);
-        // Finalize the circuit into an assignment.
-        let assignment = A::eject_assignment_and_reset();
-        // Return the response and assignment.
-        Ok((response, assignment))
-    }
-
-    /// Prints the current state of the circuit.
-    fn log_circuit<S: Into<String>>(scope: S) {
-        use colored::Colorize;
-
-        // Determine if the circuit is satisfied.
-        let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
-        // Determine the count.
-        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
-
-        // Print the log.
-        println!(
-            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
-            scope.into().bold(),
-            width = 20
-        );
     }
 }
 

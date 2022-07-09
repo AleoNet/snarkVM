@@ -82,7 +82,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Step 2. Check the instructions are well-formed.
         for instruction in closure.instructions() {
             // Check the instruction opcode, operands, and destinations.
-            Self::check_instruction(stack, &mut register_types, instruction)?;
+            Self::check_instruction(stack, &mut register_types, closure.name(), instruction)?;
         }
 
         // Step 3. Check the outputs are well-formed.
@@ -108,7 +108,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Step 2. Check the instructions are well-formed.
         for instruction in function.instructions() {
             // Check the instruction opcode, operands, and destinations.
-            Self::check_instruction(stack, &mut register_types, instruction)?;
+            Self::check_instruction(stack, &mut register_types, function.name(), instruction)?;
         }
 
         // Step 3. Check the outputs are well-formed.
@@ -206,10 +206,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     fn check_instruction(
         stack: &Stack<N, A>,
         register_types: &mut RegisterTypes<N>,
+        closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {
         // Ensure the opcode is well-formed.
-        Self::check_instruction_opcode(stack, register_types, instruction)?;
+        Self::check_instruction_opcode(stack, register_types, closure_or_function_name, instruction)?;
 
         // Initialize a vector to store the register types of the operands.
         let mut operand_types = Vec::with_capacity(instruction.operands().len());
@@ -242,6 +243,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     fn check_instruction_opcode(
         stack: &Stack<N, A>,
         register_types: &RegisterTypes<N>,
+        closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
     ) -> Result<()> {
         match instruction.opcode() {
@@ -258,14 +260,13 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             }
             Opcode::Call => {
                 // Retrieve the call operation.
-                let operation = match instruction {
-                    Instruction::Call(operation) => operation,
+                let call = match instruction {
+                    Instruction::Call(call) => call,
                     _ => bail!("Instruction '{instruction}' is not a call operation."),
                 };
 
                 // Retrieve the operator.
-                let operator = operation.operator();
-                match operator {
+                match call.operator() {
                     CallOperator::Locator(locator) => {
                         // Retrieve the program ID.
                         let program_id = locator.program_id();
@@ -276,14 +277,23 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                         if stack.program().id() == program_id {
                             bail!("Locator '{locator}' does not reference an external program.");
                         }
+                        // Ensure the current program contains an import for this external program.
+                        if !stack.program().imports().keys().contains(program_id) {
+                            bail!("External program '{}' is not imported by '{program_id}'.", locator.program_id());
+                        }
+
                         // Retrieve the program.
-                        let program = stack.get_external_program(program_id)?;
+                        let external = stack.get_external_program(program_id)?;
                         // Ensure the function or closure exists in the program.
-                        if !program.contains_function(resource) && !program.contains_closure(resource) {
-                            bail!("'{resource}' is not defined in '{}'.", program.id())
+                        if !external.contains_function(resource) && !external.contains_closure(resource) {
+                            bail!("'{resource}' is not defined in '{}'.", external.id())
                         }
                     }
                     CallOperator::Resource(resource) => {
+                        // Ensure the resource does not reference this closure or function.
+                        if resource == closure_or_function_name {
+                            bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.");
+                        }
                         // Ensure the function or closure exists in the program.
                         if !stack.program().contains_function(resource) && !stack.program().contains_closure(resource) {
                             bail!("'{resource}' is not defined in '{}'.", stack.program().id())

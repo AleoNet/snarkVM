@@ -38,6 +38,7 @@ use console::{
         Register,
         RegisterType,
         Request,
+        Response,
         Value,
         ValueType,
     },
@@ -45,80 +46,35 @@ use console::{
 
 use console::account::PrivateKey;
 use indexmap::IndexMap;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct StackCall<N: Network> {
-    /// The list of children stack calls.
-    subcalls: Vec<StackCall<N>>,
-    /// The program ID.
-    program_id: ProgramID<N>,
-    /// The function name.
-    function_name: Identifier<N>,
-    /// The function inputs.
-    inputs: Vec<Value<N>>,
-    /// The function input types.
-    input_types: Vec<ValueType<N>>,
+#[derive(Clone)]
+pub enum CallStack<N: Network> {
+    Authorize(Vec<Request<N>>, PrivateKey<N>, Arc<RwLock<Vec<Request<N>>>>),
+    Deploy(Vec<Request<N>>),
+    Execute(Vec<Request<N>>),
 }
 
-impl<N: Network> StackCall<N> {
-    /// Initializes a new stack call request.
-    pub fn new(
-        subcalls: &[StackCall<N>],
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-        inputs: Vec<Value<N>>,
-        input_types: Vec<ValueType<N>>,
-    ) -> Self {
-        Self {
-            subcalls: subcalls.to_vec(),
-            program_id: *program_id,
-            function_name: *function_name,
-            inputs,
-            input_types,
+impl<N: Network> CallStack<N> {
+    /// Pushes the request to the stack.
+    pub fn push(&mut self, request: Request<N>) -> Result<()> {
+        match self {
+            CallStack::Authorize(requests, ..) | CallStack::Deploy(requests) | CallStack::Execute(requests) => {
+                requests.push(request);
+                Ok(())
+            }
         }
     }
 
-    /// Returns the list of children stack calls.
-    pub fn subcalls(&self) -> &[StackCall<N>] {
-        &self.subcalls
+    /// Pops the request from the stack.
+    pub fn pop(&mut self) -> Result<Request<N>> {
+        match self {
+            CallStack::Authorize(requests, ..) | CallStack::Deploy(requests) | CallStack::Execute(requests) => {
+                requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
+            }
+        }
     }
-
-    /// Returns the program ID.
-    pub const fn program_id(&self) -> &ProgramID<N> {
-        &self.program_id
-    }
-
-    /// Returns the function name.
-    pub const fn function_name(&self) -> &Identifier<N> {
-        &self.function_name
-    }
-
-    /// Returns the function inputs.
-    pub fn inputs(&self) -> &[Value<N>] {
-        &self.inputs
-    }
-
-    /// Returns the function input types.
-    pub fn input_types(&self) -> &[ValueType<N>] {
-        &self.input_types
-    }
-
-    /// Authorizes an external call, with the given private key, input types, and RNG.
-    pub fn authorize<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Request<N>> {
-        Request::sign(private_key, self.program_id, self.function_name, &self.inputs, &self.input_types, rng)
-    }
-
-    /// Returns an iterator over the stack calls, including the current one (last).
-    pub fn iter(&self) -> impl Iterator<Item = StackCall<N>> {
-        vec![self.subcalls.clone(), vec![self.clone()]].into_iter().flatten()
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum StackMode {
-    Authorize,
-    Deploy,
-    Execute,
 }
 
 #[derive(Clone)]
@@ -129,10 +85,8 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     external_stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
-    /// The current stack mode.
-    stack_mode: StackMode,
-    /// The list of external calls.
-    external_calls: Vec<StackCall<N>>,
+    /// The current call stack.
+    call_stack: CallStack<N>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
@@ -150,8 +104,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             program,
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
-            stack_mode: StackMode::Authorize,
-            external_calls: Vec::new(),
+            call_stack: CallStack::Execute(Vec::new()),
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
@@ -209,10 +162,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         self.program.id()
     }
 
-    /// Returns the stack mode.
+    /// Returns the call stack.
     #[inline]
-    pub const fn stack_mode(&self) -> StackMode {
-        self.stack_mode
+    pub fn call_stack(&self) -> CallStack<N> {
+        self.call_stack.clone()
     }
 
     /// Returns the register types for the given closure or function name.
@@ -220,24 +173,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
         self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
-    }
-
-    /// Returns an iterator over the external calls.
-    #[inline]
-    pub fn external_calls(&self) -> &[StackCall<N>] {
-        &self.external_calls
-    }
-
-    /// Returns an iterator over the (flattened) external calls.
-    #[inline]
-    pub fn external_calls_flattened(&self) -> impl '_ + Iterator<Item = StackCall<N>> {
-        self.external_calls.iter().flat_map(|call| call.iter())
-    }
-
-    /// Adds the given as an external call to the stack.
-    #[inline]
-    pub fn add_external_call(&mut self, external_call: StackCall<N>) {
-        self.external_calls.push(external_call);
     }
 
     /// Returns the external stack for the given program ID.
@@ -312,63 +247,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         outputs.collect()
     }
 
-    /// Executes a program closure on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn execute_closure(
-        &mut self,
-        closure: &Closure<N>,
-        inputs: &[circuit::Value<A>],
-        stack_mode: StackMode,
-    ) -> Result<Vec<circuit::Value<A>>> {
-        // Ensure the number of inputs matches the number of input statements.
-        if closure.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
-        }
-
-        // Retrieve the number of public variables in the circuit.
-        let num_public = A::num_public();
-
-        // Initialize the stack.
-        self.stack_mode = stack_mode;
-        self.register_types = self.get_register_types(closure.name())?.clone();
-        self.console_registers.clear();
-        self.circuit_registers.clear();
-
-        // Store the inputs.
-        closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-            use circuit::Eject;
-
-            // If the circuit is in execute mode, then store the console input.
-            if self.stack_mode == StackMode::Execute {
-                // Assign the console input to the register.
-                self.store(register, input.eject_value())?;
-            }
-            // Assign the circuit input to the register.
-            self.store_circuit(register, input.clone())
-        })?;
-
-        // If the circuit is in execute mode, then evaluate the instructions.
-        if self.stack_mode == StackMode::Execute {
-            closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
-        }
-        // Execute the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
-
-        // Ensure the number of public variables remains the same.
-        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
-
-        // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            // Retrieve the circuit output from the register.
-            self.load_circuit(&Operand::Register(output.register().clone()))
-        });
-
-        outputs.collect()
-    }
-
     /// Evaluates a program function on the given inputs.
     ///
     /// # Errors
@@ -402,40 +280,40 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         outputs.collect()
     }
+}
 
-    /// Executes a program function on the given inputs.
-    ///
-    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A> {
+    /// Executes a program closure on the given inputs.
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function(
+    pub fn execute_closure(
         &mut self,
-        function: &Function<N>,
+        closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
-        stack_mode: StackMode,
+        call_stack: CallStack<N>,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        if closure.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
 
         // Initialize the stack.
-        self.stack_mode = stack_mode;
-        self.register_types = self.get_register_types(function.name())?.clone();
+        self.call_stack = call_stack;
+        self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
 
         // Store the inputs.
-        function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
+        closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             use circuit::Eject;
 
             // If the circuit is in execute mode, then store the console input.
-            if self.stack_mode == StackMode::Execute {
+            if let CallStack::Execute(..) = self.call_stack {
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -444,17 +322,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         })?;
 
         // If the circuit is in execute mode, then evaluate the instructions.
-        if self.stack_mode == StackMode::Execute {
-            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        if let CallStack::Execute(..) = self.call_stack {
+            closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         }
         // Execute the instructions.
-        function.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+        closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
 
         // Ensure the number of public variables remains the same.
         ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
 
         // Load the outputs.
-        let outputs = function.outputs().iter().map(|output| {
+        let outputs = closure.outputs().iter().map(|output| {
             // Retrieve the circuit output from the register.
             self.load_circuit(&Operand::Register(output.register().clone()))
         });
@@ -469,30 +347,112 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function_from_console(
+    pub fn execute_function(
         &mut self,
-        function: &Function<N>,
-        inputs: &[Value<N>],
-        stack_mode: StackMode,
-    ) -> Result<Vec<circuit::Value<A>>> {
-        // Inject the inputs to the circuit environment.
-        let inputs = function
-            .inputs()
-            .iter()
-            .map(|i| i.value_type())
-            .zip_eq(inputs)
-            .map(|(value_type, input)| {
-                // Inject the inputs based on their value type.
-                match value_type {
-                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
-                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                    ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                    ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                    ValueType::ExternalRecord(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                }
-            })
-            .collect::<Vec<_>>();
-        // Execute the function.
-        self.execute_function(&function, &inputs, stack_mode)
+        call_stack: CallStack<N>,
+    ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
+        // Ensure the circuit environment is clean.
+        A::reset();
+
+        self.call_stack = call_stack;
+        // Retrieve the request.
+        let request = self.call_stack.pop()?;
+
+        // Initialize the stack.
+        self.register_types = self.get_register_types(request.function_name())?.clone();
+        self.console_registers.clear();
+        self.circuit_registers.clear();
+
+        // Retrieve the function from the program.
+        let function = self.program.get_function(request.function_name())?;
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != request.inputs().len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), request.inputs().len())
+        }
+
+        use circuit::Inject;
+
+        // Inject the transition public key `tpk` as `Mode::Public`.
+        let _tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
+        // TODO (howardwu): Check relationship to tvk.
+        // Inject the request as `Mode::Private`.
+        let request = circuit::Request::new(circuit::Mode::Private, request.clone());
+        // Ensure the request has a valid signature and serial numbers.
+        A::assert(request.verify());
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Request Authentication");
+
+        // Retrieve the number of public variables in the circuit.
+        let num_public = A::num_public();
+
+        // Store the inputs.
+        function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
+            use circuit::Eject;
+
+            // If the circuit is in execute mode, then store the console input.
+            if let CallStack::Execute(..) = self.call_stack {
+                // Assign the console input to the register.
+                self.store(register, input.eject_value())?;
+            }
+            // Assign the circuit input to the register.
+            self.store_circuit(register, input.clone())
+        })?;
+
+        // If the circuit is in execute mode, then evaluate the instructions.
+        if let CallStack::Execute(..) = self.call_stack {
+            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        }
+        // Execute the instructions.
+        function.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+
+        // Load the outputs.
+        let outputs = function.outputs().iter().map(|output| {
+            // Retrieve the circuit output from the register.
+            self.load_circuit(&Operand::Register(output.register().clone()))
+        });
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit(format!("Function '{}()'", function.name()));
+
+        // Ensure the number of public variables remains the same.
+        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
+
+        // Construct the response.
+        let response = circuit::Response::from_outputs(
+            request.program_id(),
+            function.inputs().len(),
+            request.tvk(),
+            outputs.collect::<Result<Vec<_>>>()?,
+            &function.output_types(),
+        );
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Response");
+
+        // Eject the response.
+        let response = circuit::Eject::eject_value(&response);
+
+        // Finalize the circuit into an assignment.
+        let assignment = A::eject_assignment_and_reset();
+
+        Ok((response, assignment))
+    }
+
+    /// Prints the current state of the circuit.
+    fn log_circuit<S: Into<String>>(scope: S) {
+        use colored::Colorize;
+
+        // Determine if the circuit is satisfied.
+        let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
+        // Determine the count.
+        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+
+        // Print the log.
+        println!(
+            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+            scope.into().bold(),
+            width = 20
+        );
     }
 }
