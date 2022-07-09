@@ -86,50 +86,10 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
-        // If the circuit key does not exist, synthesize and return it.
-        if !self.circuit_keys.contains_key(program_id, function_name) {
-            // Retrieve the program.
-            let program = self.get_program(program_id)?;
-            // Retrieve the function input types.
-            let input_types = program.get_function(function_name)?.input_types();
-
-            // Initialize an RNG.
-            let rng = &mut rand::thread_rng();
-            // Initialize a burner private key.
-            let burner_private_key = PrivateKey::new(rng)?;
-            // Compute the burner address.
-            let burner_address = Address::try_from(&burner_private_key)?;
-            // Sample the inputs.
-            let inputs = input_types
-                .iter()
-                .map(|input_type| match input_type {
-                    ValueType::ExternalRecord(locator) => {
-                        // Retrieve the external program.
-                        let program = self.get_program(locator.program_id())?;
-                        // Sample the input.
-                        program.sample_value(&burner_address, input_type, rng)
-                    }
-                    _ => program.sample_value(&burner_address, input_type, rng),
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            // Compute the request, with a burner private key.
-            let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
-            // Ensure the request is well-formed.
-            ensure!(request.verify(), "Request is invalid");
-            // Initialize the authorization.
-            let authorization = Arc::new(RwLock::new(vec![request.clone()]));
-            // Initialize the call stack.
-            let call_stack = CallStack::Authorize(vec![request.clone()], burner_private_key, authorization);
-            // Prepare the stack.
-            let mut stack = self.get_stack(request.program_id())?;
-            // Synthesize the circuit.
-            let (_response, assignment) = stack.execute_function(call_stack)?;
-            // Add the circuit key to the mapping.
-            self.circuit_keys.insert_from_assignment(program_id, function_name, &assignment)?;
-        }
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
         // Return the circuit key.
-        self.circuit_keys.get(program_id, function_name)
+        stack.circuit_key(function_name)
     }
 
     /// Authorizes the request(s) to execute the program function.

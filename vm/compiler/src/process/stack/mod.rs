@@ -20,8 +20,9 @@ pub use register_types::*;
 mod load;
 mod store;
 
-use crate::{CircuitKeys, Closure, Function, Operand, Program};
+use crate::{CircuitKeys, Closure, Function, Operand, Program, ProvingKey, VerifyingKey};
 use console::{
+    account::{Address, PrivateKey},
     network::prelude::*,
     program::{
         Entry,
@@ -40,10 +41,10 @@ use console::{
         Request,
         Response,
         Value,
+        ValueType,
     },
 };
 
-use console::account::PrivateKey;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -285,6 +286,55 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A> {
+    /// Returns the proving key and verifying key for the given function name.
+    #[inline]
+    pub fn circuit_key(&self, function_name: &Identifier<N>) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
+        // Retrieve the program ID.
+        let program_id = self.program.id();
+        // If the circuit key does not exist, synthesize and return it.
+        if !self.circuit_keys.contains_key(program_id, function_name) {
+            // Retrieve the function input types.
+            let input_types = self.program.get_function(function_name)?.input_types();
+
+            // Initialize an RNG.
+            let rng = &mut rand::thread_rng();
+            // Initialize a burner private key.
+            let burner_private_key = PrivateKey::new(rng)?;
+            // Compute the burner address.
+            let burner_address = Address::try_from(&burner_private_key)?;
+            // Sample the inputs.
+            let inputs = input_types
+                .iter()
+                .map(|input_type| match input_type {
+                    ValueType::ExternalRecord(locator) => {
+                        // Retrieve the external stack.
+                        let stack = self.get_external_stack(locator.program_id())?;
+                        // Sample the input.
+                        stack.program().sample_value(&burner_address, input_type, rng)
+                    }
+                    _ => self.program.sample_value(&burner_address, input_type, rng),
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            // Compute the request, with a burner private key.
+            let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
+            // Ensure the request is well-formed.
+            ensure!(request.verify(), "Request is invalid");
+            // Initialize the authorization.
+            let authorization = Arc::new(RwLock::new(vec![request.clone()]));
+            // Initialize the call stack.
+            let call_stack = CallStack::Authorize(vec![request.clone()], burner_private_key, authorization);
+            // Prepare the stack.
+            let mut stack = self.clone();
+            // Synthesize the circuit.
+            let (_response, assignment) = stack.execute_function(call_stack)?;
+            // Add the circuit key to the mapping.
+            self.circuit_keys.insert_from_assignment(program_id, function_name, &assignment)?;
+        }
+        // Return the circuit key.
+        self.circuit_keys.get(program_id, function_name)
+    }
+
     /// Executes a program closure on the given inputs.
     ///
     /// # Errors
