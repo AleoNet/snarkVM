@@ -33,7 +33,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         }
 
         // Construct the stack for the program.
-        let mut stack = Stack::new(program.clone())?;
+        let mut stack = Stack::new(program.clone(), self.circuit_keys.clone())?;
 
         // Add all of the imports into the stack.
         for external_id in program.imports().keys() {

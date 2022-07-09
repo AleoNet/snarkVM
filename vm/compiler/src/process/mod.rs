@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod helpers;
+pub(crate) use helpers::*;
+
 mod stack;
 pub(crate) use stack::*;
 
@@ -25,18 +28,7 @@ pub use transition::*;
 
 mod add_program;
 
-use crate::{
-    CallOperator,
-    Closure,
-    Function,
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    ProvingKey,
-    UniversalSRS,
-    VerifyingKey,
-};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -44,20 +36,17 @@ use console::{
 };
 
 use indexmap::IndexMap;
-use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[allow(clippy::type_complexity)]
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
-    /// The universal SRS.
-    universal_srs: OnceCell<UniversalSRS<N>>,
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
-    circuit_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), (ProvingKey<N>, VerifyingKey<N>)>>>,
+    circuit_keys: CircuitKeys<N>,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
@@ -65,12 +54,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     #[inline]
     pub fn new(program: Program<N>) -> Result<Self> {
         // Construct the process.
-        let mut process = Self {
-            universal_srs: OnceCell::new(),
-            programs: IndexMap::new(),
-            stacks: IndexMap::new(),
-            circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
-        };
+        let mut process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
         // Add the program to the process.
         process.add_program(&program)?;
         // Return the process.
@@ -102,16 +86,12 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
-        // Determine if the circuit key already exists.
-        let exists = self.circuit_keys.read().contains_key(&(*program_id, *function_name));
         // If the circuit key does not exist, synthesize and return it.
-        if !exists {
+        if !self.circuit_keys.contains_key(program_id, function_name) {
             // Retrieve the program.
-            let program = self.get_program(program_id)?.clone();
-            // Retrieve the function from the program.
-            let function = program.get_function(function_name)?;
+            let program = self.get_program(program_id)?;
             // Retrieve the function input types.
-            let input_types = function.input_types();
+            let input_types = program.get_function(function_name)?.input_types();
 
             // Initialize an RNG.
             let rng = &mut rand::thread_rng();
@@ -145,19 +125,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             let mut stack = self.get_stack(request.program_id())?;
             // Synthesize the circuit.
             let (_response, assignment) = stack.execute_function(call_stack)?;
-            // Derive the circuit key.
-            // TODO (howardwu): Load the universal SRS remotely.
-            let (proving_key, verifying_key) =
-                self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(&assignment)?;
             // Add the circuit key to the mapping.
-            self.circuit_keys.write().insert((*program_id, *function_name), (proving_key, verifying_key));
+            self.circuit_keys.insert_from_assignment(program_id, function_name, &assignment)?;
         }
         // Return the circuit key.
-        self.circuit_keys
-            .read()
-            .get(&(*program_id, *function_name))
-            .cloned()
-            .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
+        self.circuit_keys.get(program_id, function_name)
     }
 
     /// Authorizes the request(s) to execute the program function.
@@ -276,10 +248,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
-
         // Retrieve the proving and verifying key.
         let (proving_key, verifying_key) = self.circuit_key(request.program_id(), request.function_name())?;
-
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
         // Synthesize the circuit.

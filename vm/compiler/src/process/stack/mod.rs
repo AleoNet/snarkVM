@@ -20,7 +20,7 @@ pub use register_types::*;
 mod load;
 mod store;
 
-use crate::{Closure, Function, Operand, Program};
+use crate::{CircuitKeys, Closure, Function, Operand, Program};
 use console::{
     network::prelude::*,
     program::{
@@ -80,6 +80,8 @@ impl<N: Network> CallStack<N> {
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
     program: Program<N>,
+    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
+    circuit_keys: CircuitKeys<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
     external_stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
     /// The mapping of closure and function names to their register types.
@@ -97,10 +99,11 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(program: Program<N>) -> Result<Self> {
+    pub fn new(program: Program<N>, circuit_keys: CircuitKeys<N>) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
         Ok(Self {
             program,
+            circuit_keys,
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
             call_stack: CallStack::Execute(Vec::new()),
