@@ -260,30 +260,66 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         Ok((response, execution))
     }
 
-    // /// Verifies a program call for the given execution.
-    // #[inline]
-    // pub fn verify(&self, execution: Execution<N>) -> Result<(Response<N>, Execution<N>)> {
-    //     trace!("Starting verify");
-    //
-    //     // Retrieve the main transition.
-    //     let transition = execution.last();
-    //     // Ensure the request is well-formed.
-    //     ensure!(request.verify(), "Request is invalid");
-    //     // Prepare the stack.
-    //     let mut stack = self.get_stack(request.program_id())?;
-    //     // Initialize the execution.
-    //     let execution = Execution::new();
-    //     // Execute the circuit.
-    //     let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
-    //
-    //     // // Initialize the trace.
-    //     // let mut trace = Trace::<N>::new(request, &response)?;
-    //     // // Finalize the trace.
-    //     // trace.finalize()?;
-    //     // println!("{:?}", trace.leaves());
-    //
-    //     Ok((response, execution))
-    // }
+    /// Verifies a program call for the given execution.
+    #[inline]
+    pub fn verify(&self, execution: Execution<N>) -> Result<()> {
+        trace!("Starting verify");
+
+        // Replicate the execution stack for verification.
+        let queue = Execution::new();
+        for transition in execution.to_vec().into_iter() {
+            queue.push(transition);
+        }
+
+        // Verify each transition.
+        while let Ok(transition) = queue.pop() {
+            // Ensure each input is valid.
+            if transition.inputs().iter().any(|input| !input.verify()) {
+                bail!("Failed to verify a transition input")
+            }
+            // Ensure each output is valid.
+            if transition.outputs().iter().any(|output| !output.verify()) {
+                bail!("Failed to verify a transition output")
+            }
+
+            // Compute the x- and y-coordinate of `tpk`.
+            let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinate();
+
+            // Construct the public inputs to verify the proof.
+            let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
+            // Extend the inputs with the input IDs.
+            inputs.extend(transition.input_ids().map(|id| *id));
+
+            // Retrieve the program.
+            let program = self.get_program(transition.program_id())?.clone();
+            // Retrieve the function from the program.
+            let function = program.get_function(transition.function_name())?;
+
+            for instruction in function.instructions() {
+                if let Instruction::Call(call) = instruction {
+                    if let CallOperator::Locator(locator) = call.operator() {
+                        if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
+                            // Peek at the next transition.
+                            let transition = queue.peek_next()?;
+                            // Extend the inputs with the input and output IDs of the external call.
+                            inputs.extend(transition.input_ids().map(|id| *id));
+                            inputs.extend(transition.output_ids().map(|id| *id));
+                        }
+                    }
+                }
+            }
+
+            // Lastly, extend the inputs with the output IDs.
+            inputs.extend(transition.output_ids().map(|id| *id));
+
+            // Retrieve the verifying key.
+            let (_, verifying_key) = self.circuit_key(transition.program_id(), transition.function_name())?;
+
+            // Ensure the proof is valid.
+            ensure!(verifying_key.verify(&inputs, &transition.proof()), "Transition is invalid");
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -347,7 +383,7 @@ function compute:
                 let (_response, execution) = process.execute(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the transition.
-                execution.get(0)
+                execution.get(0).unwrap()
             })
             .clone()
     }
@@ -454,9 +490,7 @@ function compute:
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
 
-        let transition = execution.get(0);
-        let (_, verifying_key) = process.circuit_key(request.program_id(), request.function_name()).unwrap();
-        assert!(transition.verify(&verifying_key));
+        assert!(process.verify(execution).is_ok());
 
         use circuit::Environment;
 

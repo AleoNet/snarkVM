@@ -191,37 +191,49 @@ impl<N: Network> Transition<N> {
         Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
     }
 
-    /// Returns `true` if the transition is valid.
-    pub fn verify(&self, verifying_key: &VerifyingKey<N>) -> bool {
-        // Ensure each input is valid.
-        if self.inputs.iter().any(|input| !input.verify()) {
-            eprintln!("Failed to verify a transition input");
-            return false;
-        }
-        // Ensure each output is valid.
-        if self.outputs.iter().any(|output| !output.verify()) {
-            eprintln!("Failed to verify a transition output");
-            return false;
-        }
-
-        // Compute the x- and y-coordinate of `tpk`.
-        let (tpk_x, tpk_y) = self.tpk.to_xy_coordinate();
-        // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
-        inputs.extend(self.inputs.iter().map(|input| *input.id()));
-        inputs.extend(self.outputs.iter().flat_map(Output::id).map(|id| *id));
-        // Verify the proof.
-        verifying_key.verify(&inputs, &self.proof)
-    }
-
     /// Returns the transition ID.
     pub const fn id(&self) -> &Field<N> {
         &self.id
     }
 
+    /// Returns the program ID.
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        &self.program_id
+    }
+
+    /// Returns the function name.
+    pub const fn function_name(&self) -> &Identifier<N> {
+        &self.function_name
+    }
+
+    /// Returns the inputs.
+    pub fn inputs(&self) -> &[Input<N>] {
+        &self.inputs
+    }
+
+    /// Returns the input IDs.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = Field<N>> {
+        self.inputs.iter().map(|input| input.id())
+    }
+
+    /// Return the outputs.
+    pub fn outputs(&self) -> &[Output<N>] {
+        &self.outputs
+    }
+
+    /// Returns the output IDs.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = Field<N>> {
+        self.outputs.iter().flat_map(Output::id)
+    }
+
     /// Returns the proof.
     pub const fn proof(&self) -> &Proof<N> {
         &self.proof
+    }
+
+    /// Returns the transition public key.
+    pub const fn tpk(&self) -> &Group<N> {
+        &self.tpk
     }
 }
 

@@ -63,22 +63,22 @@ impl<N: Network> Authorization<N> {
         self.0.read()[index].clone()
     }
 
-    /// Returns the number of `Request`s in the execution.
+    /// Returns the number of `Request`s in the authorization.
     pub fn len(&self) -> usize {
         self.0.read().len()
     }
 
-    /// Returns the next `Request` in the execution.
+    /// Returns the next `Request` in the authorization.
     pub fn peek_next(&self) -> Request<N> {
         self.get(self.len() - 1)
     }
 
-    /// Appends the given `Request` to the execution.
+    /// Appends the given `Request` to the authorization.
     pub fn push(&self, request: Request<N>) {
         self.0.write().push(request);
     }
 
-    /// Pops the last `Request` from the execution.
+    /// Pops the last `Request` from the authorization.
     pub fn pop(&self) -> Result<Request<N>> {
         self.0.write().pop().ok_or_else(|| anyhow!("No more requests in the authorization"))
     }
@@ -94,8 +94,8 @@ impl<N: Network> Execution<N> {
     }
 
     /// Returns the `Transition` at the given index.
-    pub fn get(&self, index: usize) -> Transition<N> {
-        self.0.read()[index].clone()
+    pub fn get(&self, index: usize) -> Result<Transition<N>> {
+        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
     }
 
     /// Returns the number of `Transition`s in the execution.
@@ -104,13 +104,23 @@ impl<N: Network> Execution<N> {
     }
 
     /// Returns the next `Transition` in the execution.
-    pub fn peek_next(&self) -> Transition<N> {
+    pub fn peek_next(&self) -> Result<Transition<N>> {
         self.get(self.len() - 1)
     }
 
     /// Appends the given `Transition` to the execution.
     pub fn push(&self, transition: Transition<N>) {
         self.0.write().push(transition);
+    }
+
+    /// Pops the last `Transition` from the execution.
+    pub fn pop(&self) -> Result<Transition<N>> {
+        self.0.write().pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
+    }
+
+    /// Returns the transitions in the execution.
+    pub fn to_vec(&self) -> Vec<Transition<N>> {
+        self.0.read().clone()
     }
 }
 
@@ -593,12 +603,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             let (proving_key, verifying_key) = self.circuit_key(request.function_name())?;
             // Execute the circuit.
             let proof = proving_key.prove(&assignment, rng)?;
-            // Initialize the transition.
-            let transition = Transition::from(&request, &response, proof, 0u64)?;
-            // Verify the transition.
-            ensure!(transition.verify(&verifying_key), "Transition is invalid");
             // Add the transition to the execution.
-            execution.push(transition);
+            execution.push(Transition::from(&request, &response, proof, 0u64)?);
             // Return the response.
             Ok(response)
         } else {
