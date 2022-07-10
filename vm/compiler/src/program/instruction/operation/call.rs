@@ -339,7 +339,7 @@ impl<N: Network> Call<N> {
                 .map(|input_id| circuit::InputID::new(circuit::Mode::Public, *input_id))
                 .collect::<Vec<_>>();
             // Ensure the candidate input IDs match their computed inputs.
-            A::assert(circuit::Request::check_input_ids(&input_ids, &inputs, &caller, &program_id, &tvk));
+            A::assert(circuit::Request::check_input_ids(&input_ids, &inputs, caller, &program_id, &tvk));
 
             // Inject the response as `Mode::Private` (with the IDs as `Mode::Public`).
             let response = circuit::Response::new(circuit::Mode::Private, response);
@@ -599,11 +599,9 @@ impl<N: Network> ToBytes for Call<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
     use console::{network::Testnet3, program::Identifier};
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_parse() {

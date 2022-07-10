@@ -31,7 +31,7 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, Interface, Plaintext, PlaintextType, ProgramID, Record, RecordType, Value},
+    program::{EntryType, Identifier, Interface, PlaintextType, ProgramID, RecordType},
 };
 
 use indexmap::IndexMap;
@@ -503,7 +503,11 @@ mod tests {
     use super::*;
     use crate::{CallStack, Execution, Process};
     use circuit::network::AleoV0;
-    use console::{account::PrivateKey, network::Testnet3};
+    use console::{
+        account::PrivateKey,
+        network::Testnet3,
+        program::{Plaintext, Record, Value},
+    };
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;

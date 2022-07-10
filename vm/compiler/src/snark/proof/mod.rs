@@ -49,7 +49,6 @@ mod tests {
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = circuit::network::AleoV0;
 
     pub(super) fn sample_proof() -> Proof<CurrentNetwork> {
         static INSTANCE: OnceCell<Proof<CurrentNetwork>> = OnceCell::new();

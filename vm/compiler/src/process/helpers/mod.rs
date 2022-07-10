@@ -26,6 +26,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct CircuitKeys<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<OnceCell<UniversalSRS<N>>>,
@@ -96,5 +97,10 @@ impl<N: Network> CircuitKeys<N> {
     /// Returns `true` if there are no circuit keys.
     pub fn is_empty(&self) -> bool {
         self.circuit_keys.read().is_empty()
+    }
+}
+impl<N: Network> Default for CircuitKeys<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }

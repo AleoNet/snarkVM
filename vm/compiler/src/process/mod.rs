@@ -215,7 +215,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         trace!("Starting verify");
 
         // Ensure the execution contains transitions.
-        ensure!(execution.len() > 0, "There are no transitions in the execution");
+        ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
         // Replicate the execution stack for verification.
         let queue = Execution::new();
@@ -284,7 +284,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
             // Ensure the proof is valid.
-            ensure!(verifying_key.verify(&inputs, &transition.proof()), "Transition is invalid");
+            ensure!(verifying_key.verify(&inputs, transition.proof()), "Transition is invalid");
         }
         Ok(())
     }
@@ -535,7 +535,7 @@ function transfer:
 
         // Authorize the function call.
         let authorization =
-            process.authorize(&caller0_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
+            process.authorize(&caller0_private_key, program.id(), function_name, &[r0, r1, r2], rng).unwrap();
         assert_eq!(authorization.len(), 2);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
@@ -613,7 +613,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new(program0.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new(program0).unwrap();
 
         // Initialize another program.
         let (string, program1) = Program::<CurrentNetwork>::parse(
@@ -668,7 +668,7 @@ function transfer:
 
         // Authorize the function call.
         let authorization =
-            process.authorize(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
+            process.authorize(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng).unwrap();
         assert_eq!(authorization.len(), 4);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 

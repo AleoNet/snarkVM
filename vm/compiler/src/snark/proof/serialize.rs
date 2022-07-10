@@ -39,9 +39,6 @@ impl<'de, N: Network> Deserialize<'de> for Proof<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_serde_json() -> Result<()> {

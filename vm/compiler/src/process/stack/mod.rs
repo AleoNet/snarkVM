@@ -95,6 +95,11 @@ impl<N: Network> Authorization<N> {
         self.0.read().len()
     }
 
+    /// Return `true` if the authorization is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.read().is_empty()
+    }
+
     /// Appends the given `Request` to the authorization.
     pub fn push(&self, request: Request<N>) {
         self.0.write().push_back(request);
@@ -125,6 +130,11 @@ impl<N: Network> Execution<N> {
         self.0.read().len()
     }
 
+    /// Return `true` if the execution is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.read().is_empty()
+    }
+
     /// Returns the next `Transition` in the execution.
     pub fn peek(&self) -> Result<Transition<N>> {
         self.get(self.len() - 1)
@@ -143,6 +153,12 @@ impl<N: Network> Execution<N> {
     /// Returns the transitions in the execution.
     pub fn to_vec(&self) -> Vec<Transition<N>> {
         self.0.read().clone()
+    }
+}
+
+impl<N: Network> Default for Execution<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -430,7 +446,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             // Initialize the authorization.
             let authorization = Authorization::new(&[request.clone()]);
             // Initialize the call stack.
-            let call_stack = CallStack::Authorize(vec![request.clone()], burner_private_key, authorization);
+            let call_stack = CallStack::Authorize(vec![request], burner_private_key, authorization);
             // Clone the stack.
             let mut stack = self.clone();
             // Synthesize the circuit.
@@ -657,7 +673,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             Ok(response)
         } else {
             // Synthesize the circuit.
-            let (response, _assignment) = self.execute_function(call_stack.clone())?;
+            let (response, _assignment) = self.execute_function(call_stack)?;
             // Return the response.
             Ok(response)
         }
