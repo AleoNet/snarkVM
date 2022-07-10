@@ -27,30 +27,11 @@ mod instruction;
 pub use instruction::*;
 
 mod bytes;
-mod matches;
 mod parse;
-mod sample;
 
 use console::{
     network::prelude::*,
-    program::{
-        Balance,
-        Entry,
-        EntryType,
-        Identifier,
-        Interface,
-        Literal,
-        Owner,
-        Plaintext,
-        PlaintextType,
-        ProgramID,
-        Record,
-        RecordType,
-        RegisterType,
-        Value,
-        ValueType,
-    },
-    types::{Address, U64},
+    program::{EntryType, Identifier, Interface, Plaintext, PlaintextType, ProgramID, Record, RecordType, Value},
 };
 
 use indexmap::IndexMap;

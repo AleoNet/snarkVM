@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Returns a value for the given value type.
     pub fn sample_value<R: Rng + CryptoRng>(
         &self,
@@ -67,7 +67,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Returns a record for the given record name.
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(
@@ -81,7 +81,7 @@ impl<N: Network> Program<N> {
         ensure!(depth <= N::MAX_DATA_DEPTH, "Plaintext exceeded maximum depth of {}", N::MAX_DATA_DEPTH);
 
         // Retrieve the record type from the program.
-        let record_type = self.get_record(record_name)?;
+        let record_type = self.program.get_record(record_name)?;
 
         // Initialize the owner based on the visibility.
         let owner = match record_type.owner().is_public() {
@@ -160,7 +160,7 @@ impl<N: Network> Program<N> {
             // Sample an interface.
             PlaintextType::Interface(interface_name) => {
                 // Retrieve the interface.
-                let interface = self.get_interface(interface_name)?;
+                let interface = self.program.get_interface(interface_name)?;
                 // Sample each member of the interface.
                 let members = interface
                     .members()

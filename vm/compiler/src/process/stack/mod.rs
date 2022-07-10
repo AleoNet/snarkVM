@@ -19,6 +19,7 @@ pub use register_types::*;
 
 mod load;
 mod matches;
+mod sample;
 mod store;
 
 use crate::{
@@ -37,6 +38,7 @@ use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
     program::{
+        Balance,
         Entry,
         EntryType,
         Identifier,
@@ -44,6 +46,7 @@ use console::{
         Literal,
         LiteralType,
         Locator,
+        Owner,
         Plaintext,
         PlaintextType,
         ProgramID,
@@ -55,6 +58,7 @@ use console::{
         Response,
         Value,
         ValueType,
+        U64,
     },
 };
 
@@ -413,9 +417,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
                         // Retrieve the external stack.
                         let stack = self.get_external_stack(locator.program_id())?;
                         // Sample the input.
-                        stack.program().sample_value(&burner_address, input_type, rng)
+                        stack.sample_value(&burner_address, input_type, rng)
                     }
-                    _ => self.program.sample_value(&burner_address, input_type, rng),
+                    _ => self.sample_value(&burner_address, input_type, rng),
                 })
                 .collect::<Result<Vec<_>>>()?;
 
