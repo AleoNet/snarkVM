@@ -199,6 +199,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
         );
 
+        let mut l_1_evals = vec![F::zero(); constraint_domain.size()];
+        l_1_evals[0] = F::one();
+        let l_1 = LabeledPolynomial::new(
+            "l_1".to_string(),
+            Evaluations::from_vec_and_domain(l_1_evals, constraint_domain)
+                .interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+
         end_timer!(index_time);
         Ok(Circuit {
             index_info,
@@ -220,6 +230,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             t_evals,
             delta_t_omega,
             delta_t_omega_evals,
+            l_1,
             lookup_tables,
             mode: PhantomData,
         })
@@ -237,6 +248,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         map.insert("s_l".to_string(), PolynomialInfo::new("s_l".to_string(), None, None));
         map.insert("t".to_string(), PolynomialInfo::new("t".to_string(), None, None));
         map.insert("delta_t_omega".to_string(), PolynomialInfo::new("delta_t_omega".to_string(), None, None));
+        map.insert("l_1".to_string(), PolynomialInfo::new("l_1".to_string(), None, None));
         map
     }
 }

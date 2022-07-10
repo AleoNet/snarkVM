@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    fft::{DensePolynomial, Evaluations},
+    fft::DensePolynomial,
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{indexer::CircuitInfo, verifier, AHPForR1CS},
@@ -64,13 +64,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let zeta_squared = state.index.zeta.square();
         let one_plus_delta = F::one() + state.index.delta;
         let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
-        let l_1 = {
-            let mut x_evals = vec![F::zero(); constraint_domain.size()];
-            x_evals[0] = F::one();
-            Evaluations::from_vec_and_domain(x_evals, constraint_domain)
-                .interpolate_with_pc_by_ref(state.ifft_precomputation())
-        };
-
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
             .map(|(b, combiner)| {
@@ -97,6 +90,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let z_2_omega = b.z_2_omega_poly.polynomial().as_dense().unwrap();
                     let mut t = state.index.t.polynomial().as_dense().unwrap().clone();
                     let delta_t_omega = state.index.delta_t_omega.polynomial().as_dense().unwrap();
+                    let l_1 = state.index.l_1.polynomial().as_dense().unwrap();
                     let first = {
                         if f.degree() > 0 {
                             f.coeffs[0] += state.index.epsilon;
@@ -131,7 +125,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     };
 
                     z_2.coeffs[0] -= F::one();
-                    let third = &z_2 * &l_1;
+                    let third = &z_2 * l_1;
 
                     &(&first + &second) + &third
                 };

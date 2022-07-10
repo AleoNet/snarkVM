@@ -69,14 +69,17 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub s_l: LabeledPolynomial<F>,
     pub s_l_evals: Vec<F>,
 
-    /// Lookup tables used in the circuit.
-    pub lookup_tables: Vec<LookupTable<F>>,
-
     /// Table info.
     pub t: LabeledPolynomial<F>,
     pub t_evals: Vec<F>,
     pub delta_t_omega: LabeledPolynomial<F>,
     pub delta_t_omega_evals: Vec<F>,
+
+    /// First index lagrange poly, used for the lookup term construct.
+    pub l_1: LabeledPolynomial<F>,
+
+    /// Lookup tables used in the circuit.
+    pub lookup_tables: Vec<LookupTable<F>>,
 
     pub(crate) mode: PhantomData<MM>,
 }
@@ -111,6 +114,7 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
             &self.s_l,
             &self.t,
             &self.delta_t_omega,
+            &self.l_1,
         ]
         .into_iter()
     }
@@ -136,6 +140,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         self.t_evals.serialize_with_mode(&mut writer, compress)?;
         self.delta_t_omega.serialize_with_mode(&mut writer, compress)?;
         self.delta_t_omega_evals.serialize_with_mode(&mut writer, compress)?;
+        self.l_1.serialize_with_mode(&mut writer, compress)?;
         self.lookup_tables.serialize_with_mode(&mut writer, compress)?;
         self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
@@ -161,6 +166,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
         size += self.t_evals.serialized_size(mode);
         size += self.delta_t_omega.serialized_size(mode);
         size += self.delta_t_omega_evals.serialized_size(mode);
+        size += self.l_1.serialized_size(mode);
         size += self.lookup_tables.serialized_size(mode);
         size += self.mode.serialized_size(mode);
         size
@@ -224,6 +230,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
             t_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             delta_t_omega: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             delta_t_omega_evals: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            l_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             lookup_tables: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })

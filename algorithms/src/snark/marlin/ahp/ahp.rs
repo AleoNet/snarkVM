@@ -18,7 +18,6 @@ use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         EvaluationDomain,
-        Evaluations,
     },
     polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
@@ -273,13 +272,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let lincheck_sumcheck = {
             let one_plus_delta = F::one() + delta;
             let epsilon_one_plus_delta = epsilon * one_plus_delta;
-            // TODO: is it okay to do this here?
-            let l_1_at_beta = {
-                let mut x_evals = vec![F::zero(); constraint_domain.size()];
-                x_evals[0] = F::one();
-                let poly = Evaluations::from_vec_and_domain(x_evals, constraint_domain).interpolate();
-                poly.evaluate(beta)
-            };
             let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
             for (i, combiner) in batch_combiners.iter().enumerate() {
                 rowcheck
@@ -293,7 +285,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         // multiplications
                         * (epsilon_one_plus_delta + s_2_s_at_beta[i] + delta * s_1_omega_s_at_beta[i])
                         * combiner * -F::one(), witness_label("omega_z_2", i))
-                    .add((z_2_s_at_beta[i] - F::one()) * l_1_at_beta * combiner, LCTerm::One)
+                    .add((z_2_s_at_beta[i] - F::one()) * combiner, "l_1")
                     // Plookup rowcheck
                     .add(s_l_at_beta * combiner, witness_label("z_a", i))
                     .add(zeta * z_b_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
