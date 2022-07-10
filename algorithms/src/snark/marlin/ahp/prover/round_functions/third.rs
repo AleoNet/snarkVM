@@ -74,36 +74,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
             .map(|(b, combiner)| {
-                let lookup_poly = {
-                    let mut f = b.f_poly.polynomial().as_dense().unwrap().clone();
-                    let mut s_1 = b.s_1_poly.polynomial().as_dense().unwrap().clone();
-                    let mut s_2 = b.s_2_poly.polynomial().as_dense().unwrap().clone();
-                    let mut z_2 = b.z_2_poly.polynomial().as_dense().unwrap().clone();
-                    let s_1_omega = b.s_1_omega_poly.polynomial().as_dense().unwrap();
-                    let z_2_omega = b.z_2_omega_poly.polynomial().as_dense().unwrap();
-                    let mut t = state.index.t.polynomial().as_dense().unwrap().clone();
-                    let delta_t_omega = state.index.delta_t_omega.polynomial().as_dense().unwrap();
-                    let first = {
-                        f.coeffs[0] += state.index.epsilon;
-                        t.coeffs[0] += epsilon_one_plus_delta;
-                        let a = &t + delta_t_omega;
-                        &(&z_2.clone() * &(f * one_plus_delta)) * &a
-                    };
-
-                    let second = {
-                        s_1.coeffs[0] += epsilon_one_plus_delta;
-                        let a = &s_1 + &(s_2.clone() * state.index.delta);
-                        s_2.coeffs[0] += epsilon_one_plus_delta;
-                        let b = &s_2 + &(s_1_omega * state.index.delta);
-                        &(&(z_2_omega * -F::one()) * &a) * &b
-                    };
-
-                    z_2.coeffs[0] -= F::one();
-                    let third = &z_2 * &l_1;
-
-                    &(&first + &second) + &third
-                };
-
                 let mut row_check = {
                     let z_a = b.z_a_poly.polynomial().as_dense().unwrap();
                     let mut z_b = b.z_b_poly.polynomial().as_dense().unwrap().clone();
@@ -115,8 +85,58 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let lookup_check =
                         state.index.s_l.polynomial().as_dense().unwrap() * &(&(&(z_a + &z_b) + &z_c) - f);
 
-                    &(&mul_check + &lookup_check) + &lookup_poly
+                    &mul_check + &lookup_check
                 };
+
+                let lookup_poly = {
+                    let mut f = b.f_poly.polynomial().as_dense().unwrap().clone();
+                    let mut s_1 = b.s_1_poly.polynomial().as_dense().unwrap().clone();
+                    let mut s_2 = b.s_2_poly.polynomial().as_dense().unwrap().clone();
+                    let mut z_2 = b.z_2_poly.polynomial().as_dense().unwrap().clone();
+                    let s_1_omega = b.s_1_omega_poly.polynomial().as_dense().unwrap();
+                    let z_2_omega = b.z_2_omega_poly.polynomial().as_dense().unwrap();
+                    let mut t = state.index.t.polynomial().as_dense().unwrap().clone();
+                    let delta_t_omega = state.index.delta_t_omega.polynomial().as_dense().unwrap();
+                    let first = {
+                        if f.degree() > 0 {
+                            f.coeffs[0] += state.index.epsilon;
+                        } else {
+                            f.coeffs.push(state.index.epsilon);
+                        }
+
+                        if t.degree() > 0 {
+                            t.coeffs[0] += epsilon_one_plus_delta;
+                        } else {
+                            t.coeffs.push(epsilon_one_plus_delta);
+                        }
+
+                        let a = &t + delta_t_omega;
+                        &(&z_2.clone() * &(f * one_plus_delta)) * &a
+                    };
+
+                    let second = {
+                        if s_1.degree() > 0 {
+                            s_1.coeffs[0] += epsilon_one_plus_delta;
+                        } else {
+                            s_1.coeffs.push(epsilon_one_plus_delta);
+                        }
+                        let a = &s_1 + &(s_2.clone() * state.index.delta);
+                        if s_2.degree() > 0 {
+                            s_2.coeffs[0] += epsilon_one_plus_delta;
+                        } else {
+                            s_2.coeffs.push(epsilon_one_plus_delta);
+                        }
+                        let b = &s_2 + &(s_1_omega * state.index.delta);
+                        &(&(z_2_omega * -F::one()) * &a) * &b
+                    };
+
+                    z_2.coeffs[0] -= F::one();
+                    let third = &z_2 * &l_1;
+
+                    &(&first + &second) + &third
+                };
+
+                row_check += &lookup_poly;
 
                 // Apply linear combination coefficient
                 cfg_iter_mut!(row_check.coeffs).for_each(|c| *c *= combiner);
