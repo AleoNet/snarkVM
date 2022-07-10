@@ -95,7 +95,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
-            let r_b = F::rand(rng);
+            let r_b = F::one();
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);

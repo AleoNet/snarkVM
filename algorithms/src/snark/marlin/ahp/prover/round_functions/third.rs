@@ -64,50 +64,44 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let zeta_squared = state.index.zeta.square();
         let one_plus_delta = F::one() + state.index.delta;
         let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
-        let l_1_evals = {
+        let l_1 = {
             let mut x_evals = vec![F::zero(); constraint_domain.size()];
             x_evals[0] = F::one();
-            x_evals
+            Evaluations::from_vec_and_domain(x_evals, constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation())
         };
 
         let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
-            .zip_eq(&state.plookup_evals)
-            .map(|((b, combiner), evals)| {
+            .map(|(b, combiner)| {
                 let lookup_poly = {
-                    Evaluations::from_vec_and_domain(
-                        evals[0]
-                            .iter()
-                            .zip(&evals[1])
-                            .zip(&evals[2])
-                            .zip(&evals[3])
-                            .zip(&evals[4])
-                            .zip(&evals[5])
-                            .zip(&state.index.t_evals)
-                            .zip(&state.index.delta_t_omega_evals)
-                            .zip(&l_1_evals)
-                            .take(state.index.index_info.num_constraints)
-                            .map(|((((((((f, s_1), s_2), z_2), s_1_omega), z_2_omega), t), delta_t_omega), l_1)| {
-                                let first = {
-                                    let a = state.index.epsilon + f;
-                                    let b = epsilon_one_plus_delta + t + delta_t_omega;
-                                    *z_2 * one_plus_delta * a * b
-                                };
+                    let mut f = b.f_poly.polynomial().as_dense().unwrap().clone();
+                    let mut s_1 = b.s_1_poly.polynomial().as_dense().unwrap().clone();
+                    let mut s_2 = b.s_2_poly.polynomial().as_dense().unwrap().clone();
+                    let mut z_2 = b.z_2_poly.polynomial().as_dense().unwrap().clone();
+                    let s_1_omega = b.s_1_omega_poly.polynomial().as_dense().unwrap();
+                    let z_2_omega = b.z_2_omega_poly.polynomial().as_dense().unwrap();
+                    let mut t = state.index.t.polynomial().as_dense().unwrap().clone();
+                    let delta_t_omega = state.index.delta_t_omega.polynomial().as_dense().unwrap();
+                    let first = {
+                        f.coeffs[0] += state.index.epsilon;
+                        t.coeffs[0] += epsilon_one_plus_delta;
+                        let a = &t + delta_t_omega;
+                        &(&z_2.clone() * &(f * one_plus_delta)) * &a
+                    };
 
-                                let second = {
-                                    let a = epsilon_one_plus_delta + s_1 + state.index.delta * s_2;
-                                    let b = epsilon_one_plus_delta + s_2 + state.index.delta * s_1_omega;
-                                    -(*z_2_omega) * a * b
-                                };
+                    let second = {
+                        s_1.coeffs[0] += epsilon_one_plus_delta;
+                        let a = &s_1 + &(s_2.clone() * state.index.delta);
+                        s_2.coeffs[0] += epsilon_one_plus_delta;
+                        let b = &s_2 + &(s_1_omega * state.index.delta);
+                        &(&(z_2_omega * -F::one()) * &a) * &b
+                    };
 
-                                let third = (*z_2 - F::one()) * *l_1;
+                    z_2.coeffs[0] -= F::one();
+                    let third = &z_2 * &l_1;
 
-                                first + second + third
-                            })
-                            .collect(),
-                        constraint_domain,
-                    )
-                    .interpolate_with_pc_by_ref(state.ifft_precomputation())
+                    &(&first + &second) + &third
                 };
 
                 let mut row_check = {
