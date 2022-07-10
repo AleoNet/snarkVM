@@ -129,38 +129,35 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
                 let (z_c_poly, z_c) = z_c.z_m().unwrap();
-                let table_polys = table_polys.table_polys().unwrap();
-
-                // TODO: can we avoid the excessive cloning related to table_polys?
-                state.plookup_evals.push([
-                    table_polys[0].2.clone(),
-                    table_polys[1].2.clone(),
-                    table_polys[2].2.clone(),
-                    table_polys[3].2.clone(),
-                    table_polys[4].2.clone(),
-                    table_polys[5].2.clone(),
-                ]);
+                let mut table_polys = table_polys.table_polys().unwrap();
+                // Take all of the polynomials out individually to avoid excessive cloning.
+                let z_2_omega = table_polys.pop().unwrap();
+                let s_1_omega = table_polys.pop().unwrap();
+                let z_2 = table_polys.pop().unwrap();
+                let s_2 = table_polys.pop().unwrap();
+                let s_1 = table_polys.pop().unwrap();
+                let f = table_polys.pop().unwrap();
 
                 prover::SingleEntry {
                     z_a,
                     z_b,
                     z_c,
-                    f: table_polys[0].1.clone(),
-                    s_1: table_polys[1].1.clone(),
-                    s_2: table_polys[2].1.clone(),
-                    z_2: table_polys[3].1.clone(),
-                    s_1_omega: table_polys[4].1.clone(),
-                    z_2_omega: table_polys[5].1.clone(),
+                    f: f.1,
+                    s_1: s_1.1,
+                    s_2: s_2.1,
+                    z_2: z_2.1,
+                    s_1_omega: s_1_omega.1,
+                    z_2_omega: z_2_omega.1,
                     w_poly,
                     z_a_poly,
                     z_b_poly,
                     z_c_poly,
-                    f_poly: table_polys[0].0.clone(),
-                    s_1_poly: table_polys[1].0.clone(),
-                    s_2_poly: table_polys[2].0.clone(),
-                    z_2_poly: table_polys[3].0.clone(),
-                    s_1_omega_poly: table_polys[4].0.clone(),
-                    z_2_omega_poly: table_polys[5].0.clone(),
+                    f_poly: f.0,
+                    s_1_poly: s_1.0,
+                    s_2_poly: s_2.0,
+                    z_2_poly: z_2.0,
+                    s_1_omega_poly: s_1_omega.0,
+                    z_2_omega_poly: z_2_omega.0,
                 }
             })
             .collect::<Vec<_>>();
@@ -392,12 +389,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             Self::calculate_opening_and_commitment_polys(label_z_2_omega, z_2_omega_evals, will_be_evaluated, state, r);
 
         PoolResult::TablePolys(vec![
-            (f.0, f.1, f_evals),
-            (s_1.0, s_1.1, s_1_evals),
-            (s_2.0, s_2.1, s_2_evals),
-            (z_2.0, z_2.1, z_2_evals),
-            (s_1_omega.0, s_1_omega.1, s_1_omega_evals.to_vec()),
-            (z_2_omega.0, z_2_omega.1, z_2_omega_evals.to_vec()),
+            (f.0, f.1),
+            (s_1.0, s_1.1),
+            (s_2.0, s_2.1),
+            (z_2.0, z_2.1),
+            (s_1_omega.0, s_1_omega.1),
+            (z_2_omega.0, z_2_omega.1),
         ])
     }
 }
@@ -406,7 +403,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 pub enum PoolResult<'a, F: PrimeField> {
     Witness(LabeledPolynomial<F>),
     MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
-    TablePolys(Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>, Vec<F>)>),
+    TablePolys(Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>),
 }
 
 impl<'a, F: PrimeField> PoolResult<'a, F> {
@@ -424,7 +421,7 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
         }
     }
 
-    fn table_polys(self) -> Option<Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>, Vec<F>)>> {
+    fn table_polys(self) -> Option<Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>> {
         match self {
             Self::TablePolys(polys) => Some(polys),
             _ => None,
