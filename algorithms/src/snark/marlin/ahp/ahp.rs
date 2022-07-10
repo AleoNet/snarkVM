@@ -232,10 +232,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 LinearCombination::new(s_1_omega_i.clone(), [(F::one(), s_1_omega_i)])
             })
             .collect::<Vec<_>>();
-        let t = LinearCombination::new("t", [(F::one(), "t")]);
-        let delta_t_omega = LinearCombination::new("delta_t_omega", [(F::one(), "delta_t_omega")]);
         let s_m = LinearCombination::new("s_m", [(F::one(), "s_m")]);
         let s_l = LinearCombination::new("s_l", [(F::one(), "s_l")]);
+        let t = LinearCombination::new("t", [(F::one(), "t")]);
+        let delta_t_omega = LinearCombination::new("delta_t_omega", [(F::one(), "delta_t_omega")]);
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
@@ -253,10 +253,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let batch_z_b_at_beta: F =
             z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
-        let table_at_beta = evals.get_lc_eval(&t, beta)?;
-        let delta_t_omega_at_beta = evals.get_lc_eval(&delta_t_omega, beta)?;
         let s_m_at_beta = evals.get_lc_eval(&s_m, beta)?;
         let s_l_at_beta = evals.get_lc_eval(&s_l, beta)?;
+        let table_at_beta = evals.get_lc_eval(&t, beta)?;
+        let delta_t_omega_at_beta = evals.get_lc_eval(&delta_t_omega, beta)?;
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);

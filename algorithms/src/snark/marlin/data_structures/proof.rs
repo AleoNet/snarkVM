@@ -139,14 +139,14 @@ pub struct Evaluations<F: PrimeField> {
     pub z_2_evals: Vec<F>,
     /// Evaluation of `s_1_omega_i`'s at `beta`.
     pub s_1_omega_evals: Vec<F>,
-    /// Evaluation of `t` at `beta`.
-    pub t_eval: F,
-    /// Evaluation of `delta_t_omega` at `beta`.
-    pub delta_t_omega_eval: F,
     /// Evaluation of `s_m` at `beta`.
     pub s_m_eval: F,
     /// Evaluation of `s_l` at `beta`.
     pub s_l_eval: F,
+    /// Evaluation of `t` at `beta`.
+    pub t_eval: F,
+    /// Evaluation of `delta_t_omega` at `beta`.
+    pub delta_t_omega_eval: F,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a` at `beta`.
@@ -181,10 +181,10 @@ impl<F: PrimeField> Evaluations<F> {
         for s_1_omega_eval in &self.s_1_omega_evals {
             CanonicalSerialize::serialize_with_mode(s_1_omega_eval, &mut writer, compress)?;
         }
-        CanonicalSerialize::serialize_with_mode(&self.t_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.delta_t_omega_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.s_m_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.s_l_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.t_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.delta_t_omega_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_a_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_b_eval, &mut writer, compress)?;
@@ -200,10 +200,10 @@ impl<F: PrimeField> Evaluations<F> {
         size += self.s_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.z_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.s_1_omega_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
-        size += CanonicalSerialize::serialized_size(&self.t_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.delta_t_omega_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.s_m_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.s_l_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.t_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.delta_t_omega_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_b_eval, compress);
@@ -248,10 +248,10 @@ impl<F: PrimeField> Evaluations<F> {
             s_2_evals,
             z_2_evals,
             s_1_omega_evals,
-            t_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            delta_t_omega_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_m_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            t_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta_t_omega_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_b_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -277,10 +277,10 @@ impl<F: PrimeField> Evaluations<F> {
             s_2_evals,
             z_2_evals,
             s_1_omega_evals,
-            t_eval: map["t"],
-            delta_t_omega_eval: map["delta_t_omega"],
             s_m_eval: map["s_m"],
             s_l_eval: map["s_l"],
+            t_eval: map["t"],
+            delta_t_omega_eval: map["delta_t_omega"],
             g_1_eval: map["g_1"],
             g_a_eval: map["g_a"],
             g_b_eval: map["g_b"],
@@ -309,10 +309,10 @@ impl<F: PrimeField> Evaluations<F> {
             self.s_1_omega_evals.get(index.parse::<usize>().unwrap()).copied()
         } else {
             match label {
-                "t" => Some(self.t_eval),
-                "delta_t_omega" => Some(self.delta_t_omega_eval),
                 "s_m" => Some(self.s_m_eval),
                 "s_l" => Some(self.s_l_eval),
+                "t" => Some(self.t_eval),
+                "delta_t_omega" => Some(self.delta_t_omega_eval),
                 "g_1" => Some(self.g_1_eval),
                 "g_a" => Some(self.g_a_eval),
                 "g_b" => Some(self.g_b_eval),
@@ -331,10 +331,10 @@ impl<F: PrimeField> Valid for Evaluations<F> {
         self.s_2_evals.check()?;
         self.z_2_evals.check()?;
         self.s_1_omega_evals.check()?;
-        self.t_eval.check()?;
-        self.delta_t_omega_eval.check()?;
         self.s_m_eval.check()?;
         self.s_l_eval.check()?;
+        self.t_eval.check()?;
+        self.delta_t_omega_eval.check()?;
         self.g_1_eval.check()?;
         self.g_a_eval.check()?;
         self.g_b_eval.check()?;
@@ -351,10 +351,10 @@ impl<F: PrimeField> Evaluations<F> {
         result.extend(self.z_2_evals.iter());
         result.extend(self.s_1_omega_evals.iter());
         result.extend([
-            self.t_eval,
-            self.delta_t_omega_eval,
             self.s_m_eval,
             self.s_l_eval,
+            self.t_eval,
+            self.delta_t_omega_eval,
             self.g_1_eval,
             self.g_a_eval,
             self.g_b_eval,
