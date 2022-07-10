@@ -23,7 +23,7 @@ use output::*;
 mod bytes;
 mod serialize;
 
-use crate::{Proof, VerifyingKey};
+use crate::Proof;
 use console::{
     network::prelude::*,
     program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value},

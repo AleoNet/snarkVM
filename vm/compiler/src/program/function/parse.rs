@@ -43,9 +43,20 @@ impl<N: Network> Parser for Function<N> {
         map_res(take(0usize), move |_| {
             // Initialize a new function.
             let mut function = Self::new(name);
-            inputs.iter().cloned().try_for_each(|input| function.add_input(input))?;
-            instructions.iter().cloned().try_for_each(|instruction| function.add_instruction(instruction))?;
-            outputs.iter().cloned().try_for_each(|output| function.add_output(output))?;
+            if let Err(error) = inputs.iter().cloned().try_for_each(|input| function.add_input(input)) {
+                eprintln!("{error}");
+                return Err(error);
+            }
+            if let Err(error) =
+                instructions.iter().cloned().try_for_each(|instruction| function.add_instruction(instruction))
+            {
+                eprintln!("{error}");
+                return Err(error);
+            }
+            if let Err(error) = outputs.iter().cloned().try_for_each(|output| function.add_output(output)) {
+                eprintln!("{error}");
+                return Err(error);
+            }
             Ok::<_, Error>(function)
         })(string)
     }

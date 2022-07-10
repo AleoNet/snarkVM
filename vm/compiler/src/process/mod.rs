@@ -113,48 +113,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Prepare the stack.
         let mut stack = self.get_stack(program_id)?;
-        // Execute the function.
+        // Construct the authorization from the function.
         let (_response, _assignment) =
             stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()))?;
-
-        // // Determine if the function contains external function calls.
-        // let mut contains_external_calls = false;
-        // for instruction in function.instructions() {
-        //     if let Instruction::Call(call) = instruction {
-        //         if let CallOperator::Locator(locator) = call.operator() {
-        //             if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
-        //                 contains_external_calls = true;
-        //                 break;
-        //             }
-        //         }
-        //     }
-        // }
-        // // Construct the request builder.
-        // if contains_external_calls {
-        //     // // Iterate through the external calls to authorize them.
-        //     // for external_call in stack.external_calls_flattened() {
-        //     //     // Ensure the external program exists.
-        //     //     ensure!(self.contains_program(external_call.program_id()), "External '{program_id}' not found.");
-        //     //     // Retrieve the external program.
-        //     //     let external_program = self.get_program(external_call.program_id())?;
-        //     //     // Retrieve the external function.
-        //     //     let external_function = external_program.get_function(external_call.function_name())?;
-        //     //     // Retrieve the external function input types.
-        //     //     let input_types = external_function.input_types();
-        //     //     // Ensure the claimed input types match the function.
-        //     //     ensure!(input_types == external_call.input_types(), "External call has incorrect input types.");
-        //     //     // Ensure the inputs match their expected types.
-        //     //     external_call
-        //     //         .inputs()
-        //     //         .iter()
-        //     //         .zip_eq(&input_types)
-        //     //         .try_for_each(|(input, input_type)| external_program.matches_value_type(input, input_type))?;
-        //     //     // Authorize the request.
-        //     //     let request = external_call.authorize(private_key, rng)?;
-        //     //     // Append the request to the vector.
-        //     //     requests.push(request);
-        //     // }
-        // }
 
         // Return the authorization.
         Ok(authorization)
@@ -202,8 +163,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     ) -> Result<(Response<N>, Execution<N>)> {
         trace!("Starting execute");
 
-        // Retrieve the main request.
-        let request = authorization.peek_next();
+        // Retrieve the main request (without popping it).
+        let request = authorization.peek_next()?;
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Prepare the stack.
@@ -212,12 +173,6 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let execution = Execution::new();
         // Execute the circuit.
         let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
-
-        // // Initialize the trace.
-        // let mut trace = Trace::<N>::new(request, &response)?;
-        // // Finalize the trace.
-        // trace.finalize()?;
-        // println!("{:?}", trace.leaves());
 
         Ok((response, execution))
     }
@@ -233,8 +188,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     ) -> Result<(Response<N>, Execution<N>)> {
         trace!("Starting execute");
 
-        // Retrieve the main request.
-        let request = authorization.peek_next();
+        // Retrieve the main request (without popping it).
+        let request = authorization.peek_next()?;
         // Ensure the request is well-formed.
         ensure!(request.verify(), "Request is invalid");
         // Add the circuit key to the mapping.
@@ -250,12 +205,6 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         let execution = Execution::new();
         // Execute the circuit.
         let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
-
-        // // Initialize the trace.
-        // let mut trace = Trace::<N>::new(request, &response)?;
-        // // Finalize the trace.
-        // trace.finalize()?;
-        // println!("{:?}", trace.leaves());
 
         Ok((response, execution))
     }
@@ -273,6 +222,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
+            #[cfg(debug_assertions)]
+            println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
+
             // Ensure each input is valid.
             if transition.inputs().iter().any(|input| !input.verify()) {
                 bail!("Failed to verify a transition input")
@@ -295,16 +247,22 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             // Retrieve the function from the program.
             let function = program.get_function(transition.function_name())?;
 
+            // Clone the current execution queue to embed function call inputs and outputs.
+            let mut tmp = queue.to_vec();
+            // Append all function call inputs and outputs made from this function.
             for instruction in function.instructions() {
                 if let Instruction::Call(call) = instruction {
-                    if let CallOperator::Locator(locator) = call.operator() {
-                        if self.get_program(locator.program_id())?.contains_function(locator.resource()) {
-                            // Peek at the next transition.
-                            let transition = queue.peek_next()?;
-                            // Extend the inputs with the input and output IDs of the external call.
-                            inputs.extend(transition.input_ids().map(|id| *id));
-                            inputs.extend(transition.output_ids().map(|id| *id));
-                        }
+                    // Retrieve the program and resource.
+                    let (program, resource) = match call.operator() {
+                        CallOperator::Locator(locator) => (self.get_program(locator.program_id())?, locator.resource()),
+                        CallOperator::Resource(resource) => (&program, resource),
+                    };
+                    if program.contains_function(resource) {
+                        // Peek at the next transition.
+                        let transition = tmp.pop().ok_or_else(|| anyhow!("Missing a function call transition"))?;
+                        // Extend the inputs with the input and output IDs of the external call.
+                        inputs.extend(transition.input_ids().map(|id| *id));
+                        inputs.extend(transition.output_ids().map(|id| *id));
                     }
                 }
             }
@@ -314,6 +272,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
             // Retrieve the verifying key.
             let (_, verifying_key) = self.circuit_key(transition.program_id(), transition.function_name())?;
+
+            #[cfg(debug_assertions)]
+            println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
             // Ensure the proof is valid.
             ensure!(verifying_key.verify(&inputs, &transition.proof()), "Transition is invalid");
@@ -403,7 +364,7 @@ mod tests {
     type CurrentAleo = AleoV0;
 
     #[test]
-    fn test_process_execute_call() {
+    fn test_process_execute_call_closure() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
@@ -470,7 +431,7 @@ function compute:
         let authorization =
             process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
         assert_eq!(authorization.len(), 1);
-        let request = authorization.get(0);
+        let request = authorization.get(0).unwrap();
 
         // Compute the output value.
         let response = process.evaluate(&request).unwrap();
@@ -489,6 +450,112 @@ function compute:
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
+
+        assert!(process.verify(execution).is_ok());
+
+        use circuit::Environment;
+
+        assert_eq!(37016, CurrentAleo::num_constants());
+        assert_eq!(12, CurrentAleo::num_public());
+        assert_eq!(41500, CurrentAleo::num_private());
+        assert_eq!(41550, CurrentAleo::num_constraints());
+        assert_eq!(158739, CurrentAleo::num_gates());
+    }
+
+    #[test]
+    fn test_process_execute_call_function() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program token.aleo;
+
+record token:
+    owner as address.private;
+    balance as u64.private;
+    amount as u64.private;
+
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 0u64 r1 into r2 as token.record;
+    output r2 as token.record;
+
+function transfer:
+    input r0 as token.record;
+    input r1 as address.private;
+    input r2 as u64.private;
+    sub r0.amount r2 into r3;
+    call mint r1 r2 into r4; // Only for testing, this is bad practice.
+    cast r0.owner r0.balance r3 into r5 as token.record;
+    output r4 as token.record;
+    output r5 as token.record;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Initialize caller 0.
+        let caller0_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller0 = Address::try_from(&caller0_private_key).unwrap();
+
+        // Initialize caller 1.
+        let caller1_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller1 = Address::try_from(&caller1_private_key).unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("transfer").unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&format!(
+            "{{ owner: {caller0}.private, balance: 5u64.private, amount: 100u64.private }}"
+        ))
+        .unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("99u64").unwrap();
+
+        // Declare the expected output value.
+        let r4 =
+            Value::from_str(&format!("{{ owner: {caller1}.private, balance: 0u64.private, amount: 99u64.private }}"))
+                .unwrap();
+        let r5 =
+            Value::from_str(&format!("{{ owner: {caller0}.private, balance: 5u64.private, amount: 1u64.private }}"))
+                .unwrap();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
+        // Authorize the function call.
+        let authorization =
+            process.authorize(&caller0_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
+        assert_eq!(authorization.len(), 2);
+        println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
+
+        let mut auth_stack = authorization.to_vec_deque();
+
+        // Compute the output value.
+        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(r4, candidate[0]);
+
+        // Compute the output value.
+        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(2, candidate.len());
+        assert_eq!(r4, candidate[0]);
+        assert_eq!(r5, candidate[1]);
+
+        // Check again to make sure we didn't modify the authorization before calling `execute`.
+        assert_eq!(authorization.len(), 2);
+
+        // Execute the request.
+        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(2, candidate.len());
+        assert_eq!(r4, candidate[0]);
+        assert_eq!(r5, candidate[1]);
 
         assert!(process.verify(execution).is_ok());
 

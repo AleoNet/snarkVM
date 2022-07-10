@@ -17,7 +17,7 @@
 use crate::{CallStack, Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
-    program::{Identifier, Locator, Register, RegisterType, Request, ValueType},
+    program::{Identifier, Locator, Register, RegisterType, Request},
 };
 
 /// The operator references a function name or closure name.
@@ -260,11 +260,11 @@ impl<N: Network> Call<N> {
                         // Push the request onto the call stack.
                         call_stack.push(request.clone())?;
 
+                        // Add the request to the authorization.
+                        authorization.push(request.clone());
+
                         // Execute the request.
                         let response = substack.execute(call_stack, rng)?;
-
-                        // Lastly, add the request to the authorization (This must go *after* `execute`).
-                        authorization.push(request.clone());
 
                         // Return the request and response.
                         (request, response)
@@ -281,7 +281,7 @@ impl<N: Network> Call<N> {
                         })?;
 
                         // Retrieve the next request (without popping it).
-                        let request = authorization.peek_next();
+                        let request = authorization.peek_next()?;
                         // Ensure the inputs match the original inputs.
                         request.inputs().iter().zip_eq(&inputs).try_for_each(|(request_input, input)| {
                             ensure!(request_input == input, "Inputs do not match in a 'call' instruction.");
@@ -293,7 +293,9 @@ impl<N: Network> Call<N> {
                         // Execute the request.
                         let response = substack.execute(stack.call_stack(), rng)?;
                         // Ensure the values are equal.
-                        if console_outputs == response.outputs() {
+                        if console_outputs != response.outputs() {
+                            #[cfg(debug_assertions)]
+                            eprintln!("\n{:#?} != {:#?}\n", console_outputs, response.outputs());
                             bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
                         }
                         // Return the request and response.

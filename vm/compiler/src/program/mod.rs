@@ -520,7 +520,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Authorization, CallStack, Execution, Process};
+    use crate::{CallStack, Execution, Process};
     use circuit::network::AleoV0;
     use console::{account::PrivateKey, network::Testnet3};
 
@@ -819,11 +819,10 @@ function compute:
         let authorization =
             process.authorize(&burner_private_key, program.id(), function_name, &[r0, r1], rng).unwrap();
         assert_eq!(authorization.len(), 1);
-        let request = authorization.get(0);
 
         // Re-run to ensure state continues to work.
         let (response, _assignment) =
-            stack.execute_function(CallStack::Execute(Authorization::new(&[request]), Execution::new())).unwrap();
+            stack.execute_function(CallStack::Execute(authorization, Execution::new())).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);

@@ -37,7 +37,7 @@ pub enum InputID<N: Network> {
     ExternalRecord(Field<N>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Request<N: Network> {
     /// The request caller.
     caller: Address<N>,

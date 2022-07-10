@@ -20,7 +20,18 @@ pub use register_types::*;
 mod load;
 mod store;
 
-use crate::{CircuitKeys, Closure, Function, Operand, Program, ProvingKey, Transition, VerifyingKey};
+use crate::{
+    CallOperator,
+    CircuitKeys,
+    Closure,
+    Function,
+    Instruction,
+    Operand,
+    Program,
+    ProvingKey,
+    Transition,
+    VerifyingKey,
+};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -47,20 +58,30 @@ use console::{
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 #[derive(Clone)]
-pub struct Authorization<N: Network>(Arc<RwLock<Vec<Request<N>>>>);
+pub struct Authorization<N: Network>(Arc<RwLock<VecDeque<Request<N>>>>);
 
 impl<N: Network> Authorization<N> {
     /// Initialize a new `Authorization` instance, with the given requests.
     pub fn new(requests: &[Request<N>]) -> Self {
-        Self(Arc::new(RwLock::new(requests.to_vec())))
+        Self(Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))))
+    }
+
+    /// Returns the next `Request` in the authorization.
+    pub fn peek_next(&self) -> Result<Request<N>> {
+        self.get(0)
+    }
+
+    /// Returns the next `Request` from the authorization.
+    pub fn next(&self) -> Result<Request<N>> {
+        self.0.write().pop_front().ok_or_else(|| anyhow!("No more requests in the authorization"))
     }
 
     /// Returns the `Request` at the given index.
-    pub fn get(&self, index: usize) -> Request<N> {
-        self.0.read()[index].clone()
+    pub fn get(&self, index: usize) -> Result<Request<N>> {
+        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing request {index}"))
     }
 
     /// Returns the number of `Request`s in the authorization.
@@ -68,19 +89,14 @@ impl<N: Network> Authorization<N> {
         self.0.read().len()
     }
 
-    /// Returns the next `Request` in the authorization.
-    pub fn peek_next(&self) -> Request<N> {
-        self.get(self.len() - 1)
-    }
-
     /// Appends the given `Request` to the authorization.
     pub fn push(&self, request: Request<N>) {
-        self.0.write().push(request);
+        self.0.write().push_back(request);
     }
 
-    /// Pops the last `Request` from the authorization.
-    pub fn pop(&self) -> Result<Request<N>> {
-        self.0.write().pop().ok_or_else(|| anyhow!("No more requests in the authorization"))
+    /// Returns the requests in the authorization.
+    pub fn to_vec_deque(&self) -> VecDeque<Request<N>> {
+        self.0.read().clone()
     }
 }
 
@@ -104,7 +120,7 @@ impl<N: Network> Execution<N> {
     }
 
     /// Returns the next `Transition` in the execution.
-    pub fn peek_next(&self) -> Result<Transition<N>> {
+    pub fn peek(&self) -> Result<Transition<N>> {
         self.get(self.len() - 1)
     }
 
@@ -146,7 +162,7 @@ impl<N: Network> CallStack<N> {
             CallStack::Authorize(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
-            CallStack::Execute(authorization, ..) => authorization.pop(),
+            CallStack::Execute(authorization, ..) => authorization.next(),
         }
     }
 }
@@ -467,7 +483,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
 
         // Ensure the number of public variables remains the same.
-        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
+        ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
 
         // Load the outputs.
         let outputs = closure.outputs().iter().map(|output| {
@@ -554,8 +570,34 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function '{}()'", function.name()));
 
-        // Ensure the number of public variables remains the same.
-        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
+        // If the function contains no function calls, then the number of public variables remains the same.
+        let mut contains_function_call = false;
+        for instruction in function.instructions().iter() {
+            if let Instruction::Call(call) = instruction {
+                match call.operator() {
+                    CallOperator::Locator(locator) => {
+                        if self.get_external_program(locator.program_id())?.contains_function(locator.resource()) {
+                            contains_function_call = true;
+                            break;
+                        }
+                    }
+                    CallOperator::Resource(resource) => {
+                        if self.program().contains_function(resource) {
+                            contains_function_call = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        // If the function does not contain function calls, ensure no new public variables were injected.
+        if !contains_function_call {
+            // Ensure the number of public variables remains the same.
+            ensure!(
+                A::num_public() == num_public,
+                "Illegal function operation: instructions injected public variables"
+            );
+        }
 
         // Construct the response.
         let response = circuit::Response::from_outputs(
@@ -587,8 +629,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
     pub fn execute<R: Rng + CryptoRng>(&mut self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
         // If the call stack is an execution, execute and compute the transition.
         if let CallStack::Execute(ref authorization, ref execution) = call_stack {
-            // Retrieve the last request.
-            let request = authorization.peek_next();
+            // Retrieve the next request (without popping it).
+            let request = authorization.peek_next()?;
 
             // Synthesize the circuit.
             let (response, assignment) = self.execute_function(call_stack.clone())?;
@@ -600,7 +642,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             }
 
             // Retrieve the proving and verifying key.
-            let (proving_key, verifying_key) = self.circuit_key(request.function_name())?;
+            let (proving_key, _verifying_key) = self.circuit_key(request.function_name())?;
             // Execute the circuit.
             let proof = proving_key.prove(&assignment, rng)?;
             // Add the transition to the execution.
@@ -609,7 +651,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             Ok(response)
         } else {
             // Synthesize the circuit.
-            let (response, assignment) = self.execute_function(call_stack.clone())?;
+            let (response, _assignment) = self.execute_function(call_stack.clone())?;
             // Return the response.
             Ok(response)
         }
