@@ -214,6 +214,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     pub fn verify(&self, execution: Execution<N>) -> Result<()> {
         trace!("Starting verify");
 
+        // Ensure the execution contains transitions.
+        ensure!(execution.len() > 0, "There are no transitions in the execution");
+
         // Replicate the execution stack for verification.
         let queue = Execution::new();
         for transition in execution.to_vec().into_iter() {
