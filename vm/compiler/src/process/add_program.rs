@@ -199,7 +199,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Ensure the register type and the output type match.
         if *register_type != register_types.get_type(stack, register)? {
-            bail!("Output '{register}' does not match the expected output register type.")
+            bail!(
+                "Output '{register}' does not match the expected output register type: expected '{}', found '{}'",
+                register_types.get_type(stack, register)?,
+                register_type
+            )
         }
         Ok(())
     }

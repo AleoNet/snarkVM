@@ -58,7 +58,6 @@ impl<A: Aleo> Response<A> {
                         output_hash.is_equal(expected_hash)
                     }
                     // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
-                    // An expected record commitment is injected as `Mode::Public`, and compared to the computed record commitment.
                     OutputID::Record(expected_cm, expected_nonce, expected_checksum) => {
                         // Retrieve the record.
                         let record = match &output {

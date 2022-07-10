@@ -34,6 +34,8 @@ pub enum Output<N: Network> {
     Private(Field<N>, Option<Ciphertext<N>>),
     /// The commitment, nonce, checksum, and (optional) record ciphertext.
     Record(Field<N>, Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
+    /// The output commitment of the external record.
+    ExternalRecord(Field<N>),
 }
 
 impl<N: Network> Output<N> {
@@ -44,6 +46,7 @@ impl<N: Network> Output<N> {
             Output::Public(id, ..) => vec![*id],
             Output::Private(id, ..) => vec![*id],
             Output::Record(commitment, nonce, checksum, _) => vec![*commitment, *nonce, *checksum],
+            Output::ExternalRecord(id) => vec![*id],
         }
     }
 

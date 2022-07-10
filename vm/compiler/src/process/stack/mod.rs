@@ -18,6 +18,7 @@ mod register_types;
 pub use register_types::*;
 
 mod load;
+mod matches;
 mod store;
 
 use crate::{
@@ -46,6 +47,7 @@ use console::{
         Plaintext,
         PlaintextType,
         ProgramID,
+        Record,
         RecordType,
         Register,
         RegisterType,

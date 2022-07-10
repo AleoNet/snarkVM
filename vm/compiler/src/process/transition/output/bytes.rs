@@ -61,7 +61,11 @@ impl<N: Network> FromBytes for Output<N> {
 
                 Self::Record(commitment, nonce, checksum, record_ciphertext)
             }
-            4.. => return Err(error(format!("Failed to decode input variant {index}"))),
+            4 => {
+                let commitment = FromBytes::read_le(&mut reader)?;
+                Self::ExternalRecord(commitment)
+            }
+            5.. => return Err(error(format!("Failed to decode output variant {index}"))),
         };
         Ok(literal)
     }
@@ -118,6 +122,10 @@ impl<N: Network> ToBytes for Output<N> {
                     None => false.write_le(&mut writer),
                 }
             }
+            Self::ExternalRecord(commitment) => {
+                (4 as Size).write_le(&mut writer)?;
+                commitment.write_le(&mut writer)
+            }
         }
     }
 }
@@ -171,6 +179,9 @@ mod tests {
                 Uniform::rand(rng),
                 None,
             ))?;
+
+            // ExternalRecord
+            check_bytes(Output::<CurrentNetwork>::ExternalRecord(Uniform::rand(rng)))?;
         }
         Ok(())
     }

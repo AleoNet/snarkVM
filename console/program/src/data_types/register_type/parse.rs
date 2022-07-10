@@ -64,7 +64,7 @@ impl<N: Network> Display for RegisterType<N> {
             // Prints the record name, i.e. token.record
             Self::Record(record_name) => write!(f, "{record_name}.record"),
             // Prints the locator, i.e. token.aleo/token
-            Self::ExternalRecord(locator) => write!(f, "{locator}"),
+            Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
         }
     }
 }

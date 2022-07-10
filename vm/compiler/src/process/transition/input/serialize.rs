@@ -54,6 +54,12 @@ impl<N: Network> Serialize for Input<N> {
                     input.serialize_field("id", &id)?;
                     input.end()
                 }
+                Self::ExternalRecord(id) => {
+                    let mut input = serializer.serialize_struct("Input", 2)?;
+                    input.serialize_field("type", "external_record")?;
+                    input.serialize_field("id", &id)?;
+                    input.end()
+                }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
@@ -85,6 +91,7 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                         None => None,
                     }),
                     Some("record") => Input::Record(id),
+                    Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid input type")),
                 };
 
@@ -113,6 +120,7 @@ mod tests {
         "{\"type\":\"public\",\"id\":\"0field\"}",
         "{\"type\":\"private\",\"id\":\"123field\"}",
         "{\"type\":\"record\",\"id\":\"123456789field\"}",
+        "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
     ];
 
     fn check_serde_json<

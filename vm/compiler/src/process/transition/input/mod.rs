@@ -34,6 +34,8 @@ pub enum Input<N: Network> {
     Private(Field<N>, Option<Ciphertext<N>>),
     /// The serial number.
     Record(Field<N>),
+    /// The input commitment to the external record.
+    ExternalRecord(Field<N>),
 }
 
 impl<N: Network> Input<N> {
@@ -44,6 +46,7 @@ impl<N: Network> Input<N> {
             Input::Public(id, _) => *id,
             Input::Private(id, _) => *id,
             Input::Record(id) => *id,
+            Input::ExternalRecord(id) => *id,
         }
     }
 

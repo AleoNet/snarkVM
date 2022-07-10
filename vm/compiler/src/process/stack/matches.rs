@@ -16,16 +16,68 @@
 
 use super::*;
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+    /// Checks that the given input value matches the layout of the value type.
+    pub fn matches_value_type(&self, input: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
+        // Ensure the input value matches the declared type in the register.
+        match (input, value_type) {
+            (Value::Plaintext(plaintext), ValueType::Constant(plaintext_type))
+            | (Value::Plaintext(plaintext), ValueType::Public(plaintext_type))
+            | (Value::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
+                self.matches_plaintext(plaintext, plaintext_type)
+            }
+            (Value::Record(record), ValueType::Record(record_name)) => self.matches_record(record, record_name),
+            _ => bail!("Input value does not match the input register type '{value_type}'"),
+        }
+    }
+
+    /// Checks that the given stack value matches the layout of the register type.
+    pub fn matches_register_type(&self, stack_value: &Value<N>, register_type: &RegisterType<N>) -> Result<()> {
+        match (stack_value, register_type) {
+            (Value::Plaintext(plaintext), RegisterType::Plaintext(plaintext_type)) => {
+                self.matches_plaintext(plaintext, plaintext_type)
+            }
+            (Value::Record(record), RegisterType::Record(record_name)) => self.matches_record(record, record_name),
+            (Value::Record(record), RegisterType::ExternalRecord(locator)) => {
+                self.matches_external_record(record, locator)
+            }
+            _ => bail!("Stack value does not match the register type '{register_type}'"),
+        }
+    }
+
+    /// Checks that the given record matches the layout of the external record type.
+    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// for record data does **not** matter, as long as all defined members are present.
+    pub fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
+        // Retrieve the record name.
+        let record_name = locator.resource();
+
+        // Ensure the record name is valid.
+        ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
+
+        // Retrieve the record type from the program.
+        let record_type = match self.get_external_record(locator) {
+            Ok(record_type) => record_type,
+            Err(..) => bail!("External '{locator}' is not defined in the program"),
+        };
+
+        // Ensure the record name matches.
+        if record_type.name() != record_name {
+            bail!("Expected external record '{record_name}', found external record '{}'", record_type.name())
+        }
+
+        self.matches_record_internal(record, &record_type, 0)
+    }
+
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
         // Ensure the record name is valid.
-        ensure!(!Self::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
+        ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Retrieve the record type from the program.
-        let record_type = match self.get_record(record_name) {
+        let record_type = match self.program().get_record(record_name) {
             Ok(record_type) => record_type,
             Err(..) => bail!("Record '{record_name}' is not defined in the program"),
         };
@@ -45,7 +97,7 @@ impl<N: Network> Program<N> {
     }
 }
 
-impl<N: Network> Program<N> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
@@ -100,7 +152,7 @@ impl<N: Network> Program<N> {
                 // Ensure the member type matches.
                 Some((member_name, member_entry)) => {
                     // Ensure the member name is valid.
-                    ensure!(!Self::is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
+                    ensure!(!Program::is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
                     self.matches_entry_internal(member_entry, expected_type, depth + 1)?
                 }
@@ -158,10 +210,10 @@ impl<N: Network> Program<N> {
             },
             PlaintextType::Interface(interface_name) => {
                 // Ensure the interface name is valid.
-                ensure!(!Self::is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
+                ensure!(!Program::is_reserved_keyword(interface_name), "Interface '{interface_name}' is reserved");
 
                 // Retrieve the interface from the program.
-                let interface = match self.get_interface(interface_name) {
+                let interface = match self.program().get_interface(interface_name) {
                     Ok(interface) => interface,
                     Err(..) => bail!("Interface '{interface_name}' is not defined in the program"),
                 };
@@ -198,7 +250,7 @@ impl<N: Network> Program<N> {
                         // Ensure the member type matches.
                         Some((member_name, member_plaintext)) => {
                             // Ensure the member name is valid.
-                            ensure!(!Self::is_reserved_keyword(member_name), "Member '{member_name}' is reserved");
+                            ensure!(!Program::is_reserved_keyword(member_name), "Member '{member_name}' is reserved");
                             // Ensure the member plaintext matches (recursive call).
                             self.matches_plaintext_internal(member_plaintext, expected_type, depth + 1)?
                         }

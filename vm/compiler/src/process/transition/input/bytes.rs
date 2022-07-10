@@ -50,7 +50,8 @@ impl<N: Network> FromBytes for Input<N> {
                 Self::Private(ciphertext_hash, ciphertext)
             }
             3 => Self::Record(FromBytes::read_le(&mut reader)?),
-            4.. => return Err(error(format!("Failed to decode input variant {index}"))),
+            4 => Self::ExternalRecord(FromBytes::read_le(&mut reader)?),
+            5.. => return Err(error(format!("Failed to decode input variant {index}"))),
         };
         Ok(literal)
     }
@@ -98,6 +99,10 @@ impl<N: Network> ToBytes for Input<N> {
                 (3 as Size).write_le(&mut writer)?;
                 serial_number.write_le(&mut writer)
             }
+            Self::ExternalRecord(input_commitment) => {
+                (4 as Size).write_le(&mut writer)?;
+                input_commitment.write_le(&mut writer)
+            }
         }
     }
 }
@@ -142,6 +147,9 @@ mod tests {
 
             // Record
             check_bytes(Input::<CurrentNetwork>::Record(Uniform::rand(rng)))?;
+
+            // ExternalRecord
+            check_bytes(Input::<CurrentNetwork>::ExternalRecord(Uniform::rand(rng)))?;
         }
         Ok(())
     }

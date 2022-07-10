@@ -115,6 +115,9 @@ impl<N: Network> Transition<N> {
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
                     (InputID::Record(_, serial_number), Value::Record(..)) => Ok(Input::Record(*serial_number)),
+                    (InputID::ExternalRecord(input_commitment), Value::Record(..)) => {
+                        Ok(Input::ExternalRecord(*input_commitment))
+                    }
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),
                 }
             })
@@ -180,6 +183,18 @@ impl<N: Network> Transition<N> {
 
                         // Return the record output.
                         Ok(Output::Record(*commitment, *nonce, *checksum, Some(record_ciphertext)))
+                    }
+                    (OutputID::ExternalRecord(commitment), Value::Record(record)) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16((num_inputs + index) as u16);
+                        // Compute the output randomizer as `HashToScalar(tvk || index)`.
+                        let output_randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
+                        // Commit the output to a field element.
+                        let candidate_cm = N::commit_bhp1024(&record.to_bits_le(), &output_randomizer)?;
+                        // Ensure the commitment matches.
+                        ensure!(*commitment == candidate_cm, "The output commitment is incorrect");
+                        // Return the record output.
+                        Ok(Output::ExternalRecord(*commitment))
                     }
                     _ => bail!("Malformed response output: {:?}, {output}", output_id),
                 }
