@@ -76,9 +76,6 @@ pub struct Circuit<F: PrimeField, MM: MarlinMode> {
     pub delta_t_omega_evals: Vec<F>,
 
     /// First index lagrange poly, used for the lookup term construction.
-    // NOTE: is it wise to keep this on the index? it saves some interpolations but i'm assuming
-    // this increases proof size. since the polynomial is always the exact same, maybe it makes
-    // more sense to keep this in a lazy_static so that marlin can just refer to it when needed.
     pub l_1: LabeledPolynomial<F>,
 
     /// Lookup tables used in the circuit.
