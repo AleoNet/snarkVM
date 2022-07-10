@@ -197,7 +197,7 @@ mod tests {
         let directory = temp_dir();
 
         let program_string = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;

@@ -90,6 +90,19 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         stack.circuit_key(function_name)
     }
 
+    /// Inserts the given proving key and verifying key, for the given program ID and function name.
+    #[inline]
+    pub fn insert_circuit_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        proving_key: ProvingKey<N>,
+        verifying_key: VerifyingKey<N>,
+    ) {
+        // Add the circuit key to the mapping.
+        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
+    }
+
     /// Authorizes the request(s) to execute the program function.
     #[inline]
     pub fn authorize<R: Rng + CryptoRng>(
@@ -165,42 +178,24 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
 
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
-        // Ensure the request is well-formed.
-        ensure!(request.verify(), "Request is invalid");
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
-        // Initialize the execution.
-        let execution = Execution::new();
-        // Execute the circuit.
-        let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
 
-        Ok((response, execution))
-    }
-
-    /// Executes a program function on the given request, proving key, and verifying key.
-    #[inline]
-    pub fn execute_synthesized<R: Rng + CryptoRng>(
-        &self,
-        authorization: Authorization<N>,
-        proving_key: &ProvingKey<N>,
-        verifying_key: &VerifyingKey<N>,
-        rng: &mut R,
-    ) -> Result<(Response<N>, Execution<N>)> {
-        trace!("Starting execute");
-
-        // Retrieve the main request (without popping it).
-        let request = authorization.peek_next()?;
-        // Ensure the request is well-formed.
-        ensure!(request.verify(), "Request is invalid");
-        // Add the circuit key to the mapping.
-        self.circuit_keys.insert(
-            request.program_id(),
-            request.function_name(),
-            proving_key.clone(),
-            verifying_key.clone(),
+        // Ensure the network ID matches.
+        ensure!(
+            **request.network_id() == N::ID,
+            "Network ID mismatch. Expected {}, but found {}",
+            N::ID,
+            request.network_id()
         );
-        // Prepare the stack.
-        let mut stack = self.get_stack(request.program_id())?;
+        // Ensure that the function exists.
+        if !stack.program().contains_function(request.function_name()) {
+            bail!("Function '{}' does not exist.", request.function_name())
+        }
+
+        // Ensure the request is well-formed.
+        ensure!(request.verify(), "Request is invalid");
+
         // Initialize the execution.
         let execution = Execution::new();
         // Execute the circuit.

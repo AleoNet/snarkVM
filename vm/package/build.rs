@@ -20,15 +20,13 @@ impl<N: Network> Package<N> {
     /// Builds the package.
     pub fn build<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(&self) -> Result<()> {
         // Retrieve the main program.
-        let program = self.program_file.program();
+        let program = self.program();
         // Retrieve the program ID.
         let program_id = program.id();
 
         // Prepare the build directory.
-        let mut build_directory = self.directory.clone();
-        build_directory.push("build");
-
-        // Create the build directory.
+        let build_directory = self.build_directory();
+        // Create the build directory if it does not exist.
         if !build_directory.exists() {
             std::fs::create_dir_all(&build_directory)?;
         }
@@ -36,14 +34,13 @@ impl<N: Network> Package<N> {
         // Write the AVM file.
         let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
 
-        // Create the process.
-        let process = Process::<N, A>::new(program.clone())?;
+        // Construct the process.
+        let process = self.get_process::<A>()?;
 
         // Load each function circuit.
         for function_name in program.functions().keys() {
             // Synthesize the proving and verifying key.
             let (proving_key, verifying_key) = process.circuit_key(program_id, function_name)?;
-
             // Create the prover.
             let _prover = ProverFile::create(&build_directory, function_name, proving_key)?;
             // Create the verifier.

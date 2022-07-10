@@ -538,6 +538,14 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         self.console_registers.clear();
         self.circuit_registers.clear();
 
+        // Ensure the network ID matches.
+        ensure!(
+            **request.network_id() == N::ID,
+            "Network ID mismatch. Expected {}, but found {}",
+            N::ID,
+            request.network_id()
+        );
+
         // Retrieve the function from the program.
         let function = self.program.get_function(request.function_name())?;
         // Ensure the number of inputs matches the number of input statements.

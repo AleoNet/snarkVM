@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn test_from_str() {
         let program_string = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;
@@ -277,7 +277,7 @@ function compute:
         let directory = temp_dir();
 
         let program_string = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;

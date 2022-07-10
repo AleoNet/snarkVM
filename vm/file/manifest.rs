@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::{Network, ProgramID};
+use crate::prelude::{Address, Network, PrivateKey, ProgramID};
 use snarkvm_compiler::Program;
 
 use anyhow::{anyhow, ensure, Result};
@@ -28,10 +28,14 @@ use std::{
 const MANIFEST_FILE_NAME: &str = "program.json";
 
 pub struct Manifest<N: Network> {
-    /// The program ID.
-    program_id: ProgramID<N>,
     /// The file path.
     path: PathBuf,
+    /// The program ID.
+    program_id: ProgramID<N>,
+    /// The development private key.
+    development_private_key: PrivateKey<N>,
+    /// The development address.
+    development_address: Address<N>,
 }
 
 impl<N: Network> Manifest<N> {
@@ -42,12 +46,23 @@ impl<N: Network> Manifest<N> {
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
 
+        // Initialize an RNG.
+        let rng = &mut rand::thread_rng();
+
+        // Initialize a new development private key.
+        let private_key = PrivateKey::<N>::new(rng)?;
+        let address = Address::try_from(&private_key)?;
+
         // Construct the initial program manifest string.
         let manifest_string = format!(
             r#"{{
     "program": "{id}",
     "version": "0.0.0",
     "description": "",
+    "development": {{
+        "private_key": "{private_key}",
+        "address": "{address}"
+    }},
     "license": "MIT"
 }}
 "#
@@ -62,7 +77,7 @@ impl<N: Network> Manifest<N> {
         File::create(&path)?.write_all(manifest_string.as_bytes())?;
 
         // Return the manifest file.
-        Ok(Self { program_id: *id, path })
+        Ok(Self { path, program_id: *id, development_private_key: private_key, development_address: address })
     }
 
     /// Opens the manifest file for reading.
@@ -82,12 +97,26 @@ impl<N: Network> Manifest<N> {
         // Retrieve the program ID.
         let id_string = json["program"].as_str().ok_or_else(|| anyhow!("Program ID not found."))?;
         let id = ProgramID::from_str(id_string)?;
-
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(id.name()), "Program name is invalid (reserved): {id}");
 
+        // Retrieve the development private key.
+        let development_private_key_string =
+            json["development"]["private_key"].as_str().ok_or_else(|| anyhow!("Development private key not found."))?;
+        let development_private_key = PrivateKey::from_str(development_private_key_string)?;
+
+        // Retrieve the development address.
+        let development_address_string =
+            json["development"]["address"].as_str().ok_or_else(|| anyhow!("Development address not found."))?;
+        let development_address = Address::from_str(development_address_string)?;
+        // Ensure the development address matches the development private key.
+        ensure!(
+            development_address == Address::try_from(&development_private_key)?,
+            "Development address does not match development private key."
+        );
+
         // Return the manifest file.
-        Ok(Self { program_id: id, path })
+        Ok(Self { path, program_id: id, development_private_key, development_address })
     }
 
     /// Returns `true` if the manifest file exists at the given path.
@@ -103,13 +132,23 @@ impl<N: Network> Manifest<N> {
         MANIFEST_FILE_NAME
     }
 
+    /// Returns the file path.
+    pub const fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
     /// Returns the program ID.
     pub const fn program_id(&self) -> &ProgramID<N> {
         &self.program_id
     }
 
-    /// Returns the file path.
-    pub const fn path(&self) -> &PathBuf {
-        &self.path
+    /// Returns the development private key.
+    pub const fn development_private_key(&self) -> &PrivateKey<N> {
+        &self.development_private_key
+    }
+
+    /// Returns the development address.
+    pub const fn development_address(&self) -> &Address<N> {
+        &self.development_address
     }
 }
