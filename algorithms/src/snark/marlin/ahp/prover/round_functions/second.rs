@@ -30,8 +30,6 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
-use rand_core::RngCore;
-
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -46,12 +44,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut polynomials = Vec::new();
 
         for i in 0..batch_size {
-            polynomials.push(PolynomialInfo::new(witness_label("f", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("z_2", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("omega_s_1", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("omega_z_2", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("f", i), None, None));
+            polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, None));
+            polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, None));
+            polynomials.push(PolynomialInfo::new(witness_label("z_2", i), None, None));
+            polynomials.push(PolynomialInfo::new(witness_label("omega_s_1", i), None, None));
+            polynomials.push(PolynomialInfo::new(witness_label("omega_z_2", i), None, None));
         }
         polynomials.push(PolynomialInfo::new("table".to_string(), None, None));
         polynomials.push(PolynomialInfo::new("delta_table_omega".to_string(), None, None));
@@ -136,7 +134,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     *delta,
                     *epsilon,
                     &state,
-                    &mut rand::thread_rng(),
                 )
             })
             .collect::<Vec<prover::SecondEntry<F>>>();
@@ -146,14 +143,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let oracles = prover::SecondOracles { batches, table, delta_table_omega };
         assert!(oracles.matches_info(&Self::second_round_polynomial_info(batch_size)));
         state.verifier_first_message = Some(verifier_message.clone());
-        state.second_round_oracles = Some(Arc::new(oracles.clone()));
+        state.second_round_oracles = Some(Arc::new(oracles));
         end_timer!(round_time);
 
         Ok(state)
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn calculate_table_polys<'a, R: RngCore>(
+    fn calculate_table_polys<'a>(
         label_f: impl ToString,
         label_s_1: impl ToString,
         label_s_2: impl ToString,
@@ -170,8 +167,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         delta: F,
         epsilon: F,
         state: &prover::State<'a, F, MM>,
-        rng: &mut R,
-    ) -> prover::SecondEntry<'a, F> {
+    ) -> prover::SecondEntry<F> {
         let constraint_domain = state.constraint_domain;
         let zeta_squared = zeta.square();
 
@@ -186,16 +182,31 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             )
             .collect::<Vec<F>>();
 
-        let (f_poly, f) =
-            Self::calculate_opening_and_commitment_polys(label_f, &f_evals, true, state, Some(F::rand(rng)));
+        let f_poly = LabeledPolynomial::new(
+            label_f.to_string(),
+            Evaluations::from_vec_and_domain(f_evals.clone(), constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation()),
+            None,
+            None,
+        );
         let mut s_evals = f_evals.clone();
         s_evals.extend(table_evals);
         // Split into alternating halves.
         let (s_1_evals, s_2_evals): (Vec<F>, Vec<F>) = s_evals.chunks(2).map(|els| (els[0], els[1])).unzip();
-        let (s_1_poly, s_1) =
-            Self::calculate_opening_and_commitment_polys(label_s_1, &s_1_evals, true, state, Some(F::rand(rng)));
-        let (s_2_poly, s_2) =
-            Self::calculate_opening_and_commitment_polys(label_s_2, &s_2_evals, true, state, Some(F::rand(rng)));
+        let s_1_poly = LabeledPolynomial::new(
+            label_s_1.to_string(),
+            Evaluations::from_vec_and_domain(s_1_evals.clone(), constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation()),
+            None,
+            None,
+        );
+        let s_2_poly = LabeledPolynomial::new(
+            label_s_2.to_string(),
+            Evaluations::from_vec_and_domain(s_2_evals.clone(), constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation()),
+            None,
+            None,
+        );
 
         // Calculate z_2
         // Compute divisions for each constraint
@@ -230,40 +241,32 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_2_evals.push(l_1);
         }
 
-        let (z_2_poly, z_2) =
-            Self::calculate_opening_and_commitment_polys(label_z_2, &z_2_evals, true, state, Some(F::rand(rng)));
+        let z_2_poly = LabeledPolynomial::new(
+            label_z_2.to_string(),
+            Evaluations::from_vec_and_domain(z_2_evals.clone(), constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation()),
+            None,
+            None,
+        );
 
         let s_1_omega_evals = &[&s_1_evals[1..], &[s_1_evals[0]]].concat();
-        let (s_1_omega_poly, s_1_omega) = Self::calculate_opening_and_commitment_polys(
-            label_s_1_omega,
-            s_1_omega_evals,
-            true,
-            state,
-            Some(F::rand(rng)),
+        let s_1_omega_poly = LabeledPolynomial::new(
+            label_s_1_omega.to_string(),
+            Evaluations::from_vec_and_domain(s_1_omega_evals.to_vec(), constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation()),
+            None,
+            None,
         );
 
         let z_2_omega_evals = &[&z_2_evals[1..], &[z_2_evals[0]]].concat();
-        let (z_2_omega_poly, z_2_omega) = Self::calculate_opening_and_commitment_polys(
-            label_z_2_omega,
-            z_2_omega_evals,
-            true,
-            state,
-            Some(F::rand(rng)),
+        let z_2_omega_poly = LabeledPolynomial::new(
+            label_z_2_omega.to_string(),
+            Evaluations::from_vec_and_domain(z_2_omega_evals.to_vec(), constraint_domain)
+                .interpolate_with_pc_by_ref(state.ifft_precomputation()),
+            None,
+            None,
         );
 
-        prover::SecondEntry {
-            f,
-            s_1,
-            s_2,
-            z_2,
-            s_1_omega,
-            z_2_omega,
-            f_poly,
-            s_1_poly,
-            s_2_poly,
-            z_2_poly,
-            s_1_omega_poly,
-            z_2_omega_poly,
-        }
+        prover::SecondEntry { f_poly, s_1_poly, s_2_poly, z_2_poly, s_1_omega_poly, z_2_omega_poly }
     }
 }

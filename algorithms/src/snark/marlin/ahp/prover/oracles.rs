@@ -104,27 +104,18 @@ impl<'a, F: PrimeField> FirstEntry<'a, F> {
 
 /// The second set of prover oracles.
 #[derive(Debug, Clone)]
-pub struct SecondOracles<'a, F: PrimeField> {
-    pub(in crate::snark::marlin) batches: Vec<SecondEntry<'a, F>>,
+pub struct SecondOracles<F: PrimeField> {
+    pub(in crate::snark::marlin) batches: Vec<SecondEntry<F>>,
     /// The polynomial resulting from interpolating the table vector.
     pub table: LabeledPolynomial<F>,
     /// The table polynomial, shifted by one and multiplied by `delta`.
     pub delta_table_omega: LabeledPolynomial<F>,
 }
 
-impl<'a, F: PrimeField> SecondOracles<'a, F> {
-    /// Iterate over the polynomials output by the prover in the first round.
-    /// Intended for use when committing.
-    #[allow(clippy::needless_collect)]
-    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
-        let t = self.batches.iter_mut().flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
-        t.into_iter().chain([self.table.clone().into(), self.delta_table_omega.clone().into()])
-    }
-
-    /// Iterate over the polynomials output by the prover in the first round.
-    /// Intended for use when opening.
-    pub fn iter_for_open(&'a self) -> impl Iterator<Item = &'a LabeledPolynomial<F>> {
-        self.batches.iter().flat_map(|b| b.iter_for_open()).chain([&self.table, &self.delta_table_omega].into_iter())
+impl<F: PrimeField> SecondOracles<F> {
+    /// Iterate over the polynomials output by the prover in the second round.
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        self.batches.iter().flat_map(|b| b.iter()).chain([&self.table, &self.delta_table_omega].into_iter())
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
@@ -135,19 +126,7 @@ impl<'a, F: PrimeField> SecondOracles<'a, F> {
 }
 
 #[derive(Debug, Clone)]
-pub(in crate::snark::marlin) struct SecondEntry<'a, F: PrimeField> {
-    /// The evaluations of `f`.
-    pub(super) f: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `s_1`.
-    pub(super) s_1: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `s_2`.
-    pub(super) s_2: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `z_2`.
-    pub(super) z_2: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `s_1_omega`.
-    pub(super) s_1_omega: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `z_2_omega`.
-    pub(super) z_2_omega: LabeledPolynomialWithBasis<'a, F>,
+pub(in crate::snark::marlin) struct SecondEntry<F: PrimeField> {
     /// The query vector polynomial.
     pub(super) f_poly: LabeledPolynomial<F>,
     /// The first half of the concatenated lookup polynomial.
@@ -162,46 +141,15 @@ pub(in crate::snark::marlin) struct SecondEntry<'a, F: PrimeField> {
     pub(super) z_2_omega_poly: LabeledPolynomial<F>,
 }
 
-impl<'a, F: PrimeField> SecondEntry<'a, F> {
-    /// Iterate over the polynomials output by the prover in the first round.
-    /// Intended for use when committing.
-    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
-        let f = self.f.clone();
-        self.f = LabeledPolynomialWithBasis { polynomial: vec![], info: f.info().clone() };
-
-        let s_1 = self.s_1.clone();
-        self.s_1 = LabeledPolynomialWithBasis { polynomial: vec![], info: s_1.info().clone() };
-
-        let s_2 = self.s_2.clone();
-        self.s_2 = LabeledPolynomialWithBasis { polynomial: vec![], info: s_2.info().clone() };
-
-        let z_2 = self.z_2.clone();
-        self.z_2 = LabeledPolynomialWithBasis { polynomial: vec![], info: z_2.info().clone() };
-
-        let s_1_omega = self.s_1_omega.clone();
-        self.s_1_omega = LabeledPolynomialWithBasis { polynomial: vec![], info: s_1_omega.info().clone() };
-
-        let z_2_omega = self.z_2_omega.clone();
-        self.z_2_omega = LabeledPolynomialWithBasis { polynomial: vec![], info: z_2_omega.info().clone() };
-
-        [f, s_1, s_2, z_2, s_1_omega, z_2_omega].into_iter()
-    }
-
-    /// Iterate over the polynomials output by the prover in the first round.
-    /// Intended for use when opening.
-    pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+impl<F: PrimeField> SecondEntry<F> {
+    /// Iterate over the polynomials output by the prover in the second round.
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.f_poly, &self.s_1_poly, &self.s_2_poly, &self.z_2_poly, &self.s_1_omega_poly, &self.z_2_omega_poly]
             .into_iter()
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        Some(self.f.info()) == info.get(self.f.label())
-            && Some(self.s_1.info()) == info.get(self.s_1.label())
-            && Some(self.s_2.info()) == info.get(self.s_2.label())
-            && Some(self.z_2.info()) == info.get(self.z_2.label())
-            && Some(self.s_1_omega.info()) == info.get(self.s_1_omega.label())
-            && Some(self.z_2_omega.info()) == info.get(self.z_2_omega.label())
-            && Some(self.f_poly.info()) == info.get(self.f_poly.label())
+        Some(self.f_poly.info()) == info.get(self.f_poly.label())
             && Some(self.s_1_poly.info()) == info.get(self.s_1_poly.label())
             && Some(self.s_2_poly.info()) == info.get(self.s_2_poly.label())
             && Some(self.z_2_poly.info()) == info.get(self.z_2_poly.label())

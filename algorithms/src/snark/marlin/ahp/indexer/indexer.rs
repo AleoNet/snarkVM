@@ -39,7 +39,7 @@ use snarkvm_utilities::println;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Generate the index for this constraint system.
-    pub fn index<CS: ConstraintSynthesizer<F>>(c: &CS) -> Result<Circuit<F, MM>, AHPError> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F, MM>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");

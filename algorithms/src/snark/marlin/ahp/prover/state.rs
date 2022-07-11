@@ -82,7 +82,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
 
     /// The second round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) second_round_oracles: Option<Arc<super::SecondOracles<'a, F>>>,
+    pub(in crate::snark) second_round_oracles: Option<Arc<super::SecondOracles<F>>>,
 
     /// Randomizers for z_b.
     /// The length of this list must be equal to the batch size.

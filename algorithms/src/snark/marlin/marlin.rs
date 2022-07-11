@@ -292,7 +292,7 @@ where
             let second_round_oracles = Arc::get_mut(prover_state.second_round_oracles.as_mut().unwrap()).unwrap();
             SonicKZG10::<E, FS>::commit_with_terminator(
                 &circuit_proving_key.committer_key,
-                second_round_oracles.iter_for_commit(),
+                second_round_oracles.iter().map(Into::into),
                 terminator,
                 Some(zk_rng),
             )?
@@ -409,7 +409,7 @@ where
             .circuit
             .iter() // 15 items
             .chain(first_round_oracles.iter_for_open()) // 4 * batch_size + (MM::ZK as usize) items
-            .chain(second_round_oracles.iter_for_open()) // 6 * batch_size + 2 items
+            .chain(second_round_oracles.iter()) // 6 * batch_size + 2 items
             .chain(third_oracles.iter()) // 1 item
             .chain(fourth_oracles.iter()) // 1 item
             .chain(fifth_oracles.iter()) // 3 items
@@ -432,7 +432,7 @@ where
 
         let lookup_commitments = second_commitments.chunks_exact(6);
         let (table, delta_table_omega) =
-            (lookup_commitments.remainder()[0].commitment(), lookup_commitments.remainder()[1].commitment());
+            (*lookup_commitments.remainder()[0].commitment(), *lookup_commitments.remainder()[1].commitment());
         let lookup_commitments = lookup_commitments
             .map(|c| proof::LookupCommitments {
                 f: *c[0].commitment(),
@@ -450,8 +450,8 @@ where
             mask_poly,
 
             lookup_commitments,
-            table: *table,
-            delta_table_omega: *delta_table_omega,
+            table,
+            delta_table_omega,
 
             g_1: *third_commitments[0].commitment(),
 
@@ -675,13 +675,13 @@ where
 
         // --------------------------------------------------------------------
         // Fourth round
-        Self::absorb_labeled_with_msg(&fourth_commitments, &proof.msg, &mut sponge);
+        Self::absorb_labeled(&fourth_commitments, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Fifth round
-        Self::absorb_labeled(&fifth_commitments, &mut sponge);
+        Self::absorb_labeled_with_msg(&fifth_commitments, &proof.msg, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_fifth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
