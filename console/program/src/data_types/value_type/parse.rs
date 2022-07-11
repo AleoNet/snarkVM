@@ -65,7 +65,7 @@ impl<N: Network> Display for ValueType<N> {
             Self::Public(plaintext_type) => write!(f, "{plaintext_type}.public"),
             Self::Private(plaintext_type) => write!(f, "{plaintext_type}.private"),
             Self::Record(identifier) => write!(f, "{identifier}.record"),
-            Self::ExternalRecord(locator) => write!(f, "{locator}"),
+            Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
         }
     }
 }
@@ -115,8 +115,8 @@ mod tests {
 
         // ExternalRecord type.
         assert_eq!(
-            Ok(("", ValueType::<CurrentNetwork>::from_str("howard.aleo/message")?)),
-            ValueType::<CurrentNetwork>::parse("howard.aleo/message")
+            Ok(("", ValueType::<CurrentNetwork>::from_str("howard.aleo/message.record")?)),
+            ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")
         );
 
         Ok(())
@@ -175,7 +175,10 @@ mod tests {
 
         assert_eq!(ValueType::<CurrentNetwork>::from_str("token.record")?.to_string(), "token.record");
 
-        assert_eq!(ValueType::<CurrentNetwork>::from_str("howard.aleo/message")?.to_string(), "howard.aleo/message");
+        assert_eq!(
+            ValueType::<CurrentNetwork>::from_str("howard.aleo/message.record")?.to_string(),
+            "howard.aleo/message.record"
+        );
 
         Ok(())
     }

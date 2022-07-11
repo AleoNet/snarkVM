@@ -205,7 +205,7 @@ mod tests {
                 ValueType::from_str("amount.public").unwrap(),
                 ValueType::from_str("amount.private").unwrap(),
                 ValueType::from_str("token.record").unwrap(),
-                ValueType::from_str("token.aleo/token").unwrap(),
+                ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
             // Compute the signed request.

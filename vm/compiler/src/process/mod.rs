@@ -33,6 +33,7 @@ use console::{
     account::PrivateKey,
     network::prelude::*,
     program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, Value},
+    types::I64,
 };
 
 use indexmap::IndexMap;
@@ -266,8 +267,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
                 }
             }
 
-            // Lastly, extend the inputs with the output IDs.
+            // Lastly, extend the inputs with the output IDs and fee.
             inputs.extend(transition.output_ids().map(|id| *id));
+            inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
 
             // Retrieve the verifying key.
             let (_, verifying_key) = self.circuit_key(transition.program_id(), transition.function_name())?;
@@ -425,11 +427,11 @@ mod tests {
 
         // use circuit::Environment;
         //
-        // assert_eq!(6348, CurrentAleo::num_constants());
-        // assert_eq!(8, CurrentAleo::num_public());
-        // assert_eq!(20598, CurrentAleo::num_private());
-        // assert_eq!(20616, CurrentAleo::num_constraints());
-        // assert_eq!(79486, CurrentAleo::num_gates());
+        // assert_eq!(22152, CurrentAleo::num_constants());
+        // assert_eq!(9, CurrentAleo::num_public());
+        // assert_eq!(20561, CurrentAleo::num_private());
+        // assert_eq!(20579, CurrentAleo::num_constraints());
+        // assert_eq!(79386, CurrentAleo::num_gates());
 
         /******************************************/
 
@@ -743,7 +745,7 @@ function transfer:
 
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!(
-            "{{ owner: {caller0}.private, balance: 5u64.private, amount: 100u64.private }}"
+            "{{ owner: {caller0}.private, balance: 0u64.private, amount: 100u64.private }}"
         ))
         .unwrap();
         let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();

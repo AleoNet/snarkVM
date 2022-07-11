@@ -24,7 +24,7 @@ impl<N: Network> Parser for RegisterType<N> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the mode from the string (ordering matters).
         alt((
-            map(Locator::parse, |locator| Self::ExternalRecord(locator)),
+            map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
             map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
             map(PlaintextType::parse, |plaintext_type| Self::Plaintext(plaintext_type)),
         ))(string)
@@ -63,7 +63,7 @@ impl<N: Network> Display for RegisterType<N> {
             Self::Plaintext(plaintext_type) => write!(f, "{plaintext_type}"),
             // Prints the record name, i.e. token.record
             Self::Record(record_name) => write!(f, "{record_name}.record"),
-            // Prints the locator, i.e. token.aleo/token
+            // Prints the locator, i.e. token.aleo/token.record
             Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
         }
     }
@@ -99,7 +99,7 @@ mod tests {
         // ExternalRecord type.
         assert_eq!(
             Ok(("", RegisterType::<CurrentNetwork>::ExternalRecord(Locator::from_str("token.aleo/token")?))),
-            RegisterType::<CurrentNetwork>::parse("token.aleo/token")
+            RegisterType::<CurrentNetwork>::parse("token.aleo/token.record")
         );
 
         Ok(())
@@ -144,7 +144,10 @@ mod tests {
         assert_eq!(RegisterType::<CurrentNetwork>::from_str("field")?.to_string(), "field");
         assert_eq!(RegisterType::<CurrentNetwork>::from_str("signature")?.to_string(), "signature");
         assert_eq!(RegisterType::<CurrentNetwork>::from_str("token.record")?.to_string(), "token.record");
-        assert_eq!(RegisterType::<CurrentNetwork>::from_str("token.aleo/token")?.to_string(), "token.aleo/token");
+        assert_eq!(
+            RegisterType::<CurrentNetwork>::from_str("token.aleo/token.record")?.to_string(),
+            "token.aleo/token.record"
+        );
         Ok(())
     }
 }

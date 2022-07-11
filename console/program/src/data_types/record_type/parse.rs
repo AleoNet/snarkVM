@@ -229,19 +229,19 @@ record message:
     #[test]
     fn test_display_fails() {
         // Duplicate identifier.
-        let candidate = RecordType::<CurrentNetwork>::parse(
+        let candidate = RecordType::<CurrentNetwork>::from_str(
             "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field.public;\n    first as field.constant;",
         );
         assert!(candidate.is_err());
 
         // Visibility is missing in entry.
-        let candidate = RecordType::<CurrentNetwork>::parse(
+        let candidate = RecordType::<CurrentNetwork>::from_str(
             "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as field;\n    first as field.private;",
         );
         assert!(candidate.is_err());
 
         // Attempted to store another record inside.
-        let candidate = RecordType::<CurrentNetwork>::parse(
+        let candidate = RecordType::<CurrentNetwork>::from_str(
             "record message:\n    owner as address.private;\n    balance as u64.public;\n    first as token.record;",
         );
         assert!(candidate.is_err());

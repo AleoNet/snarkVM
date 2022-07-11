@@ -47,7 +47,7 @@ pub struct Transition<N: Network> {
     /// The transition public key.
     tpk: Group<N>,
     /// The network fee.
-    fee: u64,
+    fee: i64,
 }
 
 impl<N: Network> Transition<N> {
@@ -59,7 +59,7 @@ impl<N: Network> Transition<N> {
         outputs: Vec<Output<N>>,
         proof: Proof<N>,
         tpk: Group<N>,
-        fee: u64,
+        fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
         let id = N::hash_bhp1024(
@@ -73,7 +73,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Initializes a new transition from a request and response.
-    pub fn from(request: &Request<N>, response: &Response<N>, proof: Proof<N>, fee: u64) -> Result<Self> {
+    pub fn from(request: &Request<N>, response: &Response<N>, proof: Proof<N>, fee: i64) -> Result<Self> {
         let program_id = *request.program_id();
         let function_name = *request.function_name();
         let num_inputs = request.inputs().len();
@@ -249,6 +249,11 @@ impl<N: Network> Transition<N> {
     /// Returns the transition public key.
     pub const fn tpk(&self) -> &Group<N> {
         &self.tpk
+    }
+
+    /// Returns the network fee.
+    pub const fn fee(&self) -> &i64 {
+        &self.fee
     }
 }
 

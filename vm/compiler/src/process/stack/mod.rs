@@ -690,8 +690,20 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // If the program and function is not a special function, then ensure the i64 balance is positive.
         if !(program_id.to_string() == "stake.aleo" && function.name().to_string() == "initialize") {
+            use circuit::{Eject, MSB};
+
+            // Ensure the i64 balance MSB is false.
+            A::assert(!i64_balance.msb());
             // Ensure the i64 balance matches the field balance.
-            A::assert_eq(i64_balance.to_field(), field_balance);
+            A::assert_eq(i64_balance.to_field(), &field_balance);
+
+            // Inject the field balance as `Mode::Public`.
+            let public_balance = circuit::Field::<A>::new(circuit::Mode::Public, field_balance.eject_value());
+            // Ensure the injected i64 balance matches.
+            A::assert_eq(public_balance, field_balance);
+
+            #[cfg(debug_assertions)]
+            println!("Logging fee: {}", i64_balance.eject_value());
         }
 
         #[cfg(debug_assertions)]
@@ -737,7 +749,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             // Execute the circuit.
             let proof = proving_key.prove(&assignment, rng)?;
             // Add the transition to the execution.
-            execution.push(Transition::from(&request, &response, proof, 0u64)?);
+            execution.push(Transition::from(&request, &response, proof, 0i64)?);
             // Return the response.
             Ok(response)
         } else {
