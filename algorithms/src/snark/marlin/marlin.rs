@@ -79,8 +79,8 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<CS: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
-        c: &CS,
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
+        c: &C,
         rng: &mut R,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let circuit = AHPForR1CS::<_, MM>::index(c)?;
@@ -91,9 +91,9 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     /// Generates the circuit proving and verifying keys.
     /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
-    pub fn circuit_setup<CS: ConstraintSynthesizer<E::Fr>>(
+    pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
-        circuit: &CS,
+        circuit: &C,
     ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
@@ -215,8 +215,8 @@ where
         srs
     }
 
-    fn setup<CS: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
-        circuit: &CS,
+    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+        circuit: &C,
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         match srs {
@@ -227,9 +227,9 @@ where
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn prove_batch_with_terminator<CS: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+    fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit_proving_key: &CircuitProvingKey<E, MM>,
-        circuits: &[CS],
+        circuits: &[C],
         terminator: &AtomicBool,
         zk_rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
@@ -713,7 +713,7 @@ pub mod test {
     }
 
     impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+        fn generate_constraints<C: ConstraintSystem<ConstraintF>>(&self, cs: &mut C) -> Result<(), SynthesisError> {
             let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
             let c = cs.alloc_input(
@@ -796,7 +796,7 @@ mod lookup_test {
     }
 
     impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+        fn generate_constraints<C: ConstraintSystem<ConstraintF>>(&self, cs: &mut C) -> Result<(), SynthesisError> {
             cs.add_lookup_table(self.table.clone());
             let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
