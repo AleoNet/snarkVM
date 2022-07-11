@@ -126,14 +126,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
-        // Compute zeta
-        // TODO: this needs to be derived from something, in plonk this is a hash of the transcript
-        // but for marlin i dont think we have a transcript - although we probably can do something
-        // similar with just hashing the indexed information.
-        let zeta = F::one();
-        let delta = F::one();
-        let epsilon = F::one();
-
         let mut mul_constraint_evals = vec![F::zero(); num_constraints];
         ics.mul_constraints.iter().for_each(|index| mul_constraint_evals[*index] = F::one());
         let s_m_evals = Evaluations::from_vec_and_domain(mul_constraint_evals, constraint_domain);
@@ -154,47 +146,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let s_l = LabeledPolynomial::new(
             "s_l".to_string(),
             s_l_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
-            None,
-            None,
-        );
-
-        let zeta_squared = zeta.square();
-
-        // Compute t and delta_t_omega poly
-        let mut t_evals = ics
-            .lookup_constraints
-            .iter()
-            .flat_map(|entry| {
-                entry
-                    .table
-                    .table
-                    .iter()
-                    .map(|(key, value)| key[0] + zeta * key[1] + zeta_squared * value)
-                    .collect::<Vec<F>>()
-            })
-            .collect::<Vec<F>>();
-        // If the vector isn't empty we need to fill it with one of its elements.
-        if !t_evals.is_empty() {
-            t_evals.resize(num_constraints, t_evals[0]);
-        } else {
-            t_evals.resize(num_constraints, F::zero());
-        }
-
-        let t = LabeledPolynomial::new(
-            "t".to_string(),
-            Evaluations::from_vec_and_domain(t_evals.clone(), constraint_domain)
-                .interpolate_with_pc_by_ref(&ifft_precomputation),
-            None,
-            None,
-        );
-
-        let mut delta_t_omega_evals = [&t_evals[1..], &[t_evals[0]]].concat();
-        delta_t_omega_evals.iter_mut().for_each(|e| *e *= delta);
-
-        let delta_t_omega = LabeledPolynomial::new(
-            "delta_t_omega".to_string(),
-            Evaluations::from_vec_and_domain(delta_t_omega_evals.clone(), constraint_domain)
-                .interpolate_with_pc_by_ref(&ifft_precomputation),
             None,
             None,
         );
@@ -220,16 +171,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
-            zeta,
-            delta,
-            epsilon,
             s_m,
             s_l,
             s_l_evals: lookup_constraint_evals,
-            t,
-            t_evals,
-            delta_t_omega,
-            delta_t_omega_evals,
             l_1,
             lookup_tables,
             mode: PhantomData,
@@ -246,8 +190,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         map.insert("s_m".to_string(), PolynomialInfo::new("s_m".to_string(), None, None));
         map.insert("s_l".to_string(), PolynomialInfo::new("s_l".to_string(), None, None));
-        map.insert("t".to_string(), PolynomialInfo::new("t".to_string(), None, None));
-        map.insert("delta_t_omega".to_string(), PolynomialInfo::new("delta_t_omega".to_string(), None, None));
         map.insert("l_1".to_string(), PolynomialInfo::new("l_1".to_string(), None, None));
         map
     }

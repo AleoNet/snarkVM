@@ -14,21 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::convert::TryInto;
 use std::collections::BTreeMap;
 
 use crate::{
-    fft::DensePolynomial,
+    fft,
+    fft::{
+        domain::IFFTPrecomputation,
+        polynomial::PolyMultiplier,
+        DensePolynomial,
+        EvaluationDomain,
+        SparsePolynomial,
+    },
     polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{indexer::CircuitInfo, verifier, AHPForR1CS},
+        ahp::{
+            indexer::{CircuitInfo, Matrix},
+            verifier,
+            AHPForR1CS,
+            UnnormalizedBivariateLagrangePoly,
+        },
         prover,
         MarlinMode,
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
-#[cfg(not(feature = "parallel"))]
 use itertools::Itertools;
 use rand_core::RngCore;
 
@@ -42,112 +54,191 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Output the degree bounds of oracles in the third round.
-    pub fn third_round_polynomial_info(_info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
-        [PolynomialInfo::new("h_1".into(), None, None)].into_iter().map(|info| (info.label().into(), info)).collect()
+    pub fn third_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
+        [PolynomialInfo::new("g_1".into(), Some(constraint_domain_size - 2), Self::zk_bound())]
+            .into_iter()
+            .map(|info| (info.label().into(), info))
+            .collect()
     }
 
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &verifier::SecondMessage<F>,
-        state: prover::State<'a, F, MM>,
+        mut state: prover::State<'a, F, MM>,
         _r: &mut R,
     ) -> (prover::ThirdOracles<F>, prover::State<'a, F, MM>) {
+        let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
+
         let constraint_domain = state.constraint_domain;
+        let zk_bound = Self::zk_bound();
 
-        let theta = verifier_message.theta;
+        let verifier::SecondMessage { alpha, eta_b, eta_c, batch_combiners, .. } = verifier_message;
 
-        let verifier::FirstMessage { batch_combiners, .. } = state
-            .verifier_first_message
-            .as_ref()
-            .expect("prover::State should include verifier_first_msg when prover_third_round is called");
+        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&state, *alpha, *eta_b, *eta_c, batch_combiners);
 
-        let zeta_squared = state.index.zeta.square();
-        let one_plus_delta = F::one() + state.index.delta;
-        let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
-        let row = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
+        let z_time = start_timer!(|| "Compute z poly");
+        let z = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
-            .map(|(b, combiner)| {
-                let mut row_check = {
-                    let z_a = b.z_a_poly.polynomial().as_dense().unwrap();
-                    let mut z_b = b.z_b_poly.polynomial().as_dense().unwrap().clone();
-                    let mut z_c = b.z_c_poly.polynomial().as_dense().unwrap().clone();
-                    let f = b.f_poly.polynomial().as_dense().unwrap();
-                    let mul_check = state.index.s_m.polynomial().as_dense().unwrap() * &(&(z_a * &z_b) - &z_c);
-                    cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= state.index.zeta);
-                    cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= zeta_squared);
-                    let lookup_check =
-                        state.index.s_l.polynomial().as_dense().unwrap() * &(&(&(z_a + &z_b) + &z_c) - f);
-
-                    &mul_check + &lookup_check
-                };
-
-                let lookup_poly = {
-                    let mut f = b.f_poly.polynomial().as_dense().unwrap().clone();
-                    let mut s_1 = b.s_1_poly.polynomial().as_dense().unwrap().clone();
-                    let mut s_2 = b.s_2_poly.polynomial().as_dense().unwrap().clone();
-                    let mut z_2 = b.z_2_poly.polynomial().as_dense().unwrap().clone();
-                    let s_1_omega = b.s_1_omega_poly.polynomial().as_dense().unwrap();
-                    let z_2_omega = b.z_2_omega_poly.polynomial().as_dense().unwrap();
-                    let mut t = state.index.t.polynomial().as_dense().unwrap().clone();
-                    let delta_t_omega = state.index.delta_t_omega.polynomial().as_dense().unwrap();
-                    let l_1 = state.index.l_1.polynomial().as_dense().unwrap();
-                    let first = {
-                        if f.degree() > 0 {
-                            f.coeffs[0] += state.index.epsilon;
-                        } else {
-                            f.coeffs.push(state.index.epsilon);
-                        }
-
-                        if t.degree() > 0 {
-                            t.coeffs[0] += epsilon_one_plus_delta;
-                        } else {
-                            t.coeffs.push(epsilon_one_plus_delta);
-                        }
-
-                        let a = &t + delta_t_omega;
-                        &(&z_2.clone() * &(f * one_plus_delta)) * &a
-                    };
-
-                    let second = {
-                        if s_1.degree() > 0 {
-                            s_1.coeffs[0] += epsilon_one_plus_delta;
-                        } else {
-                            s_1.coeffs.push(epsilon_one_plus_delta);
-                        }
-                        let a = &s_1 + &(s_2.clone() * state.index.delta);
-                        if s_2.degree() > 0 {
-                            s_2.coeffs[0] += epsilon_one_plus_delta;
-                        } else {
-                            s_2.coeffs.push(epsilon_one_plus_delta);
-                        }
-                        let b = &s_2 + &(s_1_omega * state.index.delta);
-                        &(&(z_2_omega * -F::one()) * &a) * &b
-                    };
-
-                    z_2.coeffs[0] -= F::one();
-                    let third = &z_2 * l_1;
-
-                    &(&first + &second) + &third
-                };
-
-                row_check += &lookup_poly;
-
-                // Apply linear combination coefficient
-                cfg_iter_mut!(row_check.coeffs).for_each(|c| *c *= combiner);
-                row_check
+            .zip(&state.x_poly)
+            .map(|((b, &coeff), x_poly)| {
+                let mut z = b.w_poly.polynomial().as_dense().unwrap().mul_by_vanishing_poly(state.input_domain);
+                // Zip safety: `x_poly` is smaller than `z_poly`.
+                z.coeffs.iter_mut().zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
+                cfg_iter_mut!(z.coeffs).for_each(|z| *z *= &coeff);
+                z
             })
             .sum::<DensePolynomial<F>>();
+        assert!(z.degree() <= constraint_domain.size());
 
-        let mut h_1 = state.h_1.as_ref().unwrap().clone();
-        cfg_iter_mut!(h_1.coeffs).for_each(|c| *c *= theta);
+        end_timer!(z_time);
 
-        let (div, rem) = row.divide_by_vanishing_poly(constraint_domain).unwrap();
-        assert!(rem.is_zero());
-        h_1 += &div;
+        let sumcheck_lhs = Self::calculate_lhs(&state, t, summed_z_m, z, *alpha);
 
-        let oracles = prover::ThirdOracles { h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None) };
+        debug_assert!(
+            sumcheck_lhs.evaluate_over_domain_by_ref(constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
+        );
+
+        let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
+        let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
+        state.h_1 = Some(h_1);
+        let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
+        drop(x_g_1);
+        end_timer!(sumcheck_time);
+
+        assert!(g_1.degree() <= constraint_domain.size() - 2);
+        // assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
+
+        let oracles = prover::ThirdOracles {
+            g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), zk_bound),
+        };
         assert!(oracles.matches_info(&Self::third_round_polynomial_info(&state.index.index_info)));
 
+        state.verifier_second_message = Some(verifier_message.clone());
+        end_timer!(round_time);
+
         (oracles, state)
+    }
+
+    fn calculate_lhs(
+        state: &prover::State<F, MM>,
+        t: DensePolynomial<F>,
+        summed_z_m: DensePolynomial<F>,
+        z: DensePolynomial<F>,
+        alpha: F,
+    ) -> DensePolynomial<F> {
+        let constraint_domain = state.constraint_domain;
+        let q_1_time = start_timer!(|| "Compute LHS of sumcheck");
+
+        let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
+        assert_eq!(MM::ZK, mask_poly.is_some());
+
+        let mul_domain_size = (constraint_domain.size() + summed_z_m.coeffs.len()).max(t.coeffs.len() + z.len());
+        let mul_domain =
+            EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
+        let mut multiplier = PolyMultiplier::new();
+        multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
+        multiplier.add_polynomial(summed_z_m, "summed_z_m");
+        multiplier.add_polynomial(z, "z");
+        multiplier.add_polynomial(t, "t");
+        let r_alpha_x_evals = {
+            let r_alpha_x_evals = constraint_domain
+                .batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(alpha, &mul_domain);
+            fft::Evaluations::from_vec_and_domain(r_alpha_x_evals, mul_domain)
+        };
+        multiplier.add_evaluation(r_alpha_x_evals, "r_alpha_x");
+        let mut lhs = multiplier
+            .element_wise_arithmetic_4_over_domain(mul_domain, ["r_alpha_x", "summed_z_m", "z", "t"], |a, b, c, d| {
+                a * b - c * d
+            })
+            .unwrap();
+
+        lhs += &mask_poly.map_or(SparsePolynomial::zero(), |p| p.polynomial().as_sparse().unwrap().clone());
+        end_timer!(q_1_time);
+        lhs
+    }
+
+    fn calculate_summed_z_m_and_t(
+        state: &prover::State<F, MM>,
+        alpha: F,
+        eta_b: F,
+        eta_c: F,
+        batch_combiners: &[F],
+    ) -> (DensePolynomial<F>, DensePolynomial<F>) {
+        let constraint_domain = state.constraint_domain;
+        let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
+
+        let ifft_precomputation = &state.index.ifft_precomputation;
+        let first_msg = state.first_round_oracles.as_ref().unwrap();
+        let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
+        // let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
+        job_pool.add_job(|| {
+            cfg_iter!(first_msg.batches)
+                .zip_eq(batch_combiners)
+                .map(|(entry, combiner)| {
+                    let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
+                    let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
+                    let mut z_c = entry.z_c_poly.polynomial().as_dense().unwrap().clone();
+                    assert!(z_a.degree() < constraint_domain.size());
+                    if MM::ZK {
+                        assert_eq!(z_b.degree(), constraint_domain.size());
+                    } else {
+                        assert!(z_b.degree() < constraint_domain.size());
+                    }
+
+                    let mut summed_z_m = {
+                        cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_b);
+                        cfg_iter_mut!(z_c.coeffs).for_each(|c| *c *= eta_c);
+                        &(z_a + &z_b) + &z_c
+                    };
+
+                    // Multiply by linear combination coefficient.
+                    cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
+
+                    // assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
+                    end_timer!(summed_z_m_poly_time);
+                    summed_z_m
+                })
+                .sum::<DensePolynomial<_>>()
+        });
+
+        job_pool.add_job(|| {
+            let t_poly_time = start_timer!(|| "Compute t poly");
+
+            let r_alpha_x_evals =
+                constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
+            let t = Self::calculate_t(
+                &[&state.index.a, &state.index.b, &state.index.c],
+                [F::one(), eta_b, eta_c],
+                state.input_domain,
+                state.constraint_domain,
+                &r_alpha_x_evals,
+                ifft_precomputation,
+            );
+            end_timer!(t_poly_time);
+            t
+        });
+        let [summed_z_m, t]: [DensePolynomial<F>; 2] = job_pool.execute_all().try_into().unwrap();
+        (summed_z_m, t)
+    }
+
+    fn calculate_t<'a>(
+        matrices: &[&'a Matrix<F>],
+        matrix_randomizers: [F; 3],
+        input_domain: EvaluationDomain<F>,
+        constraint_domain: EvaluationDomain<F>,
+        r_alpha_x_on_h: &[F],
+        ifft_precomputation: &IFFTPrecomputation<F>,
+    ) -> DensePolynomial<F> {
+        let mut t_evals_on_h = vec![F::zero(); constraint_domain.size()];
+        for (matrix, eta) in matrices.iter().zip_eq(matrix_randomizers) {
+            for (r, row) in matrix.iter().enumerate() {
+                for (coeff, c) in row.iter() {
+                    let index = constraint_domain.reindex_by_subdomain(input_domain, *c);
+                    t_evals_on_h[index] += &(eta * coeff * r_alpha_x_on_h[r]);
+                }
+            }
+        }
+        fft::Evaluations::from_vec_and_domain(t_evals_on_h, constraint_domain).interpolate_with_pc(ifft_precomputation)
     }
 }

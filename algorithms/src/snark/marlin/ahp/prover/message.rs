@@ -19,13 +19,13 @@ use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
 /// The prover message in the fourth round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct FourthMessage<F: Field> {
+pub struct FifthMessage<F: Field> {
     pub sum_a: F,
     pub sum_b: F,
     pub sum_c: F,
 }
 
-impl<F: Field> ToBytes for FourthMessage<F> {
+impl<F: Field> ToBytes for FifthMessage<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

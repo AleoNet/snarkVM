@@ -21,6 +21,17 @@ use crate::snark::marlin::{witness_label, MarlinMode};
 /// First message of the verifier.
 #[derive(Clone, Debug)]
 pub struct FirstMessage<F> {
+    /// Compression factor for the table and query vector polynomials.
+    pub zeta: F,
+    /// Randomizer for `z_2`.
+    pub delta: F,
+    /// Randomizer for `z_2`.
+    pub epsilon: F,
+}
+
+/// Second message of the verifier.
+#[derive(Clone, Debug)]
+pub struct SecondMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `B`.
@@ -31,23 +42,23 @@ pub struct FirstMessage<F> {
     pub batch_combiners: Vec<F>,
 }
 
-/// Second message of the verifier.
-#[derive(Copy, Clone, Debug)]
-pub struct SecondMessage<F> {
-    /// Query for the second round of polynomials.
-    pub theta: F,
-}
-
-/// Third verifier message.
+/// Third message of the verifier.
 #[derive(Copy, Clone, Debug)]
 pub struct ThirdMessage<F> {
     /// Query for the third round of polynomials.
+    pub theta: F,
+}
+
+/// Fourth verifier message.
+#[derive(Copy, Clone, Debug)]
+pub struct FourthMessage<F> {
+    /// Query for the fourth round of polynomials.
     pub beta: F,
 }
 
-/// Fourth message of the verifier.
+/// Fifth message of the verifier.
 #[derive(Copy, Clone, Debug)]
-pub struct FourthMessage<F> {
+pub struct FifthMessage<F> {
     /// Randomizer for the h-polynomial for `B`.
     pub r_b: F,
     /// Randomizer for the h-polynomial for `C`.
@@ -65,8 +76,8 @@ pub struct QuerySet<F> {
     pub s_2_query: (String, F),
     pub z_2_query: (String, F),
     pub s_1_omega_query: (String, F),
-    pub t_query: (String, F),
-    pub delta_t_omega_query: (String, F),
+    pub table_query: (String, F),
+    pub delta_table_omega_query: (String, F),
     pub s_m_query: (String, F),
     pub s_l_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
@@ -79,7 +90,7 @@ pub struct QuerySet<F> {
 
 impl<F: PrimeField> QuerySet<F> {
     pub fn new<MM: MarlinMode>(state: &super::State<F, MM>) -> Self {
-        let beta = state.third_round_message.unwrap().beta;
+        let beta = state.fourth_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
         // For the first linear combination
         // Lincheck sumcheck test:
@@ -98,8 +109,8 @@ impl<F: PrimeField> QuerySet<F> {
             s_2_query: ("beta".into(), beta),
             z_2_query: ("beta".into(), beta),
             s_1_omega_query: ("beta".into(), beta),
-            t_query: ("beta".into(), beta),
-            delta_t_omega_query: ("beta".into(), beta),
+            table_query: ("beta".into(), beta),
+            delta_table_omega_query: ("beta".into(), beta),
             s_m_query: ("beta".into(), beta),
             s_l_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
@@ -134,8 +145,8 @@ impl<F: PrimeField> QuerySet<F> {
             query_set.insert((witness_label("omega_s_1", i), self.s_1_omega_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
-        query_set.insert(("t".into(), self.t_query.clone()));
-        query_set.insert(("delta_t_omega".into(), self.delta_t_omega_query.clone()));
+        query_set.insert(("table".into(), self.table_query.clone()));
+        query_set.insert(("delta_table_omega".into(), self.delta_table_omega_query.clone()));
         query_set.insert(("s_m".into(), self.s_m_query.clone()));
         query_set.insert(("s_l".into(), self.s_l_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));

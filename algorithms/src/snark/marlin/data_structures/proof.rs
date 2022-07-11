@@ -31,6 +31,12 @@ pub struct Commitments<E: PairingEngine> {
     pub witness_commitments: Vec<WitnessCommitments<E>>,
     /// Commitment to the masking polynomial.
     pub mask_poly: Option<sonic_pc::Commitment<E>>,
+    /// Commitments to plookup-related polynomials.
+    pub lookup_commitments: Vec<LookupCommitments<E>>,
+    /// Commitment to the lookup table polynomial.
+    pub table: sonic_pc::Commitment<E>,
+    /// Commitment to the shifted lookup table polynomial, multiplied by delta.
+    pub delta_table_omega: sonic_pc::Commitment<E>,
     /// Commitment to the `g_1` polynomial.
     pub g_1: sonic_pc::Commitment<E>,
     /// Commitment to the `h_1` polynomial.
@@ -54,7 +60,12 @@ impl<E: PairingEngine> Commitments<E> {
         for comm in &self.witness_commitments {
             comm.serialize_with_mode(&mut writer, compress)?;
         }
+        for comm in &self.lookup_commitments {
+            comm.serialize_with_mode(&mut writer, compress)?;
+        }
         CanonicalSerialize::serialize_with_mode(&self.mask_poly, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.table, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.delta_table_omega, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.h_1, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_a, &mut writer, compress)?;
@@ -68,7 +79,11 @@ impl<E: PairingEngine> Commitments<E> {
         let mut size = 0;
         size += self.witness_commitments.len()
             * CanonicalSerialize::serialized_size(&self.witness_commitments[0], compress);
+        size +=
+            self.lookup_commitments.len() * CanonicalSerialize::serialized_size(&self.lookup_commitments[0], compress);
         size += CanonicalSerialize::serialized_size(&self.mask_poly, compress);
+        size += CanonicalSerialize::serialized_size(&self.table, compress);
+        size += CanonicalSerialize::serialized_size(&self.delta_table_omega, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1, compress);
         size += CanonicalSerialize::serialized_size(&self.h_1, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a, compress);
@@ -88,9 +103,16 @@ impl<E: PairingEngine> Commitments<E> {
         for _ in 0..batch_size {
             witness_commitments.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
+        let mut lookup_commitments = Vec::new();
+        for _ in 0..batch_size {
+            lookup_commitments.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+        }
         Ok(Commitments {
             witness_commitments,
             mask_poly: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            lookup_commitments,
+            table: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta_table_omega: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             h_1: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -100,7 +122,7 @@ impl<E: PairingEngine> Commitments<E> {
         })
     }
 }
-/// Commitments to the `w`, `z_a`, and `z_b` polynomials.
+/// Commitments to the `w`, `z_a`, `z_b` and `z_c` polynomials.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct WitnessCommitments<E: PairingEngine> {
     /// Commitment to the `w` polynomial.
@@ -111,6 +133,11 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_b: sonic_pc::Commitment<E>,
     /// Commitment to the `z_c` polynomial.
     pub z_c: sonic_pc::Commitment<E>,
+}
+
+/// Commitments to the `f`, `s_1`, `s_2`, `z_2`, `s_1_omega` and `z_2_omega` polynomials.
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct LookupCommitments<E: PairingEngine> {
     /// Commitment to the `f` polynomial.
     pub f: sonic_pc::Commitment<E>,
     /// Commitment to the `s_1` polynomial.
@@ -143,10 +170,10 @@ pub struct Evaluations<F: PrimeField> {
     pub s_m_eval: F,
     /// Evaluation of `s_l` at `beta`.
     pub s_l_eval: F,
-    /// Evaluation of `t` at `beta`.
-    pub t_eval: F,
-    /// Evaluation of `delta_t_omega` at `beta`.
-    pub delta_t_omega_eval: F,
+    /// Evaluation of `table` at `beta`.
+    pub table_eval: F,
+    /// Evaluation of `delta_table_omega` at `beta`.
+    pub delta_table_omega_eval: F,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a` at `beta`.
@@ -183,8 +210,8 @@ impl<F: PrimeField> Evaluations<F> {
         }
         CanonicalSerialize::serialize_with_mode(&self.s_m_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.s_l_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.t_eval, &mut writer, compress)?;
-        CanonicalSerialize::serialize_with_mode(&self.delta_t_omega_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.table_eval, &mut writer, compress)?;
+        CanonicalSerialize::serialize_with_mode(&self.delta_table_omega_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_1_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_a_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.g_b_eval, &mut writer, compress)?;
@@ -202,8 +229,8 @@ impl<F: PrimeField> Evaluations<F> {
         size += self.s_1_omega_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += CanonicalSerialize::serialized_size(&self.s_m_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.s_l_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.t_eval, compress);
-        size += CanonicalSerialize::serialized_size(&self.delta_t_omega_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.table_eval, compress);
+        size += CanonicalSerialize::serialized_size(&self.delta_table_omega_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_1_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_a_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.g_b_eval, compress);
@@ -250,8 +277,8 @@ impl<F: PrimeField> Evaluations<F> {
             s_1_omega_evals,
             s_m_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            t_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
-            delta_t_omega_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            table_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            delta_table_omega_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_1_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_a_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             g_b_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -279,8 +306,8 @@ impl<F: PrimeField> Evaluations<F> {
             s_1_omega_evals,
             s_m_eval: map["s_m"],
             s_l_eval: map["s_l"],
-            t_eval: map["t"],
-            delta_t_omega_eval: map["delta_t_omega"],
+            table_eval: map["table"],
+            delta_table_omega_eval: map["delta_table_omega"],
             g_1_eval: map["g_1"],
             g_a_eval: map["g_a"],
             g_b_eval: map["g_b"],
@@ -311,8 +338,8 @@ impl<F: PrimeField> Evaluations<F> {
             match label {
                 "s_m" => Some(self.s_m_eval),
                 "s_l" => Some(self.s_l_eval),
-                "t" => Some(self.t_eval),
-                "delta_t_omega" => Some(self.delta_t_omega_eval),
+                "table" => Some(self.table_eval),
+                "delta_table_omega" => Some(self.delta_table_omega_eval),
                 "g_1" => Some(self.g_1_eval),
                 "g_a" => Some(self.g_a_eval),
                 "g_b" => Some(self.g_b_eval),
@@ -333,8 +360,8 @@ impl<F: PrimeField> Valid for Evaluations<F> {
         self.s_1_omega_evals.check()?;
         self.s_m_eval.check()?;
         self.s_l_eval.check()?;
-        self.t_eval.check()?;
-        self.delta_t_omega_eval.check()?;
+        self.table_eval.check()?;
+        self.delta_table_omega_eval.check()?;
         self.g_1_eval.check()?;
         self.g_a_eval.check()?;
         self.g_b_eval.check()?;
@@ -353,8 +380,8 @@ impl<F: PrimeField> Evaluations<F> {
         result.extend([
             self.s_m_eval,
             self.s_l_eval,
-            self.t_eval,
-            self.delta_t_omega_eval,
+            self.table_eval,
+            self.delta_table_omega_eval,
             self.g_1_eval,
             self.g_a_eval,
             self.g_b_eval,
@@ -377,7 +404,7 @@ pub struct Proof<E: PairingEngine> {
     pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c
-    pub msg: ahp::prover::FourthMessage<E::Fr>,
+    pub msg: ahp::prover::FifthMessage<E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: sonic_pc::BatchLCProof<E>,
@@ -389,7 +416,7 @@ impl<E: PairingEngine> Proof<E> {
         batch_size: usize,
         commitments: Commitments<E>,
         evaluations: Evaluations<E::Fr>,
-        msg: ahp::prover::FourthMessage<E::Fr>,
+        msg: ahp::prover::FifthMessage<E::Fr>,
         pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Self {
         Self { batch_size, commitments, evaluations, msg, pc_proof }

@@ -147,7 +147,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_inputs: &[Vec<F>],
         evals: &E,
-        prover_fourth_message: &prover::FourthMessage<F>,
+        prover_fifth_message: &prover::FifthMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
@@ -170,28 +170,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let input_domain = EvaluationDomain::new(public_inputs[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
-        let first_round_msg = state.first_round_message.as_ref().unwrap();
-        let alpha = first_round_msg.alpha;
+        let second_round_msg = state.second_round_message.as_ref().unwrap();
+        let alpha = second_round_msg.alpha;
         let eta_a = F::one();
-        let eta_b = first_round_msg.eta_b;
-        let eta_c = first_round_msg.eta_c;
-        let batch_combiners = &first_round_msg.batch_combiners;
-        let prover::FourthMessage { sum_a, sum_b, sum_c } = prover_fourth_message;
+        let eta_b = second_round_msg.eta_b;
+        let eta_c = second_round_msg.eta_c;
+        let batch_combiners = &second_round_msg.batch_combiners;
+        let prover::FifthMessage { sum_a, sum_b, sum_c } = prover_fifth_message;
 
         #[rustfmt::skip]
         let t_at_beta =
             eta_a * state.non_zero_a_domain.size_as_field_element * sum_a +
             eta_b * state.non_zero_b_domain.size_as_field_element * sum_b +
             eta_c * state.non_zero_c_domain.size_as_field_element * sum_c;
-        let r_b = state.fourth_round_message.as_ref().unwrap().r_b;
-        let r_c = state.fourth_round_message.as_ref().unwrap().r_c;
+        let r_b = state.fifth_round_message.as_ref().unwrap().r_b;
+        let r_c = state.fifth_round_message.as_ref().unwrap().r_c;
 
-        let theta = state.second_round_message.unwrap().theta;
-        let beta = state.third_round_message.unwrap().beta;
+        let theta = state.third_round_message.unwrap().theta;
+        let beta = state.fourth_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
-        let zeta = state.zeta.unwrap();
-        let delta = state.delta.unwrap();
-        let epsilon = state.epsilon.unwrap();
+        let zeta = state.first_round_message.as_ref().unwrap().zeta;
+        let delta = state.first_round_message.as_ref().unwrap().delta;
+        let epsilon = state.first_round_message.as_ref().unwrap().epsilon;
 
         let mut linear_combinations = BTreeMap::new();
 
@@ -234,8 +234,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect::<Vec<_>>();
         let s_m = LinearCombination::new("s_m", [(F::one(), "s_m")]);
         let s_l = LinearCombination::new("s_l", [(F::one(), "s_l")]);
-        let t = LinearCombination::new("t", [(F::one(), "t")]);
-        let delta_t_omega = LinearCombination::new("delta_t_omega", [(F::one(), "delta_t_omega")]);
+        let table = LinearCombination::new("table", [(F::one(), "table")]);
+        let delta_table_omega = LinearCombination::new("delta_table_omega", [(F::one(), "delta_table_omega")]);
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
@@ -255,8 +255,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
         let s_m_at_beta = evals.get_lc_eval(&s_m, beta)?;
         let s_l_at_beta = evals.get_lc_eval(&s_l, beta)?;
-        let table_at_beta = evals.get_lc_eval(&t, beta)?;
-        let delta_t_omega_at_beta = evals.get_lc_eval(&delta_t_omega, beta)?;
+        let table_at_beta = evals.get_lc_eval(&table, beta)?;
+        let delta_table_omega_at_beta = evals.get_lc_eval(&delta_table_omega, beta)?;
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
@@ -278,7 +278,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     // Plookup table checks
                     .add(one_plus_delta
                         * (epsilon + f_s_at_beta[i])
-                        * (epsilon_one_plus_delta + table_at_beta + delta_t_omega_at_beta)
+                        * (epsilon_one_plus_delta + table_at_beta + delta_table_omega_at_beta)
                         * combiner, witness_label("z_2", i))
                     .add((epsilon_one_plus_delta + s_1_s_at_beta[i] + delta * s_2_s_at_beta[i])
                         // TODO: we can probably include delta into s_1_omega and remove redundant
@@ -335,8 +335,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         for s_1_omega in s_1_omega_s {
             linear_combinations.insert(s_1_omega.label.clone(), s_1_omega);
         }
-        linear_combinations.insert("t".into(), t);
-        linear_combinations.insert("delta_t_omega".into(), delta_t_omega);
+        linear_combinations.insert("table".into(), table);
+        linear_combinations.insert("delta_table_omega".into(), delta_table_omega);
         linear_combinations.insert("s_m".into(), s_m);
         linear_combinations.insert("s_l".into(), s_l);
         linear_combinations.insert("g_1".into(), g_1);

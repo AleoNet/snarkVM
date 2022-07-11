@@ -18,13 +18,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
-    polycommit::sonic_pc::{
-        LabeledPolynomial,
-        LabeledPolynomialWithBasis,
-        PolynomialInfo,
-        PolynomialLabel,
-        PolynomialWithBasis,
-    },
+    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS},
         prover,
@@ -34,7 +28,7 @@ use crate::{
 };
 use itertools::Itertools;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_into_iter, cfg_iter};
+use snarkvm_utilities::cfg_into_iter;
 
 use rand_core::RngCore;
 
@@ -44,7 +38,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        10 * batch_size + (MM::ZK as usize)
+        4 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -56,12 +50,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("z_a", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_c", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("f", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("z_2", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("omega_s_1", i), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(witness_label("omega_z_2", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
@@ -79,86 +67,41 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let batch_size = state.batch_size;
 
-        let z_a = state.z_a.take().unwrap();
-        let z_b = state.z_b.take().unwrap();
-        let z_c = state.z_c.take().unwrap();
+        let z_a = state.z_a.clone().unwrap();
+        let z_b = state.z_b.clone().unwrap();
+        let z_c = state.z_c.clone().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
         assert_eq!(z_a.len(), batch_size);
         assert_eq!(z_b.len(), batch_size);
         assert_eq!(private_variables.len(), batch_size);
         let mut r_b_s = Vec::with_capacity(batch_size);
 
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(4 * batch_size);
         let state_ref = &state;
         for (i, (z_a, z_b, z_c, private_variables, x_poly)) in
             itertools::izip!(&z_a, &z_b, &z_c, private_variables, &state.x_poly).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
-            let r_b = F::one();
+            let r_b = F::rand(rng);
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), z_c, true, state_ref, Some(r_b)));
-            job_pool.add_job(move || {
-                Self::calculate_table_polys(
-                    witness_label("f", i),
-                    witness_label("s_1", i),
-                    witness_label("s_2", i),
-                    witness_label("z_2", i),
-                    witness_label("omega_s_1", i),
-                    witness_label("omega_z_2", i),
-                    z_a,
-                    z_b,
-                    z_c,
-                    &state.index.s_l_evals,
-                    true,
-                    state_ref,
-                    Some(r_b),
-                )
-            });
         }
 
         let batches = job_pool
             .execute_all()
             .into_iter()
             .tuples()
-            .map(|(w, z_a, z_b, z_c, table_polys)| {
+            .map(|(w, z_a, z_b, z_c)| {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
                 let (z_c_poly, z_c) = z_c.z_m().unwrap();
-                let mut table_polys = table_polys.table_polys().unwrap();
-                // Take all of the polynomials out individually to avoid excessive cloning.
-                let z_2_omega = table_polys.pop().unwrap();
-                let s_1_omega = table_polys.pop().unwrap();
-                let z_2 = table_polys.pop().unwrap();
-                let s_2 = table_polys.pop().unwrap();
-                let s_1 = table_polys.pop().unwrap();
-                let f = table_polys.pop().unwrap();
 
-                prover::SingleEntry {
-                    z_a,
-                    z_b,
-                    z_c,
-                    f: f.1,
-                    s_1: s_1.1,
-                    s_2: s_2.1,
-                    z_2: z_2.1,
-                    s_1_omega: s_1_omega.1,
-                    z_2_omega: z_2_omega.1,
-                    w_poly,
-                    z_a_poly,
-                    z_b_poly,
-                    z_c_poly,
-                    f_poly: f.0,
-                    s_1_poly: s_1.0,
-                    s_2_poly: s_2.0,
-                    z_2_poly: z_2.0,
-                    s_1_omega_poly: s_1_omega.0,
-                    z_2_omega_poly: z_2_omega.0,
-                }
+                prover::FirstEntry { z_a, z_b, z_c, w_poly, z_a_poly, z_b_poly, z_c_poly }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
@@ -253,157 +196,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             Self::calculate_opening_and_commitment_polys(label, evaluations, will_be_evaluated, state, r);
         PoolResult::MatrixPoly(poly_for_opening, poly_for_committing)
     }
-
-    fn calculate_opening_and_commitment_polys<'a>(
-        label: impl ToString,
-        evaluations: &[F],
-        will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
-        r: Option<F>,
-    ) -> (LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>) {
-        let constraint_domain = state.constraint_domain;
-        let v_H = constraint_domain.vanishing_polynomial();
-        let should_randomize = MM::ZK && will_be_evaluated;
-        let label = label.to_string();
-        let poly_time = start_timer!(|| format!("Computing {label}"));
-
-        let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations.to_vec(), constraint_domain);
-
-        let mut poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
-        if should_randomize {
-            poly += &(&v_H * r.unwrap());
-        }
-
-        debug_assert!(
-            poly.evaluate_over_domain_by_ref(constraint_domain)
-                .evaluations
-                .into_iter()
-                .zip(&evals.evaluations)
-                .all(|(z, e)| *e == z),
-            "Label: {label}\n1: {:#?}\n2: {:#?}",
-            poly.evaluate_over_domain_by_ref(constraint_domain).evaluations,
-            &evals.evaluations,
-        );
-
-        let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, Self::zk_bound());
-        if should_randomize {
-            assert!(poly_for_opening.degree() < constraint_domain.size() + Self::zk_bound().unwrap());
-        } else {
-            assert!(poly_for_opening.degree() < constraint_domain.size());
-        }
-
-        let poly_for_committing = if should_randomize {
-            let poly_terms = vec![
-                (F::one(), PolynomialWithBasis::new_lagrange_basis(evals)),
-                (F::one(), PolynomialWithBasis::new_sparse_monomial_basis(&v_H * r.unwrap(), None)),
-            ];
-            LabeledPolynomialWithBasis::new_linear_combination(label, poly_terms, Self::zk_bound())
-        } else {
-            LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, Self::zk_bound())
-        };
-        end_timer!(poly_time);
-
-        (poly_for_opening, poly_for_committing)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn calculate_table_polys<'a>(
-        label_f: impl ToString,
-        label_s_1: impl ToString,
-        label_s_2: impl ToString,
-        label_z_2: impl ToString,
-        label_s_1_omega: impl ToString,
-        label_z_2_omega: impl ToString,
-        z_a: &[F],
-        z_b: &[F],
-        z_c: &[F],
-        s_l: &[F],
-        will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
-        r: Option<F>,
-    ) -> PoolResult<'a, F> {
-        let constraint_domain = state.constraint_domain;
-        let zeta_squared = state.index.zeta.square();
-        let f_evals = cfg_iter!(z_a)
-            .zip(z_b)
-            .zip(z_c)
-            .zip(s_l)
-            .map(|(((a, b), c), s)| {
-                if s.is_zero() {
-                    state.index.t_evals[state.index.t_evals.len() - 1]
-                } else {
-                    *a + state.index.zeta * b + zeta_squared * c
-                }
-            })
-            .collect::<Vec<F>>();
-
-        let f = Self::calculate_opening_and_commitment_polys(label_f, &f_evals, will_be_evaluated, state, r);
-        let mut s_evals = f_evals.clone();
-        s_evals.extend(state.index.t_evals.clone());
-        // Split into alternating halves.
-        let (s_1_evals, s_2_evals): (Vec<F>, Vec<F>) = s_evals.chunks(2).map(|els| (els[0], els[1])).unzip();
-        let s_1 = Self::calculate_opening_and_commitment_polys(label_s_1, &s_1_evals, will_be_evaluated, state, r);
-        let s_2 = Self::calculate_opening_and_commitment_polys(label_s_2, &s_2_evals, will_be_evaluated, state, r);
-
-        // Calculate z_2
-        // Compute divisions for each constraint
-        let product_arguments = f_evals
-            .iter()
-            .enumerate()
-            .zip(&state.index.t_evals)
-            .zip(&s_1_evals)
-            .zip(&s_2_evals)
-            .zip(&state.index.delta_t_omega_evals)
-            .take(f_evals.len() - 1)
-            .map(|(((((i, f), t), s_1), s_2), delta_t_omega)| {
-                let one_plus_delta = F::one() + state.index.delta;
-                let epsilon_one_plus_delta = state.index.epsilon * one_plus_delta;
-                one_plus_delta
-                    * (state.index.epsilon + f)
-                    * (epsilon_one_plus_delta + t + delta_t_omega)
-                    * ((epsilon_one_plus_delta + s_1 + state.index.delta * *s_2)
-                        * (epsilon_one_plus_delta + s_2 + state.index.delta * s_1_evals[i + 1]))
-                        .inverse()
-                        .unwrap()
-            })
-            .collect::<Vec<F>>();
-
-        // Create evaluations for z_2
-        // First element is one
-        let mut l_1 = F::one();
-        let mut z_2_evals = Vec::with_capacity(constraint_domain.size());
-        z_2_evals.push(l_1);
-        for s in product_arguments {
-            l_1 *= s;
-            z_2_evals.push(l_1);
-        }
-
-        let z_2 = Self::calculate_opening_and_commitment_polys(label_z_2, &z_2_evals, will_be_evaluated, state, r);
-
-        let s_1_omega_evals = &[&s_1_evals[1..], &[s_1_evals[0]]].concat();
-        let s_1_omega =
-            Self::calculate_opening_and_commitment_polys(label_s_1_omega, s_1_omega_evals, will_be_evaluated, state, r);
-
-        let z_2_omega_evals = &[&z_2_evals[1..], &[z_2_evals[0]]].concat();
-        let z_2_omega =
-            Self::calculate_opening_and_commitment_polys(label_z_2_omega, z_2_omega_evals, will_be_evaluated, state, r);
-
-        PoolResult::TablePolys(vec![
-            (f.0, f.1),
-            (s_1.0, s_1.1),
-            (s_2.0, s_2.1),
-            (z_2.0, z_2.1),
-            (s_1_omega.0, s_1_omega.1),
-            (z_2_omega.0, z_2_omega.1),
-        ])
-    }
 }
 
 #[derive(Debug)]
 pub enum PoolResult<'a, F: PrimeField> {
     Witness(LabeledPolynomial<F>),
     MatrixPoly(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>),
-    TablePolys(Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>),
 }
 
 impl<'a, F: PrimeField> PoolResult<'a, F> {
@@ -417,13 +215,6 @@ impl<'a, F: PrimeField> PoolResult<'a, F> {
     fn z_m(self) -> Option<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)> {
         match self {
             Self::MatrixPoly(p1, p2) => Some((p1, p2)),
-            _ => None,
-        }
-    }
-
-    fn table_polys(self) -> Option<Vec<(LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>)>> {
-        match self {
-            Self::TablePolys(polys) => Some(polys),
             _ => None,
         }
     }
