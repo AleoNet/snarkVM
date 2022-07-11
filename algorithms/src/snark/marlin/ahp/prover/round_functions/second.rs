@@ -28,7 +28,7 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::cfg_iter;
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
 use rand_core::RngCore;
 
@@ -100,7 +100,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         );
 
         let mut delta_table_omega_evals = [&table_evals[1..], &[table_evals[0]]].concat();
-        delta_table_omega_evals.iter_mut().for_each(|e| *e *= delta);
+        cfg_iter_mut!(delta_table_omega_evals).for_each(|e| *e *= delta);
 
         let delta_table_omega = LabeledPolynomial::new(
             "delta_table_omega".to_string(),

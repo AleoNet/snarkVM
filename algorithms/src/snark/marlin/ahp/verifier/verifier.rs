@@ -97,7 +97,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         let message = SecondMessage { alpha, eta_b, eta_c, batch_combiners };
         state.second_round_message = Some(message.clone());
-
         Ok((message, state))
     }
 
@@ -112,7 +111,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         let message = ThirdMessage { theta };
         state.third_round_message = Some(message);
-
         Ok((message, state))
     }
 
@@ -127,7 +125,6 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         let message = FourthMessage { beta };
         state.fourth_round_message = Some(message);
-
         Ok((message, state))
     }
 

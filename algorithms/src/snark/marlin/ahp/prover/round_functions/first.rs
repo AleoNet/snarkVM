@@ -67,9 +67,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let batch_size = state.batch_size;
 
-        let z_a = state.z_a.clone().unwrap();
-        let z_b = state.z_b.clone().unwrap();
-        let z_c = state.z_c.clone().unwrap();
+        let z_a = state.z_a.as_ref().unwrap();
+        let z_b = state.z_b.as_ref().unwrap();
+        let z_c = state.z_c.as_ref().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
         assert_eq!(z_a.len(), batch_size);
         assert_eq!(z_b.len(), batch_size);
@@ -79,7 +79,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(4 * batch_size);
         let state_ref = &state;
         for (i, (z_a, z_b, z_c, private_variables, x_poly)) in
-            itertools::izip!(&z_a, &z_b, &z_c, private_variables, &state.x_poly).enumerate()
+            itertools::izip!(z_a, z_b, z_c, private_variables, &state.x_poly).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));

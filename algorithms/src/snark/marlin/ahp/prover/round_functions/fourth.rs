@@ -119,12 +119,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                             s_1.coeffs.push(epsilon_one_plus_delta);
                         }
                         let a = &s_1 + &(s_2.clone() * *delta);
+
                         if s_2.degree() > 0 {
                             s_2.coeffs[0] += epsilon_one_plus_delta;
                         } else {
                             s_2.coeffs.push(epsilon_one_plus_delta);
                         }
                         let b = &s_2 + &(s_1_omega * *delta);
+
                         &(&(z_2_omega * -F::one()) * &a) * &b
                     };
 

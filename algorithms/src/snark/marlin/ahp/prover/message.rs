@@ -17,7 +17,7 @@
 use snarkvm_fields::Field;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
-/// The prover message in the fourth round.
+/// The prover message in the fifth round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct FifthMessage<F: Field> {
     pub sum_a: F,

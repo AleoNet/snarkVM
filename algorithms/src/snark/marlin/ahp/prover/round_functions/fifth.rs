@@ -76,7 +76,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let verifier::SecondMessage { alpha, .. } = state
             .verifier_second_message
             .as_ref()
-            .expect("prover::State should include verifier_first_msg when prover_fifth_round is called");
+            .expect("prover::State should include verifier_second_msg when prover_fifth_round is called");
 
         let beta = verifier_message.beta;
 

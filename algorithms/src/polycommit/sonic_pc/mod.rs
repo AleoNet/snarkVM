@@ -435,6 +435,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
+                println!("{:?}", label);
                 let commitment =
                     commitments.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 

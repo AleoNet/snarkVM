@@ -409,11 +409,11 @@ where
             .circuit
             .iter() // 15 items
             .chain(first_round_oracles.iter_for_open()) // 4 * batch_size + (MM::ZK as usize) items
-            .chain(second_round_oracles.iter_for_open())// 6 * batch_size + 2 items
-            .chain(third_oracles.iter())// 1 item
-            .chain(fourth_oracles.iter())// 1 item
-            .chain(fifth_oracles.iter())// 3 items
-            .chain(sixth_oracles.iter())// 1 item
+            .chain(second_round_oracles.iter_for_open()) // 6 * batch_size + 2 items
+            .chain(third_oracles.iter()) // 1 item
+            .chain(fourth_oracles.iter()) // 1 item
+            .chain(fifth_oracles.iter()) // 3 items
+            .chain(sixth_oracles.iter()) // 1 item
             .collect();
 
         Self::terminate(terminator)?;
