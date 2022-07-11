@@ -16,33 +16,18 @@
 
 use super::*;
 
-#[derive(Clone)]
-pub struct VerifyingKey<N: Network> {
-    /// The verifying key for the function.
-    verifying_key: marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>,
-}
-
-impl<N: Network> VerifyingKey<N> {
-    /// Initializes a new verifying key.
-    pub(super) const fn new(
-        verifying_key: marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>,
-    ) -> Self {
-        Self { verifying_key }
-    }
-
-    /// Returns `true` if the proof is valid for the given public inputs.
-    pub fn verify(&self, inputs: &[N::Field], proof: &Proof<N>) -> bool {
-        let timer = std::time::Instant::now();
-        let is_valid = Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof).unwrap();
-        println!("{}", format!(" • Called verifier: {} ms", timer.elapsed().as_millis()).dimmed());
-        is_valid
-    }
-}
-
 impl<N: Network> FromBytes for VerifyingKey<N> {
     /// Reads the verifying key from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the version.
+        let version = u16::read_le(&mut reader)?;
+        // Ensure the version is valid.
+        if version != 0 {
+            return Err(error("Invalid verifying key version"));
+        }
+        // Read the verifying key.
         let verifying_key = FromBytes::read_le(&mut reader)?;
+        // Return the verifying key.
         Ok(Self { verifying_key })
     }
 }
@@ -50,14 +35,9 @@ impl<N: Network> FromBytes for VerifyingKey<N> {
 impl<N: Network> ToBytes for VerifyingKey<N> {
     /// Writes the verifying key to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the version.
+        0u16.write_le(&mut writer)?;
+        // Write the bytes.
         self.verifying_key.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> Deref for VerifyingKey<N> {
-    type Target = marlin::CircuitVerifyingKey<N::PairingCurve, marlin::MarlinHidingMode>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.verifying_key
     }
 }

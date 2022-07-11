@@ -145,7 +145,7 @@ mod tests {
                 console::ValueType::from_str("amount.public").unwrap(),
                 console::ValueType::from_str("amount.private").unwrap(),
                 console::ValueType::from_str("token.record").unwrap(),
-                console::ValueType::from_str("token.aleo/token").unwrap(),
+                console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
             // Sample a `tvk`.

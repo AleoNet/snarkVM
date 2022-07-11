@@ -28,6 +28,7 @@ pub use instruction::*;
 
 mod bytes;
 mod parse;
+mod serialize;
 
 use console::{
     network::prelude::*,

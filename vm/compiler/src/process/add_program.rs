@@ -22,6 +22,18 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = program.id();
+
+        // If the program already exists, ensure it is the same and return.
+        if self.programs.contains_key(program_id) {
+            // Retrieve the existing program.
+            let existing_program = self.get_program(program_id)?;
+            // Ensure the program is the same.
+            match existing_program == program {
+                true => return Ok(()),
+                false => bail!("Program already exists but with different contents"),
+            }
+        }
+
         // Ensure the program is not already added.
         ensure!(!self.programs.contains_key(program_id), "Program '{program_id}' already exists");
         // Ensure the program imports all exist in the process already.

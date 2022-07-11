@@ -283,7 +283,7 @@ mod tests {
                 console::ValueType::from_str("amount.public").unwrap(),
                 console::ValueType::from_str("amount.private").unwrap(),
                 console::ValueType::from_str("token.record").unwrap(),
-                console::ValueType::from_str("token.aleo/token").unwrap(),
+                console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
             // Compute the signed request.
@@ -310,7 +310,7 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 36700, 0, 14900, 14900)
+        check_verify(Mode::Constant, 36700, 0, 14950, 15000)
     }
 
     #[test]

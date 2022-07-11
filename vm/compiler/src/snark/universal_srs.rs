@@ -24,7 +24,8 @@ pub struct UniversalSRS<N: Network> {
 impl<N: Network> UniversalSRS<N> {
     /// Initializes the universal SRS.
     pub fn load(num_gates: usize) -> Result<Self> {
-        let mut rng = rand::thread_rng();
+        // TODO (howardwu): Switch this to a remotely loaded SRS.
+        let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
 
         let timer = std::time::Instant::now();
         let max_degree =

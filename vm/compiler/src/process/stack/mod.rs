@@ -120,6 +120,11 @@ impl<N: Network> Execution<N> {
         Self(Arc::new(RwLock::new(Vec::new())))
     }
 
+    /// Initializes a new `Execution` instance with the given transitions.
+    pub fn from(transitions: &[Transition<N>]) -> Self {
+        Self(Arc::new(RwLock::new(transitions.to_vec())))
+    }
+
     /// Returns the `Transition` at the given index.
     pub fn get(&self, index: usize) -> Result<Transition<N>> {
         self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
@@ -546,6 +551,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             request.network_id()
         );
 
+        // Retrieve the program ID.
+        let program_id = *request.program_id();
         // Retrieve the function from the program.
         let function = self.program.get_function(request.function_name())?;
         // Ensure the number of inputs matches the number of input statements.
@@ -566,7 +573,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         self.circuit_caller = Some(request.caller().clone());
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Request Authentication");
+        Self::log_circuit("Request");
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
@@ -640,6 +647,60 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         #[cfg(debug_assertions)]
         Self::log_circuit("Response");
+
+        use circuit::{ToField, Zero};
+
+        let mut i64_balance = circuit::I64::zero();
+        let mut field_balance = circuit::Field::zero();
+
+        // Increment the balance by the amount in each record input.
+        for input in request.inputs() {
+            // Retrieve the balance from each record input.
+            let record_balance = match input {
+                // Dereference the balance to retrieve the u64 balance.
+                circuit::Value::Record(record) => &**record.balance(),
+                // Skip iterations that are not records.
+                _ => continue,
+            };
+
+            // Increment the i64 balance.
+            i64_balance += record_balance.clone().cast_as_dual();
+            // Increment the field balance.
+            field_balance += record_balance.to_field();
+        }
+
+        // Ensure the i64 balance matches the field balance.
+        A::assert_eq(i64_balance.to_field(), &field_balance);
+
+        // Decrement the balance by the amount in each record output.
+        for output in response.outputs() {
+            // Retrieve the balance from each record output.
+            let record_balance = match output {
+                // Dereference the balance to retrieve the u64 balance.
+                circuit::Value::Record(record) => &**record.balance(),
+                // Skip iterations that are not records.
+                _ => continue,
+            };
+
+            // Decrement the i64 balance.
+            i64_balance -= record_balance.clone().cast_as_dual();
+            // Decrement the field balance.
+            field_balance -= record_balance.to_field();
+        }
+
+        // If the program and function is not a special function, then ensure the i64 balance is positive.
+        if !(program_id.to_string() == "stake.aleo" && function.name().to_string() == "initialize") {
+            // Ensure the i64 balance matches the field balance.
+            A::assert_eq(i64_balance.to_field(), field_balance);
+        }
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Complete");
+
+        // If the circuit is not satisfied, then return early.
+        if !A::is_satisfied() {
+            bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
+        }
 
         // Eject the response.
         let response = circuit::Eject::eject_value(&response);

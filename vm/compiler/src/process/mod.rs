@@ -213,10 +213,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
         // Replicate the execution stack for verification.
-        let queue = Execution::new();
-        for transition in execution.to_vec().into_iter() {
-            queue.push(transition);
-        }
+        let queue = Execution::from(&execution.to_vec());
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
@@ -366,6 +363,105 @@ mod tests {
     type CurrentAleo = AleoV0;
 
     #[test]
+    fn test_process_execute_genesis() {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program stake.aleo;
+
+  record stake:
+    owner as address.private;
+    balance as u64.private;
+
+  function initialize:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as stake.record;
+    output r2 as stake.record;",
+        )
+        .unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("initialize").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
+
+        // Declare the expected output value.
+        let r2 = Value::from_str(&format!("{{ owner: {caller}.private, balance: 1_000_000_000_000_000_u64.private }}"))
+            .unwrap();
+
+        // Construct the process.
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize(&caller_private_key, program.id(), function_name, &[r0.clone(), r1.clone()], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.get(0).unwrap();
+
+        // Compute the output value.
+        let response = process.evaluate(&request).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(r2, candidate[0]);
+
+        // Execute the request.
+        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(r2, candidate[0]);
+
+        assert!(process.verify(execution).is_ok());
+
+        // use circuit::Environment;
+        //
+        // assert_eq!(6348, CurrentAleo::num_constants());
+        // assert_eq!(8, CurrentAleo::num_public());
+        // assert_eq!(20598, CurrentAleo::num_private());
+        // assert_eq!(20616, CurrentAleo::num_constraints());
+        // assert_eq!(79486, CurrentAleo::num_gates());
+
+        /******************************************/
+
+        // Ensure a non-special program fails.
+
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program token.aleo;
+
+  record token:
+    owner as address.private;
+    balance as u64.private;
+
+  function initialize:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as token.record;
+    output r2 as token.record;",
+        )
+        .unwrap();
+
+        process.add_program(&program).unwrap();
+
+        let result = process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1], rng);
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            format!("The circuit for 'token.aleo/initialize' is not satisfied with the given inputs.")
+        );
+    }
+
+    #[test]
     fn test_process_execute_call_closure() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
@@ -457,11 +553,11 @@ function compute:
 
         // use circuit::Environment;
         //
-        // assert_eq!(37016, CurrentAleo::num_constants());
+        // assert_eq!(37080, CurrentAleo::num_constants());
         // assert_eq!(12, CurrentAleo::num_public());
-        // assert_eq!(41500, CurrentAleo::num_private());
-        // assert_eq!(41550, CurrentAleo::num_constraints());
-        // assert_eq!(158739, CurrentAleo::num_gates());
+        // assert_eq!(41630, CurrentAleo::num_private());
+        // assert_eq!(41685, CurrentAleo::num_constraints());
+        // assert_eq!(159387, CurrentAleo::num_gates());
     }
 
     #[test]

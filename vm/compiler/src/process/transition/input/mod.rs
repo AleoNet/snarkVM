@@ -34,7 +34,7 @@ pub enum Input<N: Network> {
     Private(Field<N>, Option<Ciphertext<N>>),
     /// The serial number.
     Record(Field<N>),
-    /// The input commitment to the external record.
+    /// The input commitment to the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
 }
 
@@ -47,6 +47,14 @@ impl<N: Network> Input<N> {
             Input::Private(id, _) => *id,
             Input::Record(id) => *id,
             Input::ExternalRecord(id) => *id,
+        }
+    }
+
+    /// Returns the serial number, if the input is a record.
+    pub fn serial_number(&self) -> Option<&Field<N>> {
+        match self {
+            Input::Record(serial_number) => Some(serial_number),
+            _ => None,
         }
     }
 

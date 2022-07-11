@@ -252,6 +252,18 @@ impl<N: Network> Transition<N> {
     }
 }
 
+impl<N: Network> Transition<N> {
+    /// Returns an iterator over the serial numbers, for inputs that are records.
+    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().flat_map(Input::serial_number)
+    }
+
+    /// Returns an iterator over the commitments, for outputs that are records.
+    pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.outputs.iter().flat_map(Output::commitment)
+    }
+}
+
 impl<N: Network> FromStr for Transition<N> {
     type Err = Error;
 

@@ -27,6 +27,7 @@ impl<N: Network> FromBytes for Proof<N> {
         }
         // Read the proof.
         let proof = FromBytes::read_le(&mut reader)?;
+        // Return the proof.
         Ok(Self { proof })
     }
 }

@@ -26,7 +26,7 @@ impl<N: Network> Parser for RecordType<N> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a string into a tuple.
-        fn parse_tuple<N: Network>(string: &str) -> ParserResult<(Identifier<N>, EntryType<N>)> {
+        fn parse_entry<N: Network>(string: &str) -> ParserResult<(Identifier<N>, EntryType<N>)> {
             // Parse the whitespace and comments from the string.
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the identifier from the string.
@@ -105,7 +105,7 @@ impl<N: Network> Parser for RecordType<N> {
         let (string, _) = tag(";")(string)?;
 
         // Parse the entries from the string.
-        let (string, entries) = map_res(many1(parse_tuple), |entries| {
+        let (string, entries) = map_res(many0(parse_entry), |entries| {
             // Ensure the entries has no duplicate names.
             if has_duplicates(entries.iter().map(|(identifier, _)| identifier)) {
                 return Err(error(format!("Duplicate identifier found in record '{}'", name)));
