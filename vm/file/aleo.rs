@@ -164,57 +164,6 @@ function hello_world:
         &self.program
     }
 
-    /// Removes the file at the given path, if it exists.
-    pub fn remove(&self, path: &Path) -> Result<()> {
-        // If the path does not exist, do nothing.
-        if !path.exists() {
-            Ok(())
-        } else {
-            // Ensure the path is well-formed.
-            Self::check_path(path)?;
-            // Remove the file.
-            Ok(fs::remove_file(&path)?)
-        }
-    }
-}
-
-impl<N: Network> AleoFile<N> {
-    /// Checks that the given path has the correct file extension.
-    fn check_path(path: &Path) -> Result<()> {
-        // Ensure the given path is a file.
-        ensure!(path.is_file(), "The path is not a file.");
-
-        // Ensure the given path has the correct file extension.
-        let extension = path.extension().ok_or_else(|| anyhow!("File extension not found."))?;
-        ensure!(extension == ALEO_FILE_EXTENSION, "File extension is incorrect.");
-
-        // Ensure the given path exists.
-        ensure!(path.exists(), "File does not exist: {}", path.display());
-
-        Ok(())
-    }
-
-    /// Reads the program from the given file path, if it exists.
-    fn from_filepath(file: &Path) -> Result<Self> {
-        // Ensure the path is well-formed.
-        Self::check_path(file)?;
-
-        // Retrieve the file name.
-        let file_name = file
-            .file_stem()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_str()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_string();
-
-        // Read the program string.
-        let program_string = fs::read_to_string(&file)?;
-        // Parse the program string.
-        let program = Program::from_str(&program_string)?;
-
-        Ok(Self { file_name, program_string, program })
-    }
-
     /// Writes the program string to the file.
     pub fn write_to(&self, path: &Path) -> Result<()> {
         // Ensure the path is well-formed.
@@ -231,6 +180,61 @@ impl<N: Network> AleoFile<N> {
         ensure!(file_name == self.file_name, "File name does not match.");
 
         Ok(File::create(&path)?.write_all(self.program_string.as_bytes())?)
+    }
+
+    /// Removes the file at the given path, if it exists.
+    pub fn remove(&self, path: &Path) -> Result<()> {
+        // If the path does not exist, do nothing.
+        if !path.exists() {
+            Ok(())
+        } else {
+            // Ensure the path is well-formed.
+            Self::check_path(path)?;
+            // If the path exists, remove it.
+            if path.exists() {
+                // Remove the file.
+                fs::remove_file(&path)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+impl<N: Network> AleoFile<N> {
+    /// Checks that the given path has the correct file extension.
+    fn check_path(path: &Path) -> Result<()> {
+        // Ensure the given path is a file.
+        ensure!(path.is_file(), "The path is not a file.");
+
+        // Ensure the given path has the correct file extension.
+        let extension = path.extension().ok_or_else(|| anyhow!("File extension not found."))?;
+        ensure!(extension == ALEO_FILE_EXTENSION, "File extension is incorrect.");
+
+        Ok(())
+    }
+
+    /// Reads the program from the given file path, if it exists.
+    fn from_filepath(file: &Path) -> Result<Self> {
+        // Ensure the path is well-formed.
+        Self::check_path(file)?;
+
+        // Ensure the given path exists.
+        ensure!(file.exists(), "File does not exist: {}", file.display());
+
+        // Retrieve the file name.
+        let file_name = file
+            .file_stem()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_str()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_string();
+
+        // Read the program string.
+        let program_string = fs::read_to_string(&file)?;
+        // Parse the program string.
+        let program = Program::from_str(&program_string)?;
+
+        Ok(Self { file_name, program_string, program })
     }
 }
 

@@ -464,6 +464,30 @@ mod tests {
     }
 
     #[test]
+    fn test_process_circuit_key() {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r#"program testing.aleo;
+
+function hello_world:
+    input r0 as u32.public;
+    input r1 as u32.private;
+    add r0 r1 into r2;
+    output r2 as u32.private;
+"#,
+        )
+        .unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("hello_world").unwrap();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        // Check that the circuit key can be synthesized.
+        process.circuit_key(program.id(), &function_name).unwrap();
+    }
+
+    #[test]
     fn test_process_execute_call_closure() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
@@ -525,6 +549,11 @@ function compute:
         let r5 = Value::from_str("8field").unwrap();
 
         // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        // Check that the circuit key can be synthesized.
+        process.circuit_key(program.id(), &function_name).unwrap();
+
+        // Reset the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
 
         // Authorize the function call.

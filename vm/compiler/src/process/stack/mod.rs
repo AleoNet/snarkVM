@@ -709,9 +709,12 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         #[cfg(debug_assertions)]
         Self::log_circuit("Complete");
 
-        // If the circuit is not satisfied, then return early.
-        if !A::is_satisfied() {
-            bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
+        // If the circuit is in execute mode, then ensure the circuit is valid.
+        if let CallStack::Execute(..) = self.call_stack {
+            // If the circuit is not satisfied, then return early.
+            if !A::is_satisfied() {
+                bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
+            }
         }
 
         // Eject the response.

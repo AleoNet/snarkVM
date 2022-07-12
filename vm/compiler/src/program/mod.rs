@@ -769,6 +769,13 @@ function compute:
         // Retrieve the function from the program.
         let function = program.get_function(&function_name).unwrap();
 
+        {
+            // Construct the process.
+            let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+            // Check that the circuit key can be synthesized.
+            process.circuit_key(program.id(), &function_name).unwrap();
+        }
+
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
 
