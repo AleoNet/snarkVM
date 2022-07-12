@@ -313,9 +313,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.7"
+version = "3.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b7b16274bb247b45177db843202209b12191b631a14a9d06e41b3777d6ecf14"
+checksum = "69c5a7f9997be616e47f0577ee38c91decb33392c5be4866494f34cdf329a9aa"
 dependencies = [
  "atty",
  "bitflags",
@@ -1984,7 +1984,7 @@ name = "snarkvm"
 version = "0.7.5"
 dependencies = [
  "anyhow",
- "clap 3.2.7",
+ "clap 3.2.10",
  "colored",
  "rand",
  "rusty-hook",
