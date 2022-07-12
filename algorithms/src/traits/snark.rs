@@ -63,37 +63,37 @@ pub trait SNARK {
         rng: &mut R,
     ) -> Result<Self::UniversalSetupParameters, SNARKError>;
 
-    fn setup<CS: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
-        circuit: &CS,
+    fn setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        circuit: &C,
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove_batch<CS: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &[CS],
+        input_and_witness: &[C],
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         Self::prove_batch_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
     }
 
-    fn prove<CS: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &CS,
+        input_and_witness: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         Self::prove_batch(proving_key, std::slice::from_ref(input_and_witness), rng)
     }
 
-    fn prove_batch_with_terminator<CS: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_batch_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &[CS],
+        input_and_witness: &[C],
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
-    fn prove_with_terminator<CS: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &CS,
+        input_and_witness: &C,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
