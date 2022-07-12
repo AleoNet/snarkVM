@@ -591,12 +591,18 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             self.store_circuit(register, input.clone())
         })?;
 
-        // If the circuit is in execute mode, then evaluate the instructions.
-        if let CallStack::Execute(..) = self.call_stack {
-            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
-        }
         // Execute the instructions.
-        function.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+        for instruction in function.instructions() {
+            // If the circuit is in execute mode, then evaluate the instructions.
+            if let CallStack::Execute(..) = self.call_stack {
+                // If the evaluation fails, bail and return the error.
+                if let Err(error) = instruction.evaluate(self) {
+                    bail!("Failed to evaluate instruction: {error}");
+                }
+            }
+            // Execute the instruction.
+            instruction.execute(self)?;
+        }
 
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {

@@ -455,7 +455,9 @@ mod tests {
 
         process.add_program(&program).unwrap();
 
-        let result = process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1], rng);
+        let authorization =
+            process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1], rng).unwrap();
+        let result = process.execute(authorization, rng);
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
