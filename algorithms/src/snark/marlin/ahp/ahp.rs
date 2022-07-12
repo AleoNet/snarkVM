@@ -226,10 +226,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 LinearCombination::new(z_2_i.clone(), [(F::one(), z_2_i)])
             })
             .collect::<Vec<_>>();
-        let s_1_omega_s = (0..state.batch_size)
+        let delta_s_1_omega_s = (0..state.batch_size)
             .map(|i| {
-                let s_1_omega_i = witness_label("omega_s_1", i);
-                LinearCombination::new(s_1_omega_i.clone(), [(F::one(), s_1_omega_i)])
+                let delta_s_1_omega_i = witness_label("delta_omega_s_1", i);
+                LinearCombination::new(delta_s_1_omega_i.clone(), [(F::one(), delta_s_1_omega_i)])
             })
             .collect::<Vec<_>>();
         let s_m = LinearCombination::new("s_m", [(F::one(), "s_m")]);
@@ -248,8 +248,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let s_1_s_at_beta = s_1_s.iter().map(|s_1| evals.get_lc_eval(s_1, beta)).collect::<Result<Vec<_>, _>>()?;
         let s_2_s_at_beta = s_2_s.iter().map(|s_2| evals.get_lc_eval(s_2, beta)).collect::<Result<Vec<_>, _>>()?;
         let z_2_s_at_beta = z_2_s.iter().map(|z_2| evals.get_lc_eval(z_2, beta)).collect::<Result<Vec<_>, _>>()?;
-        let s_1_omega_s_at_beta =
-            s_1_omega_s.iter().map(|s_1_omega| evals.get_lc_eval(s_1_omega, beta)).collect::<Result<Vec<_>, _>>()?;
+        let delta_s_1_omega_s_at_beta = delta_s_1_omega_s
+            .iter()
+            .map(|delta_s_1_omega| evals.get_lc_eval(delta_s_1_omega, beta))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let batch_z_b_at_beta: F =
             z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
@@ -281,9 +283,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         * (epsilon_one_plus_delta + table_at_beta + delta_table_omega_at_beta)
                         * combiner, witness_label("z_2", i))
                     .add((epsilon_one_plus_delta + s_1_s_at_beta[i] + delta * s_2_s_at_beta[i])
-                        // TODO: we can probably include delta into s_1_omega and remove redundant
-                        // multiplications
-                        * (epsilon_one_plus_delta + s_2_s_at_beta[i] + delta * s_1_omega_s_at_beta[i])
+                        * (epsilon_one_plus_delta + s_2_s_at_beta[i] + delta_s_1_omega_s_at_beta[i])
                         * combiner * -F::one(), witness_label("omega_z_2", i))
                     .add((z_2_s_at_beta[i] - F::one()) * combiner, "l_1")
                     // Plookup rowcheck
@@ -332,8 +332,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         for z_2 in z_2_s {
             linear_combinations.insert(z_2.label.clone(), z_2);
         }
-        for s_1_omega in s_1_omega_s {
-            linear_combinations.insert(s_1_omega.label.clone(), s_1_omega);
+        for delta_s_1_omega in delta_s_1_omega_s {
+            linear_combinations.insert(delta_s_1_omega.label.clone(), delta_s_1_omega);
         }
         linear_combinations.insert("table".into(), table);
         linear_combinations.insert("delta_table_omega".into(), delta_table_omega);

@@ -135,7 +135,7 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_c: sonic_pc::Commitment<E>,
 }
 
-/// Commitments to the `f`, `s_1`, `s_2`, `z_2`, `s_1_omega` and `z_2_omega` polynomials.
+/// Commitments to the `f`, `s_1`, `s_2`, `z_2`, `delta_s_1_omega` and `z_2_omega` polynomials.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct LookupCommitments<E: PairingEngine> {
     /// Commitment to the `f` polynomial.
@@ -146,8 +146,8 @@ pub struct LookupCommitments<E: PairingEngine> {
     pub s_2: sonic_pc::Commitment<E>,
     /// Commitment to the `z_2` polynomial.
     pub z_2: sonic_pc::Commitment<E>,
-    /// Commitment to the `s_1_omega` polynomial.
-    pub s_1_omega: sonic_pc::Commitment<E>,
+    /// Commitment to the `delta_s_1_omega` polynomial.
+    pub delta_s_1_omega: sonic_pc::Commitment<E>,
     /// Commitment to the `z_2_omega` polynomial.
     pub z_2_omega: sonic_pc::Commitment<E>,
 }
@@ -164,8 +164,8 @@ pub struct Evaluations<F: PrimeField> {
     pub s_2_evals: Vec<F>,
     /// Evaluation of `z_2_i`'s at `beta`.
     pub z_2_evals: Vec<F>,
-    /// Evaluation of `s_1_omega_i`'s at `beta`.
-    pub s_1_omega_evals: Vec<F>,
+    /// Evaluation of `delta_s_1_omega_i`'s at `beta`.
+    pub delta_s_1_omega_evals: Vec<F>,
     /// Evaluation of `s_m` at `beta`.
     pub s_m_eval: F,
     /// Evaluation of `s_l` at `beta`.
@@ -205,8 +205,8 @@ impl<F: PrimeField> Evaluations<F> {
         for z_2_eval in &self.z_2_evals {
             CanonicalSerialize::serialize_with_mode(z_2_eval, &mut writer, compress)?;
         }
-        for s_1_omega_eval in &self.s_1_omega_evals {
-            CanonicalSerialize::serialize_with_mode(s_1_omega_eval, &mut writer, compress)?;
+        for delta_s_1_omega_eval in &self.delta_s_1_omega_evals {
+            CanonicalSerialize::serialize_with_mode(delta_s_1_omega_eval, &mut writer, compress)?;
         }
         CanonicalSerialize::serialize_with_mode(&self.s_m_eval, &mut writer, compress)?;
         CanonicalSerialize::serialize_with_mode(&self.s_l_eval, &mut writer, compress)?;
@@ -226,7 +226,7 @@ impl<F: PrimeField> Evaluations<F> {
         size += self.s_1_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.s_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += self.z_2_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
-        size += self.s_1_omega_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
+        size += self.delta_s_1_omega_evals.iter().map(|s| s.serialized_size(compress)).sum::<usize>();
         size += CanonicalSerialize::serialized_size(&self.s_m_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.s_l_eval, compress);
         size += CanonicalSerialize::serialized_size(&self.table_eval, compress);
@@ -264,9 +264,9 @@ impl<F: PrimeField> Evaluations<F> {
         for _ in 0..batch_size {
             z_2_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
-        let mut s_1_omega_evals = Vec::with_capacity(batch_size);
+        let mut delta_s_1_omega_evals = Vec::with_capacity(batch_size);
         for _ in 0..batch_size {
-            s_1_omega_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
+            delta_s_1_omega_evals.push(CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?);
         }
         Ok(Evaluations {
             z_b_evals,
@@ -274,7 +274,7 @@ impl<F: PrimeField> Evaluations<F> {
             s_1_evals,
             s_2_evals,
             z_2_evals,
-            s_1_omega_evals,
+            delta_s_1_omega_evals,
             s_m_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             s_l_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             table_eval: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
@@ -294,8 +294,8 @@ impl<F: PrimeField> Evaluations<F> {
         let s_1_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_1_").then(|| *v)).collect::<Vec<_>>();
         let s_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("s_2_").then(|| *v)).collect::<Vec<_>>();
         let z_2_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_2_").then(|| *v)).collect::<Vec<_>>();
-        let s_1_omega_evals =
-            map.iter().filter_map(|(k, v)| k.starts_with("omega_s_1_").then(|| *v)).collect::<Vec<_>>();
+        let delta_s_1_omega_evals =
+            map.iter().filter_map(|(k, v)| k.starts_with("delta_omega_s_1_").then(|| *v)).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_size);
         Self {
             z_b_evals,
@@ -303,7 +303,7 @@ impl<F: PrimeField> Evaluations<F> {
             s_1_evals,
             s_2_evals,
             z_2_evals,
-            s_1_omega_evals,
+            delta_s_1_omega_evals,
             s_m_eval: map["s_m"],
             s_l_eval: map["s_l"],
             table_eval: map["table"],
@@ -331,9 +331,9 @@ impl<F: PrimeField> Evaluations<F> {
         } else if label.starts_with("z_2_") {
             let index = label.strip_prefix("z_2_").expect("should be able to strip identified prefix");
             self.z_2_evals.get(index.parse::<usize>().unwrap()).copied()
-        } else if label.starts_with("omega_s_1_") {
-            let index = label.strip_prefix("omega_s_1_").expect("should be able to strip identified prefix");
-            self.s_1_omega_evals.get(index.parse::<usize>().unwrap()).copied()
+        } else if label.starts_with("delta_omega_s_1_") {
+            let index = label.strip_prefix("delta_omega_s_1_").expect("should be able to strip identified prefix");
+            self.delta_s_1_omega_evals.get(index.parse::<usize>().unwrap()).copied()
         } else {
             match label {
                 "s_m" => Some(self.s_m_eval),
@@ -357,7 +357,7 @@ impl<F: PrimeField> Valid for Evaluations<F> {
         self.s_1_evals.check()?;
         self.s_2_evals.check()?;
         self.z_2_evals.check()?;
-        self.s_1_omega_evals.check()?;
+        self.delta_s_1_omega_evals.check()?;
         self.s_m_eval.check()?;
         self.s_l_eval.check()?;
         self.table_eval.check()?;
@@ -376,7 +376,7 @@ impl<F: PrimeField> Evaluations<F> {
         result.extend(self.s_1_evals.iter());
         result.extend(self.s_2_evals.iter());
         result.extend(self.z_2_evals.iter());
-        result.extend(self.s_1_omega_evals.iter());
+        result.extend(self.delta_s_1_omega_evals.iter());
         result.extend([
             self.s_m_eval,
             self.s_l_eval,

@@ -48,7 +48,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("s_1", i), None, None));
             polynomials.push(PolynomialInfo::new(witness_label("s_2", i), None, None));
             polynomials.push(PolynomialInfo::new(witness_label("z_2", i), None, None));
-            polynomials.push(PolynomialInfo::new(witness_label("omega_s_1", i), None, None));
+            polynomials.push(PolynomialInfo::new(witness_label("delta_omega_s_1", i), None, None));
             polynomials.push(PolynomialInfo::new(witness_label("omega_z_2", i), None, None));
         }
         polynomials.push(PolynomialInfo::new("table".to_string(), None, None));
@@ -122,7 +122,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     witness_label("s_1", i),
                     witness_label("s_2", i),
                     witness_label("z_2", i),
-                    witness_label("omega_s_1", i),
+                    witness_label("delta_omega_s_1", i),
                     witness_label("omega_z_2", i),
                     &table_evals,
                     &delta_table_omega_evals,
@@ -155,7 +155,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         label_s_1: impl ToString,
         label_s_2: impl ToString,
         label_z_2: impl ToString,
-        label_s_1_omega: impl ToString,
+        label_delta_s_1_omega: impl ToString,
         label_z_2_omega: impl ToString,
         table_evals: &[F],
         delta_table_omega_evals: &[F],
@@ -208,24 +208,26 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
         );
 
+        let mut delta_s_1_omega_evals = [&s_1_evals[1..], &[s_1_evals[0]]].concat();
+        cfg_iter_mut!(delta_s_1_omega_evals).for_each(|c| *c *= delta);
+
         // Calculate z_2
         // Compute divisions for each constraint
         let product_arguments = f_evals
             .iter()
-            .enumerate()
             .zip(table_evals)
             .zip(&s_1_evals)
             .zip(&s_2_evals)
             .zip(delta_table_omega_evals)
+            .zip(&delta_s_1_omega_evals)
             .take(f_evals.len() - 1)
-            .map(|(((((i, f), t), s_1), s_2), d_t_omega)| {
+            .map(|(((((f, t), s_1), s_2), d_t_omega), d_s_1_omega)| {
                 let one_plus_delta = F::one() + delta;
                 let epsilon_one_plus_delta = epsilon * one_plus_delta;
                 one_plus_delta
                     * (epsilon + f)
                     * (epsilon_one_plus_delta + t + d_t_omega)
-                    * ((epsilon_one_plus_delta + s_1 + delta * *s_2)
-                        * (epsilon_one_plus_delta + s_2 + delta * s_1_evals[i + 1]))
+                    * ((epsilon_one_plus_delta + s_1 + delta * *s_2) * (epsilon_one_plus_delta + s_2 + d_s_1_omega))
                         .inverse()
                         .unwrap()
             })
@@ -249,10 +251,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
         );
 
-        let s_1_omega_evals = &[&s_1_evals[1..], &[s_1_evals[0]]].concat();
-        let s_1_omega_poly = LabeledPolynomial::new(
-            label_s_1_omega.to_string(),
-            Evaluations::from_vec_and_domain(s_1_omega_evals.to_vec(), constraint_domain)
+        let delta_s_1_omega_poly = LabeledPolynomial::new(
+            label_delta_s_1_omega.to_string(),
+            Evaluations::from_vec_and_domain(delta_s_1_omega_evals.to_vec(), constraint_domain)
                 .interpolate_with_pc_by_ref(state.ifft_precomputation()),
             None,
             None,
@@ -267,6 +268,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None,
         );
 
-        prover::SecondEntry { f_poly, s_1_poly, s_2_poly, z_2_poly, s_1_omega_poly, z_2_omega_poly }
+        prover::SecondEntry { f_poly, s_1_poly, s_2_poly, z_2_poly, delta_s_1_omega_poly, z_2_omega_poly }
     }
 }

@@ -439,7 +439,7 @@ where
                 s_1: *c[1].commitment(),
                 s_2: *c[2].commitment(),
                 z_2: *c[3].commitment(),
-                s_1_omega: *c[4].commitment(),
+                delta_s_1_omega: *c[4].commitment(),
                 z_2_omega: *c[5].commitment(),
             })
             .collect();
@@ -604,7 +604,10 @@ where
                     LabeledCommitment::new_with_info(&second_round_info[&witness_label("s_1", i)], c.s_1),
                     LabeledCommitment::new_with_info(&second_round_info[&witness_label("s_2", i)], c.s_2),
                     LabeledCommitment::new_with_info(&second_round_info[&witness_label("z_2", i)], c.z_2),
-                    LabeledCommitment::new_with_info(&second_round_info[&witness_label("omega_s_1", i)], c.s_1_omega),
+                    LabeledCommitment::new_with_info(
+                        &second_round_info[&witness_label("delta_omega_s_1", i)],
+                        c.delta_s_1_omega,
+                    ),
                     LabeledCommitment::new_with_info(&second_round_info[&witness_label("omega_z_2", i)], c.z_2_omega),
                 ]
             })

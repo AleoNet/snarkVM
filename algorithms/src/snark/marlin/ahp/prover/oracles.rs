@@ -135,8 +135,8 @@ pub(in crate::snark::marlin) struct SecondEntry<F: PrimeField> {
     pub(super) s_2_poly: LabeledPolynomial<F>,
     /// Plookup permutation poly.
     pub(super) z_2_poly: LabeledPolynomial<F>,
-    /// The shifted first half of the concatenated lookup polynomial.
-    pub(super) s_1_omega_poly: LabeledPolynomial<F>,
+    /// The shifted first half of the concatenated lookup polynomial, multiplied by `delta`.
+    pub(super) delta_s_1_omega_poly: LabeledPolynomial<F>,
     /// Shifted plookup permutation poly.
     pub(super) z_2_omega_poly: LabeledPolynomial<F>,
 }
@@ -144,7 +144,7 @@ pub(in crate::snark::marlin) struct SecondEntry<F: PrimeField> {
 impl<F: PrimeField> SecondEntry<F> {
     /// Iterate over the polynomials output by the prover in the second round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.f_poly, &self.s_1_poly, &self.s_2_poly, &self.z_2_poly, &self.s_1_omega_poly, &self.z_2_omega_poly]
+        [&self.f_poly, &self.s_1_poly, &self.s_2_poly, &self.z_2_poly, &self.delta_s_1_omega_poly, &self.z_2_omega_poly]
             .into_iter()
     }
 
@@ -153,7 +153,7 @@ impl<F: PrimeField> SecondEntry<F> {
             && Some(self.s_1_poly.info()) == info.get(self.s_1_poly.label())
             && Some(self.s_2_poly.info()) == info.get(self.s_2_poly.label())
             && Some(self.z_2_poly.info()) == info.get(self.z_2_poly.label())
-            && Some(self.s_1_omega_poly.info()) == info.get(self.s_1_omega_poly.label())
+            && Some(self.delta_s_1_omega_poly.info()) == info.get(self.delta_s_1_omega_poly.label())
             && Some(self.z_2_omega_poly.info()) == info.get(self.z_2_omega_poly.label())
     }
 }

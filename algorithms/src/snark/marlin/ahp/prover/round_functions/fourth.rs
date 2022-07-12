@@ -92,7 +92,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let mut s_1 = c.s_1_poly.polynomial().as_dense().unwrap().clone();
                     let mut s_2 = c.s_2_poly.polynomial().as_dense().unwrap().clone();
                     let mut z_2 = c.z_2_poly.polynomial().as_dense().unwrap().clone();
-                    let s_1_omega = c.s_1_omega_poly.polynomial().as_dense().unwrap();
+                    let delta_s_1_omega = c.delta_s_1_omega_poly.polynomial().as_dense().unwrap();
                     let z_2_omega = c.z_2_omega_poly.polynomial().as_dense().unwrap();
                     let l_1 = state.index.l_1.polynomial().as_dense().unwrap();
                     let first = {
@@ -125,7 +125,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                         } else {
                             s_2.coeffs.push(epsilon_one_plus_delta);
                         }
-                        let b = &s_2 + &(s_1_omega * *delta);
+                        let b = &s_2 + delta_s_1_omega;
 
                         &(&(z_2_omega * -F::one()) * &a) * &b
                     };

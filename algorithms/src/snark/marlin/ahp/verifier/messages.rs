@@ -75,7 +75,7 @@ pub struct QuerySet<F> {
     pub s_1_query: (String, F),
     pub s_2_query: (String, F),
     pub z_2_query: (String, F),
-    pub s_1_omega_query: (String, F),
+    pub delta_s_1_omega_query: (String, F),
     pub table_query: (String, F),
     pub delta_table_omega_query: (String, F),
     pub s_m_query: (String, F),
@@ -108,7 +108,7 @@ impl<F: PrimeField> QuerySet<F> {
             s_1_query: ("beta".into(), beta),
             s_2_query: ("beta".into(), beta),
             z_2_query: ("beta".into(), beta),
-            s_1_omega_query: ("beta".into(), beta),
+            delta_s_1_omega_query: ("beta".into(), beta),
             table_query: ("beta".into(), beta),
             delta_table_omega_query: ("beta".into(), beta),
             s_m_query: ("beta".into(), beta),
@@ -142,7 +142,7 @@ impl<F: PrimeField> QuerySet<F> {
             query_set.insert((witness_label("z_2", i), self.z_2_query.clone()));
         }
         for i in 0..self.batch_size {
-            query_set.insert((witness_label("omega_s_1", i), self.s_1_omega_query.clone()));
+            query_set.insert((witness_label("delta_omega_s_1", i), self.delta_s_1_omega_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("table".into(), self.table_query.clone()));
