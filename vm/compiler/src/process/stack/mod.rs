@@ -721,6 +721,25 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             if !A::is_satisfied() {
                 bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
             }
+
+            #[cfg(debug_assertions)]
+            self.console_registers.iter().zip_eq(&self.circuit_registers).try_for_each(
+                |((console_index, console_register), (circuit_index, circuit_register))| {
+                    use circuit::Eject;
+
+                    // Ensure the console and circuit index match (executed in same order).
+                    ensure!(
+                        console_index == circuit_index,
+                        "Console register {console_index} and circuit register {circuit_index} indices do not match"
+                    );
+                    // Ensure the console and circuit registers match (executed to same value).
+                    ensure!(
+                        console_register == &circuit_register.eject_value(),
+                        "Console and circuit register values do not match at index {console_index}"
+                    );
+                    Ok(())
+                },
+            )?;
         }
 
         // Eject the response.
