@@ -27,6 +27,8 @@ use crate::{
         MarlinMode,
     },
 };
+#[cfg(not(feature = "parallel"))]
+use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
