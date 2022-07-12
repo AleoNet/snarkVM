@@ -28,6 +28,7 @@ impl<N: Network> Parser for ValueType<N> {
             map(pair(PlaintextType::parse, tag(".public")), |(plaintext_type, _)| Self::Public(plaintext_type)),
             map(pair(PlaintextType::parse, tag(".private")), |(plaintext_type, _)| Self::Private(plaintext_type)),
             map(pair(Identifier::parse, tag(".record")), |(identifier, _)| Self::Record(identifier)),
+            map(pair(Locator::parse, tag(".record")), |(locator, _)| Self::ExternalRecord(locator)),
         ))(string)
     }
 }
@@ -64,6 +65,7 @@ impl<N: Network> Display for ValueType<N> {
             Self::Public(plaintext_type) => write!(f, "{plaintext_type}.public"),
             Self::Private(plaintext_type) => write!(f, "{plaintext_type}.private"),
             Self::Record(identifier) => write!(f, "{identifier}.record"),
+            Self::ExternalRecord(locator) => write!(f, "{locator}.record"),
         }
     }
 }
@@ -109,6 +111,12 @@ mod tests {
         assert_eq!(
             Ok(("", ValueType::<CurrentNetwork>::from_str("token.record")?)),
             ValueType::<CurrentNetwork>::parse("token.record")
+        );
+
+        // ExternalRecord type.
+        assert_eq!(
+            Ok(("", ValueType::<CurrentNetwork>::from_str("howard.aleo/message.record")?)),
+            ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")
         );
 
         Ok(())
@@ -166,6 +174,11 @@ mod tests {
         assert_eq!(ValueType::<CurrentNetwork>::from_str("signature.private")?.to_string(), "signature.private");
 
         assert_eq!(ValueType::<CurrentNetwork>::from_str("token.record")?.to_string(), "token.record");
+
+        assert_eq!(
+            ValueType::<CurrentNetwork>::from_str("howard.aleo/message.record")?.to_string(),
+            "howard.aleo/message.record"
+        );
 
         Ok(())
     }

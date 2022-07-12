@@ -1294,9 +1294,9 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "once_cell"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
+checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
 
 [[package]]
 name = "oorandom"
@@ -1653,9 +1653,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.5.6"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d83f127d94bdbcda4c8cc2e50f6f84f4b611f69c902699ca385a39c3a75f9ff1"
+checksum = "4c4eb3267174b8c6c2f654116623910a0fef09c4753f8dd83db29c48a0df988b"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1670,9 +1670,9 @@ checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.26"
+version = "0.6.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49b3de9ec5dc0a3417da371aab17d729997c15010e7fd24ff707773a33bddb64"
+checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
 
 [[package]]
 name = "remove_dir_all"
@@ -1986,8 +1986,10 @@ dependencies = [
  "anyhow",
  "clap 3.2.7",
  "colored",
+ "rand",
  "rusty-hook",
  "self_update",
+ "serde_json",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-compiler",
@@ -2059,7 +2061,6 @@ dependencies = [
  "snarkvm-circuit-environment",
  "snarkvm-circuit-network",
  "snarkvm-circuit-program",
- "snarkvm-circuit-transition",
  "snarkvm-circuit-types",
 ]
 
@@ -2149,20 +2150,6 @@ dependencies = [
  "snarkvm-circuit-types",
  "snarkvm-console-account",
  "snarkvm-console-program",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-circuit-transition"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "snarkvm-circuit-account",
- "snarkvm-circuit-network",
- "snarkvm-circuit-types",
- "snarkvm-console-account",
- "snarkvm-console-network",
- "snarkvm-console-transition",
  "snarkvm-utilities",
 ]
 
@@ -2263,11 +2250,15 @@ name = "snarkvm-compiler"
 version = "0.7.5"
 dependencies = [
  "anyhow",
+ "bincode",
  "colored",
  "indexmap",
+ "once_cell",
  "parking_lot 0.12.1",
  "paste",
  "rand",
+ "regex",
+ "serde_json",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
@@ -2286,7 +2277,6 @@ dependencies = [
  "snarkvm-console-collections",
  "snarkvm-console-network",
  "snarkvm-console-program",
- "snarkvm-console-transition",
  "snarkvm-console-types",
 ]
 
@@ -2375,15 +2365,6 @@ dependencies = [
  "num-traits",
  "once_cell",
  "serde_json",
- "snarkvm-console-account",
- "snarkvm-console-network",
- "snarkvm-console-types",
-]
-
-[[package]]
-name = "snarkvm-console-transition"
-version = "0.7.5"
-dependencies = [
  "snarkvm-console-account",
  "snarkvm-console-network",
  "snarkvm-console-types",

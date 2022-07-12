@@ -87,11 +87,9 @@ impl<N: Network> FromStr for Instruction<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_parse() -> Result<()> {

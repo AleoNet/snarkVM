@@ -86,8 +86,10 @@ impl<N: Network> Trace<N> {
                 InputID::Public(input_hash) => trace.add_input(*input_hash),
                 // A private input is encrypted (using `tvk`) and hashed to a field element.
                 InputID::Private(input_hash) => trace.add_input(*input_hash),
-                // An input record is computed to its serial number.
+                // A record input is computed (using `tvk`) to its serial number.
                 InputID::Record(_, serial_number) => trace.add_input(*serial_number),
+                // An external record input is committed (using `tvk`) to a field element.
+                InputID::ExternalRecord(input_commitment) => trace.add_input(*input_commitment),
             }
         })?;
 
@@ -99,8 +101,10 @@ impl<N: Network> Trace<N> {
                 OutputID::Public(output_hash) => trace.add_output(*output_hash),
                 // A private output is encrypted (using `tvk`) and hashed to a field element.
                 OutputID::Private(output_hash) => trace.add_output(*output_hash),
-                // An output record is encrypted (using `tvk`) and hashed to a field element.
-                OutputID::Record(commitment, _, _) => trace.add_input(*commitment),
+                // A record output is encrypted (using `tvk`) and hashed to a field element.
+                OutputID::Record(commitment, _, _) => trace.add_output(*commitment),
+                // An external record output is committed (using `tvk`) to a field element.
+                OutputID::ExternalRecord(output_commitment) => trace.add_output(*output_commitment),
             }
         })?;
 

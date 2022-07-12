@@ -18,9 +18,9 @@ use crate::process::stack::*;
 
 impl<N: Network> RegisterTypes<N> {
     /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.
-    pub fn matches_interface(
+    pub fn matches_interface<A: circuit::Aleo<Network = N>>(
         &self,
-        program: &Program<N>,
+        stack: &Stack<N, A>,
         operands: &[Operand<N>],
         interface: &Interface<N>,
     ) -> Result<()> {
@@ -42,7 +42,7 @@ impl<N: Network> RegisterTypes<N> {
                 // Ensure the register type matches the member type.
                 Operand::Register(register) => {
                     // Retrieve the register type.
-                    let register_type = self.get_type(program, register)?;
+                    let register_type = self.get_type(stack, register)?;
                     // Ensure the register type is not a record.
                     ensure!(
                         !matches!(register_type, RegisterType::Record(..)),
@@ -63,9 +63,9 @@ impl<N: Network> RegisterTypes<N> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
-    pub fn matches_record(
+    pub fn matches_record<A: circuit::Aleo<Network = N>>(
         &self,
-        program: &Program<N>,
+        stack: &Stack<N, A>,
         operands: &[Operand<N>],
         record_type: &RecordType<N>,
     ) -> Result<()> {
@@ -84,7 +84,7 @@ impl<N: Network> RegisterTypes<N> {
             }
             Operand::Register(register) => {
                 // Retrieve the register type.
-                let register_type = self.get_type(program, register)?;
+                let register_type = self.get_type(stack, register)?;
                 // Ensure the register type is an address.
                 ensure!(
                     register_type == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
@@ -103,7 +103,7 @@ impl<N: Network> RegisterTypes<N> {
             }
             Operand::Register(register) => {
                 // Retrieve the register type.
-                let register_type = self.get_type(program, register)?;
+                let register_type = self.get_type(stack, register)?;
                 // Ensure the register type is a u64.
                 ensure!(
                     register_type == RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64)),
@@ -130,7 +130,7 @@ impl<N: Network> RegisterTypes<N> {
                         // Ensure the register type matches the entry type.
                         Operand::Register(register) => {
                             // Retrieve the register type.
-                            let register_type = self.get_type(program, register)?;
+                            let register_type = self.get_type(stack, register)?;
                             // Ensure the register type is not a record.
                             ensure!(
                                 !matches!(register_type, RegisterType::Record(..)),

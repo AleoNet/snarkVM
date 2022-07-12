@@ -90,7 +90,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         I::BITS as u16
     }
 
-    fn cast_as_dual(self) -> Integer<E, I::Dual> {
+    pub fn cast_as_dual(self) -> Integer<E, I::Dual> {
         Integer::<E, I::Dual> { bits_le: self.bits_le, phantom: Default::default() }
     }
 }

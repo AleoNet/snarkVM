@@ -20,13 +20,13 @@ impl<N: Network> FromBytes for Import<N> {
     /// Reads the import from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let id = ProgramID::read_le(&mut reader)?;
-        Ok(Self { id })
+        Ok(Self { program_id: id })
     }
 }
 
 impl<N: Network> ToBytes for Import<N> {
     /// Writes the import to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.id.write_le(&mut writer)
+        self.program_id.write_le(&mut writer)
     }
 }

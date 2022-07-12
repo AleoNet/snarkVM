@@ -32,6 +32,9 @@ pub use data_types::*;
 mod id;
 pub use id::*;
 
+mod locator;
+pub use locator::*;
+
 mod request;
 pub use request::*;
 

@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{
+    file::Manifest,
+    prelude::{Network, ProgramID},
+};
 use snarkvm_compiler::Program;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use core::str::FromStr;
 use std::{
     fs::{self, File},
@@ -24,13 +28,9 @@ use std::{
     path::Path,
 };
 
-// TODO (howardwu): Unify these higher up.
-type A = snarkvm_circuit::AleoV0;
-type N = <A as snarkvm_circuit::Environment>::Network;
-
 static ALEO_FILE_EXTENSION: &str = "aleo";
 
-pub struct AleoFile {
+pub struct AleoFile<N: Network> {
     /// The file name (without the extension).
     file_name: String,
     /// The program as a string.
@@ -39,7 +39,7 @@ pub struct AleoFile {
     program: Program<N>,
 }
 
-impl FromStr for AleoFile {
+impl<N: Network> FromStr for AleoFile<N> {
     type Err = anyhow::Error;
 
     /// Reads the file from a string.
@@ -49,7 +49,7 @@ impl FromStr for AleoFile {
         let program_string = s.to_string();
 
         // The file name is defined as the string up to the extension (excluding the extension).
-        let file_name = match program.id().network().to_string() == *ALEO_FILE_EXTENSION {
+        let file_name = match program.id().is_aleo() {
             true => program.id().name().to_string(),
             false => program.id().to_string(),
         };
@@ -58,26 +58,95 @@ impl FromStr for AleoFile {
     }
 }
 
-impl AleoFile {
-    /// Reads the program from the given file path, if it exists.
-    pub fn from_path(path: &Path) -> Result<Self> {
+impl<N: Network> AleoFile<N> {
+    /// Creates a new Aleo program file with the given directory path, program ID, and `is_main` indicator.
+    pub fn create(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+        // Ensure the program name is valid.
+        ensure!(!Program::is_reserved_keyword(program_id.name()), "Program name is invalid (reserved): '{program_id}'");
+
+        // Construct the initial program string.
+        let program_string = format!(
+            r#"// The '{program_id}' program.
+program {program_id};
+
+function hello_world:
+    input r0 as u32.public;
+    input r1 as u32.private;
+    add r0 r1 into r2;
+    output r2 as u32.private;
+"#
+        );
+
+        // Create the file.
+        let file_name = if is_main {
+            Self::main_file_name()
+        } else {
+            match program_id.is_aleo() {
+                true => program_id.to_string(),
+                false => format!("{program_id}.{ALEO_FILE_EXTENSION}"),
+            }
+        };
+        // Construct the file path.
+        let path = directory.join(file_name);
+        // Ensure the file path does not already exist.
+        ensure!(!path.exists(), "The Aleo file already exists: {}", path.display());
+
+        // Write the file.
+        File::create(&path)?.write_all(program_string.as_bytes())?;
+
+        // Return the Aleo file.
+        Self::from_filepath(&path)
+    }
+
+    /// Opens the Aleo program file, given the directory path, program ID, and `is_main` indicator.
+    pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+
+        // Create the file.
+        let file_name = if is_main {
+            Self::main_file_name()
+        } else {
+            match program_id.is_aleo() {
+                true => program_id.to_string(),
+                false => format!("{program_id}.{ALEO_FILE_EXTENSION}"),
+            }
+        };
+        // Construct the file path.
+        let path = directory.join(file_name);
+        // Ensure the file path exists.
+        ensure!(path.exists(), "The Aleo file is missing: '{}'", path.display());
+
+        // Load the Aleo file.
+        let aleo_file = Self::from_filepath(&path)?;
+
+        // Ensure the program ID matches, if this is the main file.
+        if is_main && aleo_file.program.id() != program_id {
+            bail!("The program ID from `{}` does not match in '{}'", Manifest::<N>::file_name(), path.display())
+        }
+
+        Ok(aleo_file)
+    }
+
+    /// Returns `true` if the file exists at the given path.
+    pub fn exists_at(&self, file_path: &Path) -> bool {
         // Ensure the path is well-formed.
-        Self::check_path(path)?;
+        Self::check_path(file_path).is_ok() && file_path.exists()
+    }
 
-        // Retrieve the file name.
-        let file_name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_str()
-            .ok_or_else(|| anyhow!("File name not found."))?
-            .to_string();
+    /// Returns `true` if the main program file exists at the given path.
+    pub fn main_exists_at(directory: &Path) -> bool {
+        // Construct the file path.
+        let path = directory.join(Self::main_file_name());
+        // Return the result.
+        path.is_file() && path.exists()
+    }
 
-        // Read the program string.
-        let program_string = fs::read_to_string(&path)?;
-        // Parse the program string.
-        let program = Program::from_str(&program_string)?;
-
-        Ok(Self { file_name, program_string, program })
+    /// Returns the main Aleo program file name.
+    pub fn main_file_name() -> String {
+        format!("main.{ALEO_FILE_EXTENSION}")
     }
 
     /// Returns the file name.
@@ -93,12 +162,6 @@ impl AleoFile {
     /// Returns the program.
     pub const fn program(&self) -> &Program<N> {
         &self.program
-    }
-
-    /// Returns `true` if the file exists at the given path.
-    pub fn exists_at(&self, path: &Path) -> bool {
-        // Ensure the path is well-formed.
-        Self::check_path(path).is_ok() && path.exists()
     }
 
     /// Writes the program string to the file.
@@ -127,13 +190,17 @@ impl AleoFile {
         } else {
             // Ensure the path is well-formed.
             Self::check_path(path)?;
-            // Remove the file.
-            Ok(fs::remove_file(&path)?)
+            // If the path exists, remove it.
+            if path.exists() {
+                // Remove the file.
+                fs::remove_file(&path)?;
+            }
+            Ok(())
         }
     }
 }
 
-impl AleoFile {
+impl<N: Network> AleoFile<N> {
     /// Checks that the given path has the correct file extension.
     fn check_path(path: &Path) -> Result<()> {
         // Ensure the given path is a file.
@@ -143,19 +210,40 @@ impl AleoFile {
         let extension = path.extension().ok_or_else(|| anyhow!("File extension not found."))?;
         ensure!(extension == ALEO_FILE_EXTENSION, "File extension is incorrect.");
 
-        // Ensure the given path exists.
-        ensure!(path.exists(), "File does not exist: {}", path.display());
-
         Ok(())
+    }
+
+    /// Reads the program from the given file path, if it exists.
+    fn from_filepath(file: &Path) -> Result<Self> {
+        // Ensure the path is well-formed.
+        Self::check_path(file)?;
+
+        // Ensure the given path exists.
+        ensure!(file.exists(), "File does not exist: {}", file.display());
+
+        // Retrieve the file name.
+        let file_name = file
+            .file_stem()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_str()
+            .ok_or_else(|| anyhow!("File name not found."))?
+            .to_string();
+
+        // Read the program string.
+        let program_string = fs::read_to_string(&file)?;
+        // Parse the program string.
+        let program = Program::from_str(&program_string)?;
+
+        Ok(Self { file_name, program_string, program })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuit::Parser;
+    use crate::prelude::Parser;
 
-    type CurrentNetwork = N;
+    type CurrentNetwork = snarkvm_console::network::Testnet3;
 
     fn temp_dir() -> std::path::PathBuf {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
@@ -164,7 +252,7 @@ mod tests {
     #[test]
     fn test_from_str() {
         let program_string = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;
@@ -193,7 +281,7 @@ function compute:
         let directory = temp_dir();
 
         let program_string = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;
@@ -211,7 +299,7 @@ function compute:
         file.write_all(program_string.as_bytes()).unwrap();
 
         // Read the program from the path.
-        let file = AleoFile::from_path(&path).unwrap();
+        let file = AleoFile::from_filepath(&path).unwrap();
 
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(program_string).unwrap();

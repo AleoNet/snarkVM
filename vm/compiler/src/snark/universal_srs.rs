@@ -24,14 +24,15 @@ pub struct UniversalSRS<N: Network> {
 impl<N: Network> UniversalSRS<N> {
     /// Initializes the universal SRS.
     pub fn load(num_gates: usize) -> Result<Self> {
-        let mut rng = rand::thread_rng();
+        // TODO (howardwu): Switch this to a remotely loaded SRS.
+        let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
 
         let timer = std::time::Instant::now();
         let max_degree =
             marlin::ahp::AHPForR1CS::<N::Field, marlin::MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates)
                 .unwrap();
         let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
-        println!("Called universal setup: {} ms", timer.elapsed().as_millis());
+        println!("{}", format!(" • Called universal setup: {} ms", timer.elapsed().as_millis()).dimmed());
 
         Ok(Self { srs: universal_srs })
     }
@@ -43,9 +44,24 @@ impl<N: Network> UniversalSRS<N> {
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         let timer = std::time::Instant::now();
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
-        println!("Called setup: {} ms", timer.elapsed().as_millis());
+        println!("{}", format!(" • Called setup: {} ms", timer.elapsed().as_millis()).dimmed());
 
         Ok((ProvingKey::new(proving_key), VerifyingKey::new(verifying_key)))
+    }
+}
+
+impl<N: Network> FromBytes for UniversalSRS<N> {
+    /// Reads the universal SRS from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let srs = FromBytes::read_le(&mut reader)?;
+        Ok(Self { srs })
+    }
+}
+
+impl<N: Network> ToBytes for UniversalSRS<N> {
+    /// Writes the universal SRS to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.srs.write_le(&mut writer)
     }
 }
 

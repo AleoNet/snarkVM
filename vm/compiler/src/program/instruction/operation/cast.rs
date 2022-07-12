@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Program, Stack};
+use crate::{Opcode, Operand, Stack};
 use console::{
     network::prelude::*,
     program::{
@@ -98,7 +98,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match member {
                         Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.program().matches_register(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -160,7 +160,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match entry {
                         Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.program().matches_register(&Value::Plaintext(plaintext.clone()), &register_type)?;
+                            stack.matches_register_type(&Value::Plaintext(plaintext.clone()), &register_type)?;
                             // Output the plaintext.
                             plaintext.clone()
                         }
@@ -180,12 +180,15 @@ impl<N: Network> Cast<N> {
                 // Store the record.
                 stack.store(&self.destination, Value::Record(record))
             }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
+            }
         }
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
         // Load the operands values.
@@ -209,7 +212,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match member {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the member matches the register type.
-                            stack.program().matches_register(
+                            stack.matches_register_type(
                                 &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
                                 &register_type,
                             )?;
@@ -283,7 +286,7 @@ impl<N: Network> Cast<N> {
                     let plaintext = match entry {
                         circuit::Value::Plaintext(plaintext) => {
                             // Ensure the entry matches the register type.
-                            stack.program().matches_register(
+                            stack.matches_register_type(
                                 &circuit::Value::Plaintext(plaintext.clone()).eject_value(),
                                 &register_type,
                             )?;
@@ -308,12 +311,19 @@ impl<N: Network> Cast<N> {
                 // Store the record.
                 stack.store_circuit(&self.destination, circuit::Value::Record(record))
             }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
+            }
         }
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -328,7 +338,7 @@ impl<N: Network> Cast<N> {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
             RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                 // Retrieve the interface and ensure it is defined in the program.
-                let interface = program.get_interface(&interface_name)?;
+                let interface = stack.program().get_interface(&interface_name)?;
                 // Ensure the input types match the interface.
                 for ((_, member_type), input_type) in interface.members().iter().zip_eq(input_types) {
                     match input_type {
@@ -343,12 +353,16 @@ impl<N: Network> Cast<N> {
                         RegisterType::Record(record_name) => bail!(
                             "Interface '{interface_name}' member type mismatch: expected '{member_type}', found record '{record_name}'"
                         ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Interface '{interface_name}' member type mismatch: expected '{member_type}', found external record '{locator}'"
+                        ),
                     }
                 }
             }
             RegisterType::Record(record_name) => {
                 // Retrieve the record type and ensure is defined in the program.
-                let record = program.get_record(&record_name)?;
+                let record = stack.program().get_record(&record_name)?;
 
                 // Ensure the input types length is at least 2.
                 ensure!(input_types.len() >= 2, "Casting to a record requires at least two operands");
@@ -381,8 +395,15 @@ impl<N: Network> Cast<N> {
                         RegisterType::Record(record_name) => bail!(
                             "Record '{record_name}' entry type mismatch: expected '{entry_type}', found record '{record_name}'"
                         ),
+                        // Ensure the input type cannot be an external record (this is unsupported behavior).
+                        RegisterType::ExternalRecord(locator) => bail!(
+                            "Record '{record_name}' entry type mismatch: expected '{entry_type}', found external record '{locator}'"
+                        ),
                     }
                 }
+            }
+            RegisterType::ExternalRecord(_locator) => {
+                bail!("Illegal operation: Cannot cast to an external record.")
             }
         }
 
@@ -524,11 +545,9 @@ impl<N: Network> ToBytes for Cast<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
     use console::{network::Testnet3, program::Identifier};
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = AleoV0;
 
     #[test]
     fn test_parse() {

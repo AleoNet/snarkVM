@@ -27,26 +27,26 @@ use console::{
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Import<N: Network> {
     /// The imported program ID.
-    id: ProgramID<N>,
+    program_id: ProgramID<N>,
 }
 
 impl<N: Network> Import<N> {
     /// Returns the imported program ID.
     #[inline]
-    pub const fn id(&self) -> &ProgramID<N> {
-        &self.id
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        &self.program_id
     }
 
     /// Returns the imported program name.
     #[inline]
     pub const fn name(&self) -> &Identifier<N> {
-        self.id.name()
+        self.program_id.name()
     }
 
     /// Returns the imported network-level domain (NLD).
     #[inline]
-    pub fn network(&self) -> Identifier<N> {
-        self.id.network()
+    pub const fn network(&self) -> &Identifier<N> {
+        self.program_id.network()
     }
 }
 
@@ -61,14 +61,14 @@ impl<N: Network> TypeName for Import<N> {
 impl<N: Network> Ord for Import<N> {
     /// Ordering is determined by the NLD first, then the program name second.
     fn cmp(&self, other: &Self) -> Ordering {
-        self.id.cmp(&other.id)
+        self.program_id.cmp(&other.program_id)
     }
 }
 
 impl<N: Network> PartialOrd for Import<N> {
     /// Ordering is determined by the NLD first, then the program name second.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.id.partial_cmp(&other.id)
+        self.program_id.partial_cmp(&other.program_id)
     }
 }
 

@@ -34,7 +34,7 @@ impl<N: Network> Parser for Import<N> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the import statement.
-        Ok((string, Self { id }))
+        Ok((string, Self { program_id: id }))
     }
 }
 
@@ -66,7 +66,7 @@ impl<N: Network> Debug for Import<N> {
 impl<N: Network> Display for Import<N> {
     /// Prints the import statement as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{type_} {id};", type_ = Self::type_name(), id = self.id)
+        write!(f, "{type_} {id};", type_ = Self::type_name(), id = self.program_id)
     }
 }
 
@@ -81,11 +81,11 @@ mod tests {
     fn test_import_parse() -> Result<()> {
         let import = Import::<CurrentNetwork>::parse("import bar.aleo;").unwrap().1;
         assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("bar")?);
-        assert_eq!(import.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
+        assert_eq!(import.network(), &Identifier::<CurrentNetwork>::from_str("aleo")?);
 
         let import = Import::<CurrentNetwork>::parse("import foo.aleo;").unwrap().1;
         assert_eq!(import.name(), &Identifier::<CurrentNetwork>::from_str("foo")?);
-        assert_eq!(import.network(), Identifier::<CurrentNetwork>::from_str("aleo")?);
+        assert_eq!(import.network(), &Identifier::<CurrentNetwork>::from_str("aleo")?);
 
         Ok(())
     }

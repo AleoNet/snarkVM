@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Assignment, Inject, LinearCombination, Mode, Variable};
+use crate::{Assignment, Inject, LinearCombination, Mode, Variable, R1CS};
 use snarkvm_curves::{AffineCurve, MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
@@ -131,6 +131,12 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     fn halt<S: Into<String>, T>(message: S) -> T {
         <Self::Network as console::Environment>::halt(message)
     }
+
+    /// Returns the R1CS circuit, resetting the circuit.
+    fn inject_r1cs(r1cs: R1CS<Self::BaseField>);
+
+    /// Returns the R1CS circuit, resetting the circuit.
+    fn eject_r1cs_and_reset() -> R1CS<Self::BaseField>;
 
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
     fn eject_assignment_and_reset() -> Assignment<Self::BaseField>;

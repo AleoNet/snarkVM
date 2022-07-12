@@ -23,8 +23,8 @@ extern crate thiserror;
 
 #[cfg(feature = "cli")]
 pub mod cli;
-#[cfg(feature = "file")]
 pub mod file;
+pub mod package;
 
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;
@@ -94,9 +94,6 @@ pub mod prelude {
 
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;
-
-    #[cfg(feature = "r1cs")]
-    pub use crate::r1cs::*;
 
     #[cfg(feature = "utilities")]
     pub use crate::utilities::*;
