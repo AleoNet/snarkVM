@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    fft::Evaluations,
-    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialWithBasis},
-    snark::marlin::{
-        ahp::{indexer::Circuit, AHPError, AHPForR1CS},
-        prover,
-        MarlinMode,
-    },
+use crate::snark::marlin::{
+    ahp::{indexer::Circuit, AHPError, AHPForR1CS},
+    prover,
+    MarlinMode,
 };
 use itertools::Itertools;
 use snarkvm_fields::PrimeField;
@@ -126,58 +122,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state.z_c = Some(z_c);
 
         Ok(state)
-    }
-
-    pub fn calculate_opening_and_commitment_polys<'a>(
-        label: impl ToString,
-        evaluations: &[F],
-        will_be_evaluated: bool,
-        state: &prover::State<'a, F, MM>,
-        r: Option<F>,
-    ) -> (LabeledPolynomial<F>, LabeledPolynomialWithBasis<'a, F>) {
-        let constraint_domain = state.constraint_domain;
-        let v_H = constraint_domain.vanishing_polynomial();
-        let should_randomize = MM::ZK && will_be_evaluated;
-        let label = label.to_string();
-        let poly_time = start_timer!(|| format!("Computing {label}"));
-
-        let evals = Evaluations::from_vec_and_domain(evaluations.to_vec(), constraint_domain);
-
-        let mut poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
-        if should_randomize {
-            poly += &(&v_H * r.unwrap());
-        }
-
-        debug_assert!(
-            poly.evaluate_over_domain_by_ref(constraint_domain)
-                .evaluations
-                .into_iter()
-                .zip(&evals.evaluations)
-                .all(|(z, e)| *e == z),
-            "Label: {label}\n1: {:#?}\n2: {:#?}",
-            poly.evaluate_over_domain_by_ref(constraint_domain).evaluations,
-            &evals.evaluations,
-        );
-
-        let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, Self::zk_bound());
-        if should_randomize {
-            assert!(poly_for_opening.degree() < constraint_domain.size() + Self::zk_bound().unwrap());
-        } else {
-            assert!(poly_for_opening.degree() < constraint_domain.size());
-        }
-
-        let poly_for_committing = if should_randomize {
-            let poly_terms = vec![
-                (F::one(), PolynomialWithBasis::new_lagrange_basis(evals)),
-                (F::one(), PolynomialWithBasis::new_sparse_monomial_basis(&v_H * r.unwrap(), None)),
-            ];
-            LabeledPolynomialWithBasis::new_linear_combination(label, poly_terms, Self::zk_bound())
-        } else {
-            LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, Self::zk_bound())
-        };
-        end_timer!(poly_time);
-
-        (poly_for_opening, poly_for_committing)
     }
 }
 
