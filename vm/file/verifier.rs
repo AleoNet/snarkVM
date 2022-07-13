@@ -193,7 +193,7 @@ impl<N: Network> ToBytes for VerifierFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{FromStr, Parser};
+    use crate::prelude::{test_crypto_rng, FromStr, Parser};
     use snarkvm_compiler::Process;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
@@ -229,8 +229,11 @@ function compute:
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
         let function_name = Identifier::from_str("compute").unwrap();
 
-        // Sample the proving and verifying key.
-        let (_proving_key, verifying_key) = process.circuit_key(program.id(), &function_name).unwrap();
+        // Sample the verifying key.
+        process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+
+        // Retrieve the verifying key.
+        let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();
 
         // Create the verifier file at the path.
         let expected = VerifierFile::create(&directory, &function_name, verifying_key).unwrap();

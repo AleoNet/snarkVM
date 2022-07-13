@@ -41,7 +41,6 @@ use console::{
 
 use indexmap::IndexMap;
 
-#[allow(clippy::type_complexity)]
 pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
@@ -52,6 +51,66 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
+    /// Initializes a new process.
+    #[inline]
+    pub fn new(program: Program<N>) -> Result<Self> {
+        // Construct the process.
+        let mut process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
+        // Add the program to the process.
+        process.add_program(&program)?;
+        // Return the process.
+        Ok(process)
+    }
+
+    /// Inserts the given proving key and verifying key, for the given program ID and function name.
+    #[inline]
+    pub fn insert_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        proving_key: ProvingKey<N>,
+        verifying_key: VerifyingKey<N>,
+    ) {
+        // Add the circuit key to the mapping.
+        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
+    }
+
+    /// Synthesizes the proving and verifying key for the given program ID and function name.
+    #[inline]
+    pub fn synthesize_key<R: Rng + CryptoRng>(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        rng: &mut R,
+    ) -> Result<()> {
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
+        // Synthesize the proving and verifying key.
+        stack.synthesize_key(function_name, rng)
+    }
+
+    /// Returns the proving key for the given program ID and function name.
+    #[inline]
+    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
+        // Return the proving key.
+        stack.get_proving_key(function_name)
+    }
+
+    /// Returns the verifying key for the given program ID and function name.
+    #[inline]
+    pub fn get_verifying_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+    ) -> Result<VerifyingKey<N>> {
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
+        // Return the verifying key.
+        stack.get_verifying_key(function_name)
+    }
+
     /// Returns `true` if the process contains the program with the given ID.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
@@ -68,45 +127,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     #[inline]
     pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N, A>> {
         self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
-    /// Initializes a new process.
-    #[inline]
-    pub fn new(program: Program<N>) -> Result<Self> {
-        // Construct the process.
-        let mut process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
-        // Add the program to the process.
-        process.add_program(&program)?;
-        // Return the process.
-        Ok(process)
-    }
-
-    /// Returns the proving key and verifying key for the given program ID and function name.
-    #[inline]
-    pub fn circuit_key(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-    ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-        // Return the circuit key.
-        stack.circuit_key(function_name)
-    }
-
-    /// Inserts the given proving key and verifying key, for the given program ID and function name.
-    #[inline]
-    pub fn insert_circuit_key(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-        proving_key: ProvingKey<N>,
-        verifying_key: VerifyingKey<N>,
-    ) {
-        // Add the circuit key to the mapping.
-        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
     }
 
     /// Authorizes the request(s) to execute the program function.
@@ -133,8 +153,8 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Prepare the stack.
         let mut stack = self.get_stack(program_id)?;
         // Construct the authorization from the function.
-        let (_response, _assignment) =
-            stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()))?;
+        let _response =
+            stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
 
         // Return the authorization.
         Ok(authorization)
@@ -205,7 +225,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
         // Initialize the execution.
         let execution = Execution::new();
         // Execute the circuit.
-        let response = stack.execute(CallStack::Execute(authorization, execution.clone()), rng)?;
+        let response = stack.execute_function(CallStack::Execute(authorization, execution.clone()), rng)?;
 
         Ok((response, execution))
     }
@@ -276,12 +296,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
             inputs.extend(transition.output_ids().map(|id| *id));
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
 
-            // Retrieve the verifying key.
-            let (_, verifying_key) = self.circuit_key(transition.program_id(), transition.function_name())?;
-
             #[cfg(debug_assertions)]
             println!("Transition public inputs ({} elements): {:#?}", inputs.len(), inputs);
 
+            // Retrieve the verifying key.
+            let verifying_key = self.get_verifying_key(transition.program_id(), transition.function_name())?;
             // Ensure the proof is valid.
             ensure!(verifying_key.verify(&inputs, transition.proof()), "Transition is invalid");
         }
@@ -466,7 +485,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("The circuit for 'token.aleo/initialize' is not satisfied with the given inputs.")
+            format!("'token.aleo/initialize' is not satisfied on the given inputs.")
         );
     }
 
@@ -491,7 +510,7 @@ function hello_world:
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
         // Check that the circuit key can be synthesized.
-        process.circuit_key(program.id(), &function_name).unwrap();
+        process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
     }
 
     #[test]
@@ -558,7 +577,7 @@ function compute:
         // Construct the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
         // Check that the circuit key can be synthesized.
-        process.circuit_key(program.id(), &function_name).unwrap();
+        process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
 
         // Reset the process.
         let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();

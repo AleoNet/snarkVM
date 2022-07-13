@@ -40,7 +40,13 @@ impl<N: Network> Package<N> {
         // Load each function circuit.
         for function_name in program.functions().keys() {
             // Synthesize the proving and verifying key.
-            let (proving_key, verifying_key) = process.circuit_key(program_id, function_name)?;
+            process.synthesize_key(program_id, function_name, &mut rand::thread_rng())?;
+
+            // Retrieve the proving key.
+            let proving_key = process.get_proving_key(program_id, function_name)?;
+            // Retrieve the verifying key.
+            let verifying_key = process.get_verifying_key(program_id, function_name)?;
+
             // Create the prover.
             let _prover = ProverFile::create(&build_directory, function_name, proving_key)?;
             // Create the verifier.

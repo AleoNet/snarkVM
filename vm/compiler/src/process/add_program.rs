@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Adds a new program to the process.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
@@ -79,7 +79,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Checks that the given closure is well-formed for the given program.
     fn process_closure(stack: &Stack<N, A>, closure: &Closure<N>) -> Result<RegisterTypes<N>> {
         // Initialize a map of registers to their types.

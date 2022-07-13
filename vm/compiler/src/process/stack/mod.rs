@@ -22,18 +22,7 @@ mod matches;
 mod sample;
 mod store;
 
-use crate::{
-    CallOperator,
-    CircuitKeys,
-    Closure,
-    Function,
-    Instruction,
-    Operand,
-    Program,
-    ProvingKey,
-    Transition,
-    VerifyingKey,
-};
+use crate::{CircuitKeys, Closure, Function, Instruction, Operand, Program, ProvingKey, Transition, VerifyingKey};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -170,6 +159,7 @@ impl<N: Network> Default for Execution<N> {
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
+    Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Execute(Authorization<N>, Execution<N>),
 }
 
@@ -178,6 +168,7 @@ impl<N: Network> CallStack<N> {
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
             CallStack::Authorize(requests, ..) => requests.push(request),
+            CallStack::Synthesize(requests, ..) => requests.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
         Ok(())
@@ -186,7 +177,7 @@ impl<N: Network> CallStack<N> {
     /// Pops the request from the stack.
     pub fn pop(&mut self) -> Result<Request<N>> {
         match self {
-            CallStack::Authorize(requests, ..) => {
+            CallStack::Authorize(requests, ..) | CallStack::Synthesize(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Execute(authorization, ..) => authorization.next(),
@@ -243,7 +234,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         ensure!(!self.external_stacks.contains_key(&program_id), "Program '{program_id}' already exists");
         // Ensure the program exists in the main program imports.
         ensure!(self.program.contains_import(&program_id), "'{program_id}' does not exist in the main program imports");
-        // TODO (howardwu): Ensure the imported program is declared in the program imports.
         // TODO (howardwu): Ensure the imported program is not the main program.
         // Add the external stack to the stack.
         self.external_stacks.insert(program_id, external_stack);
@@ -285,23 +275,16 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         self.program.id()
     }
 
-    /// Returns the call stack.
+    /// Returns `true` if the stack contains the external record.
     #[inline]
-    pub fn call_stack(&self) -> CallStack<N> {
-        self.call_stack.clone()
-    }
-
-    /// Returns the circuit caller.
-    #[inline]
-    pub fn circuit_caller(&self) -> Result<&circuit::Address<A>> {
-        self.circuit_caller.as_ref().ok_or_else(|| anyhow!("Malformed stack: missing circuit caller"))
-    }
-
-    /// Returns the register types for the given closure or function name.
-    #[inline]
-    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
-        // Retrieve the register types.
-        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+    pub fn contains_external_record(&self, locator: &Locator<N>) -> bool {
+        // Retrieve the external program.
+        match self.get_external_program(locator.program_id()) {
+            // Return `true` if the external record exists.
+            Ok(external_program) => external_program.contains_record(locator.resource()),
+            // Return `false` otherwise.
+            Err(_) => false,
+        }
     }
 
     /// Returns the external stack for the given program ID.
@@ -323,23 +306,85 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Returns `true` if the stack contains the external record.
     #[inline]
-    pub fn contains_external_record(&self, locator: &Locator<N>) -> bool {
-        // Retrieve the external program.
-        match self.get_external_program(locator.program_id()) {
-            // Return `true` if the external record exists.
-            Ok(external_program) => external_program.contains_record(locator.resource()),
-            // Return `false` otherwise.
-            Err(_) => false,
-        }
-    }
-
-    /// Returns `true` if the stack contains the external record.
-    #[inline]
     pub fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
         // Retrieve the external program.
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.
         external_program.get_record(locator.resource())
+    }
+
+    /// Returns the proving key for the given function name.
+    #[inline]
+    pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        // Return the proving key, if it exists.
+        self.circuit_keys.get_proving_key(self.program_id(), function_name)
+    }
+
+    /// Returns the verifying key for the given function name.
+    #[inline]
+    pub fn get_verifying_key(&self, function_name: &Identifier<N>) -> Result<VerifyingKey<N>> {
+        // Return the verifying key, if it exists.
+        self.circuit_keys.get_verifying_key(self.program_id(), function_name)
+    }
+
+    /// Synthesizes the proving key and verifying key for the given function name.
+    #[inline]
+    pub fn synthesize_key<R: Rng + CryptoRng>(&self, function_name: &Identifier<N>, rng: &mut R) -> Result<()> {
+        // Retrieve the program ID.
+        let program_id = self.program.id();
+        // Retrieve the function input types.
+        let input_types = self.program.get_function(function_name)?.input_types();
+
+        // Initialize a burner private key.
+        let burner_private_key = PrivateKey::new(rng)?;
+        // Compute the burner address.
+        let burner_address = Address::try_from(&burner_private_key)?;
+        // Sample the inputs.
+        let inputs = input_types
+            .iter()
+            .map(|input_type| match input_type {
+                ValueType::ExternalRecord(locator) => {
+                    // Retrieve the external stack.
+                    let stack = self.get_external_stack(locator.program_id())?;
+                    // Sample the input.
+                    stack.sample_value(&burner_address, input_type, rng)
+                }
+                _ => self.sample_value(&burner_address, input_type, rng),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Compute the request, with a burner private key.
+        let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
+        // Ensure the request is well-formed.
+        ensure!(request.verify(), "Request is invalid");
+        // Initialize the authorization.
+        let authorization = Authorization::new(&[request.clone()]);
+        // Initialize the call stack.
+        let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
+        // Clone the stack.
+        let mut stack = self.clone();
+        // Synthesize the circuit.
+        let _response = stack.execute_function(call_stack, rng)?;
+        Ok(())
+    }
+
+    /// Returns the call stack.
+    #[inline]
+    pub fn call_stack(&self) -> CallStack<N> {
+        self.call_stack.clone()
+    }
+
+    /// Returns the circuit caller.
+    #[inline]
+    pub fn circuit_caller(&self) -> Result<&circuit::Address<A>> {
+        self.circuit_caller.as_ref().ok_or_else(|| anyhow!("Malformed stack: missing circuit caller"))
+    }
+
+    /// Returns the register types for the given closure or function name.
+    #[inline]
+    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
+        // Retrieve the register types.
+        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
     }
 
     /// Evaluates a program closure on the given inputs.
@@ -366,7 +411,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         })?;
 
         // Evaluate the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        for instruction in closure.instructions() {
+            // If the evaluation fails, bail and return the error.
+            if let Err(error) = instruction.evaluate(self) {
+                bail!("Failed to evaluate instruction ({instruction}): {error}");
+            }
+        }
 
         // Load the outputs.
         let outputs = closure.outputs().iter().map(|output| {
@@ -401,7 +451,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         })?;
 
         // Evaluate the instructions.
-        function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        for instruction in function.instructions() {
+            // If the evaluation fails, bail and return the error.
+            if let Err(error) = instruction.evaluate(self) {
+                bail!("Failed to evaluate instruction ({instruction}): {error}");
+            }
+        }
 
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {
@@ -410,57 +465,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         });
 
         outputs.collect()
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A> {
-    /// Returns the proving key and verifying key for the given function name.
-    #[inline]
-    pub fn circuit_key(&self, function_name: &Identifier<N>) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
-        // Retrieve the program ID.
-        let program_id = self.program.id();
-        // If the circuit key does not exist, synthesize and return it.
-        if !self.circuit_keys.contains_key(program_id, function_name) {
-            // Retrieve the function input types.
-            let input_types = self.program.get_function(function_name)?.input_types();
-
-            // Initialize an RNG.
-            let rng = &mut rand::thread_rng();
-            // Initialize a burner private key.
-            let burner_private_key = PrivateKey::new(rng)?;
-            // Compute the burner address.
-            let burner_address = Address::try_from(&burner_private_key)?;
-            // Sample the inputs.
-            let inputs = input_types
-                .iter()
-                .map(|input_type| match input_type {
-                    ValueType::ExternalRecord(locator) => {
-                        // Retrieve the external stack.
-                        let stack = self.get_external_stack(locator.program_id())?;
-                        // Sample the input.
-                        stack.sample_value(&burner_address, input_type, rng)
-                    }
-                    _ => self.sample_value(&burner_address, input_type, rng),
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            // Compute the request, with a burner private key.
-            let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
-            // Ensure the request is well-formed.
-            ensure!(request.verify(), "Request is invalid");
-            // Initialize the authorization.
-            let authorization = Authorization::new(&[request.clone()]);
-            // Initialize the call stack.
-            let call_stack = CallStack::Authorize(vec![request], burner_private_key, authorization);
-            // Clone the stack.
-            let mut stack = self.clone();
-            // Synthesize the circuit.
-            let (_response, assignment) = stack.execute_function(call_stack)?;
-            // Add the circuit key to the mapping.
-            self.circuit_keys.insert_from_assignment(program_id, function_name, &assignment)?;
-        }
-        // Return the circuit key.
-        self.circuit_keys.get(program_id, function_name)
     }
 
     /// Executes a program closure on the given inputs.
@@ -507,7 +511,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             if let CallStack::Execute(..) = self.call_stack {
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = instruction.evaluate(self) {
-                    bail!("Failed to evaluate instruction: {error}");
+                    bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
             // Execute the instruction.
@@ -533,44 +537,47 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function(
+    pub fn execute_function<R: Rng + CryptoRng>(
         &mut self,
         call_stack: CallStack<N>,
-    ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
+        rng: &mut R,
+    ) -> Result<Response<N>> {
         // Ensure the circuit environment is clean.
         A::reset();
 
         // Initialize the stack.
         self.call_stack = call_stack;
-        let request = self.call_stack.pop()?;
+        let console_request = self.call_stack.pop()?;
         self.circuit_caller = None;
-        self.register_types = self.get_register_types(request.function_name())?.clone();
+        self.register_types = self.get_register_types(console_request.function_name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
 
         // Ensure the network ID matches.
         ensure!(
-            **request.network_id() == N::ID,
+            **console_request.network_id() == N::ID,
             "Network ID mismatch. Expected {}, but found {}",
             N::ID,
-            request.network_id()
+            console_request.network_id()
         );
 
         // Retrieve the program ID.
-        let program_id = *request.program_id();
+        let program_id = *console_request.program_id();
         // Retrieve the function from the program.
-        let function = self.program.get_function(request.function_name())?;
+        let function = self.program.get_function(console_request.function_name())?;
+        // Retrieve the number of inputs.
+        let num_inputs = function.inputs().len();
         // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != request.inputs().len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), request.inputs().len())
+        if num_inputs != console_request.inputs().len() {
+            bail!("Expected {num_inputs} inputs, found {}", console_request.inputs().len())
         }
 
-        use circuit::Inject;
+        use circuit::{Eject, Inject};
 
         // Inject the transition public key `tpk` as `Mode::Public`.
-        let tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
+        let tpk = circuit::Group::<A>::new(circuit::Mode::Public, console_request.to_tpk());
         // Inject the request as `Mode::Private`.
-        let request = circuit::Request::new(circuit::Mode::Private, request);
+        let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&tpk));
         // Cache the request caller.
@@ -586,7 +593,6 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
             // If the circuit is in execute mode, then store the console input.
             if let CallStack::Execute(..) = self.call_stack {
-                use circuit::Eject;
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -594,46 +600,41 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             self.store_circuit(register, input.clone())
         })?;
 
+        // Initialize a tracker to determine if there are any function calls.
+        let mut contains_function_call = false;
+
         // Execute the instructions.
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
             if let CallStack::Execute(..) = self.call_stack {
                 // If the evaluation fails, bail and return the error.
                 if let Err(error) = instruction.evaluate(self) {
-                    bail!("Failed to evaluate instruction: {error}");
+                    bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
+
             // Execute the instruction.
             instruction.execute(self)?;
+
+            // If the instruction was a function call, then set the tracker to `true`.
+            if let Instruction::Call(call) = instruction {
+                // Check if the call is a function call.
+                if call.is_function_call(&self)? {
+                    contains_function_call = true;
+                }
+            }
         }
 
         // Load the outputs.
-        let outputs = function.outputs().iter().map(|output| {
-            // Retrieve the circuit output from the register.
-            self.load_circuit(&Operand::Register(output.register().clone()))
-        });
+        let outputs = function
+            .outputs()
+            .iter()
+            .map(|output| self.load_circuit(&Operand::Register(output.register().clone())))
+            .collect::<Result<Vec<_>>>()?;
 
         #[cfg(debug_assertions)]
         Self::log_circuit(format!("Function '{}()'", function.name()));
 
-        // If the function contains no function calls, then the number of public variables remains the same.
-        let mut contains_function_call = false;
-        for instruction in function.instructions().iter() {
-            if let Instruction::Call(call) = instruction {
-                // Retrieve the program.
-                let (program, resource) = match call.operator() {
-                    CallOperator::Locator(locator) => {
-                        (self.get_external_program(locator.program_id())?, locator.resource())
-                    }
-                    CallOperator::Resource(resource) => (self.program(), resource),
-                };
-                // Check if the resource is a function.
-                if program.contains_function(resource) {
-                    contains_function_call = true;
-                    break;
-                }
-            }
-        }
         // If the function does not contain function calls, ensure no new public variables were injected.
         if !contains_function_call {
             // Ensure the number of public variables remains the same.
@@ -643,9 +644,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         // Construct the response.
         let response = circuit::Response::from_outputs(
             request.program_id(),
-            function.inputs().len(),
+            num_inputs,
             request.tvk(),
-            outputs.collect::<Result<Vec<_>>>()?,
+            outputs,
             &function.output_types(),
         );
 
@@ -659,18 +660,19 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // Increment the balance by the amount in each record input.
         for input in request.inputs() {
-            // Retrieve the balance from each record input.
-            let record_balance = match input {
-                // Dereference the balance to retrieve the u64 balance.
-                circuit::Value::Record(record) => &**record.balance(),
+            match input {
+                // Dereference the record balance to retrieve the u64 balance.
+                circuit::Value::Record(record) => {
+                    // Retrieve the record balance.
+                    let record_balance = &**record.balance();
+                    // Increment the i64 balance.
+                    i64_balance += record_balance.clone().cast_as_dual();
+                    // Increment the field balance.
+                    field_balance += record_balance.to_field();
+                }
                 // Skip iterations that are not records.
                 _ => continue,
-            };
-
-            // Increment the i64 balance.
-            i64_balance += record_balance.clone().cast_as_dual();
-            // Increment the field balance.
-            field_balance += record_balance.to_field();
+            }
         }
 
         // Ensure the i64 balance matches the field balance.
@@ -678,23 +680,24 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // Decrement the balance by the amount in each record output.
         for output in response.outputs() {
-            // Retrieve the balance from each record output.
-            let record_balance = match output {
+            match output {
                 // Dereference the balance to retrieve the u64 balance.
-                circuit::Value::Record(record) => &**record.balance(),
+                circuit::Value::Record(record) => {
+                    // Retrieve the record balance.
+                    let record_balance = &**record.balance();
+                    // Decrement the i64 balance.
+                    i64_balance -= record_balance.clone().cast_as_dual();
+                    // Decrement the field balance.
+                    field_balance -= record_balance.to_field();
+                }
                 // Skip iterations that are not records.
                 _ => continue,
-            };
-
-            // Decrement the i64 balance.
-            i64_balance -= record_balance.clone().cast_as_dual();
-            // Decrement the field balance.
-            field_balance -= record_balance.to_field();
+            }
         }
 
         // If the program and function is not a special function, then ensure the i64 balance is positive.
         if !(program_id.to_string() == "stake.aleo" && function.name().to_string() == "initialize") {
-            use circuit::{Eject, MSB};
+            use circuit::MSB;
 
             // Ensure the i64 balance MSB is false.
             A::assert(!i64_balance.msb());
@@ -713,77 +716,53 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         #[cfg(debug_assertions)]
         Self::log_circuit("Complete");
 
-        // If the circuit is in execute mode, then ensure the circuit is valid.
+        // Eject the response.
+        let response = response.eject_value();
+
+        // If the circuit is in execute mode, then ensure the circuit is satisfied.
         if let CallStack::Execute(..) = self.call_stack {
-            // If the circuit is not satisfied, then return early.
-            if !A::is_satisfied() {
-                bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
-            }
-
-            // #[cfg(debug_assertions)]
-            self.console_registers.iter().zip_eq(&self.circuit_registers).try_for_each(
-                |((console_index, console_register), (circuit_index, circuit_register))| {
-                    use circuit::Eject;
-
-                    // Ensure the console and circuit index match (executed in same order).
-                    ensure!(
-                        console_index == circuit_index,
-                        "Console register {console_index} and circuit register {circuit_index} indices do not match"
-                    );
-                    // Ensure the console and circuit registers match (executed to same value).
-                    ensure!(
-                        console_register == &circuit_register.eject_value(),
-                        "Console and circuit register values do not match at index {console_index}"
-                    );
-                    Ok(())
-                },
-            )?;
+            // If the circuit is not satisfied, then throw an error.
+            ensure!(A::is_satisfied(), "'{program_id}/{}' is not satisfied on the given inputs.", function.name());
         }
 
-        // Eject the response.
-        let response = circuit::Eject::eject_value(&response);
-        // Finalize the circuit into an assignment.
+        // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
-        // Return the response and assignment.
-        Ok((response, assignment))
-    }
 
-    /// Executes a program function on the given inputs.
-    ///
-    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn execute<R: Rng + CryptoRng>(&mut self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
-        // If the call stack is an execution, execute and compute the transition.
-        if let CallStack::Execute(ref authorization, ref execution) = call_stack {
-            // Retrieve the next request (without popping it).
-            let request = authorization.peek_next()?;
-
-            // Synthesize the circuit.
-            let (response, assignment) = self.execute_function(call_stack.clone())?;
-
-            // If the circuit key does not exist, use the assignment to synthesize the circuit key.
-            if !self.circuit_keys.contains_key(request.program_id(), request.function_name()) {
+        // If the circuit is **not** in authorize mode, synthesize the circuit key if it does not exist.
+        if !matches!(self.call_stack, CallStack::Authorize(..)) {
+            // If the circuit key does not exist, then synthesize it.
+            if !self.circuit_keys.contains_key(&program_id, function.name()) {
                 // Add the circuit key to the mapping.
-                self.circuit_keys.insert_from_assignment(request.program_id(), request.function_name(), &assignment)?;
+                self.circuit_keys.insert_from_assignment(&program_id, function.name(), &assignment)?;
+            }
+        }
+
+        // If the circuit is in execute mode, then execute the circuit into a transition.
+        if let CallStack::Execute(_, ref execution) = self.call_stack {
+            // #[cfg(debug_assertions)]
+            for ((console_index, console_register), (circuit_index, circuit_register)) in
+                self.console_registers.iter().zip_eq(&self.circuit_registers)
+            {
+                // Ensure the console and circuit index match (executed in same order).
+                if *console_index != *circuit_index {
+                    bail!("Console and circuit register indices are mismatching ({console_index} != {circuit_index})")
+                }
+                // Ensure the console and circuit registers match (executed to same value).
+                if console_register != &circuit_register.eject_value() {
+                    bail!("The console and circuit register values do not match at index {console_index}")
+                }
             }
 
-            // Retrieve the proving and verifying key.
-            let (proving_key, _verifying_key) = self.circuit_key(request.function_name())?;
+            // Retrieve the proving key.
+            let proving_key = self.circuit_keys.get_proving_key(&program_id, function.name())?;
             // Execute the circuit.
             let proof = proving_key.prove(&assignment, rng)?;
             // Add the transition to the execution.
-            execution.push(Transition::from(&request, &response, proof, 0i64)?);
-            // Return the response.
-            Ok(response)
-        } else {
-            // Synthesize the circuit.
-            let (response, _assignment) = self.execute_function(call_stack)?;
-            // Return the response.
-            Ok(response)
+            execution.push(Transition::from(&console_request, &response, proof, 0i64)?);
         }
+
+        // Return the response.
+        Ok(response)
     }
 
     /// Prints the current state of the circuit.

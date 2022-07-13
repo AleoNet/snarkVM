@@ -52,15 +52,10 @@ impl<N: Network> Package<N> {
         let verifier = VerifierFile::open(&build_directory, &function_name)?;
 
         // Adds the circuit key to the process.
-        process.insert_circuit_key(
-            program_id,
-            &function_name,
-            prover.proving_key().clone(),
-            verifier.verifying_key().clone(),
-        );
+        process.insert_key(program_id, &function_name, prover.proving_key().clone(), verifier.verifying_key().clone());
 
         // Execute the circuit.
-        let (response, execution) = process.execute(authorization, &mut rand::thread_rng())?;
+        let (response, execution) = process.execute(authorization, rng)?;
 
         Ok((response, execution))
     }

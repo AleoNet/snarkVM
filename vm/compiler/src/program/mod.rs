@@ -773,7 +773,7 @@ function compute:
             // Construct the process.
             let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
             // Check that the circuit key can be synthesized.
-            process.circuit_key(program.id(), &function_name).unwrap();
+            process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
         }
 
         // Construct the process.
@@ -805,7 +805,7 @@ function compute:
         assert_eq!(0, CurrentAleo::num_constraints());
 
         // Initialize an RNG.
-        let rng = &mut rand::thread_rng();
+        let rng = &mut test_crypto_rng();
         // Initialize a burner private key.
         let burner_private_key = PrivateKey::new(rng).unwrap();
         // Authorize the function call, with a burner private key.
@@ -814,8 +814,7 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Re-run to ensure state continues to work.
-        let (response, _assignment) =
-            stack.execute_function(CallStack::Execute(authorization, Execution::new())).unwrap();
+        let response = stack.execute_function(CallStack::Execute(authorization, Execution::new()), rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);

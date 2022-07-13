@@ -45,17 +45,24 @@ impl<N: Network> CircuitKeys<N> {
         self.circuit_keys.read().contains_key(&(*program_id, *function_name))
     }
 
-    /// Returns the `(proving_key, verifying_key)` for the given program ID and function name.
-    pub fn get(
+    /// Returns the proving key for the given program ID and function name.
+    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        match self.circuit_keys.read().get(&(*program_id, *function_name)) {
+            Some((proving_key, _)) => Ok(proving_key.clone()),
+            None => bail!("Proving key not found for: {program_id} {function_name}"),
+        }
+    }
+
+    /// Returns the verifying key for the given program ID and function name.
+    pub fn get_verifying_key(
         &self,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
-    ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
-        self.circuit_keys
-            .read()
-            .get(&(*program_id, *function_name))
-            .cloned()
-            .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
+    ) -> Result<VerifyingKey<N>> {
+        match self.circuit_keys.read().get(&(*program_id, *function_name)) {
+            Some((_, verifying_key)) => Ok(verifying_key.clone()),
+            None => bail!("Verifying key not found for: {program_id} {function_name}"),
+        }
     }
 
     /// Inserts the given `(proving_key, verifying_key)` for the given program ID and function name.

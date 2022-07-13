@@ -168,7 +168,7 @@ impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())

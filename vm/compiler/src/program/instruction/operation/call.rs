@@ -145,6 +145,22 @@ impl<N: Network> Call<N> {
 }
 
 impl<N: Network> Call<N> {
+    /// Returns `true` if the instruction is a function call.
+    #[inline]
+    pub fn is_function_call<A: circuit::Aleo<Network = N>>(&self, stack: &Stack<N, A>) -> Result<bool> {
+        match self.operator() {
+            // Check if the locator is for a function.
+            CallOperator::Locator(locator) => {
+                // Retrieve the program.
+                let program = stack.get_external_program(locator.program_id())?;
+                // Check if the resource is a function.
+                Ok(program.contains_function(locator.resource()))
+            }
+            // Check if the resource is a function.
+            CallOperator::Resource(resource) => Ok(stack.program().contains_function(resource)),
+        }
+    }
+
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
@@ -194,7 +210,7 @@ impl<N: Network> Call<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
 
@@ -218,9 +234,11 @@ impl<N: Network> Call<N> {
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {
+            // Retrieve the number of inputs.
+            let num_inputs = function.inputs().len();
             // Ensure the number of inputs matches the number of input statements.
-            if function.inputs().len() != inputs.len() {
-                bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+            if num_inputs != inputs.len() {
+                bail!("Expected {} inputs, found {}", num_inputs, inputs.len())
             }
 
             // Retrieve the number of public variables in the circuit.
@@ -232,75 +250,68 @@ impl<N: Network> Call<N> {
             use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
-            let (request, response) = match stack.call_stack() {
-                // If the circuit is in authorize mode, then add any external calls to the stack.
-                CallStack::Authorize(_, private_key, authorization) => {
-                    // Eject the circuit inputs.
-                    let inputs = inputs.eject_value();
-                    // Retrieve the input types.
-                    let input_types = function.input_types();
-                    // Ensure the inputs match their expected types.
-                    inputs
-                        .iter()
-                        .zip_eq(&input_types)
-                        .try_for_each(|(input, input_type)| substack.matches_value_type(input, input_type))?;
+            let (request, response) = {
+                // Eject the circuit inputs.
+                let inputs = inputs.eject_value();
+                // Retrieve the input types.
+                let input_types = function.input_types();
+                // Ensure the inputs match their expected types.
+                inputs.iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
+                    // Ensure the input matches the input type in the substack function.
+                    substack.matches_value_type(input, input_type)
+                })?;
 
-                    // Compute the request.
-                    let request = Request::sign(
-                        &private_key,
-                        *substack.program_id(),
-                        *function.name(),
-                        &inputs,
-                        &input_types,
-                        rng,
-                    )?;
+                match stack.call_stack() {
+                    // If the circuit is in authorize or synthesize mode, then add any external calls to the stack.
+                    CallStack::Authorize(_, private_key, authorization)
+                    | CallStack::Synthesize(_, private_key, authorization) => {
+                        // Compute the request.
+                        let request = Request::sign(
+                            &private_key,
+                            *substack.program_id(),
+                            *function.name(),
+                            &inputs,
+                            &input_types,
+                            rng,
+                        )?;
 
-                    // Retrieve the call stack.
-                    let mut call_stack = stack.call_stack();
-                    // Push the request onto the call stack.
-                    call_stack.push(request.clone())?;
+                        // Retrieve the call stack.
+                        let mut call_stack = stack.call_stack();
+                        // Push the request onto the call stack.
+                        call_stack.push(request.clone())?;
 
-                    // Add the request to the authorization.
-                    authorization.push(request.clone());
+                        // Add the request to the authorization.
+                        authorization.push(request.clone());
 
-                    // Execute the request.
-                    let response = substack.execute(call_stack, rng)?;
+                        // Execute the request.
+                        let response = substack.execute_function(call_stack, rng)?;
 
-                    // Return the request and response.
-                    (request, response)
-                }
-                // If the circuit is in execute mode, then evaluate and execute the instructions.
-                CallStack::Execute(authorization, ..) => {
-                    // Eject the circuit inputs.
-                    let inputs = inputs.eject_value();
-                    // Retrieve the input types.
-                    let input_types = function.input_types();
-                    // Ensure the inputs match their expected types.
-                    inputs
-                        .iter()
-                        .zip_eq(&input_types)
-                        .try_for_each(|(input, input_type)| substack.matches_value_type(input, input_type))?;
-
-                    // Retrieve the next request (without popping it).
-                    let request = authorization.peek_next()?;
-                    // Ensure the inputs match the original inputs.
-                    request.inputs().iter().zip_eq(&inputs).try_for_each(|(request_input, input)| {
-                        ensure!(request_input == input, "Inputs do not match in a 'call' instruction.");
-                        Ok(())
-                    })?;
-
-                    // Evaluate the function, and load the outputs.
-                    let console_outputs = substack.evaluate_function(&function, &inputs)?;
-                    // Execute the request.
-                    let response = substack.execute(stack.call_stack(), rng)?;
-                    // Ensure the values are equal.
-                    if console_outputs != response.outputs() {
-                        #[cfg(debug_assertions)]
-                        eprintln!("\n{:#?} != {:#?}\n", console_outputs, response.outputs());
-                        bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                        // Return the request and response.
+                        (request, response)
                     }
-                    // Return the request and response.
-                    (request, response)
+                    // If the circuit is in execute mode, then evaluate and execute the instructions.
+                    CallStack::Execute(authorization, ..) => {
+                        // Retrieve the next request (without popping it).
+                        let request = authorization.peek_next()?;
+                        // Ensure the inputs match the original inputs.
+                        request.inputs().iter().zip_eq(&inputs).try_for_each(|(request_input, input)| {
+                            ensure!(request_input == input, "Inputs do not match in a 'call' instruction.");
+                            Ok(())
+                        })?;
+
+                        // Evaluate the function, and load the outputs.
+                        let console_outputs = substack.evaluate_function(&function, &inputs)?;
+                        // Execute the request.
+                        let response = substack.execute_function(stack.call_stack(), rng)?;
+                        // Ensure the values are equal.
+                        if console_outputs != response.outputs() {
+                            #[cfg(debug_assertions)]
+                            eprintln!("\n{:#?} != {:#?}\n", console_outputs, response.outputs());
+                            bail!("Function '{}' outputs do not match in a 'call' instruction.", function.name())
+                        }
+                        // Return the request and response.
+                        (request, response)
+                    }
                 }
             };
             // Inject the existing circuit.
@@ -320,8 +331,6 @@ impl<N: Network> Call<N> {
 
             use circuit::Inject;
 
-            // Retrieve the number of inputs.
-            let num_inputs = function.inputs().len();
             // Inject the program ID as `Mode::Constant`.
             let program_id = circuit::ProgramID::constant(*substack.program_id());
             // Retrieve the circuit caller from the stack.

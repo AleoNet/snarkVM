@@ -397,7 +397,7 @@ impl Environment for AleoV0 {
     }
 
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
-    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+    fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         E::eject_assignment_and_reset()
     }
 

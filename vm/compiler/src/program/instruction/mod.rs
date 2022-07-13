@@ -345,7 +345,7 @@ impl<N: Network> Instruction<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack))
     }
 
