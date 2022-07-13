@@ -22,6 +22,25 @@ impl<N: Network> Request<N> {
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
     pub fn verify(&self) -> bool {
+        // Verify the transition public key and transition view key are well-formed.
+        {
+            // Compute the transition public key `tpk` as `tsk * G`.
+            let tpk = N::g_scalar_multiply(&self.tsk);
+            // Ensure the transition public key matches with the derived one from the signature.
+            if tpk != self.to_tpk() {
+                eprintln!("Invalid transition public key in request.");
+                return false;
+            }
+
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = (*self.caller * self.tsk).to_x_coordinate();
+            // Ensure the computed transition view key matches.
+            if tvk != self.tvk {
+                eprintln!("Invalid transition view key in request.");
+                return false;
+            }
+        }
+
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
             &[

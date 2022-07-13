@@ -51,18 +51,7 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
     circuit_keys: CircuitKeys<N>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
-    /// Initializes a new process.
-    #[inline]
-    pub fn new(program: Program<N>) -> Result<Self> {
-        // Construct the process.
-        let mut process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
-        // Add the program to the process.
-        process.add_program(&program)?;
-        // Return the process.
-        Ok(process)
-    }
-
+impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Returns `true` if the process contains the program with the given ID.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
@@ -79,6 +68,19 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N,
     #[inline]
     pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N, A>> {
         self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
+    }
+}
+
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Process<N, A> {
+    /// Initializes a new process.
+    #[inline]
+    pub fn new(program: Program<N>) -> Result<Self> {
+        // Construct the process.
+        let mut process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
+        // Add the program to the process.
+        process.add_program(&program)?;
+        // Return the process.
+        Ok(process)
     }
 
     /// Returns the proving key and verifying key for the given program ID and function name.

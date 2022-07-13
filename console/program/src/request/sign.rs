@@ -44,7 +44,7 @@ impl<N: Network> Request<N> {
 
         // Sample a random nonce.
         let nonce = Field::<N>::rand(rng);
-        // Compute a `r` as `HashToScalar(sk_sig || nonce)`.
+        // Compute a `r` as `HashToScalar(sk_sig || nonce)`. Note: This is the transition secret key `tsk`.
         let r = N::hash_to_scalar_psd4(&[N::serial_number_domain(), sk_sig.to_field()?, nonce])?;
         // Compute `g_r` as `r * G`. Note: This is the transition public key `tpk`.
         let g_r = N::g_scalar_multiply(&r);
@@ -194,6 +194,7 @@ impl<N: Network> Request<N> {
             inputs: inputs.to_vec(),
             signature: Signature::from((challenge, response, compute_key)),
             tvk,
+            tsk: r,
         })
     }
 }

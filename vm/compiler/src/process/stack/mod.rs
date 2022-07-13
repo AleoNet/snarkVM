@@ -491,10 +491,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-            use circuit::Eject;
-
             // If the circuit is in execute mode, then store the console input.
             if let CallStack::Execute(..) = self.call_stack {
+                use circuit::Eject;
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -502,12 +501,18 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
             self.store_circuit(register, input.clone())
         })?;
 
-        // If the circuit is in execute mode, then evaluate the instructions.
-        if let CallStack::Execute(..) = self.call_stack {
-            closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
-        }
         // Execute the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+        for instruction in closure.instructions() {
+            // If the circuit is in execute mode, then evaluate the instructions.
+            if let CallStack::Execute(..) = self.call_stack {
+                // If the evaluation fails, bail and return the error.
+                if let Err(error) = instruction.evaluate(self) {
+                    bail!("Failed to evaluate instruction: {error}");
+                }
+            }
+            // Execute the instruction.
+            instruction.execute(self)?;
+        }
 
         // Ensure the number of public variables remains the same.
         ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
@@ -563,12 +568,11 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         use circuit::Inject;
 
         // Inject the transition public key `tpk` as `Mode::Public`.
-        let _tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
-        // TODO (howardwu): Check relationship to tvk.
+        let tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, request);
-        // Ensure the request has a valid signature and serial numbers.
-        A::assert(request.verify());
+        // Ensure the request has a valid signature, inputs, and transition view key.
+        A::assert(request.verify(&tpk));
         // Cache the request caller.
         self.circuit_caller = Some(request.caller().clone());
 
@@ -580,10 +584,9 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
-            use circuit::Eject;
-
             // If the circuit is in execute mode, then store the console input.
             if let CallStack::Execute(..) = self.call_stack {
+                use circuit::Eject;
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -617,29 +620,24 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
         let mut contains_function_call = false;
         for instruction in function.instructions().iter() {
             if let Instruction::Call(call) = instruction {
-                match call.operator() {
+                // Retrieve the program.
+                let (program, resource) = match call.operator() {
                     CallOperator::Locator(locator) => {
-                        if self.get_external_program(locator.program_id())?.contains_function(locator.resource()) {
-                            contains_function_call = true;
-                            break;
-                        }
+                        (self.get_external_program(locator.program_id())?, locator.resource())
                     }
-                    CallOperator::Resource(resource) => {
-                        if self.program().contains_function(resource) {
-                            contains_function_call = true;
-                            break;
-                        }
-                    }
+                    CallOperator::Resource(resource) => (self.program(), resource),
+                };
+                // Check if the resource is a function.
+                if program.contains_function(resource) {
+                    contains_function_call = true;
+                    break;
                 }
             }
         }
         // If the function does not contain function calls, ensure no new public variables were injected.
         if !contains_function_call {
             // Ensure the number of public variables remains the same.
-            ensure!(
-                A::num_public() == num_public,
-                "Illegal function operation: instructions injected public variables"
-            );
+            ensure!(A::num_public() == num_public, "Instructions in function injected public variables");
         }
 
         // Construct the response.
@@ -722,7 +720,7 @@ impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A
                 bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
             }
 
-            #[cfg(debug_assertions)]
+            // #[cfg(debug_assertions)]
             self.console_registers.iter().zip_eq(&self.circuit_registers).try_for_each(
                 |((console_index, console_register), (circuit_index, circuit_register))| {
                     use circuit::Eject;
