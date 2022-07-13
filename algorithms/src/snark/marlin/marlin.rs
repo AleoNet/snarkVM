@@ -286,7 +286,7 @@ where
         verifying_key: &Self::VerifyingKey,
         proof: &Self::IndexProof,
     ) -> Result<bool, SNARKError> {
-        let circuit = AHPForR1CS::<E::Fr, MM>::index(circuit)?;
+        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info();
         // Initialize sponge
         let mut sponge = Self::init_sponge_for_index_proof(&verifying_key.circuit_commitments);
         // Compute challenges for linear combination, and the point to evaluate
@@ -297,6 +297,8 @@ where
             .squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len(), OptimizationType::Weight)
             .map_err(AHPError::from)?;
         let point = challenges.pop().unwrap();
+
+        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, point)?;
         let one = E::Fr::one();
         let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
 
@@ -304,16 +306,16 @@ where
         // at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
         let mut evaluation = E::Fr::zero();
-        for (poly, &c) in circuit.iter().zip(linear_combination_challenges) {
-            lc.add(c, poly.label());
-            evaluation += c * poly.evaluate(point);
+        for ((label, &c), eval) in info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
+            lc.add(c, label.as_str());
+            evaluation += c * eval;
         }
 
         let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
+            .zip_eq(info.values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
         let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);

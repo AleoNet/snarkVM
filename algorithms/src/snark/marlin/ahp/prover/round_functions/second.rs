@@ -228,8 +228,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let t = Self::calculate_t(
                 &[&state.index.a, &state.index.b, &state.index.c],
                 [F::one(), eta_b, eta_c],
-                state.input_domain,
-                state.constraint_domain,
+                &state.input_domain,
+                &state.constraint_domain,
                 &r_alpha_x_evals,
                 ifft_precomputation,
             );
@@ -243,8 +243,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_t<'a>(
         matrices: &[&'a Matrix<F>],
         matrix_randomizers: [F; 3],
-        input_domain: EvaluationDomain<F>,
-        constraint_domain: EvaluationDomain<F>,
+        input_domain: &EvaluationDomain<F>,
+        constraint_domain: &EvaluationDomain<F>,
         r_alpha_x_on_h: &[F],
         ifft_precomputation: &IFFTPrecomputation<F>,
     ) -> DensePolynomial<F> {
@@ -257,6 +257,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 }
             }
         }
-        fft::Evaluations::from_vec_and_domain(t_evals_on_h, constraint_domain).interpolate_with_pc(ifft_precomputation)
+        fft::Evaluations::from_vec_and_domain(t_evals_on_h, *constraint_domain).interpolate_with_pc(ifft_precomputation)
     }
 }
