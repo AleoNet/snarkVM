@@ -23,7 +23,7 @@ use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
     prelude::{Identifier, Locator, Network, PrivateKey, ProgramID, Response, ToBytes, Value},
 };
-use snarkvm_compiler::{Execution, Process, Program};
+use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program};
 
 use crate::file::SRSFile;
 use anyhow::{bail, ensure, Error, Result};
@@ -31,6 +31,11 @@ use colored::Colorize;
 use core::str::FromStr;
 use rand::{CryptoRng, Rng};
 use std::path::{Path, PathBuf};
+
+pub enum PackageMode<N: Network> {
+    Build,
+    Run(Identifier<N>),
+}
 
 pub struct Package<N: Network> {
     /// The program ID.
@@ -128,10 +133,15 @@ impl<N: Network> Package<N> {
         self.directory.join("build")
     }
 
+    /// Returns the imports directory.
+    pub fn imports_directory(&self) -> PathBuf {
+        self.directory.join("imports")
+    }
+
     /// Returns a new process for the package.
     pub fn get_process<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
         &self,
-        is_build: bool,
+        mode: PackageMode<N>,
     ) -> Result<Process<N, A>> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
@@ -141,7 +151,7 @@ impl<N: Network> Package<N> {
         }
 
         // Create the process.
-        let mut process = if is_build {
+        let mut process = if let PackageMode::Build = mode {
             match SRSFile::<N>::exists_at(&build_directory) {
                 // Load the universal SRS, then initialize the process.
                 true => Process::<N, A>::from_universal_srs(SRSFile::open(&build_directory)?.universal_srs())?,
@@ -152,12 +162,8 @@ impl<N: Network> Package<N> {
             Process::<N, A>::new()?
         };
 
-        // Add the program to the process.
-        process.add_program(&self.program())?;
-
         // Prepare the imports directory.
-        let mut imports_directory = build_directory;
-        imports_directory.push("imports");
+        let imports_directory = self.imports_directory();
 
         // Add all import programs (in order) to the process.
         self.program().imports().keys().try_for_each(|program_id| {
@@ -167,6 +173,9 @@ impl<N: Network> Package<N> {
             process.add_program(import_program_file.program())?;
             Ok::<_, Error>(())
         })?;
+
+        // Add the program to the process.
+        process.add_program(&self.program())?;
 
         Ok(process)
     }

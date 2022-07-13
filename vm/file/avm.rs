@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    file::Manifest,
-    prelude::{FromBytes, Network, ProgramID, ToBytes},
-};
+use crate::prelude::{FromBytes, Network, ProgramID, ToBytes};
 use snarkvm_compiler::Program;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use std::{
     fs::{self, File},
     io::Write,
@@ -72,11 +69,6 @@ impl<N: Network> AVMFile<N> {
 
         // Load the AVM file.
         let avm_file = Self::from_filepath(&path)?;
-
-        // Ensure the program ID matches, if this is the main file.
-        if is_main && avm_file.program.id() != program_id {
-            bail!("The program ID from `{}` does not match in '{}'", Manifest::<N>::file_name(), path.display())
-        }
 
         Ok(avm_file)
     }

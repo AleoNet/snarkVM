@@ -35,23 +35,27 @@ impl<N: Network> Package<N> {
         if AVMFile::<N>::main_exists_at(&build_directory) {
             // Retrieve the main AVM file.
             let candidate = AVMFile::open(&build_directory, &self.program_id, true)?;
-            // Check if the program bytes matches.
-            if candidate.program().to_bytes_le()? == program.to_bytes_le()? {
-                // Next, check if the prover and verifier exist for each function.
-                for function_name in program.functions().keys() {
-                    // Check if the prover file exists.
-                    if !ProverFile::exists_at(&build_directory, function_name) {
-                        // If not, we need to build the circuit.
-                        break;
+
+            // Check if the program ID in the manifest matches the program ID in the AVM file.
+            if candidate.program().id() == &self.program_id {
+                // Check if the program bytes matches.
+                if candidate.program().to_bytes_le()? == program.to_bytes_le()? {
+                    // Next, check if the prover and verifier exist for each function.
+                    for function_name in program.functions().keys() {
+                        // Check if the prover file exists.
+                        if !ProverFile::exists_at(&build_directory, function_name) {
+                            // If not, we need to build the circuit.
+                            break;
+                        }
+                        // Check if the verifier file exists.
+                        if !VerifierFile::exists_at(&build_directory, function_name) {
+                            // If not, we need to build the circuit.
+                            break;
+                        }
                     }
-                    // Check if the verifier file exists.
-                    if !VerifierFile::exists_at(&build_directory, function_name) {
-                        // If not, we need to build the circuit.
-                        break;
-                    }
+                    // The program bytes matches, and all provers and verifiers exist, so we can skip the build.
+                    requires_build = false;
                 }
-                // The program bytes matches, and all provers and verifiers exist, so we can skip the build.
-                requires_build = false;
             }
         }
 

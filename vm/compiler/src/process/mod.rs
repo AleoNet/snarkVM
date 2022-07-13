@@ -291,7 +291,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             inputs.extend(transition.input_ids().map(|id| *id));
 
             // Retrieve the program.
-            let program = self.get_program(transition.program_id())?.clone();
+            let program = self.get_program(transition.program_id())?;
             // Retrieve the function from the program.
             let function = program.get_function(transition.function_name())?;
             // Determine the number of function calls in this function.
@@ -301,7 +301,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                     // Retrieve the program and resource.
                     let (program, resource) = match call.operator() {
                         CallOperator::Locator(locator) => (self.get_program(locator.program_id())?, locator.resource()),
-                        CallOperator::Resource(resource) => (&program, resource),
+                        CallOperator::Resource(resource) => (program, resource),
                     };
                     if program.contains_function(resource) {
                         num_function_calls += 1;

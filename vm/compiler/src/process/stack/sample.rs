@@ -31,8 +31,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             ValueType::Record(record_name) => {
                 Ok(Value::Record(self.sample_record(burner_address, record_name, rng)?))
             }
-            ValueType::ExternalRecord(_locator) => {
-                bail!("Illegal operation: Cannot sample external records.")
+            ValueType::ExternalRecord(locator) => {
+                bail!("Illegal operation: Cannot sample external records (for '{locator}.record').")
             }
         }
     }

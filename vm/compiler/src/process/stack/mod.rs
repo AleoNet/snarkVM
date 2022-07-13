@@ -347,7 +347,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                     // Retrieve the external stack.
                     let stack = self.get_external_stack(locator.program_id())?;
                     // Sample the input.
-                    stack.sample_value(&burner_address, input_type, rng)
+                    stack.sample_value(&burner_address, &ValueType::Record(*locator.resource()), rng)
                 }
                 _ => self.sample_value(&burner_address, input_type, rng),
             })
