@@ -31,7 +31,18 @@ pub use transition::*;
 
 mod add_program;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
+use crate::{
+    CallOperator,
+    Closure,
+    Function,
+    Instruction,
+    Opcode,
+    Operand,
+    Program,
+    ProvingKey,
+    UniversalSRS,
+    VerifyingKey,
+};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -53,11 +64,22 @@ pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
 impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Initializes a new process.
     #[inline]
-    pub fn new(program: Program<N>) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         // Construct the process.
-        let mut process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
-        // Add the program to the process.
-        process.add_program(&program)?;
+        let process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
+        // Return the process.
+        Ok(process)
+    }
+
+    /// Initializes a new process from a universal SRS.
+    #[inline]
+    pub fn from_universal_srs(srs: UniversalSRS<N>) -> Result<Self> {
+        // Construct the process.
+        let process = Self {
+            programs: IndexMap::new(),
+            stacks: IndexMap::new(),
+            circuit_keys: CircuitKeys::from_universal_srs(srs),
+        };
         // Return the process.
         Ok(process)
     }
@@ -307,7 +329,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             // Retrieve the verifying key.
             let verifying_key = self.get_verifying_key(transition.program_id(), transition.function_name())?;
             // Ensure the proof is valid.
-            ensure!(verifying_key.verify(&inputs, transition.proof()), "Transition is invalid");
+            ensure!(
+                verifying_key.verify(transition.function_name(), &inputs, transition.proof()),
+                "Transition is invalid"
+            );
         }
         Ok(())
     }
@@ -355,7 +380,9 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+                let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+                // Add the program to the process.
+                process.add_program(&program).unwrap();
                 // Authorize the function call.
                 let authorization = process
                     .authorize(
@@ -431,7 +458,9 @@ mod tests {
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -513,7 +542,9 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
         process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
     }
@@ -580,12 +611,16 @@ function compute:
         let r5 = Value::from_str("8field").unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
         process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
 
         // Reset the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Authorize the function call.
         let authorization =
@@ -684,7 +719,9 @@ function transfer:
                 .unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Authorize the function call.
         let authorization =
@@ -766,7 +803,9 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new(program0).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program0).unwrap();
 
         // Initialize another program.
         let (string, program1) = Program::<CurrentNetwork>::parse(

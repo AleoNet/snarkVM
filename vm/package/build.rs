@@ -35,7 +35,7 @@ impl<N: Network> Package<N> {
         let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
 
         // Construct the process.
-        let process = self.get_process::<A>()?;
+        let process = self.get_process::<A>(true)?;
 
         // Load each function circuit.
         for function_name in program.functions().keys() {

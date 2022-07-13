@@ -18,12 +18,12 @@ use super::*;
 
 impl<N: Network> Package<N> {
     /// Removes the build directory for the package.
-    pub fn clean<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(&self) -> Result<()> {
+    pub fn clean(&self) -> Result<()> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
         // Remove the build directory if it exists.
         if build_directory.exists() {
-            std::fs::remove_dir(&build_directory)?;
+            std::fs::remove_dir_all(&build_directory)?;
         }
 
         Ok(())

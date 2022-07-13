@@ -40,11 +40,12 @@ impl<N: Network> UniversalSRS<N> {
     /// Returns the circuit proving and verifying key.
     pub fn to_circuit_key(
         &self,
+        function_name: &Identifier<N>,
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         let timer = std::time::Instant::now();
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
-        println!("{}", format!(" • Called setup: {} ms", timer.elapsed().as_millis()).dimmed());
+        println!("{}", format!(" • Called setup for '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
 
         Ok((ProvingKey::new(proving_key), VerifyingKey::new(verifying_key)))
     }

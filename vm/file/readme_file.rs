@@ -40,7 +40,9 @@ impl README {
         // Construct the initial README string.
         let readme_string = format!(
             r"# {id}
+
 ## Build Guide
+
 To compile this Aleo program, run:
 ```bash
 aleo build

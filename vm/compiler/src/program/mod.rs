@@ -613,7 +613,9 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Prepare the stack.
         let mut stack = process.get_stack(program.id()).unwrap();
@@ -661,7 +663,9 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Prepare the stack.
         let mut stack = process.get_stack(program.id()).unwrap();
@@ -709,7 +713,9 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Prepare the stack.
         let mut stack = process.get_stack(program.id()).unwrap();
@@ -771,13 +777,17 @@ function compute:
 
         {
             // Construct the process.
-            let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+            let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+            // Add the program to the process.
+            process.add_program(&program).unwrap();
             // Check that the circuit key can be synthesized.
             process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
         }
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Prepare the stack.
         let mut stack = process.get_stack(program.id()).unwrap();
@@ -854,7 +864,9 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
         // Prepare the stack.
         let mut stack = process.get_stack(program.id()).unwrap();

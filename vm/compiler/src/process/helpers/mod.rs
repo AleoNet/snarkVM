@@ -40,6 +40,14 @@ impl<N: Network> CircuitKeys<N> {
         Self { universal_srs: Arc::new(OnceCell::new()), circuit_keys: Arc::new(RwLock::new(IndexMap::new())) }
     }
 
+    /// Initialize a new `CircuitKeys` instance from a universal SRS.
+    pub fn from_universal_srs(srs: UniversalSRS<N>) -> Self {
+        Self {
+            universal_srs: Arc::new(OnceCell::with_value(srs)),
+            circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
+        }
+    }
+
     /// Returns `true` if the given program ID and function name exists.
     pub fn contains_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
         self.circuit_keys.read().contains_key(&(*program_id, *function_name))
@@ -84,8 +92,10 @@ impl<N: Network> CircuitKeys<N> {
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<()> {
         // TODO (howardwu): Load the universal SRS remotely.
-        let (proving_key, verifying_key) =
-            self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(assignment)?;
+        let (proving_key, verifying_key) = self
+            .universal_srs
+            .get_or_try_init(|| UniversalSRS::load(100_000))?
+            .to_circuit_key(function_name, assignment)?;
         // Insert the proving key and verifying key.
         self.insert(program_id, function_name, proving_key, verifying_key);
         Ok(())

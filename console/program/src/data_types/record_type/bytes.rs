@@ -48,6 +48,20 @@ impl<N: Network> FromBytes for RecordType<N> {
             };
         }
 
+        // Prepare the reserved entry names.
+        let reserved = [
+            Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
+            Identifier::from_str("balance").map_err(|e| error(e.to_string()))?,
+        ];
+        // Ensure the entries has no duplicate names.
+        if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
+            return Err(error(format!("Duplicate identifier found in record '{}'", name)));
+        }
+        // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.
+        if entries.len() > N::MAX_DATA_ENTRIES {
+            return Err(error("Failed to parse record: too many entries"));
+        }
+
         Ok(Self { name, owner, balance, entries })
     }
 }

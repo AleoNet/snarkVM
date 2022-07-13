@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use console::network::prelude::*;
+use console::{network::prelude::*, program::Identifier};
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
 use snarkvm_curves::PairingEngine;
 

@@ -25,6 +25,7 @@ use crate::{
 };
 use snarkvm_compiler::{Execution, Process, Program};
 
+use crate::file::SRSFile;
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;
 use core::str::FromStr;
@@ -128,7 +129,10 @@ impl<N: Network> Package<N> {
     }
 
     /// Returns a new process for the package.
-    pub fn get_process<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(&self) -> Result<Process<N, A>> {
+    pub fn get_process<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
+        is_build: bool,
+    ) -> Result<Process<N, A>> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
         // Ensure the build directory exists.
@@ -137,7 +141,19 @@ impl<N: Network> Package<N> {
         }
 
         // Create the process.
-        let mut process = Process::<N, A>::new(self.program().clone())?;
+        let mut process = if is_build {
+            match SRSFile::<N>::exists_at(&build_directory) {
+                // Load the universal SRS, then initialize the process.
+                true => Process::<N, A>::from_universal_srs(SRSFile::open(&build_directory)?.universal_srs())?,
+                // Create the universal SRS, then initialize the process.
+                false => Process::<N, A>::from_universal_srs(SRSFile::create(&build_directory)?.universal_srs())?,
+            }
+        } else {
+            Process::<N, A>::new()?
+        };
+
+        // Add the program to the process.
+        process.add_program(&self.program())?;
 
         // Prepare the imports directory.
         let mut imports_directory = build_directory;

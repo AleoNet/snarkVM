@@ -106,8 +106,13 @@ impl<N: Network> Parser for RecordType<N> {
 
         // Parse the entries from the string.
         let (string, entries) = map_res(many0(parse_entry), |entries| {
+            // Prepare the reserved entry names.
+            let reserved = [
+                Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
+                Identifier::from_str("balance").map_err(|e| error(e.to_string()))?,
+            ];
             // Ensure the entries has no duplicate names.
-            if has_duplicates(entries.iter().map(|(identifier, _)| identifier)) {
+            if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
                 return Err(error(format!("Duplicate identifier found in record '{}'", name)));
             }
             // Ensure the number of members is within `N::MAX_DATA_ENTRIES`.

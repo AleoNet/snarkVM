@@ -35,7 +35,7 @@ impl<N: Network> Package<N> {
         }
 
         // Construct the process.
-        let process = self.get_process::<A>()?;
+        let process = self.get_process::<A>(false)?;
 
         // Authorize the function call.
         let authorization = process.authorize(private_key, program_id, function_name, inputs, rng)?;

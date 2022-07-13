@@ -61,7 +61,7 @@ impl<N: Network> AVMFile<N> {
     /// Opens the AVM program file, given the directory path, program ID, and `is_main` indicator.
     pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
         // Ensure the directory path exists.
-        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+        ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
         // Create the file.
         let file_name = if is_main { Self::main_file_name() } else { format!("{program_id}.{AVM_FILE_EXTENSION}") };

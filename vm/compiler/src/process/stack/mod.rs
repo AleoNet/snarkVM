@@ -763,7 +763,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             // Retrieve the proving key.
             let proving_key = self.circuit_keys.get_proving_key(&program_id, function.name())?;
             // Execute the circuit.
-            let proof = proving_key.prove(&assignment, rng)?;
+            let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Add the transition to the execution.
             execution.push(Transition::from(&console_request, &response, proof, *fee)?);
         }
