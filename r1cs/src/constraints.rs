@@ -14,19 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::LookupTable;
 use snarkvm_fields::Field;
-use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
+use std::collections::HashSet;
 
-/// The prover message in the fifth round.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct FifthMessage<F: Field> {
-    pub sum_a: F,
-    pub sum_b: F,
-    pub sum_c: F,
+pub type ConstraintIndex = usize;
+
+pub struct LookupConstraints<F: Field> {
+    pub table: LookupTable<F>,
+    pub indices: HashSet<ConstraintIndex>,
 }
 
-impl<F: Field> ToBytes for FifthMessage<F> {
-    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
+impl<F: Field> LookupConstraints<F> {
+    pub fn new(table: LookupTable<F>) -> Self {
+        Self { table, indices: HashSet::new() }
+    }
+
+    pub fn insert(&mut self, index: ConstraintIndex) -> bool {
+        self.indices.insert(index)
+    }
+
+    pub fn lookup(&self, key: &[F]) -> Option<&F> {
+        self.table.lookup(key)
     }
 }

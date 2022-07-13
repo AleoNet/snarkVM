@@ -44,7 +44,7 @@ use rayon::prelude::*;
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
     pub fn num_first_round_oracles(batch_size: usize) -> usize {
-        3 * batch_size + (MM::ZK as usize)
+        4 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -55,6 +55,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             polynomials.push(PolynomialInfo::new(witness_label("w", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_a", i), None, Self::zk_bound()));
             polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("z_c", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
@@ -72,18 +73,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let batch_size = state.batch_size;
 
-        let z_a = state.z_a.take().unwrap();
-        let z_b = state.z_b.take().unwrap();
+        let z_a = state.z_a.as_ref().unwrap();
+        let z_b = state.z_b.as_ref().unwrap();
+        let z_c = state.z_c.as_ref().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
         assert_eq!(z_a.len(), batch_size);
         assert_eq!(z_b.len(), batch_size);
         assert_eq!(private_variables.len(), batch_size);
         let mut r_b_s = Vec::with_capacity(batch_size);
 
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(4 * batch_size);
         let state_ref = &state;
-        for (i, (z_a, z_b, private_variables, x_poly)) in
-            itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
+        for (i, (z_a, z_b, z_c, private_variables, x_poly)) in
+            itertools::izip!(z_a, z_b, z_c, private_variables, &state.x_poly).enumerate()
         {
             job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
             job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
@@ -92,18 +94,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 r_b_s.push(r_b);
             }
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_c", i), z_c, true, state_ref, Some(r_b)));
         }
 
         let batches = job_pool
             .execute_all()
             .into_iter()
             .tuples()
-            .map(|(w, z_a, z_b)| {
+            .map(|(w, z_a, z_b, z_c)| {
                 let w_poly = w.witness().unwrap();
                 let (z_a_poly, z_a) = z_a.z_m().unwrap();
                 let (z_b_poly, z_b) = z_b.z_m().unwrap();
+                let (z_c_poly, z_c) = z_c.z_m().unwrap();
 
-                prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
+                prover::FirstEntry { z_a, z_b, z_c, w_poly, z_a_poly, z_b_poly, z_c_poly }
             })
             .collect::<Vec<_>>();
         assert_eq!(batches.len(), batch_size);
@@ -189,7 +193,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calculate_z_m<'a>(
         label: impl ToString,
-        evaluations: Vec<F>,
+        evaluations: &[F],
         will_be_evaluated: bool,
         state: &prover::State<'a, F, MM>,
         r: Option<F>,
@@ -200,7 +204,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let label = label.to_string();
         let poly_time = start_timer!(|| format!("Computing {label}"));
 
-        let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations, constraint_domain);
+        let evals = EvaluationsOnDomain::from_vec_and_domain(evaluations.to_vec(), constraint_domain);
 
         let mut poly = evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
         if should_randomize {

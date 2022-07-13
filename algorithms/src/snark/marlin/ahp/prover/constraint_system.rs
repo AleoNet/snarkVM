@@ -16,7 +16,17 @@
 
 use crate::snark::marlin::ahp::matrices::make_matrices_square;
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
+use snarkvm_r1cs::{
+    errors::SynthesisError,
+    ConstraintIndex,
+    ConstraintSystem as CS,
+    Index as VarIndex,
+    LinearCombination,
+    LookupConstraints,
+    LookupTable,
+    Variable,
+};
+use std::collections::HashSet;
 
 pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) public_variables: Vec<F>,
@@ -24,6 +34,8 @@ pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) num_public_variables: usize,
     pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
+    pub(crate) mul_constraints: HashSet<ConstraintIndex>,
+    pub(crate) lookup_constraints: Vec<LookupConstraints<F>>,
 }
 
 impl<F: Field> ConstraintSystem<F> {
@@ -34,6 +46,8 @@ impl<F: Field> ConstraintSystem<F> {
             num_public_variables: 1usize,
             num_private_variables: 0usize,
             num_constraints: 0usize,
+            mul_constraints: HashSet::new(),
+            lookup_constraints: vec![],
         }
     }
 
@@ -60,6 +74,10 @@ impl<F: Field> ConstraintSystem<F> {
 
 impl<F: Field> CS<F> for ConstraintSystem<F> {
     type Root = Self;
+
+    fn add_lookup_table(&mut self, lookup_table: LookupTable<F>) {
+        self.lookup_constraints.push(LookupConstraints::new(lookup_table));
+    }
 
     #[inline]
     fn alloc<Fn, A, AR>(&mut self, _: A, f: Fn) -> Result<Variable, SynthesisError>
@@ -98,7 +116,53 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
         LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
         LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
+        self.mul_constraints.insert(self.num_constraints);
         self.num_constraints += 1;
+    }
+
+    #[inline]
+    fn enforce_lookup<A, AR, LA, LB, LC>(
+        &mut self,
+        _: A,
+        a: LA,
+        b: LB,
+        c: LC,
+        table_index: usize,
+    ) -> Result<(), SynthesisError>
+    where
+        A: FnOnce() -> AR,
+        AR: AsRef<str>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+    {
+        let a = a(LinearCombination::zero());
+        let b = b(LinearCombination::zero());
+        let c = c(LinearCombination::zero());
+        let table = self.lookup_constraints.get_mut(table_index).ok_or(SynthesisError::LookupTableMissing)?;
+        let evaluated_values = vec![a, b, c]
+            .iter()
+            .map(|lc| {
+                lc.0.iter()
+                    .map(|(var, coeff)| {
+                        let value = match var.get_unchecked() {
+                            VarIndex::Public(index) => self.public_variables[index],
+                            VarIndex::Private(index) => self.private_variables[index],
+                        };
+                        value * coeff
+                    })
+                    .sum::<F>()
+            })
+            .collect::<Vec<F>>();
+        let value =
+            table.lookup(&[evaluated_values[0], evaluated_values[1]]).ok_or(SynthesisError::LookupValueMissing)?;
+        if evaluated_values[2] == *value {
+            table.insert(self.num_constraints);
+            self.num_constraints += 1;
+            Ok(())
+        } else {
+            Err(SynthesisError::LookupValueMissing)
+        }
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)

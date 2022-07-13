@@ -147,7 +147,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_inputs: &[Vec<F>],
         evals: &E,
-        prover_third_message: &prover::ThirdMessage<F>,
+        prover_fifth_message: &prover::FifthMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
@@ -170,24 +170,28 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let input_domain = EvaluationDomain::new(public_inputs[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
-        let first_round_msg = state.first_round_message.as_ref().unwrap();
-        let alpha = first_round_msg.alpha;
+        let second_round_msg = state.second_round_message.as_ref().unwrap();
+        let alpha = second_round_msg.alpha;
         let eta_a = F::one();
-        let eta_b = first_round_msg.eta_b;
-        let eta_c = first_round_msg.eta_c;
-        let batch_combiners = &first_round_msg.batch_combiners;
-        let prover::ThirdMessage { sum_a, sum_b, sum_c } = prover_third_message;
+        let eta_b = second_round_msg.eta_b;
+        let eta_c = second_round_msg.eta_c;
+        let batch_combiners = &second_round_msg.batch_combiners;
+        let prover::FifthMessage { sum_a, sum_b, sum_c } = prover_fifth_message;
 
         #[rustfmt::skip]
         let t_at_beta =
             eta_a * state.non_zero_a_domain.size_as_field_element * sum_a +
             eta_b * state.non_zero_b_domain.size_as_field_element * sum_b +
             eta_c * state.non_zero_c_domain.size_as_field_element * sum_c;
-        let r_b = state.third_round_message.as_ref().unwrap().r_b;
-        let r_c = state.third_round_message.as_ref().unwrap().r_c;
+        let r_b = state.fifth_round_message.as_ref().unwrap().r_b;
+        let r_c = state.fifth_round_message.as_ref().unwrap().r_c;
 
-        let beta = state.second_round_message.unwrap().beta;
+        let theta = state.third_round_message.unwrap().theta;
+        let beta = state.fourth_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
+        let zeta = state.first_round_message.as_ref().unwrap().zeta;
+        let delta = state.first_round_message.as_ref().unwrap().delta;
+        let epsilon = state.first_round_message.as_ref().unwrap().epsilon;
 
         let mut linear_combinations = BTreeMap::new();
 
@@ -198,6 +202,40 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 LinearCombination::new(z_b_i.clone(), [(F::one(), z_b_i)])
             })
             .collect::<Vec<_>>();
+        let f_s = (0..state.batch_size)
+            .map(|i| {
+                let f_i = witness_label("f", i);
+                LinearCombination::new(f_i.clone(), [(F::one(), f_i)])
+            })
+            .collect::<Vec<_>>();
+        let s_1_s = (0..state.batch_size)
+            .map(|i| {
+                let s_1_i = witness_label("s_1", i);
+                LinearCombination::new(s_1_i.clone(), [(F::one(), s_1_i)])
+            })
+            .collect::<Vec<_>>();
+        let s_2_s = (0..state.batch_size)
+            .map(|i| {
+                let s_2_i = witness_label("s_2", i);
+                LinearCombination::new(s_2_i.clone(), [(F::one(), s_2_i)])
+            })
+            .collect::<Vec<_>>();
+        let z_2_s = (0..state.batch_size)
+            .map(|i| {
+                let z_2_i = witness_label("z_2", i);
+                LinearCombination::new(z_2_i.clone(), [(F::one(), z_2_i)])
+            })
+            .collect::<Vec<_>>();
+        let delta_s_1_omega_s = (0..state.batch_size)
+            .map(|i| {
+                let delta_s_1_omega_i = witness_label("delta_omega_s_1", i);
+                LinearCombination::new(delta_s_1_omega_i.clone(), [(F::one(), delta_s_1_omega_i)])
+            })
+            .collect::<Vec<_>>();
+        let s_m = LinearCombination::new("s_m", [(F::one(), "s_m")]);
+        let s_l = LinearCombination::new("s_l", [(F::one(), "s_l")]);
+        let table = LinearCombination::new("table", [(F::one(), "table")]);
+        let delta_table_omega = LinearCombination::new("delta_table_omega", [(F::one(), "delta_table_omega")]);
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
@@ -206,8 +244,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
         let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<_>, _>>()?;
+        let f_s_at_beta = f_s.iter().map(|f| evals.get_lc_eval(f, beta)).collect::<Result<Vec<_>, _>>()?;
+        let s_1_s_at_beta = s_1_s.iter().map(|s_1| evals.get_lc_eval(s_1, beta)).collect::<Result<Vec<_>, _>>()?;
+        let s_2_s_at_beta = s_2_s.iter().map(|s_2| evals.get_lc_eval(s_2, beta)).collect::<Result<Vec<_>, _>>()?;
+        let z_2_s_at_beta = z_2_s.iter().map(|z_2| evals.get_lc_eval(z_2, beta)).collect::<Result<Vec<_>, _>>()?;
+        let delta_s_1_omega_s_at_beta = delta_s_1_omega_s
+            .iter()
+            .map(|delta_s_1_omega| evals.get_lc_eval(delta_s_1_omega, beta))
+            .collect::<Result<Vec<_>, _>>()?;
+
         let batch_z_b_at_beta: F =
             z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
+        let s_m_at_beta = evals.get_lc_eval(&s_m, beta)?;
+        let s_l_at_beta = evals.get_lc_eval(&s_l, beta)?;
+        let table_at_beta = evals.get_lc_eval(&table, beta)?;
+        let delta_table_omega_at_beta = evals.get_lc_eval(&delta_table_omega, beta)?;
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
@@ -217,29 +268,77 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
             .sum::<F>();
 
+        let zeta_squared = zeta.square();
+
         #[rustfmt::skip]
         let lincheck_sumcheck = {
-            let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
+            let one_plus_delta = F::one() + delta;
+            let epsilon_one_plus_delta = epsilon * one_plus_delta;
+            let mut rowcheck = LinearCombination::empty("lincheck_sumcheck");
+            for (i, combiner) in batch_combiners.iter().enumerate() {
+                rowcheck
+                    // Plookup table checks
+                    .add(one_plus_delta
+                        * (epsilon + f_s_at_beta[i])
+                        * (epsilon_one_plus_delta + table_at_beta + delta_table_omega_at_beta)
+                        * combiner, witness_label("z_2", i))
+                    .add((epsilon_one_plus_delta + s_1_s_at_beta[i] + delta * s_2_s_at_beta[i])
+                        * (epsilon_one_plus_delta + s_2_s_at_beta[i] + delta_s_1_omega_s_at_beta[i])
+                        * combiner * -F::one(), witness_label("omega_z_2", i))
+                    .add((z_2_s_at_beta[i] - F::one()) * combiner, "l_1")
+                    // Plookup rowcheck
+                    .add(s_l_at_beta * combiner, witness_label("z_a", i))
+                    .add(zeta * z_b_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
+                    .add(zeta_squared * s_l_at_beta * combiner, witness_label("z_c", i))
+                    .add(-f_s_at_beta[i] * s_l_at_beta * combiner, LCTerm::One)
+                    // Rowcheck
+                    .add(z_b_s_at_beta[i] * s_m_at_beta * combiner, witness_label("z_a", i))
+                    .add(s_m_at_beta * combiner * -F::one(), witness_label("z_c", i));
+            }
+
+            let mut lincheck_sumcheck = LinearCombination::empty("placeholder");
             if MM::ZK {
                 lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            for (i, (z_b_i_at_beta, combiner)) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
+            for (i, combiner) in batch_combiners.iter().enumerate() {
                 lincheck_sumcheck
-                    .add(r_alpha_at_beta * combiner * (eta_a + eta_c * z_b_i_at_beta), witness_label("z_a", i))
+                    .add(r_alpha_at_beta * combiner, witness_label("z_a", i))
+                    .add(r_alpha_at_beta * eta_c * combiner, witness_label("z_c", i))
                     .add(-t_at_beta * v_X_at_beta * combiner, witness_label("w", i));
             }
             lincheck_sumcheck
                 .add(r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One)
                 .add(-t_at_beta * combined_x_at_beta, LCTerm::One)
-                .add(-v_H_at_beta, "h_1")
                 .add(-beta * g_1_at_beta, LCTerm::One);
-            lincheck_sumcheck
+            rowcheck += (theta, &lincheck_sumcheck);
+            rowcheck
+                .add(-v_H_at_beta, "h_1");
+            rowcheck
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
         for z_b in z_b_s {
             linear_combinations.insert(z_b.label.clone(), z_b);
         }
+        for f in f_s {
+            linear_combinations.insert(f.label.clone(), f);
+        }
+        for s_1 in s_1_s {
+            linear_combinations.insert(s_1.label.clone(), s_1);
+        }
+        for s_2 in s_2_s {
+            linear_combinations.insert(s_2.label.clone(), s_2);
+        }
+        for z_2 in z_2_s {
+            linear_combinations.insert(z_2.label.clone(), z_2);
+        }
+        for delta_s_1_omega in delta_s_1_omega_s {
+            linear_combinations.insert(delta_s_1_omega.label.clone(), delta_s_1_omega);
+        }
+        linear_combinations.insert("table".into(), table);
+        linear_combinations.insert("delta_table_omega".into(), delta_table_omega);
+        linear_combinations.insert("s_m".into(), s_m);
+        linear_combinations.insert("s_l".into(), s_l);
         linear_combinations.insert("g_1".into(), g_1);
         linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
 

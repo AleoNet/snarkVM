@@ -68,6 +68,10 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The length of this list must be equal to the batch size.
     pub(super) z_b: Option<Vec<Vec<F>>>,
 
+    /// The list of Cz vectors for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
+    pub(super) z_c: Option<Vec<Vec<F>>>,
+
     /// A list of polynomials corresponding to the interpolation of the public input.
     /// The length of this list must be equal to the batch size.
     pub(super) x_poly: Vec<DensePolynomial<F>>,
@@ -76,12 +80,23 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// The length of this list must be equal to the batch size.
     pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F>>>,
 
+    /// The second round oracles sent by the prover.
+    /// The length of this list must be equal to the batch size.
+    pub(in crate::snark) second_round_oracles: Option<Arc<super::SecondOracles<F>>>,
+
     /// Randomizers for z_b.
     /// The length of this list must be equal to the batch size.
     pub(super) mz_poly_randomizer: Option<Vec<F>>,
 
     /// The challenges sent by the verifier in the first round
     pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
+
+    /// The challenges sent by the verifier in the second round
+    pub(super) verifier_second_message: Option<verifier::SecondMessage<F>>,
+
+    /// The vanishing polynomial produced when by dividing the lincheck sumcheck polynomial by zero
+    /// in the second round.
+    pub(super) h_1: Option<DensePolynomial<F>>,
 
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
@@ -131,9 +146,13 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             private_variables,
             z_a: None,
             z_b: None,
+            z_c: None,
             first_round_oracles: None,
+            second_round_oracles: None,
             mz_poly_randomizer: None,
             verifier_first_message: None,
+            verifier_second_message: None,
+            h_1: None,
             lhs_polynomials: None,
             sums: None,
         })

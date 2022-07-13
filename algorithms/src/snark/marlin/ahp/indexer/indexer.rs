@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
-    polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
+    fft::{EvaluationDomain, Evaluations},
+    polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
@@ -126,6 +126,40 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         end_timer!(fft_precomp_time);
 
+        let mut mul_constraint_evals = vec![F::zero(); num_constraints];
+        ics.mul_constraints.iter().for_each(|index| mul_constraint_evals[*index] = F::one());
+        let s_m_evals = Evaluations::from_vec_and_domain(mul_constraint_evals, constraint_domain);
+        let s_m = LabeledPolynomial::new(
+            "s_m".to_string(),
+            s_m_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+
+        let mut lookup_constraint_evals = vec![F::zero(); num_constraints];
+        let mut lookup_tables = vec![];
+        ics.lookup_constraints.iter().for_each(|entry| {
+            lookup_tables.push(entry.table.clone());
+            entry.indices.iter().for_each(|index| lookup_constraint_evals[*index] = F::one());
+        });
+        let s_l_evals = Evaluations::from_vec_and_domain(lookup_constraint_evals.clone(), constraint_domain);
+        let s_l = LabeledPolynomial::new(
+            "s_l".to_string(),
+            s_l_evals.interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+
+        let mut l_1_evals = vec![F::zero(); constraint_domain.size()];
+        l_1_evals[0] = F::one();
+        let l_1 = LabeledPolynomial::new(
+            "l_1".to_string(),
+            Evaluations::from_vec_and_domain(l_1_evals, constraint_domain)
+                .interpolate_with_pc_by_ref(&ifft_precomputation),
+            None,
+            None,
+        );
+
         end_timer!(index_time);
         Ok(Circuit {
             index_info,
@@ -137,6 +171,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             c_arith,
             fft_precomputation,
             ifft_precomputation,
+            s_m,
+            s_l,
+            s_l_evals: lookup_constraint_evals,
+            l_1,
+            lookup_tables,
             mode: PhantomData,
         })
     }
@@ -149,6 +188,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
             map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
         }
+        map.insert("s_m".to_string(), PolynomialInfo::new("s_m".to_string(), None, None));
+        map.insert("s_l".to_string(), PolynomialInfo::new("s_l".to_string(), None, None));
+        map.insert("l_1".to_string(), PolynomialInfo::new("l_1".to_string(), None, None));
         map
     }
 }
