@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod decrypt;
 mod from_bits;
 mod from_fields;
+mod num_randomizers;
 mod size_in_fields;
 mod to_bits;
 mod to_fields;
 
-use crate::Visibility;
+use crate::{Plaintext, Visibility};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Field};
 
@@ -47,16 +49,16 @@ impl<A: Aleo> Inject for Ciphertext<A> {
 impl<A: Aleo> Eject for Ciphertext<A> {
     type Primitive = console::Ciphertext<A::Network>;
 
-    /// Ejects the mode of the ciphertext entry.
+    /// Ejects the mode of the ciphertext.
     fn eject_mode(&self) -> Mode {
         self.0.eject_mode()
     }
 
-    /// Ejects the ciphertext entry.
+    /// Ejects the ciphertext.
     fn eject_value(&self) -> Self::Primitive {
         match console::FromFields::from_fields(&self.0.eject_value()) {
             Ok(ciphertext) => ciphertext,
-            Err(error) => A::halt(format!("Failed to eject a ciphertext entry: {error}")),
+            Err(error) => A::halt(format!("Failed to eject ciphertext: {error}")),
         }
     }
 }

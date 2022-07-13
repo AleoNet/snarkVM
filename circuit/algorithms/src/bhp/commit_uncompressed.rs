@@ -41,7 +41,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> CommitUncompr
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -58,7 +58,7 @@ mod tests {
         use console::CommitUncompressed as C;
 
         // Initialize BHP.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
+        let native = console::BHP::<<Circuit as Environment>::Network, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;
@@ -67,7 +67,7 @@ mod tests {
             // Sample a random input.
             let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Sample a randomizer.
-            let randomizer = UniformRand::rand(&mut test_rng());
+            let randomizer = Uniform::rand(&mut test_rng());
             // Compute the expected commitment.
             let expected = native.commit_uncompressed(&input, &randomizer).expect("Failed to commit native input");
             // Prepare the circuit input.
@@ -88,16 +88,16 @@ mod tests {
 
     #[test]
     fn test_commit_uncompressed_constant() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Constant, 7943, 0, 0, 0)
+        check_commit_uncompressed::<32, 48>(Mode::Constant, 8200, 0, 0, 0)
     }
 
     #[test]
     fn test_commit_uncompressed_public() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10098, 10099)
+        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10349, 10351)
     }
 
     #[test]
     fn test_commit_uncompressed_private() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10098, 10099)
+        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10349, 10351)
     }
 }

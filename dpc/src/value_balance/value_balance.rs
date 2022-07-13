@@ -270,7 +270,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
     use snarkvm_algorithms::CommitmentScheme;
-    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{FromBytes, ToBytes, Uniform};
 
     use rand::Rng;
 
@@ -291,7 +291,7 @@ pub(crate) mod tests {
         for input_amount in input_amounts {
             value_balance = value_balance.add(input_amount);
 
-            let value_commit_randomness = UniformRand::rand(rng);
+            let value_commit_randomness = Uniform::rand(rng);
             let value_commitment = N::value_commitment_scheme()
                 .commit_bytes(&input_amount.to_bytes_le().unwrap(), &value_commit_randomness)
                 .unwrap();
@@ -303,7 +303,7 @@ pub(crate) mod tests {
         for output_amount in output_amounts {
             value_balance = value_balance.sub(output_amount);
 
-            let value_commit_randomness = UniformRand::rand(rng);
+            let value_commit_randomness = Uniform::rand(rng);
             let value_commitment = N::value_commitment_scheme()
                 .commit_bytes(&output_amount.to_bytes_le().unwrap(), &value_commit_randomness)
                 .unwrap();

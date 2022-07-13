@@ -14,6 +14,16 @@ version = "0.7.5"
 path = "../collections"
 version = "0.7.5"
 
+[dependencies.snarkvm-console-network-environment]
+path = "./environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-console-types]
+path = "../types"
+version = "0.7.5"
+default-features = false
+features = ["field", "group", "scalar"]
+
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"
@@ -36,3 +46,6 @@ version = "0.10.1"
 
 [dependencies.lazy_static]
 version = "1.4"
+
+[dependencies.serde]
+version = "1.0"

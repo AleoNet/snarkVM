@@ -143,15 +143,6 @@ jobs:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
-  bytecode:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: bytecode
-          cache_key: snarkvm-bytecode-cache
-
   circuit:
     docker:
       - image: cimg/rust:1.61
@@ -189,17 +180,6 @@ jobs:
       - run_serial:
           workspace_member: circuit/algorithms
           cache_key: snarkvm-circuit-algorithms-cache
-
-  # This checks that no `console` structs are used in core circuit logic.
-  circuit-algorithms-noconsole:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuit/algorithms
-          flags: --no-default-features
-          cache_key: snarkvm-circuit-algorithms-noconsole-cache
 
   circuit-collections:
     docker:
@@ -247,37 +227,6 @@ jobs:
       - run_serial:
           workspace_member: circuit/program
           cache_key: snarkvm-circuit-program-cache
-
-  # This checks that no `console` structs are used in core circuit logic.
-  circuit-program-noconsole:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuit/program
-          flags: --no-default-features
-          cache_key: snarkvm-circuit-program-noconsole-cache
-
-  circuit-transition:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuit/transition
-          cache_key: snarkvm-circuit-transition-cache
-
-  # This checks that no `console` structs are used in core circuit logic.
-  circuit-transition-noconsole:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: circuit/transition
-          flags: --no-default-features
-          cache_key: snarkvm-circuit-transition-noconsole-cache
 
   circuit-types:
     docker:
@@ -398,6 +347,15 @@ jobs:
           workspace_member: console/network
           cache_key: snarkvm-console-network-cache
 
+  console-network-environment:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/network/environment
+          cache_key: snarkvm-console-network-environment-cache
+
   console-program:
     docker:
       - image: cimg/rust:1.61
@@ -407,15 +365,6 @@ jobs:
           workspace_member: console/program
           cache_key: snarkvm-console-program-cache
 
-  console-transition:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: console/transition
-          cache_key: snarkvm-console-transition-cache
-
   console-types:
     docker:
       - image: cimg/rust:1.61
@@ -424,6 +373,69 @@ jobs:
       - run_serial:
           workspace_member: console/types
           cache_key: snarkvm-console-types-cache
+
+  console-types-address:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/address
+          cache_key: snarkvm-console-types-address-cache
+
+  console-types-boolean:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/boolean
+          cache_key: snarkvm-console-types-boolean-cache
+
+  console-types-field:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/field
+          cache_key: snarkvm-console-types-field-cache
+
+  console-types-group:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/group
+          cache_key: snarkvm-console-types-group-cache
+
+  console-types-integers:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/integers
+          cache_key: snarkvm-console-types-integers-cache
+
+  console-types-scalar:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/scalar
+          cache_key: snarkvm-console-types-scalar-cache
+
+  console-types-string:
+    docker:
+      - image: cimg/rust:1.61
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/types/string
+          cache_key: snarkvm-console-types-string-cache
 
   curves:
     docker:
@@ -571,26 +583,21 @@ workflows:
     jobs:
       - integration
       - algorithms
-      - bytecode
       - circuit
       - circuit-account
       - circuit-account-noconsole
       - circuit-algorithms
-      - circuit-algorithms-noconsole
       - circuit-collections
       - circuit-collections-noconsole
       - circuit-environment
       - circuit-network
       - circuit-program
-      - circuit-program-noconsole
-      - circuit-transition
-      - circuit-transition-noconsole
       - circuit-types
       - circuit-types-address
       - circuit-types-boolean
       - circuit-types-field
       - circuit-types-group
-      - circuit-types-integers
+#      - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
       - console
@@ -598,9 +605,16 @@ workflows:
       - console-algorithms
       - console-collections
       - console-network
+      - console-network-environment
       - console-program
-      - console-transition
       - console-types
+      - console-types-address
+      - console-types-boolean
+      - console-types-field
+      - console-types-group
+      - console-types-integers
+      - console-types-scalar
+      - console-types-string
       - curves
       - dpc
       - fields
@@ -621,7 +635,6 @@ workflows:
               workspace_member: [
                 .integration,
                 algorithms,
-                bytecode,
                 circuit,
                 console,
                 curves,

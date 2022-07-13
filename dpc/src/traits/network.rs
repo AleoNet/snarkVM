@@ -38,7 +38,7 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
     ToMinimalBits,
-    UniformRand,
+    Uniform,
 };
 
 use anyhow::Result;
@@ -51,7 +51,7 @@ pub trait Bech32Locator<F: Field>:
     + Deref<Target = F>
     + ToConstraintField<F>
     + Into<Vec<F>>
-    + UniformRand
+    + Uniform
     + Copy
     + Clone
     + Default
@@ -205,7 +205,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// PRF for deriving the account private key from a seed.
     type AccountSeedPRF: PRF<Input = Vec<Self::ProgramScalarField>, Seed = Self::AccountSeed, Output = Self::ProgramScalarField>;
-    type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + UniformRand;
+    type AccountSeed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug + Uniform;
 
     /// Signature scheme for transaction authorizations. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<PrivateKey = (Self::ProgramScalarField, Self::ProgramScalarField), PublicKey = Self::ProgramAffineCurve>

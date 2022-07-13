@@ -256,7 +256,7 @@ impl Fp6Parameters for Fq6Parameters {
 #[cfg(test)]
 mod test {
     use snarkvm_fields::{One, Zero};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::rand::{test_rng, Uniform};
 
     use super::*;
 

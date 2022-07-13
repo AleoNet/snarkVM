@@ -25,7 +25,7 @@ use crate::{
 };
 use snarkvm_algorithms::traits::{SignatureScheme, PRF};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{FromBytes, ToBytes, Uniform};
 
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};

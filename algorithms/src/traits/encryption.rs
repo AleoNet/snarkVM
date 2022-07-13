@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBits, ToBytes};
+use snarkvm_utilities::{rand::Uniform, FromBytes, ToBits, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -24,9 +24,9 @@ pub trait EncryptionScheme: Sized + Debug + Clone + PartialEq + Eq {
     type CiphertextRandomizer: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
     type MessageType: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
     type Parameters: Clone + Debug + Eq;
-    type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
+    type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + Uniform;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand + Sync;
+    type ScalarRandomness: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Uniform + Sync;
     type SymmetricKey: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
     type SymmetricKeyCommitment: Copy + Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Send + Sync;
 

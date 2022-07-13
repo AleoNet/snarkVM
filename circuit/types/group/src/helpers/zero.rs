@@ -37,8 +37,8 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+        let zero = console::Field::zero();
+        let one = console::Field::one();
 
         Circuit::scope("Zero", || {
             assert_scope!(0, 0, 0, 0);

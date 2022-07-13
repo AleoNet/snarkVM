@@ -19,22 +19,14 @@ use super::*;
 impl<E: Environment> Double for Group<E> {
     type Output = Group<E>;
 
-    fn double(self) -> Self::Output {
-        (&self).double()
-    }
-}
-
-impl<E: Environment> Double for &Group<E> {
-    type Output = Group<E>;
-
-    fn double(self) -> Self::Output {
+    fn double(&self) -> Self::Output {
         // If `self` is constant *and* `self` is zero, then return `self`.
         if self.is_constant() && self.eject_value().is_zero() {
             self.clone()
         }
         // Otherwise, compute `self` + `self`.
         else {
-            let a = Field::constant(E::AffineParameters::COEFF_A);
+            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
             let two = Field::one().double();
 
             // Compute xy, xx, yy, axx.
@@ -74,19 +66,17 @@ impl<E: Environment> Double for &Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_curves::ProjectiveCurve;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 250;
 
     #[test]
     fn test_double() {
-        // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.to_projective().double();
+            let point: console::Group<<Circuit as Environment>::Network> = Uniform::rand(&mut test_rng());
+            let expected = point.double();
 
+            // Constant variable
             let affine = Group::<Circuit>::new(Mode::Constant, point);
 
             Circuit::scope(&format!("Constant {}", i), || {
@@ -95,14 +85,8 @@ mod tests {
                 assert_scope!(3, 0, 0, 0);
             });
             Circuit::reset();
-        }
 
-        // Public variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.to_projective().double();
-
+            // Public variable
             let affine = Group::<Circuit>::new(Mode::Public, point);
 
             Circuit::scope(&format!("Public {}", i), || {
@@ -111,15 +95,8 @@ mod tests {
                 assert_scope!(1, 0, 5, 5);
             });
             Circuit::reset();
-        }
 
-        // Private variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.to_projective().double();
-
+            // Private variable
             let affine = Group::<Circuit>::new(Mode::Private, point);
 
             Circuit::scope(&format!("Private {}", i), || {
@@ -134,8 +111,8 @@ mod tests {
     #[test]
     fn test_double_matches() {
         // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let expected: <Circuit as Environment>::Affine = (a.to_projective() + a.to_projective()).into();
+        let a = Uniform::rand(&mut test_rng());
+        let expected = a + a;
 
         // Constant
         let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();

@@ -18,7 +18,8 @@ use crate::poseidon::{
     helpers::{AlgebraicSponge, DuplexSpongeMode},
     State,
 };
-use snarkvm_fields::{PoseidonParameters, PrimeField};
+use snarkvm_console_types::{prelude::*, Field};
+use snarkvm_fields::PoseidonParameters;
 
 use smallvec::SmallVec;
 use std::sync::Arc;
@@ -30,19 +31,19 @@ use std::sync::Arc;
 ///
 /// [cos]: https://eprint.iacr.org/2019/1076
 #[derive(Clone, Debug)]
-pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
+pub struct PoseidonSponge<E: Environment, const RATE: usize, const CAPACITY: usize> {
     /// Sponge Parameters
-    parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
+    parameters: Arc<PoseidonParameters<E::Field, RATE, CAPACITY>>,
     /// Current sponge's state (current elements in the permutation block)
-    state: State<F, RATE, CAPACITY>,
+    state: State<E, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
     pub(in crate::poseidon) mode: DuplexSpongeMode,
 }
 
-impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
-    for PoseidonSponge<F, RATE, CAPACITY>
+impl<E: Environment, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<E, RATE, CAPACITY>
+    for PoseidonSponge<E, RATE, CAPACITY>
 {
-    type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
+    type Parameters = Arc<PoseidonParameters<E::Field, RATE, CAPACITY>>;
 
     fn new(parameters: &Self::Parameters) -> Self {
         Self {
@@ -52,7 +53,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
         }
     }
 
-    fn absorb(&mut self, input: &[F]) {
+    fn absorb(&mut self, input: &[Field<E>]) {
         if !input.is_empty() {
             match self.mode {
                 DuplexSpongeMode::Absorbing { mut next_absorb_index } => {
@@ -70,14 +71,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
         }
     }
 
-    fn squeeze(&mut self, num_elements: u16) -> SmallVec<[F; 10]> {
+    fn squeeze(&mut self, num_elements: u16) -> SmallVec<[Field<E>; 10]> {
         if num_elements == 0 {
             return SmallVec::new();
         }
         let mut output = if num_elements <= 10 {
-            smallvec::smallvec_inline![F::zero(); 10]
+            smallvec::smallvec_inline![Field::<E>::zero(); 10]
         } else {
-            smallvec::smallvec![F::zero(); num_elements as usize]
+            smallvec::smallvec![Field::<E>::zero(); num_elements as usize]
         };
 
         match self.mode {
@@ -99,11 +100,11 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
     }
 }
 
-impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, RATE, CAPACITY> {
+impl<E: Environment, const RATE: usize, const CAPACITY: usize> PoseidonSponge<E, RATE, CAPACITY> {
     #[inline]
     fn apply_ark(&mut self, round_number: usize) {
         for (state_elem, ark_elem) in self.state.iter_mut().zip(&self.parameters.ark[round_number]) {
-            *state_elem += ark_elem;
+            *state_elem += Field::<E>::new(*ark_elem);
         }
     }
 
@@ -112,12 +113,12 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
             for elem in self.state.iter_mut() {
-                *elem = elem.pow(&[self.parameters.alpha]);
+                *elem = elem.pow(Field::from_u64(self.parameters.alpha));
             }
         }
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
-            self.state[0] = self.state[0].pow(&[self.parameters.alpha]);
+            self.state[0] = self.state[0].pow(Field::from_u64(self.parameters.alpha));
         }
     }
 
@@ -125,7 +126,8 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     fn apply_mds(&mut self) {
         let mut new_state = State::default();
         new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
-            *new_elem = self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| mds_elem * state_elem).sum::<F>();
+            *new_elem =
+                self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| Field::new(mds_elem) * state_elem).sum();
         });
         self.state = new_state;
     }
@@ -149,7 +151,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
     /// Absorbs everything in elements, this does not end in an absorption.
     #[inline]
-    fn absorb_internal(&mut self, mut rate_start: usize, input: &[F]) {
+    fn absorb_internal(&mut self, mut rate_start: usize, input: &[Field<E>]) {
         if !input.is_empty() {
             let first_chunk_size = std::cmp::min(RATE - rate_start, input.len());
             let num_elements_remaining = input.len() - first_chunk_size;
@@ -185,7 +187,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
     /// Squeeze |output| many elements. This does not end in a squeeze
     #[inline]
-    fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
+    fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [Field<E>]) {
         let output_size = output.len();
         if output_size != 0 {
             let first_chunk_size = std::cmp::min(RATE - rate_start, output.len());

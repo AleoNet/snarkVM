@@ -17,58 +17,58 @@
 mod bytes;
 mod sign;
 
-use crate::{Address, ComputeKey, PrivateKey};
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{
-    io::{Read, Result as IoResult, Write},
-    CryptoRng,
-    FromBytes,
-    Rng,
-    ToBytes,
-    UniformRand,
-};
+#[cfg(feature = "compute_key")]
+use crate::ComputeKey;
+#[cfg(feature = "private_key")]
+use crate::PrivateKey;
 
-use anyhow::Result;
+use crate::address::Address;
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{Field, Scalar};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature<N: Network> {
     /// The verifier challenge to check against.
-    challenge: N::Scalar,
+    challenge: Scalar<N>,
     /// The prover response to the challenge.
-    response: N::Scalar,
+    response: Scalar<N>,
     /// The compute key of the prover.
     compute_key: ComputeKey<N>,
 }
 
-impl<N: Network> From<(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+impl<N: Network> From<(Scalar<N>, Scalar<N>, ComputeKey<N>)> for Signature<N> {
     /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
-    fn from((challenge, response, compute_key): (N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+    fn from((challenge, response, compute_key): (Scalar<N>, Scalar<N>, ComputeKey<N>)) -> Self {
         Self { challenge, response, compute_key }
     }
 }
 
-impl<N: Network> From<&(N::Scalar, N::Scalar, ComputeKey<N>)> for Signature<N> {
+impl<N: Network> From<&(Scalar<N>, Scalar<N>, ComputeKey<N>)> for Signature<N> {
     /// Derives the account signature from a tuple `(challenge, response, compute_key)`.
-    fn from((challenge, response, compute_key): &(N::Scalar, N::Scalar, ComputeKey<N>)) -> Self {
+    fn from((challenge, response, compute_key): &(Scalar<N>, Scalar<N>, ComputeKey<N>)) -> Self {
         Self { challenge: *challenge, response: *response, compute_key: *compute_key }
     }
 }
 
 impl<N: Network> Signature<N> {
     /// Returns the verifier challenge.
-    pub const fn challenge(&self) -> N::Scalar {
+    pub const fn challenge(&self) -> Scalar<N> {
         self.challenge
     }
 
     /// Returns the prover response.
-    pub const fn response(&self) -> N::Scalar {
+    pub const fn response(&self) -> Scalar<N> {
         self.response
     }
 
-    /// Returns the compute key.
+    /// Returns the signer compute key.
     pub const fn compute_key(&self) -> ComputeKey<N> {
         self.compute_key
+    }
+
+    /// Returns the signer address.
+    pub fn signer(&self) -> Result<Address<N>> {
+        Address::try_from(self.compute_key)
     }
 }
 
@@ -76,9 +76,6 @@ impl<N: Network> Signature<N> {
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
-
-    use anyhow::Result;
 
     type CurrentNetwork = Testnet3;
 
@@ -94,7 +91,7 @@ mod tests {
             let address = Address::try_from(&private_key)?;
 
             // Generate a signature.
-            let message: Vec<_> = (0..i).map(|_| UniformRand::rand(rng)).collect();
+            let message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
             let signature = Signature::sign(&private_key, &message, rng)?;
             assert!(signature.verify(&address, &message));
 

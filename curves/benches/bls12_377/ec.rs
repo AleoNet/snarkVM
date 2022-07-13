@@ -19,7 +19,7 @@ pub(crate) mod g1 {
         bls12_377::{Fr, G1Affine, G1Projective as G1},
         traits::ProjectiveCurve,
     };
-    use snarkvm_utilities::rand::UniformRand;
+    use snarkvm_utilities::rand::Uniform;
 
     use criterion::Criterion;
     use rand::SeedableRng;
@@ -108,7 +108,7 @@ pub(crate) mod g2 {
         bls12_377::{Fr, G2Affine, G2Projective as G2},
         traits::ProjectiveCurve,
     };
-    use snarkvm_utilities::rand::UniformRand;
+    use snarkvm_utilities::rand::Uniform;
 
     use criterion::Criterion;
     use rand::SeedableRng;

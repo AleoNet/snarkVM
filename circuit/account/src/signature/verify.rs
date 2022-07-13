@@ -48,7 +48,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::{helpers::generate_account, Circuit};
     use snarkvm_circuit_types::Group;
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     use anyhow::Result;
 
@@ -68,7 +68,7 @@ pub(crate) mod tests {
             let (private_key, _compute_key, _view_key, address) = generate_account()?;
 
             // Generate a signature.
-            let message = [Field::new(mode, UniformRand::rand(rng)), Field::new(mode, UniformRand::rand(rng))];
+            let message = [Field::new(mode, Uniform::rand(rng)), Field::new(mode, Uniform::rand(rng))];
             let signature = console::Signature::sign(&private_key, &message.eject_value(), rng)?;
 
             // Initialize the signature and address.
@@ -103,11 +103,11 @@ pub(crate) mod tests {
 
             // Generate a signature.
             let message = [
-                Address::from_group(Group::new(mode, UniformRand::rand(rng))).to_field(),
-                Field::from_boolean(&Boolean::new(mode, UniformRand::rand(rng))),
-                Field::new(mode, UniformRand::rand(rng)),
-                Group::new(mode, UniformRand::rand(rng)).to_x_coordinate(),
-                Scalar::new(mode, UniformRand::rand(rng)).to_field(),
+                Address::from_group(Group::new(mode, Uniform::rand(rng))).to_field(),
+                Field::from_boolean(&Boolean::new(mode, Uniform::rand(rng))),
+                Field::new(mode, Uniform::rand(rng)),
+                Group::new(mode, Uniform::rand(rng)).to_x_coordinate(),
+                Scalar::new(mode, Uniform::rand(rng)).to_field(),
             ];
             let signature = console::Signature::sign(&private_key, &message.eject_value(), rng)?;
 
@@ -130,31 +130,31 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_constant() -> Result<()> {
-        check_verify(Mode::Constant, 4326, 0, 0, 0)
+        check_verify(Mode::Constant, 4514, 0, 0, 0)
     }
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 1757, 0, 6529, 6533)
+        check_verify(Mode::Public, 1757, 0, 7031, 7037)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 1757, 0, 6529, 6533)
+        check_verify(Mode::Private, 1757, 0, 7031, 7037)
     }
 
     #[test]
     fn test_verify_large_constant() -> Result<()> {
-        check_verify_large(Mode::Constant, 4326, 0, 0, 0)
+        check_verify_large(Mode::Constant, 4514, 0, 0, 0)
     }
 
     #[test]
     fn test_verify_large_public() -> Result<()> {
-        check_verify_large(Mode::Public, 1757, 0, 7054, 7058)
+        check_verify_large(Mode::Public, 1757, 0, 7556, 7562)
     }
 
     #[test]
     fn test_verify_large_private() -> Result<()> {
-        check_verify_large(Mode::Private, 1757, 0, 7054, 7058)
+        check_verify_large(Mode::Private, 1757, 0, 7556, 7562)
     }
 }

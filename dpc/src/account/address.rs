@@ -49,7 +49,7 @@ impl<N: Network> Address<N> {
     pub fn from_view_key(view_key: &ViewKey<N>) -> Self {
         // TODO (howardwu): This operation can be optimized by precomputing powers in ECIES native impl.
         //  Optimizing this will also speed up encryption.
-        Self(N::account_encryption_scheme().generate_public_key(&*view_key))
+        Self(N::account_encryption_scheme().generate_public_key(view_key))
     }
 
     /// Verifies a signature on a message signed by the account view key.

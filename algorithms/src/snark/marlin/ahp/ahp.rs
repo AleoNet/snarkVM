@@ -536,7 +536,7 @@ mod tests {
     use crate::fft::{DensePolynomial, Evaluations};
     use snarkvm_curves::bls12_377::fr::Fr;
     use snarkvm_fields::{One, Zero};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::rand::{test_rng, Uniform};
 
     #[test]
     fn domain_unnormalized_bivariate_lagrange_poly() {

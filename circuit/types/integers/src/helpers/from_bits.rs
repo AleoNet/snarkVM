@@ -53,7 +53,6 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 128;
 
@@ -66,7 +65,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
@@ -105,7 +104,7 @@ mod tests {
     ) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
-            let expected: I = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let given_bits = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 

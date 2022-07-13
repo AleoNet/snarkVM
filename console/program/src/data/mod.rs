@@ -17,10 +17,7 @@
 mod ciphertext;
 pub use ciphertext::Ciphertext;
 
-mod entry;
-pub use entry::Entry;
-
-mod identifier;
+pub(super) mod identifier;
 pub use identifier::Identifier;
 
 mod literal;
@@ -29,40 +26,11 @@ pub use literal::Literal;
 mod plaintext;
 pub use plaintext::Plaintext;
 
-mod decrypt;
-mod encrypt;
-mod to_bits;
-mod to_id;
+mod record;
+pub use record::{Balance, Entry, Owner, Record};
 
-use crate::{FromFields, ToFields};
-use snarkvm_console_account::{Address, ViewKey};
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{FromBits, ToBits};
+mod register;
+pub use register::Register;
 
-use anyhow::{bail, Result};
-use core::ops::Deref;
-
-pub trait Visibility<N: Network>: ToBits + FromBits + ToFields + FromFields {
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> Result<u16>;
-}
-
-/// A value stored in program data.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Data<N: Network, Private: Visibility<N>>(Vec<(Identifier<N>, Entry<N, Private>)>);
-
-impl<N: Network, Private: Visibility<N>> From<Vec<(Identifier<N>, Entry<N, Private>)>> for Data<N, Private> {
-    /// Initializes a new `Data` value from a vector of `(Identifier, Entry)` pairs.
-    fn from(entries: Vec<(Identifier<N>, Entry<N, Private>)>) -> Self {
-        Self(entries)
-    }
-}
-
-impl<N: Network, Private: Visibility<N>> Deref for Data<N, Private> {
-    type Target = [(Identifier<N>, Entry<N, Private>)];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+mod value;
+pub use value::Value;

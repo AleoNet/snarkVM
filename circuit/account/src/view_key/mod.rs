@@ -95,16 +95,16 @@ mod tests {
 
     #[test]
     fn test_view_key_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 251, 0, 0, 0)
+        check_new(Mode::Constant, 1, 0, 0, 0)
     }
 
     #[test]
     fn test_view_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 0, 251, 0, 251)
+        check_new(Mode::Public, 0, 1, 0, 0)
     }
 
     #[test]
     fn test_view_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 0, 0, 251, 251)
+        check_new(Mode::Private, 0, 0, 1, 0)
     }
 }

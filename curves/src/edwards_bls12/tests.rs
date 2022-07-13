@@ -28,7 +28,7 @@ use crate::{
     },
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
-use snarkvm_utilities::{rand::UniformRand, to_bytes_le, ToBytes};
+use snarkvm_utilities::{rand::Uniform, to_bytes_le, ToBytes};
 
 use rand::thread_rng;
 

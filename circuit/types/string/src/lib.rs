@@ -19,9 +19,11 @@
 mod helpers;
 
 #[cfg(test)]
+use console::test_rng;
+#[cfg(test)]
 use snarkvm_circuit_environment::assert_scope;
 
-use snarkvm_circuit_environment::{prelude::*, string_parser::parse_string};
+use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_integers::U8;
 
@@ -33,22 +35,19 @@ pub struct StringType<E: Environment> {
 
 impl<E: Environment> StringTrait for StringType<E> {}
 
+#[cfg(console)]
 impl<E: Environment> Inject for StringType<E> {
-    type Primitive = String;
+    type Primitive = console::StringType<E::Network>;
 
     /// Initializes a new instance of a string.
-    fn new(mode: Mode, string: String) -> Self {
-        // Ensure the string is within the allowed capacity.
-        let num_bytes = string.len();
-        match num_bytes <= E::NUM_STRING_BYTES as usize {
-            true => Self { mode, bytes: string.as_bytes().iter().map(|byte| U8::new(mode, *byte)).collect() },
-            false => E::halt(format!("Attempted to allocate a string of size {num_bytes}")),
-        }
+    fn new(mode: Mode, string: Self::Primitive) -> Self {
+        Self { mode, bytes: string.as_bytes().iter().map(|byte| U8::new(mode, console::Integer::new(*byte))).collect() }
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Eject for StringType<E> {
-    type Primitive = String;
+    type Primitive = console::StringType<E::Network>;
 
     /// Ejects the mode of the string.
     fn eject_mode(&self) -> Mode {
@@ -63,41 +62,70 @@ impl<E: Environment> Eject for StringType<E> {
         // Ensure the string is within the allowed capacity.
         let num_bytes = self.bytes.len();
         match num_bytes <= E::NUM_STRING_BYTES as usize {
-            true => String::from_utf8(self.bytes.eject_value())
-                .unwrap_or_else(|error| E::halt(&format!("Failed to eject a string value: {error}"))),
+            true => console::StringType::new(
+                &String::from_utf8(self.bytes.eject_value().into_iter().map(|byte| *byte).collect())
+                    .unwrap_or_else(|error| E::halt(&format!("Failed to eject a string value: {error}"))),
+            ),
             false => E::halt(format!("Attempted to eject a string of size {num_bytes}")),
         }
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Parser for StringType<E> {
-    type Environment = E;
-
     /// Parses a string into a string circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the starting quote '"' keyword from the string.
-        let (string, value) = parse_string(string)?;
+        // Parse the content from the string.
+        let (string, content) = console::StringType::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
         match mode {
-            Some((_, mode)) => Ok((string, StringType::new(mode, value))),
-            None => Ok((string, StringType::new(Mode::Constant, value))),
+            Some((_, mode)) => Ok((string, StringType::new(mode, content))),
+            None => Ok((string, StringType::new(Mode::Constant, content))),
         }
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> FromStr for StringType<E> {
+    type Err = Error;
+
+    /// Parses a string into a string circuit.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> TypeName for StringType<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "string"
+        console::StringType::<E::Network>::type_name()
     }
 }
 
-impl<E: Environment> fmt::Display for StringType<E> {
+#[cfg(console)]
+impl<E: Environment> Debug for StringType<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\"{}\".{}", self.eject_value(), self.eject_mode())
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
+impl<E: Environment> Display for StringType<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }

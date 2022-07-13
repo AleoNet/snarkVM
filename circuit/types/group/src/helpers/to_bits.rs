@@ -48,7 +48,6 @@ impl<E: Environment> ToBits for &Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as TBits, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
@@ -57,7 +56,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Group::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -78,7 +77,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Group::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {

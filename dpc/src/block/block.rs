@@ -380,7 +380,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
 mod tests {
     use super::*;
     use crate::{testnet2::Testnet2, Account};
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::Uniform;
 
     use rand::{thread_rng, Rng};
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -517,7 +517,7 @@ mod tests {
     #[test]
     fn test_block_hash_serde_json() {
         let rng = &mut thread_rng();
-        let expected_block_hash: <Testnet2 as Network>::BlockHash = UniformRand::rand(rng);
+        let expected_block_hash: <Testnet2 as Network>::BlockHash = Uniform::rand(rng);
 
         // Serialize
         let expected_string = &expected_block_hash.to_string();
@@ -536,7 +536,7 @@ mod tests {
     #[test]
     fn test_block_hash_bincode() {
         let rng = &mut thread_rng();
-        let expected_block_hash: <Testnet2 as Network>::BlockHash = UniformRand::rand(rng);
+        let expected_block_hash: <Testnet2 as Network>::BlockHash = Uniform::rand(rng);
 
         // Serialize
         let expected_bytes = expected_block_hash.to_bytes_le().unwrap();

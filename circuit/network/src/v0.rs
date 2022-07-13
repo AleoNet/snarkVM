@@ -31,17 +31,15 @@ use snarkvm_circuit_algorithms::{
     BHP256,
     BHP512,
     BHP768,
-    PRF,
 };
 use snarkvm_circuit_collections::merkle_tree::MerklePath;
 use snarkvm_circuit_types::{
-    environment::{prelude::*, Circuit},
+    environment::{prelude::*, Assignment, Circuit, R1CS},
     Boolean,
     Field,
     Group,
     Scalar,
 };
-use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::FieldParameters;
 
 use core::fmt;
@@ -50,7 +48,7 @@ type E = Circuit;
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().iter().map(|g| g.to_affine()).collect());
+    static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
 
     /// The balance commitment domain as a constant field element.
     static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
@@ -255,21 +253,6 @@ impl Aleo for AleoV0 {
         POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar(input))
     }
 
-    /// Returns the Poseidon PRF with an input rate of 2.
-    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
-        POSEIDON_2.with(|poseidon| poseidon.prf(seed, input))
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 4.
-    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
-        POSEIDON_4.with(|poseidon| poseidon.prf(seed, input))
-    }
-
-    /// Returns the Poseidon PRF with an input rate of 8.
-    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
-        POSEIDON_8.with(|poseidon| poseidon.prf(seed, input))
-    }
-
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
     fn verify_merkle_path_bhp<const DEPTH: u8>(
         path: &MerklePath<Self, DEPTH>,
@@ -398,15 +381,24 @@ impl Environment for AleoV0 {
         E::num_gates_in_scope()
     }
 
-    /// A helper method to recover the y-coordinate given the x-coordinate for
-    /// a twisted Edwards point, returning the affine curve point.
-    fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
-        E::affine_from_x_coordinate(x)
-    }
-
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         E::halt(message)
+    }
+
+    /// Returns the R1CS circuit, resetting the circuit.
+    fn inject_r1cs(r1cs: R1CS<Self::BaseField>) {
+        E::inject_r1cs(r1cs)
+    }
+
+    /// Returns the R1CS circuit, resetting the circuit.
+    fn eject_r1cs_and_reset() -> R1CS<Self::BaseField> {
+        E::eject_r1cs_and_reset()
+    }
+
+    /// Returns the R1CS assignment of the circuit, resetting the circuit.
+    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+        E::eject_assignment_and_reset()
     }
 
     /// Clears the circuit and initializes an empty environment.
@@ -415,8 +407,8 @@ impl Environment for AleoV0 {
     }
 }
 
-impl fmt::Display for AleoV0 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for AleoV0 {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
         fmt::Display::fmt(&Circuit, f)
     }
@@ -429,7 +421,7 @@ mod tests {
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
-        let one = <E as Environment>::BaseField::one();
+        let one = snarkvm_console_types::Field::<<E as Environment>::Network>::one();
         let two = one + one;
 
         const EXPONENT: u64 = 64;

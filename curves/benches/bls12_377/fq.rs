@@ -18,7 +18,7 @@ use snarkvm_curves::bls12_377::Fq;
 use snarkvm_fields::{Field, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger384 as FqRepr},
-    rand::UniformRand,
+    rand::Uniform,
 };
 
 use criterion::Criterion;

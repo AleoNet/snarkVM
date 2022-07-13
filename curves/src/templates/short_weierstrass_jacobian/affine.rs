@@ -22,7 +22,8 @@ use crate::{
 use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
-    rand::UniformRand,
+    io::{Error, ErrorKind, Read, Result as IoResult, Write},
+    rand::Uniform,
     serialize::*,
     FromBytes,
     ToBits,
@@ -30,16 +31,15 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
+use core::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    ops::{Mul, Neg},
+};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    ops::{Mul, Neg},
-};
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
@@ -57,12 +57,9 @@ pub struct Affine<P: Parameters> {
 }
 
 impl<P: Parameters> Affine<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField, infinity: bool) -> Self {
+    #[inline]
+    pub const fn new(x: P::BaseField, y: P::BaseField, infinity: bool) -> Self {
         Self { x, y, infinity }
-    }
-
-    pub fn scale_by_cofactor(&self) -> Projective<P> {
-        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 }
 
@@ -75,6 +72,13 @@ impl<P: Parameters> Zero for Affine<P> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.infinity
+    }
+}
+
+impl<P: Parameters> Default for Affine<P> {
+    #[inline]
+    fn default() -> Self {
+        Self::zero()
     }
 }
 
@@ -100,6 +104,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     fn from_coordinates(coordinates: Self::Coordinates) -> Self {
         let (x, y, infinity) = coordinates;
         Self { x, y, infinity }
+    }
+
+    #[inline]
+    fn cofactor() -> &'static [u64] {
+        P::COFACTOR
     }
 
     #[inline]
@@ -160,7 +169,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
-        self.scale_by_cofactor()
+        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
@@ -300,13 +309,6 @@ impl<P: Parameters> FromBytes for Affine<P> {
     }
 }
 
-impl<P: Parameters> Default for Affine<P> {
-    #[inline]
-    fn default() -> Self {
-        Self::zero()
-    }
-}
-
 impl<P: Parameters> Distribution<Affine<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Affine<P> {
@@ -315,14 +317,13 @@ impl<P: Parameters> Distribution<Affine<P>> for Standard {
             let greatest = rng.gen();
 
             if let Some(p) = Affine::from_x_coordinate(x, greatest) {
-                return p.scale_by_cofactor().into();
+                return p.mul_by_cofactor();
             }
         }
     }
 }
 
-// The projective point X, Y, Z is represented in the affine
-// coordinates as X/Z^2, Y/Z^3.
+// The projective point X, Y, Z is represented in the affine coordinates as X/Z^2, Y/Z^3.
 impl<P: Parameters> From<Projective<P>> for Affine<P> {
     #[inline]
     fn from(p: Projective<P>) -> Affine<P> {

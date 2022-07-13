@@ -20,7 +20,7 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
-    rand::{test_rng, UniformRand},
+    rand::{test_rng, Uniform},
 };
 
 use crate::{
@@ -146,14 +146,14 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     // a * a * a = a^3
     let mut constants = [NativeF::zero(); 4];
     for c in &mut constants {
-        *c = UniformRand::rand(&mut thread_rng());
+        *c = Uniform::rand(&mut thread_rng());
         println!("Current c[i]: {:?}", c);
     }
     let bits = [Boolean::constant(false), Boolean::constant(true)];
     let lookup_result = FG::two_bit_lookup(cs.ns(|| "Lookup"), &bits, constants.as_ref()).unwrap();
     assert_eq!(lookup_result.get_value().unwrap(), constants[2]);
 
-    let negone: NativeF = UniformRand::rand(&mut thread_rng());
+    let negone: NativeF = Uniform::rand(&mut thread_rng());
 
     let n = FG::alloc(&mut cs.ns(|| "alloc new var"), || Ok(negone)).unwrap();
     let _ = n.to_bytes(&mut cs.ns(|| "ToBytes")).unwrap();

@@ -19,12 +19,12 @@ use super::*;
 impl<A: Aleo> FromBits for Ciphertext<A> {
     type Boolean = Boolean<A>;
 
-    /// Returns this entry as a list of **little-endian** bits.
+    /// Returns this ciphertext as a list of **little-endian** bits.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         Self(bits_le.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_le).collect())
     }
 
-    /// Returns this entry as a list of **big-endian** bits.
+    /// Returns this ciphertext as a list of **big-endian** bits.
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         Self(bits_be.chunks(A::BaseField::size_in_bits()).map(Field::from_bits_be).collect())
     }

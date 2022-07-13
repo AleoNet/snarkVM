@@ -20,7 +20,7 @@ impl<A: Aleo> Identifier<A> {
     /// Returns the number of bits of this identifier.
     pub fn size_in_bits(&self) -> U8<A> {
         match self.1.checked_mul(8) {
-            Some(num_bits) => U8::constant(num_bits),
+            Some(num_bits) => U8::constant(console::U8::new(num_bits)),
             None => A::halt("Identifier exceeds maximum allowed size"),
         }
     }

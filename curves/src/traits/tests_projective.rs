@@ -16,7 +16,7 @@
 
 use crate::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::Zero;
-use snarkvm_utilities::rand::{test_rng, UniformRand};
+use snarkvm_utilities::rand::{test_rng, Uniform};
 
 use std::ops::Mul;
 

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub use num_traits::One;
+
 mod fft_field;
 pub use fft_field::*;
 
@@ -25,9 +27,6 @@ pub use field::*;
 
 mod field_parameters;
 pub use field_parameters::*;
-
-mod one;
-pub use one::*;
 
 mod poseidon_grain_lfsr;
 pub use poseidon_grain_lfsr::*;

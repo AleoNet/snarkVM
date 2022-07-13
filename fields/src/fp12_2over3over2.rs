@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBits, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -208,7 +208,7 @@ impl<P: Fp12Parameters> std::fmt::Display for Fp12<P> {
 impl<P: Fp12Parameters> Distribution<Fp12<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Fp12<P> {
-        Fp12::new(UniformRand::rand(rng), UniformRand::rand(rng))
+        Fp12::new(Uniform::rand(rng), Uniform::rand(rng))
     }
 }
 

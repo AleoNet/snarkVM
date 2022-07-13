@@ -50,9 +50,6 @@ version = "0.10.1"
 [dependencies.nom]
 version = "7.1"
 
-[dependencies.num-derive]
-version = "0.3"
-
 [dependencies.num-traits]
 version = "0.2"
 
@@ -67,6 +64,10 @@ features = ["polycommit_full", "snark"]
 
 [dev-dependencies.snarkvm-circuit]
 path = "../../circuit"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-console-types]
+path = "../../console/types"
 version = "0.7.5"
 
 [dev-dependencies.criterion]

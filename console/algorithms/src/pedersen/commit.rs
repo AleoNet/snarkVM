@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<G: AffineCurve, const NUM_BITS: u8> Commit for Pedersen<G, NUM_BITS> {
+impl<E: Environment, const NUM_BITS: u8> Commit for Pedersen<E, NUM_BITS> {
     type Input = bool;
-    type Output = G::BaseField;
-    type Randomizer = G::ScalarField;
+    type Output = Field<E>;
+    type Randomizer = Scalar<E>;
 
     /// Returns the Pedersen commitment of the given input and randomizer as a field element.
     fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output> {

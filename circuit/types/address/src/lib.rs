@@ -18,20 +18,21 @@
 
 mod helpers;
 
-pub mod equal;
+mod compare;
+mod equal;
+mod ternary;
 
 #[cfg(test)]
-use snarkvm_circuit_environment::assert_scope;
+use console::{test_rng, Uniform};
+#[cfg(test)]
+use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
 use snarkvm_circuit_types_group::Group;
 use snarkvm_circuit_types_scalar::Scalar;
-use snarkvm_curves::AffineCurve;
-use snarkvm_utilities::ToBytes;
 
-use bech32::ToBase32;
 use core::str::FromStr;
 
 #[derive(Clone)]
@@ -60,26 +61,17 @@ impl<E: Environment> Eject for Address<E> {
 
     /// Ejects the address.
     fn eject_value(&self) -> Self::Primitive {
-        Self::Primitive::from_group(self.0.eject_value())
+        Self::Primitive::new(self.0.eject_value())
     }
 }
 
 #[cfg(console)]
 impl<E: Environment> Parser for Address<E> {
-    type Environment = E;
-
     /// Parses a string into an address circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Prepare a parser for the Aleo address.
-        let address_parser = recognize(pair(
-            tag("aleo1"),
-            many1(terminated(one_of("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), many0(char('_')))),
-        ));
-
-        // Parse the value from the string.
-        let (string, address) =
-            map_res(address_parser, |primitive: &str| console::Address::from_str(&primitive.replace('_', "")))(string)?;
+        // Parse the address from the string.
+        let (string, address) = console::Address::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
@@ -91,30 +83,44 @@ impl<E: Environment> Parser for Address<E> {
 }
 
 #[cfg(console)]
+impl<E: Environment> FromStr for Address<E> {
+    type Err = Error;
+
+    /// Parses a string into a address.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> TypeName for Address<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "address"
+        console::Address::<E::Network>::type_name()
+    }
+}
+
+#[cfg(console)]
+impl<E: Environment> Debug for Address<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
     }
 }
 
 #[cfg(console)]
 impl<E: Environment> Display for Address<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Convert the x-coordinate to bytes.
-        let encryption_key = match self.eject_value().to_x_coordinate().to_bytes_le() {
-            Ok(encryption_key) => encryption_key,
-            Err(error) => E::halt(format!("Failed to convert the address into bytes: {error}")),
-        };
-
-        // Encode in bech32m.
-        let address = match bech32::encode("aleo", encryption_key.to_base32(), bech32::Variant::Bech32m) {
-            Ok(address) => address,
-            Err(error) => E::halt(format!("Failed to encode in bech32m: {error}")),
-        };
-
-        write!(f, "{}.{}", address, self.eject_mode())
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 

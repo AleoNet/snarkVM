@@ -34,11 +34,11 @@ pub(super) use counter::*;
 pub mod linear_combination;
 pub use linear_combination::*;
 
-pub mod mode;
+mod mode;
 pub use mode::*;
 
 pub mod variable;
 pub use variable::*;
 
 pub(super) mod r1cs;
-pub(super) use r1cs::*;
+pub use r1cs::*;

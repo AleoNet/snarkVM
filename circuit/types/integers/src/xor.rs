@@ -106,13 +106,19 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitXor<Integer<E, I>, Output
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::ops::RangeInclusive;
 
     const ITERATIONS: u64 = 128;
 
-    fn check_bitxor<I: IntegerType + BitXor<Output = I>>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    #[allow(clippy::needless_borrow)]
+    fn check_bitxor<I: IntegerType + BitXor<Output = I>>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let expected = first ^ second;
@@ -127,28 +133,28 @@ mod tests {
 
     fn run_test<I: IntegerType + BitXor<Output = I>>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: I = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("BitXor: ({} ^ {}) {}", mode_a, mode_b, i);
-            check_bitxor(&name, first, second, mode_a, mode_b);
-            check_bitxor(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_bitxor::<I>(&name, first, second, mode_a, mode_b);
+            check_bitxor::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("BitXor Identity: ({} ^ {}) {}", mode_a, mode_b, i);
-            check_bitxor(&name, I::zero(), first, mode_a, mode_b);
-            check_bitxor(&name, first, I::zero(), mode_a, mode_b); // Commute the operation.
+            check_bitxor::<I>(&name, console::Integer::zero(), first, mode_a, mode_b);
+            check_bitxor::<I>(&name, first, console::Integer::zero(), mode_a, mode_b); // Commute the operation.
 
             let name = format!("BitXor Inverse Identity: ({} ^ {}) {}", mode_a, mode_b, i);
-            let inverse = if I::is_signed() { I::zero() - I::one() } else { I::MAX };
-            check_bitxor(&name, inverse, first, mode_a, mode_b);
-            check_bitxor(&name, first, inverse, mode_a, mode_b); // Commute the operation.
+            let inverse = if I::is_signed() { -console::Integer::one() } else { console::Integer::MAX };
+            check_bitxor::<I>(&name, inverse, first, mode_a, mode_b);
+            check_bitxor::<I>(&name, first, inverse, mode_a, mode_b); // Commute the operation.
         }
 
         // Check cases common to signed and unsigned integers.
-        check_bitxor("0 ^ MAX", I::zero(), I::MAX, mode_a, mode_b);
-        check_bitxor("MAX ^ 0", I::MAX, I::zero(), mode_a, mode_b);
-        check_bitxor("0 ^ MIN", I::zero(), I::MIN, mode_a, mode_b);
-        check_bitxor("MIN ^ 0", I::MIN, I::zero(), mode_a, mode_b);
+        check_bitxor::<I>("0 ^ MAX", console::Integer::zero(), console::Integer::MAX, mode_a, mode_b);
+        check_bitxor::<I>("MAX ^ 0", console::Integer::MAX, console::Integer::zero(), mode_a, mode_b);
+        check_bitxor::<I>("0 ^ MIN", console::Integer::zero(), console::Integer::MIN, mode_a, mode_b);
+        check_bitxor::<I>("MIN ^ 0", console::Integer::MIN, console::Integer::zero(), mode_a, mode_b);
     }
 
     fn run_exhaustive_test<I: IntegerType + BitXor<Output = I>>(mode_a: Mode, mode_b: Mode)
@@ -157,8 +163,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("BitXor: ({} ^ {})", first, second);
-                check_bitxor(&name, first, second, mode_a, mode_b);
+                check_bitxor::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

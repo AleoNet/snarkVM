@@ -32,16 +32,18 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
             let same_sign = self.msb().is_equal(other.msb());
             let self_is_negative_and_other_is_positive = self.msb() & !other.msb();
             let negative_one_plus_difference_plus_one =
-                Integer::constant(I::zero() - I::one()).to_field() + self.to_field() - other.to_field() + Field::one();
+                Integer::<E, I>::constant(-console::Integer::one()).to_field() + self.to_field() - other.to_field()
+                    + Field::one();
             match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => Self::Output::ternary(&same_sign, &!bit, &self_is_negative_and_other_is_positive),
                 None => E::halt("Malformed expression detected during signed integer comparison."),
             }
         } else {
             // Compute the less than operation via an overflow check.
-            // If I::MAX + a - b + 1 overflows, then a >= b, otherwise a < b.
+            // If Integer::MAX + a - b + 1 overflows, then a >= b, otherwise a < b.
             let max_plus_difference_plus_one =
-                Integer::constant(I::MAX).to_field() + self.to_field() - other.to_field() + Field::one();
+                Integer::<E, I>::constant(console::Integer::MAX).to_field() + self.to_field() - other.to_field()
+                    + Field::one();
             match max_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => !bit,
                 None => E::halt("Malformed expression detected during unsigned integer comparison."),
@@ -98,13 +100,18 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Compare<Integer<E, I>, Outpu
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
-    use std::ops::RangeInclusive;
+    use core::ops::RangeInclusive;
 
     const ITERATIONS: u64 = 100;
 
-    fn check_compare<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_compare<I: IntegerType>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
 
@@ -151,11 +158,11 @@ mod tests {
 
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: I = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Compare: ({}, {}) - {}th iteration", mode_a, mode_b, i);
-            check_compare(&name, first, second, mode_a, mode_b);
+            check_compare::<I>(&name, first, second, mode_a, mode_b);
         }
     }
 
@@ -165,8 +172,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("Compare: ({}, {})", first, second);
-                check_compare(&name, first, second, mode_a, mode_b);
+                check_compare::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

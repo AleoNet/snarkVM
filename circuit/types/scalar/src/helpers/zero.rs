@@ -20,7 +20,7 @@ impl<E: Environment> Zero for Scalar<E> {
     type Boolean = Boolean<E>;
 
     fn zero() -> Self {
-        Self::constant(<E as Environment>::ScalarField::zero())
+        Self::constant(console::Scalar::zero())
     }
 
     fn is_zero(&self) -> Self::Boolean {
@@ -35,13 +35,13 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let zero = <Circuit as Environment>::ScalarField::zero();
+        let zero = console::Scalar::<<Circuit as Environment>::Network>::zero();
 
         Circuit::scope("Zero", || {
             assert_scope!(0, 0, 0, 0);
             let candidate = Scalar::<Circuit>::zero();
             assert_eq!(zero, candidate.eject_value());
-            assert_scope!(251, 0, 0, 0);
+            assert_scope!(1, 0, 0, 0);
         });
     }
 

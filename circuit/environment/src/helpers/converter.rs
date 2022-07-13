@@ -171,7 +171,7 @@ mod tests {
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
-        let one = <E as Environment>::BaseField::one();
+        let one = snarkvm_console_types::Field::<E::Network>::one();
         let two = one + one;
 
         const EXPONENT: u64 = 64;
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn test_marlin() {
         let _candidate_output = create_example_circuit::<Circuit>();
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = snarkvm_console_types::Field::<<Circuit as Environment>::Network>::one();
 
         // Marlin setup, prove, and verify.
 
@@ -245,9 +245,9 @@ mod tests {
         let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
         println!("Called prover");
 
-        assert!(MarlinInst::verify(&index_vk, [one, one], &proof).unwrap());
+        assert!(MarlinInst::verify(&index_vk, [*one, *one], &proof).unwrap());
         println!("Called verifier");
         println!("\nShould not verify (i.e. verifier messages should print below):");
-        assert!(!MarlinInst::verify(&index_vk, [one, one + one], &proof).unwrap());
+        assert!(!MarlinInst::verify(&index_vk, [*one, *one + *one], &proof).unwrap());
     }
 }

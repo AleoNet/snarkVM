@@ -90,22 +90,21 @@ impl<E: Environment> OutputMode<dyn ToUpperBits<Boolean = Boolean<E>>> for Field
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBytes, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
     #[rustfmt::skip]
-    fn check_to_upper_k_bits_be<I: IntegerType + Unsigned + ToBytes>(
+    fn check_to_upper_k_bits_be<I: IntegerType + Unsigned>(
         mode: Mode,
     ) {
-        let size_in_bits = <Circuit as Environment>::BaseField::size_in_bits();
+        let size_in_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
         let size_in_bytes = (size_in_bits + 7) / 8;
         let num_leading_zero_bits = (size_in_bytes * 8) - size_in_bits;
 
         for i in 0..ITERATIONS {
             // Sample a random unsigned integer.
-            let value: I = UniformRand::rand(&mut test_rng());
-            let expected = value.to_bytes_le().unwrap().to_bits_le();
+            let value: I = Uniform::rand(&mut test_rng());
+            let expected = value.to_bits_be();
 
             // Construct the unsigned integer as a field element.
             let candidate = {
@@ -119,19 +118,15 @@ mod tests {
                 // For advanced readers: We extend the leading zeros one-past `MODULUS_BITS`
                 // to ensure `CAPACITY` is always satisfied for testing.
                 //
-                let field_bytes = {
-                    let mut field_bits_be_with_leading_zeros = vec![false; num_leading_zero_bits + 1];
-                    for bit in &expected {
-                        field_bits_be_with_leading_zeros.push(*bit);
+                let bits_be = {
+                    let mut bits_be_with_leading_zeros = vec![false; num_leading_zero_bits + 1];
+                    for bit in value.to_bits_be().into_iter() {
+                        bits_be_with_leading_zeros.push(bit);
                     }
-                    field_bits_be_with_leading_zeros.resize(size_in_bytes * 8, false); // Pad up to field byte-aligned size.
-
-                    let mut field_bits_le_with_leading_zeros = field_bits_be_with_leading_zeros;
-                    field_bits_le_with_leading_zeros.reverse();
-
-                    bytes_from_bits_le(&field_bits_le_with_leading_zeros)
+                    bits_be_with_leading_zeros.resize(size_in_bytes * 8, false); // Pad up to field byte-aligned size.
+                    bits_be_with_leading_zeros
                 };
-                Field::<Circuit>::new(mode, FromBytes::from_bytes_le(&field_bytes).unwrap())
+                Field::<Circuit>::new(mode, console::Field::from_bits_be(&bits_be).unwrap())
             };
 
             Circuit::scope(&format!("{} {}", mode, i), || {

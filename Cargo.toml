@@ -19,9 +19,7 @@ edition = "2021"
 
 [workspace]
 members = [
-  ".experimental", # <- This is just a hacky experiment. Remind Howard to delete this!
   "algorithms",
-  "bytecode",
   "circuit",
   "circuit/account",
   "circuit/algorithms",
@@ -30,13 +28,12 @@ members = [
   "circuit/environment/witness",
   "circuit/network",
   "circuit/program",
-  "circuit/transition",
   "circuit/types",
   "circuit/types/address",
   "circuit/types/boolean",
   "circuit/types/field",
-  "circuit/types/integers",
   "circuit/types/group",
+  "circuit/types/integers",
   "circuit/types/scalar",
   "circuit/types/string",
   "console",
@@ -44,9 +41,16 @@ members = [
   "console/algorithms",
   "console/collections",
   "console/network",
+  "console/network/environment",
   "console/program",
-  "console/transition",
   "console/types",
+  "console/types/address",
+  "console/types/boolean",
+  "console/types/field",
+  "console/types/group",
+  "console/types/integers",
+  "console/types/scalar",
+  "console/types/string",
   "curves",
   "dpc",
   "fields",
@@ -55,31 +59,28 @@ members = [
   "r1cs",
   "utilities",
   "utilities/derives", # excluded from [features], for internal use primarily
+  "vm/compiler", # for internal use primarily
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
   ".integration" # excluded from [features], for CI only
 ]
 
 [lib]
-path = "snarkvm/lib.rs"
+path = "vm/lib.rs"
 
 [[bin]]
-name = "snarkvm"
-path = "snarkvm/cli/main.rs"
+name = "vm"
+path = "vm/cli/main.rs"
 required-features = ["cli"]
 
 [features]
-default = ["core"]
-#
-# `core` is defined as the commonly-used members of snarkVM with default features.
-#
-# If you need more granular control of members and/or member features,
-# please import the requisite crates directly and enable features as needed.
-core = ["dpc", "utilities"]
-full = ["algorithms", "bytecode", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+default = ["cli"]
+full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+
+## snarkVM CLI ##
+cli = ["anyhow", "circuit", "console", "clap", "colored", "rand", "self_update", "serde_json", "thiserror"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
-bytecode = ["snarkvm-bytecode"]
 circuit = ["snarkvm-circuit"]
 console = ["snarkvm-console"]
 curves = ["snarkvm-curves"]
@@ -94,19 +95,11 @@ utilities = ["snarkvm-utilities"]
 cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
-## snarkVM CLI ##
-cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
-
 ## CI ##
 noconfig = []
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.7.5"
-optional = true
-
-[dependencies.snarkvm-bytecode]
-path = "./bytecode"
 version = "0.7.5"
 optional = true
 
@@ -155,21 +148,33 @@ path = "./utilities"
 version = "0.7.5"
 optional = true
 
+[dependencies.snarkvm-compiler]
+path = "./vm/compiler"
+version = "0.7.5"
+
 [dependencies.anyhow]
 version = "1.0.57"
+optional = true
+
+[dependencies.clap]
+version = "3.1"
+features = ["derive"]
 optional = true
 
 [dependencies.colored]
 version = "2"
 optional = true
 
+[dependencies.rand]
+version = "0.8"
+optional = true
+
 [dependencies.self_update]
 version = "0.30"
 optional = true
 
-[dependencies.clap]
-version = "3.1"
-features = ["derive"]
+[dependencies.serde_json]
+version = "1.0"
 optional = true
 
 [dependencies.thiserror]
@@ -178,6 +183,12 @@ optional = true
 
 [dev-dependencies.rusty-hook]
 version = "0.11.2"
+
+[dev-dependencies.tempfile]
+version = "3.3"
+
+[build-dependencies.walkdir]
+version = "2"
 
 [profile.release]
 opt-level = 3

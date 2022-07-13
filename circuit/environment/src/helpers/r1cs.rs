@@ -18,14 +18,14 @@ use crate::{
     helpers::{Constraint, Counter},
     prelude::*,
 };
+use snarkvm_fields::PrimeField;
 
-use core::fmt;
 use std::rc::Rc;
 
 pub type Scope = String;
 
 #[derive(Debug)]
-pub(crate) struct R1CS<F: PrimeField> {
+pub struct R1CS<F: PrimeField> {
     constants: Vec<Variable<F>>,
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
@@ -169,7 +169,7 @@ impl<F: PrimeField> R1CS<F> {
     }
 }
 
-impl<F: PrimeField> fmt::Display for R1CS<F> {
+impl<F: PrimeField> Display for R1CS<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::default();
         for constraint in self.to_constraints() {

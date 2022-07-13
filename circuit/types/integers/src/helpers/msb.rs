@@ -34,8 +34,8 @@ mod tests {
     use snarkvm_circuit_environment::Circuit;
 
     fn check_msb<I: IntegerType>() {
-        // Set the value to check to I::MAX.
-        let value = Integer::<Circuit, I>::new(Mode::Private, I::MAX);
+        // Set the value to check to console::Integer::MAX.
+        let value = Integer::<Circuit, I>::new(Mode::Private, console::Integer::MAX);
 
         // Prepare the expected outputs.
         let expected_signed = false;

@@ -21,7 +21,7 @@ use snarkvm_dpc::{prelude::*, testnet2::Testnet2};
 
 use criterion::Criterion;
 use rand::{thread_rng, Rng};
-use snarkvm_utilities::UniformRand;
+use snarkvm_utilities::Uniform;
 
 fn bench_record_decryption(
     c: &mut Criterion,

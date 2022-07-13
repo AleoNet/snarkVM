@@ -263,7 +263,7 @@ mod test {
     use snarkvm_fields::PrimeField;
     use snarkvm_r1cs::{Fr, TestConstraintSystem};
     use snarkvm_utilities::{
-        rand::{test_rng, UniformRand},
+        rand::{test_rng, Uniform},
         to_bytes_le,
         ToBytes,
     };

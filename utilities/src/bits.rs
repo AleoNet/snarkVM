@@ -257,7 +257,7 @@ impl FromBits for Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_rng, UniformRand};
+    use crate::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -268,7 +268,7 @@ mod tests {
         macro_rules! check_integer {
             ($integer:tt) => {{
                 for _ in 0..ITERATIONS {
-                    let expected: $integer = UniformRand::rand(&mut test_rng());
+                    let expected: $integer = Uniform::rand(&mut test_rng());
 
                     let bits_le = expected.to_bits_le();
                     assert_eq!(expected, $integer::from_bits_le(&bits_le)?);

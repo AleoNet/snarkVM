@@ -90,16 +90,15 @@ impl<E: Environment> OutputMode<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
     fn check_to_bits_le(mode: Mode) {
-        let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
+        let expected_number_of_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Field::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -121,11 +120,11 @@ mod tests {
     }
 
     fn check_to_bits_be(mode: Mode) {
-        let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
+        let expected_number_of_bits = console::Field::<<Circuit as Environment>::Network>::size_in_bits();
 
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let expected = Uniform::rand(&mut test_rng());
             let candidate = Field::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
@@ -198,7 +197,7 @@ mod tests {
             }
         }
 
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         // Constant
         check_bits_le(Field::<Circuit>::new(Mode::Constant, one));

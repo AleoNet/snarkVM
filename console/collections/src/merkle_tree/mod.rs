@@ -23,18 +23,15 @@ pub use path::*;
 #[cfg(test)]
 mod tests;
 
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+use snarkvm_console_types::prelude::*;
 
 use aleo_std::prelude::*;
-use anyhow::{bail, ensure, Error, Result};
-use itertools::Itertools;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-#[derive(Default)]
-pub struct MerkleTree<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> {
+#[derive(Clone)]
+pub struct MerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8> {
     /// The leaf hasher for the Merkle tree.
     leaf_hasher: LH,
     /// The path hasher for the Merkle tree.
@@ -44,12 +41,14 @@ pub struct MerkleTree<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: 
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
     tree: Vec<PH::Hash>,
     /// The canonical empty hash.
-    empty_hash: PH::Hash,
+    empty_hash: Field<E>,
     /// The number of hashed leaves in the tree.
     number_of_leaves: usize,
 }
 
-impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH, PH, DEPTH> {
+impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8>
+    MerkleTree<E, LH, PH, DEPTH>
+{
     #[timed]
     #[inline]
     /// Initializes a new Merkle tree with the given leaves.
@@ -113,7 +112,7 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH
     #[timed]
     #[inline]
     /// Returns a new Merkle tree with the given new leaves appended to it.
-    pub fn append(&self, new_leaves: &[LH::Leaf]) -> Result<Self> {
+    pub fn append(&mut self, new_leaves: &[LH::Leaf]) -> Result<()> {
         // Compute the maximum number of leaves.
         let max_leaves = (self.number_of_leaves + new_leaves.len()).next_power_of_two();
         // Compute the number of nodes.
@@ -200,19 +199,20 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH
         }
 
         // update the values at the very end so the original tree is not altered in case of failure
-        Ok(Self {
+        *self = Self {
             leaf_hasher: self.leaf_hasher.clone(),
             path_hasher: self.path_hasher.clone(),
             root: root_hash,
             tree,
             empty_hash: self.empty_hash,
             number_of_leaves: self.number_of_leaves + new_leaves.len(),
-        })
+        };
+        Ok(())
     }
 
     #[inline]
     /// Returns the Merkle path for the given leaf index and leaf.
-    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<PH::Hash, DEPTH>> {
+    pub fn prove(&self, leaf_index: usize, leaf: &LH::Leaf) -> Result<MerklePath<E, DEPTH>> {
         // Ensure the leaf index is valid.
         ensure!(leaf_index < self.number_of_leaves, "The given Merkle leaf index is out of bounds");
 
@@ -251,11 +251,11 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH
         path.resize(DEPTH as usize, self.empty_hash);
 
         // Return the Merkle path.
-        MerklePath::try_from((leaf_index as u64, path))
+        MerklePath::try_from((U64::new(leaf_index as u64), path))
     }
 
     /// Returns `true` if the given Merkle path is valid for the given root and leaf.
-    pub fn verify(&self, path: &MerklePath<PH::Hash, DEPTH>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
+    pub fn verify(&self, path: &MerklePath<E, DEPTH>, root: &PH::Hash, leaf: &LH::Leaf) -> bool {
         path.verify(&self.leaf_hasher, &self.path_hasher, root, leaf)
     }
 
@@ -267,6 +267,11 @@ impl<LH: LeafHash<Hash = PH::Hash>, PH: PathHash, const DEPTH: u8> MerkleTree<LH
     /// Returns the Merkle tree (excluding the hashes of the leaves).
     pub fn tree(&self) -> &[PH::Hash] {
         &self.tree
+    }
+
+    /// Returns the empty hash.
+    pub const fn empty_hash(&self) -> &PH::Hash {
+        &self.empty_hash
     }
 
     /// Returns the leaf hashes from the Merkle tree.

@@ -57,12 +57,11 @@ impl<E: Environment> OutputMode<dyn Neg<Output = Field<E>>> for Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1_000;
 
     fn check_neg(name: &str, mode: Mode) {
-        let check_neg = |given: <Circuit as Environment>::BaseField| {
+        let check_neg = |given: console::Field<<Circuit as Environment>::Network>| {
             // Compute it's negation.
             let expected = given.neg();
             let candidate = Field::<Circuit>::new(mode, given);
@@ -78,13 +77,13 @@ mod tests {
 
         for _ in 0..ITERATIONS {
             // Sample a random element.
-            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let given = Uniform::rand(&mut test_rng());
             check_neg(given)
         }
         // Check zero case.
-        check_neg(<Circuit as Environment>::BaseField::zero());
+        check_neg(console::Field::<<Circuit as Environment>::Network>::zero());
         // Check one case.
-        check_neg(<Circuit as Environment>::BaseField::one());
+        check_neg(console::Field::<<Circuit as Environment>::Network>::one());
     }
 
     #[test]
@@ -96,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_zero() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
 
         let candidate = Field::<Circuit>::zero();
         assert_eq!(zero, candidate.eject_value());
@@ -116,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_one() {
-        let one = <Circuit as Environment>::BaseField::one();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         let candidate = Field::<Circuit>::one();
         assert_eq!(one, candidate.eject_value());

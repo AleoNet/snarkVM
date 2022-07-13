@@ -14,20 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use rand::{CryptoRng, Rng};
-
 use rand::{
     distributions::{Distribution, Standard},
     rngs::StdRng,
+    Rng,
     SeedableRng,
 };
 use rand_xorshift::XorShiftRng;
 
-pub trait UniformRand: Sized {
+/// A trait for a uniform random number generator.
+pub trait Uniform: Sized {
+    /// Samples a random value from a uniform distribution.
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self;
 }
 
-impl<T> UniformRand for T
+impl<T> Uniform for T
 where
     Standard: Distribution<T>,
 {
@@ -37,22 +38,20 @@ where
     }
 }
 
-/// A fast Rng which should be used only in tests or benchmarks, but not for any real world purposes.
+/// A fast RNG used **solely** for testing and benchmarking, **not** for any real world purposes.
 pub fn test_rng() -> XorShiftRng {
     // Obtain the initial seed using entropy provided by the OS.
     let seed = StdRng::from_entropy().gen();
-
     // Use the seed to initialize a fast, non-cryptographic Rng.
     XorShiftRng::seed_from_u64(seed)
 }
 
-/// An Rng which can be used in tests or benchmarks requiring a CryptoRng.
+/// A CryptoRNG used **solely** for testing and benchmarking, **not** for any real world purposes.
 pub fn test_crypto_rng() -> StdRng {
     StdRng::from_entropy()
 }
 
-/// An Rng which can be used in tests or benchmarks requiring a CryptoRng.
-/// Meant to be used only during debugging!
+/// A fixed CryptoRNG used **solely** for **debugging** tests, **not** for any real world purposes.
 pub fn test_crypto_rng_fixed() -> StdRng {
     let seed = 1245897092u64;
     StdRng::seed_from_u64(seed)

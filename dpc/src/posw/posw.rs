@@ -27,7 +27,7 @@ use crate::{
     PoSWScheme,
 };
 use snarkvm_algorithms::{traits::SNARK, SRS};
-use snarkvm_utilities::UniformRand;
+use snarkvm_utilities::Uniform;
 
 use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
@@ -95,7 +95,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         const MAXIMUM_MINING_DURATION: i64 = 600; // 600 seconds = 10 minutes.
 
         // Instantiate the circuit.
-        let mut circuit = PoSWCircuit::<N>::new(block_template, UniformRand::rand(rng))?;
+        let mut circuit = PoSWCircuit::<N>::new(block_template, Uniform::rand(rng))?;
 
         let mut iteration = 1;
         loop {
@@ -140,7 +140,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         let pk = self.proving_key.as_ref().expect("tried to mine without a PK set up");
 
         // Sample a random nonce.
-        circuit.set_nonce(UniformRand::rand(rng));
+        circuit.set_nonce(Uniform::rand(rng));
 
         // Construct a PoSW proof.
         Ok(PoSWProof::<N>::new(

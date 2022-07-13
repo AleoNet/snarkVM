@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use snarkvm_circuit_algorithms::{Poseidon2, BHP512};
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -71,15 +71,15 @@ mod tests {
     const DOMAIN: &str = "MerkleTreeCircuit0";
 
     macro_rules! check_hash_children {
-        ($hash:ident, $form:ident, $mode:ident, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
+        ($hash:ident, $mode:ident, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
             // Initialize the hash.
-            let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::$form>::setup(DOMAIN)?;
+            let native = snarkvm_console_algorithms::$hash::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $hash::<Circuit>::constant(native.clone());
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let left = <Circuit as Environment>::BaseField::rand(&mut test_rng());
-                let right = <Circuit as Environment>::BaseField::rand(&mut test_rng());
+                let left = Uniform::rand(&mut test_rng());
+                let right = Uniform::rand(&mut test_rng());
 
                 // Compute the expected hash.
                 let expected = console::merkle_tree::PathHash::hash_children(&native, &left, &right)?;
@@ -102,31 +102,31 @@ mod tests {
 
     #[test]
     fn test_hash_children_bhp512_constant() -> Result<()> {
-        check_hash_children!(BHP512, Affine, Constant, (1611, 0, 0, 0))
+        check_hash_children!(BHP512, Constant, (1611, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_children_bhp512_public() -> Result<()> {
-        check_hash_children!(BHP512, Affine, Public, (421, 0, 1385, 1387))
+        check_hash_children!(BHP512, Public, (421, 0, 1385, 1387))
     }
 
     #[test]
     fn test_hash_children_bhp512_private() -> Result<()> {
-        check_hash_children!(BHP512, Affine, Private, (421, 0, 1385, 1387))
+        check_hash_children!(BHP512, Private, (421, 0, 1385, 1387))
     }
 
     #[test]
     fn test_hash_children_poseidon2_constant() -> Result<()> {
-        check_hash_children!(Poseidon2, BaseField, Constant, (1, 0, 0, 0))
+        check_hash_children!(Poseidon2, Constant, (1, 0, 0, 0))
     }
 
     #[test]
     fn test_hash_children_poseidon2_public() -> Result<()> {
-        check_hash_children!(Poseidon2, BaseField, Public, (1, 0, 540, 540))
+        check_hash_children!(Poseidon2, Public, (1, 0, 540, 540))
     }
 
     #[test]
     fn test_hash_children_poseidon2_private() -> Result<()> {
-        check_hash_children!(Poseidon2, BaseField, Private, (1, 0, 540, 540))
+        check_hash_children!(Poseidon2, Private, (1, 0, 540, 540))
     }
 }

@@ -79,11 +79,15 @@ impl<E: Environment> OutputMode<dyn Sub<Group<E>, Output = Group<E>>> for Group<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
 
-    fn check_sub(name: &str, expected: &<Circuit as Environment>::Affine, a: &Group<Circuit>, b: &Group<Circuit>) {
+    fn check_sub(
+        name: &str,
+        expected: &console::Group<<Circuit as Environment>::Network>,
+        a: &Group<Circuit>,
+        b: &Group<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let candidate = a - b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
@@ -94,7 +98,7 @@ mod tests {
 
     fn check_sub_assign(
         name: &str,
-        expected: &<Circuit as Environment>::Affine,
+        expected: &console::Group<<Circuit as Environment>::Network>,
         a: &Group<Circuit>,
         b: &Group<Circuit>,
     ) {
@@ -110,10 +114,10 @@ mod tests {
     #[test]
     fn test_constant_minus_constant() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
@@ -127,10 +131,10 @@ mod tests {
     #[test]
     fn test_constant_minus_public() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
@@ -144,10 +148,10 @@ mod tests {
     #[test]
     fn test_public_minus_constant() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
@@ -161,10 +165,10 @@ mod tests {
     #[test]
     fn test_constant_minus_private() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
@@ -178,10 +182,10 @@ mod tests {
     #[test]
     fn test_private_minus_constant() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
@@ -195,10 +199,10 @@ mod tests {
     #[test]
     fn test_public_minus_public() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
@@ -212,10 +216,10 @@ mod tests {
     #[test]
     fn test_public_minus_private() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
@@ -229,10 +233,10 @@ mod tests {
     #[test]
     fn test_private_minus_public() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
@@ -246,10 +250,10 @@ mod tests {
     #[test]
     fn test_private_minus_private() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = (first.to_projective() - second.to_projective()).into();
+            let expected = first - second;
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
@@ -263,9 +267,9 @@ mod tests {
     #[test]
     fn test_sub_matches() {
         // Sample two random elements.
-        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let expected = a.to_projective() - b.to_projective();
+        let a = Uniform::rand(&mut test_rng());
+        let b = Uniform::rand(&mut test_rng());
+        let expected = a - b;
 
         // Constant
         let first = Group::<Circuit>::new(Mode::Constant, a);

@@ -767,7 +767,7 @@ pub mod test {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::Field;
     use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, Uniform};
 
     use core::ops::MulAssign;
 

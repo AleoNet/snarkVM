@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme as SS};
 use snarkvm_curves::edwards_bls12::EdwardsParameters;
-use snarkvm_utilities::{test_rng, UniformRand};
+use snarkvm_utilities::{test_rng, Uniform};
 
 use criterion::Criterion;
 use rand::{self, thread_rng};

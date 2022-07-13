@@ -19,7 +19,7 @@ use snarkvm_curves::{
     templates::bls12::{G1Prepared, G2Prepared},
     traits::{PairingCurve, PairingEngine},
 };
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::rand::Uniform;
 
 use criterion::Criterion;
 use rand::SeedableRng;

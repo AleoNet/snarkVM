@@ -25,7 +25,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
         // Construct the preimage: [ DOMAIN || LENGTH(INPUT) || [0; RATE-2] || INPUT ].
         let mut preimage = Vec::with_capacity(RATE + input.len());
         preimage.push(self.domain.clone());
-        preimage.push(Field::constant((input.len() as u128).into()));
+        preimage.push(Field::constant(console::Field::from_u128(input.len() as u128)));
         preimage.extend(vec![Field::zero(); RATE - 2]); // Pad up to RATE.
         preimage.extend_from_slice(input);
 
@@ -39,6 +39,7 @@ impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
     }
 }
 
+#[allow(clippy::needless_borrow)]
 impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Absorbs the input elements into state.
     #[inline]
@@ -198,7 +199,6 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use anyhow::Result;
 
@@ -217,13 +217,14 @@ mod tests {
     ) -> Result<()> {
         use console::HashMany as H;
 
-        let native = console::Poseidon::<<Circuit as Environment>::BaseField, { RATE as usize }>::setup(DOMAIN)?;
+        let native = console::Poseidon::<<Circuit as Environment>::Network, { RATE as usize }>::setup(DOMAIN)?;
         let poseidon = Poseidon::<Circuit, { RATE as usize }>::constant(native.clone());
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
-            let native_input =
-                (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(&mut test_rng())).collect::<Vec<_>>();
+            let native_input = (0..num_inputs)
+                .map(|_| console::Field::<<Circuit as Environment>::Network>::rand(&mut test_rng()))
+                .collect::<Vec<_>>();
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.

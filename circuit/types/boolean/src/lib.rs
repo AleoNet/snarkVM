@@ -40,6 +40,7 @@ pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
+#[cfg(console)]
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
 
@@ -66,6 +67,7 @@ impl<E: Environment> Inject for Boolean<E> {
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Eject for Boolean<E> {
     type Primitive = bool;
 
@@ -86,32 +88,59 @@ impl<E: Environment> Eject for Boolean<E> {
     }
 }
 
+#[cfg(console)]
 impl<E: Environment> Parser for Boolean<E> {
-    type Environment = E;
-
     /// Parses a string into a boolean circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the boolean from the string.
-        let (string, value) = alt((map(tag("true"), |_| true), map(tag("false"), |_| false)))(string)?;
+        let (string, boolean) = console::Boolean::<E::Network>::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
         match mode {
-            Some((_, mode)) => Ok((string, Boolean::new(mode, value))),
-            None => Ok((string, Boolean::new(Mode::Constant, value))),
+            Some((_, mode)) => Ok((string, Boolean::new(mode, *boolean))),
+            None => Ok((string, Boolean::new(Mode::Constant, *boolean))),
         }
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> FromStr for Boolean<E> {
+    type Err = Error;
+
+    /// Parses a string into a boolean.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> TypeName for Boolean<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "boolean"
+        console::Boolean::<E::Network>::type_name()
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> Debug for Boolean<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> Display for Boolean<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.eject_value(), self.eject_mode())

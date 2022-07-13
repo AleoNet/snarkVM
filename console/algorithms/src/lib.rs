@@ -17,6 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub use snarkvm_console_types::prelude::*;
+
 pub mod bhp;
 pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 
@@ -31,6 +33,3 @@ pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
 
 mod poseidon;
 pub use poseidon::{Poseidon, Poseidon2, Poseidon4, Poseidon8};
-
-pub mod traits;
-pub use traits::*;

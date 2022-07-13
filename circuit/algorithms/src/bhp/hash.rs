@@ -30,7 +30,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> Hash for BHP<
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -47,7 +47,7 @@ mod tests {
         use console::Hash as H;
 
         // Initialize BHP.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
+        let native = console::BHP::<<Circuit as Environment>::Network, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;

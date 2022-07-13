@@ -16,7 +16,7 @@
 
 use crate::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::rand::{test_rng, UniformRand};
+use snarkvm_utilities::rand::{test_rng, Uniform};
 
 #[allow(clippy::eq_op)]
 pub fn affine_test<G: AffineCurve>(a: G) {

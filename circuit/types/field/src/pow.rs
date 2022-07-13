@@ -34,6 +34,7 @@ impl<E: Environment> Pow<Field<E>> for &Field<E> {
     }
 }
 
+#[allow(clippy::needless_borrow)]
 impl<E: Environment> Pow<&Field<E>> for Field<E> {
     type Output = Field<E>;
 
@@ -87,12 +88,13 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
                     let index = exponent_bits
                         .iter()
                         .position(|b| *b)
-                        .unwrap_or(<Circuit as Environment>::BaseField::size_in_bits() - 1);
+                        .unwrap_or(console::Field::<<Circuit as Environment>::Network>::size_in_bits() - 1);
 
                     // Calculate the number of squares and multiplications as follows:
                     //   `num_squares` := number of remaining bits after the first nonzero bit (from MSB -> LSB)
                     //   `num_multiplications` := number of `true` bits after the first nonzero bit (from MSB -> LSB)
-                    let num_squares = (<Circuit as Environment>::BaseField::size_in_bits() - index - 1) as u64;
+                    let num_squares =
+                        (console::Field::<<Circuit as Environment>::Network>::size_in_bits() - index - 1) as u64;
                     let num_multiplications = exponent_bits[index + 1..].iter().map(|bit| *bit as u64).sum::<u64>();
 
                     // The number of private variables, constraints, and gates are both: num_squares + num_multiplications
@@ -120,8 +122,8 @@ impl<E: Environment> OutputMode<dyn Pow<Field<E>, Output = Field<E>>> for Field<
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (mode_a, Mode::Constant) => match &case.1 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
-                    value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value == E::BaseField::one() => mode_a,
+                    value if value.is_zero() => Mode::Constant,
+                    value if value.is_one() => mode_a,
                     _ => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
@@ -135,11 +137,15 @@ impl<E: Environment> OutputMode<dyn Pow<Field<E>, Output = Field<E>>> for Field<
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
 
-    fn check_pow(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
+    fn check_pow(
+        name: &str,
+        expected: &console::Field<<Circuit as Environment>::Network>,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
+    ) {
         Circuit::scope(name, || {
             let candidate = a.pow(b);
             assert_eq!(*expected, candidate.eject_value(), "({}^{})", a.eject_value(), b.eject_value());
@@ -150,12 +156,13 @@ mod tests {
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
-            let expected = first.pow(&second.to_repr());
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
+
+            let expected = first.pow(second);
 
             let name = format!("Pow: a ^ b {}", i);
             check_pow(&name, &expected, &a, &b);
@@ -163,30 +170,30 @@ mod tests {
             // Test one exponent.
             let name = format!("Pow: a ^ 1 {}", i);
             let a = Field::<Circuit>::new(mode_a, first);
-            let one = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::one());
+            let one = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::one());
             check_pow(&name, &first, &a, &one);
 
             // Test one base.
             let name = format!("Pow: 1 ^ b {}", i);
-            let one = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::one());
+            let one = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::one());
             let b = Field::<Circuit>::new(mode_b, second);
-            check_pow(&name, &<Circuit as Environment>::BaseField::one(), &one, &b);
+            check_pow(&name, &console::Field::<<Circuit as Environment>::Network>::one(), &one, &b);
 
             // Test zero exponent.
             let name = format!("Pow: a ^ 0 {}", i);
             let a = Field::<Circuit>::new(mode_a, first);
-            let zero = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::zero());
-            check_pow(&name, &<Circuit as Environment>::BaseField::one(), &a, &zero);
+            let zero = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::zero());
+            check_pow(&name, &console::Field::<<Circuit as Environment>::Network>::one(), &a, &zero);
 
             // Test zero base.
             let name = format!("Mul: 0 ^ b {}", i);
-            let zero = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::zero());
+            let zero = Field::<Circuit>::new(mode_a, console::Field::<<Circuit as Environment>::Network>::zero());
             let b = Field::<Circuit>::new(mode_b, second);
-            check_pow(&name, &<Circuit as Environment>::BaseField::zero(), &zero, &b);
+            check_pow(&name, &console::Field::<<Circuit as Environment>::Network>::zero(), &zero, &b);
         }
 
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
+        let zero = console::Field::<<Circuit as Environment>::Network>::zero();
+        let one = console::Field::<<Circuit as Environment>::Network>::one();
 
         // Test 0 ^ 0.
         let name = "Mul: 0 ^ 0";

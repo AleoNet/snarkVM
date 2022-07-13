@@ -20,7 +20,7 @@ extern crate criterion;
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_curves::bls12_377::Fq;
 use snarkvm_fields::PoseidonDefaultField;
-use snarkvm_utilities::UniformRand;
+use snarkvm_utilities::Uniform;
 
 use criterion::Criterion;
 use rand::thread_rng;

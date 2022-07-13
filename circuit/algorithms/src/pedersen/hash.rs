@@ -53,7 +53,7 @@ impl<E: Environment, const NUM_BITS: u8> OutputMode<dyn Hash<Input = Boolean<E>,
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
@@ -63,7 +63,7 @@ mod tests {
         use console::Hash as H;
 
         // Initialize the Pedersen hash.
-        let native = console::Pedersen::<<Circuit as Environment>::Affine, NUM_BITS>::setup(MESSAGE);
+        let native = console::Pedersen::<<Circuit as Environment>::Network, NUM_BITS>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_BITS>::constant(native.clone());
 
         for i in 0..ITERATIONS {

@@ -18,47 +18,37 @@ mod bytes;
 mod serialize;
 mod try_from;
 
+#[cfg(feature = "private_key")]
 use crate::PrivateKey;
-use snarkvm_console_network::Network;
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    FromBytes,
-    FromBytesDeserializer,
-    ToBytes,
-    ToBytesSerializer,
-};
 
-use anyhow::{Error, Result};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{Field, Group, Scalar};
 
 static _COMPUTE_KEY_PREFIX: [u8; 10] = [109, 249, 98, 224, 36, 15, 213, 187, 79, 190]; // AComputeKey1
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComputeKey<N: Network> {
     /// The signature public key `pk_sig` := G^sk_sig.
-    pk_sig: N::Affine,
+    pk_sig: Group<N>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
-    pr_sig: N::Affine,
+    pr_sig: Group<N>,
     /// The PRF secret key `sk_prf` := HashToScalar(pk_sig || pr_sig).
-    sk_prf: N::Scalar,
+    sk_prf: Scalar<N>,
 }
 
 impl<N: Network> ComputeKey<N> {
     /// Returns the signature public key.
-    pub const fn pk_sig(&self) -> N::Affine {
+    pub const fn pk_sig(&self) -> Group<N> {
         self.pk_sig
     }
 
     /// Returns the signature public randomizer.
-    pub const fn pr_sig(&self) -> N::Affine {
+    pub const fn pr_sig(&self) -> Group<N> {
         self.pr_sig
     }
 
     /// Returns a reference to the PRF secret key.
-    pub const fn sk_prf(&self) -> N::Scalar {
+    pub const fn sk_prf(&self) -> Scalar<N> {
         self.sk_prf
     }
 }

@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> Add<Scalar<E>> for Scalar<E> {
     type Output = Scalar<E>;
@@ -82,20 +81,20 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
             // Note: We are reconstituting the scalar field into a base field here in order to
             // compute the difference between the sum and modulus. This is safe as the scalar field modulus
             // is less that the base field modulus, and thus will always fit in a base field element.
-            let modulus = Field::constant(match E::ScalarField::modulus().to_bytes_le() {
-                Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
+            let modulus =
+                Field::constant(match console::FromBits::from_bits_le(&E::ScalarField::modulus().to_bits_le()) {
                     Ok(modulus) => modulus,
-                    Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
-                },
-                Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
-            });
+                    Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
+                });
 
             // Determine the wrapping sum, by computing the difference between the sum and modulus, if `sum` < `modulus`.
             let wrapping_sum = Ternary::ternary(&sum.is_less_than(&modulus), &sum, &(&sum - &modulus));
 
+            // Retrieve the bits of the wrapping sum.
+            let bits_le = wrapping_sum.to_lower_bits_le(console::Scalar::<E::Network>::size_in_bits());
+
             // Set the sum of `self` and `other`, in `self`.
-            // Note: Direct indexing the slice here is safe as the scalar field smaller than the base field.
-            *self = Scalar { bits_le: wrapping_sum.to_bits_le()[0..E::ScalarField::size_in_bits()].to_vec() };
+            *self = Scalar { field: wrapping_sum, bits_le: OnceCell::with_value(bits_le) };
         }
     }
 }
@@ -105,8 +104,8 @@ impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
-            (_, _) => Count::is(254, 0, 757, 759),
+            (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
+            (_, _) => Count::is(254, 0, 755, 757),
         }
     }
 }
@@ -126,15 +125,14 @@ impl<E: Environment> OutputMode<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scal
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 128;
 
     #[rustfmt::skip]
     fn check_add(
         name: &str,
-        first: <Circuit as Environment>::ScalarField,
-        second: <Circuit as Environment>::ScalarField,
+        first: console::Scalar<<Circuit as Environment>::Network>,
+        second: console::Scalar<<Circuit as Environment>::Network>,
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -157,8 +155,8 @@ mod tests {
         mode_b: Mode,
     ) {
         for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
             check_add(&name, first, second, mode_a, mode_b);

@@ -17,9 +17,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
 
-#[macro_use]
-extern crate num_derive;
-
 extern crate snarkvm_circuit_environment_witness;
 
 pub use snarkvm_circuit_environment_witness::rename_selfs;
@@ -55,33 +52,65 @@ pub mod prelude {
         OutputMode,
         Variable,
     };
-    pub use snarkvm_fields::{Field as F, One as O, PrimeField, SquareRootField, Zero as Z};
-
-    pub use core::{
-        fmt::{self, Debug, Display},
-        ops::{
-            Add,
-            AddAssign,
-            BitAnd,
-            BitAndAssign,
-            BitOr,
-            BitOrAssign,
-            BitXor,
-            BitXorAssign,
-            Div,
-            DivAssign,
-            Mul,
-            MulAssign,
-            Neg,
-            Not,
-            Shl,
-            ShlAssign,
-            Shr,
-            ShrAssign,
-            Sub,
-            SubAssign,
+    pub use console::{
+        prelude::{
+            bail,
+            ensure,
+            fmt,
+            has_duplicates,
+            Debug,
+            Display,
+            Error,
+            Formatter,
+            FromStr,
+            One as _,
+            Result,
+            Zero as _,
         },
+        traits::{
+            integers::{CheckedPow, IntegerProperties, IntegerType, Magnitude, WrappingDiv, WrappingPow, WrappingRem},
+            string_parser,
+            Double as _,
+            FromBits as _,
+            Inverse as _,
+            Square as _,
+            SquareRoot as _,
+            ToBits as _,
+        },
+        Parser,
+        ParserResult,
+        TypeName,
     };
+    pub use snarkvm_fields::{Field as _, PrimeField, Zero as _};
+    pub use snarkvm_utilities::ToBits as _;
+
+    #[cfg(debug_assertions)]
+    pub use snarkvm_curves::AffineCurve as _;
+
+    pub use core::ops::{
+        Add,
+        AddAssign,
+        BitAnd,
+        BitAndAssign,
+        BitOr,
+        BitOrAssign,
+        BitXor,
+        BitXorAssign,
+        Deref,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Not,
+        Shl,
+        ShlAssign,
+        Shr,
+        ShrAssign,
+        Sub,
+        SubAssign,
+    };
+    pub use indexmap::IndexMap;
     pub use itertools::Itertools;
     pub use nom::{
         branch::alt,

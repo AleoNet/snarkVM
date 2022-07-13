@@ -44,9 +44,12 @@ impl<E: Environment> ToGroup for Address<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
-    fn check_to_group(name: &str, expected: <Circuit as Environment>::Affine, candidate: &Address<Circuit>) {
+    fn check_to_group(
+        name: &str,
+        expected: console::Group<<Circuit as Environment>::Network>,
+        candidate: &Address<Circuit>,
+    ) {
         Circuit::scope(name, || {
             // Perform the operation.
             let candidate = candidate.to_group();
@@ -57,21 +60,21 @@ mod tests {
 
     #[test]
     fn test_to_group_constant() {
-        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
+        let expected = console::Address::new(Uniform::rand(&mut test_rng()));
         let candidate = Address::<Circuit>::new(Mode::Constant, expected);
         check_to_group("Constant", *expected, &candidate);
     }
 
     #[test]
     fn test_to_group_public() {
-        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
+        let expected = console::Address::new(Uniform::rand(&mut test_rng()));
         let candidate = Address::<Circuit>::new(Mode::Public, expected);
         check_to_group("Public", *expected, &candidate);
     }
 
     #[test]
     fn test_to_group_private() {
-        let expected = console::Address::from_group(UniformRand::rand(&mut test_rng()));
+        let expected = console::Address::new(Uniform::rand(&mut test_rng()));
         let candidate = Address::<Circuit>::new(Mode::Private, expected);
         check_to_group("Private", *expected, &candidate);
     }

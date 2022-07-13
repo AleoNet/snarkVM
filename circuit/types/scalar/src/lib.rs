@@ -25,91 +25,118 @@ pub mod equal;
 pub mod ternary;
 
 #[cfg(test)]
+use console::{test_rng, Uniform};
+#[cfg(test)]
 use snarkvm_circuit_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuit_environment::prelude::*;
 use snarkvm_circuit_types_boolean::Boolean;
 use snarkvm_circuit_types_field::Field;
-use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {
-    /// The little-endian bit representation of the scalar.
-    bits_le: Vec<Boolean<E>>,
+    /// The primary representation of the scalar element.
+    field: Field<E>,
+    /// An optional secondary representation in little-endian bits is provided,
+    /// so that calls to `ToBits` only incur constraint costs once.
+    bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
 impl<E: Environment> ScalarTrait for Scalar<E> {}
 
+#[cfg(console)]
 impl<E: Environment> Inject for Scalar<E> {
-    type Primitive = E::ScalarField;
+    type Primitive = console::Scalar<E::Network>;
 
-    /// Initializes a new instance of a scalar field from a primitive scalar field value.
-    fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self { bits_le: Inject::new(mode, value.to_bits_le()) }
-    }
-}
+    /// Initializes a scalar circuit from a console scalar.
+    fn new(mode: Mode, scalar: Self::Primitive) -> Self {
+        // Note: We are reconstituting the scalar field into a base field.
+        // This is safe as the scalar field modulus is less than the base field modulus,
+        // and thus will always fit within a single base field element.
+        debug_assert!(console::Scalar::<E::Network>::size_in_bits() < console::Field::<E::Network>::size_in_bits());
 
-impl<E: Environment> Eject for Scalar<E> {
-    type Primitive = E::ScalarField;
-
-    /// Ejects the mode of the scalar field.
-    fn eject_mode(&self) -> Mode {
-        self.bits_le.eject_mode()
-    }
-
-    /// Ejects the scalar field as a constant scalar field value.
-    fn eject_value(&self) -> Self::Primitive {
-        let bits = self.bits_le.eject_value();
-        let biginteger = match <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits) {
-            Ok(biginteger) => biginteger,
-            Err(error) => E::halt(format!("Failed to compose scalar biginteger from bits: {error}")),
-        };
-        match <E::ScalarField as PrimeField>::from_repr(biginteger) {
-            Some(scalar) => scalar,
-            None => E::halt("Failed to eject scalar field value"),
+        // Initialize the scalar as a field element.
+        match console::ToField::to_field(&scalar) {
+            Ok(field) => Self { field: Field::new(mode, field), bits_le: OnceCell::new() },
+            Err(error) => E::halt(format!("Unable to initialize a scalar circuit as a field element: {error}")),
         }
     }
 }
 
-impl<E: Environment> Parser for Scalar<E> {
-    type Environment = E;
+#[cfg(console)]
+impl<E: Environment> Eject for Scalar<E> {
+    type Primitive = console::Scalar<E::Network>;
 
-    /// Parses a string into a scalar field circuit.
+    /// Ejects the mode of the scalar.
+    fn eject_mode(&self) -> Mode {
+        self.field.eject_mode()
+    }
+
+    /// Ejects the scalar circuit as a console scalar.
+    fn eject_value(&self) -> Self::Primitive {
+        match console::Scalar::<E::Network>::from_bits_le(&self.field.eject_value().to_bits_le()) {
+            Ok(scalar) => scalar,
+            Err(error) => E::halt(format!("Failed to eject scalar value: {error}")),
+        }
+    }
+}
+
+#[cfg(console)]
+impl<E: Environment> Parser for Scalar<E> {
+    /// Parses a string into a scalar circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the optional negative sign '-' from the string.
-        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
-        // Parse the digits from the string.
-        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
-        // Parse the value from the string.
-        let (string, value): (&str, E::ScalarField) =
-            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        // Parse the scalar from the string.
+        let (string, scalar) = console::Scalar::parse(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
-        // Negate the value if the negative sign was present.
-        let value = match negation {
-            true => -value,
-            false => value,
-        };
 
         match mode {
-            Some((_, mode)) => Ok((string, Scalar::new(mode, value))),
-            None => Ok((string, Scalar::new(Mode::Constant, value))),
+            Some((_, mode)) => Ok((string, Scalar::new(mode, scalar))),
+            None => Ok((string, Scalar::new(Mode::Constant, scalar))),
         }
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> FromStr for Scalar<E> {
+    type Err = Error;
+
+    /// Parses a string into a scalar circuit.
+    #[inline]
+    fn from_str(string: &str) -> Result<Self> {
+        match Self::parse(string) {
+            Ok((remainder, object)) => {
+                // Ensure the remainder is empty.
+                ensure!(remainder.is_empty(), "Failed to parse string. Found invalid character in: \"{remainder}\"");
+                // Return the object.
+                Ok(object)
+            }
+            Err(error) => bail!("Failed to parse string. {error}"),
+        }
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> TypeName for Scalar<E> {
     /// Returns the type name of the circuit as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "scalar"
+        console::Scalar::<E::Network>::type_name()
     }
 }
 
+#[cfg(console)]
+impl<E: Environment> Debug for Scalar<E> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[cfg(console)]
 impl<E: Environment> Display for Scalar<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -129,7 +156,6 @@ impl<E: Environment> From<&Scalar<E>> for LinearCombination<E::BaseField> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::str::FromStr;
 
@@ -137,7 +163,7 @@ mod tests {
 
     fn check_new(
         name: &str,
-        expected: <Circuit as Environment>::ScalarField,
+        expected: console::Scalar<<Circuit as Environment>::Network>,
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -153,49 +179,51 @@ mod tests {
 
     /// Attempts to construct a field from the given element and mode,
     /// format it in display mode, and recover a field from it.
-    fn check_display(mode: Mode, element: <Circuit as Environment>::ScalarField) {
+    fn check_display(mode: Mode, element: console::Scalar<<Circuit as Environment>::Network>) -> Result<()> {
         let candidate = Scalar::<Circuit>::new(mode, element);
-        assert_eq!(format!("{element}{}.{mode}", Scalar::<Circuit>::type_name()), format!("{candidate}"));
+        assert_eq!(format!("{element}.{mode}"), format!("{candidate}"));
 
-        let candidate_recovered = Scalar::<Circuit>::from_str(&format!("{candidate}"));
+        let candidate_recovered = Scalar::<Circuit>::from_str(&format!("{candidate}"))?;
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
+        Ok(())
     }
 
     #[test]
     fn test_new_constant() {
-        let expected = UniformRand::rand(&mut test_rng());
-        check_new("Constant", expected, Mode::Constant, 251, 0, 0, 0);
+        let expected = Uniform::rand(&mut test_rng());
+        check_new("Constant", expected, Mode::Constant, 1, 0, 0, 0);
     }
 
     #[test]
     fn test_new_public() {
-        let expected = UniformRand::rand(&mut test_rng());
-        check_new("Public", expected, Mode::Public, 0, 251, 0, 251);
+        let expected = Uniform::rand(&mut test_rng());
+        check_new("Public", expected, Mode::Public, 0, 1, 0, 0);
     }
 
     #[test]
     fn test_new_private() {
-        let expected = UniformRand::rand(&mut test_rng());
-        check_new("Private", expected, Mode::Private, 0, 0, 251, 251);
+        let expected = Uniform::rand(&mut test_rng());
+        check_new("Private", expected, Mode::Private, 0, 0, 1, 0);
     }
 
     #[test]
-    fn test_display() {
+    fn test_display() -> Result<()> {
         for _ in 0..ITERATIONS {
-            let element: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let element = Uniform::rand(&mut test_rng());
 
             // Constant
-            check_display(Mode::Constant, element);
+            check_display(Mode::Constant, element)?;
             // Public
-            check_display(Mode::Public, element);
+            check_display(Mode::Public, element)?;
             // Private
-            check_display(Mode::Private, element);
+            check_display(Mode::Private, element)?;
         }
+        Ok(())
     }
 
     #[test]
     fn test_display_zero() {
-        let zero = <Circuit as Environment>::ScalarField::zero();
+        let zero = console::Scalar::<<Circuit as Environment>::Network>::zero();
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, zero);
@@ -212,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_display_one() {
-        let one = <Circuit as Environment>::ScalarField::one();
+        let one = console::Scalar::<<Circuit as Environment>::Network>::one();
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, one);
@@ -229,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_display_two() {
-        let one = <Circuit as Environment>::ScalarField::one();
+        let one = console::Scalar::<<Circuit as Environment>::Network>::one();
         let two = one + one;
 
         // Constant
@@ -247,67 +275,67 @@ mod tests {
 
     #[test]
     fn test_parser() {
-        type Primitive = <Circuit as Environment>::ScalarField;
+        type Primitive = console::Scalar<<Circuit as Environment>::Network>;
 
         // Constant
 
         let (_, candidate) = Scalar::<Circuit>::parse("5scalar").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Scalar::<Circuit>::parse("5_scalar").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Scalar::<Circuit>::parse("5scalar.constant").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Scalar::<Circuit>::parse("5_scalar.constant").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar.constant").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         // Public
 
         let (_, candidate) = Scalar::<Circuit>::parse("5scalar.public").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Scalar::<Circuit>::parse("5_scalar.public").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar.public").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         // Private
 
         let (_, candidate) = Scalar::<Circuit>::parse("5scalar.private").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Scalar::<Circuit>::parse("5_scalar.private").unwrap();
-        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("5scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar.private").unwrap();
-        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert_eq!(Primitive::from_str("15scalar").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
         // Random
 
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
-                let value: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+                let value = Uniform::rand(&mut test_rng());
                 let expected = Scalar::<Circuit>::new(mode, value);
 
                 let (_, candidate) = Scalar::<Circuit>::parse(&format!("{expected}")).unwrap();

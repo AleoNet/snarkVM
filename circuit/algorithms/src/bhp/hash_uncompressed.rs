@@ -46,7 +46,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
                 // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
                 true => {
                     preimage.extend(self.domain.clone());
-                    preimage.extend(U64::constant(input.len() as u64).to_bits_le());
+                    preimage.extend(U64::constant(console::U64::new(input.len() as u64)).to_bits_le());
                     preimage.extend_from_slice(input_bits);
                 }
                 // Construct the subsequent iterations as: [ PREVIOUS_HASH[0..DATA_BITS] || INPUT[I * BLOCK_SIZE..(I + 1) * BLOCK_SIZE] ].
@@ -67,7 +67,7 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
 mod tests {
     use super::*;
     use snarkvm_circuit_types::environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, Uniform};
 
     use anyhow::Result;
 
@@ -77,12 +77,12 @@ mod tests {
     macro_rules! check_hash_uncompressed {
         ($bhp:ident, $mode:ident, $num_bits:expr, ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr)) => {{
             // Initialize BHP.
-            let native = console::$bhp::<<Circuit as Environment>::Affine>::setup(DOMAIN)?;
+            let native = console::$bhp::<<Circuit as Environment>::Network>::setup(DOMAIN)?;
             let circuit = $bhp::<Circuit>::constant(native.clone());
 
             for i in 0..ITERATIONS {
                 // Sample a random input.
-                let input = (0..$num_bits).map(|_| UniformRand::rand(&mut test_rng())).collect::<Vec<_>>();
+                let input = (0..$num_bits).map(|_| Uniform::rand(&mut test_rng())).collect::<Vec<_>>();
                 // Compute the expected hash.
                 let expected = console::HashUncompressed::hash_uncompressed(&native, &input)?;
                 // Prepare the circuit input.
@@ -110,7 +110,7 @@ mod tests {
         use console::HashUncompressed as H;
 
         // Initialize BHP.
-        let native = console::BHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
+        let native = console::BHP::<<Circuit as Environment>::Network, NUM_WINDOWS, WINDOW_SIZE>::setup(DOMAIN)?;
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::new(Mode::Constant, native.clone());
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * WINDOW_SIZE as usize * BHP_CHUNK_SIZE;

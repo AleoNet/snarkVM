@@ -47,7 +47,7 @@ fn add(c: &mut Criterion) {
 }
 
 fn to_value(c: &mut Criterion) {
-    let one = <Circuit as Environment>::BaseField::one();
+    let one = snarkvm_console_types::Field::<<Circuit as Environment>::Network>::one();
     let two = one + one;
 
     let mut candidate = Field::<Circuit>::one();
@@ -65,7 +65,7 @@ fn to_value(c: &mut Criterion) {
 }
 
 fn debug(c: &mut Criterion) {
-    let one = <Circuit as Environment>::BaseField::one();
+    let one = snarkvm_console_types::Field::<<Circuit as Environment>::Network>::one();
     let two = one + one;
 
     let mut candidate = Field::<Circuit>::one();

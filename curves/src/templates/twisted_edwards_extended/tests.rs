@@ -18,7 +18,7 @@ use super::{Affine, Projective};
 
 use snarkvm_utilities::{
     io::Cursor,
-    rand::UniformRand,
+    rand::Uniform,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     to_bytes_le,
     Compress,

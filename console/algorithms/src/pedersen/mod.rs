@@ -19,66 +19,65 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::ToBits;
+use crate::Blake2Xs;
+use snarkvm_console_types::prelude::*;
 
-use anyhow::{bail, Result};
-use itertools::Itertools;
 use std::{borrow::Cow, sync::Arc};
 
-/// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
-pub type Pedersen64<G> = Pedersen<G, 64>;
-/// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes a 128-bit input.
-pub type Pedersen128<G> = Pedersen<G, 128>;
+/// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes up to a 64-bit input.
+pub type Pedersen64<E> = Pedersen<E, 64>;
+/// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes up to a 128-bit input.
+pub type Pedersen128<E> = Pedersen<E, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
 #[derive(Clone)]
-pub struct Pedersen<G: AffineCurve, const NUM_BITS: u8> {
+pub struct Pedersen<E: Environment, const NUM_BITS: u8> {
     /// The base window for the Pedersen hash.
-    base_window: Arc<Vec<G::Projective>>,
+    base_window: Arc<Vec<Group<E>>>,
     /// The random base window for the Pedersen commitment.
-    random_base_window: Arc<Vec<G::Projective>>,
+    random_base_window: Arc<Vec<Group<E>>>,
 }
 
-impl<G: AffineCurve, const NUM_BITS: u8> Pedersen<G, NUM_BITS> {
+impl<E: Environment, const NUM_BITS: u8> Pedersen<E, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
-        let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.Base.{message}"));
-        let mut base_power = generator.to_projective();
+        let (generator, _, _) = Blake2Xs::hash_to_curve::<E::Affine>(&format!("Aleo.Pedersen.Base.{message}"));
         // Construct the window with the base.
-        let mut base_window = vec![G::Projective::zero(); NUM_BITS as usize];
-        for base in base_window.iter_mut().take(NUM_BITS as usize) {
-            *base = base_power;
-            base_power.double_in_place();
+        let mut base_window = vec![Group::<E>::zero(); NUM_BITS as usize];
+        {
+            let mut base_power = Group::<E>::new(generator);
+            for base in base_window.iter_mut().take(NUM_BITS as usize) {
+                *base = base_power;
+                base_power = base_power.double();
+            }
+            assert_eq!(base_window.len(), NUM_BITS as usize);
         }
-        assert_eq!(base_window.len(), NUM_BITS as usize);
 
         // Compute the random base.
-        let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.RandomBase.{message}"));
-        let mut base = generator.to_projective();
+        let (generator, _, _) = Blake2Xs::hash_to_curve::<E::Affine>(&format!("Aleo.Pedersen.RandomBase.{message}"));
         // Construct the window with the random base.
-        let num_scalar_bits = G::ScalarField::size_in_bits();
-        let mut random_base = Vec::with_capacity(num_scalar_bits);
-        for _ in 0..num_scalar_bits {
-            random_base.push(base);
-            base.double_in_place();
+        let mut random_base = Vec::with_capacity(Scalar::<E>::size_in_bits());
+        {
+            let mut base = Group::<E>::new(generator);
+            for _ in 0..Scalar::<E>::size_in_bits() {
+                random_base.push(base);
+                base = base.double();
+            }
+            assert_eq!(random_base.len(), Scalar::<E>::size_in_bits());
         }
-        assert_eq!(random_base.len(), num_scalar_bits);
 
         Self { base_window: Arc::new(base_window.to_vec()), random_base_window: Arc::new(random_base) }
     }
 
     /// Returns the base window.
-    pub fn base_window(&self) -> &Arc<Vec<G::Projective>> {
+    pub fn base_window(&self) -> &Arc<Vec<Group<E>>> {
         &self.base_window
     }
 
     /// Returns the random base window.
-    pub fn random_base_window(&self) -> &Arc<Vec<G::Projective>> {
+    pub fn random_base_window(&self) -> &Arc<Vec<Group<E>>> {
         &self.random_base_window
     }
 }

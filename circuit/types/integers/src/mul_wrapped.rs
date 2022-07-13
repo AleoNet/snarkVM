@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the product and return the new constant.
-            witness!(|self, other| self.wrapping_mul(&other))
+            witness!(|self, other| console::Integer::new(self.wrapping_mul(&other)))
         } else {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
@@ -87,19 +87,25 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn MulWrapped<Integer<E, I>, Ou
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::ops::RangeInclusive;
 
     const ITERATIONS: u64 = 32;
 
-    fn check_mul<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_mul<I: IntegerType>(
+        name: &str,
+        first: console::Integer<<Circuit as Environment>::Network, I>,
+        second: console::Integer<<Circuit as Environment>::Network, I>,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let expected = first.wrapping_mul(&second);
         Circuit::scope(name, || {
             let candidate = a.mul_wrapped(&b);
-            assert_eq!(expected, candidate.eject_value());
+            assert_eq!(expected, *candidate.eject_value());
+            assert_eq!(console::Integer::new(expected), candidate.eject_value());
             assert_count!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
             assert_output_mode!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
@@ -110,44 +116,68 @@ mod tests {
         for i in 0..ITERATIONS {
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
             //  Is there a better method for sampling arguments?
-            let first: I = UniformRand::rand(&mut test_rng());
-            let second: I = UniformRand::rand(&mut test_rng());
+            let first = Uniform::rand(&mut test_rng());
+            let second = Uniform::rand(&mut test_rng());
 
             let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
-            check_mul(&name, first, second, mode_a, mode_b);
-            check_mul(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_mul::<I>(&name, first, second, mode_a, mode_b);
+            check_mul::<I>(&name, second, first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("Double: {} * {} {}", mode_a, mode_b, i);
-            check_mul(&name, first, I::one() + I::one(), mode_a, mode_b);
-            check_mul(&name, I::one() + I::one(), first, mode_a, mode_b); // Commute the operation.
+            check_mul::<I>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
+            check_mul::<I>(&name, console::Integer::one() + console::Integer::one(), first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("Square: {} * {} {}", mode_a, mode_b, i);
-            check_mul(&name, first, first, mode_a, mode_b);
+            check_mul::<I>(&name, first, first, mode_a, mode_b);
         }
 
         // Check specific cases common to signed and unsigned integers.
-        check_mul("1 * MAX", I::one(), I::MAX, mode_a, mode_b);
-        check_mul("MAX * 1", I::MAX, I::one(), mode_a, mode_b);
-        check_mul("1 * MIN", I::one(), I::MIN, mode_a, mode_b);
-        check_mul("MIN * 1", I::MIN, I::one(), mode_a, mode_b);
-        check_mul("0 * MAX", I::zero(), I::MAX, mode_a, mode_b);
-        check_mul("MAX * 0", I::MAX, I::zero(), mode_a, mode_b);
-        check_mul("0 * MIN", I::zero(), I::MIN, mode_a, mode_b);
-        check_mul("MIN * 0", I::MIN, I::zero(), mode_a, mode_b);
-        check_mul("1 * 1", I::one(), I::one(), mode_a, mode_b);
+        check_mul::<I>("1 * MAX", console::Integer::one(), console::Integer::MAX, mode_a, mode_b);
+        check_mul::<I>("MAX * 1", console::Integer::MAX, console::Integer::one(), mode_a, mode_b);
+        check_mul::<I>("1 * MIN", console::Integer::one(), console::Integer::MIN, mode_a, mode_b);
+        check_mul::<I>("MIN * 1", console::Integer::MIN, console::Integer::one(), mode_a, mode_b);
+        check_mul::<I>("0 * MAX", console::Integer::zero(), console::Integer::MAX, mode_a, mode_b);
+        check_mul::<I>("MAX * 0", console::Integer::MAX, console::Integer::zero(), mode_a, mode_b);
+        check_mul::<I>("0 * MIN", console::Integer::zero(), console::Integer::MIN, mode_a, mode_b);
+        check_mul::<I>("MIN * 0", console::Integer::MIN, console::Integer::zero(), mode_a, mode_b);
+        check_mul::<I>("1 * 1", console::Integer::one(), console::Integer::one(), mode_a, mode_b);
 
         // Check common overflow cases.
-        check_mul("MAX * 2", I::MAX, I::one() + I::one(), mode_a, mode_b);
-        check_mul("2 * MAX", I::one() + I::one(), I::MAX, mode_a, mode_b);
+        check_mul::<I>(
+            "MAX * 2",
+            console::Integer::MAX,
+            console::Integer::one() + console::Integer::one(),
+            mode_a,
+            mode_b,
+        );
+        check_mul::<I>(
+            "2 * MAX",
+            console::Integer::one() + console::Integer::one(),
+            console::Integer::MAX,
+            mode_a,
+            mode_b,
+        );
 
         // Check additional corner cases for signed integers.
         if I::is_signed() {
-            check_mul("MAX * -1", I::MAX, I::zero() - I::one(), mode_a, mode_b);
-            check_mul("-1 * MAX", I::zero() - I::one(), I::MAX, mode_a, mode_b);
-            check_mul("MIN * -1", I::MIN, I::zero() - I::one(), mode_a, mode_b);
-            check_mul("-1 * MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b);
-            check_mul("MIN * -2", I::MIN, I::zero() - I::one() - I::one(), mode_a, mode_b);
-            check_mul("-2 * MIN", I::zero() - I::one() - I::one(), I::MIN, mode_a, mode_b);
+            check_mul::<I>("MAX * -1", console::Integer::MAX, -console::Integer::one(), mode_a, mode_b);
+            check_mul::<I>("-1 * MAX", -console::Integer::one(), console::Integer::MAX, mode_a, mode_b);
+            check_mul::<I>("MIN * -1", console::Integer::MIN, -console::Integer::one(), mode_a, mode_b);
+            check_mul::<I>("-1 * MIN", -console::Integer::one(), console::Integer::MIN, mode_a, mode_b);
+            check_mul::<I>(
+                "MIN * -2",
+                console::Integer::MIN,
+                -console::Integer::one() - console::Integer::one(),
+                mode_a,
+                mode_b,
+            );
+            check_mul::<I>(
+                "-2 * MIN",
+                -console::Integer::one() - console::Integer::one(),
+                console::Integer::MIN,
+                mode_a,
+                mode_b,
+            );
         }
     }
 
@@ -157,8 +187,11 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
+                let first = console::Integer::<_, I>::new(first);
+                let second = console::Integer::<_, I>::new(second);
+
                 let name = format!("Mul: ({} * {})", first, second);
-                check_mul(&name, first, second, mode_a, mode_b);
+                check_mul::<I>(&name, first, second, mode_a, mode_b);
             }
         }
     }

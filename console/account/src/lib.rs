@@ -17,27 +17,34 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod address;
-pub use address::*;
+pub use snarkvm_console_types::{environment::prelude::*, Address, Field, Group, Scalar};
 
+pub mod address;
+
+#[cfg(feature = "compute_key")]
 pub mod compute_key;
+#[cfg(feature = "compute_key")]
 pub use compute_key::*;
 
+#[cfg(feature = "private_key")]
 pub mod private_key;
+#[cfg(feature = "private_key")]
 pub use private_key::*;
 
+#[cfg(feature = "signature")]
 pub mod signature;
+#[cfg(feature = "signature")]
 pub use signature::*;
 
+#[cfg(feature = "view_key")]
 pub mod view_key;
+#[cfg(feature = "view_key")]
 pub use view_key::*;
 
 // #[cfg(test)]
 // mod tests {
 //     use crate::{testnet2::Testnet2, Account, Address, Network, PrivateKey, ViewKey};
 //     use snarkvm_algorithms::prelude::*;
-//     use snarkvm_curves::AffineCurve;
-//     use snarkvm_utilities::{FromBytes, ToBits, ToBytes};
 //
 //     use rand::{thread_rng, Rng, SeedableRng};
 //     use rand_chacha::ChaChaRng;

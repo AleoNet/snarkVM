@@ -44,7 +44,6 @@ impl<E: Environment> FromBits for StringType<E> {
 mod tests {
     use super::*;
     use snarkvm_circuit_environment::Circuit;
-    use snarkvm_utilities::test_rng;
 
     use rand::Rng;
 
@@ -59,11 +58,11 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
 
-            let candidate = StringType::<Circuit>::new(mode, expected.clone()).to_bits_le();
+            let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected)).to_bits_le();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = StringType::<Circuit>::from_bits_le(&candidate);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();
@@ -79,11 +78,11 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
 
-            let candidate = StringType::<Circuit>::new(mode, expected.clone()).to_bits_be();
+            let candidate = StringType::<Circuit>::new(mode, console::StringType::new(&expected)).to_bits_be();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = StringType::<Circuit>::from_bits_be(&candidate);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected, *candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();

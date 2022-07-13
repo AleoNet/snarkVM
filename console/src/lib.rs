@@ -32,8 +32,9 @@ pub use snarkvm_console_network as network;
 #[cfg(feature = "program")]
 pub use snarkvm_console_program as program;
 
-#[cfg(feature = "transition")]
-pub use snarkvm_console_transition as transition;
-
 #[cfg(feature = "types")]
 pub use snarkvm_console_types as types;
+
+pub mod prelude {
+    pub use crate::network::prelude::*;
+}
