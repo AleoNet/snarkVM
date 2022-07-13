@@ -256,24 +256,22 @@ where
         // We will construct a linear combination and provide a proof of evaluation of the lc
         // at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info();
-        let mut query_set = QuerySet::new();
-        for (poly_name, &c) in info.keys().zip(linear_combination_challenges) {
-            lc.add(c, poly_name.clone());
-            query_set.insert((poly_name.clone(), ("challenge".into(), point)));
+        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
+            lc.add(c, poly.label());
         }
+
+        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(info.values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
 
-        let index_polynomials = proving_key.circuit.iter().map(Into::into).collect::<Vec<_>>();
         let proof = SonicKZG10::<E, FS>::open_combinations(
             &proving_key.committer_key,
             &[lc],
-            index_polynomials,
+            proving_key.circuit.iter(),
             &commitments,
             &query_set,
             &proving_key.circuit_commitment_randomness.clone(),
@@ -305,22 +303,20 @@ where
         // We will construct a linear combination and provide a proof of evaluation of the lc
         // at `point`.
         let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
-        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info();
-        let mut query_set = QuerySet::new();
         let mut evaluation = E::Fr::zero();
-        for ((poly_name, &c), poly) in info.keys().zip(linear_combination_challenges).zip(circuit.iter()) {
-            lc.add(c, poly_name.clone());
-            query_set.insert((poly_name.clone(), ("challenge".into(), point)));
+        for (poly, &c) in circuit.iter().zip(linear_combination_challenges) {
+            lc.add(c, poly.label());
             evaluation += c * poly.evaluate(point);
         }
+
+        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
         let commitments = verifying_key
             .iter()
             .cloned()
-            .zip_eq(info.values())
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
             .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
             .collect::<Vec<_>>();
-        let mut evaluations = Evaluations::new();
-        evaluations.insert(("circuit_check".into(), point), evaluation);
+        let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
 
         SonicKZG10::<E, FS>::check_combinations(
             &verifying_key.verifier_key,
