@@ -695,8 +695,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             }
         }
 
-        // If the program and function is not a special function, then ensure the i64 balance is positive.
-        if !(program_id.to_string() == "stake.aleo" && function.name().to_string() == "initialize") {
+        // If the program and function is not a coinbase function, then ensure the i64 balance is positive.
+        if !Self::is_coinbase(&program_id, function.name()) {
             use circuit::MSB;
 
             // Ensure the i64 balance MSB is false.
@@ -706,16 +706,23 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
             // Inject the field balance as `Mode::Public`.
             let public_balance = circuit::Field::<A>::new(circuit::Mode::Public, field_balance.eject_value());
-            // Ensure the injected i64 balance matches.
+            // Ensure the injected field balance matches.
             A::assert_eq(public_balance, field_balance);
 
             #[cfg(debug_assertions)]
             println!("Logging fee: {}", i64_balance.eject_value());
+        } else {
+            // Inject the field balance as `Mode::Public`.
+            let public_balance = circuit::Field::<A>::new(circuit::Mode::Public, i64_balance.to_field().eject_value());
+            // Ensure the injected i64 balance matches.
+            A::assert_eq(public_balance, &i64_balance);
         }
 
         #[cfg(debug_assertions)]
         Self::log_circuit("Complete");
 
+        // Eject the fee.
+        let fee = i64_balance.eject_value();
         // Eject the response.
         let response = response.eject_value();
 
@@ -758,11 +765,17 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             // Execute the circuit.
             let proof = proving_key.prove(&assignment, rng)?;
             // Add the transition to the execution.
-            execution.push(Transition::from(&console_request, &response, proof, 0i64)?);
+            execution.push(Transition::from(&console_request, &response, proof, *fee)?);
         }
 
         // Return the response.
         Ok(response)
+    }
+
+    /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
+    #[inline]
+    pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
+        program_id.to_string() == "stake.aleo" && function_name.to_string() == "initialize"
     }
 
     /// Prints the current state of the circuit.

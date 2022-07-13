@@ -254,6 +254,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             if transition.outputs().iter().any(|output| !output.verify()) {
                 bail!("Failed to verify a transition output")
             }
+            // Ensure the fee is correct.
+            match Stack::<N, A>::is_coinbase(transition.program_id(), transition.function_name()) {
+                true => ensure!(transition.fee() < &0, "The fee must be negative in a coinbase transition"),
+                false => ensure!(transition.fee() >= &0, "The fee must be zero or positive"),
+            }
 
             // Compute the x- and y-coordinate of `tpk`.
             let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinate();

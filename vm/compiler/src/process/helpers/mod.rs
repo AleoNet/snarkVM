@@ -95,16 +95,6 @@ impl<N: Network> CircuitKeys<N> {
     pub fn remove(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) {
         self.circuit_keys.write().remove(&(*program_id, *function_name));
     }
-
-    /// Returns the number of circuit keys.
-    pub fn len(&self) -> usize {
-        self.circuit_keys.read().len()
-    }
-
-    /// Returns `true` if there are no circuit keys.
-    pub fn is_empty(&self) -> bool {
-        self.circuit_keys.read().is_empty()
-    }
 }
 impl<N: Network> Default for CircuitKeys<N> {
     fn default() -> Self {
