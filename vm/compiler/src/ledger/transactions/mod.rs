@@ -170,7 +170,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
     pub fn to_root(&self) -> Result<Field<N>> {
-        Ok((*self.to_tree()?.root()).into())
+        Ok(*self.to_tree()?.root())
     }
 
     /// Returns an inclusion proof for the transactions tree.

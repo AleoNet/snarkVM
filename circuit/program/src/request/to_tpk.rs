@@ -26,6 +26,6 @@ impl<A: Aleo> Request<A> {
         // Retrieve `pk_sig` from the signature.
         let pk_sig = self.signature.compute_key().pk_sig();
         // Compute `tpk` as `(challenge * pk_sig) + (response * G)`, equivalent to `r * G`.
-        (pk_sig * challenge) + A::g_scalar_multiply(&response)
+        (pk_sig * challenge) + A::g_scalar_multiply(response)
     }
 }

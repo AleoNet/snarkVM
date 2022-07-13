@@ -165,7 +165,7 @@ impl<A: Aleo> Request<A> {
 
             // Construct the hash input as (r * G, pk_sig, pr_sig, address, message).
             let mut preimage = Vec::with_capacity(4 + message.len());
-            preimage.extend([&tpk, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
+            preimage.extend([tpk, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
             preimage.push(self.caller.to_field());
             preimage.extend_from_slice(&message);
 

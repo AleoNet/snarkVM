@@ -60,6 +60,7 @@ pub struct BlockHeader<N: Network> {
 
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new block header.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         previous_ledger_root: Field<N>,
         transactions_root: Field<N>,
@@ -195,7 +196,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the block header root.
     pub fn to_root(&self) -> Result<Field<N>> {
-        Ok((*self.to_tree()?.root()).into())
+        Ok(*self.to_tree()?.root())
     }
 
     /// Returns an inclusion proof for the Merkle tree of the block header.
@@ -204,6 +205,7 @@ impl<N: Network> BlockHeader<N> {
     }
 
     /// Returns an instance of the Merkle tree for the block header.
+    #[allow(clippy::useless_vec)]
     pub fn to_tree(&self) -> Result<HeaderTree<N>> {
         // Construct the metadata leaf (the last leaf in the Merkle tree).
         let metadata = vec![

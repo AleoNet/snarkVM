@@ -619,7 +619,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             // If the instruction was a function call, then set the tracker to `true`.
             if let Instruction::Call(call) = instruction {
                 // Check if the call is a function call.
-                if call.is_function_call(&self)? {
+                if call.is_function_call(self)? {
                     contains_function_call = true;
                 }
             }
