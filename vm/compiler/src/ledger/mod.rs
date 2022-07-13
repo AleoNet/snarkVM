@@ -14,29 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Program;
+mod block;
+pub use block::*;
+
+mod header;
+pub use header::*;
+
+mod transactions;
+pub use transactions::*;
+
+use crate::{Program, Transaction};
 use console::{
     network::prelude::*,
     program::{Identifier, Plaintext},
 };
 
 use indexmap::{IndexMap, IndexSet};
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct Deploy<N: Network> {
-    program: Program<N>,
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum Transaction<N: Network> {
-    Deploy(Deploy<N>),
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct Block<N: Network> {
-    /// The transactions in this block.
-    transactions: Vec<Transaction<N>>,
-}
 
 #[derive(Clone, Default)]
 pub struct Ledger<N: Network> {

@@ -23,6 +23,9 @@ pub use stack::*;
 mod trace;
 use trace::*;
 
+mod transaction;
+pub use transaction::*;
+
 mod transition;
 pub use transition::*;
 

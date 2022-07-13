@@ -73,7 +73,7 @@ path = "vm/cli/main.rs"
 required-features = ["cli"]
 
 [features]
-default = ["cli"]
+default = ["cli", "parallel"]
 full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM CLI ##
@@ -94,6 +94,7 @@ utilities = ["snarkvm-utilities"]
 ## snarkVM workspace specific ##
 cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
+parallel = ["rayon", "snarkvm-compiler/parallel", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]
 
 ## CI ##
 noconfig = []
@@ -167,6 +168,10 @@ optional = true
 
 [dependencies.rand]
 version = "0.8"
+optional = true
+
+[dependencies.rayon]
+version = "1"
 optional = true
 
 [dependencies.self_update]
