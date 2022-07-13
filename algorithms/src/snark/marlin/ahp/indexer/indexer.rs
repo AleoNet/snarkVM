@@ -110,6 +110,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         map
     }
 
+    pub fn index_polynomial_labels() -> impl Iterator<Item = PolynomialLabel> {
+        ["a", "b", "c"].into_iter().flat_map(|matrix| {
+            [format!("row_{matrix}"), format!("col_{matrix}"), format!("val_{matrix}"), format!("row_col_{matrix}")]
+        })
+    }
+
     fn index_helper<C: ConstraintSynthesizer<F>>(c: &C) -> Result<IndexerState<F>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
@@ -225,16 +231,25 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         point: F,
     ) -> Result<impl Iterator<Item = F>, AHPError> {
         let state = Self::index_helper(c)?;
-        Ok([
-            (state.a_evals, state.non_zero_a_domain),
-            (state.b_evals, state.non_zero_b_domain),
-            (state.c_evals, state.non_zero_c_domain),
+        let mut evals = [
+            ("a", state.a_evals, state.non_zero_a_domain),
+            ("b", state.b_evals, state.non_zero_b_domain),
+            ("c", state.c_evals, state.non_zero_c_domain),
         ]
         .into_iter()
-        .flat_map(move |(evals, domain)| {
+        .flat_map(move |(matrix, evals, domain)| {
+            let labels = [
+                format!("row_{matrix}"),
+                format!("col_{matrix}"),
+                format!("val_{matrix}"),
+                format!("row_col_{matrix}"),
+            ];
             let lagrange_coefficients_at_point = domain.evaluate_all_lagrange_coefficients(point);
-            evals.evaluate(&lagrange_coefficients_at_point)
-        }))
+            labels.into_iter().zip(evals.evaluate(&lagrange_coefficients_at_point))
+        })
+        .collect::<Vec<_>>();
+        evals.sort_by(|(l1, _), (l2, _)| l1.cmp(l2));
+        Ok(evals.into_iter().map(|(_, eval)| eval))
     }
 }
 

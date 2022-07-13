@@ -96,10 +96,10 @@ pub struct MatrixEvals<F: PrimeField> {
     pub row: EvaluationsOnDomain<F>,
     /// Evaluations of the `col` polynomial.
     pub col: EvaluationsOnDomain<F>,
-    /// Evaluations of the `row_col` polynomial.
-    pub row_col: EvaluationsOnDomain<F>,
     /// Evaluations of the `val` polynomial.
     pub val: EvaluationsOnDomain<F>,
+    /// Evaluations of the `row_col` polynomial.
+    pub row_col: EvaluationsOnDomain<F>,
 }
 
 impl<F: PrimeField> MatrixEvals<F> {
@@ -107,8 +107,8 @@ impl<F: PrimeField> MatrixEvals<F> {
         [
             self.row.evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.col.evaluate_with_coeffs(lagrange_coefficients_at_point),
-            self.row_col.evaluate_with_coeffs(lagrange_coefficients_at_point),
             self.val.evaluate_with_coeffs(lagrange_coefficients_at_point),
+            self.row_col.evaluate_with_coeffs(lagrange_coefficients_at_point),
         ]
     }
 }

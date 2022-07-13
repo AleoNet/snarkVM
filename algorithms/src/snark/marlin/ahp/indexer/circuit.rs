@@ -70,19 +70,20 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        // Alphabetical order
         [
-            &self.a_arith.row,
             &self.a_arith.col,
-            &self.a_arith.val,
-            &self.a_arith.row_col,
-            &self.b_arith.row,
             &self.b_arith.col,
-            &self.b_arith.val,
-            &self.b_arith.row_col,
-            &self.c_arith.row,
             &self.c_arith.col,
-            &self.c_arith.val,
+            &self.a_arith.row,
+            &self.b_arith.row,
+            &self.c_arith.row,
+            &self.a_arith.row_col,
+            &self.b_arith.row_col,
             &self.c_arith.row_col,
+            &self.a_arith.val,
+            &self.b_arith.val,
+            &self.c_arith.val,
         ]
         .into_iter()
     }

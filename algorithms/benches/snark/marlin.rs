@@ -90,12 +90,9 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
+    let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
     c.bench_function("snark_circuit_setup", move |b| {
-        b.iter(|| {
-            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
-
-            MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap()
-        })
+        b.iter(|| MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap())
     });
 }
 
