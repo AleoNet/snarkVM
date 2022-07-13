@@ -80,8 +80,6 @@ fn snark_universal_setup(c: &mut Criterion) {
 }
 
 fn snark_circuit_setup(c: &mut Criterion) {
-    let num_constraints = 100;
-    let num_variables = 100;
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
@@ -90,15 +88,17 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
-    let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
-    c.bench_function("snark_circuit_setup", move |b| {
-        b.iter(|| MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap())
-    });
+    for size in [100, 1_000, 10_000] {
+        let num_constraints = size;
+        let num_variables = size;
+        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        c.bench_function(&format!("snark_circuit_setup_{size}"), |b| {
+            b.iter(|| MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap())
+        });
+    }
 }
 
 fn snark_prove_index(c: &mut Criterion) {
-    let num_constraints = 100;
-    let num_variables = 100;
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
@@ -106,29 +106,39 @@ fn snark_prove_index(c: &mut Criterion) {
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-    let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
-    let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-    c.bench_function("snark_prove_index", move |b| b.iter(|| MarlinInst::prove_index(&vk, &pk)));
+    for size in [100, 1_000, 10_000, 100_000] {
+        let num_constraints = size;
+        let num_variables = size;
+        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+
+        c.bench_function(&format!("snark_prove_index_{size}"), move |b| {
+            b.iter(|| MarlinInst::prove_index(&vk, &pk).unwrap())
+        });
+    }
 }
 
 fn snark_verify_index(c: &mut Criterion) {
-    let num_constraints = 100;
-    let num_variables = 100;
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
 
-    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
+    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-    let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
-    let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-    let proof = MarlinInst::prove_index(&vk, &pk).unwrap();
 
-    c.bench_function("snark_verify_index", move |b| {
-        b.iter(|| MarlinInst::verify_index(&circuit, &vk, &proof).unwrap())
-    });
+    for size in [100, 1_000, 10_000, 100_000] {
+        let num_constraints = size;
+        let num_variables = size;
+        let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+        let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+        let proof = MarlinInst::prove_index(&vk, &pk).unwrap();
+
+        c.bench_function(&format!("snark_verify_index_{size}"), move |b| {
+            b.iter(|| MarlinInst::verify_index(&circuit, &vk, &proof).unwrap())
+        });
+    }
 }
 
 fn snark_prove(c: &mut Criterion) {
