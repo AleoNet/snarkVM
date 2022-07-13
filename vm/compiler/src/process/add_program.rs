@@ -363,8 +363,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 }
             }
             Opcode::Commit(opcode) => {
-                // Ensure the opcode **is** a reserved opcode.
-                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                 // Ensure the instruction belongs to the defined set.
                 if ![
                     "commit.bhp256",
@@ -387,8 +385,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 // }
             }
             Opcode::Hash(opcode) => {
-                // Ensure the opcode **is** a reserved opcode.
-                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
                 // Ensure the instruction belongs to the defined set.
                 if ![
                     "hash.bhp256",
