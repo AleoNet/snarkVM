@@ -16,9 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const WINDOW_SIZE: usize, const NUM_WINDOWS: usize> Hash
-    for Sinsemilla<E, WINDOW_SIZE, NUM_WINDOWS>
-{
+impl<E: Environment, const NUM_WINDOWS: u8> Hash for Sinsemilla<E, NUM_WINDOWS> {
     type Input = Boolean<E>;
     type Output = Field<E>;
 

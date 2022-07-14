@@ -17,57 +17,35 @@
 mod hash;
 mod hash_uncompressed;
 
-#[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+#[cfg(all(test, console))]
+use snarkvm_circuit_types::environment::assert_scope;
 
-use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
-use snarkvm_circuits_types::prelude::*;
-use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
-use snarkvm_utilities::BigInteger;
+use crate::{Hash, HashUncompressed};
+use snarkvm_circuit_types::prelude::*;
 
 /// Sinsemilla is a collision-resistant hash function that takes a fixed-length input.
 /// The Sinsemilla hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct Sinsemilla<E: Environment, const WINDOW_SIZE: usize, const NUM_WINDOWS: usize> {
+pub struct Sinsemilla<E: Environment, const NUM_WINDOWS: u8> {
     q: Group<E>,
-    p_lookups: Vec<Group<E>>,
 }
 
-impl<E: Environment, const WINDOW_SIZE: usize, const NUM_WINDOWS: usize> Sinsemilla<E, WINDOW_SIZE, NUM_WINDOWS> {
+#[cfg(console)]
+impl<E: Environment, const NUM_WINDOWS: u8> Inject for Sinsemilla<E, NUM_WINDOWS> {
+    type Primitive = console::Sinsemilla<E::Network, NUM_WINDOWS>;
+
     /// Initializes a new instance of Sinsemilla with the given setup message.
-    pub fn setup(message: &str) -> Self {
-        // Calculate the maximum window size.
-        let mut maximum_window_size = 0;
-        let mut range = <E::ScalarField as PrimeField>::BigInteger::from(2_u64);
-        while range < E::ScalarField::modulus_minus_one_div_two() {
-            // range < (p-1)/2
-            range.muln(1);
-            maximum_window_size += 1;
-        }
-        assert!(WINDOW_SIZE <= maximum_window_size, "The maximum Sinsemilla window size is {maximum_window_size}");
+    fn new(_mode: Mode, sinsemilla: Self::Primitive) -> Self {
+        // Push the lookup table into the constraint system.
 
-        // Compute Q
-        let (generator, _, _) = hash_to_curve(message);
-        let q = Group::constant(generator);
-
-        // Compute P[0..2^WINDOW_SIZE-1]
-        let table_size = 2usize.pow(WINDOW_SIZE as u32);
-        let mut p_lookups = Vec::with_capacity(table_size);
-        for i in 0..table_size {
-            let (generator, _, _) = hash_to_curve(&format!("{:?}", (i as u32).to_le_bytes()));
-            let p = Group::constant(generator);
-            p_lookups.push(p);
-        }
-
-        Self { q, p_lookups }
+        Self { q: Group::constant(sinsemilla.q()) }
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, console))]
 mod tests {
+    /*
     use super::*;
-    use snarkvm_algorithms::{crh::SinsemillaCRH, CRH};
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuit_types::environment::Circuit;
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: u64 = 10;
@@ -109,4 +87,5 @@ mod tests {
         // Set the number of windows, and modulate the window size.
         check_setup::<10, 253>(4100, 0, 0, 0);
     }
+    */
 }
