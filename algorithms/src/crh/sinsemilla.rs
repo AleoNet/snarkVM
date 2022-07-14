@@ -21,9 +21,6 @@ use snarkvm_utilities::BigInteger;
 
 use std::borrow::Cow;
 
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SinsemillaParameters<G: ProjectiveCurve> {
     pub q: G,
