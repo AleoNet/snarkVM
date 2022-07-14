@@ -175,7 +175,9 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
 
         match VARIANT {
-            0 | 1 | 2 | 3 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
+            0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 => {
+                Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))])
+            }
             _ => bail!("Invalid hash variant: {VARIANT}"),
         }
     }

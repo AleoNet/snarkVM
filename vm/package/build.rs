@@ -31,9 +31,6 @@ impl<N: Network> Package<N> {
             std::fs::create_dir_all(&build_directory)?;
         }
 
-        // Write the AVM file.
-        let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
-
         // Construct the process.
         let process = self.get_process::<A>(PackageMode::Build)?;
 
@@ -91,6 +88,9 @@ impl<N: Network> Package<N> {
             // Create the verifier.
             let _verifier = VerifierFile::create(&build_directory, function_name, verifying_key)?;
         }
+
+        // Lastly, write the AVM file.
+        let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
 
         Ok(())
     }
