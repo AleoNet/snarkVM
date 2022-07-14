@@ -21,7 +21,7 @@ use crate::Blake2Xs;
 use snarkvm_console_types::prelude::*;
 use snarkvm_utilities::BigInteger;
 
-const SINSEMILLA_WINDOW_SIZE: usize = 10;
+pub const SINSEMILLA_WINDOW_SIZE: usize = 10;
 
 /// Sinsemilla256 is a collision-resistant hash function that takes up to a 256-bit input.
 pub type Sinsemilla256<E> = Sinsemilla<E, 26>;
@@ -69,5 +69,13 @@ impl<E: Environment, const NUM_WINDOWS: u8> Sinsemilla<E, NUM_WINDOWS> {
         }
 
         Self { q, p_lookups }
+    }
+
+    pub fn q(&self) -> Group<E> {
+        self.q
+    }
+
+    pub fn p_lookups(&self) -> &Vec<Group<E>> {
+        &self.p_lookups
     }
 }
