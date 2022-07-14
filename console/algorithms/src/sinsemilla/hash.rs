@@ -14,25 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-pub use snarkvm_console_types::prelude::*;
+impl<E: Environment, const NUM_WINDOWS: u8> Hash for Sinsemilla<E, NUM_WINDOWS> {
+    type Input = bool;
+    type Output = Field<E>;
 
-pub mod bhp;
-pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
-
-mod blake2xs;
-pub use blake2xs::Blake2Xs;
-
-mod elligator2;
-pub use elligator2::Elligator2;
-
-mod pedersen;
-pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
-
-mod poseidon;
-pub use poseidon::{Poseidon, Poseidon2, Poseidon4, Poseidon8};
-
-mod sinsemilla;
-pub use sinsemilla::Sinsemilla;
+    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {
+        Ok(self.hash_uncompressed(input)?.to_x_coordinate())
+    }
+}
