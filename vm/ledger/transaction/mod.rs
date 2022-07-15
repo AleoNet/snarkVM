@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, Process, Program, Transition, VerifyingKey};
-use console::{network::prelude::*, types::Field};
+use crate::console::{network::prelude::*, types::Field};
+use snarkvm_compiler::{Execution, Process, Program, Transition, VerifyingKey};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Transaction<N: Network> {
@@ -47,7 +47,10 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the transaction is valid.
-    pub fn is_valid<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, process: &Process<N, A>) -> bool {
+    pub fn is_valid<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
+        process: &Process<N, A>,
+    ) -> bool {
         match self {
             Transaction::Deploy(id, program, _verifying_key) => {
                 // Convert the program into bytes.

@@ -20,14 +20,17 @@ pub use block::*;
 mod header;
 pub use header::*;
 
+mod transaction;
+pub use transaction::*;
+
 mod transactions;
 pub use transactions::*;
 
-use crate::{Program, Transaction};
-use console::{
+use crate::console::{
     network::prelude::*,
     program::{Identifier, Plaintext},
 };
+use snarkvm_compiler::Program;
 
 use indexmap::{IndexMap, IndexSet};
 
@@ -58,8 +61,7 @@ impl<N: Network> Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
-    use console::network::Testnet3;
+    use crate::{circuit::network::AleoV0, console::network::Testnet3};
 
     type CurrentNetwork = Testnet3;
 

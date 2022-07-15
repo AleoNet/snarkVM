@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::process::{Process, Transaction};
-use console::{
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
-    types::Field,
+use crate::{
+    console::{
+        collections::merkle_tree::MerklePath,
+        network::{prelude::*, BHPMerkleTree},
+        types::Field,
+    },
+    ledger::Transaction,
 };
+use snarkvm_compiler::Process;
 
 use std::sync::Arc;
 
@@ -70,7 +73,10 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns `true` if the transactions are well-formed.
-    pub fn is_valid<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, process: &Process<N, A>) -> bool {
+    pub fn is_valid<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+        &self,
+        process: &Process<N, A>,
+    ) -> bool {
         // Ensure the transactions list is not empty.
         if self.transactions.is_empty() {
             eprintln!("Cannot validate an empty transactions list");

@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ledger::Transactions,
-    process::{Process, Transaction},
+    console::{
+        collections::merkle_tree::MerklePath,
+        network::{prelude::*, BHPMerkleTree},
+        types::Field,
+    },
+    ledger::{Transaction, Transactions},
 };
-use console::{
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
-    types::Field,
-};
+use snarkvm_compiler::Process;
 
 use std::{mem::size_of, sync::atomic::AtomicBool};
 

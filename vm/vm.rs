@@ -13,21 +13,3 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-
-#![forbid(unsafe_code)]
-#![allow(clippy::module_inception)]
-// TODO (howardwu): Remove me after tracing.
-#![allow(clippy::print_in_format_impl)]
-#![allow(dead_code)]
-
-#[macro_use]
-extern crate tracing;
-
-mod process;
-pub use process::*;
-
-mod program;
-pub use program::*;
-
-mod snark;
-pub use snark::*;
