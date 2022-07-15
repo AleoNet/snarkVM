@@ -21,65 +21,68 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 
     #[inline]
     fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
-        // Determine the variable mode.
-        if self.is_constant() && other.is_constant() {
-            // Halt on division by zero.
-            E::assert(other.is_not_equal(&Self::zero()));
-            // Compute the quotient and return the new constant.
-            witness!(|self, other| console::Integer::new(self.wrapping_div(&other)))
-        } else if I::is_signed() {
-            // Ensure this is not a division by zero.
-            E::assert(other.is_not_equal(&Self::zero()));
+        match (self.is_constant(), other.is_constant()) {
+            // If `other` is a constant and is zero, then halt.
+            (_, true) if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
+            // If `self` and `other` are constants, and other is not zero, then directly return the value of the division.
+            (true, true) => witness!(|self, other| console::Integer::new(self.wrapping_div(&other))),
+            // Handle the remaining cases.
+            // Note that `other` is either a constant and non-zero, or not a constant.
+            _ => {
+                E::assert(other.is_not_equal(&Self::zero()));
 
-            // Divide the absolute value of `self` and `other` in the base field.
-            let unsigned_dividend = self.abs_wrapped().cast_as_dual();
-            let unsigned_divisor = other.abs_wrapped().cast_as_dual();
-            let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
+                if I::is_signed() {
+                    // Divide the absolute value of `self` and `other` in the base field.
+                    let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+                    let unsigned_divisor = other.abs_wrapped().cast_as_dual();
+                    let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
-            //  Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
-            let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-            let operands_same_sign = &self.msb().is_equal(other.msb());
-            let signed_quotient =
-                Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
+                    //  Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
+                    let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
+                    let operands_same_sign = &self.msb().is_equal(other.msb());
+                    let signed_quotient = Self::ternary(
+                        operands_same_sign,
+                        &signed_quotient,
+                        &Self::zero().sub_wrapped(&signed_quotient),
+                    );
 
-            // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
-            let min = Self::constant(console::Integer::MIN);
-            let neg_one = Self::constant(-console::Integer::one());
-            let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
-            Self::ternary(&overflows, &min, &signed_quotient)
-        } else {
-            // Ensure this is not a division by zero.
-            E::assert(other.is_not_equal(&Self::zero()));
+                    // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
+                    let min = Self::constant(console::Integer::MIN);
+                    let neg_one = Self::constant(-console::Integer::one());
+                    let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
+                    Self::ternary(&overflows, &min, &signed_quotient)
+                } else {
+                    // Eject the dividend and divisor, to compute the quotient as a witness.
+                    let dividend_value = self.eject_value();
+                    // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
+                    // let divisor_value = match other.eject_value().is_zero() {
+                    //     true => match self.eject_value().is_zero() {
+                    //         true => console::Integer::one(),
+                    //         false => console::Integer::zero(),
+                    //     },
+                    //     false => other.eject_value(),
+                    // };
+                    let divisor_value = match other.eject_value().is_zero() {
+                        true => console::Integer::one(),
+                        false => other.eject_value(),
+                    };
 
-            // Eject the dividend and divisor, to compute the quotient as a witness.
-            let dividend_value = self.eject_value();
-            // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
-            // let divisor_value = match other.eject_value().is_zero() {
-            //     true => match self.eject_value().is_zero() {
-            //         true => console::Integer::one(),
-            //         false => console::Integer::zero(),
-            //     },
-            //     false => other.eject_value(),
-            // };
-            let divisor_value = match other.eject_value().is_zero() {
-                true => console::Integer::one(),
-                false => other.eject_value(),
-            };
+                    // Overflow is not possible for unsigned integers so we use wrapping operations.
+                    let quotient =
+                        Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_div(&divisor_value)));
+                    let remainder =
+                        Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_rem(&divisor_value)));
 
-            // Overflow is not possible for unsigned integers so we use wrapping operations.
-            let quotient =
-                Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_div(&divisor_value)));
-            let remainder =
-                Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_rem(&divisor_value)));
+                    // Ensure that Euclidean division holds for these values in the base field.
+                    E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
 
-            // Ensure that Euclidean division holds for these values in the base field.
-            E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
+                    // Ensure that the remainder is less than the divisor.
+                    E::assert(remainder.is_less_than(other));
 
-            // Ensure that the remainder is less than the divisor.
-            E::assert(remainder.is_less_than(other));
-
-            // Return the quotient of `self` and `other`.
-            quotient
+                    // Return the quotient of `self` and `other`.
+                    quotient
+                }
+            }
         }
     }
 }
