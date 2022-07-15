@@ -447,8 +447,9 @@ mod tests {
 
     #[test]
     fn test_print_circuit() {
+        let circuit = CurrentAleo {};
         let _candidate = create_example_circuit::<CurrentAleo>();
-        let output = format!("{}", CurrentAleo);
+        let output = format!("{circuit}");
         println!("{}", output);
     }
 

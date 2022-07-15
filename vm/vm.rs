@@ -26,7 +26,7 @@ use snarkvm_compiler::{Authorization, Execution, Process, Transition};
 
 use core::marker::PhantomData;
 
-/// Downcasts a `$variable` to `$object<$network>`.
+/// A helper macro to downcast a `$variable` to `$object<$network>`.
 macro_rules! cast_ref {
     // Example: cast_ref!((foo.bar()) as Bar<Testnet3>)
     (($variable:expr) as $object:ident<$network:path>) => {{
@@ -48,28 +48,29 @@ macro_rules! cast_ref {
     }};
 }
 
-/// A helper type for an Aleo Testnet3 process (V0).
-type Process3V0 = Process<crate::prelude::Testnet3, crate::circuit::AleoV0>;
-
 thread_local! {
     /// The process for Aleo Testnet3 (V0).
-    pub(crate) static TESTNET3_V0: Process3V0 = Process3V0::new().expect("Failed to initialize the testnet3 process");
+    pub(crate) static TESTNET3_V0: Process<crate::prelude::Testnet3, crate::circuit::AleoV0> = Process::new().expect("Failed to initialize the testnet3 process");
 }
 
-pub struct VM<N: Network> {
-    /// PhantomData.
-    _phantom: PhantomData<N>,
+/// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
+macro_rules! process {
+    // Example: process!(logic)
+    ($logic:ident) => {{
+        // Process the logic.
+        match N::ID {
+            crate::prelude::Testnet3::ID => TESTNET3_V0.with(|process| $logic!(process, crate::prelude::Testnet3)),
+            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
+        }
+    }};
 }
 
-impl<N: Network> VM<N> {
-    /// Initializes a new VM.
-    pub fn new() -> Result<Self> {
-        Ok(Self { _phantom: PhantomData })
-    }
+pub struct VM;
 
+impl VM {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
-    pub fn authorize<R: Rng + CryptoRng>(
+    pub fn authorize<N: Network, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
@@ -95,17 +96,13 @@ impl<N: Network> VM<N> {
                 Ok(cast_ref!(authorization as Authorization<N>).clone())
             }};
         }
-
         // Process the logic.
-        match N::ID {
-            crate::prelude::Testnet3::ID => TESTNET3_V0.with(|process| logic!(process, crate::prelude::Testnet3)),
-            _ => bail!("Unsupported VM configuration for network: {}", N::ID),
-        }
+        process!(logic)
     }
 
     /// Executes a call to the program function for the given inputs.
     #[inline]
-    pub fn execute<R: Rng + CryptoRng>(
+    pub fn execute<N: Network, R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
@@ -128,17 +125,13 @@ impl<N: Network> VM<N> {
                 Ok((response, transaction))
             }};
         }
-
         // Process the logic.
-        match N::ID {
-            crate::prelude::Testnet3::ID => TESTNET3_V0.with(|process| logic!(process, crate::prelude::Testnet3)),
-            _ => bail!("Unsupported VM configuration for network: {}", N::ID),
-        }
+        process!(logic)
     }
 
     /// Verifies a program call for the given execution.
     #[inline]
-    pub fn verify(&self, transaction: &Transaction<N>) -> bool {
+    pub fn verify<N: Network>(&self, transaction: &Transaction<N>) -> bool {
         match transaction {
             Transaction::Deploy(id, program, _verifying_key) => {
                 // Convert the program into bytes.
@@ -205,15 +198,7 @@ impl<N: Network> VM<N> {
                 }
 
                 // Process the logic.
-                let result = match N::ID {
-                    crate::prelude::Testnet3::ID => {
-                        TESTNET3_V0.with(|process| logic!(process, crate::prelude::Testnet3))
-                    }
-                    _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
-                };
-
-                // Return the result.
-                match result {
+                match process!(logic) {
                     Ok(()) => true,
                     Err(error) => {
                         warn!("Transaction verification failed: {error}");
