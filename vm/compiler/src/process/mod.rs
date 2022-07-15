@@ -547,6 +547,82 @@ function hello_world:
     }
 
     #[test]
+    fn test_process_multirecords() {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program multirecord.aleo;
+
+  record record_a:
+    owner as address.private;
+    balance as u64.private;
+
+  record record_b:
+    owner as address.private;
+    balance as u64.private;
+
+  function initialize:
+    input r0 as record_a.record;
+    input r1 as record_b.record;
+    cast r0.owner r0.balance into r2 as record_a.record;
+    cast r1.owner r1.balance into r3 as record_b.record;
+    output r2 as record_a.record;
+    output r3 as record_b.record;",
+        )
+        .unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("initialize").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let record_a = Value::from_str(&format!("{{ owner: {caller}.private, balance: 1234u64.private }}")).unwrap();
+        let record_b = Value::from_str(&format!("{{ owner: {caller}.private, balance: 4321u64.private }}")).unwrap();
+
+        // Construct the process.
+        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize(&caller_private_key, program.id(), function_name, &[record_a.clone(), record_b.clone()], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.get(0).unwrap();
+
+        // Compute the output value.
+        let response = process.evaluate(&request).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(2, candidate.len());
+        assert_eq!(record_a, candidate[0]);
+        assert_eq!(record_b, candidate[1]);
+
+        // Execute the request.
+        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(2, candidate.len());
+        assert_eq!(record_a, candidate[0]);
+        assert_eq!(record_b, candidate[1]);
+
+        assert!(process.verify(execution).is_ok());
+
+        // use circuit::Environment;
+        //
+        // assert_eq!(20060, CurrentAleo::num_constants());
+        // assert_eq!(12, CurrentAleo::num_public());
+        // assert_eq!(57602, CurrentAleo::num_private());
+        // assert_eq!(57684, CurrentAleo::num_constraints());
+        // assert_eq!(178189, CurrentAleo::num_gates());
+    }
+
+    #[test]
     fn test_process_execute_call_closure() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
