@@ -33,6 +33,8 @@ pub enum InputID<A: Aleo> {
     Private(Field<A>),
     /// The `(gamma, serial_number)` tuple of the record input.
     Record(Group<A>, Field<A>),
+    /// The commitment of the external record input.
+    ExternalRecord(Field<A>),
 }
 
 #[cfg(console)]
@@ -52,6 +54,8 @@ impl<A: Aleo> Inject for InputID<A> {
             console::InputID::Record(gamma, serial_number) => {
                 Self::Record(Group::new(Mode::Private, gamma), Field::new(Mode::Public, serial_number))
             }
+            // Inject the commitment as `Mode::Public`.
+            console::InputID::ExternalRecord(field) => Self::ExternalRecord(Field::new(Mode::Public, field)),
         }
     }
 }
@@ -67,6 +71,7 @@ impl<A: Aleo> Eject for InputID<A> {
             Self::Public(field) => field.eject_mode(),
             Self::Private(field) => field.eject_mode(),
             Self::Record(gamma, serial_number) => Mode::combine(gamma.eject_mode(), [serial_number.eject_mode()]),
+            Self::ExternalRecord(field) => field.eject_mode(),
         }
     }
 
@@ -79,6 +84,7 @@ impl<A: Aleo> Eject for InputID<A> {
             Self::Record(gamma, serial_number) => {
                 console::InputID::Record(gamma.eject_value(), serial_number.eject_value())
             }
+            Self::ExternalRecord(field) => console::InputID::ExternalRecord(field.eject_value()),
         }
     }
 }
@@ -93,6 +99,7 @@ impl<A: Aleo> ToFields for InputID<A> {
             InputID::Public(field) => vec![field.clone()],
             InputID::Private(field) => vec![field.clone()],
             InputID::Record(gamma, serial_number) => vec![gamma.to_x_coordinate(), serial_number.clone()],
+            InputID::ExternalRecord(field) => vec![field.clone()],
         }
     }
 }
@@ -156,12 +163,21 @@ impl<A: Aleo> Inject for Request<A> {
                         // Return the input.
                         Ok(input)
                     }
-                    // An input record is injected as `Mode::Private`.
+                    // A record input is injected as `Mode::Private`.
                     console::InputID::Record(..) => {
                         // Inject the input as `Mode::Private`.
                         let input = Value::new(Mode::Private, input.clone());
                         // Ensure the input is a record.
                         ensure!(matches!(input, Value::Record(..)), "Expected a record input");
+                        // Return the input.
+                        Ok(input)
+                    }
+                    // An external record input is injected as `Mode::Private`.
+                    console::InputID::ExternalRecord(..) => {
+                        // Inject the input as `Mode::Private`.
+                        let input = Value::new(Mode::Private, input.clone());
+                        // Ensure the input is a record.
+                        ensure!(matches!(input, Value::Record(..)), "Expected an external record input");
                         // Return the input.
                         Ok(input)
                     }

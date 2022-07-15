@@ -118,8 +118,12 @@ impl<N: Network> AVMFile<N> {
         } else {
             // Ensure the path is well-formed.
             Self::check_path(path)?;
-            // Remove the file.
-            Ok(fs::remove_file(&path)?)
+            // If the path exists, remove it.
+            if path.exists() {
+                // Remove the file.
+                fs::remove_file(&path)?;
+            }
+            Ok(())
         }
     }
 }
@@ -134,9 +138,6 @@ impl<N: Network> AVMFile<N> {
         let extension = path.extension().ok_or_else(|| anyhow!("File extension not found."))?;
         ensure!(extension == AVM_FILE_EXTENSION, "File extension is incorrect.");
 
-        // Ensure the given path exists.
-        ensure!(path.exists(), "File does not exist: {}", path.display());
-
         Ok(())
     }
 
@@ -144,6 +145,9 @@ impl<N: Network> AVMFile<N> {
     fn from_filepath(file: &Path) -> Result<Self> {
         // Ensure the path is well-formed.
         Self::check_path(file)?;
+
+        // Ensure the given path exists.
+        ensure!(file.exists(), "File does not exist: {}", file.display());
 
         // Retrieve the file name.
         let file_name = file
@@ -197,7 +201,7 @@ mod tests {
         let directory = temp_dir();
 
         let program_string = r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;

@@ -22,9 +22,7 @@ impl<N: Network> ToFields for Locator<N> {
     /// Returns this locator as a list of field elements.
     fn to_fields(&self) -> Result<Vec<Self::Field>> {
         let mut fields = self.id.to_fields()?;
-        if let Some(resource) = &self.resource {
-            fields.push(resource.to_field()?);
-        }
+        fields.push(self.resource.to_field()?);
         Ok(fields)
     }
 }

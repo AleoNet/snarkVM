@@ -25,6 +25,7 @@ impl<N: Network> ToBytes for ValueType<N> {
             ValueType::Public(plaintext_type) => plaintext_type.write_le(&mut writer),
             ValueType::Private(plaintext_type) => plaintext_type.write_le(&mut writer),
             ValueType::Record(identifier) => identifier.write_le(&mut writer),
+            ValueType::ExternalRecord(locator) => locator.write_le(&mut writer),
         }
     }
 }
@@ -38,7 +39,8 @@ impl<N: Network> FromBytes for ValueType<N> {
             1 => Ok(ValueType::Public(PlaintextType::read_le(&mut reader)?)),
             2 => Ok(ValueType::Private(PlaintextType::read_le(&mut reader)?)),
             3 => Ok(ValueType::Record(Identifier::read_le(&mut reader)?)),
-            4.. => Err(error(format!("Failed to deserialize value type variant {}", variant))),
+            4 => Ok(ValueType::ExternalRecord(Locator::read_le(&mut reader)?)),
+            5.. => Err(error(format!("Failed to deserialize value type variant {}", variant))),
         }
     }
 }

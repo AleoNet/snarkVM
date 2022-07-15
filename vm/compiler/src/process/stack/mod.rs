@@ -18,96 +18,328 @@ mod register_types;
 pub use register_types::*;
 
 mod load;
+mod matches;
+mod sample;
 mod store;
 
-use crate::{Closure, Function, Instruction, Opcode, Operand, Program};
+use crate::{
+    CallOperator,
+    CircuitKeys,
+    Closure,
+    Function,
+    Instruction,
+    Operand,
+    Program,
+    ProvingKey,
+    Transition,
+    VerifyingKey,
+};
 use console::{
+    account::{Address, PrivateKey},
     network::prelude::*,
     program::{
+        Balance,
         Entry,
         EntryType,
         Identifier,
         Interface,
         Literal,
         LiteralType,
+        Locator,
+        Owner,
         Plaintext,
         PlaintextType,
         ProgramID,
+        Record,
         RecordType,
         Register,
         RegisterType,
+        Request,
+        Response,
         Value,
         ValueType,
+        U64,
     },
 };
 
 use indexmap::IndexMap;
+use parking_lot::RwLock;
+use std::{collections::VecDeque, sync::Arc};
 
+#[derive(Clone)]
+pub struct Authorization<N: Network>(Arc<RwLock<VecDeque<Request<N>>>>);
+
+impl<N: Network> Authorization<N> {
+    /// Initialize a new `Authorization` instance, with the given requests.
+    pub fn new(requests: &[Request<N>]) -> Self {
+        Self(Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))))
+    }
+
+    /// Returns the next `Request` in the authorization.
+    pub fn peek_next(&self) -> Result<Request<N>> {
+        self.get(0)
+    }
+
+    /// Returns the next `Request` from the authorization.
+    pub fn next(&self) -> Result<Request<N>> {
+        self.0.write().pop_front().ok_or_else(|| anyhow!("No more requests in the authorization"))
+    }
+
+    /// Returns the `Request` at the given index.
+    pub fn get(&self, index: usize) -> Result<Request<N>> {
+        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing request {index}"))
+    }
+
+    /// Returns the number of `Request`s in the authorization.
+    pub fn len(&self) -> usize {
+        self.0.read().len()
+    }
+
+    /// Return `true` if the authorization is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.read().is_empty()
+    }
+
+    /// Appends the given `Request` to the authorization.
+    pub fn push(&self, request: Request<N>) {
+        self.0.write().push_back(request);
+    }
+
+    /// Returns the requests in the authorization.
+    pub fn to_vec_deque(&self) -> VecDeque<Request<N>> {
+        self.0.read().clone()
+    }
+}
+
+#[derive(Clone)]
+pub struct Execution<N: Network>(Arc<RwLock<Vec<Transition<N>>>>);
+
+impl<N: Network> Execution<N> {
+    /// Initialize a new `Execution` instance.
+    pub fn new() -> Self {
+        Self(Arc::new(RwLock::new(Vec::new())))
+    }
+
+    /// Initializes a new `Execution` instance with the given transitions.
+    pub fn from(transitions: &[Transition<N>]) -> Self {
+        Self(Arc::new(RwLock::new(transitions.to_vec())))
+    }
+
+    /// Returns the `Transition` at the given index.
+    pub fn get(&self, index: usize) -> Result<Transition<N>> {
+        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
+    }
+
+    /// Returns the number of `Transition`s in the execution.
+    pub fn len(&self) -> usize {
+        self.0.read().len()
+    }
+
+    /// Return `true` if the execution is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.read().is_empty()
+    }
+
+    /// Returns the next `Transition` in the execution.
+    pub fn peek(&self) -> Result<Transition<N>> {
+        self.get(self.len() - 1)
+    }
+
+    /// Appends the given `Transition` to the execution.
+    pub fn push(&self, transition: Transition<N>) {
+        self.0.write().push(transition);
+    }
+
+    /// Pops the last `Transition` from the execution.
+    pub fn pop(&self) -> Result<Transition<N>> {
+        self.0.write().pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
+    }
+
+    /// Returns the transitions in the execution.
+    pub fn to_vec(&self) -> Vec<Transition<N>> {
+        self.0.read().clone()
+    }
+}
+
+impl<N: Network> Default for Execution<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone)]
+pub enum CallStack<N: Network> {
+    Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
+    Execute(Authorization<N>, Execution<N>),
+}
+
+impl<N: Network> CallStack<N> {
+    /// Pushes the request to the stack.
+    pub fn push(&mut self, request: Request<N>) -> Result<()> {
+        match self {
+            CallStack::Authorize(requests, ..) => requests.push(request),
+            CallStack::Execute(authorization, ..) => authorization.push(request),
+        }
+        Ok(())
+    }
+
+    /// Pops the request from the stack.
+    pub fn pop(&mut self) -> Result<Request<N>> {
+        match self {
+            CallStack::Authorize(requests, ..) => {
+                requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
+            }
+            CallStack::Execute(authorization, ..) => authorization.next(),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     /// The program (record types, interfaces, functions).
     program: Program<N>,
-    /// The mapping of imported programs as `(program ID, program)`.
-    imports: IndexMap<ProgramID<N>, Program<N>>,
+    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
+    circuit_keys: CircuitKeys<N>,
+    /// The mapping of external stacks as `(program ID, stack)`.
+    external_stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
+    /// The mapping of closure and function names to their register types.
+    program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    /// The current call stack.
+    call_stack: CallStack<N>,
+    /// The current circuit caller.
+    circuit_caller: Option<circuit::Address<A>>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
     console_registers: IndexMap<u64, Value<N>>,
     /// The mapping of assigned circuit registers to their values.
     circuit_registers: IndexMap<u64, circuit::Value<A>>,
-    /// The boolean indicator if the stack is for a setup.
-    is_setup: bool,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(program: Program<N>, is_setup: bool) -> Result<Self> {
+    pub fn new(program: Program<N>, circuit_keys: CircuitKeys<N>) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
         Ok(Self {
             program,
-            imports: IndexMap::new(),
+            circuit_keys,
+            external_stacks: IndexMap::new(),
+            program_types: IndexMap::new(),
+            call_stack: CallStack::Execute(Authorization::new(&[]), Execution::new()),
+            circuit_caller: None,
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
-            is_setup,
         })
     }
 
-    /// Adds a new imported program to the stack.
+    /// Adds a new external stack to the stack.
     #[inline]
-    pub fn import_program(&mut self, program: &Program<N>) -> Result<()> {
+    pub fn add_external_stack(&mut self, external_stack: Stack<N, A>) -> Result<()> {
         // Retrieve the program ID.
-        let program_id = program.id();
-        // Ensure the program is not already added.
-        ensure!(!self.imports.contains_key(program_id), "Program '{program_id}' already exists");
+        let program_id = *external_stack.program_id();
+        // Ensure the external stack is not already added.
+        ensure!(!self.external_stacks.contains_key(&program_id), "Program '{program_id}' already exists");
+        // Ensure the program exists in the main program imports.
+        ensure!(self.program.contains_import(&program_id), "'{program_id}' does not exist in the main program imports");
         // TODO (howardwu): Ensure the imported program is declared in the program imports.
         // TODO (howardwu): Ensure the imported program is not the main program.
-
-        // Check the program closures to the stack.
-        for closure in program.closures().values() {
-            self.process_closure(program, closure, false)?;
-        }
-        // Add the program functions to the stack.
-        for function in program.functions().values() {
-            self.process_function(program, function, false)?;
-        }
-        // Add the program to the stack.
-        self.imports.insert(*program_id, program.clone());
-
+        // Add the external stack to the stack.
+        self.external_stacks.insert(program_id, external_stack);
         // Return success.
         Ok(())
     }
 
-    /// Returns if the stack is for a setup.
+    /// Adds the given closure name and register types to the stack.
     #[inline]
-    pub const fn is_setup(&self) -> bool {
-        self.is_setup
+    pub fn add_closure_types(&mut self, name: &Identifier<N>, register_types: RegisterTypes<N>) -> Result<()> {
+        // Ensure the closure name is not already added.
+        ensure!(!self.program_types.contains_key(name), "Closure '{name}' already exists");
+        // Add the closure name and register types to the stack.
+        self.program_types.insert(*name, register_types);
+        // Return success.
+        Ok(())
+    }
+
+    /// Adds the given function name and register types to the stack.
+    #[inline]
+    pub fn add_function_types(&mut self, name: &Identifier<N>, register_types: RegisterTypes<N>) -> Result<()> {
+        // Ensure the function name is not already added.
+        ensure!(!self.program_types.contains_key(name), "Function '{name}' already exists");
+        // Add the function name and register types to the stack.
+        self.program_types.insert(*name, register_types);
+        // Return success.
+        Ok(())
     }
 
     /// Returns the program.
     #[inline]
     pub const fn program(&self) -> &Program<N> {
         &self.program
+    }
+
+    /// Returns the program ID.
+    #[inline]
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        self.program.id()
+    }
+
+    /// Returns the call stack.
+    #[inline]
+    pub fn call_stack(&self) -> CallStack<N> {
+        self.call_stack.clone()
+    }
+
+    /// Returns the circuit caller.
+    #[inline]
+    pub fn circuit_caller(&self) -> Result<&circuit::Address<A>> {
+        self.circuit_caller.as_ref().ok_or_else(|| anyhow!("Malformed stack: missing circuit caller"))
+    }
+
+    /// Returns the register types for the given closure or function name.
+    #[inline]
+    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
+        // Retrieve the register types.
+        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+    }
+
+    /// Returns the external stack for the given program ID.
+    #[inline]
+    pub fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N, A>> {
+        // Retrieve the external stack.
+        self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
+    }
+
+    /// Returns the external program for the given program ID.
+    #[inline]
+    pub fn get_external_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+        match self.program.id() == program_id {
+            true => bail!("Attempted to get the main program '{}' as an external program", self.program.id()),
+            // Retrieve the external stack, and return the external program.
+            false => Ok(self.get_external_stack(program_id)?.program()),
+        }
+    }
+
+    /// Returns `true` if the stack contains the external record.
+    #[inline]
+    pub fn contains_external_record(&self, locator: &Locator<N>) -> bool {
+        // Retrieve the external program.
+        match self.get_external_program(locator.program_id()) {
+            // Return `true` if the external record exists.
+            Ok(external_program) => external_program.contains_record(locator.resource()),
+            // Return `false` otherwise.
+            Err(_) => false,
+        }
+    }
+
+    /// Returns `true` if the stack contains the external record.
+    #[inline]
+    pub fn get_external_record(&self, locator: &Locator<N>) -> Result<RecordType<N>> {
+        // Retrieve the external program.
+        let external_program = self.get_external_program(locator.program_id())?;
+        // Return the external record, if it exists.
+        external_program.get_record(locator.resource())
     }
 
     /// Evaluates a program closure on the given inputs.
@@ -122,7 +354,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Initialize the stack.
-        self.process_closure(&self.program.clone(), closure, true)?;
+        self.circuit_caller = None;
+        self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
 
@@ -144,60 +377,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         outputs.collect()
     }
 
-    /// Executes a program closure on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn execute_closure(
-        &mut self,
-        closure: &Closure<N>,
-        inputs: &[circuit::Value<A>],
-    ) -> Result<Vec<circuit::Value<A>>> {
-        // Ensure the number of inputs matches the number of input statements.
-        if closure.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
-        }
-
-        // Retrieve the number of public variables in the circuit.
-        let num_public = A::num_public();
-
-        // Initialize the stack.
-        self.process_closure(&self.program.clone(), closure, true)?;
-        self.console_registers.clear();
-        self.circuit_registers.clear();
-
-        // Store the inputs.
-        closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
-            use circuit::Eject;
-
-            if !self.is_setup {
-                // Assign the console input to the register.
-                self.store(register, input.eject_value())?;
-            }
-            // Assign the circuit input to the register.
-            self.store_circuit(register, input.clone())
-        })?;
-
-        // If the circuit is not for a setup, then evaluate the instructions.
-        if !self.is_setup {
-            closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
-        }
-        // Execute the instructions.
-        closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
-
-        // Ensure the number of public variables remains the same.
-        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
-
-        // Load the outputs.
-        let outputs = closure.outputs().iter().map(|output| {
-            // Retrieve the circuit output from the register.
-            self.load_circuit(&Operand::Register(output.register().clone()))
-        });
-
-        outputs.collect()
-    }
-
     /// Evaluates a program function on the given inputs.
     ///
     /// # Errors
@@ -210,7 +389,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Initialize the stack.
-        self.process_function(&self.program.clone(), function, true)?;
+        self.circuit_caller = None;
+        self.register_types = self.get_register_types(function.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
 
@@ -231,35 +411,90 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         outputs.collect()
     }
+}
 
-    /// Executes a program function on the given inputs.
+impl<N: Network, A: circuit::Aleo<Network = N, BaseField = N::Field>> Stack<N, A> {
+    /// Returns the proving key and verifying key for the given function name.
+    #[inline]
+    pub fn circuit_key(&self, function_name: &Identifier<N>) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
+        // Retrieve the program ID.
+        let program_id = self.program.id();
+        // If the circuit key does not exist, synthesize and return it.
+        if !self.circuit_keys.contains_key(program_id, function_name) {
+            // Retrieve the function input types.
+            let input_types = self.program.get_function(function_name)?.input_types();
+
+            // Initialize an RNG.
+            let rng = &mut rand::thread_rng();
+            // Initialize a burner private key.
+            let burner_private_key = PrivateKey::new(rng)?;
+            // Compute the burner address.
+            let burner_address = Address::try_from(&burner_private_key)?;
+            // Sample the inputs.
+            let inputs = input_types
+                .iter()
+                .map(|input_type| match input_type {
+                    ValueType::ExternalRecord(locator) => {
+                        // Retrieve the external stack.
+                        let stack = self.get_external_stack(locator.program_id())?;
+                        // Sample the input.
+                        stack.sample_value(&burner_address, input_type, rng)
+                    }
+                    _ => self.sample_value(&burner_address, input_type, rng),
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            // Compute the request, with a burner private key.
+            let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
+            // Ensure the request is well-formed.
+            ensure!(request.verify(), "Request is invalid");
+            // Initialize the authorization.
+            let authorization = Authorization::new(&[request.clone()]);
+            // Initialize the call stack.
+            let call_stack = CallStack::Authorize(vec![request], burner_private_key, authorization);
+            // Clone the stack.
+            let mut stack = self.clone();
+            // Synthesize the circuit.
+            let (_response, assignment) = stack.execute_function(call_stack)?;
+            // Add the circuit key to the mapping.
+            self.circuit_keys.insert_from_assignment(program_id, function_name, &assignment)?;
+        }
+        // Return the circuit key.
+        self.circuit_keys.get(program_id, function_name)
+    }
+
+    /// Executes a program closure on the given inputs.
     ///
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function(
+    pub fn execute_closure(
         &mut self,
-        function: &Function<N>,
+        closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
+        call_stack: CallStack<N>,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
-        if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+        if closure.inputs().len() != inputs.len() {
+            bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
 
         // Initialize the stack.
-        self.process_function(&self.program.clone(), function, true)?;
+        self.call_stack = call_stack;
+        self.circuit_caller = None;
+        self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
 
         // Store the inputs.
-        function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
+        closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             use circuit::Eject;
 
-            if !self.is_setup {
+            // If the circuit is in execute mode, then store the console input.
+            if let CallStack::Execute(..) = self.call_stack {
                 // Assign the console input to the register.
                 self.store(register, input.eject_value())?;
             }
@@ -267,35 +502,23 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             self.store_circuit(register, input.clone())
         })?;
 
-        // If the circuit is not for a setup, then evaluate the instructions.
-        if !self.is_setup {
-            function.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
+        // If the circuit is in execute mode, then evaluate the instructions.
+        if let CallStack::Execute(..) = self.call_stack {
+            closure.instructions().iter().try_for_each(|instruction| instruction.evaluate(self))?;
         }
         // Execute the instructions.
-        function.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
+        closure.instructions().iter().try_for_each(|instruction| instruction.execute(self))?;
 
         // Ensure the number of public variables remains the same.
-        ensure!(A::num_public() == num_public, "Forbidden operation: instructions injected public variables");
+        ensure!(A::num_public() == num_public, "Illegal closure operation: instructions injected public variables");
 
         // Load the outputs.
-        let outputs = function.outputs().iter().map(|output| {
+        let outputs = closure.outputs().iter().map(|output| {
             // Retrieve the circuit output from the register.
             self.load_circuit(&Operand::Register(output.register().clone()))
         });
 
         outputs.collect()
-    }
-
-    /// Evaluates a program function on the given inputs.
-    ///
-    /// # Errors
-    /// This method will halt if the given inputs are not the same length as the input statements.
-    #[inline]
-    pub fn test_evaluate(&mut self, function_name: &Identifier<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
-        // Retrieve the function from the program.
-        let function = self.program.get_function(function_name)?;
-        // Evaluate the function.
-        self.evaluate_function(&function, inputs)
     }
 
     /// Executes a program function on the given inputs.
@@ -305,360 +528,280 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn test_execute(
+    pub fn execute_function(
         &mut self,
-        function_name: &Identifier<N>,
-        inputs: &[Value<N>],
-    ) -> Result<Vec<circuit::Value<A>>> {
+        call_stack: CallStack<N>,
+    ) -> Result<(Response<N>, circuit::Assignment<N::Field>)> {
         // Ensure the circuit environment is clean.
         A::reset();
 
+        // Initialize the stack.
+        self.call_stack = call_stack;
+        let request = self.call_stack.pop()?;
+        self.circuit_caller = None;
+        self.register_types = self.get_register_types(request.function_name())?.clone();
+        self.console_registers.clear();
+        self.circuit_registers.clear();
+
+        // Ensure the network ID matches.
+        ensure!(
+            **request.network_id() == N::ID,
+            "Network ID mismatch. Expected {}, but found {}",
+            N::ID,
+            request.network_id()
+        );
+
+        // Retrieve the program ID.
+        let program_id = *request.program_id();
         // Retrieve the function from the program.
-        let function = self.program.get_function(function_name)?;
-
-        // Inject the inputs to the circuit environment.
-        let inputs = function
-            .inputs()
-            .iter()
-            .map(|i| i.value_type())
-            .zip_eq(inputs)
-            .map(|(value_type, input)| {
-                // Inject the inputs according to their value type.
-                match value_type {
-                    ValueType::Constant(..) => circuit::Inject::new(circuit::Mode::Constant, input.clone()),
-                    ValueType::Public(..) => circuit::Inject::new(circuit::Mode::Public, input.clone()),
-                    ValueType::Private(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                    ValueType::Record(..) => circuit::Inject::new(circuit::Mode::Private, input.clone()),
-                }
-            })
-            .collect::<Vec<_>>();
-
-        // Execute the function.
-        self.execute_function(&function, &inputs)
-    }
-}
-
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
-    /// Checks that the given closure is well-formed for the given program. If `is_main` is `true`,
-    /// the register types will be set in the `Stack` for use as the main call.
-    fn process_closure(&mut self, program: &Program<N>, closure: &Closure<N>, is_main: bool) -> Result<()> {
-        // // Initialize a stack for the closure.
-        // let mut stack = Stack::new();
-        //
-        // // Add the closure stack to the program.
-        // if self.closure_stacks.insert(closure_name, stack).is_some() {
-        //     bail!("'{closure_name}' already exists in the program.")
-        // }
-
-        // Initialize a map of registers to their types.
-        let mut register_types = RegisterTypes::new();
-
-        // Step 1. Check the inputs are well-formed.
-        for input in closure.inputs() {
-            // Check the input register type.
-            Self::check_input(program, &mut register_types, input.register(), input.register_type())?;
+        let function = self.program.get_function(request.function_name())?;
+        // Ensure the number of inputs matches the number of input statements.
+        if function.inputs().len() != request.inputs().len() {
+            bail!("Expected {} inputs, found {}", function.inputs().len(), request.inputs().len())
         }
 
-        // Step 2. Check the instructions are well-formed.
-        for instruction in closure.instructions() {
-            // Check the instruction opcode, operands, and destinations.
-            Self::check_instruction(program, &mut register_types, instruction)?;
-        }
+        use circuit::Inject;
 
-        // Step 3. Check the outputs are well-formed.
-        for output in closure.outputs() {
-            // Check the output register type.
-            Self::check_output(program, &register_types, output.register(), output.register_type())?;
-        }
+        // Inject the transition public key `tpk` as `Mode::Public`.
+        let _tpk = circuit::Group::<A>::new(circuit::Mode::Public, request.to_tpk());
+        // TODO (howardwu): Check relationship to tvk.
+        // Inject the request as `Mode::Private`.
+        let request = circuit::Request::new(circuit::Mode::Private, request);
+        // Ensure the request has a valid signature and serial numbers.
+        A::assert(request.verify());
+        // Cache the request caller.
+        self.circuit_caller = Some(request.caller().clone());
 
-        // If this is the main call, save the register types.
-        if is_main {
-            self.register_types = register_types;
-        }
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Request");
 
-        Ok(())
-    }
+        // Retrieve the number of public variables in the circuit.
+        let num_public = A::num_public();
 
-    /// Checks that the given function is well-formed for the given program. If `is_main` is `true`,
-    /// the register types will be set in the `Stack` for use as the main call.
-    fn process_function(&mut self, program: &Program<N>, function: &Function<N>, is_main: bool) -> Result<()> {
-        // Initialize a map of registers to their types.
-        let mut register_types = RegisterTypes::new();
+        // Store the inputs.
+        function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
+            use circuit::Eject;
 
-        // Step 1. Check the inputs are well-formed.
-        for input in function.inputs() {
-            // Check the input register type.
-            Self::check_input(program, &mut register_types, input.register(), &match input.value_type() {
-                ValueType::Constant(plaintext_type)
-                | ValueType::Public(plaintext_type)
-                | ValueType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                ValueType::Record(identifier) => RegisterType::Record(*identifier),
-            })?;
-        }
+            // If the circuit is in execute mode, then store the console input.
+            if let CallStack::Execute(..) = self.call_stack {
+                // Assign the console input to the register.
+                self.store(register, input.eject_value())?;
+            }
+            // Assign the circuit input to the register.
+            self.store_circuit(register, input.clone())
+        })?;
 
-        // Step 2. Check the instructions are well-formed.
+        // Execute the instructions.
         for instruction in function.instructions() {
-            // Check the instruction opcode, operands, and destinations.
-            Self::check_instruction(program, &mut register_types, instruction)?;
-        }
-
-        // Step 3. Check the outputs are well-formed.
-        for output in function.outputs() {
-            // Retrieve the register type and check the output register type.
-            Self::check_output(program, &register_types, output.register(), &match output.value_type() {
-                ValueType::Constant(plaintext_type)
-                | ValueType::Public(plaintext_type)
-                | ValueType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
-                ValueType::Record(identifier) => RegisterType::Record(*identifier),
-            })?;
-        }
-
-        // If this is the main call, save the register types.
-        if is_main {
-            self.register_types = register_types;
-        }
-
-        Ok(())
-    }
-
-    /// Ensure the given input register is well-formed.
-    fn check_input(
-        program: &Program<N>,
-        register_types: &mut RegisterTypes<N>,
-        register: &Register<N>,
-        register_type: &RegisterType<N>,
-    ) -> Result<()> {
-        // Ensure the register type is defined in the program.
-        match register_type {
-            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                // Ensure the interface is defined in the program.
-                if !program.contains_interface(interface_name) {
-                    bail!("Interface '{interface_name}' in '{}' is not defined.", program.id())
+            // If the circuit is in execute mode, then evaluate the instructions.
+            if let CallStack::Execute(..) = self.call_stack {
+                // If the evaluation fails, bail and return the error.
+                if let Err(error) = instruction.evaluate(self) {
+                    bail!("Failed to evaluate instruction: {error}");
                 }
             }
-            RegisterType::Record(identifier) => {
-                // Ensure the record type is defined in the program.
-                if !program.contains_record(identifier) {
-                    bail!("Record '{identifier}' in '{}' is not defined.", program.id())
-                }
-            }
-        };
-
-        // Insert the input register.
-        register_types.add_input(register.clone(), *register_type)?;
-
-        // Ensure the register type and the input type match.
-        if *register_type != register_types.get_type(program, register)? {
-            bail!("Input '{register}' does not match the expected input register type.")
-        }
-        Ok(())
-    }
-
-    /// Ensure the given output register is well-formed.
-    fn check_output(
-        program: &Program<N>,
-        register_types: &RegisterTypes<N>,
-        register: &Register<N>,
-        register_type: &RegisterType<N>,
-    ) -> Result<()> {
-        // Inform the user the output register is an input register, to ensure this is intended behavior.
-        if register_types.is_input(register) {
-            eprintln!("Output {register} in '{}' is an input register, ensure this is intended", program.id());
+            // Execute the instruction.
+            instruction.execute(self)?;
         }
 
-        // Ensure the register type is defined in the program.
-        match register_type {
-            RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
-            RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                // Ensure the interface is defined in the program.
-                if !program.contains_interface(interface_name) {
-                    bail!("Interface '{interface_name}' in '{}' is not defined.", program.id())
-                }
-            }
-            RegisterType::Record(identifier) => {
-                // Ensure the record type is defined in the program.
-                if !program.contains_record(identifier) {
-                    bail!("Record '{identifier}' in '{}' is not defined.", program.id())
-                }
-            }
-        };
+        // Load the outputs.
+        let outputs = function.outputs().iter().map(|output| {
+            // Retrieve the circuit output from the register.
+            self.load_circuit(&Operand::Register(output.register().clone()))
+        });
 
-        // Ensure the register type and the output type match.
-        if *register_type != register_types.get_type(program, register)? {
-            bail!("Output '{register}' does not match the expected output register type.")
-        }
-        Ok(())
-    }
+        #[cfg(debug_assertions)]
+        Self::log_circuit(format!("Function '{}()'", function.name()));
 
-    /// Ensures the given instruction is well-formed.
-    fn check_instruction(
-        program: &Program<N>,
-        register_types: &mut RegisterTypes<N>,
-        instruction: &Instruction<N>,
-    ) -> Result<()> {
-        // Ensure the opcode is well-formed.
-        Self::check_instruction_opcode(program, register_types, instruction)?;
-
-        // Initialize a vector to store the register types of the operands.
-        let mut operand_types = Vec::with_capacity(instruction.operands().len());
-        // Iterate over the operands, and retrieve the register type of each operand.
-        for operand in instruction.operands() {
-            // Retrieve and append the register type.
-            operand_types.push(match operand {
-                Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                Operand::Register(register) => register_types.get_type(program, register)?,
-            });
-        }
-
-        // Compute the destination register types.
-        let destination_types = instruction.output_types(program, &operand_types)?;
-
-        // Insert the destination register.
-        for (destination, destination_type) in
-            instruction.destinations().into_iter().zip_eq(destination_types.into_iter())
-        {
-            // Ensure the destination register is a locator (and does not reference a member).
-            ensure!(matches!(destination, Register::Locator(..)), "Destination '{destination}' must be a locator.");
-            // Insert the destination register.
-            register_types.add_destination(destination, destination_type)?;
-        }
-        Ok(())
-    }
-
-    /// Ensures the opcode is a valid opcode and corresponds to the correct instruction.
-    /// This method is called when adding a new closure or function to the program.
-    fn check_instruction_opcode(
-        program: &Program<N>,
-        register_types: &RegisterTypes<N>,
-        instruction: &Instruction<N>,
-    ) -> Result<()> {
-        match instruction.opcode() {
-            Opcode::Literal(opcode) => {
-                // Ensure the opcode **is** a reserved opcode.
-                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
-                // Ensure the instruction is not the cast operation.
-                ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-            }
-            Opcode::Call => {
-                // Retrieve the call operation.
-                let operation = match instruction {
-                    Instruction::Call(operation) => operation,
-                    _ => bail!("Instruction '{instruction}' is not a call operation."),
-                };
-
-                // Retrieve the closure name.
-                let closure_name = operation.name();
-                // Ensure the operation is defined.
-                if !program.contains_closure(closure_name) {
-                    bail!("Closure '{closure_name}' is not defined.")
-                }
-            }
-            Opcode::Cast => {
-                // Retrieve the cast operation.
-                let operation = match instruction {
-                    Instruction::Cast(operation) => operation,
-                    _ => bail!("Instruction '{instruction}' is not a cast operation."),
-                };
-
-                // Ensure the instruction has one destination register.
-                ensure!(
-                    instruction.destinations().len() == 1,
-                    "Instruction '{instruction}' has multiple destinations."
-                );
-
-                // Ensure the casted register type is defined.
-                match operation.register_type() {
-                    RegisterType::Plaintext(PlaintextType::Literal(..)) => {
-                        bail!("Casting to literal is currently unsupported")
-                    }
-                    RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
-                        // Ensure the interface name exists in the program.
-                        if !program.contains_interface(interface_name) {
-                            bail!("Interface '{interface_name}' is not defined.")
+        // If the function contains no function calls, then the number of public variables remains the same.
+        let mut contains_function_call = false;
+        for instruction in function.instructions().iter() {
+            if let Instruction::Call(call) = instruction {
+                match call.operator() {
+                    CallOperator::Locator(locator) => {
+                        if self.get_external_program(locator.program_id())?.contains_function(locator.resource()) {
+                            contains_function_call = true;
+                            break;
                         }
-                        // Retrieve the interface.
-                        let interface = program.get_interface(interface_name)?;
-                        // Ensure the operand types match the interface.
-                        register_types.matches_interface(program, instruction.operands(), &interface)?;
                     }
-                    RegisterType::Record(record_name) => {
-                        // Ensure the record type is defined in the program.
-                        if !program.contains_record(record_name) {
-                            bail!("Record '{record_name}' is not defined.")
+                    CallOperator::Resource(resource) => {
+                        if self.program().contains_function(resource) {
+                            contains_function_call = true;
+                            break;
                         }
-                        // Retrieve the record type.
-                        let record_type = program.get_record(record_name)?;
-                        // Ensure the operand types match the record type.
-                        register_types.matches_record(program, instruction.operands(), &record_type)?;
                     }
                 }
-            }
-            Opcode::Commit(opcode) => {
-                // Ensure the opcode **is** a reserved opcode.
-                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
-                // Ensure the instruction belongs to the defined set.
-                if ![
-                    "commit.bhp256",
-                    "commit.bhp512",
-                    "commit.bhp768",
-                    "commit.bhp1024",
-                    "commit.ped64",
-                    "commit.ped128",
-                ]
-                .contains(&opcode)
-                {
-                    bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
-                }
-                // Ensure the instruction is the correct one.
-                // match opcode {
-                //     "commit.bhp256" => ensure!(
-                //         matches!(instruction, Instruction::CommitBHP256(..)),
-                //         "Instruction '{instruction}' is not the opcode '{opcode}'."
-                //     ),
-                // }
-            }
-            Opcode::Hash(opcode) => {
-                // Ensure the opcode **is** a reserved opcode.
-                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
-                // Ensure the instruction belongs to the defined set.
-                if ![
-                    "hash.bhp256",
-                    "hash.bhp512",
-                    "hash.bhp768",
-                    "hash.bhp1024",
-                    "hash.ped64",
-                    "hash.ped128",
-                    "hash.psd2",
-                    "hash.psd4",
-                    "hash.psd8",
-                ]
-                .contains(&opcode)
-                {
-                    bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
-                }
-                // Ensure the instruction is the correct one.
-                // match opcode {
-                //     "hash.bhp256" => ensure!(
-                //         matches!(instruction, Instruction::HashBHP256(..)),
-                //         "Instruction '{instruction}' is not the opcode '{opcode}'."
-                //     ),
-                // }
             }
         }
-        Ok(())
+        // If the function does not contain function calls, ensure no new public variables were injected.
+        if !contains_function_call {
+            // Ensure the number of public variables remains the same.
+            ensure!(
+                A::num_public() == num_public,
+                "Illegal function operation: instructions injected public variables"
+            );
+        }
+
+        // Construct the response.
+        let response = circuit::Response::from_outputs(
+            request.program_id(),
+            function.inputs().len(),
+            request.tvk(),
+            outputs.collect::<Result<Vec<_>>>()?,
+            &function.output_types(),
+        );
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Response");
+
+        use circuit::{ToField, Zero};
+
+        let mut i64_balance = circuit::I64::zero();
+        let mut field_balance = circuit::Field::zero();
+
+        // Increment the balance by the amount in each record input.
+        for input in request.inputs() {
+            // Retrieve the balance from each record input.
+            let record_balance = match input {
+                // Dereference the balance to retrieve the u64 balance.
+                circuit::Value::Record(record) => &**record.balance(),
+                // Skip iterations that are not records.
+                _ => continue,
+            };
+
+            // Increment the i64 balance.
+            i64_balance += record_balance.clone().cast_as_dual();
+            // Increment the field balance.
+            field_balance += record_balance.to_field();
+        }
+
+        // Ensure the i64 balance matches the field balance.
+        A::assert_eq(i64_balance.to_field(), &field_balance);
+
+        // Decrement the balance by the amount in each record output.
+        for output in response.outputs() {
+            // Retrieve the balance from each record output.
+            let record_balance = match output {
+                // Dereference the balance to retrieve the u64 balance.
+                circuit::Value::Record(record) => &**record.balance(),
+                // Skip iterations that are not records.
+                _ => continue,
+            };
+
+            // Decrement the i64 balance.
+            i64_balance -= record_balance.clone().cast_as_dual();
+            // Decrement the field balance.
+            field_balance -= record_balance.to_field();
+        }
+
+        // If the program and function is not a special function, then ensure the i64 balance is positive.
+        if !(program_id.to_string() == "stake.aleo" && function.name().to_string() == "initialize") {
+            use circuit::{Eject, MSB};
+
+            // Ensure the i64 balance MSB is false.
+            A::assert(!i64_balance.msb());
+            // Ensure the i64 balance matches the field balance.
+            A::assert_eq(i64_balance.to_field(), &field_balance);
+
+            // Inject the field balance as `Mode::Public`.
+            let public_balance = circuit::Field::<A>::new(circuit::Mode::Public, field_balance.eject_value());
+            // Ensure the injected i64 balance matches.
+            A::assert_eq(public_balance, field_balance);
+
+            #[cfg(debug_assertions)]
+            println!("Logging fee: {}", i64_balance.eject_value());
+        }
+
+        #[cfg(debug_assertions)]
+        Self::log_circuit("Complete");
+
+        // If the circuit is in execute mode, then ensure the circuit is valid.
+        if let CallStack::Execute(..) = self.call_stack {
+            // If the circuit is not satisfied, then return early.
+            if !A::is_satisfied() {
+                bail!("The circuit for '{program_id}/{}' is not satisfied with the given inputs.", function.name());
+            }
+
+            #[cfg(debug_assertions)]
+            self.console_registers.iter().zip_eq(&self.circuit_registers).try_for_each(
+                |((console_index, console_register), (circuit_index, circuit_register))| {
+                    use circuit::Eject;
+
+                    // Ensure the console and circuit index match (executed in same order).
+                    ensure!(
+                        console_index == circuit_index,
+                        "Console register {console_index} and circuit register {circuit_index} indices do not match"
+                    );
+                    // Ensure the console and circuit registers match (executed to same value).
+                    ensure!(
+                        console_register == &circuit_register.eject_value(),
+                        "Console and circuit register values do not match at index {console_index}"
+                    );
+                    Ok(())
+                },
+            )?;
+        }
+
+        // Eject the response.
+        let response = circuit::Eject::eject_value(&response);
+        // Finalize the circuit into an assignment.
+        let assignment = A::eject_assignment_and_reset();
+        // Return the response and assignment.
+        Ok((response, assignment))
     }
 
-    /// Returns `true` if the given name is a reserved opcode.
-    fn is_reserved_opcode(name: &Identifier<N>) -> bool {
-        // Convert the given name to a string.
-        let name = name.to_string();
-        // Check if the given name matches the root of any opcode (the first part, up to the first '.').
-        Instruction::<N>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
+    /// Executes a program function on the given inputs.
+    ///
+    /// Note: To execute a transition, do **not** call this method. Instead, call `Process::execute`.
+    ///
+    /// # Errors
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    pub fn execute<R: Rng + CryptoRng>(&mut self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
+        // If the call stack is an execution, execute and compute the transition.
+        if let CallStack::Execute(ref authorization, ref execution) = call_stack {
+            // Retrieve the next request (without popping it).
+            let request = authorization.peek_next()?;
+
+            // Synthesize the circuit.
+            let (response, assignment) = self.execute_function(call_stack.clone())?;
+
+            // If the circuit key does not exist, use the assignment to synthesize the circuit key.
+            if !self.circuit_keys.contains_key(request.program_id(), request.function_name()) {
+                // Add the circuit key to the mapping.
+                self.circuit_keys.insert_from_assignment(request.program_id(), request.function_name(), &assignment)?;
+            }
+
+            // Retrieve the proving and verifying key.
+            let (proving_key, _verifying_key) = self.circuit_key(request.function_name())?;
+            // Execute the circuit.
+            let proof = proving_key.prove(&assignment, rng)?;
+            // Add the transition to the execution.
+            execution.push(Transition::from(&request, &response, proof, 0i64)?);
+            // Return the response.
+            Ok(response)
+        } else {
+            // Synthesize the circuit.
+            let (response, _assignment) = self.execute_function(call_stack)?;
+            // Return the response.
+            Ok(response)
+        }
+    }
+
+    /// Prints the current state of the circuit.
+    fn log_circuit<S: Into<String>>(scope: S) {
+        use colored::Colorize;
+
+        // Determine if the circuit is satisfied.
+        let is_satisfied = if A::is_satisfied() { "✅".green() } else { "❌".red() };
+        // Determine the count.
+        let (num_constant, num_public, num_private, num_constraints, num_gates) = A::count();
+
+        // Print the log.
+        println!(
+            "{is_satisfied} {:width$} (Constant: {num_constant}, Public: {num_public}, Private: {num_private}, Constraints: {num_constraints}, Gates: {num_gates})",
+            scope.into().bold(),
+            width = 20
+        );
     }
 }

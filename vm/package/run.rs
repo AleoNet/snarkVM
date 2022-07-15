@@ -18,56 +18,50 @@ use super::*;
 
 impl<N: Network> Package<N> {
     /// Runs a program function with the given inputs.
-    pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
+    pub fn run<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>, R: Rng + CryptoRng>(
         &self,
-        request: &Request<N>,
-    ) -> Result<(Response<N>, Transition<N>)> {
-        // Ensure the network ID matches.
-        ensure!(
-            **request.network_id() == N::ID,
-            "Network ID mismatch. Expected {}, but found {}",
-            N::ID,
-            request.network_id()
-        );
-
+        private_key: &PrivateKey<N>,
+        function_name: Identifier<N>,
+        inputs: &[Value<N>],
+        rng: &mut R,
+    ) -> Result<(Response<N>, Execution<N>)> {
         // Retrieve the main program.
-        let program = self.program_file.program();
+        let program = self.program();
         // Retrieve the program ID.
         let program_id = program.id();
-        // Ensure the program ID matches.
-        if program_id != request.program_id() {
-            bail!("The program '{}' does not exist. Expected {}.", request.program_id(), program_id);
-        }
         // Ensure that the function exists.
-        if !self.program_file().program().contains_function(request.function_name()) {
-            bail!("Function '{}' does not exist.", request.function_name())
+        if !program.contains_function(&function_name) {
+            bail!("Function '{function_name}' does not exist.")
         }
+
+        // Construct the process.
+        let process = self.get_process::<A>()?;
+
+        // Authorize the function call.
+        let authorization = process.authorize(private_key, program_id, function_name, inputs, rng)?;
+
+        // Prepare the locator.
+        let locator = Locator::<N>::from_str(&format!("{}/{}", program_id, function_name))?;
+        println!("🚀 Executing '{}'...\n", locator.to_string().bold());
 
         // Prepare the build directory.
-        let mut build_directory = self.directory.clone();
-        build_directory.push("build");
-
-        // Create the build directory.
-        if !build_directory.exists() {
-            std::fs::create_dir_all(&build_directory)?;
-        }
-
-        // Create the process.
-        let process = Process::<N, A>::new(program.clone())?;
-
+        let build_directory = self.build_directory();
         // Load the prover.
-        let prover = ProverFile::open(&build_directory, request.function_name())?;
+        let prover = ProverFile::open(&build_directory, &function_name)?;
         // Load the verifier.
-        let verifier = VerifierFile::open(&build_directory, request.function_name())?;
+        let verifier = VerifierFile::open(&build_directory, &function_name)?;
 
-        // Execute the synthesized circuit.
-        let (response, transition) = process.execute_synthesized(
-            request,
-            prover.proving_key(),
-            verifier.verifying_key(),
-            &mut rand::thread_rng(),
-        )?;
+        // Adds the circuit key to the process.
+        process.insert_circuit_key(
+            program_id,
+            &function_name,
+            prover.proving_key().clone(),
+            verifier.verifying_key().clone(),
+        );
 
-        Ok((response, transition))
+        // Execute the circuit.
+        let (response, execution) = process.execute(authorization, &mut rand::thread_rng())?;
+
+        Ok((response, execution))
     }
 }

@@ -31,22 +31,28 @@ impl<'de, N: Network> Deserialize<'de> for Record<N, Plaintext<N>> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "record"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "record plaintext"),
         }
     }
 }
 
 impl<N: Network> Serialize for Record<N, Ciphertext<N>> {
-    /// Serializes the record ciphertext into bytes.
+    /// Serializes the record ciphertext into a string or as bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        ToBytesSerializer::serialize_with_size_encoding(self, serializer)
+        match serializer.is_human_readable() {
+            true => serializer.collect_str(self),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        }
     }
 }
 
 impl<'de, N: Network> Deserialize<'de> for Record<N, Ciphertext<N>> {
-    /// Deserializes the record ciphertext from bytes.
+    /// Deserializes the record ciphertext from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "record")
+        match deserializer.is_human_readable() {
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "record ciphertext"),
+        }
     }
 }
 

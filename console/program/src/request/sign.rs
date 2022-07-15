@@ -121,7 +121,7 @@ impl<N: Network> Request<N> {
                     // Add the input hash to the inputs.
                     input_ids.push(InputID::Private(input_hash));
                 }
-                // An input record is computed to its serial number.
+                // A record input is computed to its serial number.
                 ValueType::Record(..) => {
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(index as u16);
@@ -134,7 +134,7 @@ impl<N: Network> Request<N> {
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
                     // Compute the record commitment.
-                    let commitment = record.to_commitment(&randomizer)?;
+                    let commitment = record.to_commitment(&program_id, &randomizer)?;
                     // Ensure the record belongs to the caller.
                     ensure!(**record.owner() == caller, "Input record does not belong to the signer");
                     // Ensure the record balance is less than or equal to 2^52.
@@ -161,6 +161,21 @@ impl<N: Network> Request<N> {
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
                     // Add gamma and the serial number to the inputs.
                     input_ids.push(InputID::Record(gamma, serial_number));
+                }
+                // An external record input is committed (using `tvk`) to a field element.
+                ValueType::ExternalRecord(..) => {
+                    // Ensure the input is a record.
+                    ensure!(matches!(input, Value::Record(..)), "Expected a record input");
+                    // Construct the (console) input index as a field element.
+                    let index = Field::from_u16(index as u16);
+                    // Compute the input randomizer as `HashToScalar(tvk || index)`.
+                    let input_randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
+                    // Commit to the input to a field element.
+                    let input_commitment = N::commit_bhp1024(&input.to_bits_le(), &input_randomizer)?;
+                    // Add the input commitment to the preimage.
+                    preimage.push(input_commitment);
+                    // Add the input commitment to the inputs.
+                    input_ids.push(InputID::ExternalRecord(input_commitment));
                 }
             }
         }

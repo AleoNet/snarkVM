@@ -33,9 +33,11 @@ pub enum InputID<N: Network> {
     Private(Field<N>),
     /// The gamma value and serial number of the record input.
     Record(Group<N>, Field<N>),
+    /// The commitment of the external record input.
+    ExternalRecord(Field<N>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Request<N: Network> {
     /// The request caller.
     caller: Address<N>,

@@ -29,13 +29,13 @@ pub struct Locator<N: Network> {
     /// The program ID.
     id: ProgramID<N>,
     /// The program resource.
-    resource: Option<Identifier<N>>,
+    resource: Identifier<N>,
 }
 
 impl<N: Network> Locator<N> {
     /// Returns the program ID.
     #[inline]
-    pub const fn id(&self) -> &ProgramID<N> {
+    pub const fn program_id(&self) -> &ProgramID<N> {
         &self.id
     }
 
@@ -47,13 +47,13 @@ impl<N: Network> Locator<N> {
 
     /// Returns the network-level domain (NLD).
     #[inline]
-    pub fn network(&self) -> Identifier<N> {
+    pub const fn network(&self) -> &Identifier<N> {
         self.id.network()
     }
 
     /// Returns the resource name.
     #[inline]
-    pub const fn resource(&self) -> &Option<Identifier<N>> {
+    pub const fn resource(&self) -> &Identifier<N> {
         &self.resource
     }
 }

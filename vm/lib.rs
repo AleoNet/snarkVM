@@ -95,9 +95,6 @@ pub mod prelude {
     #[cfg(feature = "parameters")]
     pub use crate::parameters::prelude::*;
 
-    #[cfg(feature = "r1cs")]
-    pub use crate::r1cs::*;
-
     #[cfg(feature = "utilities")]
     pub use crate::utilities::*;
 }

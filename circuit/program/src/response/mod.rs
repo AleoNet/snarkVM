@@ -20,7 +20,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod from_outputs;
 mod verify;
 
-use crate::Value;
+use crate::{ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field};
 
@@ -33,6 +33,8 @@ pub enum OutputID<A: Aleo> {
     Private(Field<A>),
     /// The `(commitment, nonce, checksum)` tuple of the record output.
     Record(Field<A>, Field<A>, Field<A>),
+    /// The commitment of the external record output.
+    ExternalRecord(Field<A>),
 }
 
 #[cfg(console)]
@@ -54,6 +56,8 @@ impl<A: Aleo> Inject for OutputID<A> {
                 Field::new(Mode::Public, nonce),
                 Field::new(Mode::Public, checksum),
             ),
+            // Inject the expected commitment as `Mode::Public`.
+            console::OutputID::ExternalRecord(commitment) => Self::ExternalRecord(Field::new(Mode::Public, commitment)),
         }
     }
 }
@@ -102,6 +106,16 @@ impl<A: Aleo> OutputID<A> {
         // Return the output ID.
         Self::Record(output_commitment, output_nonce, output_checksum)
     }
+
+    /// Initializes an external record output ID.
+    fn external_record(expected_commitment: Field<A>) -> Self {
+        // Inject the expected commitment as `Mode::Public`.
+        let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
+        // Ensure the injected commitment matches the given commitment.
+        A::assert_eq(&output_commitment, expected_commitment);
+        // Return the output ID.
+        Self::ExternalRecord(output_commitment)
+    }
 }
 
 #[cfg(console)]
@@ -117,6 +131,7 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Record(commitment, nonce, checksum) => {
                 Mode::combine(commitment.eject_mode(), [nonce.eject_mode(), checksum.eject_mode()])
             }
+            Self::ExternalRecord(commitment) => commitment.eject_mode(),
         }
     }
 
@@ -129,6 +144,7 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Record(commitment, nonce, checksum) => {
                 console::OutputID::Record(commitment.eject_value(), nonce.eject_value(), checksum.eject_value())
             }
+            Self::ExternalRecord(commitment) => console::OutputID::ExternalRecord(commitment.eject_value()),
         }
     }
 }
@@ -180,8 +196,17 @@ impl<A: Aleo> Inject for Response<A> {
                         // Return the output.
                         Ok(output)
                     }
-                    // An output record is injected as `Mode::Private`.
+                    // A record output is injected as `Mode::Private`.
                     console::OutputID::Record(..) => {
+                        // Inject the output as `Mode::Private`.
+                        let output = Value::new(Mode::Private, output.clone());
+                        // Ensure the output is a record.
+                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
+                        // Return the output.
+                        Ok(output)
+                    }
+                    // An external record output is injected as `Mode::Private`.
+                    console::OutputID::ExternalRecord(..) => {
                         // Inject the output as `Mode::Private`.
                         let output = Value::new(Mode::Private, output.clone());
                         // Ensure the output is a record.

@@ -18,7 +18,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-use crate::{Identifier, PlaintextType, ValueType};
+use crate::{Identifier, Locator, PlaintextType, ValueType};
 use snarkvm_console_network::prelude::*;
 
 use enum_index::EnumIndex;
@@ -29,6 +29,8 @@ pub enum RegisterType<N: Network> {
     Plaintext(PlaintextType<N>),
     /// A record name.
     Record(Identifier<N>),
+    /// A record locator.
+    ExternalRecord(Locator<N>),
 }
 
 impl<N: Network> From<ValueType<N>> for RegisterType<N> {
@@ -39,6 +41,7 @@ impl<N: Network> From<ValueType<N>> for RegisterType<N> {
             | ValueType::Public(plaintext_type)
             | ValueType::Private(plaintext_type) => RegisterType::Plaintext(plaintext_type),
             ValueType::Record(record_name) => RegisterType::Record(record_name),
+            ValueType::ExternalRecord(locator) => RegisterType::ExternalRecord(locator),
         }
     }
 }

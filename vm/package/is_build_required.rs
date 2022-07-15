@@ -20,21 +20,18 @@ impl<N: Network> Package<N> {
     /// Returns `true` if the package is stale or has not been built.
     pub fn is_build_required<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(&self) -> Result<bool> {
         // Retrieve the main program.
-        let program = self.program_file.program();
+        let program = self.program();
 
         // Prepare the build directory.
-        let mut build_directory = self.directory.clone();
-        build_directory.push("build");
-
-        // Create the build directory.
+        let build_directory = self.build_directory();
+        // If the build directory does not exist, then the package is stale.
         if !build_directory.exists() {
             return Ok(true);
         }
 
         // Initialize a boolean indicator if we need to build the circuit.
         let mut requires_build = true;
-
-        // If the main AVM file exists, check if its program checksum matches, to determine if we can skip.
+        // If the main AVM file exists, check if the AVM and Aleo file matches, to determine if we can skip.
         if AVMFile::<N>::main_exists_at(&build_directory) {
             // Retrieve the main AVM file.
             let candidate = AVMFile::open(&build_directory, &self.program_id, true)?;
