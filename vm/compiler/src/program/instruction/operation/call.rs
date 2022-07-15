@@ -147,7 +147,7 @@ impl<N: Network> Call<N> {
 impl<N: Network> Call<N> {
     /// Returns `true` if the instruction is a function call.
     #[inline]
-    pub fn is_function_call<A: circuit::Aleo<Network = N>>(&self, stack: &Stack<N, A>) -> Result<bool> {
+    pub fn is_function_call<A: circuit::Aleo<Network = N>>(&self, stack: &Stack<N>) -> Result<bool> {
         match self.operator() {
             // Check if the locator is for a function.
             CallOperator::Locator(locator) => {
@@ -165,7 +165,7 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
@@ -187,7 +187,7 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
             }
             // Evaluate the closure, and load the outputs.
-            substack.evaluate_closure(&closure, &inputs)?
+            substack.evaluate_closure::<A>(&closure, &inputs)?
         }
         // If the operator is a function, retrieve the function and compute the output.
         else if let Ok(function) = substack.program().get_function(resource) {
@@ -196,7 +196,7 @@ impl<N: Network> Call<N> {
                 bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
             }
             // Evaluate the function, and load the outputs.
-            substack.evaluate_function(&function, &inputs)?
+            substack.evaluate_function::<A>(&function, &inputs)?
         }
         // Else, throw an error.
         else {
@@ -216,7 +216,7 @@ impl<N: Network> Call<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
@@ -288,7 +288,7 @@ impl<N: Network> Call<N> {
                         authorization.push(request.clone());
 
                         // Execute the request.
-                        let response = substack.execute_function(call_stack, rng)?;
+                        let response = substack.execute_function::<A, _>(call_stack, rng)?;
 
                         // Return the request and response.
                         (request, response)
@@ -308,9 +308,9 @@ impl<N: Network> Call<N> {
                         })?;
 
                         // Evaluate the function, and load the outputs.
-                        let console_outputs = substack.evaluate_function(&function, &inputs)?;
+                        let console_outputs = substack.evaluate_function::<A>(&function, &inputs)?;
                         // Execute the request.
-                        let response = substack.execute_function(registers.call_stack(), rng)?;
+                        let response = substack.execute_function::<A, _>(registers.call_stack(), rng)?;
                         // Ensure the values are equal.
                         if console_outputs != response.outputs() {
                             #[cfg(debug_assertions)]
@@ -377,11 +377,7 @@ impl<N: Network> Call<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Retrieve the program and resource.
         let (is_external, program, resource) = match &self.operator {
             // Retrieve the program and resource from the locator.

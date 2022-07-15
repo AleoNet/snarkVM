@@ -97,10 +97,7 @@ impl<N: Network> Block<N> {
     //     }
 
     /// Returns `true` if the block is well-formed.
-    pub fn is_valid<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
-        &self,
-        process: &Process<N, A>,
-    ) -> bool {
+    pub fn is_valid(&self, process: &Process<N>) -> bool {
         // If the block is the genesis block, check that it is valid.
         if self.header.height() == 0 && !self.is_genesis() {
             warn!("Invalid genesis block");

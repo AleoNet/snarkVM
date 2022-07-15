@@ -47,10 +47,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the transaction is valid.
-    pub fn is_valid<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
-        &self,
-        process: &Process<N, A>,
-    ) -> bool {
+    pub fn is_valid(&self, process: &Process<N>) -> bool {
         match self {
             Transaction::Deploy(id, program, _verifying_key) => {
                 // Convert the program into bytes.

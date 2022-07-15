@@ -341,7 +341,7 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.evaluate::<A>(stack, registers))
@@ -351,7 +351,7 @@ impl<N: Network> Instruction<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         instruction!(self, |instruction| instruction.execute::<A>(stack, registers))
@@ -359,11 +359,7 @@ impl<N: Network> Instruction<N> {
 
     /// Returns the output type from the given input types.
     #[inline]
-    pub fn output_types<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         instruction!(self, |instruction| instruction.output_types(stack, input_types))
     }
 }

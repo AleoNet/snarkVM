@@ -51,7 +51,7 @@ macro_rules! cast_ref {
 
 thread_local! {
     /// The process for Aleo Testnet3 (V0).
-    pub(crate) static TESTNET3_V0: RefCell<Process<crate::prelude::Testnet3, crate::circuit::AleoV0>> = RefCell::new(Process::new().expect("Failed to initialize the testnet3 process"));
+    pub(crate) static TESTNET3_V0: RefCell<Process<crate::prelude::Testnet3>> = RefCell::new(Process::new().expect("Failed to initialize the testnet3 process"));
 }
 
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
@@ -61,7 +61,7 @@ macro_rules! process {
         // Process the logic.
         match N::ID {
             crate::prelude::Testnet3::ID => {
-                TESTNET3_V0.with(|process| $logic!(process.borrow(), crate::prelude::Testnet3))
+                TESTNET3_V0.with(|process| $logic!(process.borrow(), crate::prelude::Testnet3, crate::circuit::AleoV0))
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
@@ -74,9 +74,8 @@ macro_rules! process_mut {
     ($logic:ident) => {{
         // Process the logic.
         match N::ID {
-            crate::prelude::Testnet3::ID => {
-                TESTNET3_V0.with(|process| $logic!(process.borrow_mut(), crate::prelude::Testnet3))
-            }
+            crate::prelude::Testnet3::ID => TESTNET3_V0
+                .with(|process| $logic!(process.borrow_mut(), crate::prelude::Testnet3, crate::circuit::AleoV0)),
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
     }};
@@ -90,7 +89,7 @@ impl VM {
     pub fn add_program<N: Network>(program: &Program<N>) -> Result<()> {
         // Compute the core logic.
         macro_rules! logic {
-            ($process:expr, $network:path) => {{
+            ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the program.
                 let program = cast_ref!(&program as Program<$network>);
                 // Add the program.
@@ -112,7 +111,7 @@ impl VM {
     ) -> Result<Authorization<N>> {
         // Compute the core logic.
         macro_rules! logic {
-            ($process:expr, $network:path) => {{
+            ($process:expr, $network:path, $aleo:path) => {{
                 let inputs = inputs.to_vec();
 
                 // Prepare the inputs.
@@ -122,7 +121,8 @@ impl VM {
                 let inputs = cast_ref!(inputs as Vec<Value<$network>>);
 
                 // Compute the authorization.
-                let authorization = $process.authorize(private_key, program_id, function_name.clone(), inputs, rng)?;
+                let authorization =
+                    $process.authorize::<$aleo, _>(private_key, program_id, function_name.clone(), inputs, rng)?;
 
                 // Return the authorization.
                 Ok(cast_ref!(authorization as Authorization<N>).clone())
@@ -140,12 +140,12 @@ impl VM {
     ) -> Result<(Response<N>, Transaction<N>)> {
         // Compute the core logic.
         macro_rules! logic {
-            ($process:expr, $network:path) => {{
+            ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the authorization.
                 let authorization = cast_ref!(authorization as Authorization<$network>);
 
                 // Execute the call.
-                let (response, execution) = $process.execute(authorization.clone(), rng)?;
+                let (response, execution) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
                 // Construct the transaction.
                 let transaction = Transaction::execute(execution.to_vec())?;
 
@@ -220,7 +220,7 @@ impl VM {
 
                 // Compute the core logic.
                 macro_rules! logic {
-                    ($process:expr, $network:path) => {{
+                    ($process:expr, $network:path, $aleo:path) => {{
                         // Prepare the transitions.
                         let transitions = cast_ref!(&transitions as Vec<Transition<$network>>);
                         // Verify the execution.

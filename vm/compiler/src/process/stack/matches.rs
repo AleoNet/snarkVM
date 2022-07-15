@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network> Stack<N> {
     /// Checks that the given value matches the layout of the value type.
     pub fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
         // Ensure the value matches the declared value type in the register.
@@ -100,7 +100,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network> Stack<N> {
     /// Checks that the given record matches the layout of the record type.
     /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.

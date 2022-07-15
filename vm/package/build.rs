@@ -32,12 +32,12 @@ impl<N: Network> Package<N> {
         }
 
         // Construct the process.
-        let process = self.get_process::<A>(PackageMode::Build)?;
+        let process = self.get_process(PackageMode::Build)?;
 
         // Load each function circuit.
         for function_name in program.functions().keys() {
             // Synthesize the proving and verifying key.
-            process.synthesize_key(program_id, function_name, &mut rand::thread_rng())?;
+            process.synthesize_key::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
 
             // Retrieve the program.
             let program = process.get_program(program_id)?;

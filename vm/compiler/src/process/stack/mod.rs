@@ -189,35 +189,28 @@ impl<N: Network> CallStack<N> {
 }
 
 #[derive(Clone)]
-pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Stack<N: Network> {
     /// The program (record types, interfaces, functions).
     program: Program<N>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
     circuit_keys: CircuitKeys<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
-    external_stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
+    external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
-    _phantom: core::marker::PhantomData<A>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network> Stack<N> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
     pub fn new(program: Program<N>, circuit_keys: CircuitKeys<N>) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
-        Ok(Self {
-            program,
-            circuit_keys,
-            external_stacks: IndexMap::new(),
-            program_types: IndexMap::new(),
-            _phantom: core::marker::PhantomData,
-        })
+        Ok(Self { program, circuit_keys, external_stacks: IndexMap::new(), program_types: IndexMap::new() })
     }
 
     /// Adds a new external stack to the stack.
     #[inline]
-    pub fn add_external_stack(&mut self, external_stack: Stack<N, A>) -> Result<()> {
+    pub fn add_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = *external_stack.program_id();
         // Ensure the external stack is not already added.
@@ -279,7 +272,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Returns the external stack for the given program ID.
     #[inline]
-    pub fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N, A>> {
+    pub fn get_external_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
         // Retrieve the external stack.
         self.external_stacks.get(program_id).ok_or_else(|| anyhow!("External program '{program_id}' does not exist."))
     }
@@ -319,7 +312,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
     /// Synthesizes the proving key and verifying key for the given function name.
     #[inline]
-    pub fn synthesize_key<R: Rng + CryptoRng>(&self, function_name: &Identifier<N>, rng: &mut R) -> Result<()> {
+    pub fn synthesize_key<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        function_name: &Identifier<N>,
+        rng: &mut R,
+    ) -> Result<()> {
         // Retrieve the program ID.
         let program_id = self.program.id();
         // Retrieve the function input types.
@@ -350,7 +347,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
-        let _response = self.execute_function(call_stack, rng)?;
+        let _response = self.execute_function::<A, R>(call_stack, rng)?;
         Ok(())
     }
 
@@ -366,14 +363,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_closure(&self, closure: &Closure<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_closure<A: circuit::Aleo<Network = N>>(
+        &self,
+        closure: &Closure<N>,
+        inputs: &[Value<N>],
+    ) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
         // Initialize the registers.
-        let mut registers = Registers::new(CallStack::Evaluate, self.get_register_types(closure.name())?.clone());
+        let mut registers =
+            Registers::<N, A>::new(CallStack::Evaluate, self.get_register_types(closure.name())?.clone());
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -403,14 +405,19 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_function(&self, function: &Function<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_function<A: circuit::Aleo<Network = N>>(
+        &self,
+        function: &Function<N>,
+        inputs: &[Value<N>],
+    ) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
 
         // Initialize the registers.
-        let mut registers = Registers::new(CallStack::Evaluate, self.get_register_types(function.name())?.clone());
+        let mut registers =
+            Registers::<N, A>::new(CallStack::Evaluate, self.get_register_types(function.name())?.clone());
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -440,7 +447,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_closure(
+    pub fn execute_closure<A: circuit::Aleo<Network = N>>(
         &self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
@@ -501,7 +508,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<R: Rng + CryptoRng>(&self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
+    pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        call_stack: CallStack<N>,
+        rng: &mut R,
+    ) -> Result<Response<N>> {
         // Ensure the circuit environment is clean.
         A::reset();
 
@@ -551,7 +562,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         A::assert(request.verify(&function.input_types(), &tpk));
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Request");
+        Self::log_circuit::<A, _>("Request");
 
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
@@ -586,7 +597,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             // If the instruction was a function call, then set the tracker to `true`.
             if let Instruction::Call(call) = instruction {
                 // Check if the call is a function call.
-                if call.is_function_call(self)? {
+                if call.is_function_call::<A>(self)? {
                     contains_function_call = true;
                 }
             }
@@ -600,7 +611,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             .collect::<Result<Vec<_>>>()?;
 
         #[cfg(debug_assertions)]
-        Self::log_circuit(format!("Function '{}()'", function.name()));
+        Self::log_circuit::<A, _>(format!("Function '{}()'", function.name()));
 
         // If the function does not contain function calls, ensure no new public variables were injected.
         if !contains_function_call {
@@ -618,7 +629,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         );
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Response");
+        Self::log_circuit::<A, _>("Response");
 
         use circuit::{ToField, Zero};
 
@@ -686,7 +697,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         #[cfg(debug_assertions)]
-        Self::log_circuit("Complete");
+        Self::log_circuit::<A, _>("Complete");
 
         // Eject the fee.
         let fee = i64_gates.eject_value();
@@ -741,7 +752,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 
     /// Prints the current state of the circuit.
-    fn log_circuit<S: Into<String>>(scope: S) {
+    fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 
         // Determine if the circuit is satisfied.

@@ -68,7 +68,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
@@ -103,7 +103,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Ensure the number of operands is correct.
@@ -136,11 +136,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types<A: circuit::Aleo<Network = N>>(
-        &self,
-        _stack: &Stack<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())

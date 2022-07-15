@@ -139,10 +139,7 @@ impl<N: Network> Package<N> {
     }
 
     /// Returns a new process for the package.
-    pub fn get_process<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
-        &self,
-        mode: PackageMode<N>,
-    ) -> Result<Process<N, A>> {
+    pub fn get_process(&self, mode: PackageMode<N>) -> Result<Process<N>> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
         // Ensure the build directory exists.
@@ -154,12 +151,12 @@ impl<N: Network> Package<N> {
         let mut process = if let PackageMode::Build = mode {
             match SRSFile::<N>::exists_at(&build_directory) {
                 // Load the universal SRS, then initialize the process.
-                true => Process::<N, A>::from_universal_srs(SRSFile::open(&build_directory)?.universal_srs())?,
+                true => Process::<N>::from_universal_srs(SRSFile::open(&build_directory)?.universal_srs())?,
                 // Create the universal SRS, then initialize the process.
-                false => Process::<N, A>::from_universal_srs(SRSFile::create(&build_directory)?.universal_srs())?,
+                false => Process::<N>::from_universal_srs(SRSFile::create(&build_directory)?.universal_srs())?,
             }
         } else {
-            Process::<N, A>::new()?
+            Process::<N>::new()?
         };
 
         // Prepare the imports directory.

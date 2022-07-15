@@ -35,10 +35,10 @@ impl<N: Network> Package<N> {
         }
 
         // Construct the process.
-        let process = self.get_process::<A>(PackageMode::Run(function_name))?;
+        let process = self.get_process(PackageMode::Run(function_name))?;
 
         // Authorize the function call.
-        let authorization = process.authorize(private_key, program_id, function_name, inputs, rng)?;
+        let authorization = process.authorize::<A, R>(private_key, program_id, function_name, inputs, rng)?;
 
         // Prepare the locator.
         let locator = Locator::<N>::from_str(&format!("{}/{}", program_id, function_name))?;
@@ -90,7 +90,7 @@ impl<N: Network> Package<N> {
         process.insert_key(program_id, &function_name, prover.proving_key().clone(), verifier.verifying_key().clone());
 
         // Execute the circuit.
-        let (response, execution) = process.execute(authorization, rng)?;
+        let (response, execution) = process.execute::<A, R>(authorization, rng)?;
 
         Ok((response, execution))
     }

@@ -73,10 +73,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns `true` if the transactions are well-formed.
-    pub fn is_valid<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(
-        &self,
-        process: &Process<N, A>,
-    ) -> bool {
+    pub fn is_valid(&self, process: &Process<N>) -> bool {
         // Ensure the transactions list is not empty.
         if self.transactions.is_empty() {
             eprintln!("Cannot validate an empty transactions list");

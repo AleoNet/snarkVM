@@ -78,7 +78,7 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         // Load the operands values.
@@ -194,7 +194,7 @@ impl<N: Network> Cast<N> {
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>>(
         &self,
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
@@ -328,11 +328,7 @@ impl<N: Network> Cast<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),

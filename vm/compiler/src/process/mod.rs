@@ -49,16 +49,16 @@ use console::{
 
 use indexmap::IndexMap;
 
-pub struct Process<N: Network, A: circuit::Aleo<Network = N>> {
+pub struct Process<N: Network> {
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of program IDs to stacks.
-    stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
+    stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
     circuit_keys: CircuitKeys<N>,
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
+impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn new() -> Result<Self> {
@@ -96,7 +96,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.
     #[inline]
-    pub fn synthesize_key<R: Rng + CryptoRng>(
+    pub fn synthesize_key<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
@@ -105,7 +105,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Retrieve the stack.
         let stack = self.get_stack(program_id)?;
         // Synthesize the proving and verifying key.
-        stack.synthesize_key(function_name, rng)
+        stack.synthesize_key::<A, R>(function_name, rng)
     }
 
     /// Returns the proving key for the given program ID and function name.
@@ -144,13 +144,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N, A>> {
+    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N>> {
         self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
     }
 
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
-    pub fn authorize<R: Rng + CryptoRng>(
+    pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
@@ -184,8 +184,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Retrieve the stack.
         let stack = self.get_stack(program.id())?;
         // Construct the authorization from the function.
-        let _response =
-            stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
+        let _response = stack
+            .execute_function::<A, R>(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
 
         // Return the authorization.
         Ok(authorization)
@@ -193,7 +193,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Evaluates a program function on the given request.
     #[inline]
-    pub fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, request: &Request<N>) -> Result<Response<N>> {
         // Retrieve the program, function, and input types.
         let (program, function, input_types, output_types) =
             self.get_function_info(request.program_id(), request.function_name())?;
@@ -215,7 +215,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Prepare the stack.
         let stack = self.get_stack(program.id())?;
         // Evaluate the function.
-        let outputs = stack.evaluate_function(&function, request.inputs())?;
+        let outputs = stack.evaluate_function::<A>(&function, request.inputs())?;
         // Compute the response.
         let response = Response::new(program.id(), request.inputs().len(), request.tvk(), outputs, &output_types)?;
 
@@ -230,7 +230,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Executes the given authorization.
     #[inline]
-    pub fn execute<R: Rng + CryptoRng>(
+    pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
@@ -257,7 +257,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Initialize the execution.
         let execution = Execution::new();
         // Execute the circuit.
-        let response = stack.execute_function(CallStack::Execute(authorization, execution.clone()), rng)?;
+        let response = stack.execute_function::<A, R>(CallStack::Execute(authorization, execution.clone()), rng)?;
 
         Ok((response, execution))
     }
@@ -287,7 +287,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
                 bail!("Failed to verify a transition output")
             }
             // Ensure the fee is correct.
-            match Stack::<N, A>::is_coinbase(transition.program_id(), transition.function_name()) {
+            match Stack::is_coinbase(transition.program_id(), transition.function_name()) {
                 true => ensure!(transition.fee() < &0, "The fee must be negative in a coinbase transition"),
                 false => ensure!(transition.fee() >= &0, "The fee must be zero or positive"),
             }
@@ -431,12 +431,12 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+                let mut process = Process::<CurrentNetwork>::new().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
                 // Authorize the function call.
                 let authorization = process
-                    .authorize(
+                    .authorize::<CurrentAleo, _>(
                         &caller_private_key,
                         program.id(),
                         function_name,
@@ -449,7 +449,7 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution) = process.execute(authorization, rng).unwrap();
+                let (_response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the transition.
                 execution.get(0).unwrap()
@@ -509,25 +509,31 @@ mod tests {
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
         // Authorize the function call.
         let authorization = process
-            .authorize(&caller_private_key, program.id(), function_name, &[r0.clone(), r1.clone()], rng)
+            .authorize::<CurrentAleo, _>(
+                &caller_private_key,
+                program.id(),
+                function_name,
+                &[r0.clone(), r1.clone()],
+                rng,
+            )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.get(0).unwrap();
 
         // Compute the output value.
-        let response = process.evaluate(&request).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
 
         // Execute the request.
-        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -564,9 +570,10 @@ mod tests {
 
         process.add_program(&program).unwrap();
 
-        let authorization =
-            process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1], rng).unwrap();
-        let result = process.execute(authorization, rng);
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1], rng)
+            .unwrap();
+        let result = process.execute::<CurrentAleo, _>(authorization, rng);
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
@@ -593,11 +600,11 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
-        process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
     }
 
     #[test]
@@ -640,26 +647,32 @@ function hello_world:
         let record_b = Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private }}")).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
         // Authorize the function call.
         let authorization = process
-            .authorize(&caller_private_key, program.id(), function_name, &[record_a.clone(), record_b.clone()], rng)
+            .authorize::<CurrentAleo, _>(
+                &caller_private_key,
+                program.id(),
+                function_name,
+                &[record_a.clone(), record_b.clone()],
+                rng,
+            )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.get(0).unwrap();
 
         // Compute the output value.
-        let response = process.evaluate(&request).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(record_a, candidate[0]);
         assert_eq!(record_b, candidate[1]);
 
         // Execute the request.
-        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(record_a, candidate[0]);
@@ -737,25 +750,26 @@ function compute:
         let r5 = Value::from_str("8field").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
-        process.synthesize_key(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
         // Authorize the function call.
-        let authorization =
-            process.authorize(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng).unwrap();
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng)
+            .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.get(0).unwrap();
 
         // Compute the output value.
-        let response = process.evaluate(&request).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -764,7 +778,7 @@ function compute:
         assert_eq!(r5, candidate[3]);
 
         // Execute the request.
-        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(4, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -844,26 +858,27 @@ function transfer:
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
         // Authorize the function call.
-        let authorization =
-            process.authorize(&caller0_private_key, program.id(), function_name, &[r0, r1, r2], rng).unwrap();
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller0_private_key, program.id(), function_name, &[r0, r1, r2], rng)
+            .unwrap();
         assert_eq!(authorization.len(), 2);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
         let mut auth_stack = authorization.to_vec_deque();
 
         // Compute the output value.
-        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r4, candidate[0]);
 
         // Compute the output value.
-        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(r4, candidate[0]);
@@ -873,7 +888,7 @@ function transfer:
         assert_eq!(authorization.len(), 2);
 
         // Execute the request.
-        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(r4, candidate[0]);
@@ -928,7 +943,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program0).unwrap();
 
@@ -983,34 +998,35 @@ function transfer:
             .unwrap();
 
         // Authorize the function call.
-        let authorization =
-            process.authorize(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng).unwrap();
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng)
+            .unwrap();
         assert_eq!(authorization.len(), 4);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
         let mut auth_stack = authorization.to_vec_deque();
 
         // Compute the output value.
-        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r5, candidate[0]);
 
         // Compute the output value.
-        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r4, candidate[0]);
 
         // Compute the output value.
-        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
         // Compute the output value.
-        let response = process.evaluate(&auth_stack.pop_back().unwrap()).unwrap();
+        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(r4, candidate[0]);
@@ -1020,7 +1036,7 @@ function transfer:
         assert_eq!(authorization.len(), 4);
 
         // Execute the request.
-        let (response, execution) = process.execute(authorization, rng).unwrap();
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(2, candidate.len());
         assert_eq!(r4, candidate[0]);

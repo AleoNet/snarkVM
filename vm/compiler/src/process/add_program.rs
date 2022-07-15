@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
+impl<N: Network> Process<N> {
     /// Adds a new program to the process.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
@@ -79,9 +79,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
+impl<N: Network> Process<N> {
     /// Checks that the given closure is well-formed for the given program.
-    fn process_closure(stack: &Stack<N, A>, closure: &Closure<N>) -> Result<RegisterTypes<N>> {
+    fn process_closure(stack: &Stack<N>, closure: &Closure<N>) -> Result<RegisterTypes<N>> {
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
@@ -109,7 +109,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     }
 
     /// Checks that the given function is well-formed for the given program.
-    fn process_function(stack: &Stack<N, A>, function: &Function<N>) -> Result<RegisterTypes<N>> {
+    fn process_function(stack: &Stack<N>, function: &Function<N>) -> Result<RegisterTypes<N>> {
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
@@ -136,7 +136,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Ensure the given input register is well-formed.
     fn check_input(
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         register_types: &mut RegisterTypes<N>,
         register: &Register<N>,
         register_type: &RegisterType<N>,
@@ -176,7 +176,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Ensure the given output register is well-formed.
     fn check_output(
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         register_types: &RegisterTypes<N>,
         register: &Register<N>,
         register_type: &RegisterType<N>,
@@ -222,7 +222,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
 
     /// Ensures the given instruction is well-formed.
     fn check_instruction(
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         register_types: &mut RegisterTypes<N>,
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
@@ -259,7 +259,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Ensures the opcode is a valid opcode and corresponds to the correct instruction.
     /// This method is called when adding a new closure or function to the program.
     fn check_instruction_opcode(
-        stack: &Stack<N, A>,
+        stack: &Stack<N>,
         register_types: &RegisterTypes<N>,
         closure_or_function_name: &Identifier<N>,
         instruction: &Instruction<N>,
