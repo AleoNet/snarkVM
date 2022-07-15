@@ -21,8 +21,8 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the owner.
         let owner = Owner::read_le(&mut reader)?;
-        // Read the balance.
-        let balance = Balance::read_le(&mut reader)?;
+        // Read the gates.
+        let gates = Balance::read_le(&mut reader)?;
         // Read the number of entries in the record data.
         let num_entries = u16::read_le(&mut reader)?;
         // Read the record data.
@@ -40,7 +40,21 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
             data.insert(identifier, entry);
         }
 
-        Ok(Self { owner, balance, data })
+        // Prepare the reserved entry names.
+        let reserved = [
+            Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
+            Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
+        ];
+        // Ensure the entries has no duplicate names.
+        if has_duplicates(data.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
+            return Err(error(format!("Duplicate entry type found in record")));
+        }
+        // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
+        if data.len() > N::MAX_DATA_ENTRIES {
+            return Err(error("Failed to parse record: too many entries"));
+        }
+
+        Ok(Self { owner, gates, data })
     }
 }
 
@@ -49,8 +63,8 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the owner.
         self.owner.write_le(&mut writer)?;
-        // Write the balance.
-        self.balance.write_le(&mut writer)?;
+        // Write the gates.
+        self.gates.write_le(&mut writer)?;
         // Write the number of entries in the record data.
         (self.data.len() as u16).write_le(&mut writer)?;
         // Write each entry.
@@ -79,7 +93,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         // Construct a new record.
         let expected = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }",
         )?;
 
         // Check the byte representation.

@@ -138,9 +138,9 @@ impl<N: Network> Request<N> {
                         let commitment = record.to_commitment(&self.program_id, record_name, &randomizer)?;
                         // Ensure the record belongs to the caller.
                         ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
-                        // Ensure the record balance is less than or equal to 2^52.
-                        if !(**record.balance()).to_bits_le()[52..].iter().all(|bit| !bit) {
-                            bail!("Input record contains an invalid balance: {}", record.balance());
+                        // Ensure the record gates is less than or equal to 2^52.
+                        if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
+                            bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                         }
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -214,7 +214,7 @@ mod tests {
 
             // Prepare a record belonging to the address.
             let record_string =
-                format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
+                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
             let input_constant = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();

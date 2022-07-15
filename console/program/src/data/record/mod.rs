@@ -44,8 +44,8 @@ use indexmap::IndexMap;
 pub struct Record<N: Network, Private: Visibility> {
     /// The owner of the program record.
     owner: Owner<N, Private>,
-    /// The balance of the program record.
-    balance: Balance<N, Private>,
+    /// The Aleo balance (in gates) of the program record.
+    gates: Balance<N, Private>,
     /// The program data.
     data: IndexMap<Identifier<N>, Entry<N, Private>>,
 }
@@ -54,7 +54,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
     /// Initializes a new record.
     pub fn from_plaintext(
         owner: Owner<N, Plaintext<N>>,
-        balance: Balance<N, Plaintext<N>>,
+        gates: Balance<N, Plaintext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Plaintext<N>>>,
     ) -> Result<Self> {
         // Ensure the members has no duplicate names.
@@ -62,7 +62,7 @@ impl<N: Network> Record<N, Plaintext<N>> {
         // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Self { owner, balance, data })
+        Ok(Self { owner, gates, data })
     }
 }
 
@@ -70,7 +70,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
     /// Initializes a new record.
     pub fn from_ciphertext(
         owner: Owner<N, Ciphertext<N>>,
-        balance: Balance<N, Ciphertext<N>>,
+        gates: Balance<N, Ciphertext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Ciphertext<N>>>,
     ) -> Result<Self> {
         // Ensure the members has no duplicate names.
@@ -78,7 +78,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
         // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Self { owner, balance, data })
+        Ok(Self { owner, gates, data })
     }
 }
 
@@ -88,9 +88,9 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
         &self.owner
     }
 
-    /// Returns the balance of the program record.
-    pub const fn balance(&self) -> &Balance<N, Private> {
-        &self.balance
+    /// Returns the gates of the program record.
+    pub const fn gates(&self) -> &Balance<N, Private> {
+        &self.gates
     }
 
     /// Returns the program data.

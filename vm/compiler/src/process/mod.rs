@@ -425,7 +425,7 @@ mod tests {
 
   record stake:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
 
   function initialize:
     input r0 as address.private;
@@ -451,7 +451,7 @@ mod tests {
         let r1 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
 
         // Declare the expected output value.
-        let r2 = Value::from_str(&format!("{{ owner: {caller}.private, balance: 1_000_000_000_000_000_u64.private }}"))
+        let r2 = Value::from_str(&format!("{{ owner: {caller}.private, gates: 1_000_000_000_000_000_u64.private }}"))
             .unwrap();
 
         // Construct the process.
@@ -498,7 +498,7 @@ mod tests {
 
   record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
 
   function initialize:
     input r0 as address.private;
@@ -554,17 +554,17 @@ function hello_world:
 
   record record_a:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
 
   record record_b:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
 
   function initialize:
     input r0 as record_a.record;
     input r1 as record_b.record;
-    cast r0.owner r0.balance into r2 as record_a.record;
-    cast r1.owner r1.balance into r3 as record_b.record;
+    cast r0.owner r0.gates into r2 as record_a.record;
+    cast r1.owner r1.gates into r3 as record_b.record;
     output r2 as record_a.record;
     output r3 as record_b.record;",
         )
@@ -582,8 +582,8 @@ function hello_world:
         let caller = Address::try_from(&caller_private_key).unwrap();
 
         // Declare the input value.
-        let record_a = Value::from_str(&format!("{{ owner: {caller}.private, balance: 1234u64.private }}")).unwrap();
-        let record_b = Value::from_str(&format!("{{ owner: {caller}.private, balance: 4321u64.private }}")).unwrap();
+        let record_a = Value::from_str(&format!("{{ owner: {caller}.private, gates: 1234u64.private }}")).unwrap();
+        let record_b = Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private }}")).unwrap();
 
         // Construct the process.
         let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
@@ -631,7 +631,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
@@ -670,8 +670,7 @@ function compute:
         let caller = Address::try_from(&caller_private_key).unwrap();
 
         // Prepare a record belonging to the address.
-        let record_string =
-            format!("{{ owner: {caller}.private, balance: 5u64.private, token_amount: 100u64.private }}");
+        let record_string = format!("{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private }}");
 
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str("3field").unwrap();
@@ -739,7 +738,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     amount as u64.private;
 
 function mint:
@@ -754,7 +753,7 @@ function transfer:
     input r2 as u64.private;
     sub r0.amount r2 into r3;
     call mint r1 r2 into r4; // Only for testing, this is bad practice.
-    cast r0.owner r0.balance r3 into r5 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
     output r4 as token.record;
     output r5 as token.record;",
         )
@@ -777,7 +776,7 @@ function transfer:
 
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!(
-            "{{ owner: {caller0}.private, balance: 5u64.private, amount: 100u64.private }}"
+            "{{ owner: {caller0}.private, gates: 5u64.private, amount: 100u64.private }}"
         ))
         .unwrap();
         let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
@@ -785,11 +784,10 @@ function transfer:
 
         // Declare the expected output value.
         let r4 =
-            Value::from_str(&format!("{{ owner: {caller1}.private, balance: 0u64.private, amount: 99u64.private }}"))
+            Value::from_str(&format!("{{ owner: {caller1}.private, gates: 0u64.private, amount: 99u64.private }}"))
                 .unwrap();
-        let r5 =
-            Value::from_str(&format!("{{ owner: {caller0}.private, balance: 5u64.private, amount: 1u64.private }}"))
-                .unwrap();
+        let r5 = Value::from_str(&format!("{{ owner: {caller0}.private, gates: 5u64.private, amount: 1u64.private }}"))
+            .unwrap();
 
         // Construct the process.
         let mut process = Process::<CurrentNetwork, CurrentAleo>::new().unwrap();
@@ -853,7 +851,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     amount as u64.private;
 
 function mint:
@@ -917,7 +915,7 @@ function transfer:
 
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!(
-            "{{ owner: {caller0}.private, balance: 0u64.private, amount: 100u64.private }}"
+            "{{ owner: {caller0}.private, gates: 0u64.private, amount: 100u64.private }}"
         ))
         .unwrap();
         let r1 = Value::<CurrentNetwork>::from_str(&caller1.to_string()).unwrap();
@@ -925,11 +923,10 @@ function transfer:
 
         // Declare the expected output value.
         let r4 =
-            Value::from_str(&format!("{{ owner: {caller1}.private, balance: 0u64.private, amount: 99u64.private }}"))
+            Value::from_str(&format!("{{ owner: {caller1}.private, gates: 0u64.private, amount: 99u64.private }}"))
                 .unwrap();
-        let r5 =
-            Value::from_str(&format!("{{ owner: {caller0}.private, balance: 0u64.private, amount: 1u64.private }}"))
-                .unwrap();
+        let r5 = Value::from_str(&format!("{{ owner: {caller0}.private, gates: 0u64.private, amount: 1u64.private }}"))
+            .unwrap();
 
         // Authorize the function call.
         let authorization =

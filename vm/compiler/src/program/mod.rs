@@ -440,14 +440,17 @@ impl<N: Network> Program<N> {
         "output",
         "as",
         "into",
+        // Record
+        "record",
+        "gates",
         // Program
         "function",
         "interface",
-        "record",
         "closure",
         "program",
         "global",
         // Reserved (catch all)
+        "aleo",
         "return",
         "break",
         "assert",
@@ -543,7 +546,7 @@ interface message:
             r"
 record foo:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     first as field.private;
     second as field.public;",
         )?;
@@ -690,7 +693,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -705,7 +708,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
         let input =
-            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
@@ -841,12 +844,12 @@ program token_with_cast.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
     input r0 as token.record;
-    cast r0.owner r0.balance r0.token_amount into r1 as token.record;
+    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
         .unwrap();
@@ -855,7 +858,7 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
-        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap();
+        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record.clone());
         // Declare the expected output value.
         let expected = Value::Record(input_record);

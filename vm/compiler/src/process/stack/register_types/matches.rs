@@ -61,7 +61,7 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record<A: circuit::Aleo<Network = N>>(
         &self,

@@ -27,8 +27,8 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
             num_randomizers += 1;
         }
 
-        // If the balance is private, increment the number of randomizers by 1.
-        if self.balance.is_private().eject_value() {
+        // If the gates is private, increment the number of randomizers by 1.
+        if self.gates.is_private().eject_value() {
             num_randomizers += 1;
         }
 

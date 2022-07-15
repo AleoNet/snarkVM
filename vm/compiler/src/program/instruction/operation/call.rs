@@ -622,7 +622,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let (string, call) =
-            Call::<CurrentNetwork>::parse("call transfer r0.owner r0.balance r0.token_amount into r1 r2 r3").unwrap();
+            Call::<CurrentNetwork>::parse("call transfer r0.owner r0.gates r0.token_amount into r1 r2 r3").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(call.operator, CallOperator::from_str("transfer").unwrap(), "The call operator is incorrect");
         assert_eq!(call.operands.len(), 3, "The number of operands is incorrect");
@@ -633,7 +633,7 @@ mod tests {
         );
         assert_eq!(
             call.operands[1],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("balance").unwrap()])),
+            Operand::Register(Register::Member(0, vec![Identifier::from_str("gates").unwrap()])),
             "The second operand is incorrect"
         );
         assert_eq!(

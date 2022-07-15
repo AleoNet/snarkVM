@@ -656,74 +656,74 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         use circuit::{ToField, Zero};
 
-        let mut i64_balance = circuit::I64::zero();
-        let mut field_balance = circuit::Field::zero();
+        let mut i64_gates = circuit::I64::zero();
+        let mut field_gates = circuit::Field::zero();
 
-        // Increment the balance by the amount in each record input.
+        // Increment the gates by the amount in each record input.
         for input in request.inputs() {
             match input {
-                // Dereference the record balance to retrieve the u64 balance.
+                // Dereference the record gates to retrieve the u64 gates.
                 circuit::Value::Record(record) => {
-                    // Retrieve the record balance.
-                    let record_balance = &**record.balance();
-                    // Increment the i64 balance.
-                    i64_balance += record_balance.clone().cast_as_dual();
-                    // Increment the field balance.
-                    field_balance += record_balance.to_field();
+                    // Retrieve the record gates.
+                    let record_gates = &**record.gates();
+                    // Increment the i64 gates.
+                    i64_gates += record_gates.clone().cast_as_dual();
+                    // Increment the field gates.
+                    field_gates += record_gates.to_field();
                 }
                 // Skip iterations that are not records.
                 _ => continue,
             }
         }
 
-        // Ensure the i64 balance matches the field balance.
-        A::assert_eq(i64_balance.to_field(), &field_balance);
+        // Ensure the i64 gates matches the field gates.
+        A::assert_eq(i64_gates.to_field(), &field_gates);
 
-        // Decrement the balance by the amount in each record output.
+        // Decrement the gates by the amount in each record output.
         for output in response.outputs() {
             match output {
-                // Dereference the balance to retrieve the u64 balance.
+                // Dereference the gates to retrieve the u64 gates.
                 circuit::Value::Record(record) => {
-                    // Retrieve the record balance.
-                    let record_balance = &**record.balance();
-                    // Decrement the i64 balance.
-                    i64_balance -= record_balance.clone().cast_as_dual();
-                    // Decrement the field balance.
-                    field_balance -= record_balance.to_field();
+                    // Retrieve the record gates.
+                    let record_gates = &**record.gates();
+                    // Decrement the i64 gates.
+                    i64_gates -= record_gates.clone().cast_as_dual();
+                    // Decrement the field gates.
+                    field_gates -= record_gates.to_field();
                 }
                 // Skip iterations that are not records.
                 _ => continue,
             }
         }
 
-        // If the program and function is not a coinbase function, then ensure the i64 balance is positive.
+        // If the program and function is not a coinbase function, then ensure the i64 gates is positive.
         if !Self::is_coinbase(&program_id, function.name()) {
             use circuit::MSB;
 
-            // Ensure the i64 balance MSB is false.
-            A::assert(!i64_balance.msb());
-            // Ensure the i64 balance matches the field balance.
-            A::assert_eq(i64_balance.to_field(), &field_balance);
+            // Ensure the i64 gates MSB is false.
+            A::assert(!i64_gates.msb());
+            // Ensure the i64 gates matches the field gates.
+            A::assert_eq(i64_gates.to_field(), &field_gates);
 
-            // Inject the field balance as `Mode::Public`.
-            let public_balance = circuit::Field::<A>::new(circuit::Mode::Public, field_balance.eject_value());
-            // Ensure the injected field balance matches.
-            A::assert_eq(public_balance, field_balance);
+            // Inject the field gates as `Mode::Public`.
+            let public_gates = circuit::Field::<A>::new(circuit::Mode::Public, field_gates.eject_value());
+            // Ensure the injected field gates matches.
+            A::assert_eq(public_gates, field_gates);
 
             #[cfg(debug_assertions)]
-            println!("Logging fee: {}", i64_balance.eject_value());
+            println!("Logging fee: {}", i64_gates.eject_value());
         } else {
-            // Inject the field balance as `Mode::Public`.
-            let public_balance = circuit::Field::<A>::new(circuit::Mode::Public, i64_balance.to_field().eject_value());
-            // Ensure the injected i64 balance matches.
-            A::assert_eq(public_balance, &i64_balance);
+            // Inject the field gates as `Mode::Public`.
+            let public_gates = circuit::Field::<A>::new(circuit::Mode::Public, i64_gates.to_field().eject_value());
+            // Ensure the injected i64 gates matches.
+            A::assert_eq(public_gates, &i64_gates);
         }
 
         #[cfg(debug_assertions)]
         Self::log_circuit("Complete");
 
         // Eject the fee.
-        let fee = i64_balance.eject_value();
+        let fee = i64_gates.eject_value();
         // Eject the response.
         let response = response.eject_value();
 

@@ -51,14 +51,14 @@ impl<N: Network> Record<N, Plaintext<N>> {
             index += 1;
         }
 
-        // Encrypt the balance.
-        let balance = match self.balance.is_public() {
-            true => self.balance.encrypt(&[])?,
-            false => self.balance.encrypt(&[randomizers[index]])?,
+        // Encrypt the gates.
+        let gates = match self.gates.is_public() {
+            true => self.gates.encrypt(&[])?,
+            false => self.gates.encrypt(&[randomizers[index]])?,
         };
 
-        // Increment the index if the balance is private.
-        if balance.is_private() {
+        // Increment the index if the gates is private.
+        if gates.is_private() {
             index += 1;
         }
 
@@ -94,6 +94,6 @@ impl<N: Network> Record<N, Plaintext<N>> {
         }
 
         // Return the encrypted record.
-        Ok(Record { owner, balance, data: encrypted_data })
+        Ok(Record { owner, gates, data: encrypted_data })
     }
 }

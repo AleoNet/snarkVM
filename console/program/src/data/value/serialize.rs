@@ -49,7 +49,7 @@ mod tests {
             // Prepare the plaintext string.
             let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah,
-  balance: 5u64,
+  gates: 5u64,
   token_amount: 100u64
 }";
             // Construct a new plaintext value.
@@ -69,7 +69,7 @@ mod tests {
             // Prepare the record string.
             let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private,
-  balance: 5u64.private,
+  gates: 5u64.private,
   token_amount: 100u64.private
 }";
             // Construct a new record value.
@@ -94,7 +94,7 @@ mod tests {
             // Prepare the plaintext string.
             let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah,
-  balance: 5u64,
+  gates: 5u64,
   token_amount: 100u64
 }";
             // Construct a new plaintext value.
@@ -114,7 +114,7 @@ mod tests {
             // Prepare the record string.
             let string = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private,
-  balance: 5u64.private,
+  gates: 5u64.private,
   token_amount: 100u64.private
 }";
             // Construct a new record value.

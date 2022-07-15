@@ -58,7 +58,7 @@ impl<N: Network> Block<N> {
     //
     //   record stake:
     //     owner as address.private;
-    //     balance as u64.private;
+    //     gates as u64.private;
     //
     //   function initialize:
     //     input r0 as address.private;

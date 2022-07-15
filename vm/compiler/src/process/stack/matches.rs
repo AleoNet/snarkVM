@@ -46,7 +46,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 
     /// Checks that the given record matches the layout of the external record type.
-    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
         // Retrieve the record name.
@@ -70,7 +70,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
         // Ensure the record name is valid.
@@ -99,7 +99,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
@@ -128,21 +128,21 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Ensure the visibility of the record owner matches the visibility in the record type.
         ensure!(
             record.owner().is_public() == record_type.owner().is_public(),
-            "Record owner visibility does not match"
+            "Visibility of record entry 'owner' does not match"
         );
         ensure!(
             record.owner().is_private() == record_type.owner().is_private(),
-            "Record owner visibility does not match"
+            "Visibility of record entry 'owner' does not match"
         );
 
-        // Ensure the visibility of the record balance matches the visibility in the record type.
+        // Ensure the visibility of the record gates matches the visibility in the record type.
         ensure!(
-            record.balance().is_public() == record_type.balance().is_public(),
-            "Record balance visibility does not match"
+            record.gates().is_public() == record_type.gates().is_public(),
+            "Visibility of record entry 'gates' does not match"
         );
         ensure!(
-            record.balance().is_private() == record_type.balance().is_private(),
-            "Record balance visibility does not match"
+            record.gates().is_private() == record_type.gates().is_private(),
+            "Visibility of record entry 'gates' does not match"
         );
 
         // Ensure the record data matches the defined type.
@@ -152,11 +152,11 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
                 // Ensure the member type matches.
                 Some((member_name, member_entry)) => {
                     // Ensure the member name is valid.
-                    ensure!(!Program::is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
+                    ensure!(!Program::is_reserved_keyword(member_name), "Entry name '{member_name}' is reserved");
                     // Ensure the member value matches (recursive call).
                     self.matches_entry_internal(member_entry, expected_type, depth + 1)?
                 }
-                None => bail!("'{record_name}' is missing member '{expected_name}'"),
+                None => bail!("'{record_name}' is missing entry '{expected_name}'"),
             }
         }
         Ok(())

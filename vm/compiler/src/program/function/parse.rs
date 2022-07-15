@@ -128,7 +128,7 @@ function foo:
             r"
 function foo:
     input r0 as token.record;
-    cast r0.owner r0.balance r0.token_amount into r1 as token.record;
+    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
         .unwrap()

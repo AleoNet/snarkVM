@@ -128,8 +128,8 @@ impl<A: Aleo> Request<A> {
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(&self.caller)
-                            // Ensure the record balance is less than or equal to 2^52.
-                            & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                            // Ensure the record gates is less than or equal to 2^52.
+                            & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {
@@ -265,8 +265,8 @@ impl<A: Aleo> Request<A> {
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(caller)
-                            // Ensure the record balance is less than or equal to 2^52.
-                            & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                            // Ensure the record gates is less than or equal to 2^52.
+                            & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {
@@ -313,7 +313,7 @@ mod tests {
 
             // Prepare a record belonging to the address.
             let record_string =
-                format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
+                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
             let input_constant =
@@ -364,7 +364,7 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 40000, 0, 15000, 15100)
+        check_verify(Mode::Constant, 40000, 0, 15100, 15100)
     }
 
     #[test]

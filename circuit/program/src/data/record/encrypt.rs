@@ -51,14 +51,14 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
             index += 1;
         }
 
-        // Encrypt the balance.
-        let balance = match self.balance.is_public().eject_value() {
-            true => self.balance.encrypt(&[]),
-            false => self.balance.encrypt(&[randomizers[index].clone()]),
+        // Encrypt the gates.
+        let gates = match self.gates.is_public().eject_value() {
+            true => self.gates.encrypt(&[]),
+            false => self.gates.encrypt(&[randomizers[index].clone()]),
         };
 
-        // Increment the index if the balance is private.
-        if balance.is_private().eject_value() {
+        // Increment the index if the gates is private.
+        if gates.is_private().eject_value() {
             index += 1;
         }
 
@@ -85,6 +85,6 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
         }
 
         // Return the encrypted record.
-        Record { owner, balance, data: encrypted_data }
+        Record { owner, gates, data: encrypted_data }
     }
 }

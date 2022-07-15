@@ -29,7 +29,7 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
 
         // Construct the record bits.
         let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(self.balance.to_bits_le());
+        bits_le.extend(self.gates.to_bits_le());
         bits_le.extend((data_bits_le.len() as u32).to_bits_le());
         bits_le.extend(data_bits_le);
         bits_le
@@ -47,7 +47,7 @@ impl<N: Network> ToBits for Record<N, Plaintext<N>> {
 
         // Construct the record bits.
         let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(self.balance.to_bits_be());
+        bits_be.extend(self.gates.to_bits_be());
         bits_be.extend((data_bits_be.len() as u32).to_bits_be());
         bits_be.extend(data_bits_be);
         bits_be
@@ -67,7 +67,7 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
 
         // Construct the record bits.
         let mut bits_le = self.owner.to_bits_le();
-        bits_le.extend(self.balance.to_bits_le());
+        bits_le.extend(self.gates.to_bits_le());
         bits_le.extend((data_bits_le.len() as u32).to_bits_le());
         bits_le.extend(data_bits_le);
         bits_le
@@ -85,7 +85,7 @@ impl<N: Network> ToBits for Record<N, Ciphertext<N>> {
 
         // Construct the record bits.
         let mut bits_be = self.owner.to_bits_be();
-        bits_be.extend(self.balance.to_bits_be());
+        bits_be.extend(self.gates.to_bits_be());
         bits_be.extend((data_bits_be.len() as u32).to_bits_be());
         bits_be.extend(data_bits_be);
         bits_be
