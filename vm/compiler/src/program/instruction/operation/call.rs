@@ -244,9 +244,6 @@ impl<N: Network> Call<N> {
             // Retrieve the number of public variables in the circuit.
             let num_public = A::num_public();
 
-            // Initialize an RNG.
-            let rng = &mut rand::thread_rng();
-
             use circuit::Eject;
             // Eject the existing circuit.
             let r1cs = A::eject_r1cs_and_reset();
@@ -260,6 +257,9 @@ impl<N: Network> Call<N> {
                     // Ensure the input matches the input type in the substack function.
                     substack.matches_value_type(input, input_type)
                 })?;
+
+                // Initialize an RNG.
+                let rng = &mut rand::thread_rng();
 
                 match stack.call_stack() {
                     // If the circuit is in authorize or synthesize mode, then add any external calls to the stack.

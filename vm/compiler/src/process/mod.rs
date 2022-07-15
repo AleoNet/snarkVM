@@ -43,7 +43,7 @@ use crate::{
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, Value},
+    program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, Value, ValueType},
     types::I64,
 };
 
@@ -148,7 +148,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
     }
 
-    /// Authorizes the request(s) to execute the program function.
+    /// Authorizes a call to the program function for the given inputs.
     #[inline]
     pub fn authorize<R: Rng + CryptoRng>(
         &self,
@@ -158,19 +158,31 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Authorization<N>> {
-        // Retrieve the program.
-        let program = self.get_program(program_id)?.clone();
-        // Retrieve the function from the program.
-        let function = program.get_function(&function_name)?;
+        // Ensure the program exists.
+        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
+
+        // Retrieve the program, function, and input types.
+        let (program, function, input_types, _) = self.get_function_info(program_id, &function_name)?;
+
+        // Ensure the number of inputs matches.
+        if input_types.len() != inputs.len() {
+            bail!(
+                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                function.name(),
+                program.id(),
+                input_types.len(),
+                inputs.len()
+            )
+        }
 
         // Compute the request.
-        let request = Request::sign(private_key, *program_id, function_name, inputs, &function.input_types(), rng)?;
+        let request = Request::sign(private_key, *program.id(), *function.name(), inputs, &input_types, rng)?;
 
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
 
         // Prepare the stack.
-        let mut stack = self.get_stack(program_id)?;
+        let mut stack = self.get_stack(program.id())?;
         // Construct the authorization from the function.
         let _response =
             stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
@@ -182,26 +194,30 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given request.
     #[inline]
     pub fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
-        // Retrieve the program.
-        let program = self.get_program(request.program_id())?.clone();
-        // Retrieve the function from the program.
-        let function = program.get_function(request.function_name())?;
+        // Retrieve the program, function, and input types.
+        let (program, function, input_types, output_types) =
+            self.get_function_info(request.program_id(), request.function_name())?;
+
+        // Ensure the number of inputs matches.
+        if input_types.len() != request.inputs().len() {
+            bail!(
+                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                function.name(),
+                program.id(),
+                input_types.len(),
+                request.inputs().len()
+            )
+        }
 
         // Ensure the request is well-formed.
-        ensure!(request.verify(&function.input_types()), "Request is invalid");
+        ensure!(request.verify(&input_types), "Request is invalid");
 
         // Prepare the stack.
-        let mut stack = self.get_stack(request.program_id())?;
+        let mut stack = self.get_stack(program.id())?;
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
-        let response = Response::new(
-            request.program_id(),
-            request.inputs().len(),
-            request.tvk(),
-            outputs,
-            &function.output_types(),
-        )?;
+        let response = Response::new(program.id(), request.inputs().len(), request.tvk(), outputs, &output_types)?;
 
         // Initialize the trace.
         let mut trace = Trace::<N>::new(request, &response)?;
@@ -212,7 +228,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         Ok(response)
     }
 
-    /// Executes a program function on the given request.
+    /// Executes the given authorization.
     #[inline]
     pub fn execute<R: Rng + CryptoRng>(
         &self,
@@ -329,6 +345,47 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
             );
         }
         Ok(())
+    }
+
+    /// Returns the program, function, and input types for the given program ID and function name.
+    #[inline]
+    fn get_function_info(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+    ) -> Result<(&Program<N>, Function<N>, Vec<ValueType<N>>, Vec<ValueType<N>>)> {
+        // Retrieve the program.
+        let program = self.get_program(program_id)?;
+        // Ensure the function exists.
+        if !program.contains_function(&function_name) {
+            bail!("Function '{function_name}' does not exist in the program '{program_id}'.")
+        }
+
+        // Retrieve the function.
+        let function = program.get_function(function_name)?;
+        // Retrieve the input types.
+        let input_types = function.input_types();
+        // Retrieve the output types.
+        let output_types = function.output_types();
+
+        // Ensure the number of inputs matches the number of input types.
+        if function.inputs().len() != input_types.len() {
+            bail!(
+                "Function '{function_name}' in the program '{program_id}' expects {} inputs, but {} types were found.",
+                function.inputs().len(),
+                input_types.len()
+            )
+        }
+        // Ensure the number of outputs matches the number of output types.
+        if function.outputs().len() != output_types.len() {
+            bail!(
+                "Function '{function_name}' in the program '{program_id}' expects {} outputs, but {} types were found.",
+                function.outputs().len(),
+                output_types.len()
+            )
+        }
+
+        Ok((program, function, input_types, output_types))
     }
 }
 

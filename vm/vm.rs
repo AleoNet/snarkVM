@@ -13,3 +13,214 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::{
+    console::{
+        account::PrivateKey,
+        network::prelude::*,
+        program::{Identifier, ProgramID, Response, Value},
+    },
+    ledger::{BlockHeader, Transaction, Transactions},
+};
+use snarkvm_compiler::{Authorization, Execution, Process, Transition};
+
+use core::marker::PhantomData;
+
+/// Downcasts a `$variable` to `$object<$network>`.
+macro_rules! cast_ref {
+    // Example: cast_ref!((foo.bar()) as Bar<Testnet3>)
+    (($variable:expr) as $object:ident<$network:path>) => {{
+        (&$variable as &dyn std::any::Any)
+            .downcast_ref::<$object<$network>>()
+            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
+    }};
+    // Example: cast_ref!(bar as Bar<Testnet3>)
+    ($variable:ident as $object:ident<$network:path>) => {{
+        (&$variable as &dyn std::any::Any)
+            .downcast_ref::<$object<$network>>()
+            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
+    }};
+    // Example: cast_ref!(&bar as Bar<Testnet3>)
+    (&$variable:ident as $object:ident<$network:path>) => {{
+        ($variable as &dyn std::any::Any)
+            .downcast_ref::<$object<$network>>()
+            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
+    }};
+}
+
+/// A helper type for an Aleo Testnet3 process (V0).
+type Process3V0 = Process<crate::prelude::Testnet3, crate::circuit::AleoV0>;
+
+thread_local! {
+    /// The process for Aleo Testnet3 (V0).
+    pub(crate) static TESTNET3_V0: Process3V0 = Process3V0::new().expect("Failed to initialize the testnet3 process");
+}
+
+pub struct VM<N: Network> {
+    /// PhantomData.
+    _phantom: PhantomData<N>,
+}
+
+impl<N: Network> VM<N> {
+    /// Initializes a new VM.
+    pub fn new() -> Result<Self> {
+        Ok(Self { _phantom: PhantomData })
+    }
+
+    /// Authorizes a call to the program function for the given inputs.
+    #[inline]
+    pub fn authorize<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        program_id: &ProgramID<N>,
+        function_name: Identifier<N>,
+        inputs: &[Value<N>],
+        rng: &mut R,
+    ) -> Result<Authorization<N>> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path) => {{
+                let inputs = inputs.to_vec();
+
+                // Prepare the inputs.
+                let private_key = cast_ref!(&private_key as PrivateKey<$network>);
+                let program_id = cast_ref!(&program_id as ProgramID<$network>);
+                let function_name = cast_ref!(function_name as Identifier<$network>);
+                let inputs = cast_ref!(inputs as Vec<Value<$network>>);
+
+                // Compute the authorization.
+                let authorization = $process.authorize(private_key, program_id, function_name.clone(), inputs, rng)?;
+
+                // Return the authorization.
+                Ok(cast_ref!(authorization as Authorization<N>).clone())
+            }};
+        }
+
+        // Process the logic.
+        match N::ID {
+            crate::prelude::Testnet3::ID => TESTNET3_V0.with(|process| logic!(process, crate::prelude::Testnet3)),
+            _ => bail!("Unsupported VM configuration for network: {}", N::ID),
+        }
+    }
+
+    /// Executes a call to the program function for the given inputs.
+    #[inline]
+    pub fn execute<R: Rng + CryptoRng>(
+        &self,
+        authorization: Authorization<N>,
+        rng: &mut R,
+    ) -> Result<(Response<N>, Transaction<N>)> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path) => {{
+                // Prepare the authorization.
+                let authorization = cast_ref!(authorization as Authorization<$network>);
+
+                // Execute the call.
+                let (response, execution) = $process.execute(authorization.clone(), rng)?;
+                // Construct the transaction.
+                let transaction = Transaction::execute(execution.to_vec())?;
+
+                // Prepare the return.
+                let response = cast_ref!(response as Response<N>).clone();
+                let transaction = cast_ref!(transaction as Transaction<N>).clone();
+                // Return the response and transaction.
+                Ok((response, transaction))
+            }};
+        }
+
+        // Process the logic.
+        match N::ID {
+            crate::prelude::Testnet3::ID => TESTNET3_V0.with(|process| logic!(process, crate::prelude::Testnet3)),
+            _ => bail!("Unsupported VM configuration for network: {}", N::ID),
+        }
+    }
+
+    /// Verifies a program call for the given execution.
+    #[inline]
+    pub fn verify(&self, transaction: &Transaction<N>) -> bool {
+        match transaction {
+            Transaction::Deploy(id, program, _verifying_key) => {
+                // Convert the program into bytes.
+                let program_bytes = match program.to_bytes_le() {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        warn!("Unable to convert program into bytes for transaction (deploy, {id}): {error}");
+                        return false;
+                    }
+                };
+
+                // Check the transaction ID.
+                match N::hash_bhp1024(&program_bytes.to_bits_le()) {
+                    Ok(candidate_id) => {
+                        // Ensure the transaction ID matches the one in the transaction.
+                        if candidate_id != **id {
+                            warn!("Transaction ({id}) has an incorrect transaction ID.");
+                            return false;
+                        }
+                    }
+                    Err(error) => {
+                        warn!("Unable to compute transaction ID for transaction (deploy, {id}): {error}");
+                        return false;
+                    }
+                };
+
+                /// TODO (howardwu): Check the program (1. ensure the program ID does not exist already, 2. check it is well-formed).
+                /// TODO (howardwu): Check the verifying key.
+                true
+            }
+            Transaction::Execute(id, transitions) => {
+                // Ensure there is at least 1 transition.
+                if transitions.is_empty() {
+                    warn!("Transaction ({id}) has no transitions.");
+                    return false;
+                }
+
+                // Check the transaction ID.
+                let id_bits: Vec<_> = transitions.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
+                match N::hash_bhp1024(&id_bits) {
+                    Ok(candidate_id) => {
+                        // Ensure the transaction ID matches the one in the transaction.
+                        if candidate_id != **id {
+                            warn!("Transaction ({id}) has an incorrect transaction ID.");
+                            return false;
+                        }
+                    }
+                    Err(error) => {
+                        warn!("Unable to compute transaction ID for transaction (execute, {id}): {error}");
+                        return false;
+                    }
+                };
+
+                //******** Verify the execution. ********//
+
+                // Compute the core logic.
+                macro_rules! logic {
+                    ($process:expr, $network:path) => {{
+                        // Prepare the transitions.
+                        let transitions = cast_ref!(&transitions as Vec<Transition<$network>>);
+                        // Verify the execution.
+                        $process.verify(Execution::from(transitions))
+                    }};
+                }
+
+                // Process the logic.
+                let result = match N::ID {
+                    crate::prelude::Testnet3::ID => {
+                        TESTNET3_V0.with(|process| logic!(process, crate::prelude::Testnet3))
+                    }
+                    _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
+                };
+
+                // Return the result.
+                match result {
+                    Ok(()) => true,
+                    Err(error) => {
+                        warn!("Transaction verification failed: {error}");
+                        false
+                    }
+                }
+            }
+        }
+    }
+}

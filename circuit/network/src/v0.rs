@@ -419,6 +419,8 @@ mod tests {
     use super::*;
     use snarkvm_circuit_types::Field;
 
+    type CurrentAleo = AleoV0;
+
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
         let one = snarkvm_console_types::Field::<<E as Environment>::Network>::one();
@@ -445,23 +447,23 @@ mod tests {
 
     #[test]
     fn test_print_circuit() {
-        let _candidate = create_example_circuit::<AleoV0>();
-        let output = format!("{}", AleoV0);
+        let _candidate = create_example_circuit::<CurrentAleo>();
+        let output = format!("{}", CurrentAleo);
         println!("{}", output);
     }
 
     #[test]
     fn test_circuit_scope() {
-        AleoV0::scope("test_circuit_scope", || {
-            assert_eq!(0, AleoV0::num_constants());
-            assert_eq!(1, AleoV0::num_public());
-            assert_eq!(0, AleoV0::num_private());
-            assert_eq!(0, AleoV0::num_constraints());
+        CurrentAleo::scope("test_circuit_scope", || {
+            assert_eq!(0, CurrentAleo::num_constants());
+            assert_eq!(1, CurrentAleo::num_public());
+            assert_eq!(0, CurrentAleo::num_private());
+            assert_eq!(0, CurrentAleo::num_constraints());
 
-            assert_eq!(0, AleoV0::num_constants_in_scope());
-            assert_eq!(0, AleoV0::num_public_in_scope());
-            assert_eq!(0, AleoV0::num_private_in_scope());
-            assert_eq!(0, AleoV0::num_constraints_in_scope());
+            assert_eq!(0, CurrentAleo::num_constants_in_scope());
+            assert_eq!(0, CurrentAleo::num_public_in_scope());
+            assert_eq!(0, CurrentAleo::num_private_in_scope());
+            assert_eq!(0, CurrentAleo::num_constraints_in_scope());
         })
     }
 }
