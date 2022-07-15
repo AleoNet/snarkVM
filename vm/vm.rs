@@ -22,9 +22,10 @@ use crate::{
     },
     ledger::{BlockHeader, Transaction, Transactions},
 };
-use snarkvm_compiler::{Authorization, Execution, Process, Transition};
+use snarkvm_compiler::{Authorization, Execution, Process, Program, Transition};
 
 use core::marker::PhantomData;
+use std::cell::RefCell;
 
 /// A helper macro to downcast a `$variable` to `$object<$network>`.
 macro_rules! cast_ref {
@@ -50,7 +51,7 @@ macro_rules! cast_ref {
 
 thread_local! {
     /// The process for Aleo Testnet3 (V0).
-    pub(crate) static TESTNET3_V0: Process<crate::prelude::Testnet3, crate::circuit::AleoV0> = Process::new().expect("Failed to initialize the testnet3 process");
+    pub(crate) static TESTNET3_V0: RefCell<Process<crate::prelude::Testnet3, crate::circuit::AleoV0>> = RefCell::new(Process::new().expect("Failed to initialize the testnet3 process"));
 }
 
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
@@ -59,7 +60,23 @@ macro_rules! process {
     ($logic:ident) => {{
         // Process the logic.
         match N::ID {
-            crate::prelude::Testnet3::ID => TESTNET3_V0.with(|process| $logic!(process, crate::prelude::Testnet3)),
+            crate::prelude::Testnet3::ID => {
+                TESTNET3_V0.with(|process| $logic!(process.borrow(), crate::prelude::Testnet3))
+            }
+            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
+        }
+    }};
+}
+
+/// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
+macro_rules! process_mut {
+    // Example: process!(logic)
+    ($logic:ident) => {{
+        // Process the logic.
+        match N::ID {
+            crate::prelude::Testnet3::ID => {
+                TESTNET3_V0.with(|process| $logic!(process.borrow_mut(), crate::prelude::Testnet3))
+            }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
     }};
@@ -68,10 +85,25 @@ macro_rules! process {
 pub struct VM;
 
 impl VM {
+    /// Adds a new program to the VM.
+    #[inline]
+    pub fn add_program<N: Network>(program: &Program<N>) -> Result<()> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path) => {{
+                // Prepare the program.
+                let program = cast_ref!(&program as Program<$network>);
+                // Add the program.
+                $process.add_program(program)
+            }};
+        }
+        // Process the logic.
+        process_mut!(logic)
+    }
+
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
     pub fn authorize<N: Network, R: Rng + CryptoRng>(
-        &self,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
         function_name: Identifier<N>,
@@ -103,7 +135,6 @@ impl VM {
     /// Executes a call to the program function for the given inputs.
     #[inline]
     pub fn execute<N: Network, R: Rng + CryptoRng>(
-        &self,
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Transaction<N>)> {
@@ -131,7 +162,7 @@ impl VM {
 
     /// Verifies a program call for the given execution.
     #[inline]
-    pub fn verify<N: Network>(&self, transaction: &Transaction<N>) -> bool {
+    pub fn verify<N: Network>(transaction: &Transaction<N>) -> bool {
         match transaction {
             Transaction::Deploy(id, program, _verifying_key) => {
                 // Convert the program into bytes.
