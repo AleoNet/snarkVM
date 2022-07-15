@@ -25,7 +25,9 @@ use crate::{
 use snarkvm_compiler::{Authorization, Execution, Process, Program, Transition};
 
 use core::marker::PhantomData;
-use std::cell::RefCell;
+use lazy_static::lazy_static;
+use parking_lot::RwLock;
+use std::{cell::RefCell, sync::Arc};
 
 /// A helper macro to downcast a `$variable` to `$object<$network>`.
 macro_rules! cast_ref {
@@ -49,9 +51,9 @@ macro_rules! cast_ref {
     }};
 }
 
-thread_local! {
+lazy_static! {
     /// The process for Aleo Testnet3 (V0).
-    pub(crate) static TESTNET3_V0: RefCell<Process<crate::prelude::Testnet3>> = RefCell::new(Process::new().expect("Failed to initialize the testnet3 process"));
+    pub(crate) static ref TESTNET3_V0: Arc<RwLock<Process<crate::prelude::Testnet3>>> = Arc::new(RwLock::new(Process::new().expect("Failed to initialize the testnet3 process")));
 }
 
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
@@ -61,7 +63,7 @@ macro_rules! process {
         // Process the logic.
         match N::ID {
             crate::prelude::Testnet3::ID => {
-                TESTNET3_V0.with(|process| $logic!(process.borrow(), crate::prelude::Testnet3, crate::circuit::AleoV0))
+                $logic!(TESTNET3_V0.read(), crate::prelude::Testnet3, crate::circuit::AleoV0)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
@@ -74,8 +76,9 @@ macro_rules! process_mut {
     ($logic:ident) => {{
         // Process the logic.
         match N::ID {
-            crate::prelude::Testnet3::ID => TESTNET3_V0
-                .with(|process| $logic!(process.borrow_mut(), crate::prelude::Testnet3, crate::circuit::AleoV0)),
+            crate::prelude::Testnet3::ID => {
+                $logic!(TESTNET3_V0.write(), crate::prelude::Testnet3, crate::circuit::AleoV0)
+            }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
     }};
@@ -221,10 +224,13 @@ impl VM {
                 // Compute the core logic.
                 macro_rules! logic {
                     ($process:expr, $network:path, $aleo:path) => {{
-                        // Prepare the transitions.
-                        let transitions = cast_ref!(&transitions as Vec<Transition<$network>>);
-                        // Verify the execution.
-                        $process.verify(Execution::from(transitions))
+                        let task = || {
+                            // Prepare the transitions.
+                            let transitions = cast_ref!(&transitions as Vec<Transition<$network>>);
+                            // Verify the execution.
+                            $process.verify(Execution::from(transitions))
+                        };
+                        task()
                     }};
                 }
 

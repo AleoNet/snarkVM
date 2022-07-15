@@ -1987,6 +1987,8 @@ dependencies = [
  "clap 3.2.7",
  "colored",
  "indexmap",
+ "lazy_static",
+ "parking_lot 0.12.1",
  "rand",
  "rayon",
  "rusty-hook",
