@@ -18,9 +18,26 @@ use super::*;
 
 impl<N: Network> Package<N> {
     /// Removes the build directory for the package.
-    pub fn clean(&self) -> Result<()> {
+    pub fn clean(directory: &Path) -> Result<()> {
+        // Ensure the directory path exists.
+        ensure!(directory.exists(), "The program directory does not exist: {}", directory.display());
+        // Ensure the manifest file exists.
+        ensure!(
+            Manifest::<N>::exists_at(directory),
+            "Missing '{}' at '{}'",
+            Manifest::<N>::file_name(),
+            directory.display()
+        );
+        // Ensure the main program file exists.
+        ensure!(
+            AleoFile::<N>::main_exists_at(directory),
+            "Missing '{}' at '{}'",
+            AleoFile::<N>::main_file_name(),
+            directory.display()
+        );
+
         // Prepare the build directory.
-        let build_directory = self.build_directory();
+        let build_directory = directory.join("build");
         // Remove the build directory if it exists.
         if build_directory.exists() {
             std::fs::remove_dir_all(&build_directory)?;

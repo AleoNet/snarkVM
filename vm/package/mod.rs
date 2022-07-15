@@ -90,14 +90,14 @@ impl<N: Network> Package<N> {
             directory.display()
         );
 
-        // Create the manifest file.
+        // Open the manifest file.
         let manifest_file = Manifest::open(directory)?;
         // Retrieve the program ID.
         let program_id = *manifest_file.program_id();
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(program_id.name()), "Program name is invalid (reserved): {program_id}");
 
-        // Create the program file.
+        // Open the program file.
         let program_file = AleoFile::open(directory, &program_id, true)?;
 
         Ok(Self { program_id, directory: directory.to_path_buf(), manifest_file, program_file })
