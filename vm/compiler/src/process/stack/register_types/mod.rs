@@ -16,7 +16,7 @@
 
 mod matches;
 
-use crate::Program;
+use crate::Stack;
 use console::{
     network::prelude::*,
     program::{EntryType, Identifier, LiteralType, PlaintextType, Register, RegisterType},
@@ -24,7 +24,7 @@ use console::{
 
 use indexmap::IndexMap;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,
@@ -101,7 +101,11 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given register.
-    pub fn get_type(&self, program: &Program<N>, register: &Register<N>) -> Result<RegisterType<N>> {
+    pub fn get_type<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        register: &Register<N>,
+    ) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
@@ -136,7 +140,7 @@ impl<N: Network> RegisterTypes<N> {
                 // Traverse the member path to output the register type.
                 RegisterType::Plaintext(PlaintextType::Interface(interface_name)) => {
                     // Retrieve the member type from the interface.
-                    match program.get_interface(interface_name)?.members().get(path_name) {
+                    match stack.program().get_interface(interface_name)?.members().get(path_name) {
                         // Update the member type.
                         Some(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
                         None => bail!("'{path_name}' does not exist in interface '{interface_name}'"),
@@ -144,7 +148,7 @@ impl<N: Network> RegisterTypes<N> {
                 }
                 RegisterType::Record(record_name) => {
                     // Ensure the record type exists.
-                    ensure!(program.contains_record(record_name), "Record '{record_name}' does not exist");
+                    ensure!(stack.program().contains_record(record_name), "Record '{record_name}' does not exist");
                     // Retrieve the member type from the record.
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
@@ -154,7 +158,7 @@ impl<N: Network> RegisterTypes<N> {
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
                     } else {
                         // Retrieve the entry type from the record.
-                        match program.get_record(record_name)?.entries().get(path_name) {
+                        match stack.program().get_record(record_name)?.entries().get(path_name) {
                             // Update the entry type.
                             Some(entry_type) => match entry_type {
                                 EntryType::Constant(plaintext_type)
@@ -162,6 +166,29 @@ impl<N: Network> RegisterTypes<N> {
                                 | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
                             },
                             None => bail!("'{path_name}' does not exist in record '{record_name}'"),
+                        }
+                    }
+                }
+                RegisterType::ExternalRecord(locator) => {
+                    // Ensure the external record type exists.
+                    ensure!(stack.contains_external_record(locator), "External record '{locator}' does not exist");
+                    // Retrieve the member type from the external record.
+                    if path_name == &Identifier::from_str("owner")? {
+                        // If the member is the owner, then output the address type.
+                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
+                    } else if path_name == &Identifier::from_str("balance")? {
+                        // If the member is the balance, then output the u64 type.
+                        RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
+                    } else {
+                        // Retrieve the entry type from the external record.
+                        match stack.get_external_record(locator)?.entries().get(path_name) {
+                            // Update the entry type.
+                            Some(entry_type) => match entry_type {
+                                EntryType::Constant(plaintext_type)
+                                | EntryType::Public(plaintext_type)
+                                | EntryType::Private(plaintext_type) => RegisterType::Plaintext(*plaintext_type),
+                            },
+                            None => bail!("'{path_name}' does not exist in external record '{locator}'"),
                         }
                     }
                 }

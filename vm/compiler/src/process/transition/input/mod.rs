@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
+mod serialize;
+
 use console::{
     network::prelude::*,
     program::{Ciphertext, Plaintext},
@@ -31,6 +34,8 @@ pub enum Input<N: Network> {
     Private(Field<N>, Option<Ciphertext<N>>),
     /// The serial number.
     Record(Field<N>),
+    /// The input commitment to the external record. Note: This is **not** the record commitment.
+    ExternalRecord(Field<N>),
 }
 
 impl<N: Network> Input<N> {
@@ -41,6 +46,15 @@ impl<N: Network> Input<N> {
             Input::Public(id, _) => *id,
             Input::Private(id, _) => *id,
             Input::Record(id) => *id,
+            Input::ExternalRecord(id) => *id,
+        }
+    }
+
+    /// Returns the serial number, if the input is a record.
+    pub fn serial_number(&self) -> Option<&Field<N>> {
+        match self {
+            Input::Record(serial_number) => Some(serial_number),
+            _ => None,
         }
     }
 
@@ -71,5 +85,28 @@ impl<N: Network> Input<N> {
             },
             _ => true,
         }
+    }
+}
+
+impl<N: Network> FromStr for Input<N> {
+    type Err = Error;
+
+    /// Initializes the input from a JSON-string.
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(input)?)
+    }
+}
+
+impl<N: Network> Debug for Input<N> {
+    /// Prints the input as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Input<N> {
+    /// Displays the input as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

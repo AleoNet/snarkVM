@@ -59,22 +59,22 @@ impl<N: Network> Request<N> {
                         // Ensure the input is a plaintext.
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Hash the input to a field element.
-                        let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        let candidate_hash = N::hash_bhp1024(&input.to_bits_le())?;
                         // Ensure the input hash matches.
-                        ensure!(*input_hash == candidate_input_hash, "Expected a constant input with the same hash");
+                        ensure!(*input_hash == candidate_hash, "Expected a constant input with the same hash");
                         // Add the input hash to the message.
-                        message.push(candidate_input_hash);
+                        message.push(candidate_hash);
                     }
                     // A public input is hashed to a field element.
                     InputID::Public(input_hash) => {
                         // Ensure the input is a plaintext.
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
                         // Hash the input to a field element.
-                        let candidate_input_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        let candidate_hash = N::hash_bhp1024(&input.to_bits_le())?;
                         // Ensure the input hash matches.
-                        ensure!(*input_hash == candidate_input_hash, "Expected a public input with the same hash");
+                        ensure!(*input_hash == candidate_hash, "Expected a public input with the same hash");
                         // Add the input hash to the message.
-                        message.push(candidate_input_hash);
+                        message.push(candidate_hash);
                     }
                     // A private input is encrypted (using `tvk`) and hashed to a field element.
                     InputID::Private(input_hash) => {
@@ -91,16 +91,13 @@ impl<N: Network> Request<N> {
                             Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
                         };
                         // Hash the ciphertext to a field element.
-                        let candidate_input_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        let candidate_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
                         // Ensure the input hash matches.
-                        ensure!(
-                            *input_hash == candidate_input_hash,
-                            "Expected a private input with the same commitment"
-                        );
+                        ensure!(*input_hash == candidate_hash, "Expected a private input with the same commitment");
                         // Add the input hash to the message.
-                        message.push(candidate_input_hash);
+                        message.push(candidate_hash);
                     }
-                    // An input record is computed to its serial number.
+                    // A record input is computed to its serial number.
                     InputID::Record(gamma, serial_number) => {
                         // Prepare the index as a constant field element.
                         let index = Field::from_u16(index as u16);
@@ -113,7 +110,7 @@ impl<N: Network> Request<N> {
                             Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&randomizer)?;
+                        let commitment = record.to_commitment(&self.program_id, &randomizer)?;
                         // Ensure the record belongs to the caller.
                         ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
                         // Ensure the record balance is less than or equal to 2^52.
@@ -139,6 +136,21 @@ impl<N: Network> Request<N> {
                         // Ensure the serial number matches.
                         ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
                     }
+                    // An external record input is committed (using `tvk`) to a field element.
+                    InputID::ExternalRecord(input_commitment) => {
+                        // Ensure the input is a record.
+                        ensure!(matches!(input, Value::Record(..)), "Expected a record input");
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Compute the input randomizer as `HashToScalar(tvk || index)`.
+                        let input_randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
+                        // Commit to the input to a field element.
+                        let candidate_cm = N::commit_bhp1024(&input.to_bits_le(), &input_randomizer)?;
+                        // Ensure the input commitment matches.
+                        ensure!(*input_commitment == candidate_cm, "Expected a locator input with the same commitment");
+                        // Add the input commitment to the message.
+                        message.push(candidate_cm);
+                    }
                 }
                 Ok(())
             })
@@ -155,7 +167,6 @@ impl<N: Network> Request<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Plaintext, Record};
     use snarkvm_console_account::PrivateKey;
     use snarkvm_console_network::Testnet3;
 
@@ -181,11 +192,12 @@ mod tests {
                 format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
-            let input_constant = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_public = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_private = Value::Plaintext(Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap());
-            let input_record = Value::Record(Record::from_str(&record_string).unwrap());
-            let inputs = vec![input_constant, input_public, input_private, input_record];
+            let input_constant = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
+            let input_public = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
+            let input_private = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
+            let input_record = Value::from_str(&record_string).unwrap();
+            let input_external_record = Value::from_str(&record_string).unwrap();
+            let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
 
             // Construct the input types.
             let input_types = vec![
@@ -193,10 +205,11 @@ mod tests {
                 ValueType::from_str("amount.public").unwrap(),
                 ValueType::from_str("amount.private").unwrap(),
                 ValueType::from_str("token.record").unwrap(),
+                ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
             // Compute the signed request.
-            let request = Request::sign(&private_key, program_id, function_name, inputs, &input_types, rng).unwrap();
+            let request = Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
             assert!(request.verify());
         }
     }

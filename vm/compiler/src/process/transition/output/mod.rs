@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod bytes;
+mod serialize;
+
 use console::{
     network::prelude::*,
     program::{Ciphertext, Plaintext, Record},
@@ -31,6 +34,8 @@ pub enum Output<N: Network> {
     Private(Field<N>, Option<Ciphertext<N>>),
     /// The commitment, nonce, checksum, and (optional) record ciphertext.
     Record(Field<N>, Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
+    /// The output commitment of the external record. Note: This is **not** the record commitment.
+    ExternalRecord(Field<N>),
 }
 
 impl<N: Network> Output<N> {
@@ -41,6 +46,15 @@ impl<N: Network> Output<N> {
             Output::Public(id, ..) => vec![*id],
             Output::Private(id, ..) => vec![*id],
             Output::Record(commitment, nonce, checksum, _) => vec![*commitment, *nonce, *checksum],
+            Output::ExternalRecord(id) => vec![*id],
+        }
+    }
+
+    /// Returns the commitment if the output is a record.
+    pub fn commitment(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(commitment, ..) => Some(commitment),
+            _ => None,
         }
     }
 
@@ -78,5 +92,28 @@ impl<N: Network> Output<N> {
             },
             _ => true,
         }
+    }
+}
+
+impl<N: Network> FromStr for Output<N> {
+    type Err = Error;
+
+    /// Initializes the output from a JSON-string.
+    fn from_str(output: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(output)?)
+    }
+}
+
+impl<N: Network> Debug for Output<N> {
+    /// Prints the output as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Output<N> {
+    /// Displays the output as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

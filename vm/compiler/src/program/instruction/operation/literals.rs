@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Operation, Program, Stack};
+use crate::{Opcode, Operand, Operation, Stack};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
@@ -84,7 +84,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
         // Retrieve the expected output type.
-        let expected_types = self.output_types(stack.program(), &input_types)?;
+        let expected_types = self.output_types(stack, &input_types)?;
         // Ensure there is exactly one output.
         ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
         // Ensure the output type is correct.
@@ -96,7 +96,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
@@ -114,7 +114,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         let output_type = RegisterType::Plaintext(PlaintextType::from(output.to_type()));
 
         // Retrieve the expected output type.
-        let expected_types = self.output_types(stack.program(), &input_types)?;
+        let expected_types = self.output_types(stack, &input_types)?;
         // Ensure there is exactly one output.
         ensure!(expected_types.len() == 1, "Expected 1 output type, found {}", expected_types.len());
         // Ensure the output type is correct.
@@ -126,7 +126,11 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types(&self, _program: &Program<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types<A: circuit::Aleo<Network = N>>(
+        &self,
+        _stack: &Stack<N, A>,
+        input_types: &[RegisterType<N>],
+    ) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())
@@ -146,6 +150,7 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
                     bail!("Expected literal type, found '{input_type}'")
                 }
                 RegisterType::Record(..) => bail!("Expected literal type, found '{input_type}'"),
+                RegisterType::ExternalRecord(..) => bail!("Expected literal type, found '{input_type}'"),
             })
             .collect::<Result<Vec<_>>>()?;
 

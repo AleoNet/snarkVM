@@ -71,9 +71,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         };
 
         // Retrieve the register type.
-        match self.register_types.get_type(&self.program, register) {
+        match self.register_types.get_type(self, register) {
             // Ensure the stack value matches the register type.
-            Ok(register_type) => self.program.matches_register(&stack_value, &register_type)?,
+            Ok(register_type) => self.matches_register_type(&stack_value, &register_type)?,
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
         };
@@ -146,10 +146,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         };
 
         // Retrieve the register type.
-        match self.register_types.get_type(&self.program, register) {
+        match self.register_types.get_type(self, register) {
             // Ensure the stack value matches the register type.
             Ok(register_type) => {
-                self.program.matches_register(&circuit::Eject::eject_value(&circuit_value), &register_type)?
+                self.matches_register_type(&circuit::Eject::eject_value(&circuit_value), &register_type)?
             }
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),

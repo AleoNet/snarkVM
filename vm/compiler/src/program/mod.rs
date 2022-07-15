@@ -27,32 +27,12 @@ mod instruction;
 pub use instruction::*;
 
 mod bytes;
-mod matches;
 mod parse;
-mod sample;
+mod serialize;
 
 use console::{
-    account::PrivateKey,
     network::prelude::*,
-    program::{
-        Balance,
-        Entry,
-        EntryType,
-        Identifier,
-        Interface,
-        Literal,
-        Owner,
-        Plaintext,
-        PlaintextType,
-        ProgramID,
-        Record,
-        RecordType,
-        RegisterType,
-        Request,
-        Value,
-        ValueType,
-    },
-    types::{Address, U64},
+    program::{EntryType, Identifier, Interface, PlaintextType, ProgramID, RecordType},
 };
 
 use indexmap::IndexMap;
@@ -90,8 +70,13 @@ pub struct Program<N: Network> {
 impl<N: Network> Program<N> {
     /// Initializes an empty program.
     #[inline]
-    pub fn new(id: ProgramID<N>) -> Self {
-        Self {
+    pub fn new(id: ProgramID<N>) -> Result<Self> {
+        // Ensure the program name is valid.
+        ensure!(!Self::is_reserved_keyword(id.name()), "Program name is invalid: {}", id.name());
+        // Ensure the program network-level domain is `aleo`.
+        ensure!(id.is_aleo(), "Program network is invalid: {}", id.network());
+
+        Ok(Self {
             id,
             imports: IndexMap::new(),
             identifiers: IndexMap::new(),
@@ -99,27 +84,17 @@ impl<N: Network> Program<N> {
             records: IndexMap::new(),
             closures: IndexMap::new(),
             functions: IndexMap::new(),
-        }
-    }
-
-    /// Signs a request to execute a program function.
-    #[inline]
-    pub fn sign<R: Rng + CryptoRng>(
-        &self,
-        private_key: &PrivateKey<N>,
-        function_name: Identifier<N>,
-        inputs: Vec<Value<N>>,
-        rng: &mut R,
-    ) -> Result<Request<N>> {
-        // Retrieve the function from the program.
-        let function = self.get_function(&function_name)?;
-        // Compute the signed request.
-        Request::sign(private_key, self.id, function_name, inputs, &function.input_types(), rng)
+        })
     }
 
     /// Returns the ID of the program.
     pub const fn id(&self) -> &ProgramID<N> {
         &self.id
+    }
+
+    /// Returns the imports in the program.
+    pub const fn imports(&self) -> &IndexMap<ProgramID<N>, Import<N>> {
+        &self.imports
     }
 
     /// Returns the closures in the program.
@@ -130,6 +105,11 @@ impl<N: Network> Program<N> {
     /// Returns the functions in the program.
     pub const fn functions(&self) -> &IndexMap<Identifier<N>, Function<N>> {
         &self.functions
+    }
+
+    /// Returns `true` if the program contains an import with the given program ID.
+    pub fn contains_import(&self, id: &ProgramID<N>) -> bool {
+        self.imports.contains_key(id)
     }
 
     /// Returns `true` if the program contains a interface with the given name.
@@ -216,14 +196,18 @@ impl<N: Network> Program<N> {
         // Ensure the import name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&import_name), "'{import_name}' is a reserved opcode.");
         // Ensure the import name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
 
         // Ensure the import is new.
-        ensure!(!self.imports.contains_key(import.id()), "Import '{}' is already defined.", import.id());
+        ensure!(
+            !self.imports.contains_key(import.program_id()),
+            "Import '{}' is already defined.",
+            import.program_id()
+        );
 
         // Add the import statement to the program.
-        if self.imports.insert(*import.id(), import.clone()).is_some() {
-            bail!("'{}' already exists in the program.", import.id())
+        if self.imports.insert(*import.program_id(), import.clone()).is_some() {
+            bail!("'{}' already exists in the program.", import.program_id())
         }
         Ok(())
     }
@@ -245,7 +229,7 @@ impl<N: Network> Program<N> {
         // Ensure the interface name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&interface_name), "'{interface_name}' is a reserved opcode.");
         // Ensure the interface name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
 
         // Ensure the interface contains members.
         ensure!(!interface.members().is_empty(), "Interface '{interface_name}' is missing members.");
@@ -254,7 +238,7 @@ impl<N: Network> Program<N> {
         // Note: This design ensures cyclic references are not possible.
         for (identifier, plaintext_type) in interface.members() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!self.is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
+            ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match plaintext_type {
                 PlaintextType::Literal(..) => continue,
@@ -298,13 +282,13 @@ impl<N: Network> Program<N> {
         // Ensure the record name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&record_name), "'{record_name}' is a reserved opcode.");
         // Ensure the record name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&record_name), "'{record_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&record_name), "'{record_name}' is a reserved keyword.");
 
         // Ensure all record entries are well-formed.
         // Note: This design ensures cyclic references are not possible.
         for (identifier, entry_type) in record.entries() {
             // Ensure the member name is not a reserved keyword.
-            ensure!(!self.is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
+            ensure!(!Self::is_reserved_keyword(identifier), "'{identifier}' is a reserved keyword.");
             // Ensure the member type is already defined in the program.
             match entry_type {
                 // Ensure the plaintext type is already defined.
@@ -355,7 +339,7 @@ impl<N: Network> Program<N> {
         // Ensure the closure name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&closure_name), "'{closure_name}' is a reserved opcode.");
         // Ensure the closure name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
 
         // Ensure there are input statements in the closure.
         ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
@@ -400,7 +384,7 @@ impl<N: Network> Program<N> {
         // Ensure the function name is not a reserved opcode.
         ensure!(!self.is_reserved_opcode(&function_name), "'{function_name}' is a reserved opcode.");
         // Ensure the function name is not a reserved keyword.
-        ensure!(!self.is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
+        ensure!(!Self::is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
         // Ensure there are input statements in the function.
         ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
@@ -499,7 +483,7 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns `true` if the given name uses a reserved keyword.
-    fn is_reserved_keyword(&self, name: &Identifier<N>) -> bool {
+    pub fn is_reserved_keyword(name: &Identifier<N>) -> bool {
         // Convert the given name to a string.
         let name = name.to_string();
         // Check if the name is a keyword.
@@ -518,9 +502,13 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Stack;
+    use crate::{CallStack, Execution, Process};
     use circuit::network::AleoV0;
-    use console::network::Testnet3;
+    use console::{
+        account::PrivateKey,
+        network::Testnet3,
+        program::{Plaintext, Record, Value},
+    };
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
@@ -536,7 +524,7 @@ interface message:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
         // Add the interface to the program.
         program.add_interface(interface.clone())?;
@@ -561,7 +549,7 @@ record foo:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
         // Add the record to the program.
         program.add_record(record.clone())?;
@@ -586,7 +574,7 @@ function compute:
         )?;
 
         // Initialize a new program.
-        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown")?);
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
 
         // Add the function to the program.
         program.add_function(function.clone())?;
@@ -602,7 +590,7 @@ function compute:
     fn test_program_evaluate_function() {
         let program = Program::<CurrentNetwork>::from_str(
             r"
-    program example;
+    program example.aleo;
 
     function foo:
         input r0 as field.public;
@@ -621,17 +609,23 @@ function compute:
             Value::Plaintext(Plaintext::from_str("3field").unwrap()),
         ];
 
+        // Retrieve the function from the program.
+        let function = program.get_function(&function_name).unwrap();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
-        let candidate = stack.test_evaluate(&function_name, &inputs).unwrap();
+        let candidate = stack.evaluate_function(&function, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_evaluate(&function_name, &inputs).unwrap();
+        let candidate = stack.evaluate_function(&function, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -641,7 +635,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program example;
+program example.aleo;
 
 interface message:
     first as field;
@@ -663,16 +657,22 @@ function compute:
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
+        // Retrieve the function from the program.
+        let function = program.get_function(&function_name).unwrap();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_evaluate(&function_name, &[input]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[input]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -682,7 +682,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program token;
+program token.aleo;
 
 record token:
     owner as address.private;
@@ -705,16 +705,22 @@ function compute:
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
+        // Retrieve the function from the program.
+        let function = program.get_function(&function_name).unwrap();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_evaluate(&function_name, &[input]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[input]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -724,7 +730,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program example_call;
+program example_call.aleo;
 
 // (a + (a + b)) + (a + b) == (3a + 2b)
 closure execute:
@@ -760,31 +766,61 @@ function compute:
         let r3 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
         let r4 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
+        // Retrieve the function from the program.
+        let function = program.get_function(&function_name).unwrap();
+
+        {
+            // Construct the process.
+            let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+            // Check that the circuit key can be synthesized.
+            process.circuit_key(program.id(), &function_name).unwrap();
+        }
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.test_evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_evaluate(&function_name, &[r0.clone(), r1.clone()]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
-        use circuit::Eject;
+        use circuit::Environment;
+
+        // Ensure the environment is clean.
+        assert_eq!(0, CurrentAleo::num_constants());
+        assert_eq!(1, CurrentAleo::num_public());
+        assert_eq!(0, CurrentAleo::num_private());
+        assert_eq!(0, CurrentAleo::num_constraints());
+
+        // Initialize an RNG.
+        let rng = &mut rand::thread_rng();
+        // Initialize a burner private key.
+        let burner_private_key = PrivateKey::new(rng).unwrap();
+        // Authorize the function call, with a burner private key.
+        let authorization =
+            process.authorize(&burner_private_key, program.id(), function_name, &[r0, r1], rng).unwrap();
+        assert_eq!(authorization.len(), 1);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_execute(&function_name, &[r0, r1]).unwrap();
+        let (response, _assignment) =
+            stack.execute_function(CallStack::Execute(authorization, Execution::new())).unwrap();
+        let candidate = response.outputs();
         assert_eq!(3, candidate.len());
-        assert_eq!(r2, candidate[0].eject_value());
-        assert_eq!(r3, candidate[1].eject_value());
-        assert_eq!(r4, candidate[2].eject_value());
+        assert_eq!(r2, candidate[0]);
+        assert_eq!(r3, candidate[1]);
+        assert_eq!(r4, candidate[2]);
     }
 
     #[test]
@@ -792,7 +828,7 @@ function compute:
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program token_with_cast;
+program token_with_cast.aleo;
 
 record token:
     owner as address.private;
@@ -815,16 +851,22 @@ function compute:
         // Declare the expected output value.
         let expected = Value::Record(input_record);
 
+        // Retrieve the function from the program.
+        let function = program.get_function(&function_name).unwrap();
+
+        // Construct the process.
+        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+
         // Prepare the stack.
-        let mut stack = Stack::<CurrentNetwork, CurrentAleo>::new(program).unwrap();
+        let mut stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.test_evaluate(&function_name, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.test_evaluate(&function_name, &[input]).unwrap();
+        let candidate = stack.evaluate_function(&function, &[input]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }

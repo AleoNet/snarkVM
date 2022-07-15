@@ -58,7 +58,13 @@ impl<N: Network> Parser for Program<N> {
         // Return the program.
         map_res(take(0usize), move |_| {
             // Initialize a new program.
-            let mut program = Program::<N>::new(id);
+            let mut program = match Program::<N>::new(id) {
+                Ok(program) => program,
+                Err(error) => {
+                    eprintln!("{error}");
+                    return Err(error);
+                }
+            };
             // Construct the program with the parsed components.
             for component in components.iter() {
                 let result = match component {
@@ -187,7 +193,7 @@ mod tests {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
             r"
-program to_parse;
+program to_parse.aleo;
 
 interface message:
     first as field;
