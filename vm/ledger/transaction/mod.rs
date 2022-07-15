@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::console::{network::prelude::*, types::Field};
+use crate::{
+    console::{network::prelude::*, types::Field},
+    vm::VM,
+};
 use snarkvm_compiler::{Execution, Process, Program, Transition, VerifyingKey};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -47,69 +50,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the transaction is valid.
-    pub fn is_valid(&self, process: &Process<N>) -> bool {
-        match self {
-            Transaction::Deploy(id, program, _verifying_key) => {
-                // Convert the program into bytes.
-                let program_bytes = match program.to_bytes_le() {
-                    Ok(bytes) => bytes,
-                    Err(error) => {
-                        warn!("Unable to convert program into bytes for transaction (deploy, {id}): {error}");
-                        return false;
-                    }
-                };
-
-                // Check the transaction ID.
-                match N::hash_bhp1024(&program_bytes.to_bits_le()) {
-                    Ok(candidate_id) => {
-                        // Ensure the transaction ID matches the one in the transaction.
-                        if candidate_id != **id {
-                            warn!("Transaction ({id}) has an incorrect transaction ID.");
-                            return false;
-                        }
-                    }
-                    Err(error) => {
-                        warn!("Unable to compute transaction ID for transaction (deploy, {id}): {error}");
-                        return false;
-                    }
-                };
-
-                /// TODO (howardwu): Check the program (1. ensure the program ID does not exist already, 2. check it is well-formed).
-                /// TODO (howardwu): Check the verifying key.
-                true
-            }
-            Transaction::Execute(id, transitions) => {
-                // Ensure there is at least 1 transition.
-                if transitions.is_empty() {
-                    warn!("Transaction ({id}) has no transitions.");
-                    return false;
-                }
-
-                // Check the transaction ID.
-                let id_bits: Vec<_> = transitions.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
-                match N::hash_bhp1024(&id_bits) {
-                    Ok(candidate_id) => {
-                        // Ensure the transaction ID matches the one in the transaction.
-                        if candidate_id != **id {
-                            warn!("Transaction ({id}) has an incorrect transaction ID.");
-                            return false;
-                        }
-                    }
-                    Err(error) => {
-                        warn!("Unable to compute transaction ID for transaction (execute, {id}): {error}");
-                        return false;
-                    }
-                };
-
-                // Ensure each transition is valid.
-                if let Err(error) = process.verify(Execution::from(transitions)) {
-                    warn!("Transaction ({id}) is invalid: {error}\n{:#?}", transitions);
-                    return false;
-                }
-
-                true
-            }
-        }
+    pub fn is_valid(&self) -> bool {
+        VM::verify::<N>(self)
     }
 
     /// Returns the transaction ID.

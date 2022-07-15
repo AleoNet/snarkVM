@@ -73,7 +73,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns `true` if the transactions are well-formed.
-    pub fn is_valid(&self, process: &Process<N>) -> bool {
+    pub fn is_valid(&self) -> bool {
         // Ensure the transactions list is not empty.
         if self.transactions.is_empty() {
             eprintln!("Cannot validate an empty transactions list");
@@ -81,9 +81,8 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        // TODO (howardwu): Update the `Process` and `Stack` abstractions -- move trait `A` down to the methods that require it.
         // if !self.transactions.as_parallel_slice().par_iter().all(|transaction| transaction.is_valid(process)) {
-        if !self.transactions.iter().all(|transaction| transaction.is_valid(process)) {
+        if !self.transactions.iter().all(|transaction| transaction.is_valid()) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }

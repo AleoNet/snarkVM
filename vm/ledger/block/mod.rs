@@ -97,7 +97,7 @@ impl<N: Network> Block<N> {
     //     }
 
     /// Returns `true` if the block is well-formed.
-    pub fn is_valid(&self, process: &Process<N>) -> bool {
+    pub fn is_valid(&self) -> bool {
         // If the block is the genesis block, check that it is valid.
         if self.header.height() == 0 && !self.is_genesis() {
             warn!("Invalid genesis block");
@@ -141,7 +141,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the transactions are valid.
-        if !self.transactions.is_valid(process) {
+        if !self.transactions.is_valid() {
             warn!("Block contains invalid transactions: {:?}", self);
             return false;
         }
