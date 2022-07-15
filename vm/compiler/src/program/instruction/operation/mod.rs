@@ -134,43 +134,43 @@ crate::operation!(
     }
 );
 
-// /// Divides `first` by `second`, storing the outcome in `destination`.
-// pub type Div<N> = BinaryLiteral<N, DivOperation<N>>;
-//
-// crate::operation!(
-//     pub struct DivOperation<core::ops::Div, core::ops::Div, div, "div"> {
-//         (Field, Field) => Field,
-//         (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
-//         (Scalar, Scalar) => Scalar,
-//     }
-// );
+/// Divides `first` by `second`, storing the outcome in `destination`.
+pub type Div<N> = BinaryLiteral<N, DivOperation<N>>;
 
-// /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
-// pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
-//
-// crate::operation!(
-//     pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div.w"> {
-//         (I8, I8) => I8 ("ensure divide by zero halts"),
-//         (I16, I16) => I16 ("ensure divide by zero halts"),
-//         (I32, I32) => I32 ("ensure divide by zero halts"),
-//         (I64, I64) => I64 ("ensure divide by zero halts"),
-//         (I128, I128) => I128 ("ensure divide by zero halts"),
-//         (U8, U8) => U8 ("ensure divide by zero halts"),
-//         (U16, U16) => U16 ("ensure divide by zero halts"),
-//         (U32, U32) => U32 ("ensure divide by zero halts"),
-//         (U64, U64) => U64 ("ensure divide by zero halts"),
-//         (U128, U128) => U128 ("ensure divide by zero halts"),
-//     }
-// );
+crate::operation!(
+    pub struct DivOperation<core::ops::Div, core::ops::Div, div, "div"> {
+        (Field, Field) => Field,
+        (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
+        // (Scalar, Scalar) => Scalar,
+    }
+);
+
+/// Divides `first` by `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
+pub type DivWrapped<N> = BinaryLiteral<N, DivWrappedOperation<N>>;
+
+crate::operation!(
+    pub struct DivWrappedOperation<console::prelude::DivWrapped, circuit::prelude::DivWrapped, div_wrapped, "div.w"> {
+        (I8, I8) => I8 ("ensure divide by zero halts"),
+        (I16, I16) => I16 ("ensure divide by zero halts"),
+        (I32, I32) => I32 ("ensure divide by zero halts"),
+        (I64, I64) => I64 ("ensure divide by zero halts"),
+        (I128, I128) => I128 ("ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure divide by zero halts"),
+    }
+);
 
 /// Doubles `first`, storing the outcome in `destination`.
 pub type Double<N> = UnaryLiteral<N, DoubleOperation<N>>;
