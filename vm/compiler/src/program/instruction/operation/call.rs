@@ -348,12 +348,19 @@ impl<N: Network> Call<N> {
                 .map(|input_id| circuit::InputID::new(circuit::Mode::Public, *input_id))
                 .collect::<Vec<_>>();
             // Ensure the candidate input IDs match their computed inputs.
-            A::assert(circuit::Request::check_input_ids(&input_ids, &inputs, caller, &program_id, &tvk));
+            A::assert(circuit::Request::check_input_ids(
+                &input_ids,
+                &inputs,
+                &function.input_types(),
+                caller,
+                &program_id,
+                &tvk,
+            ));
 
             // Inject the response as `Mode::Private` (with the IDs as `Mode::Public`).
             let response = circuit::Response::new(circuit::Mode::Private, response);
             // Ensure the response matches its declared IDs.
-            A::assert(response.verify(&program_id, num_inputs, &tvk));
+            A::assert(response.verify(&program_id, num_inputs, &tvk, &function.output_types()));
 
             // Return the circuit outputs.
             response.outputs().to_vec()

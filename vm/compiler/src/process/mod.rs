@@ -185,13 +185,13 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
     /// Evaluates a program function on the given request.
     #[inline]
     pub fn evaluate(&self, request: &Request<N>) -> Result<Response<N>> {
-        // Ensure the request is well-formed.
-        ensure!(request.verify(), "Request is invalid");
-
         // Retrieve the program.
         let program = self.get_program(request.program_id())?.clone();
         // Retrieve the function from the program.
         let function = program.get_function(request.function_name())?;
+
+        // Ensure the request is well-formed.
+        ensure!(request.verify(&function.input_types()), "Request is invalid");
 
         // Prepare the stack.
         let mut stack = self.get_stack(request.program_id())?;
@@ -240,9 +240,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         if !stack.program().contains_function(request.function_name()) {
             bail!("Function '{}' does not exist.", request.function_name())
         }
-
-        // Ensure the request is well-formed.
-        ensure!(request.verify(), "Request is invalid");
 
         // Initialize the execution.
         let execution = Execution::new();

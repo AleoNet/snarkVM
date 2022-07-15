@@ -64,7 +64,7 @@ impl<A: Aleo> Response<A> {
                         OutputID::private(output_hash)
                     }
                     // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
-                    console::ValueType::Record(..) => {
+                    console::ValueType::Record(record_name) => {
                         // Retrieve the record.
                         let record = match &output {
                             Value::Record(record) => record,
@@ -77,7 +77,8 @@ impl<A: Aleo> Response<A> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &randomizer);
+                        let commitment =
+                            record.to_commitment(program_id, &Identifier::constant(*record_name), &randomizer);
 
                         // Compute the record nonce.
                         let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -161,12 +162,12 @@ mod tests {
             let program_id = ProgramID::<Circuit>::new(mode, program_id);
             let tvk = Field::<Circuit>::new(mode, tvk);
             let response = Response::<Circuit>::new(mode, response);
-            assert!(response.verify(&program_id, 4, &tvk).eject_value());
+            assert!(response.verify(&program_id, 4, &tvk, &output_types).eject_value());
 
             // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, outputs);
             let response = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
-            assert!(response.verify(&program_id, 4, &tvk).eject_value());
+            assert!(response.verify(&program_id, 4, &tvk, &output_types).eject_value());
 
             Circuit::reset();
         }

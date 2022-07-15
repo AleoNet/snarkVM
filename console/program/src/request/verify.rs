@@ -21,7 +21,7 @@ impl<N: Network> Request<N> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
         // Verify the transition public key and transition view key are well-formed.
         {
             // Compute the transition public key `tpk` as `tsk * G`.
@@ -70,8 +70,8 @@ impl<N: Network> Request<N> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        if let Err(error) =
-            self.input_ids.iter().zip_eq(&self.inputs).enumerate().try_for_each(|(index, (input_id, input))| {
+        if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
+            |(index, ((input_id, input), input_type))| {
                 match input_id {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
@@ -128,8 +128,14 @@ impl<N: Network> Request<N> {
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
+                        // Retrieve the record name.
+                        let record_name = match input_type {
+                            ValueType::Record(record_name) => record_name,
+                            // Ensure the input type is a record.
+                            _ => bail!("Expected a record type at input {index}"),
+                        };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&self.program_id, &randomizer)?;
+                        let commitment = record.to_commitment(&self.program_id, record_name, &randomizer)?;
                         // Ensure the record belongs to the caller.
                         ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
                         // Ensure the record balance is less than or equal to 2^52.
@@ -172,8 +178,8 @@ impl<N: Network> Request<N> {
                     }
                 }
                 Ok(())
-            })
-        {
+            },
+        ) {
             eprintln!("Request verification failed on input checks: {error}");
             return false;
         }
@@ -229,7 +235,7 @@ mod tests {
 
             // Compute the signed request.
             let request = Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
-            assert!(request.verify());
+            assert!(request.verify(&input_types));
         }
     }
 }

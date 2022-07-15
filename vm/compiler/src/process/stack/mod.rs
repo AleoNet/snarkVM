@@ -355,8 +355,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Compute the request, with a burner private key.
         let request = Request::sign(&burner_private_key, *program_id, *function_name, &inputs, &input_types, rng)?;
-        // Ensure the request is well-formed.
-        ensure!(request.verify(), "Request is invalid");
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
         // Initialize the call stack.
@@ -572,6 +570,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             bail!("Expected {num_inputs} inputs, found {}", console_request.inputs().len())
         }
 
+        // Ensure the request is well-formed.
+        ensure!(console_request.verify(&function.input_types()), "Request is invalid");
+
         use circuit::{Eject, Inject};
 
         // Inject the transition public key `tpk` as `Mode::Public`.
@@ -579,7 +580,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
-        A::assert(request.verify(&tpk));
+        A::assert(request.verify(&function.input_types(), &tpk));
         // Cache the request caller.
         self.circuit_caller = Some(request.caller().clone());
 
@@ -765,7 +766,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Add the transition to the execution.
-            execution.push(Transition::from(&console_request, &response, proof, *fee)?);
+            execution.push(Transition::from(&console_request, &response, &function.output_types(), proof, *fee)?);
         }
 
         // Return the response.

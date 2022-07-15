@@ -122,7 +122,7 @@ impl<N: Network> Request<N> {
                     input_ids.push(InputID::Private(input_hash));
                 }
                 // A record input is computed to its serial number.
-                ValueType::Record(..) => {
+                ValueType::Record(record_name) => {
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(index as u16);
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
@@ -134,7 +134,7 @@ impl<N: Network> Request<N> {
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
                     // Compute the record commitment.
-                    let commitment = record.to_commitment(&program_id, &randomizer)?;
+                    let commitment = record.to_commitment(&program_id, record_name, &randomizer)?;
                     // Ensure the record belongs to the caller.
                     ensure!(**record.owner() == caller, "Input record does not belong to the signer");
                     // Ensure the record balance is less than or equal to 2^52.

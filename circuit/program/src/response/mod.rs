@@ -20,7 +20,7 @@ use snarkvm_circuit_types::environment::assert_scope;
 mod from_outputs;
 mod verify;
 
-use crate::{ProgramID, Value};
+use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
 use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field};
 

@@ -101,7 +101,7 @@ impl<N: Network> Response<N> {
                         Ok(OutputID::Private(output_hash))
                     }
                     // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
-                    ValueType::Record(..) => {
+                    ValueType::Record(record_name) => {
                         // Retrieve the record.
                         let record = match &output {
                             Value::Record(record) => record,
@@ -114,7 +114,7 @@ impl<N: Network> Response<N> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &randomizer)?;
+                        let commitment = record.to_commitment(program_id, record_name, &randomizer)?;
 
                         // Compute the record nonce.
                         let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();

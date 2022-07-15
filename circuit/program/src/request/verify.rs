@@ -22,7 +22,7 @@ impl<A: Aleo> Request<A> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
-    pub fn verify(&self, tpk: &Group<A>) -> Boolean<A> {
+    pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &[
@@ -51,8 +51,9 @@ impl<A: Aleo> Request<A> {
             .input_ids
             .iter()
             .zip_eq(&self.inputs)
+            .zip_eq(input_types)
             .enumerate()
-            .map(|(index, (input_id, input))| {
+            .map(|(index, ((input_id, input), input_type))| {
                 match input_id {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
@@ -98,8 +99,14 @@ impl<A: Aleo> Request<A> {
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
+                        // Retrieve the record name as a `Mode::Constant`.
+                        let record_name = match input_type {
+                            console::ValueType::Record(record_name) => Identifier::constant(*record_name),
+                            // Ensure the input is a record.
+                            _ => A::halt(format!("Expected a record input at input {index}")),
+                        };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&self.program_id, &randomizer);
+                        let commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
@@ -187,6 +194,7 @@ impl<A: Aleo> Request<A> {
     pub fn check_input_ids(
         input_ids: &[InputID<A>],
         inputs: &[Value<A>],
+        input_types: &[console::ValueType<A::Network>],
         caller: &Address<A>,
         program_id: &ProgramID<A>,
         tvk: &Field<A>,
@@ -194,8 +202,9 @@ impl<A: Aleo> Request<A> {
         input_ids
             .iter()
             .zip_eq(inputs)
+            .zip_eq(input_types)
             .enumerate()
-            .map(|(index, (input_id, input))| {
+            .map(|(index, ((input_id, input), input_type))| {
                 match input_id {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
@@ -234,8 +243,14 @@ impl<A: Aleo> Request<A> {
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
+                        // Retrieve the record name as a `Mode::Constant`.
+                        let record_name = match input_type {
+                            console::ValueType::Record(record_name) => Identifier::constant(*record_name),
+                            // Ensure the input is a record.
+                            _ => A::halt(format!("Expected a record type at input {index}")),
+                        };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &randomizer);
+                        let commitment = record.to_commitment(program_id, &record_name, &randomizer);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
@@ -326,14 +341,14 @@ mod tests {
 
             // Compute the signed request.
             let request = console::Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng)?;
-            assert!(request.verify());
+            assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.
             let tpk = Group::<Circuit>::new(mode, request.to_tpk());
             let request = Request::<Circuit>::new(mode, request);
 
             Circuit::scope(format!("Request {i}"), || {
-                let candidate = request.verify(&tpk);
+                let candidate = request.verify(&input_types, &tpk);
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
@@ -349,16 +364,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 40000, 0, 14950, 15000)
+        check_verify(Mode::Constant, 40000, 0, 15000, 15100)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 35337, 0, 30904, 30948)
+        check_verify(Mode::Public, 35303, 0, 31030, 31074)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 35337, 0, 30904, 30948)
+        check_verify(Mode::Private, 35303, 0, 31030, 31074)
     }
 }
