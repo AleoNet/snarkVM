@@ -333,12 +333,12 @@ impl<N: Network> Call<N> {
 
             // Inject the program ID as `Mode::Constant`.
             let program_id = circuit::ProgramID::constant(*substack.program_id());
-            // Retrieve the circuit caller from the stack.
-            let caller = stack.circuit_caller()?;
 
             // Ensure the number of public variables remains the same.
             ensure!(A::num_public() == num_public, "Forbidden: 'call' injected excess public variables");
 
+            // Inject the `caller` (from the request) as `Mode::Private`.
+            let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
             // Inject the `tvk` (from the request) as `Mode::Private`.
             let tvk = circuit::Field::new(circuit::Mode::Private, *request.tvk());
             // Inject the input IDs (from the request) as `Mode::Public`.
@@ -352,7 +352,7 @@ impl<N: Network> Call<N> {
                 &input_ids,
                 &inputs,
                 &function.input_types(),
-                caller,
+                &caller,
                 &program_id,
                 &tvk,
             ));

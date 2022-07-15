@@ -197,8 +197,6 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The current call stack.
     call_stack: CallStack<N>,
-    /// The current circuit caller.
-    circuit_caller: Option<circuit::Address<A>>,
     /// The mapping of all registers to their defined types.
     register_types: RegisterTypes<N>,
     /// The mapping of assigned console registers to their values.
@@ -218,7 +216,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
             call_stack: CallStack::Execute(Authorization::new(&[]), Execution::new()),
-            circuit_caller: None,
             register_types: RegisterTypes::new(),
             console_registers: IndexMap::new(),
             circuit_registers: IndexMap::new(),
@@ -366,16 +363,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         Ok(())
     }
 
-    /// Returns the call stack.
+    /// Returns the current call stack.
     #[inline]
     pub fn call_stack(&self) -> CallStack<N> {
         self.call_stack.clone()
-    }
-
-    /// Returns the circuit caller.
-    #[inline]
-    pub fn circuit_caller(&self) -> Result<&circuit::Address<A>> {
-        self.circuit_caller.as_ref().ok_or_else(|| anyhow!("Malformed stack: missing circuit caller"))
     }
 
     /// Returns the register types for the given closure or function name.
@@ -397,7 +388,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Initialize the stack.
-        self.circuit_caller = None;
         self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -437,7 +427,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // Initialize the stack.
-        self.circuit_caller = None;
         self.register_types = self.get_register_types(function.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -486,7 +475,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
 
         // Initialize the stack.
         self.call_stack = call_stack;
-        self.circuit_caller = None;
         self.register_types = self.get_register_types(closure.name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -546,7 +534,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Initialize the stack.
         self.call_stack = call_stack;
         let console_request = self.call_stack.pop()?;
-        self.circuit_caller = None;
         self.register_types = self.get_register_types(console_request.function_name())?.clone();
         self.console_registers.clear();
         self.circuit_registers.clear();
@@ -581,8 +568,6 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&function.input_types(), &tpk));
-        // Cache the request caller.
-        self.circuit_caller = Some(request.caller().clone());
 
         #[cfg(debug_assertions)]
         Self::log_circuit("Request");
