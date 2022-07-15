@@ -730,7 +730,7 @@ mod tests {
                                 // This indicator is later used in the for-loops below.
                                 is_shift_operator |= true;
                             };
-                            ("ensure divide by zero halt") => {
+                            ("ensure divide by zero halts") => {
                                 should_succeed &= (*b) != 0
                             };
                         }
