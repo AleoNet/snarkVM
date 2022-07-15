@@ -17,17 +17,20 @@
 use super::*;
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
-    /// Checks that the given input value matches the layout of the value type.
-    pub fn matches_value_type(&self, input: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
-        // Ensure the input value matches the declared type in the register.
-        match (input, value_type) {
+    /// Checks that the given value matches the layout of the value type.
+    pub fn matches_value_type(&self, value: &Value<N>, value_type: &ValueType<N>) -> Result<()> {
+        // Ensure the value matches the declared value type in the register.
+        match (value, value_type) {
             (Value::Plaintext(plaintext), ValueType::Constant(plaintext_type))
             | (Value::Plaintext(plaintext), ValueType::Public(plaintext_type))
             | (Value::Plaintext(plaintext), ValueType::Private(plaintext_type)) => {
                 self.matches_plaintext(plaintext, plaintext_type)
             }
             (Value::Record(record), ValueType::Record(record_name)) => self.matches_record(record, record_name),
-            _ => bail!("Input value does not match the input register type '{value_type}'"),
+            (Value::Record(record), ValueType::ExternalRecord(locator)) => {
+                self.matches_external_record(record, locator)
+            }
+            _ => bail!("A value does not match its declared value type '{value_type}'"),
         }
     }
 
@@ -41,7 +44,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             (Value::Record(record), RegisterType::ExternalRecord(locator)) => {
                 self.matches_external_record(record, locator)
             }
-            _ => bail!("Stack value does not match the register type '{register_type}'"),
+            _ => bail!("A value does not match its declared register type '{register_type}'"),
         }
     }
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack};
+use crate::{Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
@@ -151,36 +151,45 @@ impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
 impl<N: Network, O: CommitOperation<N>> CommitInstruction<N, O> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
         // Retrieve the input and randomizer.
         let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
         // Compute the commitment.
         let commitment = O::evaluate(input, randomizer)?;
         // Store the commitment.
-        stack.store(&self.destination, commitment)
+        registers.store(stack, &self.destination, commitment)
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
         // Retrieve the input and randomizer.
         let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
         // Compute the commitment.
         let commitment = O::execute(input, randomizer)?;
         // Store the commitment.
-        stack.store_circuit(&self.destination, commitment)
+        registers.store_circuit(stack, &self.destination, commitment)
     }
 
     /// Returns the output type from the given program and input types.

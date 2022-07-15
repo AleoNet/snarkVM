@@ -181,8 +181,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
 
-        // Prepare the stack.
-        let mut stack = self.get_stack(program.id())?;
+        // Retrieve the stack.
+        let stack = self.get_stack(program.id())?;
         // Construct the authorization from the function.
         let _response =
             stack.execute_function(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
@@ -213,7 +213,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         ensure!(request.verify(&input_types), "Request is invalid");
 
         // Prepare the stack.
-        let mut stack = self.get_stack(program.id())?;
+        let stack = self.get_stack(program.id())?;
         // Evaluate the function.
         let outputs = stack.evaluate_function(&function, request.inputs())?;
         // Compute the response.
@@ -240,7 +240,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Process<N, A> {
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
         // Prepare the stack.
-        let mut stack = self.get_stack(request.program_id())?;
+        let stack = self.get_stack(request.program_id())?;
 
         // Ensure the network ID matches.
         ensure!(

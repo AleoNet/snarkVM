@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack};
+use crate::{Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
@@ -99,13 +99,17 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != 1 {
             bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
         }
         // Load the operand.
-        let input = stack.load(&self.operands[0])?;
+        let input = registers.load(stack, &self.operands[0])?;
         // Hash the input.
         let output = match VARIANT {
             0 => N::hash_bhp256(&input.to_bits_le())?,
@@ -122,12 +126,16 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         // Convert the output to a stack value.
         let output = Value::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default()));
         // Store the output.
-        stack.store(&self.destination, output)
+        registers.store(stack, &self.destination, output)
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         use circuit::{ToBits, ToFields};
 
         // Ensure the number of operands is correct.
@@ -135,7 +143,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             bail!("Instruction '{}' expects 1 operands, found {} operands", Self::opcode(), self.operands.len())
         }
         // Load the operand.
-        let input = stack.load_circuit(&self.operands[0])?;
+        let input = registers.load_circuit(stack, &self.operands[0])?;
         // Hash the input.
         let output = match VARIANT {
             0 => A::hash_bhp256(&input.to_bits_le()),
@@ -153,7 +161,7 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
         let output =
             circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Field(output), Default::default()));
         // Store the output.
-        stack.store_circuit(&self.destination, output)
+        registers.store_circuit(stack, &self.destination, output)
     }
 
     /// Returns the output type from the given program and input types.

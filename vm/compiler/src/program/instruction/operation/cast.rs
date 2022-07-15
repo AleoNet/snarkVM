@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack};
+use crate::{Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{
@@ -76,9 +76,13 @@ impl<N: Network> Cast<N> {
 impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
@@ -112,7 +116,7 @@ impl<N: Network> Cast<N> {
                 // Construct the interface.
                 let interface = Plaintext::Interface(members, Default::default());
                 // Store the interface.
-                stack.store(&self.destination, Value::Plaintext(interface))
+                registers.store(stack, &self.destination, Value::Plaintext(interface))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
@@ -178,7 +182,7 @@ impl<N: Network> Cast<N> {
                 // Construct the record.
                 let record = Record::from_plaintext(owner, gates, entries)?;
                 // Store the record.
-                stack.store(&self.destination, Value::Record(record))
+                registers.store(stack, &self.destination, Value::Record(record))
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
@@ -188,11 +192,16 @@ impl<N: Network> Cast<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N, A>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
@@ -231,7 +240,7 @@ impl<N: Network> Cast<N> {
                 // Construct the interface.
                 let interface = circuit::Plaintext::Interface(members, Default::default());
                 // Store the interface.
-                stack.store_circuit(&self.destination, circuit::Value::Plaintext(interface))
+                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(interface))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
@@ -309,7 +318,7 @@ impl<N: Network> Cast<N> {
                 // Construct the record.
                 let record = circuit::program::Record::from_plaintext(owner, gates, entries)?;
                 // Store the record.
-                stack.store_circuit(&self.destination, circuit::Value::Record(record))
+                registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")

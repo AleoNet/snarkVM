@@ -620,8 +620,8 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
@@ -670,8 +670,8 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
@@ -720,8 +720,8 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
@@ -792,8 +792,8 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
@@ -871,8 +871,8 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
         let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();

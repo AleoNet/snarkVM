@@ -17,10 +17,11 @@
 mod register_types;
 pub use register_types::*;
 
-mod load;
+mod registers;
+pub use registers::*;
+
 mod matches;
 mod sample;
-mod store;
 
 use crate::{CircuitKeys, Closure, Function, Instruction, Operand, Program, ProvingKey, Transition, VerifyingKey};
 use console::{
@@ -41,7 +42,6 @@ use console::{
         ProgramID,
         Record,
         RecordType,
-        Register,
         RegisterType,
         Request,
         Response,
@@ -160,6 +160,7 @@ impl<N: Network> Default for Execution<N> {
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
+    Evaluate,
     Execute(Authorization<N>, Execution<N>),
 }
 
@@ -169,6 +170,7 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..) => requests.push(request),
             CallStack::Synthesize(requests, ..) => requests.push(request),
+            CallStack::Evaluate => (),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
         Ok(())
@@ -180,6 +182,7 @@ impl<N: Network> CallStack<N> {
             CallStack::Authorize(requests, ..) | CallStack::Synthesize(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
+            CallStack::Evaluate => bail!("No requests on the stack when in `evaluate` mode"),
             CallStack::Execute(authorization, ..) => authorization.next(),
         }
     }
@@ -195,14 +198,7 @@ pub struct Stack<N: Network, A: circuit::Aleo<Network = N>> {
     external_stacks: IndexMap<ProgramID<N>, Stack<N, A>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
-    /// The current call stack.
-    call_stack: CallStack<N>,
-    /// The mapping of all registers to their defined types.
-    register_types: RegisterTypes<N>,
-    /// The mapping of assigned console registers to their values.
-    console_registers: IndexMap<u64, Value<N>>,
-    /// The mapping of assigned circuit registers to their values.
-    circuit_registers: IndexMap<u64, circuit::Value<A>>,
+    _phantom: core::marker::PhantomData<A>,
 }
 
 impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
@@ -215,10 +211,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             circuit_keys,
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
-            call_stack: CallStack::Execute(Authorization::new(&[]), Execution::new()),
-            register_types: RegisterTypes::new(),
-            console_registers: IndexMap::new(),
-            circuit_registers: IndexMap::new(),
+            _phantom: core::marker::PhantomData,
         })
     }
 
@@ -356,17 +349,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let authorization = Authorization::new(&[request.clone()]);
         // Initialize the call stack.
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
-        // Clone the stack.
-        let mut stack = self.clone();
         // Synthesize the circuit.
-        let _response = stack.execute_function(call_stack, rng)?;
+        let _response = self.execute_function(call_stack, rng)?;
         Ok(())
-    }
-
-    /// Returns the current call stack.
-    #[inline]
-    pub fn call_stack(&self) -> CallStack<N> {
-        self.call_stack.clone()
     }
 
     /// Returns the register types for the given closure or function name.
@@ -381,27 +366,25 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_closure(&mut self, closure: &Closure<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_closure(&self, closure: &Closure<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
         }
 
-        // Initialize the stack.
-        self.register_types = self.get_register_types(closure.name())?.clone();
-        self.console_registers.clear();
-        self.circuit_registers.clear();
+        // Initialize the registers.
+        let mut registers = Registers::new(CallStack::Evaluate, self.get_register_types(closure.name())?.clone());
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            self.store(register, input.clone())
+            registers.store(self, register, input.clone())
         })?;
 
         // Evaluate the instructions.
         for instruction in closure.instructions() {
             // If the evaluation fails, bail and return the error.
-            if let Err(error) = instruction.evaluate(self) {
+            if let Err(error) = instruction.evaluate(self, &mut registers) {
                 bail!("Failed to evaluate instruction ({instruction}): {error}");
             }
         }
@@ -409,7 +392,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Load the outputs.
         let outputs = closure.outputs().iter().map(|output| {
             // Retrieve the stack value from the register.
-            self.load(&Operand::Register(output.register().clone()))
+            registers.load(self, &Operand::Register(output.register().clone()))
         });
 
         outputs.collect()
@@ -420,27 +403,25 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_function(&mut self, function: &Function<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_function(&self, function: &Function<N>, inputs: &[Value<N>]) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if function.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
         }
 
-        // Initialize the stack.
-        self.register_types = self.get_register_types(function.name())?.clone();
-        self.console_registers.clear();
-        self.circuit_registers.clear();
+        // Initialize the registers.
+        let mut registers = Registers::new(CallStack::Evaluate, self.get_register_types(function.name())?.clone());
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // Assign the input value to the register.
-            self.store(register, input.clone())
+            registers.store(self, register, input.clone())
         })?;
 
         // Evaluate the instructions.
         for instruction in function.instructions() {
             // If the evaluation fails, bail and return the error.
-            if let Err(error) = instruction.evaluate(self) {
+            if let Err(error) = instruction.evaluate(self, &mut registers) {
                 bail!("Failed to evaluate instruction ({instruction}): {error}");
             }
         }
@@ -448,7 +429,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Load the outputs.
         let outputs = function.outputs().iter().map(|output| {
             // Retrieve the stack value from the register.
-            self.load(&Operand::Register(output.register().clone()))
+            registers.load(self, &Operand::Register(output.register().clone()))
         });
 
         outputs.collect()
@@ -460,7 +441,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     pub fn execute_closure(
-        &mut self,
+        &self,
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
@@ -473,35 +454,32 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Retrieve the number of public variables in the circuit.
         let num_public = A::num_public();
 
-        // Initialize the stack.
-        self.call_stack = call_stack;
-        self.register_types = self.get_register_types(closure.name())?.clone();
-        self.console_registers.clear();
-        self.circuit_registers.clear();
+        // Initialize the registers.
+        let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
             // If the circuit is in execute mode, then store the console input.
-            if let CallStack::Execute(..) = self.call_stack {
+            if let CallStack::Execute(..) = registers.call_stack() {
                 use circuit::Eject;
                 // Assign the console input to the register.
-                self.store(register, input.eject_value())?;
+                registers.store(self, register, input.eject_value())?;
             }
             // Assign the circuit input to the register.
-            self.store_circuit(register, input.clone())
+            registers.store_circuit(self, register, input.clone())
         })?;
 
         // Execute the instructions.
         for instruction in closure.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
-            if let CallStack::Execute(..) = self.call_stack {
+            if let CallStack::Execute(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
-                if let Err(error) = instruction.evaluate(self) {
+                if let Err(error) = instruction.evaluate(self, &mut registers) {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
             // Execute the instruction.
-            instruction.execute(self)?;
+            instruction.execute(self, &mut registers)?;
         }
 
         // Ensure the number of public variables remains the same.
@@ -510,7 +488,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Load the outputs.
         let outputs = closure.outputs().iter().map(|output| {
             // Retrieve the circuit output from the register.
-            self.load_circuit(&Operand::Register(output.register().clone()))
+            registers.load_circuit(self, &Operand::Register(output.register().clone()))
         });
 
         outputs.collect()
@@ -523,20 +501,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn execute_function<R: Rng + CryptoRng>(
-        &mut self,
-        call_stack: CallStack<N>,
-        rng: &mut R,
-    ) -> Result<Response<N>> {
+    pub fn execute_function<R: Rng + CryptoRng>(&self, call_stack: CallStack<N>, rng: &mut R) -> Result<Response<N>> {
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // Initialize the stack.
-        self.call_stack = call_stack;
-        let console_request = self.call_stack.pop()?;
-        self.register_types = self.get_register_types(console_request.function_name())?.clone();
-        self.console_registers.clear();
-        self.circuit_registers.clear();
+        // Clone the call stack.
+        let mut call_stack = call_stack.clone();
+        // Retrieve the next request.
+        let console_request = call_stack.pop()?;
 
         // Ensure the network ID matches.
         ensure!(
@@ -556,6 +528,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         if num_inputs != console_request.inputs().len() {
             bail!("Expected {num_inputs} inputs, found {}", console_request.inputs().len())
         }
+
+        // Initialize the registers.
+        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
+
+        // Ensure the inputs match their expected types.
+        console_request.inputs().iter().zip_eq(&function.input_types()).try_for_each(|(input, input_type)| {
+            // Ensure the input matches the input type in the substack function.
+            self.matches_value_type(input, input_type)
+        })?;
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&function.input_types()), "Request is invalid");
@@ -578,12 +559,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(request.inputs()).try_for_each(|(register, input)| {
             // If the circuit is in execute mode, then store the console input.
-            if let CallStack::Execute(..) = self.call_stack {
+            if let CallStack::Execute(..) = registers.call_stack() {
                 // Assign the console input to the register.
-                self.store(register, input.eject_value())?;
+                registers.store(self, register, input.eject_value())?;
             }
             // Assign the circuit input to the register.
-            self.store_circuit(register, input.clone())
+            registers.store_circuit(self, register, input.clone())
         })?;
 
         // Initialize a tracker to determine if there are any function calls.
@@ -592,15 +573,15 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Execute the instructions.
         for instruction in function.instructions() {
             // If the circuit is in execute mode, then evaluate the instructions.
-            if let CallStack::Execute(..) = self.call_stack {
+            if let CallStack::Execute(..) = registers.call_stack() {
                 // If the evaluation fails, bail and return the error.
-                if let Err(error) = instruction.evaluate(self) {
+                if let Err(error) = instruction.evaluate(self, &mut registers) {
                     bail!("Failed to evaluate instruction ({instruction}): {error}");
                 }
             }
 
             // Execute the instruction.
-            instruction.execute(self)?;
+            instruction.execute(self, &mut registers)?;
 
             // If the instruction was a function call, then set the tracker to `true`.
             if let Instruction::Call(call) = instruction {
@@ -615,7 +596,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let outputs = function
             .outputs()
             .iter()
-            .map(|output| self.load_circuit(&Operand::Register(output.register().clone())))
+            .map(|output| registers.load_circuit(self, &Operand::Register(output.register().clone())))
             .collect::<Result<Vec<_>>>()?;
 
         #[cfg(debug_assertions)]
@@ -712,8 +693,14 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         // Eject the response.
         let response = response.eject_value();
 
+        // Ensure the outputs matches the expected value types.
+        response.outputs().iter().zip_eq(&function.output_types()).try_for_each(|(output, output_type)| {
+            // Ensure the output matches its expected type.
+            self.matches_value_type(output, output_type)
+        })?;
+
         // If the circuit is in execute mode, then ensure the circuit is satisfied.
-        if let CallStack::Execute(..) = self.call_stack {
+        if let CallStack::Execute(..) = registers.call_stack() {
             // If the circuit is not satisfied, then throw an error.
             ensure!(A::is_satisfied(), "'{program_id}/{}' is not satisfied on the given inputs.", function.name());
         }
@@ -722,7 +709,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         let assignment = A::eject_assignment_and_reset();
 
         // If the circuit is **not** in authorize mode, synthesize the circuit key if it does not exist.
-        if !matches!(self.call_stack, CallStack::Authorize(..)) {
+        if !matches!(registers.call_stack(), CallStack::Authorize(..)) {
             // If the circuit key does not exist, then synthesize it.
             if !self.circuit_keys.contains_key(&program_id, function.name()) {
                 // Add the circuit key to the mapping.
@@ -731,20 +718,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         }
 
         // If the circuit is in execute mode, then execute the circuit into a transition.
-        if let CallStack::Execute(_, ref execution) = self.call_stack {
+        if let CallStack::Execute(_, ref execution) = registers.call_stack() {
             // #[cfg(debug_assertions)]
-            for ((console_index, console_register), (circuit_index, circuit_register)) in
-                self.console_registers.iter().zip_eq(&self.circuit_registers)
-            {
-                // Ensure the console and circuit index match (executed in same order).
-                if *console_index != *circuit_index {
-                    bail!("Console and circuit register indices are mismatching ({console_index} != {circuit_index})")
-                }
-                // Ensure the console and circuit registers match (executed to same value).
-                if console_register != &circuit_register.eject_value() {
-                    bail!("The console and circuit register values do not match at index {console_index}")
-                }
-            }
+            registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
             let proving_key = self.circuit_keys.get_proving_key(&program_id, function.name())?;
