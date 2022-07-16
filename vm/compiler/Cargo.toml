@@ -56,6 +56,7 @@ version = "2"
 
 [dependencies.indexmap]
 version = "1.8"
+features = ["serde"]
 
 [dependencies.once_cell]
 version = "1.13"

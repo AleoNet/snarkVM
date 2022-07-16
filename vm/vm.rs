@@ -101,6 +101,30 @@ impl VM {
         process_mut!(logic)
     }
 
+    /// Deploys a program with the given program ID.
+    #[inline]
+    pub fn deploy<N: Network, R: Rng + CryptoRng>(program_id: &ProgramID<N>, rng: &mut R) -> Result<Transaction<N>> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Prepare the program ID.
+                let program_id = cast_ref!(&program_id as ProgramID<$network>);
+
+                // Compute the deploy build.
+                let build = $process.deploy::<$aleo, _>(program_id, rng)?;
+                // Construct the transaction.
+                let transaction = Transaction::deploy(build)?;
+
+                // Prepare the return.
+                let transaction = cast_ref!(transaction as Transaction<N>).clone();
+                // Return the transaction.
+                Ok(transaction)
+            }};
+        }
+        // Process the logic.
+        process!(logic)
+    }
+
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
     pub fn authorize<N: Network, R: Rng + CryptoRng>(
@@ -165,9 +189,9 @@ impl VM {
     #[inline]
     pub fn verify<N: Network>(transaction: &Transaction<N>) -> bool {
         match transaction {
-            Transaction::Deploy(id, program, _verifying_key) => {
+            Transaction::Deploy(id, build) => {
                 // Convert the program into bytes.
-                let program_bytes = match program.to_bytes_le() {
+                let program_bytes = match build.program().to_bytes_le() {
                     Ok(bytes) => bytes,
                     Err(error) => {
                         warn!("Unable to convert program into bytes for transaction (deploy, {id}): {error}");

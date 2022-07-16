@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod build;
+pub use build::*;
+
 mod helpers;
 pub(crate) use helpers::*;
 
@@ -28,18 +31,7 @@ pub use transition::*;
 
 mod add_program;
 
-use crate::{
-    CallOperator,
-    Certificate,
-    Closure,
-    Function,
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    ProvingKey,
-    VerifyingKey,
-};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -105,17 +97,28 @@ impl<N: Network> Process<N> {
         self.get_stack(program_id)?.get_verifying_key(function_name)
     }
 
-    /// Inserts the given proving key and verifying key, for the given program ID and function name.
+    /// Inserts the given proving key, for the given program ID and function name.
     #[inline]
-    pub fn insert_key(
+    pub fn insert_proving_key(
         &self,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
         proving_key: ProvingKey<N>,
+    ) {
+        // Add the proving key to the mapping.
+        self.circuit_keys.insert_proving_key(program_id, function_name, proving_key);
+    }
+
+    /// Inserts the given verifying key, for the given program ID and function name.
+    #[inline]
+    pub fn insert_verifying_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
         verifying_key: VerifyingKey<N>,
     ) {
-        // Add the circuit key to the mapping.
-        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
+        // Add the verifying key to the mapping.
+        self.circuit_keys.insert_verifying_key(program_id, function_name, verifying_key);
     }
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.
@@ -130,40 +133,15 @@ impl<N: Network> Process<N> {
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
     }
 
-    /// Deploys the program with the given program ID.
+    /// Deploys the program with the given program ID, as a build.
     #[inline]
-    #[allow(clippy::type_complexity)]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         program_id: &ProgramID<N>,
         rng: &mut R,
-    ) -> Result<Vec<(Identifier<N>, VerifyingKey<N>, Certificate<N>)>> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-
-        // Initialize a vector for the deployment.
-        let mut deployment = Vec::with_capacity(stack.program().functions().len());
-
-        for function_name in stack.program().functions().keys() {
-            // If the proving key or verifying key does not exist, synthesize them.
-            if !self.circuit_keys.contains_key(program_id, function_name) {
-                // Synthesize the proving and verifying key.
-                stack.synthesize_key::<A, R>(function_name, rng)?;
-            }
-
-            // Retrieve the proving key.
-            let proving_key = stack.get_proving_key(function_name)?;
-            // Retrieve the verifying key.
-            let verifying_key = stack.get_verifying_key(function_name)?;
-
-            // Certify the circuit.
-            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
-
-            // Add the verifying key and certificate to the deployment.
-            deployment.push((*function_name, verifying_key, certificate));
-        }
-
-        Ok(deployment)
+    ) -> Result<Build<N>> {
+        // Compute the build.
+        self.get_stack(program_id)?.deploy::<A, R>(rng)
     }
 
     /// Authorizes a call to the program function for the given inputs.
@@ -176,35 +154,16 @@ impl<N: Network> Process<N> {
         inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Authorization<N>> {
-        // Ensure the program exists.
-        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
-
         // Retrieve the program, function, and input types.
         let (program, function, input_types, _) = self.get_function_info(program_id, &function_name)?;
-
-        // Ensure the number of inputs matches.
-        if input_types.len() != inputs.len() {
-            bail!(
-                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
-                function.name(),
-                program.id(),
-                input_types.len(),
-                inputs.len()
-            )
-        }
-
         // Compute the request.
         let request = Request::sign(private_key, *program.id(), *function.name(), inputs, &input_types, rng)?;
-
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
-
-        // Retrieve the stack.
-        let stack = self.get_stack(program.id())?;
         // Construct the authorization from the function.
-        let _response = stack
+        let _response = self
+            .get_stack(program.id())?
             .execute_function::<A, R>(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
-
         // Return the authorization.
         Ok(authorization)
     }
@@ -388,6 +347,8 @@ impl<N: Network> Process<N> {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
     ) -> Result<(&Program<N>, Function<N>, Vec<ValueType<N>>, Vec<ValueType<N>>)> {
+        // Ensure the program exists.
+        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
         // Retrieve the program.
         let program = self.get_program(program_id)?;
         // Ensure the function exists.

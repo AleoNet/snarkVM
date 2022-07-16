@@ -23,7 +23,19 @@ pub use registers::*;
 mod matches;
 mod sample;
 
-use crate::{CircuitKeys, Closure, Function, Instruction, Operand, Program, ProvingKey, Transition, VerifyingKey};
+use crate::{
+    Build,
+    Certificate,
+    CircuitKeys,
+    Closure,
+    Function,
+    Instruction,
+    Operand,
+    Program,
+    ProvingKey,
+    Transition,
+    VerifyingKey,
+};
 use console::{
     account::{Address, PrivateKey},
     network::prelude::*,
@@ -192,12 +204,12 @@ impl<N: Network> CallStack<N> {
 pub struct Stack<N: Network> {
     /// The program (record types, interfaces, functions).
     program: Program<N>,
-    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
-    circuit_keys: CircuitKeys<N>,
     /// The mapping of external stacks as `(program ID, stack)`.
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
+    circuit_keys: CircuitKeys<N>,
 }
 
 impl<N: Network> Stack<N> {
@@ -205,7 +217,7 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn new(program: Program<N>, circuit_keys: CircuitKeys<N>) -> Result<Self> {
         // TODO (howardwu): Process every closure and function before returning.
-        Ok(Self { program, circuit_keys, external_stacks: IndexMap::new(), program_types: IndexMap::new() })
+        Ok(Self { program, external_stacks: IndexMap::new(), program_types: IndexMap::new(), circuit_keys })
     }
 
     /// Adds a new external stack to the stack.
@@ -217,7 +229,8 @@ impl<N: Network> Stack<N> {
         ensure!(!self.external_stacks.contains_key(&program_id), "Program '{program_id}' already exists");
         // Ensure the program exists in the main program imports.
         ensure!(self.program.contains_import(&program_id), "'{program_id}' does not exist in the main program imports");
-        // TODO (howardwu): Ensure the imported program is not the main program.
+        // Ensure the external stack is not for the main program.
+        ensure!(self.program.id() != external_stack.program_id(), "External stack program cannot be the main program");
         // Add the external stack to the stack.
         self.external_stacks.insert(program_id, external_stack);
         // Return success.
@@ -301,6 +314,13 @@ impl<N: Network> Stack<N> {
         self.program.get_function(function_name)
     }
 
+    /// Returns the register types for the given closure or function name.
+    #[inline]
+    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
+        // Retrieve the register types.
+        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+    }
+
     /// Returns the proving key for the given function name.
     #[inline]
     pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
@@ -356,11 +376,35 @@ impl<N: Network> Stack<N> {
         Ok(())
     }
 
-    /// Returns the register types for the given closure or function name.
+    /// Deploys the program with the given program ID, as a build.
     #[inline]
-    pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
-        // Retrieve the register types.
-        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Build<N>> {
+        // Initialize a mapping for the bundle.
+        let mut bundle = IndexMap::with_capacity(self.program.functions().len());
+
+        for function_name in self.program.functions().keys() {
+            // If the proving and verifying key do not exist, synthesize it.
+            if !self.circuit_keys.contains_proving_key(self.program.id(), function_name)
+                || !self.circuit_keys.contains_verifying_key(self.program.id(), function_name)
+            {
+                // Synthesize the proving and verifying key.
+                self.synthesize_key::<A, R>(function_name, rng)?;
+            }
+
+            // Retrieve the proving key.
+            let proving_key = self.get_proving_key(function_name)?;
+            // Retrieve the verifying key.
+            let verifying_key = self.get_verifying_key(function_name)?;
+
+            // Certify the circuit.
+            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
+
+            // Add the verifying key and certificate to the bundle.
+            bundle.insert(*function_name, (verifying_key, certificate));
+        }
+
+        // Return the build.
+        Ok(Build::new(self.program.clone(), bundle))
     }
 
     /// Evaluates a program closure on the given inputs.
@@ -726,8 +770,8 @@ impl<N: Network> Stack<N> {
 
         // If the circuit is **not** in authorize mode, synthesize the circuit key if it does not exist.
         if !matches!(registers.call_stack(), CallStack::Authorize(..)) {
-            // If the circuit key does not exist, then synthesize it.
-            if !self.circuit_keys.contains_key(&program_id, function.name()) {
+            // If the proving key does not exist, then synthesize it.
+            if !self.circuit_keys.contains_proving_key(&program_id, function.name()) {
                 // Add the circuit key to the mapping.
                 self.circuit_keys.insert_from_assignment(&program_id, function.name(), &assignment)?;
             }

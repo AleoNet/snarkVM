@@ -18,23 +18,23 @@ use crate::{
     console::{network::prelude::*, types::Field},
     vm::VM,
 };
-use snarkvm_compiler::{Program, Transition, VerifyingKey};
+use snarkvm_compiler::{Build, Transition};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Program<N>, VerifyingKey<N>),
+    Deploy(N::TransactionID, Build<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Vec<Transition<N>>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn deploy(program: Program<N>, verifying_key: VerifyingKey<N>) -> Result<Self> {
+    pub fn deploy(build: Build<N>) -> Result<Self> {
         // Compute the transaction ID.
-        let id = N::hash_bhp1024(&program.to_bytes_le()?.to_bits_le())?.into();
+        let id = N::hash_bhp1024(&build.program().to_bytes_le()?.to_bits_le())?.into();
         // Construct the deploy transaction.
-        Ok(Self::Deploy(id, program, verifying_key))
+        Ok(Self::Deploy(id, build))
     }
 
     /// Initializes a new execution transaction.
@@ -50,7 +50,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns `true` if the transaction is valid.
-    pub fn is_valid(&self) -> bool {
+    pub fn verify(&self) -> bool {
         VM::verify::<N>(self)
     }
 
@@ -113,12 +113,10 @@ impl<N: Network> FromBytes for Transaction<N> {
             0 => {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
-                // Read the program.
-                let program = Program::read_le(&mut reader)?;
-                // Read the verifying key.
-                let verifying_key = VerifyingKey::read_le(&mut reader)?;
+                // Read the build.
+                let build = Build::read_le(&mut reader)?;
                 // Construct the transaction.
-                Transaction::Deploy(id, program, verifying_key)
+                Transaction::Deploy(id, build)
             }
             1 => {
                 // Read the ID.
@@ -152,15 +150,13 @@ impl<N: Network> ToBytes for Transaction<N> {
 
         // Write the transaction.
         match self {
-            Self::Deploy(id, program, verifying_key) => {
+            Self::Deploy(id, build) => {
                 // Write the variant.
                 0u8.write_le(&mut writer)?;
                 // Write the ID.
                 id.write_le(&mut writer)?;
-                // Write the program.
-                program.write_le(&mut writer)?;
-                // Write the verifying key.
-                verifying_key.write_le(&mut writer)
+                // Write the build.
+                build.write_le(&mut writer)
             }
             Self::Execute(id, transitions) => {
                 // Write the variant.
@@ -181,12 +177,11 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
-                Self::Deploy(id, program, verifying_key) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 4)?;
+                Self::Deploy(id, build) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
                     transaction.serialize_field("type", "deploy")?;
                     transaction.serialize_field("id", &id)?;
-                    transaction.serialize_field("program", &program)?;
-                    transaction.serialize_field("verifying_key", &verifying_key)?;
+                    transaction.serialize_field("build", &build)?;
                     transaction.end()
                 }
                 Self::Execute(id, transitions) => {
@@ -216,14 +211,10 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                 // Recover the transaction.
                 let transaction = match transaction["type"].as_str() {
                     Some("deploy") => {
-                        // Retrieve the program.
-                        let program =
-                            serde_json::from_value(transaction["program"].clone()).map_err(de::Error::custom)?;
-                        // Retrieve the verifying key.
-                        let verifying_key =
-                            serde_json::from_value(transaction["verifying_key"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the build.
+                        let build = serde_json::from_value(transaction["build"].clone()).map_err(de::Error::custom)?;
                         // Construct the transaction.
-                        Transaction::deploy(program, verifying_key).map_err(de::Error::custom)?
+                        Transaction::deploy(build).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
                         // Retrieve the transitions.

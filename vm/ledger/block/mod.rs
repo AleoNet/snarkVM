@@ -140,7 +140,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the transactions are valid.
-        if !self.transactions.is_valid() {
+        if !self.transactions.verify() {
             warn!("Block contains invalid transactions: {:?}", self);
             return false;
         }
