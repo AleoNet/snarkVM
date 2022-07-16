@@ -76,7 +76,7 @@ impl<N: Network> Process<N> {
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
         self.stacks
             .get(program_id)
-            .and_then(|stack| Some(stack.program()))
+            .map(|stack| stack.program())
             .ok_or_else(|| anyhow!("Program '{program_id}' not found"))
     }
 
@@ -308,7 +308,7 @@ impl<N: Network> Process<N> {
             for instruction in function.instructions() {
                 if let Instruction::Call(call) = instruction {
                     // Determine if this is a function call.
-                    if call.is_function_call(&stack)? {
+                    if call.is_function_call(stack)? {
                         num_function_calls += 1;
                     }
                 }
