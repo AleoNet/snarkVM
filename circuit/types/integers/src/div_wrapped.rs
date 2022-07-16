@@ -52,35 +52,75 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                     let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
                     Self::ternary(&overflows, &min, &signed_quotient)
                 } else {
-                    // Eject the dividend and divisor, to compute the quotient as a witness.
-                    let dividend_value = self.eject_value();
-                    // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
-                    // let divisor_value = match other.eject_value().is_zero() {
-                    //     true => match self.eject_value().is_zero() {
-                    //         true => console::Integer::one(),
-                    //         false => console::Integer::zero(),
-                    //     },
-                    //     false => other.eject_value(),
-                    // };
-                    let divisor_value = match other.eject_value().is_zero() {
-                        true => console::Integer::one(),
-                        false => other.eject_value(),
-                    };
+                    // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
+                    if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
+                        // Eject the dividend and divisor, to compute the quotient as a witness.
+                        let dividend_value = self.eject_value();
+                        // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
+                        // let divisor_value = match other.eject_value().is_zero() {
+                        //     true => match self.eject_value().is_zero() {
+                        //         true => console::Integer::one(),
+                        //         false => console::Integer::zero(),
+                        //     },
+                        //     false => other.eject_value(),
+                        // };
+                        let divisor_value = match other.eject_value().is_zero() {
+                            true => console::Integer::one(),
+                            false => other.eject_value(),
+                        };
 
-                    // Overflow is not possible for unsigned integers so we use wrapping operations.
-                    let quotient =
-                        Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_div(&divisor_value)));
-                    let remainder =
-                        Integer::new(Mode::Private, console::Integer::new(dividend_value.wrapping_rem(&divisor_value)));
+                        // Overflow is not possible for unsigned integers so we use wrapping operations.
+                        let quotient = Integer::new(
+                            Mode::Private,
+                            console::Integer::new(dividend_value.wrapping_div(&divisor_value)),
+                        );
+                        let remainder = Integer::new(
+                            Mode::Private,
+                            console::Integer::new(dividend_value.wrapping_rem(&divisor_value)),
+                        );
 
-                    // Ensure that Euclidean division holds for these values in the base field.
-                    E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
+                        // Ensure that Euclidean division holds for these values in the base field.
+                        E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
 
-                    // Ensure that the remainder is less than the divisor.
-                    E::assert(remainder.is_less_than(other));
+                        // Ensure that the remainder is less than the divisor.
+                        E::assert(remainder.is_less_than(other));
 
-                    // Return the quotient of `self` and `other`.
-                    quotient
+                        // Return the quotient of `self` and `other`.
+                        quotient
+
+                    // Otherwise, we must use the binary long division algorithm.
+                    // See https://en.wikipedia.org/wiki/Division_algorithm under "Integer division (unsigned) with remainder".
+                    } else {
+                        let divisor = other.to_field();
+                        let max = Self::constant(console::Integer::MAX).to_field();
+
+                        // The bits of the quotient in big-endian order.
+                        let mut quotient_bits_be = Vec::with_capacity(I::BITS as usize);
+                        let mut remainder: Field<E> = Field::zero();
+
+                        for bit in self.to_bits_le().into_iter().rev() {
+                            remainder = remainder.double();
+                            remainder = remainder + Field::from_bits_le(&[bit]);
+
+                            // Check that remainder is greater than or equal to divisor, via an unsigned overflow check.
+                            //   - difference := I:MAX + (b - a).
+                            //   - If difference > I::MAX, then b > a.
+                            //   - If difference <= I::MAX, then a >= b.
+                            //   - Note that difference > I::MAX if `carry_bit` is set.
+                            let difference = &max + (&divisor - &remainder);
+                            let bits = difference.to_lower_bits_le((I::BITS + 1) as usize);
+                            // The `unwrap` is safe since we extract at least one bit from the difference.
+                            let carry_bit = bits.last().unwrap();
+                            let remainder_is_gte_divisor = carry_bit.not();
+
+                            remainder = Field::ternary(&remainder_is_gte_divisor, &(&remainder - &divisor), &remainder);
+                            quotient_bits_be.push(remainder_is_gte_divisor);
+                        }
+
+                        // Reverse and return the quotient bits.
+                        quotient_bits_be.reverse();
+                        Self::from_bits_le(&quotient_bits_be)
+                    }
                 }
             }
         }
