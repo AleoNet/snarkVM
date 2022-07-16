@@ -18,9 +18,15 @@ use super::*;
 
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Returns the record commitment.
-    pub fn to_commitment(&self, program_id: &ProgramID<A>, randomizer: &Scalar<A>) -> Field<A> {
-        // Construct the commitment input as `(program_id || record)`.
+    pub fn to_commitment(
+        &self,
+        program_id: &ProgramID<A>,
+        record_name: &Identifier<A>,
+        randomizer: &Scalar<A>,
+    ) -> Field<A> {
+        // Construct the commitment input as `(program_id || record_name || record)`.
         let mut input = program_id.to_bits_le();
+        input.extend(record_name.to_bits_le());
         input.extend(self.to_bits_le());
         // Compute the BHP commitment of the program record.
         A::commit_bhp1024(&input, randomizer)

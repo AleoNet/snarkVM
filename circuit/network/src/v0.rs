@@ -397,7 +397,7 @@ impl Environment for AleoV0 {
     }
 
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
-    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+    fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         E::eject_assignment_and_reset()
     }
 
@@ -418,6 +418,8 @@ impl Display for AleoV0 {
 mod tests {
     use super::*;
     use snarkvm_circuit_types::Field;
+
+    type CurrentAleo = AleoV0;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {
@@ -445,23 +447,24 @@ mod tests {
 
     #[test]
     fn test_print_circuit() {
-        let _candidate = create_example_circuit::<AleoV0>();
-        let output = format!("{}", AleoV0);
+        let circuit = CurrentAleo {};
+        let _candidate = create_example_circuit::<CurrentAleo>();
+        let output = format!("{circuit}");
         println!("{}", output);
     }
 
     #[test]
     fn test_circuit_scope() {
-        AleoV0::scope("test_circuit_scope", || {
-            assert_eq!(0, AleoV0::num_constants());
-            assert_eq!(1, AleoV0::num_public());
-            assert_eq!(0, AleoV0::num_private());
-            assert_eq!(0, AleoV0::num_constraints());
+        CurrentAleo::scope("test_circuit_scope", || {
+            assert_eq!(0, CurrentAleo::num_constants());
+            assert_eq!(1, CurrentAleo::num_public());
+            assert_eq!(0, CurrentAleo::num_private());
+            assert_eq!(0, CurrentAleo::num_constraints());
 
-            assert_eq!(0, AleoV0::num_constants_in_scope());
-            assert_eq!(0, AleoV0::num_public_in_scope());
-            assert_eq!(0, AleoV0::num_private_in_scope());
-            assert_eq!(0, AleoV0::num_constraints_in_scope());
+            assert_eq!(0, CurrentAleo::num_constants_in_scope());
+            assert_eq!(0, CurrentAleo::num_public_in_scope());
+            assert_eq!(0, CurrentAleo::num_private_in_scope());
+            assert_eq!(0, CurrentAleo::num_constraints_in_scope());
         })
     }
 }

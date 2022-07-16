@@ -72,7 +72,7 @@ impl<A: Aleo, Private: Visibility<A>> Owner<A, Private> {
 }
 
 impl<A: Aleo> Owner<A, Plaintext<A>> {
-    /// Returns the balance as an `Entry`.
+    /// Returns the owner as an `Entry`.
     pub fn to_entry(&self) -> Entry<A, Plaintext<A>> {
         match self {
             Self::Public(owner) => Entry::Public(Plaintext::from(Literal::Address(owner.clone()))),

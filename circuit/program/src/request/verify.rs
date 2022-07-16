@@ -22,7 +22,7 @@ impl<A: Aleo> Request<A> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
-    pub fn verify(&self) -> Boolean<A> {
+    pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
             &[
@@ -51,8 +51,9 @@ impl<A: Aleo> Request<A> {
             .input_ids
             .iter()
             .zip_eq(&self.inputs)
+            .zip_eq(input_types)
             .enumerate()
-            .map(|(index, (input_id, input))| {
+            .map(|(index, ((input_id, input), input_type))| {
                 match input_id {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
@@ -98,8 +99,14 @@ impl<A: Aleo> Request<A> {
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
+                        // Retrieve the record name as a `Mode::Constant`.
+                        let record_name = match input_type {
+                            console::ValueType::Record(record_name) => Identifier::constant(*record_name),
+                            // Ensure the input is a record.
+                            _ => A::halt(format!("Expected a record input at input {index}")),
+                        };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&self.program_id, &randomizer);
+                        let commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
@@ -121,8 +128,8 @@ impl<A: Aleo> Request<A> {
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(&self.caller)
-                            // Ensure the record balance is less than or equal to 2^52.
-                            & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                            // Ensure the record gates is less than or equal to 2^52.
+                            & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {
@@ -140,8 +147,46 @@ impl<A: Aleo> Request<A> {
             })
             .fold(Boolean::constant(true), |acc, x| acc & x);
 
-        // Verify the signature and serial numbers are valid.
-        self.signature.verify(&self.caller, &message) & input_checks
+        // Verify the transition public key and transition view key are well-formed.
+        let tvk_checks = {
+            // Compute the transition public key `tpk` as `tsk * G`.
+            let candidate_tpk = A::g_scalar_multiply(&self.tsk);
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = (self.caller.to_group() * &self.tsk).to_x_coordinate();
+
+            // Ensure the computed transition public key matches the expected transition public key.
+            tpk.is_equal(&candidate_tpk)
+                // Ensure the transition public key matches with the derived one from the signature.
+                & tpk.is_equal(&self.to_tpk())
+                // Ensure the computed transition view key matches.
+                & tvk.is_equal(&self.tvk)
+        };
+
+        // Verify the signature.
+        // Note: We copy/paste the Aleo signature verification code here in order to compute `tpk` only once.
+        let signature_checks = {
+            // Retrieve pk_sig.
+            let pk_sig = self.signature.compute_key().pk_sig();
+            // Retrieve pr_sig.
+            let pr_sig = self.signature.compute_key().pr_sig();
+
+            // Construct the hash input as (r * G, pk_sig, pr_sig, address, message).
+            let mut preimage = Vec::with_capacity(4 + message.len());
+            preimage.extend([tpk, pk_sig, pr_sig].map(|point| point.to_x_coordinate()));
+            preimage.push(self.caller.to_field());
+            preimage.extend_from_slice(&message);
+
+            // Compute the candidate verifier challenge.
+            let candidate_challenge = A::hash_to_scalar_psd8(&preimage);
+            // Compute the candidate address.
+            let candidate_address = self.signature.compute_key().to_address();
+
+            // Return `true` if the challenge and address is valid.
+            challenge.is_equal(&candidate_challenge) & self.caller.is_equal(&candidate_address)
+        };
+
+        // Verify the signature, inputs, and `tvk` are valid.
+        signature_checks & input_checks & tvk_checks
     }
 
     /// Returns `true` if the inputs match their input IDs.
@@ -149,6 +194,7 @@ impl<A: Aleo> Request<A> {
     pub fn check_input_ids(
         input_ids: &[InputID<A>],
         inputs: &[Value<A>],
+        input_types: &[console::ValueType<A::Network>],
         caller: &Address<A>,
         program_id: &ProgramID<A>,
         tvk: &Field<A>,
@@ -156,8 +202,9 @@ impl<A: Aleo> Request<A> {
         input_ids
             .iter()
             .zip_eq(inputs)
+            .zip_eq(input_types)
             .enumerate()
-            .map(|(index, (input_id, input))| {
+            .map(|(index, ((input_id, input), input_type))| {
                 match input_id {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
@@ -196,8 +243,14 @@ impl<A: Aleo> Request<A> {
                             // Ensure the input is a record.
                             Value::Plaintext(..) => A::halt("Expected a record input, found a plaintext input"),
                         };
+                        // Retrieve the record name as a `Mode::Constant`.
+                        let record_name = match input_type {
+                            console::ValueType::Record(record_name) => Identifier::constant(*record_name),
+                            // Ensure the input is a record.
+                            _ => A::halt(format!("Expected a record type at input {index}")),
+                        };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &randomizer);
+                        let commitment = record.to_commitment(program_id, &record_name, &randomizer);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
@@ -212,8 +265,8 @@ impl<A: Aleo> Request<A> {
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(caller)
-                            // Ensure the record balance is less than or equal to 2^52.
-                            & !(**record.balance()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
+                            // Ensure the record gates is less than or equal to 2^52.
+                            & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {
@@ -260,7 +313,7 @@ mod tests {
 
             // Prepare a record belonging to the address.
             let record_string =
-                format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
+                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
             let input_constant =
@@ -288,13 +341,14 @@ mod tests {
 
             // Compute the signed request.
             let request = console::Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng)?;
-            assert!(request.verify());
+            assert!(request.verify(&input_types));
 
             // Inject the request into a circuit.
+            let tpk = Group::<Circuit>::new(mode, request.to_tpk());
             let request = Request::<Circuit>::new(mode, request);
 
             Circuit::scope(format!("Request {i}"), || {
-                let candidate = request.verify();
+                let candidate = request.verify(&input_types, &tpk);
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
@@ -310,16 +364,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 36700, 0, 14950, 15000)
+        check_verify(Mode::Constant, 40000, 0, 15100, 15100)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 34087, 0, 26136, 26174)
+        check_verify(Mode::Public, 35303, 0, 31030, 31074)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 34087, 0, 26136, 26174)
+        check_verify(Mode::Private, 35303, 0, 31030, 31074)
     }
 }

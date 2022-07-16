@@ -18,12 +18,7 @@ use crate::process::stack::*;
 
 impl<N: Network> RegisterTypes<N> {
     /// Checks that the given operands matches the layout of the interface. The ordering of the operands matters.
-    pub fn matches_interface<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        operands: &[Operand<N>],
-        interface: &Interface<N>,
-    ) -> Result<()> {
+    pub fn matches_interface(&self, stack: &Stack<N>, operands: &[Operand<N>], interface: &Interface<N>) -> Result<()> {
         // Ensure the operands is not empty.
         if operands.is_empty() {
             bail!("Casting to an interface requires at least one operand")
@@ -61,14 +56,9 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `balance` **does** matter, however ordering
+    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
     /// for record data does **not** matter, as long as all defined members are present.
-    pub fn matches_record<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        operands: &[Operand<N>],
-        record_type: &RecordType<N>,
-    ) -> Result<()> {
+    pub fn matches_record(&self, stack: &Stack<N>, operands: &[Operand<N>], record_type: &RecordType<N>) -> Result<()> {
         // Ensure the operands length is at least 2.
         if operands.len() < 2 {
             bail!("Casting to a record requires at least two operands")

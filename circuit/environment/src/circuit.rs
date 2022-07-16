@@ -293,7 +293,7 @@ impl Environment for Circuit {
     /// TODO (howardwu): Abstraction - Refactor this into an appropriate design.
     ///  Circuits should not have easy access to this during synthesis.
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
-    fn eject_assignment_and_reset() -> Assignment<Self::BaseField> {
+    fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field> {
         CIRCUIT.with(|circuit| {
             // Eject the R1CS instance.
             let r1cs = circuit.replace(R1CS::<<Self as Environment>::BaseField>::new());

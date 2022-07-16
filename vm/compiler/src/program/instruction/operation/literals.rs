@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Operation, Stack};
+use crate::{Opcode, Operand, Operation, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{Literal, LiteralType, PlaintextType, Register, RegisterType},
@@ -66,14 +66,19 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
 {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
         }
 
         // Load the operands literals.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_literal(operand)).try_collect()?;
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_literal(stack, operand)).try_collect()?;
         // Compute the operands register types.
         let input_types: Vec<_> =
             inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
@@ -91,19 +96,24 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         ensure!(expected_types[0] == output_type, "Expected output type '{}', found {output_type}", expected_types[0]);
 
         // Evaluate the operation and store the output.
-        stack.store_literal(&self.destination, output)
+        registers.store_literal(stack, &self.destination, output)
     }
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Ensure the number of operands is correct.
         if self.operands.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} operands, found {} operands", O::OPCODE, self.operands.len())
         }
 
         // Load the operands literals.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_literal_circuit(operand)).try_collect()?;
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_literal_circuit(stack, operand)).try_collect()?;
         // Compute the operands register types.
         let input_types: Vec<_> =
             inputs.iter().map(|input| RegisterType::Plaintext(PlaintextType::from(input.to_type()))).collect();
@@ -121,16 +131,12 @@ impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const N
         ensure!(expected_types[0] == output_type, "Expected output type '{}', found {output_type}", expected_types[0]);
 
         // Evaluate the operation and store the output.
-        stack.store_literal_circuit(&self.destination, output)
+        registers.store_literal_circuit(stack, &self.destination, output)
     }
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types<A: circuit::Aleo<Network = N>>(
-        &self,
-        _stack: &Stack<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, _stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of input types is correct.
         if input_types.len() != NUM_OPERANDS {
             bail!("Instruction '{}' expects {NUM_OPERANDS} inputs, found {} inputs", O::OPCODE, input_types.len())

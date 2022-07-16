@@ -139,7 +139,7 @@ pub trait Environment: 'static + Copy + Clone + fmt::Debug + fmt::Display + Eq +
     fn eject_r1cs_and_reset() -> R1CS<Self::BaseField>;
 
     /// Returns the R1CS assignment of the circuit, resetting the circuit.
-    fn eject_assignment_and_reset() -> Assignment<Self::BaseField>;
+    fn eject_assignment_and_reset() -> Assignment<<Self::Network as console::Environment>::Field>;
 
     /// Clears and initializes an empty environment.
     fn reset();

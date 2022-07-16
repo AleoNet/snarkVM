@@ -193,7 +193,7 @@ impl<N: Network> ToBytes for ProverFile<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::{FromStr, Parser};
+    use crate::prelude::{test_crypto_rng, FromStr, Parser};
     use snarkvm_compiler::Process;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
@@ -213,7 +213,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -226,11 +226,18 @@ function compute:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+
+        // Prepare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
 
-        // Sample the proving and verifying key.
-        let (proving_key, _verifying_key) = process.circuit_key(program.id(), &function_name).unwrap();
+        // Sample the proving key.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
+
+        // Retrieve the proving key.
+        let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();
 
         // Create the prover file at the path.
         let expected = ProverFile::create(&directory, &function_name, proving_key).unwrap();

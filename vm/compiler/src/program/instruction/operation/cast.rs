@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Stack};
+use crate::{Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
     program::{
@@ -76,9 +76,13 @@ impl<N: Network> Cast<N> {
 impl<N: Network> Cast<N> {
     /// Evaluates the instruction.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load(operand)).try_collect()?;
+        let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
@@ -112,7 +116,7 @@ impl<N: Network> Cast<N> {
                 // Construct the interface.
                 let interface = Plaintext::Interface(members, Default::default());
                 // Store the interface.
-                stack.store(&self.destination, Value::Plaintext(interface))
+                registers.store(stack, &self.destination, Value::Plaintext(interface))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
@@ -130,25 +134,25 @@ impl<N: Network> Cast<N> {
                             false => Owner::Private(Plaintext::Literal(Literal::Address(*owner), Default::default())),
                         }
                     }
-                    _ => bail!("Invalid record owner"),
+                    _ => bail!("Invalid record 'owner'"),
                 };
 
-                // Initialize the record balance.
-                let balance: Balance<N, Plaintext<N>> = match &inputs[1] {
-                    // Ensure the entry is an balance.
-                    Value::Plaintext(Plaintext::Literal(Literal::U64(balance), ..)) => {
-                        // Ensure the balance is less than or equal to 2^52.
+                // Initialize the record gates.
+                let gates: Balance<N, Plaintext<N>> = match &inputs[1] {
+                    // Ensure the entry is a u64.
+                    Value::Plaintext(Plaintext::Literal(Literal::U64(gates), ..)) => {
+                        // Ensure the gates is less than or equal to 2^52.
                         ensure!(
-                            balance.to_bits_le()[52..].iter().all(|bit| !bit),
-                            "Attempted to initialize an invalid balance"
+                            gates.to_bits_le()[52..].iter().all(|bit| !bit),
+                            "Attempted to initialize an invalid Aleo balance (in gates)"
                         );
-                        // Construct the record balance.
-                        match record_type.balance().is_public() {
-                            true => Balance::Public(*balance),
-                            false => Balance::Private(Plaintext::Literal(Literal::U64(*balance), Default::default())),
+                        // Construct the record gates.
+                        match record_type.gates().is_public() {
+                            true => Balance::Public(*gates),
+                            false => Balance::Private(Plaintext::Literal(Literal::U64(*gates), Default::default())),
                         }
                     }
-                    _ => bail!("Invalid record balance"),
+                    _ => bail!("Invalid record 'gates'"),
                 };
 
                 // Initialize the record entries.
@@ -176,9 +180,9 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Construct the record.
-                let record = Record::from_plaintext(owner, balance, entries)?;
+                let record = Record::from_plaintext(owner, gates, entries)?;
                 // Store the record.
-                stack.store(&self.destination, Value::Record(record))
+                registers.store(stack, &self.destination, Value::Record(record))
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
@@ -188,11 +192,16 @@ impl<N: Network> Cast<N> {
 
     /// Executes the instruction.
     #[inline]
-    pub fn execute<A: circuit::Aleo<Network = N, BaseField = N::Field>>(&self, stack: &mut Stack<N, A>) -> Result<()> {
+    pub fn execute<A: circuit::Aleo<Network = N>>(
+        &self,
+        stack: &Stack<N>,
+        registers: &mut Registers<N, A>,
+    ) -> Result<()> {
         use circuit::{Eject, Inject, ToBits};
 
         // Load the operands values.
-        let inputs: Vec<_> = self.operands.iter().map(|operand| stack.load_circuit(operand)).try_collect()?;
+        let inputs: Vec<_> =
+            self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
 
         match self.register_type {
             RegisterType::Plaintext(PlaintextType::Literal(..)) => bail!("Casting to literal is currently unsupported"),
@@ -231,7 +240,7 @@ impl<N: Network> Cast<N> {
                 // Construct the interface.
                 let interface = circuit::Plaintext::Interface(members, Default::default());
                 // Store the interface.
-                stack.store_circuit(&self.destination, circuit::Value::Plaintext(interface))
+                registers.store_circuit(stack, &self.destination, circuit::Value::Plaintext(interface))
             }
             RegisterType::Record(record_name) => {
                 // Ensure the operands length is at least 2.
@@ -252,29 +261,29 @@ impl<N: Network> Cast<N> {
                             )),
                         }
                     }
-                    _ => bail!("Invalid record owner"),
+                    _ => bail!("Invalid record 'owner'"),
                 };
 
-                // Initialize the record balance.
-                let balance: circuit::Balance<A, circuit::Plaintext<A>> = match &inputs[1] {
-                    // Ensure the entry is an balance.
-                    circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::U64(balance), ..)) => {
-                        // Ensure the balance is less than or equal to 2^52.
+                // Initialize the record gates.
+                let gates: circuit::Balance<A, circuit::Plaintext<A>> = match &inputs[1] {
+                    // Ensure the entry is a u64.
+                    circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::U64(gates), ..)) => {
+                        // Ensure the gates is less than or equal to 2^52.
                         A::assert(
-                            !balance.to_bits_le()[52..]
+                            !gates.to_bits_le()[52..]
                                 .iter()
                                 .fold(circuit::Boolean::constant(false), |acc, bit| acc | bit),
                         );
-                        // Construct the record balance.
-                        match record_type.balance().is_public() {
-                            true => circuit::Balance::Public(balance.clone()),
+                        // Construct the record gates.
+                        match record_type.gates().is_public() {
+                            true => circuit::Balance::Public(gates.clone()),
                             false => circuit::Balance::Private(circuit::Plaintext::Literal(
-                                circuit::Literal::U64(balance.clone()),
+                                circuit::Literal::U64(gates.clone()),
                                 Default::default(),
                             )),
                         }
                     }
-                    _ => bail!("Invalid record balance"),
+                    _ => bail!("Invalid record 'gates'"),
                 };
 
                 // Initialize the record entries.
@@ -307,9 +316,9 @@ impl<N: Network> Cast<N> {
                 }
 
                 // Construct the record.
-                let record = circuit::program::Record::from_plaintext(owner, balance, entries)?;
+                let record = circuit::program::Record::from_plaintext(owner, gates, entries)?;
                 // Store the record.
-                stack.store_circuit(&self.destination, circuit::Value::Record(record))
+                registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
             }
             RegisterType::ExternalRecord(_locator) => {
                 bail!("Illegal operation: Cannot cast to an external record.")
@@ -319,11 +328,7 @@ impl<N: Network> Cast<N> {
 
     /// Returns the output type from the given program and input types.
     #[inline]
-    pub fn output_types<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        input_types: &[RegisterType<N>],
-    ) -> Result<Vec<RegisterType<N>>> {
+    pub fn output_types(&self, stack: &Stack<N>, input_types: &[RegisterType<N>]) -> Result<Vec<RegisterType<N>>> {
         // Ensure the number of operands is correct.
         ensure!(
             input_types.len() == self.operands.len(),
@@ -552,7 +557,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let (string, cast) =
-            Cast::<CurrentNetwork>::parse("cast r0.owner r0.balance r0.token_amount into r1 as token.record").unwrap();
+            Cast::<CurrentNetwork>::parse("cast r0.owner r0.gates r0.token_amount into r1 as token.record").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(cast.operands.len(), 3, "The number of operands is incorrect");
         assert_eq!(
@@ -562,7 +567,7 @@ mod tests {
         );
         assert_eq!(
             cast.operands[1],
-            Operand::Register(Register::Member(0, vec![Identifier::from_str("balance").unwrap()])),
+            Operand::Register(Register::Member(0, vec![Identifier::from_str("gates").unwrap()])),
             "The second operand is incorrect"
         );
         assert_eq!(

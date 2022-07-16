@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    file::Manifest,
-    prelude::{FromBytes, Network, ProgramID, ToBytes},
-};
+use crate::prelude::{FromBytes, Network, ProgramID, ToBytes};
 use snarkvm_compiler::Program;
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use std::{
     fs::{self, File},
     io::Write,
@@ -61,7 +58,7 @@ impl<N: Network> AVMFile<N> {
     /// Opens the AVM program file, given the directory path, program ID, and `is_main` indicator.
     pub fn open(directory: &Path, program_id: &ProgramID<N>, is_main: bool) -> Result<Self> {
         // Ensure the directory path exists.
-        ensure!(directory.exists(), "The program directory does not exist: '{}'", directory.display());
+        ensure!(directory.exists(), "The build directory does not exist: '{}'", directory.display());
 
         // Create the file.
         let file_name = if is_main { Self::main_file_name() } else { format!("{program_id}.{AVM_FILE_EXTENSION}") };
@@ -72,11 +69,6 @@ impl<N: Network> AVMFile<N> {
 
         // Load the AVM file.
         let avm_file = Self::from_filepath(&path)?;
-
-        // Ensure the program ID matches, if this is the main file.
-        if is_main && avm_file.program.id() != program_id {
-            bail!("The program ID from `{}` does not match in '{}'", Manifest::<N>::file_name(), path.display())
-        }
 
         Ok(avm_file)
     }
@@ -205,7 +197,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:

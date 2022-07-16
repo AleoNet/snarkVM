@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     /// Loads the literal of a given operand from the registers.
     ///
     /// # Errors
@@ -24,8 +24,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_literal(&self, operand: &Operand<N>) -> Result<Literal<N>> {
-        match self.load(operand)? {
+    pub fn load_literal(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Literal<N>> {
+        match self.load(stack, operand)? {
             Value::Plaintext(Plaintext::Literal(literal, ..)) => Ok(literal),
             Value::Plaintext(Plaintext::Interface(..)) => bail!("Operand must be a literal"),
             Value::Record(..) => bail!("Operand must be a literal"),
@@ -38,7 +38,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load(&self, operand: &Operand<N>) -> Result<Value<N>> {
+    pub fn load(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<Value<N>> {
         // Retrieve the register.
         let register = match operand {
             // If the operand is a literal, return the literal.
@@ -71,9 +71,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         };
 
         // Retrieve the register type.
-        match self.register_types.get_type(self, register) {
+        match self.register_types.get_type(stack, register) {
             // Ensure the stack value matches the register type.
-            Ok(register_type) => self.matches_register_type(&stack_value, &register_type)?,
+            Ok(register_type) => stack.matches_register_type(&stack_value, &register_type)?,
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),
         };
@@ -82,7 +82,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
     /// Loads the literal circuit of a given operand from the registers.
     ///
     /// # Errors
@@ -90,8 +90,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_literal_circuit(&self, operand: &Operand<N>) -> Result<circuit::program::Literal<A>> {
-        match self.load_circuit(operand)? {
+    pub fn load_literal_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::program::Literal<A>> {
+        match self.load_circuit(stack, operand)? {
             circuit::Value::Plaintext(circuit::Plaintext::Literal(literal, ..)) => Ok(literal),
             circuit::Value::Plaintext(circuit::Plaintext::Interface(..)) => bail!("Operand must be a literal"),
             circuit::Value::Record(..) => bail!("Operand must be a literal"),
@@ -104,7 +104,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     /// This method will halt if the register locator is not found.
     /// In the case of register members, this method will halt if the member is not found.
     #[inline]
-    pub fn load_circuit(&self, operand: &Operand<N>) -> Result<circuit::Value<A>> {
+    pub fn load_circuit(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<circuit::Value<A>> {
         use circuit::Inject;
 
         // Retrieve the register.
@@ -146,10 +146,10 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
         };
 
         // Retrieve the register type.
-        match self.register_types.get_type(self, register) {
+        match self.register_types.get_type(stack, register) {
             // Ensure the stack value matches the register type.
             Ok(register_type) => {
-                self.matches_register_type(&circuit::Eject::eject_value(&circuit_value), &register_type)?
+                stack.matches_register_type(&circuit::Eject::eject_value(&circuit_value), &register_type)?
             }
             // Ensure the register is defined.
             Err(error) => bail!("Register '{register}' is not a member of the function: {error}"),

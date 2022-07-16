@@ -125,18 +125,9 @@ commands:
           cache_key: << parameters.cache_key >>
 
 jobs:
-  integration:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: 2xlarge
-    steps:
-      - run_serial:
-          workspace_member: .integration
-          cache_key: snarkvm-integration-cache
-
   algorithms:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: 2xlarge
     steps:
       - run_serial:
@@ -145,7 +136,7 @@ jobs:
 
   circuit:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -154,7 +145,7 @@ jobs:
 
   circuit-account:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -164,7 +155,7 @@ jobs:
   # This checks that no `console` structs are used in core circuit logic.
   circuit-account-noconsole:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -174,7 +165,7 @@ jobs:
 
   circuit-algorithms:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -183,7 +174,7 @@ jobs:
 
   circuit-collections:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -193,7 +184,7 @@ jobs:
   # This checks that no `console` structs are used in core circuit logic.
   circuit-collections-noconsole:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -203,7 +194,7 @@ jobs:
 
   circuit-environment:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -212,7 +203,7 @@ jobs:
 
   circuit-network:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -221,7 +212,7 @@ jobs:
 
   circuit-program:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -230,7 +221,7 @@ jobs:
 
   circuit-types:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -239,7 +230,7 @@ jobs:
 
   circuit-types-address:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -248,7 +239,7 @@ jobs:
 
   circuit-types-boolean:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -257,7 +248,7 @@ jobs:
 
   circuit-types-field:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -266,7 +257,7 @@ jobs:
 
   circuit-types-group:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -275,7 +266,7 @@ jobs:
 
   circuit-types-integers:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     parallelism: 20 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
@@ -286,7 +277,7 @@ jobs:
 
   circuit-types-scalar:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -295,7 +286,7 @@ jobs:
 
   circuit-types-string:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -304,7 +295,7 @@ jobs:
 
   console:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -313,7 +304,7 @@ jobs:
 
   console-account:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -322,7 +313,7 @@ jobs:
 
   console-algorithms:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -331,7 +322,7 @@ jobs:
 
   console-collections:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -340,7 +331,7 @@ jobs:
 
   console-network:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -349,7 +340,7 @@ jobs:
 
   console-network-environment:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -358,7 +349,7 @@ jobs:
 
   console-program:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -367,7 +358,7 @@ jobs:
 
   console-types:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -376,7 +367,7 @@ jobs:
 
   console-types-address:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -385,7 +376,7 @@ jobs:
 
   console-types-boolean:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -394,7 +385,7 @@ jobs:
 
   console-types-field:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -403,7 +394,7 @@ jobs:
 
   console-types-group:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -412,7 +403,7 @@ jobs:
 
   console-types-integers:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -421,7 +412,7 @@ jobs:
 
   console-types-scalar:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -430,7 +421,7 @@ jobs:
 
   console-types-string:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -439,25 +430,16 @@ jobs:
 
   curves:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
           workspace_member: curves
           cache_key: snarkvm-curves-cache
 
-  dpc:
-    docker:
-      - image: cimg/rust:1.61
-    resource_class: 2xlarge
-    steps:
-      - run_serial:
-          workspace_member: dpc
-          cache_key: snarkvm-dpc-cache
-
   fields:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -466,7 +448,7 @@ jobs:
 
   gadgets:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -476,7 +458,7 @@ jobs:
 
   parameters:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -485,7 +467,7 @@ jobs:
 
   r1cs:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -494,7 +476,7 @@ jobs:
 
   utilities:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -503,7 +485,7 @@ jobs:
 
   utilities-derives:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - run_serial:
@@ -512,7 +494,7 @@ jobs:
 
   wasm:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: 2xlarge
     steps:
       - checkout
@@ -530,7 +512,7 @@ jobs:
 
   check-fmt:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - checkout
@@ -547,7 +529,7 @@ jobs:
 
   check-clippy:
     docker:
-      - image: cimg/rust:1.61
+      - image: cimg/rust:1.62
     resource_class: 2xlarge
     steps:
       - checkout
@@ -581,7 +563,6 @@ workflows:
 
   main-workflow:
     jobs:
-      - integration
       - algorithms
       - circuit
       - circuit-account
@@ -616,7 +597,6 @@ workflows:
       - console-types-scalar
       - console-types-string
       - curves
-      - dpc
       - fields
       - gadgets
       - parameters
@@ -633,12 +613,10 @@ workflows:
           matrix:
             parameters:
               workspace_member: [
-                .integration,
                 algorithms,
                 circuit,
                 console,
                 curves,
-                dpc,
                 fields,
                 gadgets,
                 parameters,

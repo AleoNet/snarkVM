@@ -31,21 +31,66 @@ impl<N: Network> Package<N> {
             std::fs::create_dir_all(&build_directory)?;
         }
 
-        // Write the AVM file.
-        let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
-
         // Construct the process.
-        let process = self.get_process::<A>()?;
+        let process = self.get_process()?;
 
         // Load each function circuit.
         for function_name in program.functions().keys() {
             // Synthesize the proving and verifying key.
-            let (proving_key, verifying_key) = process.circuit_key(program_id, function_name)?;
+            process.synthesize_key::<A, _>(program_id, function_name, &mut rand::thread_rng())?;
+
+            // Retrieve the program.
+            let program = process.get_program(program_id)?;
+            // Retrieve the function from the program.
+            let function = program.get_function(function_name)?;
+            // Save all the prover and verifier files for any function calls that are made.
+            for instruction in function.instructions() {
+                if let Instruction::Call(call) = instruction {
+                    // Retrieve the program and resource.
+                    let (program, resource) = match call.operator() {
+                        CallOperator::Locator(locator) => {
+                            (process.get_program(locator.program_id())?, locator.resource())
+                        }
+                        CallOperator::Resource(resource) => (program, resource),
+                    };
+                    // If this is a function call, save its corresponding prover and verifier files.
+                    if program.contains_function(resource) {
+                        // Set the function name to the resource, in this scope.
+                        let function_name = resource;
+                        // Retrieve the proving key.
+                        let proving_key = process.get_proving_key(program.id(), resource)?;
+                        // Retrieve the verifying key.
+                        let verifying_key = process.get_verifying_key(program.id(), resource)?;
+
+                        // Prepare the build directory for the imported program.
+                        let import_build_directory =
+                            self.build_directory().join(format!("{}-{}", program.id().name(), program.id().network()));
+                        // Create the build directory if it does not exist.
+                        if !import_build_directory.exists() {
+                            std::fs::create_dir_all(&import_build_directory)?;
+                        }
+
+                        // Create the prover.
+                        let _prover = ProverFile::create(&import_build_directory, function_name, proving_key)?;
+                        // Create the verifier.
+                        let _verifier = VerifierFile::create(&import_build_directory, function_name, verifying_key)?;
+                    }
+                }
+            }
+
+            // Retrieve the proving key.
+            let proving_key = process.get_proving_key(program_id, function_name)?;
+            // Retrieve the verifying key.
+            let verifying_key = process.get_verifying_key(program_id, function_name)?;
+
             // Create the prover.
             let _prover = ProverFile::create(&build_directory, function_name, proving_key)?;
             // Create the verifier.
             let _verifier = VerifierFile::create(&build_directory, function_name, verifying_key)?;
         }
+
+        // Lastly, write the AVM file.
+        let _avm_file = AVMFile::create(&build_directory, program.clone(), true)?;
 
         Ok(())
     }

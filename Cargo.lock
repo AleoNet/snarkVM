@@ -1986,7 +1986,11 @@ dependencies = [
  "anyhow",
  "clap 3.2.7",
  "colored",
+ "indexmap",
+ "lazy_static",
+ "parking_lot 0.12.1",
  "rand",
+ "rayon",
  "rusty-hook",
  "self_update",
  "serde_json",
@@ -2003,6 +2007,7 @@ dependencies = [
  "snarkvm-utilities",
  "tempfile",
  "thiserror",
+ "tracing",
  "walkdir",
 ]
 
@@ -2257,6 +2262,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "paste",
  "rand",
+ "rayon",
  "regex",
  "serde_json",
  "snarkvm-algorithms",
@@ -2264,6 +2270,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-parameters",
  "snarkvm-utilities",
  "tracing",
 ]
@@ -2576,6 +2583,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.2",
  "snarkvm-algorithms",
+ "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-utilities",

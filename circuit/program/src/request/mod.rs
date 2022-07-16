@@ -17,12 +17,13 @@
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
+mod to_tpk;
 mod verify;
 
 use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_account::Signature;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, U16};
+use snarkvm_circuit_types::{environment::prelude::*, Address, Boolean, Equal, Field, Group, Scalar, U16};
 
 pub enum InputID<A: Aleo> {
     /// The hash of the constant input.
@@ -121,6 +122,8 @@ pub struct Request<A: Aleo> {
     signature: Signature<A>,
     /// The transition view key.
     tvk: Field<A>,
+    /// The transition secret key.
+    tsk: Scalar<A>,
 }
 
 #[cfg(console)]
@@ -198,6 +201,7 @@ impl<A: Aleo> Inject for Request<A> {
             inputs,
             signature: Signature::new(mode, *request.signature()),
             tvk: Field::new(mode, *request.tvk()),
+            tsk: Scalar::new(mode, *request.tsk()),
         }
     }
 }
@@ -242,6 +246,11 @@ impl<A: Aleo> Request<A> {
     pub const fn tvk(&self) -> &Field<A> {
         &self.tvk
     }
+
+    /// Returns the transition secret key.
+    pub const fn tsk(&self) -> &Scalar<A> {
+        &self.tsk
+    }
 }
 
 #[cfg(console)]
@@ -258,6 +267,7 @@ impl<A: Aleo> Eject for Request<A> {
             self.inputs.eject_mode(),
             self.signature.eject_mode(),
             self.tvk.eject_mode(),
+            self.tsk.eject_mode(),
         ])
     }
 
@@ -272,6 +282,7 @@ impl<A: Aleo> Eject for Request<A> {
             self.inputs.eject_value(),
             self.signature.eject_value(),
             self.tvk.eject_value(),
+            self.tsk.eject_value(),
         ))
     }
 }

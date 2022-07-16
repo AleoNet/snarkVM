@@ -55,15 +55,26 @@ pub struct Request<N: Network> {
     signature: Signature<N>,
     /// The transition view key.
     tvk: Field<N>,
+    /// The transition secret key.
+    tsk: Scalar<N>,
 }
 
 impl<N: Network>
-    From<(Address<N>, U16<N>, ProgramID<N>, Identifier<N>, Vec<InputID<N>>, Vec<Value<N>>, Signature<N>, Field<N>)>
-    for Request<N>
+    From<(
+        Address<N>,
+        U16<N>,
+        ProgramID<N>,
+        Identifier<N>,
+        Vec<InputID<N>>,
+        Vec<Value<N>>,
+        Signature<N>,
+        Field<N>,
+        Scalar<N>,
+    )> for Request<N>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk): (
+        (caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk): (
             Address<N>,
             U16<N>,
             ProgramID<N>,
@@ -72,9 +83,10 @@ impl<N: Network>
             Vec<Value<N>>,
             Signature<N>,
             Field<N>,
+            Scalar<N>,
         ),
     ) -> Self {
-        Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk }
+        Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk }
     }
 }
 
@@ -129,5 +141,10 @@ impl<N: Network> Request<N> {
         let pk_sig = self.signature.compute_key().pk_sig();
         // Compute `tpk` as `(challenge * pk_sig) + (response * G)`, equivalent to `r * G`.
         (pk_sig * challenge) + N::g_scalar_multiply(&response)
+    }
+
+    /// Returns the transition secret key `tsk`.
+    pub const fn tsk(&self) -> &Scalar<N> {
+        &self.tsk
     }
 }

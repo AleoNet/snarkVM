@@ -14,16 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use console::network::prelude::*;
+use console::{network::prelude::*, program::Identifier};
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
 use snarkvm_curves::PairingEngine;
+use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
 use colored::Colorize;
+use std::sync::Arc;
 
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 type Fr<N> = <N as Environment>::Field;
 type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
 type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, marlin::MarlinHidingMode, [Fr<N>]>;
+
+mod certificate;
+pub use certificate::Certificate;
 
 mod proof;
 pub use proof::Proof;

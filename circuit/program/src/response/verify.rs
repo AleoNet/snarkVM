@@ -18,13 +18,20 @@ use super::*;
 
 impl<A: Aleo> Response<A> {
     /// Returns `true` if the outputs match their output IDs, and `false` otherwise.
-    pub fn verify(&self, program_id: &ProgramID<A>, num_inputs: usize, tvk: &Field<A>) -> Boolean<A> {
+    pub fn verify(
+        &self,
+        program_id: &ProgramID<A>,
+        num_inputs: usize,
+        tvk: &Field<A>,
+        output_types: &[console::ValueType<A::Network>],
+    ) -> Boolean<A> {
         // Check the outputs against their output IDs.
         self.output_ids
             .iter()
             .zip_eq(&self.outputs)
+            .zip_eq(output_types)
             .enumerate()
-            .map(|(index, (output_id, output))| {
+            .map(|(index, ((output_id, output), output_type))| {
                 match output_id {
                     // For a constant output, compute the hash of the output, and compare it to the computed hash.
                     OutputID::Constant(expected_hash) => {
@@ -65,13 +72,19 @@ impl<A: Aleo> Response<A> {
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
                         };
+                        // Retrieve the record name as a `Mode::Constant`.
+                        let record_name = match output_type {
+                            console::ValueType::Record(record_name) => Identifier::constant(*record_name),
+                            // Ensure the output is a record.
+                            _ => A::halt(format!("Expected a record type at output {index}")),
+                        };
 
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &randomizer);
+                        let commitment = record.to_commitment(program_id, &record_name, &randomizer);
 
                         // Compute the record nonce.
                         let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
@@ -135,8 +148,8 @@ mod tests {
             let output_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
-            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
             let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
@@ -164,7 +177,7 @@ mod tests {
             let response = Response::<Circuit>::new(mode, response);
 
             Circuit::scope(format!("Response {i}"), || {
-                let candidate = response.verify(&program_id, 4, &tvk);
+                let candidate = response.verify(&program_id, 4, &tvk, &output_types);
                 assert!(candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
@@ -180,16 +193,16 @@ mod tests {
     fn test_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 22100, 0, 9800, 9800)
+        check_verify(Mode::Constant, 22100, 0, 9900, 9900)
     }
 
     #[test]
     fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 21550, 0, 15451, 15467)
+        check_verify(Mode::Public, 21528, 0, 15563, 15579)
     }
 
     #[test]
     fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 21550, 0, 15451, 15467)
+        check_verify(Mode::Private, 21528, 0, 15563, 15579)
     }
 }

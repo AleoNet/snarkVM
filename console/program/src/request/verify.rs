@@ -21,7 +21,26 @@ impl<N: Network> Request<N> {
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
     ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
+        // Verify the transition public key and transition view key are well-formed.
+        {
+            // Compute the transition public key `tpk` as `tsk * G`.
+            let tpk = N::g_scalar_multiply(&self.tsk);
+            // Ensure the transition public key matches with the derived one from the signature.
+            if tpk != self.to_tpk() {
+                eprintln!("Invalid transition public key in request.");
+                return false;
+            }
+
+            // Compute the transition view key `tvk` as `tsk * caller`.
+            let tvk = (*self.caller * self.tsk).to_x_coordinate();
+            // Ensure the computed transition view key matches.
+            if tvk != self.tvk {
+                eprintln!("Invalid transition view key in request.");
+                return false;
+            }
+        }
+
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
             &[
@@ -51,8 +70,8 @@ impl<N: Network> Request<N> {
         // Retrieve the response from the signature.
         let response = self.signature.response();
 
-        if let Err(error) =
-            self.input_ids.iter().zip_eq(&self.inputs).enumerate().try_for_each(|(index, (input_id, input))| {
+        if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
+            |(index, ((input_id, input), input_type))| {
                 match input_id {
                     // A constant input is hashed to a field element.
                     InputID::Constant(input_hash) => {
@@ -109,13 +128,19 @@ impl<N: Network> Request<N> {
                             // Ensure the input is a record.
                             Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                         };
+                        // Retrieve the record name.
+                        let record_name = match input_type {
+                            ValueType::Record(record_name) => record_name,
+                            // Ensure the input type is a record.
+                            _ => bail!("Expected a record type at input {index}"),
+                        };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&self.program_id, &randomizer)?;
+                        let commitment = record.to_commitment(&self.program_id, record_name, &randomizer)?;
                         // Ensure the record belongs to the caller.
                         ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
-                        // Ensure the record balance is less than or equal to 2^52.
-                        if !(**record.balance()).to_bits_le()[52..].iter().all(|bit| !bit) {
-                            bail!("Input record contains an invalid balance: {}", record.balance());
+                        // Ensure the record gates is less than or equal to 2^52.
+                        if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
+                            bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                         }
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -153,8 +178,8 @@ impl<N: Network> Request<N> {
                     }
                 }
                 Ok(())
-            })
-        {
+            },
+        ) {
             eprintln!("Request verification failed on input checks: {error}");
             return false;
         }
@@ -189,7 +214,7 @@ mod tests {
 
             // Prepare a record belonging to the address.
             let record_string =
-                format!("{{ owner: {address}.private, balance: 5u64.private, token_amount: 100u64.private }}");
+                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
 
             // Construct four inputs.
             let input_constant = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();
@@ -210,7 +235,7 @@ mod tests {
 
             // Compute the signed request.
             let request = Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
-            assert!(request.verify());
+            assert!(request.verify(&input_types));
         }
     }
 }

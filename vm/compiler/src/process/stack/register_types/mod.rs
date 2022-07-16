@@ -101,11 +101,7 @@ impl<N: Network> RegisterTypes<N> {
     }
 
     /// Returns the register type of the given register.
-    pub fn get_type<A: circuit::Aleo<Network = N>>(
-        &self,
-        stack: &Stack<N, A>,
-        register: &Register<N>,
-    ) -> Result<RegisterType<N>> {
+    pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
         let mut register_type = if self.is_input(register) {
             // Retrieve the input value type as a register type.
@@ -153,8 +149,8 @@ impl<N: Network> RegisterTypes<N> {
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else if path_name == &Identifier::from_str("balance")? {
-                        // If the member is the balance, then output the u64 type.
+                    } else if path_name == &Identifier::from_str("gates")? {
+                        // If the member is the gates, then output the u64 type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
                     } else {
                         // Retrieve the entry type from the record.
@@ -176,8 +172,8 @@ impl<N: Network> RegisterTypes<N> {
                     if path_name == &Identifier::from_str("owner")? {
                         // If the member is the owner, then output the address type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address))
-                    } else if path_name == &Identifier::from_str("balance")? {
-                        // If the member is the balance, then output the u64 type.
+                    } else if path_name == &Identifier::from_str("gates")? {
+                        // If the member is the gates, then output the u64 type.
                         RegisterType::Plaintext(PlaintextType::Literal(LiteralType::U64))
                     } else {
                         // Retrieve the entry type from the external record.

@@ -45,17 +45,24 @@ impl<N: Network> CircuitKeys<N> {
         self.circuit_keys.read().contains_key(&(*program_id, *function_name))
     }
 
-    /// Returns the `(proving_key, verifying_key)` for the given program ID and function name.
-    pub fn get(
+    /// Returns the proving key for the given program ID and function name.
+    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        match self.circuit_keys.read().get(&(*program_id, *function_name)) {
+            Some((proving_key, _)) => Ok(proving_key.clone()),
+            None => bail!("Proving key not found for: {program_id} {function_name}"),
+        }
+    }
+
+    /// Returns the verifying key for the given program ID and function name.
+    pub fn get_verifying_key(
         &self,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
-    ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
-        self.circuit_keys
-            .read()
-            .get(&(*program_id, *function_name))
-            .cloned()
-            .ok_or_else(|| anyhow!("Circuit key not found: {program_id} {function_name}"))
+    ) -> Result<VerifyingKey<N>> {
+        match self.circuit_keys.read().get(&(*program_id, *function_name)) {
+            Some((_, verifying_key)) => Ok(verifying_key.clone()),
+            None => bail!("Verifying key not found for: {program_id} {function_name}"),
+        }
     }
 
     /// Inserts the given `(proving_key, verifying_key)` for the given program ID and function name.
@@ -76,9 +83,8 @@ impl<N: Network> CircuitKeys<N> {
         function_name: &Identifier<N>,
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<()> {
-        // TODO (howardwu): Load the universal SRS remotely.
-        let (proving_key, verifying_key) =
-            self.universal_srs.get_or_try_init(|| UniversalSRS::load(100_000))?.to_circuit_key(assignment)?;
+        let universal_srs = self.universal_srs.get_or_try_init(|| UniversalSRS::load())?;
+        let (proving_key, verifying_key) = universal_srs.to_circuit_key(function_name, assignment)?;
         // Insert the proving key and verifying key.
         self.insert(program_id, function_name, proving_key, verifying_key);
         Ok(())
@@ -87,16 +93,6 @@ impl<N: Network> CircuitKeys<N> {
     /// Removes the given program ID and function name.
     pub fn remove(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) {
         self.circuit_keys.write().remove(&(*program_id, *function_name));
-    }
-
-    /// Returns the number of circuit keys.
-    pub fn len(&self) -> usize {
-        self.circuit_keys.read().len()
-    }
-
-    /// Returns `true` if there are no circuit keys.
-    pub fn is_empty(&self) -> bool {
-        self.circuit_keys.read().is_empty()
     }
 }
 impl<N: Network> Default for CircuitKeys<N> {

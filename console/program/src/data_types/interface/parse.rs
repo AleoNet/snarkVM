@@ -21,7 +21,7 @@ impl<N: Network> Parser for Interface<N> {
     /// ```text
     ///   interface message:
     ///       owner as address;
-    ///       balance as u64;
+    ///       amount as u64;
     /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

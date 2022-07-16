@@ -26,7 +26,7 @@ mod serialize;
 use crate::Proof;
 use console::{
     network::prelude::*,
-    program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value},
+    program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value, ValueType},
     types::{Field, Group},
 };
 
@@ -73,7 +73,13 @@ impl<N: Network> Transition<N> {
     }
 
     /// Initializes a new transition from a request and response.
-    pub fn from(request: &Request<N>, response: &Response<N>, proof: Proof<N>, fee: i64) -> Result<Self> {
+    pub fn from(
+        request: &Request<N>,
+        response: &Response<N>,
+        output_types: &[ValueType<N>],
+        proof: Proof<N>,
+        fee: i64,
+    ) -> Result<Self> {
         let program_id = *request.program_id();
         let function_name = *request.function_name();
         let num_inputs = request.inputs().len();
@@ -127,8 +133,9 @@ impl<N: Network> Transition<N> {
             .output_ids()
             .iter()
             .zip_eq(response.outputs())
+            .zip_eq(output_types)
             .enumerate()
-            .map(|(index, (output_id, output))| {
+            .map(|(index, ((output_id, output), output_type))| {
                 // Construct the transition output.
                 match (output_id, output) {
                     (OutputID::Constant(output_hash), Value::Plaintext(plaintext)) => {
@@ -160,12 +167,19 @@ impl<N: Network> Transition<N> {
                         Ok(Output::Private(*output_hash, Some(ciphertext)))
                     }
                     (OutputID::Record(commitment, nonce, checksum), Value::Record(record)) => {
+                        // Retrieve the record name.
+                        let record_name = match output_type {
+                            ValueType::Record(record_name) => record_name,
+                            // Ensure the input type is a record.
+                            _ => bail!("Expected a record type at output {index}"),
+                        };
+
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
                         // Compute the record commitment.
-                        let candidate_cm = record.to_commitment(&program_id, &randomizer)?;
+                        let candidate_cm = record.to_commitment(&program_id, record_name, &randomizer)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "The output record commitment is incorrect");
 

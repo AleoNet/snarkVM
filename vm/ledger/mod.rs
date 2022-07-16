@@ -14,31 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Program;
-use console::{
+mod block;
+pub use block::*;
+
+mod header;
+pub use header::*;
+
+mod transaction;
+pub use transaction::*;
+
+mod transactions;
+pub use transactions::*;
+
+use crate::console::{
     network::prelude::*,
     program::{Identifier, Plaintext},
 };
+use snarkvm_compiler::Program;
 
 use indexmap::{IndexMap, IndexSet};
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct Deploy<N: Network> {
-    program: Program<N>,
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum Transaction<N: Network> {
-    Deploy(Deploy<N>),
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct Block<N: Network> {
-    /// The transactions in this block.
-    transactions: Vec<Transaction<N>>,
-}
-
 #[derive(Clone, Default)]
+#[allow(dead_code)]
 pub struct Ledger<N: Network> {
     /// The mapping of program IDs to their programs.
     programs: IndexMap<u64, Program<N>>,
@@ -65,8 +62,7 @@ impl<N: Network> Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use circuit::network::AleoV0;
-    use console::network::Testnet3;
+    use crate::console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 

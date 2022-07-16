@@ -16,35 +16,30 @@
 
 use super::*;
 
+#[derive(Clone)]
 pub struct UniversalSRS<N: Network> {
     /// The universal SRS parameter.
-    srs: marlin::UniversalSRS<N::PairingCurve>,
+    srs: Arc<marlin::UniversalSRS<N::PairingCurve>>,
 }
 
 impl<N: Network> UniversalSRS<N> {
     /// Initializes the universal SRS.
-    pub fn load(num_gates: usize) -> Result<Self> {
-        // TODO (howardwu): Switch this to a remotely loaded SRS.
-        let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
-
+    pub fn load() -> Result<Self> {
         let timer = std::time::Instant::now();
-        let max_degree =
-            marlin::ahp::AHPForR1CS::<N::Field, marlin::MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates)
-                .unwrap();
-        let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
-        println!("{}", format!(" • Called universal setup: {} ms", timer.elapsed().as_millis()).dimmed());
-
-        Ok(Self { srs: universal_srs })
+        let universal_srs = Self::read_le(&*snarkvm_parameters::testnet3::TrialSRS::load_bytes()?)?;
+        println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        Ok(universal_srs)
     }
 
     /// Returns the circuit proving and verifying key.
     pub fn to_circuit_key(
         &self,
+        function_name: &Identifier<N>,
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         let timer = std::time::Instant::now();
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
-        println!("{}", format!(" • Called setup: {} ms", timer.elapsed().as_millis()).dimmed());
+        println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
         Ok((ProvingKey::new(proving_key), VerifyingKey::new(verifying_key)))
     }
@@ -52,16 +47,16 @@ impl<N: Network> UniversalSRS<N> {
 
 impl<N: Network> FromBytes for UniversalSRS<N> {
     /// Reads the universal SRS from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let srs = FromBytes::read_le(&mut reader)?;
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        let srs = CanonicalDeserialize::deserialize_with_mode(reader, Compress::No, Validate::No)?;
         Ok(Self { srs })
     }
 }
 
 impl<N: Network> ToBytes for UniversalSRS<N> {
     /// Writes the universal SRS to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.srs.write_le(&mut writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        Ok(self.srs.serialize_with_mode(writer, Compress::No)?)
     }
 }
 

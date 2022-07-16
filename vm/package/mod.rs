@@ -21,9 +21,9 @@ mod run;
 
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
-    prelude::{Identifier, Locator, Network, PrivateKey, ProgramID, Response, ToBytes, Value},
+    prelude::{Identifier, Locator, Network, PrivateKey, ProgramID, Response, Value},
 };
-use snarkvm_compiler::{Execution, Process, Program};
+use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program};
 
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;
@@ -84,14 +84,14 @@ impl<N: Network> Package<N> {
             directory.display()
         );
 
-        // Create the manifest file.
+        // Open the manifest file.
         let manifest_file = Manifest::open(directory)?;
         // Retrieve the program ID.
         let program_id = *manifest_file.program_id();
         // Ensure the program name is valid.
         ensure!(!Program::is_reserved_keyword(program_id.name()), "Program name is invalid (reserved): {program_id}");
 
-        // Create the program file.
+        // Open the program file.
         let program_file = AleoFile::open(directory, &program_id, true)?;
 
         Ok(Self { program_id, directory: directory.to_path_buf(), manifest_file, program_file })
@@ -127,8 +127,13 @@ impl<N: Network> Package<N> {
         self.directory.join("build")
     }
 
+    /// Returns the imports directory.
+    pub fn imports_directory(&self) -> PathBuf {
+        self.directory.join("imports")
+    }
+
     /// Returns a new process for the package.
-    pub fn get_process<A: crate::circuit::Aleo<Network = N, BaseField = N::Field>>(&self) -> Result<Process<N, A>> {
+    pub fn get_process(&self) -> Result<Process<N>> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
         // Ensure the build directory exists.
@@ -137,11 +142,10 @@ impl<N: Network> Package<N> {
         }
 
         // Create the process.
-        let mut process = Process::<N, A>::new(self.program().clone())?;
+        let mut process = Process::<N>::new();
 
         // Prepare the imports directory.
-        let mut imports_directory = build_directory;
-        imports_directory.push("imports");
+        let imports_directory = self.imports_directory();
 
         // Add all import programs (in order) to the process.
         self.program().imports().keys().try_for_each(|program_id| {
@@ -151,6 +155,9 @@ impl<N: Network> Package<N> {
             process.add_program(import_program_file.program())?;
             Ok::<_, Error>(())
         })?;
+
+        // Add the program to the process.
+        process.add_program(self.program())?;
 
         Ok(process)
     }

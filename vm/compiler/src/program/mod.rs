@@ -440,14 +440,17 @@ impl<N: Network> Program<N> {
         "output",
         "as",
         "into",
+        // Record
+        "record",
+        "gates",
         // Program
         "function",
         "interface",
-        "record",
         "closure",
         "program",
         "global",
         // Reserved (catch all)
+        "aleo",
         "return",
         "break",
         "assert",
@@ -510,6 +513,9 @@ mod tests {
         program::{Plaintext, Record, Value},
     };
 
+    use parking_lot::RwLock;
+    use std::sync::Arc;
+
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
 
@@ -543,7 +549,7 @@ interface message:
             r"
 record foo:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     first as field.private;
     second as field.public;",
         )?;
@@ -613,19 +619,21 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
-        let candidate = stack.evaluate_function(&function, &inputs).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function(&function, &inputs).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -661,18 +669,20 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function(&function, &[input]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -686,7 +696,7 @@ program token.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
@@ -701,7 +711,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
         let input =
-            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap());
+            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
@@ -709,18 +719,20 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function(&function, &[input]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -771,26 +783,30 @@ function compute:
 
         {
             // Construct the process.
-            let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+            let mut process = Process::<CurrentNetwork>::new();
+            // Add the program to the process.
+            process.add_program(&program).unwrap();
             // Check that the circuit key can be synthesized.
-            process.circuit_key(program.id(), &function_name).unwrap();
+            process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
         }
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()]).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function(&function, &[r0.clone(), r1.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()]).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
@@ -805,17 +821,19 @@ function compute:
         assert_eq!(0, CurrentAleo::num_constraints());
 
         // Initialize an RNG.
-        let rng = &mut rand::thread_rng();
+        let rng = &mut test_crypto_rng();
         // Initialize a burner private key.
         let burner_private_key = PrivateKey::new(rng).unwrap();
         // Authorize the function call, with a burner private key.
-        let authorization =
-            process.authorize(&burner_private_key, program.id(), function_name, &[r0, r1], rng).unwrap();
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&burner_private_key, program.id(), function_name, &[r0, r1], rng)
+            .unwrap();
         assert_eq!(authorization.len(), 1);
 
         // Re-run to ensure state continues to work.
-        let (response, _assignment) =
-            stack.execute_function(CallStack::Execute(authorization, Execution::new())).unwrap();
+        let execution = Arc::new(RwLock::new(Execution::new()));
+        let response =
+            stack.execute_function::<CurrentAleo, _>(CallStack::Execute(authorization, execution), rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -832,12 +850,12 @@ program token_with_cast.aleo;
 
 record token:
     owner as address.private;
-    balance as u64.private;
+    gates as u64.private;
     token_amount as u64.private;
 
 function compute:
     input r0 as token.record;
-    cast r0.owner r0.balance r0.token_amount into r1 as token.record;
+    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
     output r1 as token.record;",
         )
         .unwrap();
@@ -846,7 +864,7 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
-        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, balance: 5u64.private, token_amount: 100u64.private }").unwrap();
+        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record.clone());
         // Declare the expected output value.
         let expected = Value::Record(input_record);
@@ -855,18 +873,20 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let process = Process::<CurrentNetwork, CurrentAleo>::new(program.clone()).unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
 
-        // Prepare the stack.
-        let mut stack = process.get_stack(program.id()).unwrap();
+        // Retrieve the stack.
+        let stack = process.get_stack(program.id()).unwrap();
 
         // Compute the output value.
-        let candidate = stack.evaluate_function(&function, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function(&function, &[input]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input]).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }

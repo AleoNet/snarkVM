@@ -39,8 +39,8 @@ pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
 
-    /// A proof that the indexing was performed correctly.
-    type IndexProof: CanonicalSerialize
+    /// A certificate that the indexing was performed correctly.
+    type Certificate: CanonicalSerialize
         + CanonicalDeserialize
         + Clone
         + Debug
@@ -79,16 +79,10 @@ pub trait SNARK {
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove_index(
+    fn prove_vk(
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
-    ) -> Result<Self::IndexProof, SNARKError>;
-
-    fn verify_index<C: ConstraintSynthesizer<Self::ScalarField>>(
-        circuit: &C,
-        verifying_key: &Self::VerifyingKey,
-        proof: &Self::IndexProof,
-    ) -> Result<bool, SNARKError>;
+    ) -> Result<Self::Certificate, SNARKError>;
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
@@ -121,6 +115,12 @@ pub trait SNARK {
     ) -> Result<Self::Proof, SNARKError> {
         Self::prove_batch_with_terminator(proving_key, std::slice::from_ref(input_and_witness), terminator, rng)
     }
+
+    fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        circuit: &C,
+        verifying_key: &Self::VerifyingKey,
+        certificate: &Self::Certificate,
+    ) -> Result<bool, SNARKError>;
 
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,

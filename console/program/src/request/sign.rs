@@ -44,7 +44,7 @@ impl<N: Network> Request<N> {
 
         // Sample a random nonce.
         let nonce = Field::<N>::rand(rng);
-        // Compute a `r` as `HashToScalar(sk_sig || nonce)`.
+        // Compute a `r` as `HashToScalar(sk_sig || nonce)`. Note: This is the transition secret key `tsk`.
         let r = N::hash_to_scalar_psd4(&[N::serial_number_domain(), sk_sig.to_field()?, nonce])?;
         // Compute `g_r` as `r * G`. Note: This is the transition public key `tpk`.
         let g_r = N::g_scalar_multiply(&r);
@@ -122,7 +122,7 @@ impl<N: Network> Request<N> {
                     input_ids.push(InputID::Private(input_hash));
                 }
                 // A record input is computed to its serial number.
-                ValueType::Record(..) => {
+                ValueType::Record(record_name) => {
                     // Construct the (console) input index as a field element.
                     let index = Field::from_u16(index as u16);
                     // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
@@ -134,12 +134,12 @@ impl<N: Network> Request<N> {
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
                     // Compute the record commitment.
-                    let commitment = record.to_commitment(&program_id, &randomizer)?;
+                    let commitment = record.to_commitment(&program_id, record_name, &randomizer)?;
                     // Ensure the record belongs to the caller.
                     ensure!(**record.owner() == caller, "Input record does not belong to the signer");
-                    // Ensure the record balance is less than or equal to 2^52.
-                    if !(**record.balance()).to_bits_le()[52..].iter().all(|bit| !bit) {
-                        bail!("Input record contains an invalid balance: {}", record.balance());
+                    // Ensure the record gates is less than or equal to 2^52.
+                    if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
+                        bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                     }
 
                     // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -194,6 +194,7 @@ impl<N: Network> Request<N> {
             inputs: inputs.to_vec(),
             signature: Signature::from((challenge, response, compute_key)),
             tvk,
+            tsk: r,
         })
     }
 }

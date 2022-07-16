@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network> Stack<N> {
     /// Returns a value for the given value type.
     pub fn sample_value<R: Rng + CryptoRng>(
         &self,
@@ -31,8 +31,8 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             ValueType::Record(record_name) => {
                 Ok(Value::Record(self.sample_record(burner_address, record_name, rng)?))
             }
-            ValueType::ExternalRecord(_locator) => {
-                bail!("Illegal operation: Cannot sample external records.")
+            ValueType::ExternalRecord(locator) => {
+                bail!("Illegal operation: Cannot sample external records (for '{locator}.record').")
             }
         }
     }
@@ -67,7 +67,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
     }
 }
 
-impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
+impl<N: Network> Stack<N> {
     /// Returns a record for the given record name.
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn sample_record_internal<R: Rng + CryptoRng>(
@@ -89,9 +89,9 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             false => Owner::Private(Plaintext::Literal(Literal::Address(*burner_address), Default::default())),
         };
 
-        // Initialize the balance based on the visibility.
+        // Initialize the gates based on the visibility.
         let amount = U64::new(rng.gen_range(0..(1 << 52)));
-        let balance = match record_type.balance().is_public() {
+        let gates = match record_type.gates().is_public() {
             true => Balance::Public(amount),
             false => Balance::Private(Plaintext::Literal(Literal::U64(amount), Default::default())),
         };
@@ -108,7 +108,7 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Stack<N, A> {
             })
             .collect::<Result<IndexMap<_, _>>>()?;
 
-        Record::from_plaintext(owner, balance, data)
+        Record::from_plaintext(owner, gates, data)
     }
 
     /// Samples an entry according to the given entry type.
