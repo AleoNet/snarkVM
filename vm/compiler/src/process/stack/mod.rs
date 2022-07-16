@@ -25,6 +25,7 @@ mod sample;
 
 use crate::{
     Build,
+    CallOperator,
     Certificate,
     CircuitKeys,
     Closure,
@@ -112,7 +113,7 @@ impl<N: Network> Authorization<N> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Execution<N: Network>(Vec<Transition<N>>);
 
 impl<N: Network> Execution<N> {
@@ -155,16 +156,13 @@ impl<N: Network> Execution<N> {
     pub fn pop(&mut self) -> Result<Transition<N>> {
         self.0.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
     }
-
-    /// Returns the transitions in the execution.
-    pub fn to_vec(&self) -> Vec<Transition<N>> {
-        self.0.clone()
-    }
 }
 
-impl<N: Network> Default for Execution<N> {
-    fn default() -> Self {
-        Self::new()
+impl<N: Network> Deref for Execution<N> {
+    type Target = [Transition<N>];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -312,6 +310,30 @@ impl<N: Network> Stack<N> {
     /// Returns the function with the given function name.
     pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
         self.program.get_function(function_name)
+    }
+
+    /// Returns the expected number of calls for the given function name.
+    #[inline]
+    pub fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
+        // Retrieve the function.
+        let function = self.get_function(function_name)?;
+        // Determine the number of calls for this function (including the function itself).
+        let mut num_calls = 1;
+        for instruction in function.instructions() {
+            if let Instruction::Call(call) = instruction {
+                // Determine if this is a function call.
+                if call.is_function_call(self)? {
+                    // Increment by the number of calls.
+                    num_calls += match call.operator() {
+                        CallOperator::Locator(locator) => {
+                            self.get_external_stack(locator.program_id())?.get_number_of_calls(locator.resource())?
+                        }
+                        CallOperator::Resource(resource) => self.get_number_of_calls(resource)?,
+                    };
+                }
+            }
+        }
+        Ok(num_calls)
     }
 
     /// Returns the register types for the given closure or function name.

@@ -255,8 +255,10 @@ impl<N: Network> Process<N> {
         {
             // Retrieve the transition (without popping it).
             let transition = execution.peek()?;
+            // Retrieve the stack.
+            let stack = self.get_stack(transition.program_id())?;
             // Ensure the number of calls matches the number of transitions.
-            let number_of_calls = self.get_number_of_calls(transition.program_id(), transition.function_name())?;
+            let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
             ensure!(
                 number_of_calls == execution.len(),
                 "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
@@ -312,7 +314,7 @@ impl<N: Network> Process<N> {
             if num_function_calls > 0 {
                 // This loop takes the last `num_function_call` transitions, and reverses them
                 // to order them in the order they were defined in the function.
-                for transition in queue.to_vec().iter().rev().take(num_function_calls).rev() {
+                for transition in (*queue).iter().rev().take(num_function_calls).rev() {
                     // Extend the inputs with the input and output IDs of the external call.
                     inputs.extend(transition.input_ids().map(|id| *id));
                     inputs.extend(transition.output_ids().map(|id| *id));
@@ -381,32 +383,6 @@ impl<N: Network> Process<N> {
         }
 
         Ok((program, function, input_types, output_types))
-    }
-
-    /// Returns the expected number of calls for the given program ID and function name.
-    #[inline]
-    fn get_number_of_calls(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<usize> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-        // Retrieve the function from the stack.
-        let function = stack.get_function(function_name)?;
-        // Determine the number of calls for this function (including the function itself).
-        let mut num_calls = 1;
-        for instruction in function.instructions() {
-            if let Instruction::Call(call) = instruction {
-                // Determine if this is a function call.
-                if call.is_function_call(&stack)? {
-                    // Increment by the number of calls.
-                    num_calls += match call.operator() {
-                        CallOperator::Locator(locator) => {
-                            self.get_number_of_calls(locator.program_id(), locator.resource())?
-                        }
-                        CallOperator::Resource(resource) => self.get_number_of_calls(stack.program_id(), resource)?,
-                    };
-                }
-            }
-        }
-        Ok(num_calls)
     }
 }
 
@@ -516,10 +492,10 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, mut execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
                 // Return the transition.
-                execution.get(0).unwrap()
+                execution.pop().unwrap()
             })
             .clone()
     }
