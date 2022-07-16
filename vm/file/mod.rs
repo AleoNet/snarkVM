@@ -29,8 +29,5 @@ pub use prover::ProverFile;
 mod readme_file;
 pub use readme_file::README;
 
-mod srs;
-pub use srs::SRSFile;
-
 mod verifier;
 pub use verifier::VerifierFile;

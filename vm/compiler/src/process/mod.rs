@@ -28,7 +28,18 @@ pub use transition::*;
 
 mod add_program;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
+use crate::{
+    CallOperator,
+    Certificate,
+    Closure,
+    Function,
+    Instruction,
+    Opcode,
+    Operand,
+    Program,
+    ProvingKey,
+    VerifyingKey,
+};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -36,6 +47,7 @@ use console::{
     types::I64,
 };
 
+use colored::Colorize;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -115,6 +127,41 @@ impl<N: Network> Process<N> {
     ) -> Result<()> {
         // Synthesize the proving and verifying key.
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
+    }
+
+    /// Deploys the program with the given program ID.
+    #[inline]
+    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        program_id: &ProgramID<N>,
+        rng: &mut R,
+    ) -> Result<Vec<(Identifier<N>, VerifyingKey<N>, Certificate<N>)>> {
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
+
+        // Initialize a vector for the deployment.
+        let mut deployment = Vec::with_capacity(stack.program().functions().len());
+
+        for function_name in stack.program().functions().keys() {
+            // If the proving key or verifying key does not exist, synthesize them.
+            if !self.circuit_keys.contains_key(program_id, function_name) {
+                // Synthesize the proving and verifying key.
+                stack.synthesize_key::<A, R>(function_name, rng)?;
+            }
+
+            // Retrieve the proving key.
+            let proving_key = stack.get_proving_key(function_name)?;
+            // Retrieve the verifying key.
+            let verifying_key = stack.get_verifying_key(function_name)?;
+
+            // Certify the circuit.
+            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
+
+            // Add the verifying key and certificate to the deployment.
+            deployment.push((function_name.clone(), verifying_key, certificate));
+        }
+
+        Ok(deployment)
     }
 
     /// Authorizes a call to the program function for the given inputs.
@@ -222,6 +269,8 @@ impl<N: Network> Process<N> {
         if !stack.program().contains_function(request.function_name()) {
             bail!("Function '{}' does not exist.", request.function_name())
         }
+
+        println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));

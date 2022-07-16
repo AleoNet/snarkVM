@@ -40,7 +40,7 @@ impl<N: Network> VerifyingKey<N> {
         match Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof) {
             Ok(is_valid) => {
                 let elapsed = timer.elapsed().as_millis();
-                println!("{}", format!(" • Called verifier for '{function_name}': {} ms", elapsed).dimmed());
+                println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
                 is_valid
             }
             Err(error) => {

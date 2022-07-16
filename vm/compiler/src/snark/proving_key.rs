@@ -37,7 +37,7 @@ impl<N: Network> ProvingKey<N> {
     ) -> Result<Proof<N>> {
         let timer = std::time::Instant::now();
         let proof = Proof::new(Marlin::<N>::prove_batch(self, std::slice::from_ref(assignment), rng)?);
-        println!("{}", format!(" • Called prover for '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
+        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(proof)
     }
 }

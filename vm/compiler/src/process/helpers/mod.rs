@@ -21,6 +21,7 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -28,7 +29,7 @@ use std::sync::Arc;
 #[allow(clippy::type_complexity)]
 pub struct CircuitKeys<N: Network> {
     /// The universal SRS.
-    universal_srs: UniversalSRS<N>,
+    universal_srs: Arc<OnceCell<UniversalSRS<N>>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
     circuit_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), (ProvingKey<N>, VerifyingKey<N>)>>>,
 }
@@ -36,10 +37,7 @@ pub struct CircuitKeys<N: Network> {
 impl<N: Network> CircuitKeys<N> {
     /// Initialize a new `CircuitKeys` instance.
     pub fn new() -> Self {
-        Self {
-            universal_srs: UniversalSRS::load().expect("Failed to load the universal SRS"),
-            circuit_keys: Arc::new(RwLock::new(IndexMap::new())),
-        }
+        Self { universal_srs: Arc::new(OnceCell::new()), circuit_keys: Arc::new(RwLock::new(IndexMap::new())) }
     }
 
     /// Returns `true` if the given program ID and function name exists.
@@ -85,7 +83,8 @@ impl<N: Network> CircuitKeys<N> {
         function_name: &Identifier<N>,
         assignment: &circuit::Assignment<N::Field>,
     ) -> Result<()> {
-        let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
+        let universal_srs = self.universal_srs.get_or_try_init(|| UniversalSRS::load())?;
+        let (proving_key, verifying_key) = universal_srs.to_circuit_key(function_name, assignment)?;
         // Insert the proving key and verifying key.
         self.insert(program_id, function_name, proving_key, verifying_key);
         Ok(())

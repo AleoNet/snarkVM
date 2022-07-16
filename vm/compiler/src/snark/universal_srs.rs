@@ -27,7 +27,7 @@ impl<N: Network> UniversalSRS<N> {
     pub fn load() -> Result<Self> {
         let timer = std::time::Instant::now();
         let universal_srs = Self::read_le(&*snarkvm_parameters::testnet3::TrialSRS::load_bytes()?)?;
-        println!("{}", format!(" • Loaded universal setup: {} ms", timer.elapsed().as_millis()).dimmed());
+        println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(universal_srs)
     }
 
@@ -39,7 +39,7 @@ impl<N: Network> UniversalSRS<N> {
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         let timer = std::time::Instant::now();
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
-        println!("{}", format!(" • Called setup for '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
+        println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
         Ok((ProvingKey::new(proving_key), VerifyingKey::new(verifying_key)))
     }
