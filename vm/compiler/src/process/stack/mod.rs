@@ -101,32 +101,32 @@ impl<N: Network> Authorization<N> {
 }
 
 #[derive(Clone)]
-pub struct Execution<N: Network>(Arc<RwLock<Vec<Transition<N>>>>);
+pub struct Execution<N: Network>(Vec<Transition<N>>);
 
 impl<N: Network> Execution<N> {
     /// Initialize a new `Execution` instance.
     pub fn new() -> Self {
-        Self(Arc::new(RwLock::new(Vec::new())))
+        Self(Vec::new())
     }
 
     /// Initializes a new `Execution` instance with the given transitions.
     pub fn from(transitions: &[Transition<N>]) -> Self {
-        Self(Arc::new(RwLock::new(transitions.to_vec())))
+        Self(transitions.to_vec())
     }
 
     /// Returns the `Transition` at the given index.
     pub fn get(&self, index: usize) -> Result<Transition<N>> {
-        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
+        self.0.get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
     }
 
     /// Returns the number of `Transition`s in the execution.
     pub fn len(&self) -> usize {
-        self.0.read().len()
+        self.0.len()
     }
 
     /// Return `true` if the execution is empty.
     pub fn is_empty(&self) -> bool {
-        self.0.read().is_empty()
+        self.0.is_empty()
     }
 
     /// Returns the next `Transition` in the execution.
@@ -135,18 +135,18 @@ impl<N: Network> Execution<N> {
     }
 
     /// Appends the given `Transition` to the execution.
-    pub fn push(&self, transition: Transition<N>) {
-        self.0.write().push(transition);
+    pub fn push(&mut self, transition: Transition<N>) {
+        self.0.push(transition);
     }
 
     /// Pops the last `Transition` from the execution.
-    pub fn pop(&self) -> Result<Transition<N>> {
-        self.0.write().pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
+    pub fn pop(&mut self) -> Result<Transition<N>> {
+        self.0.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
     }
 
     /// Returns the transitions in the execution.
     pub fn to_vec(&self) -> Vec<Transition<N>> {
-        self.0.read().clone()
+        self.0.clone()
     }
 }
 
@@ -161,7 +161,7 @@ pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Evaluate,
-    Execute(Authorization<N>, Execution<N>),
+    Execute(Authorization<N>, Arc<RwLock<Execution<N>>>),
 }
 
 impl<N: Network> CallStack<N> {
@@ -294,6 +294,11 @@ impl<N: Network> Stack<N> {
         let external_program = self.get_external_program(locator.program_id())?;
         // Return the external record, if it exists.
         external_program.get_record(locator.resource())
+    }
+
+    /// Returns the function with the given function name.
+    pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
+        self.program.get_function(function_name)
     }
 
     /// Returns the proving key for the given function name.
@@ -597,7 +602,7 @@ impl<N: Network> Stack<N> {
             // If the instruction was a function call, then set the tracker to `true`.
             if let Instruction::Call(call) = instruction {
                 // Check if the call is a function call.
-                if call.is_function_call::<A>(self)? {
+                if call.is_function_call(self)? {
                     contains_function_call = true;
                 }
             }
@@ -738,7 +743,13 @@ impl<N: Network> Stack<N> {
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Add the transition to the execution.
-            execution.push(Transition::from(&console_request, &response, &function.output_types(), proof, *fee)?);
+            execution.write().push(Transition::from(
+                &console_request,
+                &response,
+                &function.output_types(),
+                proof,
+                *fee,
+            )?);
         }
 
         // Return the response.

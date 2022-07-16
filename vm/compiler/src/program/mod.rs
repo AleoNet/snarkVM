@@ -513,6 +513,9 @@ mod tests {
         program::{Plaintext, Record, Value},
     };
 
+    use parking_lot::RwLock;
+    use std::sync::Arc;
+
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
 
@@ -828,8 +831,9 @@ function compute:
         assert_eq!(authorization.len(), 1);
 
         // Re-run to ensure state continues to work.
+        let execution = Arc::new(RwLock::new(Execution::new()));
         let response =
-            stack.execute_function::<CurrentAleo, _>(CallStack::Execute(authorization, Execution::new()), rng).unwrap();
+            stack.execute_function::<CurrentAleo, _>(CallStack::Execute(authorization, execution), rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);

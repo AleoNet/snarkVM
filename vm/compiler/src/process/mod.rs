@@ -48,6 +48,8 @@ use console::{
 };
 
 use indexmap::IndexMap;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 pub struct Process<N: Network> {
     /// The mapping of program IDs to programs.
@@ -255,9 +257,11 @@ impl<N: Network> Process<N> {
         }
 
         // Initialize the execution.
-        let execution = Execution::new();
+        let execution = Arc::new(RwLock::new(Execution::new()));
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(CallStack::Execute(authorization, execution.clone()), rng)?;
+        // Extract the execution.
+        let execution = execution.read().clone();
 
         Ok((response, execution))
     }
@@ -270,8 +274,21 @@ impl<N: Network> Process<N> {
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
+        // Ensure the number of transitions matches the program function.
+        {
+            // Retrieve the transition (without popping it).
+            let transition = execution.peek()?;
+            // Ensure the number of calls matches the number of transitions.
+            let number_of_calls = self.get_number_of_calls(transition.program_id(), transition.function_name())?;
+            ensure!(
+                number_of_calls == execution.len(),
+                "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
+                execution.len()
+            );
+        }
+
         // Replicate the execution stack for verification.
-        let queue = Execution::from(&execution.to_vec());
+        let mut queue = execution.clone();
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
@@ -300,20 +317,16 @@ impl<N: Network> Process<N> {
             // Extend the inputs with the input IDs.
             inputs.extend(transition.input_ids().map(|id| *id));
 
-            // Retrieve the program.
-            let program = self.get_program(transition.program_id())?;
-            // Retrieve the function from the program.
-            let function = program.get_function(transition.function_name())?;
+            // Retrieve the stack.
+            let stack = self.get_stack(transition.program_id())?;
+            // Retrieve the function from the stack.
+            let function = stack.get_function(transition.function_name())?;
             // Determine the number of function calls in this function.
             let mut num_function_calls = 0;
             for instruction in function.instructions() {
                 if let Instruction::Call(call) = instruction {
-                    // Retrieve the program and resource.
-                    let (program, resource) = match call.operator() {
-                        CallOperator::Locator(locator) => (self.get_program(locator.program_id())?, locator.resource()),
-                        CallOperator::Resource(resource) => (program, resource),
-                    };
-                    if program.contains_function(resource) {
+                    // Determine if this is a function call.
+                    if call.is_function_call(&stack)? {
                         num_function_calls += 1;
                     }
                 }
@@ -386,6 +399,32 @@ impl<N: Network> Process<N> {
         }
 
         Ok((program, function, input_types, output_types))
+    }
+
+    /// Returns the expected number of calls for the given program ID and function name.
+    #[inline]
+    fn get_number_of_calls(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<usize> {
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
+        // Retrieve the function from the stack.
+        let function = stack.get_function(function_name)?;
+        // Determine the number of calls for this function (including the function itself).
+        let mut num_calls = 1;
+        for instruction in function.instructions() {
+            if let Instruction::Call(call) = instruction {
+                // Determine if this is a function call.
+                if call.is_function_call(&stack)? {
+                    // Increment by the number of calls.
+                    num_calls += match call.operator() {
+                        CallOperator::Locator(locator) => {
+                            self.get_number_of_calls(locator.program_id(), locator.resource())?
+                        }
+                        CallOperator::Resource(resource) => self.get_number_of_calls(stack.program_id(), resource)?,
+                    };
+                }
+            }
+        }
+        Ok(num_calls)
     }
 }
 
