@@ -184,7 +184,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
     fn shl_checked(&self, n: &Integer<E, M>) -> Self::Output {
         let two = Self::one() + Self::one();
         let base = match I::is_signed() {
-            true => Self::ternary(&self.is_less_than(&Self::zero()), &(Self::zero() - &two), &two),
+            true => Self::ternary(&self.is_less_than(&Self::zero()), &(Self::zero() - two), &two),
             false => two,
         };
 

@@ -100,7 +100,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 
                         for bit in self.to_bits_le().into_iter().rev() {
                             remainder = remainder.double();
-                            remainder = remainder + Field::from_bits_le(&[bit]);
+                            remainder += Field::from_bits_le(&[bit]);
 
                             // Check that remainder is greater than or equal to divisor, via an unsigned overflow check.
                             //   - difference := I:MAX + (b - a).
