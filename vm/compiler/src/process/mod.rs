@@ -52,6 +52,7 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[derive(Default)]
 pub struct Process<N: Network> {
     /// The mapping of program IDs to programs.
     programs: IndexMap<ProgramID<N>, Program<N>>,
@@ -131,6 +132,7 @@ impl<N: Network> Process<N> {
 
     /// Deploys the program with the given program ID.
     #[inline]
+    #[allow(clippy::type_complexity)]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         program_id: &ProgramID<N>,
@@ -158,7 +160,7 @@ impl<N: Network> Process<N> {
             let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
 
             // Add the verifying key and certificate to the deployment.
-            deployment.push((function_name.clone(), verifying_key, certificate));
+            deployment.push((*function_name, verifying_key, certificate));
         }
 
         Ok(deployment)
