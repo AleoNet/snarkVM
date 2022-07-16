@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{field, Zero};
-use snarkvm_utilities::biginteger::{BigInteger256, BigInteger384};
+use snarkvm_fields::{field, Field, Zero};
+use snarkvm_utilities::{
+    biginteger::{BigInteger256, BigInteger384},
+    BitIteratorBE,
+};
 
 use crate::{
     bls12_377::{g1::Bls12_377G1Parameters, Fq, Fq2, Fr},
     traits::{ModelParameters, ShortWeierstrassParameters},
+    AffineCurve,
 };
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -78,6 +82,12 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
     #[inline(always)]
     fn mul_by_a(_: &Self::BaseField) -> Self::BaseField {
         Self::BaseField::zero()
+    }
+
+    fn is_in_correct_subgroup_assuming_on_curve(
+        p: &crate::templates::short_weierstrass_jacobian::Affine<Self>,
+    ) -> bool {
+        p.mul_bits(BitIteratorBE::new(Self::ScalarField::characteristic())).is_zero()
     }
 }
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::PairingEngine;
+use crate::{templates::short_weierstrass_jacobian, PairingEngine};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
@@ -86,6 +86,13 @@ pub trait ProjectiveCurve:
 
     /// Adds an affine element to this element.
     fn add_assign_mixed(&mut self, other: &Self::Affine);
+
+    /// Adds an affine element to this element.
+    fn add_mixed(&self, other: &Self::Affine) -> Self {
+        let mut copy = *self;
+        copy.add_assign_mixed(other);
+        copy
+    }
 
     /// Adds an affine element to this element.
     fn sub_assign_mixed(&mut self, other: &Self::Affine) {
@@ -245,7 +252,7 @@ pub trait PairingCurve: AffineCurve {
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult;
 }
 
-pub trait ModelParameters: Send + Sync + 'static {
+pub trait ModelParameters: Send + Sync + 'static + Sized {
     type BaseField: Field + SquareRootField;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
@@ -270,6 +277,8 @@ pub trait ShortWeierstrassParameters: ModelParameters {
         copy += &Self::COEFF_B;
         copy
     }
+
+    fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
 }
 
 pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
