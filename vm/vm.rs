@@ -190,8 +190,8 @@ impl VM {
                     }
                 };
 
-                /// TODO (howardwu): Check the program (1. ensure the program ID does not exist already, 2. check it is well-formed).
-                /// TODO (howardwu): Check the verifying key.
+                // TODO (howardwu): Check the program (1. ensure the program ID does not exist already, 2. check it is well-formed).
+                // TODO (howardwu): Check the verifying key.
                 true
             }
             Transaction::Execute(id, transitions) => {
