@@ -16,7 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, Randomness, SonicKZG10},
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, QuerySet, Randomness, SonicKZG10},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
         fiat_shamir::traits::FiatShamirRng,
@@ -53,6 +53,8 @@ use core::{
     marker::PhantomData,
     sync::atomic::{AtomicBool, Ordering},
 };
+
+use super::Certificate;
 
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
@@ -163,6 +165,13 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         sponge
     }
 
+    fn init_sponge_for_certificate(circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>]) -> FS {
+        let mut sponge = FS::new();
+        sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        sponge.absorb_native_field_elements(circuit_commitments);
+        sponge
+    }
+
     fn absorb_labeled_with_msg(
         comms: &[LabeledCommitment<Commitment<E>>],
         message: &prover::ThirdMessage<E::Fr>,
@@ -196,6 +205,7 @@ where
     Input: ToConstraintField<E::Fr> + ?Sized,
 {
     type BaseField = E::Fq;
+    type Certificate = Certificate<E>;
     type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
@@ -224,6 +234,98 @@ where
             SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
         }
         .map_err(SNARKError::from)
+    }
+
+    fn prove_vk(
+        verifying_key: &Self::VerifyingKey,
+        proving_key: &Self::ProvingKey,
+    ) -> Result<Self::Certificate, SNARKError> {
+        // Initialize sponge
+        let mut sponge = Self::init_sponge_for_certificate(&verifying_key.circuit_commitments);
+        // Compute challenges for linear combination, and the point to evaluate the polynomials at.
+        // The linear combination requires `num_polynomials - 1` coefficients
+        // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
+        let mut challenges = sponge
+            .squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len(), OptimizationType::Weight)
+            .map_err(AHPError::from)?;
+        let point = challenges.pop().unwrap();
+        let one = E::Fr::one();
+        let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
+
+        // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
+        let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
+        for (poly, &c) in proving_key.circuit.iter().zip(linear_combination_challenges) {
+            lc.add(c, poly.label());
+        }
+
+        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
+        let commitments = verifying_key
+            .iter()
+            .cloned()
+            .zip_eq(AHPForR1CS::<E::Fr, MM>::index_polynomial_info().values())
+            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
+            .collect::<Vec<_>>();
+
+        let certificate = SonicKZG10::<E, FS>::open_combinations(
+            &proving_key.committer_key,
+            &[lc],
+            proving_key.circuit.iter(),
+            &commitments,
+            &query_set,
+            &proving_key.circuit_commitment_randomness.clone(),
+            &mut sponge,
+        )?;
+
+        Ok(Self::Certificate::new(certificate))
+    }
+
+    fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        circuit: &C,
+        verifying_key: &Self::VerifyingKey,
+        certificate: &Self::Certificate,
+    ) -> Result<bool, SNARKError> {
+        let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info();
+        // Initialize sponge.
+        let mut sponge = Self::init_sponge_for_certificate(&verifying_key.circuit_commitments);
+        // Compute challenges for linear combination, and the point to evaluate the polynomials at.
+        // The linear combination requires `num_polynomials - 1` coefficients
+        // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
+        let mut challenges = sponge
+            .squeeze_nonnative_field_elements(verifying_key.circuit_commitments.len(), OptimizationType::Weight)
+            .map_err(AHPError::from)?;
+        let point = challenges.pop().unwrap();
+
+        let evaluations_at_point = AHPForR1CS::<E::Fr, MM>::evaluate_index_polynomials(circuit, point)?;
+        let one = E::Fr::one();
+        let linear_combination_challenges = core::iter::once(&one).chain(challenges.iter());
+
+        // We will construct a linear combination and provide a proof of evaluation of the lc at `point`.
+        let mut lc = crate::polycommit::sonic_pc::LinearCombination::empty("circuit_check");
+        let mut evaluation = E::Fr::zero();
+        for ((label, &c), eval) in info.keys().zip_eq(linear_combination_challenges).zip_eq(evaluations_at_point) {
+            lc.add(c, label.as_str());
+            evaluation += c * eval;
+        }
+
+        let query_set = QuerySet::from_iter([("circuit_check".into(), ("challenge".into(), point))]);
+        let commitments = verifying_key
+            .iter()
+            .cloned()
+            .zip_eq(info.values())
+            .map(|(c, info)| LabeledCommitment::new_with_info(info, c))
+            .collect::<Vec<_>>();
+        let evaluations = Evaluations::from_iter([(("circuit_check".into(), point), evaluation)]);
+
+        SonicKZG10::<E, FS>::check_combinations(
+            &verifying_key.verifier_key,
+            &[lc],
+            &commitments,
+            &query_set,
+            &evaluations,
+            &certificate.pc_proof,
+            &mut sponge,
+        )
+        .map_err(Into::into)
     }
 
     #[allow(clippy::only_used_in_recursion)]

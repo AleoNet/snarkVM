@@ -319,7 +319,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Given an index which assumes the first elements of this domain are the elements of
     /// another (sub)domain with size size_s,
     /// this returns the actual index into this domain.
-    pub fn reindex_by_subdomain(&self, other: Self, index: usize) -> usize {
+    pub fn reindex_by_subdomain(&self, other: &Self, index: usize) -> usize {
         assert!(self.size() >= other.size());
         // Let this subgroup be G, and the subgroup we're re-indexing by be S.
         // Since its a subgroup, the 0th element of S is at index 0 in G, the first element of S is at

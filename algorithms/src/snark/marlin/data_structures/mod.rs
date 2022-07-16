@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+/// The Marlin certificate.
+pub(super) mod certificate;
+pub use certificate::*;
+
 /// The Marlin circuit proving key.
 pub(super) mod circuit_proving_key;
 pub use circuit_proving_key::*;

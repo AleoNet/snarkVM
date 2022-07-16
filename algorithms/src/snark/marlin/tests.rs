@@ -109,6 +109,9 @@ mod marlin {
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
 
+                        let certificate = $marlin_inst::prove_vk(&index_vk, &index_pk).unwrap();
+                        assert!($marlin_inst::verify_vk(&circ, &index_vk, &certificate).unwrap());
+
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SNARKError;
-use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -39,6 +39,17 @@ pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
 
+    /// A certificate that the indexing was performed correctly.
+    type Certificate: CanonicalSerialize
+        + CanonicalDeserialize
+        + Clone
+        + Debug
+        + ToBytes
+        + FromBytes
+        + PartialEq
+        + Eq
+        + Send
+        + Sync;
     type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
 
@@ -67,6 +78,17 @@ pub trait SNARK {
         circuit: &C,
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
+
+    fn prove_vk(
+        verifying_key: &Self::VerifyingKey,
+        proving_key: &Self::ProvingKey,
+    ) -> Result<Self::Certificate, SNARKError>;
+
+    fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        circuit: &C,
+        verifying_key: &Self::VerifyingKey,
+        certificate: &Self::Certificate,
+    ) -> Result<bool, SNARKError>;
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
