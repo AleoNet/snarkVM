@@ -187,7 +187,7 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = a.div_wrapped(&b);
                     // assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                    assert!(!Circuit::is_satisfied_in_scope());
+                    assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                 }),
             }
         } else {
@@ -198,7 +198,7 @@ mod tests {
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 // assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 // assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
-                assert!(Circuit::is_satisfied_in_scope());
+                assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
             })
         }
         Circuit::reset();

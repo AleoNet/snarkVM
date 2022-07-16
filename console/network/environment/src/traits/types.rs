@@ -342,6 +342,7 @@ pub(super) mod integer_type {
         + Hash
         + NumZero
         + NumOne
+        + PartialOrd
         + Send
         + Sync
         + ToBits
