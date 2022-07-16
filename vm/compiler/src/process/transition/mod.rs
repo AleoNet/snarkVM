@@ -281,6 +281,11 @@ impl<N: Network> Transition<N> {
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.outputs.iter().flat_map(Output::commitment)
     }
+
+    /// Returns an iterator over the nonces, for outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.outputs.iter().flat_map(Output::nonce)
+    }
 }
 
 impl<N: Network> FromStr for Transition<N> {

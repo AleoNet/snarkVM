@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    console::{network::prelude::*, types::Field},
+    console::{
+        network::prelude::*,
+        types::{Field, Group},
+    },
     vm::VM,
 };
 use snarkvm_compiler::{Build, Transition};
@@ -62,6 +65,14 @@ impl<N: Network> Transaction<N> {
         }
     }
 
+    /// Returns an iterator over the transition public keys, for all executed transition.
+    pub fn tpks(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+        match self {
+            Transaction::Deploy(..) => [].iter().map(Transition::tpk),
+            Transaction::Execute(.., transitions) => transitions.iter().map(Transition::tpk),
+        }
+    }
+
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
@@ -75,6 +86,14 @@ impl<N: Network> Transaction<N> {
         match self {
             Transaction::Deploy(..) => [].iter().flat_map(Transition::commitments),
             Transaction::Execute(.., transitions) => transitions.iter().flat_map(Transition::commitments),
+        }
+    }
+
+    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        match self {
+            Transaction::Deploy(..) => [].iter().flat_map(Transition::nonces),
+            Transaction::Execute(.., transitions) => transitions.iter().flat_map(Transition::nonces),
         }
     }
 }

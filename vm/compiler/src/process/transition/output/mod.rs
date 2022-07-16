@@ -51,9 +51,17 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns the commitment if the output is a record.
-    pub fn commitment(&self) -> Option<&Field<N>> {
+    pub const fn commitment(&self) -> Option<&Field<N>> {
         match self {
             Output::Record(commitment, ..) => Some(commitment),
+            _ => None,
+        }
+    }
+
+    /// Returns the nonce if the output is a record.
+    pub const fn nonce(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(_, nonce, ..) => Some(nonce),
             _ => None,
         }
     }
