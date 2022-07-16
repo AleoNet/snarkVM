@@ -65,7 +65,7 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns an iterator over the transition public keys, for all executed transition.
+    /// Returns an iterator over the transition public keys, for all executed transitions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         match self {
             Transaction::Deploy(..) => [].iter().map(Transition::tpk),

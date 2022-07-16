@@ -379,9 +379,15 @@ impl<N: Network> Stack<N> {
         function: &Function<N>,
         inputs: &[Value<N>],
     ) -> Result<Vec<Value<N>>> {
-        // Ensure the number of inputs matches the number of input statements.
+        // Ensure the number of inputs matches.
         if function.inputs().len() != inputs.len() {
-            bail!("Expected {} inputs, found {}", function.inputs().len(), inputs.len())
+            bail!(
+                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                function.name(),
+                self.program.id(),
+                function.inputs().len(),
+                inputs.len()
+            )
         }
 
         // Initialize the registers.

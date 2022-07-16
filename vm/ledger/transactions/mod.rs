@@ -18,7 +18,7 @@ use crate::{
     console::{
         collections::merkle_tree::MerklePath,
         network::{prelude::*, BHPMerkleTree},
-        types::Field,
+        types::{Field, Group},
     },
     ledger::Transaction,
 };
@@ -45,30 +45,13 @@ pub struct Transactions<N: Network> {
 impl<N: Network> Transactions<N> {
     /// Initializes from a given transactions list.
     pub fn from(transactions: &[Transaction<N>]) -> Result<Self> {
-        // Ensure the transactions are not empty.
-        ensure!(!transactions.is_empty(), "Attempted to create an empty list of transactions");
-        // Construct the transactions struct.
+        // Construct the transactions.
         let transactions = Self { transactions: transactions.to_vec() };
-        // Ensure there are no duplicate transactions.
-        ensure!(
-            !has_duplicates(transactions.iter().map(Transaction::id)),
-            "Attempted to create a list with duplicate transactions"
-        );
-
-        // Ensure there are no duplicate serial numbers.
-        ensure!(
-            !has_duplicates(transactions.iter().flat_map(Transaction::serial_numbers)),
-            "Attempted to create a list with duplicate serial numbers"
-        );
-
-        // Ensure there are no duplicate commitments.
-        ensure!(
-            !has_duplicates(transactions.iter().flat_map(Transaction::commitments)),
-            "Attempted to create a list with duplicate commitments"
-        );
-
-        // Return the transactions.
-        Ok(transactions)
+        // Ensure the transactions are valid.
+        match transactions.verify() {
+            true => Ok(transactions),
+            false => bail!("Failed to initialize a new 'Transactions' instance"),
+        }
     }
 
     /// Returns `true` if the transactions are well-formed.
@@ -86,20 +69,32 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure there are no duplicate transactions.
-        if has_duplicates(self.transactions.iter().map(Transaction::id)) {
+        if has_duplicates(self.transaction_ids()) {
             eprintln!("Found duplicate transaction id in the transactions list");
             return false;
         }
 
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(self.transition_public_keys()) {
+            eprintln!("Found duplicate transition public keys in the transactions list");
+            return false;
+        }
+
         // Ensure there are no duplicate serial numbers.
-        if has_duplicates(self.transactions.iter().flat_map(Transaction::serial_numbers)) {
+        if has_duplicates(self.serial_numbers()) {
             eprintln!("Found duplicate serial numbers in the transactions list");
             return false;
         }
 
         // Ensure there are no duplicate commitments.
-        if has_duplicates(self.transactions.iter().flat_map(Transaction::commitments)) {
+        if has_duplicates(self.commitments()) {
             eprintln!("Found duplicate commitments in the transactions list");
+            return false;
+        }
+
+        // Ensure there are no duplicate nonces.
+        if has_duplicates(self.nonces()) {
+            eprintln!("Found duplicate nonces in the transactions list");
             return false;
         }
 
@@ -113,20 +108,20 @@ impl<N: Network> Transactions<N> {
         true
     }
 
-    /// Returns the transaction IDs, by constructing a flattened list of transaction IDs from all transactions.
+    // /// Returns the state roots, by constructing a flattened list of state roots from all transactions.
+    // pub fn state_roots(&self) -> impl Iterator<Item = N::LedgerRoot> + '_ {
+    //     self.transactions.iter().map(Transaction::state_roots)
+    // }
+
+    /// Returns an iterator over the transaction IDs, for all transactions in `self`.
     pub fn transaction_ids(&self) -> impl Iterator<Item = N::TransactionID> + '_ {
         self.transactions.iter().map(Transaction::id)
     }
 
-    // /// Returns the transition IDs, by constructing a flattened list of transition IDs from all transactions.
-    // pub fn transition_ids(&self) -> impl Iterator<Item = N::TransitionID> + '_ {
-    //     self.transactions.iter().flat_map(Transaction::transition_ids)
-    // }
-
-    // /// Returns the ledger roots, by constructing a flattened list of ledger roots from all transactions.
-    // pub fn ledger_roots(&self) -> impl Iterator<Item = N::LedgerRoot> + '_ {
-    //     self.transactions.iter().map(Transaction::ledger_root)
-    // }
+    /// Returns an iterator over the transition public keys, for all executed transactions.
+    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+        self.transactions.iter().flat_map(Transaction::transition_public_keys)
+    }
 
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
@@ -136,6 +131,11 @@ impl<N: Network> Transactions<N> {
     /// Returns an iterator over the commitments, for all executed transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.iter().flat_map(Transaction::commitments)
+    }
+
+    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.iter().flat_map(Transaction::nonces)
     }
 
     // /// Returns the net value balance, by summing the value balance from all transactions.

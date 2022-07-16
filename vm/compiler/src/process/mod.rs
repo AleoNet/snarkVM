@@ -185,17 +185,6 @@ impl<N: Network> Process<N> {
         let (program, function, input_types, output_types) =
             self.get_function_info(request.program_id(), request.function_name())?;
 
-        // Ensure the number of inputs matches.
-        if input_types.len() != request.inputs().len() {
-            bail!(
-                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
-                function.name(),
-                program.id(),
-                input_types.len(),
-                request.inputs().len()
-            )
-        }
-
         // Ensure the request is well-formed.
         ensure!(request.verify(&input_types), "Request is invalid");
 
