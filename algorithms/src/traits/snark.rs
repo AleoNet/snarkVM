@@ -39,8 +39,8 @@ pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
 
-    /// A proof that the indexing was performed correctly.
-    type IndexProof: CanonicalSerialize
+    /// A certificate that the indexing was performed correctly.
+    type Certificate: CanonicalSerialize
         + CanonicalDeserialize
         + Clone
         + Debug
@@ -79,15 +79,15 @@ pub trait SNARK {
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove_index(
+    fn prove_vk(
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
-    ) -> Result<Self::IndexProof, SNARKError>;
+    ) -> Result<Self::Certificate, SNARKError>;
 
-    fn verify_index<C: ConstraintSynthesizer<Self::ScalarField>>(
+    fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
-        proof: &Self::IndexProof,
+        certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError>;
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(

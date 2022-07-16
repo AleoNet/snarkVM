@@ -98,7 +98,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     }
 }
 
-fn snark_prove_index(c: &mut Criterion) {
+fn snark_prove_vk(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
@@ -113,13 +113,13 @@ fn snark_prove_index(c: &mut Criterion) {
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-        c.bench_function(&format!("snark_prove_index_{size}"), move |b| {
-            b.iter(|| MarlinInst::prove_index(&vk, &pk).unwrap())
+        c.bench_function(&format!("snark_prove_vk_{size}"), move |b| {
+            b.iter(|| MarlinInst::prove_vk(&vk, &pk).unwrap())
         });
     }
 }
 
-fn snark_verify_index(c: &mut Criterion) {
+fn snark_verify_vk(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
@@ -133,10 +133,10 @@ fn snark_verify_index(c: &mut Criterion) {
         let num_variables = size;
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-        let proof = MarlinInst::prove_index(&vk, &pk).unwrap();
+        let certificate = MarlinInst::prove_vk(&vk, &pk).unwrap();
 
-        c.bench_function(&format!("snark_verify_index_{size}"), move |b| {
-            b.iter(|| MarlinInst::verify_index(&circuit, &vk, &proof).unwrap())
+        c.bench_function(&format!("snark_verify_vk_{size}"), move |b| {
+            b.iter(|| MarlinInst::verify_vk(&circuit, &vk, &certificate).unwrap())
         });
     }
 }
@@ -189,7 +189,7 @@ fn snark_verify(c: &mut Criterion) {
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove_index, snark_verify_index, snark_prove, snark_verify,
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove_vk, snark_verify_vk, snark_prove, snark_verify,
 }
 
 criterion_main!(marlin_snark);
