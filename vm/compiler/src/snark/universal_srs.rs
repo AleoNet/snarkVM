@@ -53,16 +53,16 @@ impl<N: Network> UniversalSRS<N> {
 
 impl<N: Network> FromBytes for UniversalSRS<N> {
     /// Reads the universal SRS from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let srs = FromBytes::read_le(&mut reader)?;
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        let srs = CanonicalDeserialize::deserialize_with_mode(reader, Compress::No, Validate::No)?;
         Ok(Self { srs })
     }
 }
 
 impl<N: Network> ToBytes for UniversalSRS<N> {
     /// Writes the universal SRS to a buffer.
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.srs.write_le(&mut writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        Ok(self.srs.serialize_with_mode(writer, Compress::No)?)
     }
 }
 

@@ -83,28 +83,6 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
-    /// Returns the proving key for the given program ID and function name.
-    #[inline]
-    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-        // Return the proving key.
-        stack.get_proving_key(function_name)
-    }
-
-    /// Returns the verifying key for the given program ID and function name.
-    #[inline]
-    pub fn get_verifying_key(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-    ) -> Result<VerifyingKey<N>> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-        // Return the verifying key.
-        stack.get_verifying_key(function_name)
-    }
-
     /// Returns `true` if the process contains the program with the given ID.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
@@ -121,6 +99,24 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N>> {
         self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
+    }
+
+    /// Returns the proving key for the given program ID and function name.
+    #[inline]
+    pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
+        // Return the proving key.
+        self.get_stack(program_id)?.get_proving_key(function_name)
+    }
+
+    /// Returns the verifying key for the given program ID and function name.
+    #[inline]
+    pub fn get_verifying_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+    ) -> Result<VerifyingKey<N>> {
+        // Return the verifying key.
+        self.get_stack(program_id)?.get_verifying_key(function_name)
     }
 
     /// Inserts the given proving key and verifying key, for the given program ID and function name.
@@ -144,10 +140,8 @@ impl<N: Network> Process<N> {
         function_name: &Identifier<N>,
         rng: &mut R,
     ) -> Result<()> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
         // Synthesize the proving and verifying key.
-        stack.synthesize_key::<A, R>(function_name, rng)
+        self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
     }
 
     /// Authorizes a call to the program function for the given inputs.
