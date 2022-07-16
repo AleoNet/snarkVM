@@ -21,9 +21,8 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 2)?;
-                execution.serialize_field("program", &self.program)?;
-                execution.serialize_field("verifying_keys", &self.verifying_keys)?;
+                let mut execution = serializer.serialize_struct("Execution", 1)?;
+                execution.serialize_field("transitions", &self.0)?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -38,16 +37,11 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
             true => {
                 // Parse the execution from a string into a value.
                 let execution = serde_json::Value::deserialize(deserializer)?;
-
+                // Retrieve the transitions.
+                let transitions: Vec<_> =
+                    serde_json::from_value(execution["transitions"].clone()).map_err(de::Error::custom)?;
                 // Recover the execution.
-                let execution = Self::new(
-                    // Retrieve the program.
-                    serde_json::from_value(execution["program"].clone()).map_err(de::Error::custom)?,
-                    // Retrieve the verifying keys.
-                    serde_json::from_value(execution["verifying_keys"].clone()).map_err(de::Error::custom)?,
-                );
-
-                Ok(execution)
+                Self::from(&transitions).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }
@@ -61,7 +55,7 @@ mod tests {
     #[test]
     fn test_serde_json() -> Result<()> {
         // Sample the execution.
-        let expected = test_helpers::sample_execution();
+        let expected = crate::process::test_helpers::sample_execution();
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -78,7 +72,7 @@ mod tests {
     #[test]
     fn test_bincode() -> Result<()> {
         // Sample the execution.
-        let expected = test_helpers::sample_execution();
+        let expected = crate::process::test_helpers::sample_execution();
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;

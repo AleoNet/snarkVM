@@ -25,25 +25,18 @@ impl<N: Network> FromBytes for Execution<N> {
         if version != 0 {
             return Err(error("Invalid execution version"));
         }
-        // Read the program.
-        let program = Program::read_le(&mut reader)?;
-
-        // Read the number of entries in the bundle.
-        let num_entries = u16::read_le(&mut reader)?;
-        // Read the bundle.
-        let mut bundle = IndexMap::with_capacity(num_entries as usize);
-        for _ in 0..num_entries {
-            // Read the identifier.
-            let identifier = Identifier::<N>::read_le(&mut reader)?;
-            // Read the verifying key.
-            let verifying_key = VerifyingKey::<N>::read_le(&mut reader)?;
-            // Read the certificate.
-            let certificate = Certificate::<N>::read_le(&mut reader)?;
-            // Add the entry.
-            bundle.insert(identifier, (verifying_key, certificate));
+        // Read the number of transitions.
+        let num_transitions = u16::read_le(&mut reader)?;
+        // Ensure the number of transitions is nonzero.
+        if num_transitions == 0 {
+            warn!("Execution (from 'read_le') has no transitions");
+            return Err(error("Execution (from 'read_le') has no transitions"));
         }
-
-        Ok(Self { program, verifying_keys: bundle })
+        // Read the transitions.
+        let transitions =
+            (0..num_transitions).map(|_| Transition::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
+        // Return the new `Execution` instance.
+        Self::from(&transitions).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -52,20 +45,10 @@ impl<N: Network> ToBytes for Execution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
-        // Write the program.
-        self.program.write_le(&mut writer)?;
-        // Write the number of entries in the bundle.
-        (self.verifying_keys.len() as u16).write_le(&mut writer)?;
-        // Write each entry.
-        for (function_name, (verifying_key, certificate)) in &self.verifying_keys {
-            // Write the function name.
-            function_name.write_le(&mut writer)?;
-            // Write the verifying key.
-            verifying_key.write_le(&mut writer)?;
-            // Write the certificate.
-            certificate.write_le(&mut writer)?;
-        }
-        Ok(())
+        // Write the number of transitions.
+        (self.0.len() as u16).write_le(&mut writer)?;
+        // Write the transitions.
+        self.0.write_le(&mut writer)
     }
 }
 
@@ -79,7 +62,7 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         // Construct a new execution.
-        let expected = test_helpers::sample_execution();
+        let expected = crate::process::test_helpers::sample_execution();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;

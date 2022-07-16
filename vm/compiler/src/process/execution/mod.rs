@@ -17,102 +17,84 @@
 mod bytes;
 mod serialize;
 
-use crate::{Certificate, Program, VerifyingKey};
-use console::{network::prelude::*, program::Identifier};
+use crate::Transition;
+use console::network::prelude::*;
 
-use indexmap::IndexMap;
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct Execution<N: Network>(Vec<Transition<N>>);
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct Build<N: Network> {
-    /// The program.
-    program: Program<N>,
-    /// The mapping of function names to their verifying key and certificate.
-    verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
+impl<N: Network> Execution<N> {
+    /// Initialize a new `Execution` instance.
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    /// Initializes a new `Execution` instance with the given transitions.
+    pub fn from(transitions: &[Transition<N>]) -> Result<Self> {
+        // Ensure the transitions is not empty.
+        ensure!(!transitions.is_empty(), "Execution cannot initialize from empty list of transitions");
+        // Return the new `Execution` instance.
+        Ok(Self(transitions.to_vec()))
+    }
+
+    /// Returns the `Transition` at the given index.
+    pub fn get(&self, index: usize) -> Result<Transition<N>> {
+        self.0.get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
+    }
+
+    /// Returns the number of `Transition`s in the execution.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Return `true` if the execution is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns the next `Transition` in the execution.
+    pub fn peek(&self) -> Result<Transition<N>> {
+        self.get(self.len() - 1)
+    }
+
+    /// Appends the given `Transition` to the execution.
+    pub fn push(&mut self, transition: Transition<N>) {
+        self.0.push(transition);
+    }
+
+    /// Pops the last `Transition` from the execution.
+    pub fn pop(&mut self) -> Result<Transition<N>> {
+        self.0.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
+    }
 }
 
-impl<N: Network> Build<N> {
-    /// Initializes a new build.
-    pub fn new(
-        program: Program<N>,
-        verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
-    ) -> Self {
-        Self { program, verifying_keys }
-    }
+impl<N: Network> Deref for Execution<N> {
+    type Target = [Transition<N>];
 
-    /// Returns the program.
-    pub const fn program(&self) -> &Program<N> {
-        &self.program
-    }
-
-    /// Returns the verifying keys.
-    pub const fn verifying_keys(&self) -> &IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)> {
-        &self.verifying_keys
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-impl<N: Network> FromStr for Build<N> {
+impl<N: Network> FromStr for Execution<N> {
     type Err = Error;
 
-    /// Initializes the build from a JSON-string.
+    /// Initializes the execution from a JSON-string.
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(input)?)
     }
 }
 
-impl<N: Network> Debug for Build<N> {
-    /// Prints the build as a JSON-string.
+impl<N: Network> Debug for Execution<N> {
+    /// Prints the execution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Build<N> {
-    /// Displays the build as a JSON-string.
+impl<N: Network> Display for Execution<N> {
+    /// Displays the execution as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
-    }
-}
-
-#[cfg(test)]
-pub(crate) mod test_helpers {
-    use super::*;
-    use crate::{Process, Program};
-    use console::network::Testnet3;
-
-    use once_cell::sync::OnceCell;
-
-    type CurrentNetwork = Testnet3;
-    type CurrentAleo = circuit::network::AleoV0;
-
-    pub(crate) fn sample_build() -> Build<CurrentNetwork> {
-        static INSTANCE: OnceCell<Build<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize a new program.
-                let (string, program) = Program::<CurrentNetwork>::parse(
-                    r"
-program testing.aleo;
-
-function compute:
-    input r0 as u32.private;
-    input r1 as u32.public;
-    add r0 r1 into r2;
-    output r2 as u32.public;",
-                )
-                .unwrap();
-                assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-
-                // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
-
-                // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new();
-                // Add the program to the process.
-                process.add_program(&program).unwrap();
-
-                // Compute the build.
-                process.deploy::<CurrentAleo, _>(program.id(), rng).unwrap()
-            })
-            .clone()
     }
 }

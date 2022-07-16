@@ -21,14 +21,14 @@ use crate::{
     },
     vm::VM,
 };
-use snarkvm_compiler::{Build, Transition};
+use snarkvm_compiler::{Build, Execution, Transition};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
     Deploy(N::TransactionID, Build<N>),
     /// The transaction execution represents a call to an Aleo program.
-    Execute(N::TransactionID, Vec<Transition<N>>),
+    Execute(N::TransactionID, Execution<N>),
 }
 
 impl<N: Network> Transaction<N> {
@@ -36,20 +36,20 @@ impl<N: Network> Transaction<N> {
     pub fn deploy(build: Build<N>) -> Result<Self> {
         // Compute the transaction ID.
         let id = N::hash_bhp1024(&build.program().to_bytes_le()?.to_bits_le())?.into();
-        // Construct the deploy transaction.
+        // Construct the deployment transaction.
         Ok(Self::Deploy(id, build))
     }
 
     /// Initializes a new execution transaction.
-    pub fn execute(transitions: Vec<Transition<N>>) -> Result<Self> {
+    pub fn execute(execution: Execution<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
-        ensure!(!transitions.is_empty(), "Attempted to create an empty transaction execution");
+        ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
         // Concatenate the transition IDs as bits.
-        let id_bits: Vec<_> = transitions.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
+        let id_bits: Vec<_> = execution.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
         // Compute the transaction ID.
         let id = N::hash_bhp1024(&id_bits)?.into();
-        // Construct the execute transaction.
-        Ok(Self::Execute(id, transitions))
+        // Construct the execution transaction.
+        Ok(Self::Execute(id, execution))
     }
 
     /// Returns `true` if the transaction is valid.
@@ -66,10 +66,10 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns an iterator over the transition public keys, for all executed transition.
-    pub fn tpks(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         match self {
             Transaction::Deploy(..) => [].iter().map(Transition::tpk),
-            Transaction::Execute(.., transitions) => transitions.iter().map(Transition::tpk),
+            Transaction::Execute(.., execution) => execution.iter().map(Transition::tpk),
         }
     }
 
@@ -77,7 +77,7 @@ impl<N: Network> Transaction<N> {
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
             Transaction::Deploy(..) => [].iter().flat_map(Transition::serial_numbers),
-            Transaction::Execute(.., transitions) => transitions.iter().flat_map(Transition::serial_numbers),
+            Transaction::Execute(.., execution) => execution.iter().flat_map(Transition::serial_numbers),
         }
     }
 
@@ -85,7 +85,7 @@ impl<N: Network> Transaction<N> {
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
             Transaction::Deploy(..) => [].iter().flat_map(Transition::commitments),
-            Transaction::Execute(.., transitions) => transitions.iter().flat_map(Transition::commitments),
+            Transaction::Execute(.., execution) => execution.iter().flat_map(Transition::commitments),
         }
     }
 
@@ -93,7 +93,7 @@ impl<N: Network> Transaction<N> {
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
             Transaction::Deploy(..) => [].iter().flat_map(Transition::nonces),
-            Transaction::Execute(.., transitions) => transitions.iter().flat_map(Transition::nonces),
+            Transaction::Execute(.., execution) => execution.iter().flat_map(Transition::nonces),
         }
     }
 }
@@ -140,18 +140,10 @@ impl<N: Network> FromBytes for Transaction<N> {
             1 => {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
-                // Read the number of transitions.
-                let num_transitions = u16::read_le(&mut reader)?;
-                // Ensure the number of transitions is nonzero.
-                if num_transitions == 0 {
-                    warn!("Transaction (from 'read_le') has no transitions");
-                    return Err(error("Transaction (from 'read_le') has no transitions"));
-                }
-                // Read the transitions.
-                let transitions =
-                    (0..num_transitions).map(|_| Transition::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
+                // Read the execution.
+                let execution = Execution::read_le(&mut reader)?;
                 // Construct the transaction.
-                Transaction::Execute(id, transitions)
+                Transaction::Execute(id, execution)
             }
             _ => return Err(error("Invalid transaction variant")),
         };
@@ -177,15 +169,13 @@ impl<N: Network> ToBytes for Transaction<N> {
                 // Write the build.
                 build.write_le(&mut writer)
             }
-            Self::Execute(id, transitions) => {
+            Self::Execute(id, execution) => {
                 // Write the variant.
                 1u8.write_le(&mut writer)?;
                 // Write the ID.
                 id.write_le(&mut writer)?;
-                // Write the number of transitions.
-                (transitions.len() as u16).write_le(&mut writer)?;
-                // Write the transitions.
-                transitions.write_le(&mut writer)
+                // Write the execution.
+                execution.write_le(&mut writer)
             }
         }
     }
@@ -203,11 +193,11 @@ impl<N: Network> Serialize for Transaction<N> {
                     transaction.serialize_field("build", &build)?;
                     transaction.end()
                 }
-                Self::Execute(id, transitions) => {
+                Self::Execute(id, execution) => {
                     let mut transaction = serializer.serialize_struct("Transaction", 3)?;
                     transaction.serialize_field("type", "execute")?;
                     transaction.serialize_field("id", &id)?;
-                    transaction.serialize_field("transitions", &transitions)?;
+                    transaction.serialize_field("execution", &execution)?;
                     transaction.end()
                 }
             },
@@ -236,11 +226,11 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         Transaction::deploy(build).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
-                        // Retrieve the transitions.
-                        let transitions =
-                            serde_json::from_value(transaction["transitions"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the execution.
+                        let execution =
+                            serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
                         // Construct the transaction.
-                        Transaction::execute(transitions).map_err(de::Error::custom)?
+                        Transaction::execute(execution).map_err(de::Error::custom)?
                     }
                     _ => return Err(de::Error::custom("Invalid transaction type")),
                 };

@@ -17,7 +17,6 @@
 mod circuit_keys;
 pub(crate) use circuit_keys::*;
 
-use crate::Transition;
 use console::{network::prelude::*, program::Request};
 
 use parking_lot::RwLock;
@@ -65,58 +64,5 @@ impl<N: Network> Authorization<N> {
     /// Returns the requests in the authorization.
     pub fn to_vec_deque(&self) -> VecDeque<Request<N>> {
         self.0.read().clone()
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct Execution<N: Network>(Vec<Transition<N>>);
-
-impl<N: Network> Execution<N> {
-    /// Initialize a new `Execution` instance.
-    pub fn new() -> Self {
-        Self(Vec::new())
-    }
-
-    /// Initializes a new `Execution` instance with the given transitions.
-    pub fn from(transitions: &[Transition<N>]) -> Self {
-        Self(transitions.to_vec())
-    }
-
-    /// Returns the `Transition` at the given index.
-    pub fn get(&self, index: usize) -> Result<Transition<N>> {
-        self.0.get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
-    }
-
-    /// Returns the number of `Transition`s in the execution.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Return `true` if the execution is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    /// Returns the next `Transition` in the execution.
-    pub fn peek(&self) -> Result<Transition<N>> {
-        self.get(self.len() - 1)
-    }
-
-    /// Appends the given `Transition` to the execution.
-    pub fn push(&mut self, transition: Transition<N>) {
-        self.0.push(transition);
-    }
-
-    /// Pops the last `Transition` from the execution.
-    pub fn pop(&mut self) -> Result<Transition<N>> {
-        self.0.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
-    }
-}
-
-impl<N: Network> Deref for Execution<N> {
-    type Target = [Transition<N>];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }

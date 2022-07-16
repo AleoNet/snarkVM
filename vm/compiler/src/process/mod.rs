@@ -17,6 +17,9 @@
 mod build;
 pub use build::*;
 
+mod execution;
+pub use execution::*;
+
 mod helpers;
 pub use helpers::*;
 
@@ -250,7 +253,7 @@ impl<N: Network> Process<N> {
 
     /// Verifies a program call for the given execution.
     #[inline]
-    pub fn verify(&self, execution: Execution<N>) -> Result<()> {
+    pub fn verify(&self, execution: &Execution<N>) -> Result<()> {
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -270,7 +273,7 @@ impl<N: Network> Process<N> {
         }
 
         // Replicate the execution stack for verification.
-        let mut queue = execution;
+        let mut queue = execution.clone();
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
@@ -450,8 +453,8 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
-        static INSTANCE: OnceCell<Transition<CurrentNetwork>> = OnceCell::new();
+    pub(crate) fn sample_execution() -> Execution<CurrentNetwork> {
+        static INSTANCE: OnceCell<Execution<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize a new program.
@@ -495,12 +498,21 @@ function compute:
                     .unwrap();
                 assert_eq!(authorization.len(), 1);
                 // Execute the request.
-                let (_response, mut execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+                let (_response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
-                // Return the transition.
-                execution.pop().unwrap()
+                // Return the execution.
+                execution
             })
             .clone()
+    }
+
+    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
+        // Retrieve the execution.
+        let mut execution = sample_execution();
+        // Ensure the execution is not empty.
+        assert!(!execution.is_empty());
+        // Return the transition.
+        execution.pop().unwrap()
     }
 }
 
@@ -584,7 +596,7 @@ mod tests {
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -724,7 +736,7 @@ function hello_world:
         assert_eq!(record_a, candidate[0]);
         assert_eq!(record_b, candidate[1]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -832,7 +844,7 @@ function compute:
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -940,7 +952,7 @@ function transfer:
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -1088,7 +1100,7 @@ function transfer:
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify(&execution).is_ok());
 
         // use circuit::Environment;
         //

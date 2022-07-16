@@ -22,7 +22,7 @@ use crate::{
     },
     ledger::Transaction,
 };
-use snarkvm_compiler::{Authorization, Execution, Process, Program, Transition};
+use snarkvm_compiler::{Authorization, Execution, Process, Program};
 
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -172,7 +172,7 @@ impl VM {
                 // Execute the call.
                 let (response, execution) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
                 // Construct the transaction.
-                let transaction = Transaction::execute(execution.to_vec())?;
+                let transaction = Transaction::execute(execution)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
@@ -218,15 +218,15 @@ impl VM {
                 // TODO (howardwu): Check the verifying key.
                 true
             }
-            Transaction::Execute(id, transitions) => {
+            Transaction::Execute(id, execution) => {
                 // Ensure there is at least 1 transition.
-                if transitions.is_empty() {
+                if execution.is_empty() {
                     warn!("Transaction ({id}) has no transitions.");
                     return false;
                 }
 
                 // Check the transaction ID.
-                let id_bits: Vec<_> = transitions.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
+                let id_bits: Vec<_> = execution.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
                 match N::hash_bhp1024(&id_bits) {
                     Ok(candidate_id) => {
                         // Ensure the transaction ID matches the one in the transaction.
@@ -247,10 +247,10 @@ impl VM {
                 macro_rules! logic {
                     ($process:expr, $network:path, $aleo:path) => {{
                         let task = || {
-                            // Prepare the transitions.
-                            let transitions = cast_ref!(&transitions as Vec<Transition<$network>>);
+                            // Prepare the execution.
+                            let execution = cast_ref!(&execution as Execution<$network>);
                             // Verify the execution.
-                            $process.verify(Execution::from(transitions))
+                            $process.verify(execution)
                         };
                         task()
                     }};
