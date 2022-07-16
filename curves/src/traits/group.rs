@@ -16,7 +16,7 @@
 
 use crate::{templates::short_weierstrass_jacobian, PairingEngine};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{rand::Uniform, serialize::*, BitIteratorBE, FromBytes, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{rand::Uniform, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::{
     fmt::{Debug, Display},
@@ -278,9 +278,7 @@ pub trait ShortWeierstrassParameters: ModelParameters {
         copy
     }
 
-    fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool {
-        p.mul_bits(BitIteratorBE::new(Self::ScalarField::characteristic())).is_zero()
-    }
+    fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
 }
 
 pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
