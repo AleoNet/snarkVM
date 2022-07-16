@@ -25,6 +25,7 @@ criterion_group!(
     bls12_377::ec::g1::bench_g1_add_assign,
     bls12_377::ec::g1::bench_g1_add_assign_mixed,
     bls12_377::ec::g1::bench_g1_double,
+    bls12_377::ec::g1::bench_g1_check_subgroup_membership,
     bls12_377::ec::g2::bench_g2_rand,
     bls12_377::ec::g2::bench_g2_mul_assign,
     bls12_377::ec::g2::bench_g2_add_assign,

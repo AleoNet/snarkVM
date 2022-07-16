@@ -18,6 +18,7 @@ pub(crate) mod g1 {
     use snarkvm_curves::{
         bls12_377::{Fr, G1Affine, G1Projective as G1},
         traits::ProjectiveCurve,
+        AffineCurve,
     };
     use snarkvm_utilities::rand::Uniform;
 
@@ -98,6 +99,24 @@ pub(crate) mod g1 {
                 tmp.double_in_place();
                 count = (count + 1) % SAMPLES;
                 tmp
+            })
+        });
+    }
+
+    pub fn bench_g1_check_subgroup_membership(c: &mut Criterion) {
+        const SAMPLES: usize = 1000;
+
+        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+        let v: Vec<G1> = (0..SAMPLES).map(|_| G1::rand(&mut rng)).collect();
+        let v = G1::batch_normalization_into_affine(v);
+
+        let mut count = 0;
+        c.bench_function("bls12_377: g1_is_in_correct_subgroup", |c| {
+            c.iter(|| {
+                let result = v[count].is_in_correct_subgroup_assuming_on_curve();
+                count = (count + 1) % SAMPLES;
+                result
             })
         });
     }

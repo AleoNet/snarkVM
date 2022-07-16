@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{field, Zero};
+use std::{ops::Mul, str::FromStr};
+
+use snarkvm_fields::{field, Field, One, Zero};
 use snarkvm_utilities::biginteger::{BigInteger256, BigInteger384};
 
 use crate::{
     bls12_377::{Fq, Fr},
+    templates::bls12::Bls12Parameters,
     traits::{ModelParameters, ShortWeierstrassParameters},
+    ProjectiveCurve,
 };
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -60,6 +64,20 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
     fn mul_by_a(_: &Self::BaseField) -> Self::BaseField {
         Self::BaseField::zero()
     }
+
+    fn is_in_correct_subgroup_assuming_on_curve(p: &super::G1Affine) -> bool {
+        let phi = |mut p: super::G1Affine| {
+            let cube_root_of_unity = Fq::from_str(
+                "80949648264912719408558363140637477264845294720710499478137287262712535938301461879813459410945",
+            )
+            .unwrap();
+            debug_assert!(cube_root_of_unity.pow(&[3]).is_one());
+            p.x *= cube_root_of_unity;
+            p
+        };
+        let x_square = Fr::from(super::Bls12_377Parameters::X[0]).square();
+        (phi(*p).mul(x_square).add_mixed(p)).is_zero()
+    }
 }
 
 ///
@@ -97,3 +115,32 @@ pub const G1_GENERATOR_Y: Fq = field!(
         21335464879237822
     ])
 );
+
+#[cfg(test)]
+mod tests {
+    use rand::Rng;
+    use snarkvm_fields::Field;
+    use snarkvm_utilities::{BitIteratorBE, Uniform};
+
+    use crate::AffineCurve;
+
+    use super::{super::G1Affine, *};
+
+    #[test]
+    fn test_subgroup_membership() {
+        let rng = &mut rand::thread_rng();
+        for _ in 0..1000 {
+            let p = G1Affine::rand(rng);
+            assert!(Bls12_377G1Parameters::is_in_correct_subgroup_assuming_on_curve(&p));
+            let x = Fq::rand(rng);
+            let greatest = rng.gen();
+
+            if let Some(p) = G1Affine::from_x_coordinate(x, greatest) {
+                assert_eq!(
+                    Bls12_377G1Parameters::is_in_correct_subgroup_assuming_on_curve(&p),
+                    p.mul_bits(BitIteratorBE::new(Fr::characteristic())).is_zero(),
+                );
+            }
+        }
+    }
+}
