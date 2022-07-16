@@ -20,6 +20,7 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
 use colored::Colorize;
+use std::sync::Arc;
 
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 type Fr<N> = <N as Environment>::Field;

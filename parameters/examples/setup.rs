@@ -183,6 +183,45 @@ pub fn posw_setup<N: Network>() -> Result<()> {
     Ok(())
 }
 
+/// Runs the trial SRS setup. (cargo run --release --example setup trial_srs 1048576)
+pub fn trial_srs<N: snarkvm_console::network::Network>(num_gates: usize) -> Result<()> {
+    const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
+    const TRIAL_SRS: &str = "universal.srs.trial";
+
+    let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
+
+    use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin};
+    use snarkvm_console::network::Environment;
+    use snarkvm_curves::PairingEngine;
+    use snarkvm_utilities::{CanonicalSerialize, Compress};
+
+    type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
+    type Fr<N> = <N as Environment>::Field;
+    type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
+    type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, MarlinHidingMode, [Fr<N>]>;
+
+    let timer = std::time::Instant::now();
+    let max_degree = AHPForR1CS::<N::Field, MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates).unwrap();
+    let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
+    println!("Called universal setup: {} ms", timer.elapsed().as_millis());
+
+    let mut srs_bytes = vec![];
+    universal_srs.serialize_with_mode(&mut srs_bytes, Compress::No)?;
+
+    let srs_checksum = checksum(&srs_bytes);
+
+    let srs_metadata = json!({
+        "checksum": srs_checksum,
+        "size": srs_bytes.len(),
+    });
+
+    println!("{}", serde_json::to_string_pretty(&srs_metadata)?);
+    write_metadata(TRIAL_SRS_METADATA, &srs_metadata)?;
+    write_remote(TRIAL_SRS, &srs_checksum, &srs_bytes)?;
+
+    Ok(())
+}
+
 /// Run the following command to perform a setup.
 /// `cargo run --example setup [parameter] [network]`
 pub fn main() -> Result<()> {
@@ -208,6 +247,7 @@ pub fn main() -> Result<()> {
             "testnet2" => output_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
             _ => panic!("Invalid network"),
         },
+        "trial_srs" => trial_srs::<snarkvm_console::network::Testnet3>(args[2].as_str().parse::<usize>()?)?,
         _ => panic!("Invalid parameter"),
     };
 

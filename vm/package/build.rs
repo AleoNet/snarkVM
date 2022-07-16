@@ -32,7 +32,7 @@ impl<N: Network> Package<N> {
         }
 
         // Construct the process.
-        let process = self.get_process(PackageMode::Build)?;
+        let process = self.get_process()?;
 
         // Load each function circuit.
         for function_name in program.functions().keys() {

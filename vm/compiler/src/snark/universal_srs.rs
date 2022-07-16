@@ -16,25 +16,19 @@
 
 use super::*;
 
+#[derive(Clone)]
 pub struct UniversalSRS<N: Network> {
     /// The universal SRS parameter.
-    srs: marlin::UniversalSRS<N::PairingCurve>,
+    srs: Arc<marlin::UniversalSRS<N::PairingCurve>>,
 }
 
 impl<N: Network> UniversalSRS<N> {
     /// Initializes the universal SRS.
-    pub fn load(num_gates: usize) -> Result<Self> {
-        // TODO (howardwu): Switch this to a remotely loaded SRS.
-        let mut rng = snarkvm_utilities::test_crypto_rng_fixed();
-
+    pub fn load() -> Result<Self> {
         let timer = std::time::Instant::now();
-        let max_degree =
-            marlin::ahp::AHPForR1CS::<N::Field, marlin::MarlinHidingMode>::max_degree(num_gates, num_gates, num_gates)
-                .unwrap();
-        let universal_srs = Marlin::<N>::universal_setup(&max_degree, &mut rng)?;
-        println!("{}", format!(" • Called universal setup: {} ms", timer.elapsed().as_millis()).dimmed());
-
-        Ok(Self { srs: universal_srs })
+        let universal_srs = Self::read_le(&*snarkvm_parameters::testnet3::TrialSRS::load_bytes()?)?;
+        println!("{}", format!(" • Loaded universal setup: {} ms", timer.elapsed().as_millis()).dimmed());
+        Ok(universal_srs)
     }
 
     /// Returns the circuit proving and verifying key.

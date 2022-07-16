@@ -49,3 +49,6 @@ impl_remote!(Degree27, REMOTE_URL, "./resources/", "universal", "srs", "27");
 impl_remote!(Degree28, REMOTE_URL, "./resources/", "universal", "srs", "28");
 // Gamma
 impl_local!(Gamma, "./resources/", "universal", "srs", "gamma");
+
+// Trial
+impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "./resources/", "universal", "srs", "trial");

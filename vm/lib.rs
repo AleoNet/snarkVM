@@ -18,6 +18,8 @@
 #![allow(clippy::module_inception)]
 
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate tracing;
 
 #[cfg(feature = "cli")]

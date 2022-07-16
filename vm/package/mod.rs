@@ -25,17 +25,11 @@ use crate::{
 };
 use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program};
 
-use crate::file::SRSFile;
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;
 use core::str::FromStr;
 use rand::{CryptoRng, Rng};
 use std::path::{Path, PathBuf};
-
-pub enum PackageMode<N: Network> {
-    Build,
-    Run(Identifier<N>),
-}
 
 pub struct Package<N: Network> {
     /// The program ID.
@@ -139,7 +133,7 @@ impl<N: Network> Package<N> {
     }
 
     /// Returns a new process for the package.
-    pub fn get_process(&self, mode: PackageMode<N>) -> Result<Process<N>> {
+    pub fn get_process(&self) -> Result<Process<N>> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
         // Ensure the build directory exists.
@@ -148,16 +142,7 @@ impl<N: Network> Package<N> {
         }
 
         // Create the process.
-        let mut process = if let PackageMode::Build = mode {
-            match SRSFile::<N>::exists_at(&build_directory) {
-                // Load the universal SRS, then initialize the process.
-                true => Process::<N>::from_universal_srs(SRSFile::open(&build_directory)?.universal_srs())?,
-                // Create the universal SRS, then initialize the process.
-                false => Process::<N>::from_universal_srs(SRSFile::create(&build_directory)?.universal_srs())?,
-            }
-        } else {
-            Process::<N>::new()?
-        };
+        let mut process = Process::<N>::new();
 
         // Prepare the imports directory.
         let imports_directory = self.imports_directory();

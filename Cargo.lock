@@ -2270,6 +2270,7 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-parameters",
  "snarkvm-utilities",
  "tracing",
 ]
@@ -2582,6 +2583,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.2",
  "snarkvm-algorithms",
+ "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-utilities",

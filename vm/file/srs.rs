@@ -24,7 +24,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const UNIVERSAL_SRS: &str = ".universal.srs";
+const UNIVERSAL_SRS: &str = "universal.srs";
 
 pub struct SRSFile<N: Network> {
     /// The file path.
@@ -45,7 +45,7 @@ impl<N: Network> SRSFile<N> {
         ensure!(!path.exists(), "SRS file already exists: '{}'", path.display());
 
         // Load the SRS.
-        let universal_srs = UniversalSRS::load(100_000)?;
+        let universal_srs = UniversalSRS::load()?;
 
         // Write the file.
         File::create(&path)?.write_all(&universal_srs.to_bytes_le()?)?;

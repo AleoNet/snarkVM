@@ -28,18 +28,7 @@ pub use transition::*;
 
 mod add_program;
 
-use crate::{
-    CallOperator,
-    Closure,
-    Function,
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    ProvingKey,
-    UniversalSRS,
-    VerifyingKey,
-};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -63,24 +52,8 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn new() -> Result<Self> {
-        // Construct the process.
-        let process = Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
-        // Return the process.
-        Ok(process)
-    }
-
-    /// Initializes a new process from a universal SRS.
-    #[inline]
-    pub fn from_universal_srs(srs: UniversalSRS<N>) -> Result<Self> {
-        // Construct the process.
-        let process = Self {
-            programs: IndexMap::new(),
-            stacks: IndexMap::new(),
-            circuit_keys: CircuitKeys::from_universal_srs(srs),
-        };
-        // Return the process.
-        Ok(process)
+    pub fn new() -> Self {
+        Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() }
     }
 
     /// Returns `true` if the process contains the program with the given ID.
@@ -470,7 +443,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new().unwrap();
+                let mut process = Process::<CurrentNetwork>::new();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
 
@@ -513,7 +486,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new().unwrap();
+                let mut process = Process::<CurrentNetwork>::new();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
                 // Authorize the function call.
@@ -591,7 +564,7 @@ mod tests {
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -682,7 +655,7 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
@@ -729,7 +702,7 @@ function hello_world:
         let record_b = Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private }}")).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -832,14 +805,14 @@ function compute:
         let r5 = Value::from_str("8field").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -940,7 +913,7 @@ function transfer:
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -1025,7 +998,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::new();
         // Add the program to the process.
         process.add_program(&program0).unwrap();
 

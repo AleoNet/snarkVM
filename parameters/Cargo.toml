@@ -85,6 +85,9 @@ path = "../algorithms"
 version = "0.7.5"
 default-features = false
 
+[dev-dependencies.snarkvm-console]
+path = "../console"
+
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
 

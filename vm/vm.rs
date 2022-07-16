@@ -24,7 +24,6 @@ use crate::{
 };
 use snarkvm_compiler::{Authorization, Execution, Process, Program, Transition};
 
-use lazy_static::lazy_static;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -52,7 +51,7 @@ macro_rules! cast_ref {
 
 lazy_static! {
     /// The process for Aleo Testnet3 (V0).
-    pub(crate) static ref TESTNET3_V0: Arc<RwLock<Process<crate::prelude::Testnet3>>> = Arc::new(RwLock::new(Process::new().expect("Failed to initialize the testnet3 process")));
+    pub(crate) static ref TESTNET3_V0: Arc<RwLock<Process<crate::prelude::Testnet3>>> = Arc::new(RwLock::new(Process::new()));
 }
 
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
