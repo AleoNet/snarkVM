@@ -62,13 +62,10 @@ impl<N: Network> Transition<N> {
         fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let id = N::hash_bhp1024(
-            &inputs
-                .iter()
-                .flat_map(|input| input.id().to_bits_le())
-                .chain(outputs.iter().flat_map(|output| output.id().to_bits_le()))
-                .collect::<Vec<_>>(),
-        )?;
+        let input_ids = inputs.iter().flat_map(|input| input.id().to_bits_le());
+        let output_ids = outputs.iter().flat_map(|output| output.id().to_bits_le());
+        let id = N::hash_bhp1024(&input_ids.chain(output_ids).collect::<Vec<_>>())?;
+        // Return the transition.
         Ok(Self { id, program_id, function_name, inputs, outputs, proof, tpk, fee })
     }
 

@@ -110,10 +110,10 @@ impl VM {
                 // Prepare the program ID.
                 let program_id = cast_ref!(&program_id as ProgramID<$network>);
 
-                // Compute the deploy build.
-                let build = $process.deploy::<$aleo, _>(program_id, rng)?;
+                // Compute the deployment.
+                let deployment = $process.deploy::<$aleo, _>(program_id, rng)?;
                 // Construct the transaction.
-                let transaction = Transaction::deploy(build)?;
+                let transaction = Transaction::deploy(deployment)?;
 
                 // Prepare the return.
                 let transaction = cast_ref!(transaction as Transaction<N>).clone();
@@ -189,9 +189,9 @@ impl VM {
     #[inline]
     pub fn verify<N: Network>(transaction: &Transaction<N>) -> bool {
         match transaction {
-            Transaction::Deploy(id, build) => {
+            Transaction::Deploy(id, deployment) => {
                 // Convert the program into bytes.
-                let program_bytes = match build.program().to_bytes_le() {
+                let program_bytes = match deployment.program().to_bytes_le() {
                     Ok(bytes) => bytes,
                     Err(error) => {
                         warn!("Unable to convert program into bytes for transaction (deploy, {id}): {error}");

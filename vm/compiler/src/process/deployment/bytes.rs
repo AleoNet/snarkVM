@@ -16,14 +16,14 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Build<N> {
-    /// Reads the build from a buffer.
+impl<N: Network> FromBytes for Deployment<N> {
+    /// Reads the deployment from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u16::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid build version"));
+            return Err(error("Invalid deployment version"));
         }
         // Read the program.
         let program = Program::read_le(&mut reader)?;
@@ -47,8 +47,8 @@ impl<N: Network> FromBytes for Build<N> {
     }
 }
 
-impl<N: Network> ToBytes for Build<N> {
-    /// Writes the build to a buffer.
+impl<N: Network> ToBytes for Deployment<N> {
+    /// Writes the deployment to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
@@ -78,13 +78,13 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        // Construct a new build.
-        let expected = test_helpers::sample_build();
+        // Construct a new deployment.
+        let expected = test_helpers::sample_deployment();
 
         // Check the byte representation.
         let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Build::read_le(&expected_bytes[..])?);
-        assert!(Build::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        assert_eq!(expected, Deployment::read_le(&expected_bytes[..])?);
+        assert!(Deployment::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         Ok(())
     }
 }

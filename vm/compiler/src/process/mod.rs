@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod build;
-pub use build::*;
+mod deployment;
+pub use deployment::*;
 
 mod execution;
 pub use execution::*;
@@ -143,14 +143,14 @@ impl<N: Network> Process<N> {
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
     }
 
-    /// Deploys the program with the given program ID, as a build.
+    /// Deploys the program with the given program ID, as a deployment.
     #[inline]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         program_id: &ProgramID<N>,
         rng: &mut R,
-    ) -> Result<Build<N>> {
-        // Compute the build.
+    ) -> Result<Deployment<N>> {
+        // Compute the deployment.
         self.get_stack(program_id)?.deploy::<A, R>(rng)
     }
 

@@ -23,15 +23,15 @@ use console::{network::prelude::*, program::Identifier};
 use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Build<N: Network> {
+pub struct Deployment<N: Network> {
     /// The program.
     program: Program<N>,
     /// The mapping of function names to their verifying key and certificate.
     verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
 }
 
-impl<N: Network> Build<N> {
-    /// Initializes a new build.
+impl<N: Network> Deployment<N> {
+    /// Initializes a new deployment.
     pub fn new(
         program: Program<N>,
         verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
@@ -50,24 +50,24 @@ impl<N: Network> Build<N> {
     }
 }
 
-impl<N: Network> FromStr for Build<N> {
+impl<N: Network> FromStr for Deployment<N> {
     type Err = Error;
 
-    /// Initializes the build from a JSON-string.
+    /// Initializes the deployment from a JSON-string.
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str(input)?)
     }
 }
 
-impl<N: Network> Debug for Build<N> {
-    /// Prints the build as a JSON-string.
+impl<N: Network> Debug for Deployment<N> {
+    /// Prints the deployment as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Build<N> {
-    /// Displays the build as a JSON-string.
+impl<N: Network> Display for Deployment<N> {
+    /// Displays the deployment as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
@@ -84,8 +84,8 @@ pub(crate) mod test_helpers {
     type CurrentNetwork = Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
 
-    pub(crate) fn sample_build() -> Build<CurrentNetwork> {
-        static INSTANCE: OnceCell<Build<CurrentNetwork>> = OnceCell::new();
+    pub(crate) fn sample_deployment() -> Deployment<CurrentNetwork> {
+        static INSTANCE: OnceCell<Deployment<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize a new program.
@@ -110,7 +110,7 @@ function compute:
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
 
-                // Compute the build.
+                // Compute the deployment.
                 process.deploy::<CurrentAleo, _>(program.id(), rng).unwrap()
             })
             .clone()

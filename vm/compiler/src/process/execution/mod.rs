@@ -42,16 +42,6 @@ impl<N: Network> Execution<N> {
         self.0.get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
     }
 
-    /// Returns the number of `Transition`s in the execution.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Return `true` if the execution is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
     /// Returns the next `Transition` in the execution.
     pub fn peek(&self) -> Result<Transition<N>> {
         self.get(self.len() - 1)

@@ -16,40 +16,40 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Build<N> {
-    /// Serializes the build into string or bytes.
+impl<N: Network> Serialize for Deployment<N> {
+    /// Serializes the deployment into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut build = serializer.serialize_struct("Build", 2)?;
-                build.serialize_field("program", &self.program)?;
-                build.serialize_field("verifying_keys", &self.verifying_keys)?;
-                build.end()
+                let mut deployment = serializer.serialize_struct("Deployment", 2)?;
+                deployment.serialize_field("program", &self.program)?;
+                deployment.serialize_field("verifying_keys", &self.verifying_keys)?;
+                deployment.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Build<N> {
-    /// Deserializes the build from a string or bytes.
+impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
+    /// Deserializes the deployment from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                // Parse the build from a string into a value.
-                let build = serde_json::Value::deserialize(deserializer)?;
+                // Parse the deployment from a string into a value.
+                let deployment = serde_json::Value::deserialize(deserializer)?;
 
-                // Recover the build.
-                let build = Self::new(
+                // Recover the deployment.
+                let deployment = Self::new(
                     // Retrieve the program.
-                    serde_json::from_value(build["program"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(deployment["program"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the verifying keys.
-                    serde_json::from_value(build["verifying_keys"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(deployment["verifying_keys"].clone()).map_err(de::Error::custom)?,
                 );
 
-                Ok(build)
+                Ok(deployment)
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "build"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "deployment"),
         }
     }
 }
@@ -60,8 +60,8 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        // Sample the build.
-        let expected = test_helpers::sample_build();
+        // Sample the deployment.
+        let expected = test_helpers::sample_deployment();
 
         // Serialize
         let expected_string = &expected.to_string();
@@ -69,7 +69,7 @@ mod tests {
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         // Deserialize
-        assert_eq!(expected, Build::from_str(expected_string)?);
+        assert_eq!(expected, Deployment::from_str(expected_string)?);
         assert_eq!(expected, serde_json::from_str(&candidate_string)?);
 
         Ok(())
@@ -77,8 +77,8 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        // Sample the build.
-        let expected = test_helpers::sample_build();
+        // Sample the deployment.
+        let expected = test_helpers::sample_deployment();
 
         // Serialize
         let expected_bytes = expected.to_bytes_le()?;
@@ -86,7 +86,7 @@ mod tests {
         assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
         // Deserialize
-        assert_eq!(expected, Build::read_le(&expected_bytes[..])?);
+        assert_eq!(expected, Deployment::read_le(&expected_bytes[..])?);
         assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
 
         Ok(())

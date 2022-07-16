@@ -21,23 +21,23 @@ use crate::{
     },
     vm::VM,
 };
-use snarkvm_compiler::{Build, Execution, Transition};
+use snarkvm_compiler::{Deployment, Execution, Transition};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Build<N>),
+    Deploy(N::TransactionID, Deployment<N>),
     /// The transaction execution represents a call to an Aleo program.
     Execute(N::TransactionID, Execution<N>),
 }
 
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
-    pub fn deploy(build: Build<N>) -> Result<Self> {
+    pub fn deploy(deployment: Deployment<N>) -> Result<Self> {
         // Compute the transaction ID.
-        let id = N::hash_bhp1024(&build.program().to_bytes_le()?.to_bits_le())?.into();
+        let id = N::hash_bhp1024(&deployment.program().to_bytes_le()?.to_bits_le())?.into();
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id, build))
+        Ok(Self::Deploy(id, deployment))
     }
 
     /// Initializes a new execution transaction.
@@ -132,10 +132,10 @@ impl<N: Network> FromBytes for Transaction<N> {
             0 => {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
-                // Read the build.
-                let build = Build::read_le(&mut reader)?;
+                // Read the deployment.
+                let deployment = Deployment::read_le(&mut reader)?;
                 // Construct the transaction.
-                Transaction::Deploy(id, build)
+                Transaction::Deploy(id, deployment)
             }
             1 => {
                 // Read the ID.
@@ -161,13 +161,13 @@ impl<N: Network> ToBytes for Transaction<N> {
 
         // Write the transaction.
         match self {
-            Self::Deploy(id, build) => {
+            Self::Deploy(id, deployment) => {
                 // Write the variant.
                 0u8.write_le(&mut writer)?;
                 // Write the ID.
                 id.write_le(&mut writer)?;
-                // Write the build.
-                build.write_le(&mut writer)
+                // Write the deployment.
+                deployment.write_le(&mut writer)
             }
             Self::Execute(id, execution) => {
                 // Write the variant.
@@ -186,11 +186,11 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
-                Self::Deploy(id, build) => {
+                Self::Deploy(id, deployment) => {
                     let mut transaction = serializer.serialize_struct("Transaction", 3)?;
                     transaction.serialize_field("type", "deploy")?;
                     transaction.serialize_field("id", &id)?;
-                    transaction.serialize_field("build", &build)?;
+                    transaction.serialize_field("deployment", &deployment)?;
                     transaction.end()
                 }
                 Self::Execute(id, execution) => {
@@ -220,10 +220,11 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                 // Recover the transaction.
                 let transaction = match transaction["type"].as_str() {
                     Some("deploy") => {
-                        // Retrieve the build.
-                        let build = serde_json::from_value(transaction["build"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the deployment.
+                        let deployment =
+                            serde_json::from_value(transaction["deployment"].clone()).map_err(de::Error::custom)?;
                         // Construct the transaction.
-                        Transaction::deploy(build).map_err(de::Error::custom)?
+                        Transaction::deploy(deployment).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
                         // Retrieve the execution.

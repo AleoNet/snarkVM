@@ -19,11 +19,11 @@ mod sample;
 
 use crate::{
     Authorization,
-    Build,
     CallOperator,
     Certificate,
     CircuitKeys,
     Closure,
+    Deployment,
     Execution,
     Function,
     Instruction,
@@ -296,9 +296,9 @@ impl<N: Network> Stack<N> {
         Ok(())
     }
 
-    /// Deploys the program with the given program ID, as a build.
+    /// Deploys the program with the given program ID, as a deployment.
     #[inline]
-    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Build<N>> {
+    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Deployment<N>> {
         // Initialize a mapping for the bundle.
         let mut bundle = IndexMap::with_capacity(self.program.functions().len());
 
@@ -323,8 +323,8 @@ impl<N: Network> Stack<N> {
             bundle.insert(*function_name, (verifying_key, certificate));
         }
 
-        // Return the build.
-        Ok(Build::new(self.program.clone(), bundle))
+        // Return the deployment.
+        Ok(Deployment::new(self.program.clone(), bundle))
     }
 
     /// Evaluates a program closure on the given inputs.
