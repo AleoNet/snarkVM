@@ -83,33 +83,6 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
-    /// Inserts the given proving key and verifying key, for the given program ID and function name.
-    #[inline]
-    pub fn insert_key(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-        proving_key: ProvingKey<N>,
-        verifying_key: VerifyingKey<N>,
-    ) {
-        // Add the circuit key to the mapping.
-        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
-    }
-
-    /// Synthesizes the proving and verifying key for the given program ID and function name.
-    #[inline]
-    pub fn synthesize_key<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-        rng: &mut R,
-    ) -> Result<()> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-        // Synthesize the proving and verifying key.
-        stack.synthesize_key::<A, R>(function_name, rng)
-    }
-
     /// Returns the proving key for the given program ID and function name.
     #[inline]
     pub fn get_proving_key(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
@@ -148,6 +121,33 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N>> {
         self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
+    }
+
+    /// Inserts the given proving key and verifying key, for the given program ID and function name.
+    #[inline]
+    pub fn insert_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        proving_key: ProvingKey<N>,
+        verifying_key: VerifyingKey<N>,
+    ) {
+        // Add the circuit key to the mapping.
+        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
+    }
+
+    /// Synthesizes the proving and verifying key for the given program ID and function name.
+    #[inline]
+    pub fn synthesize_key<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        rng: &mut R,
+    ) -> Result<()> {
+        // Retrieve the stack.
+        let stack = self.get_stack(program_id)?;
+        // Synthesize the proving and verifying key.
+        stack.synthesize_key::<A, R>(function_name, rng)
     }
 
     /// Authorizes a call to the program function for the given inputs.
@@ -359,7 +359,9 @@ impl<N: Network> Process<N> {
         }
         Ok(())
     }
+}
 
+impl<N: Network> Process<N> {
     /// Returns the program, function, and input types for the given program ID and function name.
     #[inline]
     #[allow(clippy::type_complexity)]
@@ -443,6 +445,52 @@ pub(crate) mod test_helpers {
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = circuit::network::AleoV0;
+
+    pub(crate) fn sample_key() -> (Identifier<CurrentNetwork>, ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)
+    {
+        static INSTANCE: OnceCell<(
+            Identifier<CurrentNetwork>,
+            ProvingKey<CurrentNetwork>,
+            VerifyingKey<CurrentNetwork>,
+        )> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                let (string, program) = Program::<CurrentNetwork>::parse(
+                    r"
+program testing.aleo;
+
+function compute:
+    input r0 as u32.private;
+    input r1 as u32.public;
+    add r0 r1 into r2;
+    output r2 as u32.public;",
+                )
+                .unwrap();
+                assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+                // Declare the function name.
+                let function_name = Identifier::from_str("compute").unwrap();
+
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+
+                // Construct the process.
+                let mut process = Process::<CurrentNetwork>::new().unwrap();
+                // Add the program to the process.
+                process.add_program(&program).unwrap();
+
+                // Synthesize a proving and verifying key.
+                process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+                // Get the proving and verifying key.
+                let proving_key = process.get_proving_key(program.id(), &function_name).unwrap();
+                let verifying_key = process.get_verifying_key(program.id(), &function_name).unwrap();
+
+                (function_name, proving_key, verifying_key)
+            })
+            .clone()
+    }
 
     pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
         static INSTANCE: OnceCell<Transition<CurrentNetwork>> = OnceCell::new();

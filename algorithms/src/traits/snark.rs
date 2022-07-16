@@ -84,12 +84,6 @@ pub trait SNARK {
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError>;
 
-    fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
-        circuit: &C,
-        verifying_key: &Self::VerifyingKey,
-        certificate: &Self::Certificate,
-    ) -> Result<bool, SNARKError>;
-
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &[C],
@@ -121,6 +115,12 @@ pub trait SNARK {
     ) -> Result<Self::Proof, SNARKError> {
         Self::prove_batch_with_terminator(proving_key, std::slice::from_ref(input_and_witness), terminator, rng)
     }
+
+    fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        circuit: &C,
+        verifying_key: &Self::VerifyingKey,
+        certificate: &Self::Certificate,
+    ) -> Result<bool, SNARKError>;
 
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,

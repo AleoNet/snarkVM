@@ -37,12 +37,17 @@ impl<N: Network> VerifyingKey<N> {
     /// Returns `true` if the proof is valid for the given public inputs.
     pub fn verify(&self, function_name: &Identifier<N>, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         let timer = std::time::Instant::now();
-        let is_valid = Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof).unwrap();
-        println!(
-            "{}",
-            format!(" • Called verifier for '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed()
-        );
-        is_valid
+        match Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof) {
+            Ok(is_valid) => {
+                let elapsed = timer.elapsed().as_millis();
+                println!("{}", format!(" • Called verifier for '{function_name}': {} ms", elapsed).dimmed());
+                is_valid
+            }
+            Err(error) => {
+                println!("{}", format!(" • Verifier failed: {error}").dimmed());
+                false
+            }
+        }
     }
 }
 
