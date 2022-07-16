@@ -65,6 +65,14 @@ impl<N: Network> Transaction<N> {
         }
     }
 
+    /// Returns an iterator over the transition IDs, for all executed transitions.
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        match self {
+            Transaction::Deploy(..) => [].iter().map(Transition::id),
+            Transaction::Execute(.., execution) => execution.iter().map(Transition::id),
+        }
+    }
+
     /// Returns an iterator over the transition public keys, for all executed transitions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         match self {

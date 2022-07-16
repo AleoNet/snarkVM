@@ -269,6 +269,11 @@ impl<N: Network> Process<N> {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
 
+            // Ensure the number of inputs is within the allowed range.
+            ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
+            // Ensure the number of outputs is within the allowed range.
+            ensure!(transition.outputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
+
             // Ensure each input is valid.
             if transition.inputs().iter().any(|input| !input.verify()) {
                 bail!("Failed to verify a transition input")
@@ -277,6 +282,7 @@ impl<N: Network> Process<N> {
             if transition.outputs().iter().any(|output| !output.verify()) {
                 bail!("Failed to verify a transition output")
             }
+
             // Ensure the fee is correct.
             match Stack::is_coinbase(transition.program_id(), transition.function_name()) {
                 true => ensure!(transition.fee() < &0, "The fee must be negative in a coinbase transition"),
@@ -289,7 +295,7 @@ impl<N: Network> Process<N> {
             // Construct the public inputs to verify the proof.
             let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
             // Extend the inputs with the input IDs.
-            inputs.extend(transition.input_ids().map(|id| *id));
+            inputs.extend(transition.input_ids().map(|id| **id));
 
             // Retrieve the stack.
             let stack = self.get_stack(transition.program_id())?;
@@ -311,13 +317,13 @@ impl<N: Network> Process<N> {
                 // to order them in the order they were defined in the function.
                 for transition in (*queue).iter().rev().take(num_function_calls).rev() {
                     // Extend the inputs with the input and output IDs of the external call.
-                    inputs.extend(transition.input_ids().map(|id| *id));
-                    inputs.extend(transition.output_ids().map(|id| *id));
+                    inputs.extend(transition.input_ids().map(|id| **id));
+                    inputs.extend(transition.output_ids().map(|id| **id));
                 }
             }
 
             // Lastly, extend the inputs with the output IDs and fee.
-            inputs.extend(transition.output_ids().map(|id| *id));
+            inputs.extend(transition.output_ids().map(|id| **id));
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
 
             #[cfg(debug_assertions)]

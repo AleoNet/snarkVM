@@ -39,14 +39,14 @@ pub enum Output<N: Network> {
 }
 
 impl<N: Network> Output<N> {
-    /// Returns the ID(s) of the output.
-    pub fn id(&self) -> Vec<Field<N>> {
+    /// Returns the ID of the output.
+    pub fn id(&self) -> &Field<N> {
         match self {
-            Output::Constant(id, ..) => vec![*id],
-            Output::Public(id, ..) => vec![*id],
-            Output::Private(id, ..) => vec![*id],
-            Output::Record(commitment, nonce, checksum, _) => vec![*commitment, *nonce, *checksum],
-            Output::ExternalRecord(id) => vec![*id],
+            Output::Constant(id, ..) => id,
+            Output::Public(id, ..) => id,
+            Output::Private(id, ..) => id,
+            Output::Record(commitment, ..) => commitment,
+            Output::ExternalRecord(id) => id,
         }
     }
 

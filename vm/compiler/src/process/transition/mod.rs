@@ -61,10 +61,16 @@ impl<N: Network> Transition<N> {
         tpk: Group<N>,
         fee: i64,
     ) -> Result<Self> {
+        // Ensure the number of inputs is within the allowed range.
+        ensure!(inputs.len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
+        // Ensure the number of outputs is within the allowed range.
+        ensure!(outputs.len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
+
         // Compute the transition ID.
         let input_ids = inputs.iter().flat_map(|input| input.id().to_bits_le());
         let output_ids = outputs.iter().flat_map(|output| output.id().to_bits_le());
         let id = N::hash_bhp1024(&input_ids.chain(output_ids).collect::<Vec<_>>())?;
+
         // Return the transition.
         Ok(Self { id, program_id, function_name, inputs, outputs, proof, tpk, fee })
     }
@@ -238,8 +244,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the input IDs.
-    pub fn input_ids(&self) -> impl '_ + Iterator<Item = Field<N>> {
-        self.inputs.iter().map(|input| input.id())
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().map(Input::id)
     }
 
     /// Return the outputs.
@@ -248,8 +254,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the output IDs.
-    pub fn output_ids(&self) -> impl '_ + Iterator<Item = Field<N>> {
-        self.outputs.iter().flat_map(Output::id)
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.outputs.iter().map(Output::id)
     }
 
     /// Returns the proof.

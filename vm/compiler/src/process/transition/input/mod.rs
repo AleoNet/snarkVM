@@ -40,13 +40,13 @@ pub enum Input<N: Network> {
 
 impl<N: Network> Input<N> {
     /// Returns the ID of the input.
-    pub fn id(&self) -> Field<N> {
+    pub fn id(&self) -> &Field<N> {
         match self {
-            Input::Constant(id, _) => *id,
-            Input::Public(id, _) => *id,
-            Input::Private(id, _) => *id,
-            Input::Record(id) => *id,
-            Input::ExternalRecord(id) => *id,
+            Input::Constant(id, _) => id,
+            Input::Public(id, _) => id,
+            Input::Private(id, _) => id,
+            Input::Record(serial_number) => serial_number,
+            Input::ExternalRecord(id) => id,
         }
     }
 
@@ -61,29 +61,29 @@ impl<N: Network> Input<N> {
     /// Returns `true` if the input is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
     pub fn verify(&self) -> bool {
-        match self {
+        // Ensure the hash of the value (if the value exists) is correct.
+        let result = match self {
             Input::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
             },
             Input::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
             },
             Input::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
             },
-            _ => true,
+            _ => Ok(true),
+        };
+
+        match result {
+            Ok(is_hash_valid) => is_hash_valid,
+            Err(error) => {
+                eprintln!("{error}");
+                false
+            }
         }
     }
 }

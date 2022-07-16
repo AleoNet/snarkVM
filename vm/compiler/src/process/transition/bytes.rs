@@ -40,8 +40,8 @@ impl<N: Network> FromBytes for Transition<N> {
         let fee = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition = Transition::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
-            .map_err(|e| error(e.to_string()))?;
+        let transition =
+            Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee).map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
