@@ -172,7 +172,7 @@ impl<N: Network> Package<N> {
         })?;
 
         // Add the program to the process.
-        process.add_program(&self.program())?;
+        process.add_program(self.program())?;
 
         Ok(process)
     }

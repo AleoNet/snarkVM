@@ -35,6 +35,7 @@ use snarkvm_compiler::Program;
 use indexmap::{IndexMap, IndexSet};
 
 #[derive(Clone, Default)]
+#[allow(dead_code)]
 pub struct Ledger<N: Network> {
     /// The mapping of program IDs to their programs.
     programs: IndexMap<u64, Program<N>>,
@@ -61,7 +62,7 @@ impl<N: Network> Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{circuit::network::AleoV0, console::network::Testnet3};
+    use crate::console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 

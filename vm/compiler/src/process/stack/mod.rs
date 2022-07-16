@@ -522,7 +522,7 @@ impl<N: Network> Stack<N> {
         A::reset();
 
         // Clone the call stack.
-        let mut call_stack = call_stack.clone();
+        let mut call_stack = call_stack;
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
 

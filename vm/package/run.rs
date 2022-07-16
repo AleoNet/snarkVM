@@ -64,14 +64,14 @@ impl<N: Network> Package<N> {
                     let import_build_directory =
                         self.build_directory().join(format!("{}-{}", program.id().name(), program.id().network()));
                     // Create the prover.
-                    let prover = ProverFile::open(&import_build_directory, &function_name)?;
+                    let prover = ProverFile::open(&import_build_directory, function_name)?;
                     // Create the verifier.
-                    let verifier = VerifierFile::open(&import_build_directory, &function_name)?;
+                    let verifier = VerifierFile::open(&import_build_directory, function_name)?;
 
                     // Adds the circuit key to the process.
                     process.insert_key(
                         program.id(),
-                        &function_name,
+                        function_name,
                         prover.proving_key().clone(),
                         verifier.verifying_key().clone(),
                     );

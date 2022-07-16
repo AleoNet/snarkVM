@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    console::{
-        collections::merkle_tree::MerklePath,
-        network::{prelude::*, BHPMerkleTree},
-        types::Field,
-    },
-    ledger::{Transaction, Transactions},
+use crate::console::{
+    collections::merkle_tree::MerklePath,
+    network::{prelude::*, BHPMerkleTree},
+    types::Field,
 };
-use snarkvm_compiler::Process;
-
-use std::{mem::size_of, sync::atomic::AtomicBool};
 
 /// The depth of the Merkle tree for the block header.
 const HEADER_DEPTH: u8 = 3;

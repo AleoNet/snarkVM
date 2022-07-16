@@ -288,7 +288,7 @@ impl<N: Network> Process<N> {
         }
 
         // Replicate the execution stack for verification.
-        let mut queue = execution.clone();
+        let mut queue = execution;
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
@@ -362,6 +362,7 @@ impl<N: Network> Process<N> {
 
     /// Returns the program, function, and input types for the given program ID and function name.
     #[inline]
+    #[allow(clippy::type_complexity)]
     fn get_function_info(
         &self,
         program_id: &ProgramID<N>,
@@ -370,7 +371,7 @@ impl<N: Network> Process<N> {
         // Retrieve the program.
         let program = self.get_program(program_id)?;
         // Ensure the function exists.
-        if !program.contains_function(&function_name) {
+        if !program.contains_function(function_name) {
             bail!("Function '{function_name}' does not exist in the program '{program_id}'.")
         }
 

@@ -16,9 +16,8 @@
 
 use crate::{
     console::network::prelude::*,
-    ledger::{BlockHeader, Transaction, Transactions},
+    ledger::{BlockHeader, Transactions},
 };
-use snarkvm_compiler::{Process, Program};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Block<N: Network> {

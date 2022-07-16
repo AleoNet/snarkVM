@@ -20,14 +20,13 @@ use crate::{
         network::prelude::*,
         program::{Identifier, ProgramID, Response, Value},
     },
-    ledger::{BlockHeader, Transaction, Transactions},
+    ledger::Transaction,
 };
 use snarkvm_compiler::{Authorization, Execution, Process, Program, Transition};
 
-use core::marker::PhantomData;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
-use std::{cell::RefCell, sync::Arc};
+use std::sync::Arc;
 
 /// A helper macro to downcast a `$variable` to `$object<$network>`.
 macro_rules! cast_ref {

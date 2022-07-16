@@ -47,7 +47,7 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
         ];
         // Ensure the entries has no duplicate names.
         if has_duplicates(data.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
-            return Err(error(format!("Duplicate entry type found in record")));
+            return Err(error("Duplicate entry type found in record"));
         }
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
         if data.len() > N::MAX_DATA_ENTRIES {

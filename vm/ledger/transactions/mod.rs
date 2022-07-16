@@ -22,7 +22,6 @@ use crate::{
     },
     ledger::Transaction,
 };
-use snarkvm_compiler::Process;
 
 use std::sync::Arc;
 
@@ -81,8 +80,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        // if !self.transactions.as_parallel_slice().par_iter().all(|transaction| transaction.is_valid(process)) {
-        if !self.transactions.iter().all(|transaction| transaction.is_valid()) {
+        if !self.transactions.as_parallel_slice().par_iter().all(|transaction| transaction.is_valid()) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }

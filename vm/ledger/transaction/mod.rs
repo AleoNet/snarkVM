@@ -18,7 +18,7 @@ use crate::{
     console::{network::prelude::*, types::Field},
     vm::VM,
 };
-use snarkvm_compiler::{Execution, Process, Program, Transition, VerifyingKey};
+use snarkvm_compiler::{Program, Transition, VerifyingKey};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Transaction<N: Network> {

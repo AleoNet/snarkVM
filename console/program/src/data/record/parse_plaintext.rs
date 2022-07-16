@@ -84,7 +84,7 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
                 ];
                 // Ensure the entries has no duplicate names.
                 if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
-                    return Err(error(format!("Duplicate entry type found in record")));
+                    return Err(error("Duplicate entry type found in record"));
                 }
                 // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
                 match entries.len() <= N::MAX_DATA_ENTRIES {
