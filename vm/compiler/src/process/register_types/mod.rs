@@ -16,10 +16,10 @@
 
 mod matches;
 
-use crate::Stack;
+use crate::{Operand, Stack};
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, LiteralType, PlaintextType, Register, RegisterType},
+    program::{EntryType, Identifier, Interface, LiteralType, PlaintextType, RecordType, Register, RegisterType},
 };
 
 use indexmap::IndexMap;

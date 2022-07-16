@@ -18,7 +18,13 @@ mod build;
 pub use build::*;
 
 mod helpers;
-pub(crate) use helpers::*;
+pub use helpers::*;
+
+mod register_types;
+pub use register_types::*;
+
+mod registers;
+pub use registers::*;
 
 mod stack;
 pub use stack::*;
@@ -46,8 +52,6 @@ use std::sync::Arc;
 
 #[derive(Default)]
 pub struct Process<N: Network> {
-    /// The mapping of program IDs to programs.
-    programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
@@ -58,25 +62,28 @@ impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn new() -> Self {
-        Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() }
+        Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() }
     }
 
     /// Returns `true` if the process contains the program with the given ID.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
-        self.programs.contains_key(program_id)
+        self.stacks.contains_key(program_id)
     }
 
     /// Returns the program for the given program ID.
     #[inline]
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
-        self.programs.get(program_id).ok_or_else(|| anyhow!("Program not found: {program_id}"))
+        self.stacks
+            .get(program_id)
+            .and_then(|stack| Some(stack.program()))
+            .ok_or_else(|| anyhow!("Program '{program_id}' not found"))
     }
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N>> {
-        self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
+    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+        self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' not found"))
     }
 
     /// Returns the proving key for the given program ID and function name.
@@ -212,8 +219,6 @@ impl<N: Network> Process<N> {
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
-        trace!("Starting execute");
-
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
         // Prepare the stack.
@@ -246,8 +251,6 @@ impl<N: Network> Process<N> {
     /// Verifies a program call for the given execution.
     #[inline]
     pub fn verify(&self, execution: Execution<N>) -> Result<()> {
-        trace!("Starting verify");
-
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 

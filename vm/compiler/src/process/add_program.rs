@@ -24,7 +24,7 @@ impl<N: Network> Process<N> {
         let program_id = program.id();
 
         // If the program already exists, ensure it is the same and return.
-        if self.programs.contains_key(program_id) {
+        if self.contains_program(program_id) {
             // Retrieve the existing program.
             let existing_program = self.get_program(program_id)?;
             // Ensure the program is the same.
@@ -34,12 +34,10 @@ impl<N: Network> Process<N> {
             }
         }
 
-        // Ensure the program is not already added.
-        ensure!(!self.programs.contains_key(program_id), "Program '{program_id}' already exists");
         // Ensure the program imports all exist in the process already.
         for import in program.imports().keys() {
             ensure!(
-                self.programs.contains_key(import),
+                self.contains_program(import),
                 "Cannot add program '{program_id}' because its import '{import}' must be added first"
             );
         }
@@ -52,7 +50,7 @@ impl<N: Network> Process<N> {
             // Retrieve the external stack for the import program ID.
             let external_stack = self.get_stack(external_id)?;
             // Add the external stack to the stack.
-            stack.add_external_stack(external_stack)?;
+            stack.add_external_stack(external_stack.clone())?;
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
@@ -69,8 +67,6 @@ impl<N: Network> Process<N> {
             stack.add_function_types(function.name(), register_types)?;
         }
 
-        // Add the program to the process.
-        self.programs.insert(*program_id, program.clone());
         // Add the stack to the process.
         self.stacks.insert(*program_id, stack);
 
