@@ -81,6 +81,8 @@ pub trait Network:
     /// The maximum number of outputs per transition.
     const MAX_OUTPUTS: usize = 8;
 
+    /// The state root type.
+    type StateRoot: Bech32ID<Field<Self>>;
     /// The block hash type.
     type BlockHash: Bech32ID<Field<Self>>;
     /// The transaction ID type.

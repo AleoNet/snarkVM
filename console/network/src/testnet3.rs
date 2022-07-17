@@ -100,6 +100,8 @@ impl Environment for Testnet3 {
 impl Network for Testnet3 {
     /// The block hash type.
     type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
+    /// The state root type.
+    type StateRoot = AleoID<Field<Self>, { hrp2!("ar") }>;
     /// The transaction ID type.
     type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
     /// The transition ID type.

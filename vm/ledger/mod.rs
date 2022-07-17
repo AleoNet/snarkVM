@@ -30,12 +30,21 @@ mod transactions;
 pub use transactions::*;
 
 use crate::console::{
-    network::prelude::*,
+    collections::merkle_tree::MerklePath,
+    network::{prelude::*, BHPMerkleTree},
     program::{Identifier, Plaintext},
 };
 use snarkvm_compiler::Program;
 
 use indexmap::{IndexMap, IndexSet};
+
+/// The depth of the Merkle tree for the blocks.
+const BLOCKS_DEPTH: u8 = 32;
+
+/// The Merkle tree for the blocks.
+type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
+/// The Merkle path for the blocks.
+pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Clone, Default)]
 #[allow(dead_code)]

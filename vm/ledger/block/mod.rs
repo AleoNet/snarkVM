@@ -18,7 +18,7 @@ mod string;
 
 use crate::{
     console::network::prelude::*,
-    ledger::{BlockHeader, Transactions},
+    ledger::{Header, Transactions},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -28,14 +28,14 @@ pub struct Block<N: Network> {
     /// The hash of the previous block.
     previous_hash: N::BlockHash,
     /// The header of the block.
-    header: BlockHeader<N>,
+    header: Header<N>,
     /// The transactions in the block.
     transactions: Transactions<N>,
 }
 
 impl<N: Network> Block<N> {
     /// Initializes a new block from a given previous hash, header, and transactions list.
-    pub fn from(previous_hash: N::BlockHash, header: BlockHeader<N>, transactions: Transactions<N>) -> Result<Self> {
+    pub fn from(previous_hash: N::BlockHash, header: Header<N>, transactions: Transactions<N>) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
         // Compute the block hash.
@@ -171,7 +171,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the block header.
-    pub const fn header(&self) -> &BlockHeader<N> {
+    pub const fn header(&self) -> &Header<N> {
         &self.header
     }
 

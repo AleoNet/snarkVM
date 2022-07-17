@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod merkle;
+pub use merkle::*;
+
 mod string;
 
 use crate::{
@@ -30,14 +33,6 @@ use indexmap::IndexMap;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-
-/// The depth of the Merkle tree for transactions in a block.
-const TRANSACTIONS_DEPTH: u8 = 16;
-
-/// The Merkle tree for transactions in a block.
-type TransactionsTree<N> = BHPMerkleTree<N, TRANSACTIONS_DEPTH>;
-/// The Merkle path for transaction in a block.
-pub(crate) type TransactionsPath<N> = MerklePath<N, TRANSACTIONS_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
@@ -180,34 +175,6 @@ impl<N: Network> Transactions<N> {
     // ) -> impl Iterator<Item = Record<N>> + 'a {
     //     self.transactions.iter().flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     // }
-}
-
-impl<N: Network> Transactions<N> {
-    /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
-    pub fn to_root(&self) -> Result<Field<N>> {
-        Ok(*self.to_tree()?.root())
-    }
-
-    /// Returns the Merkle path for the transactions leaf.
-    pub fn to_path(&self, index: usize, leaf: impl ToBits) -> Result<TransactionsPath<N>> {
-        self.to_tree()?.prove(index, &leaf.to_bits_le())
-    }
-
-    /// The Merkle tree of transaction IDs for the block.
-    pub fn to_tree(&self) -> Result<TransactionsTree<N>> {
-        Self::transactions_tree(&self.transactions)
-    }
-
-    /// Returns the Merkle tree for the given transactions.
-    fn transactions_tree(transactions: &IndexMap<N::TransactionID, Transaction<N>>) -> Result<TransactionsTree<N>> {
-        // Prepare the leaves.
-        let leaves = transactions.values().enumerate().map(|(index, transaction)| {
-            // Construct the leaf as (index || transaction ID).
-            (index as u32).to_bits_le().into_iter().chain(transaction.id().to_bits_le().into_iter()).collect()
-        });
-        // Compute the deployment tree.
-        N::merkle_tree_bhp::<TRANSACTIONS_DEPTH>(&leaves.collect::<Vec<_>>())
-    }
 }
 
 impl<N: Network> FromBytes for Transactions<N> {

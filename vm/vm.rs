@@ -366,6 +366,7 @@ function compute:
             .clone()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
         // Retrieve the transaction.
         let transaction = sample_execution_transaction();

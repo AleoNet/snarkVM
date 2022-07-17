@@ -26,13 +26,15 @@ const HEADER_DEPTH: u8 = 3;
 /// The Merkle tree for the block header.
 type HeaderTree<N> = BHPMerkleTree<N, HEADER_DEPTH>;
 /// The Merkle path for the block header.
-pub(crate) type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
+pub type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
+/// The Merkle leaf for the block header.
+pub type HeaderLeaf<N> = Field<N>;
 
 /// The header for the block contains metadata that uniquely identifies the block.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct BlockHeader<N: Network> {
+pub struct Header<N: Network> {
     /// The Merkle root representing the blocks in the ledger up to the previous block.
-    previous_ledger_root: Field<N>,
+    previous_state_root: Field<N>,
     /// The Merkle root representing the transactions in the block.
     transactions_root: Field<N>,
 
@@ -52,11 +54,11 @@ pub struct BlockHeader<N: Network> {
     // cumulative_weight: u128,
 }
 
-impl<N: Network> BlockHeader<N> {
+impl<N: Network> Header<N> {
     /// Initializes a new block header.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        previous_ledger_root: Field<N>,
+        previous_state_root: Field<N>,
         transactions_root: Field<N>,
         network: u16,
         height: u32,
@@ -67,7 +69,7 @@ impl<N: Network> BlockHeader<N> {
     ) -> Result<Self> {
         // Construct a new block header.
         let header = Self {
-            previous_ledger_root,
+            previous_state_root,
             transactions_root,
             network,
             height,
@@ -87,7 +89,7 @@ impl<N: Network> BlockHeader<N> {
     pub fn genesis() -> Self {
         // TODO (raychu86): Use a real root of an empty tree.
         Self {
-            previous_ledger_root: Field::zero(),
+            previous_state_root: Field::zero(),
             transactions_root: Field::zero(),
             network: N::ID,
             height: 0u32,
@@ -98,9 +100,9 @@ impl<N: Network> BlockHeader<N> {
         }
     }
 
-    /// Returns the previous ledger root from the block header.
-    pub const fn previous_ledger_root(&self) -> &Field<N> {
-        &self.previous_ledger_root
+    /// Returns the previous state root from the block header.
+    pub const fn previous_state_root(&self) -> &Field<N> {
+        &self.previous_state_root
     }
 
     /// Returns the transactions root in the block header.
@@ -149,7 +151,7 @@ impl<N: Network> BlockHeader<N> {
             true => self.is_genesis(),
             false => {
                 // Ensure the previous ledger root is nonzero.
-                self.previous_ledger_root != Field::zero()
+                self.previous_state_root != Field::zero()
                     // Ensure the transactions root is nonzero.
                     && self.transactions_root != Field::zero()
                     // Ensure the network ID is correct.
@@ -167,7 +169,7 @@ impl<N: Network> BlockHeader<N> {
     /// Returns `true` if the block header is a genesis block header.
     pub fn is_genesis(&self) -> bool {
         // Ensure the previous ledger root is zero.
-        self.previous_ledger_root == Field::zero()
+        self.previous_state_root == Field::zero()
             // Ensure the transactions root is zero.
             && self.transactions_root == Field::zero()
             // Ensure the network ID is correct.
@@ -219,7 +221,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Construct the Merkle leaves.
         let mut leaves: Vec<Vec<bool>> = Vec::with_capacity(num_leaves);
-        leaves.push(self.previous_ledger_root.to_bits_le());
+        leaves.push(self.previous_state_root.to_bits_le());
         leaves.push(self.transactions_root.to_bits_le());
         leaves.extend_from_slice(&vec![vec![false; 256]; 5]);
         leaves.push(metadata);
@@ -231,12 +233,12 @@ impl<N: Network> BlockHeader<N> {
     }
 }
 
-impl<N: Network> FromBytes for BlockHeader<N> {
+impl<N: Network> FromBytes for Header<N> {
     /// Reads the block header from the buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read from the buffer.
-        let previous_ledger_root = Field::<N>::read_le(&mut reader)?;
+        let previous_state_root = Field::<N>::read_le(&mut reader)?;
         let transactions_root = Field::<N>::read_le(&mut reader)?;
         let network = u16::read_le(&mut reader)?;
         let height = u32::read_le(&mut reader)?;
@@ -247,7 +249,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
 
         // Construct the block header.
         Self::new(
-            previous_ledger_root,
+            previous_state_root,
             transactions_root,
             network,
             height,
@@ -260,12 +262,12 @@ impl<N: Network> FromBytes for BlockHeader<N> {
     }
 }
 
-impl<N: Network> ToBytes for BlockHeader<N> {
+impl<N: Network> ToBytes for Header<N> {
     /// Writes the block header to the buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write to the buffer.
-        self.previous_ledger_root.write_le(&mut writer)?;
+        self.previous_state_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
         self.network.write_le(&mut writer)?;
         self.height.write_le(&mut writer)?;
@@ -276,7 +278,7 @@ impl<N: Network> ToBytes for BlockHeader<N> {
     }
 }
 
-impl<N: Network> FromStr for BlockHeader<N> {
+impl<N: Network> FromStr for Header<N> {
     type Err = anyhow::Error;
 
     fn from_str(header: &str) -> Result<Self, Self::Err> {
@@ -284,18 +286,18 @@ impl<N: Network> FromStr for BlockHeader<N> {
     }
 }
 
-impl<N: Network> fmt::Display for BlockHeader<N> {
+impl<N: Network> fmt::Display for Header<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
 
-impl<N: Network> Serialize for BlockHeader<N> {
+impl<N: Network> Serialize for Header<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
                 let mut header = serializer.serialize_struct("BlockHeader", 8)?;
-                header.serialize_field("previous_ledger_root", &self.previous_ledger_root)?;
+                header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
                 header.serialize_field("network", &self.network)?;
                 header.serialize_field("height", &self.height)?;
@@ -310,13 +312,13 @@ impl<N: Network> Serialize for BlockHeader<N> {
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
+impl<'de, N: Network> Deserialize<'de> for Header<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
                 let header = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::new(
-                    serde_json::from_value(header["previous_ledger_root"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["previous_state_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["transactions_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["network"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["height"].clone()).map_err(de::Error::custom)?,
@@ -397,7 +399,7 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
 //         assert_eq!(block_header.proof_target, u64::MAX);
 //
 //         // Ensure the genesis block does *not* contain the following.
-//         // assert_ne!(block_header.previous_ledger_root, Default::default());
+//         // assert_ne!(block_header.previous_state_root, Default::default());
 //         // assert_ne!(block_header.transactions_root, Default::default());
 //     }
 // }
