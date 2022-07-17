@@ -14,15 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    console::{
-        collections::merkle_tree::MerklePath,
-        network::{prelude::*, BHPMerkleTree},
-        types::Group,
-    },
-    TransactionLeaf,
-    TransactionPath,
-};
+use crate::{console::network::prelude::*, TransactionLeaf, TransactionPath};
 use snarkvm_compiler::{TransitionLeaf, TransitionPath};
 
 pub struct StatePath<N: Network> {

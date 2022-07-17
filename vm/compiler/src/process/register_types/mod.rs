@@ -24,7 +24,7 @@ use console::{
 
 use indexmap::IndexMap;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,

@@ -64,10 +64,13 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+pub type Assignments<N> = Arc<RwLock<Vec<circuit::Assignment<<N as Environment>::Field>>>>;
+
 #[derive(Clone)]
 pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
+    CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
     Evaluate,
     Execute(Authorization<N>, Arc<RwLock<Execution<N>>>),
 }
@@ -78,6 +81,7 @@ impl<N: Network> CallStack<N> {
         match self {
             CallStack::Authorize(requests, ..) => requests.push(request),
             CallStack::Synthesize(requests, ..) => requests.push(request),
+            CallStack::CheckDeployment(requests, ..) => requests.push(request),
             CallStack::Evaluate => (),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
@@ -87,7 +91,9 @@ impl<N: Network> CallStack<N> {
     /// Pops the request from the stack.
     pub fn pop(&mut self) -> Result<Request<N>> {
         match self {
-            CallStack::Authorize(requests, ..) | CallStack::Synthesize(requests, ..) => {
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
             CallStack::Evaluate => bail!("No requests on the stack when in `evaluate` mode"),
@@ -328,6 +334,92 @@ impl<N: Network> Stack<N> {
 
         // Return the deployment.
         Ok(Deployment::new(self.program.clone(), bundle))
+    }
+
+    /// Checks each function in the program on the given verifying key and certificate.
+    #[inline]
+    pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        verifying_keys: &IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
+        rng: &mut R,
+    ) -> Result<()> {
+        // Retrieve the program.
+        let program = &self.program;
+        // Retrieve the program ID.
+        let program_id = program.id();
+
+        // Sanity Checks //
+
+        // Ensure the program network-level domain (NLD) is correct.
+        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
+        // Ensure the program contains functions.
+        ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
+        // Ensure the deployment contains verifying keys.
+        ensure!(!verifying_keys.is_empty(), "No verifying keys present in the deployment for program '{program_id}'");
+
+        // Check Verifying Keys //
+
+        // Ensure the number of verifying keys matches the number of program functions.
+        if verifying_keys.len() != program.functions().len() {
+            bail!("The number of verifying keys does not match the number of program functions");
+        }
+
+        // Ensure the program functions are in the same order as the verifying keys.
+        for ((function_name, function), candidate_name) in program.functions().iter().zip_eq(verifying_keys.keys()) {
+            // Ensure the function name is correct.
+            if function_name != function.name() {
+                bail!("The function key is '{function_name}', but the function name is '{}'", function.name())
+            }
+            // Ensure the function name with the verifying key is correct.
+            if candidate_name != function.name() {
+                bail!("The verifier key is '{candidate_name}', but the function name is '{}'", function.name())
+            }
+        }
+
+        // Iterate through the program functions.
+        for (function, (verifying_key, certificate)) in program.functions().values().zip_eq(verifying_keys.values()) {
+            // Initialize a burner private key.
+            let burner_private_key = PrivateKey::new(rng)?;
+            // Compute the burner address.
+            let burner_address = Address::try_from(&burner_private_key)?;
+            // Retrieve the input types.
+            let input_types = function.input_types();
+            // Sample the inputs.
+            let inputs = input_types
+                .iter()
+                .map(|input_type| match input_type {
+                    ValueType::ExternalRecord(locator) => {
+                        // Retrieve the external stack.
+                        let stack = self.get_external_stack(locator.program_id())?;
+                        // Sample the input.
+                        stack.sample_value(&burner_address, &ValueType::Record(*locator.resource()), rng)
+                    }
+                    _ => self.sample_value(&burner_address, input_type, rng),
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            // Compute the request, with a burner private key.
+            let request =
+                Request::sign(&burner_private_key, *program_id, *function.name(), &inputs, &input_types, rng)?;
+            // Initialize the assignments.
+            let assignments = Assignments::<N>::default();
+            // Initialize the call stack.
+            let call_stack = CallStack::CheckDeployment(vec![request], burner_private_key, assignments.clone());
+            // Synthesize the circuit.
+            let _response = self.execute_function::<A, R>(call_stack, rng)?;
+            // Check the certificate.
+            match assignments.read().last() {
+                None => bail!("The assignment for function '{}' is missing in '{program_id}'", function.name()),
+                Some(assignment) => {
+                    // Ensure the certificate is valid.
+                    if !certificate.verify(function.name(), assignment, verifying_key) {
+                        bail!("The certificate for function '{}' is invalid in '{program_id}'", function.name())
+                    }
+                }
+            };
+        }
+
+        Ok(())
     }
 
     /// Evaluates a program closure on the given inputs.
@@ -688,7 +780,7 @@ impl<N: Network> Stack<N> {
             self.matches_value_type(output, output_type)
         })?;
 
-        // If the circuit is in execute mode, then ensure the circuit is satisfied.
+        // If the circuit is in `Execute` mode, then ensure the circuit is satisfied.
         if let CallStack::Execute(..) = registers.call_stack() {
             // If the circuit is not satisfied, then throw an error.
             ensure!(A::is_satisfied(), "'{program_id}/{}' is not satisfied on the given inputs.", function.name());
@@ -697,8 +789,10 @@ impl<N: Network> Stack<N> {
         // Eject the circuit assignment and reset the circuit.
         let assignment = A::eject_assignment_and_reset();
 
-        // If the circuit is **not** in authorize mode, synthesize the circuit key if it does not exist.
-        if !matches!(registers.call_stack(), CallStack::Authorize(..)) {
+        // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
+        if matches!(registers.call_stack(), CallStack::Synthesize(..))
+            || matches!(registers.call_stack(), CallStack::Execute(..))
+        {
             // If the proving key does not exist, then synthesize it.
             if !self.circuit_keys.contains_proving_key(&program_id, function.name()) {
                 // Add the circuit key to the mapping.
@@ -706,8 +800,13 @@ impl<N: Network> Stack<N> {
             }
         }
 
-        // If the circuit is in execute mode, then execute the circuit into a transition.
-        if let CallStack::Execute(_, ref execution) = registers.call_stack() {
+        // If the circuit is in `CheckDeployment` mode, then save the assignment.
+        if let CallStack::CheckDeployment(_, _, ref assignments) = registers.call_stack() {
+            // Add the assignment to the assignments.
+            assignments.write().push(assignment);
+        }
+        // If the circuit is in `Execute` mode, then execute the circuit into a transition.
+        else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
             // #[cfg(debug_assertions)]
             registers.ensure_console_and_circuit_registers_match()?;
 
@@ -715,14 +814,10 @@ impl<N: Network> Stack<N> {
             let proving_key = self.circuit_keys.get_proving_key(&program_id, function.name())?;
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
+            // Construct the transition.
+            let transition = Transition::from(&console_request, &response, &function.output_types(), proof, *fee)?;
             // Add the transition to the execution.
-            execution.write().push(Transition::from(
-                &console_request,
-                &response,
-                &function.output_types(),
-                proof,
-                *fee,
-            )?);
+            execution.write().push(transition);
         }
 
         // Return the response.
@@ -752,3 +847,13 @@ impl<N: Network> Stack<N> {
         );
     }
 }
+
+impl<N: Network> PartialEq for Stack<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.program == other.program
+            && self.external_stacks == other.external_stacks
+            && self.program_types == other.program_types
+    }
+}
+
+impl<N: Network> Eq for Stack<N> {}

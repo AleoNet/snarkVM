@@ -101,14 +101,17 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        // Sample the transaction.
-        let expected = crate::vm::test_helpers::sample_execution_transaction();
-
-        // Check the byte representation.
-        let expected_bytes = expected.to_bytes_le()?;
-        assert_eq!(expected, Transaction::read_le(&expected_bytes[..])?);
-        assert!(Transaction::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
-
+        for expected in [
+            crate::vm::test_helpers::sample_deployment_transaction(),
+            crate::vm::test_helpers::sample_execution_transaction(),
+        ]
+        .into_iter()
+        {
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le()?;
+            assert_eq!(expected, Transaction::read_le(&expected_bytes[..])?);
+            assert!(Transaction::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+        }
         Ok(())
     }
 }

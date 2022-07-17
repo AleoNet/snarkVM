@@ -90,34 +90,40 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        // Sample the transaction.
-        let expected = crate::vm::test_helpers::sample_execution_transaction();
+        for expected in [
+            crate::vm::test_helpers::sample_deployment_transaction(),
+            crate::vm::test_helpers::sample_execution_transaction(),
+        ]
+        .into_iter()
+        {
+            // Serialize
+            let expected_string = &expected.to_string();
+            let candidate_string = serde_json::to_string(&expected)?;
 
-        // Serialize
-        let expected_string = &expected.to_string();
-        let candidate_string = serde_json::to_string(&expected)?;
-
-        // Deserialize
-        assert_eq!(expected, Transaction::from_str(expected_string)?);
-        assert_eq!(expected, serde_json::from_str(&candidate_string)?);
-
+            // Deserialize
+            assert_eq!(expected, Transaction::from_str(expected_string)?);
+            assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+        }
         Ok(())
     }
 
     #[test]
     fn test_bincode() -> Result<()> {
-        // Sample the transaction.
-        let expected = crate::vm::test_helpers::sample_execution_transaction();
+        for expected in [
+            crate::vm::test_helpers::sample_deployment_transaction(),
+            crate::vm::test_helpers::sample_execution_transaction(),
+        ]
+        .into_iter()
+        {
+            // Serialize
+            let expected_bytes = expected.to_bytes_le()?;
+            let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
+            assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
-        // Serialize
-        let expected_bytes = expected.to_bytes_le()?;
-        let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
-        assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
-
-        // Deserialize
-        assert_eq!(expected, Transaction::read_le(&expected_bytes[..])?);
-        assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
-
+            // Deserialize
+            assert_eq!(expected, Transaction::read_le(&expected_bytes[..])?);
+            assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
+        }
         Ok(())
     }
 }

@@ -233,7 +233,45 @@ impl<N: Network> Process<N> {
         Ok((response, execution))
     }
 
-    /// Verifies a program call for the given execution.
+    /// Verifies the given deployment is well-formed.
+    #[inline]
+    pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        deployment: &Deployment<N>,
+        rng: &mut R,
+    ) -> Result<()> {
+        // Retrieve the program.
+        let program = deployment.program().clone();
+        // Retrieve the program ID.
+        let program_id = deployment.program().id();
+
+        // Ensure the program does not already exist in the process.
+        ensure!(self.contains_program(program_id), "Program '{program_id}' already exists");
+
+        // Check Program //
+
+        // Serialize the program into bytes.
+        let program_bytes = program.to_bytes_le()?;
+        // Ensure the program deserializes from bytes correctly.
+        ensure!(program == Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
+
+        // Serialize the program into string.
+        let program_string = program.to_string();
+        // Ensure the program deserializes from a string correctly.
+        ensure!(program == Program::from_str(&program_string)?, "Program string serialization failed");
+
+        // Ensure the program is well-formed, by computing the stack.
+        let stack = self.compute_stack(&program)?;
+
+        // Check Certificates //
+
+        // Ensure the verifying keys are well-formed and the certificates are valid.
+        stack.verify_deployment::<A, R>(deployment.verifying_keys(), rng)?;
+
+        Ok(())
+    }
+
+    /// Verifies the given execution is valid.
     #[inline]
     pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
         // Ensure the execution contains transitions.

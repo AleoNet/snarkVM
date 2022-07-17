@@ -305,6 +305,27 @@ impl<N: Network> Call<N> {
                         // Return the request and response.
                         (request, response)
                     }
+                    CallStack::CheckDeployment(_, private_key, ..) => {
+                        // Compute the request.
+                        let request = Request::sign(
+                            &private_key,
+                            *substack.program_id(),
+                            *function.name(),
+                            &inputs,
+                            &function.input_types(),
+                            rng,
+                        )?;
+
+                        // Retrieve the call stack.
+                        let mut call_stack = registers.call_stack();
+                        // Push the request onto the call stack.
+                        call_stack.push(request.clone())?;
+
+                        // Execute the request.
+                        let response = substack.execute_function::<A, _>(call_stack, rng)?;
+                        // Return the request and response.
+                        (request, response)
+                    }
                     // If the circuit is in evaluate mode, then throw an error.
                     CallStack::Evaluate => {
                         bail!("Cannot 'execute' a function in 'evaluate' mode.")

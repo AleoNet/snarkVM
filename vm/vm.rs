@@ -22,7 +22,7 @@ use crate::{
     },
     ledger::Transaction,
 };
-use snarkvm_compiler::{Authorization, Execution, Process, Program};
+use snarkvm_compiler::{Authorization, Deployment, Execution, Process, Program};
 
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -205,9 +205,29 @@ impl VM {
 
         match transaction {
             Transaction::Deploy(_, deployment) => {
-                // TODO (howardwu): Check the program (1. ensure the program ID does not exist already, 2. check it is well-formed).
-                // TODO (howardwu): Check the verifying key.
-                true
+                // Compute the core logic.
+                macro_rules! logic {
+                    ($process:expr, $network:path, $aleo:path) => {{
+                        let task = || {
+                            // Prepare the deployment.
+                            let deployment = cast_ref!(&deployment as Deployment<$network>);
+                            // Initialize an RNG.
+                            let rng = &mut rand::thread_rng();
+                            // Verify the deployment.
+                            $process.verify_deployment::<$aleo, _>(&deployment, rng)
+                        };
+                        task()
+                    }};
+                }
+
+                // Process the logic.
+                match process!(logic) {
+                    Ok(()) => true,
+                    Err(error) => {
+                        warn!("Transaction (deployment) verification failed: {error}");
+                        false
+                    }
+                }
             }
             Transaction::Execute(_, execution) => {
                 // Compute the core logic.
@@ -227,7 +247,7 @@ impl VM {
                 match process!(logic) {
                     Ok(()) => true,
                     Err(error) => {
-                        warn!("Transaction verification failed: {error}");
+                        warn!("Transaction (execution) verification failed: {error}");
                         false
                     }
                 }
@@ -240,7 +260,7 @@ impl VM {
 pub(crate) mod test_helpers {
     use super::*;
     use crate::console::{
-        account::PrivateKey,
+        account::{Address, PrivateKey},
         network::Testnet3,
         program::{Identifier, Value},
     };
@@ -259,11 +279,23 @@ pub(crate) mod test_helpers {
                     r"
 program testing.aleo;
 
+interface message:
+    amount as u128;
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    amount as u64.private;
+
 function compute:
-    input r0 as u32.private;
-    input r1 as u32.public;
-    add r0 r1 into r2;
-    output r2 as u32.public;",
+    input r0 as message.private;
+    input r1 as message.public;
+    input r2 as message.private;
+    input r3 as token.record;
+    add r0.amount r1.amount into r4;
+    cast r3.owner r3.gates r3.amount into r5 as token.record;
+    output r4 as u128.public;
+    output r5 as token.record;",
                 )
                 .unwrap()
             })
@@ -304,14 +336,20 @@ function compute:
                 let rng = &mut test_crypto_rng();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
                 // Authorize.
                 let authorization = VM::authorize(
                     &caller_private_key,
                     program.id(),
                     Identifier::from_str("compute").unwrap(),
                     &[
-                        Value::<CurrentNetwork>::from_str("5u32").unwrap(),
-                        Value::<CurrentNetwork>::from_str("10u32").unwrap(),
+                        Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
+                        Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
+                        Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
+                        Value::<CurrentNetwork>::from_str(&format!(
+                            "{{ owner: {address}.private, gates: 5u64.private, amount: 100u64.private }}"
+                        ))
+                        .unwrap(),
                     ],
                     rng,
                 )

@@ -20,19 +20,39 @@ impl<N: Network> Process<N> {
     /// Adds a new program to the process.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Retrieve the program ID.
-        let program_id = program.id();
-
-        // If the program already exists, ensure it is the same and return.
-        if self.contains_program(program_id) {
-            // Retrieve the existing program.
-            let existing_program = self.get_program(program_id)?;
-            // Ensure the program is the same.
-            match existing_program == program {
-                true => return Ok(()),
-                false => bail!("Program already exists but with different contents"),
+        // Compute the program stack.
+        let stack = self.compute_stack(program)?;
+        // Check if the program ID exists in the process.
+        match self.contains_program(program.id()) {
+            // If the program already exists, ensure it is the same and return.
+            true => {
+                // Retrieve the existing stack.
+                let existing_stack = self.get_stack(program.id())?;
+                // Ensure the stacks are the same.
+                match existing_stack == &stack {
+                    true => Ok(()),
+                    false => bail!("Program already exists but differs in its contents."),
+                }
+            }
+            // Otherwise, insert the program stack.
+            false => {
+                // Add the stack to the process.
+                self.stacks.insert(*program.id(), stack);
+                // Return success.
+                Ok(())
             }
         }
+    }
+
+    /// Checks the given program is well-formed, computing its stack in the process.
+    #[inline]
+    pub fn compute_stack(&self, program: &Program<N>) -> Result<Stack<N>> {
+        // Retrieve the program ID.
+        let program_id = program.id();
+        // Ensure the program network-level domain (NLD) is correct.
+        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
+        // Ensure the program contains functions.
+        ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 
         // Ensure the program imports all exist in the process already.
         for import in program.imports().keys() {
@@ -66,12 +86,8 @@ impl<N: Network> Process<N> {
             // Add the register types to the stack.
             stack.add_function_types(function.name(), register_types)?;
         }
-
-        // Add the stack to the process.
-        self.stacks.insert(*program_id, stack);
-
-        // Return success.
-        Ok(())
+        // Return the stack.
+        Ok(stack)
     }
 }
 

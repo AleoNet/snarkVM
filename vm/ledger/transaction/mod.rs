@@ -42,6 +42,8 @@ pub enum Transaction<N: Network> {
 impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
     pub fn deploy(deployment: Deployment<N>) -> Result<Self> {
+        // Ensure the transaction is not empty.
+        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
         // Compute the transaction ID.
         let id = *Self::deployment_tree(&deployment)?.root();
         // Construct the deployment transaction.
