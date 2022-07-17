@@ -24,6 +24,8 @@ use console::{
     types::Field,
 };
 
+type Variant = u16;
+
 /// The transition input.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Input<N: Network> {
@@ -40,6 +42,17 @@ pub enum Input<N: Network> {
 }
 
 impl<N: Network> Input<N> {
+    /// Returns the variant of the input.
+    pub fn variant(&self) -> Variant {
+        match self {
+            Input::Constant(_, _) => 0,
+            Input::Public(_, _) => 1,
+            Input::Private(_, _) => 2,
+            Input::Record(_) => 3,
+            Input::ExternalRecord(_) => 4,
+        }
+    }
+
     /// Returns the ID of the input.
     pub fn id(&self) -> &Field<N> {
         match self {

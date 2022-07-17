@@ -24,6 +24,8 @@ use console::{
     types::Field,
 };
 
+type Variant = u16;
+
 /// The transition output.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Output<N: Network> {
@@ -40,6 +42,17 @@ pub enum Output<N: Network> {
 }
 
 impl<N: Network> Output<N> {
+    /// Returns the variant of the output.
+    pub fn variant(&self) -> Variant {
+        match self {
+            Output::Constant(_, _) => 0,
+            Output::Public(_, _) => 1,
+            Output::Private(_, _) => 2,
+            Output::Record(_, _, _, _) => 3,
+            Output::ExternalRecord(_) => 4,
+        }
+    }
+
     /// Returns the ID of the output.
     pub fn id(&self) -> &Field<N> {
         match self {
@@ -81,38 +94,35 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns `true` if the output is well-formed.
-    /// If the optional value exists, this method checks that it hashes to the input ID.
+    /// If the optional value exists, this method checks that it hashes to the output ID.
     pub fn verify(&self) -> bool {
-        match self {
+        // Ensure the hash of the value (if the value exists) is correct.
+        let result = match self {
             Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
             },
             Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
             },
             Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
             },
             Output::Record(_, _, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => checksum == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
+                Ok(candidate_hash) => Ok(checksum == &candidate_hash),
+                Err(error) => Err(error),
             },
-            _ => true,
+            _ => Ok(true),
+        };
+
+        match result {
+            Ok(is_hash_valid) => is_hash_valid,
+            Err(error) => {
+                eprintln!("{error}");
+                false
+            }
         }
     }
 }

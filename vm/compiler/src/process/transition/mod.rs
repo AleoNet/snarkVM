@@ -26,10 +26,19 @@ mod string;
 
 use crate::Proof;
 use console::{
-    network::prelude::*,
+    collections::merkle_tree::MerklePath,
+    network::{prelude::*, BHPMerkleTree},
     program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value, ValueType},
     types::{Field, Group},
 };
+
+/// The depth of the Merkle tree for the transition.
+const TRANSITION_DEPTH: u8 = 16;
+
+/// The Merkle tree for the transition.
+type TransitionTree<N> = BHPMerkleTree<N, TRANSITION_DEPTH>;
+/// The Merkle path for the transition.
+type TransitionPath<N> = MerklePath<N, TRANSITION_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
@@ -68,12 +77,9 @@ impl<N: Network> Transition<N> {
         ensure!(outputs.len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
 
         // Compute the transition ID.
-        let input_ids = inputs.iter().flat_map(|input| input.id().to_bits_le());
-        let output_ids = outputs.iter().flat_map(|output| output.id().to_bits_le());
-        let id = N::hash_bhp1024(&input_ids.chain(output_ids).collect::<Vec<_>>())?;
-
+        let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self { id, program_id, function_name, inputs, outputs, proof, tpk, fee })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, proof, tpk, fee })
     }
 
     /// Initializes a new transition from a request and response.
@@ -219,8 +225,9 @@ impl<N: Network> Transition<N> {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        // Retrieve the `tpk`.
         let tpk = request.to_tpk();
-
+        // Return the transition.
         Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
     }
 
@@ -289,5 +296,57 @@ impl<N: Network> Transition<N> {
     /// Returns an iterator over the nonces, for outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.outputs.iter().flat_map(Output::nonce)
+    }
+}
+
+impl<N: Network> Transition<N> {
+    /// Returns the transition root, by computing the root for a Merkle tree of the input and output IDs.
+    pub fn to_root(&self) -> Result<Field<N>> {
+        Ok(*self.to_tree()?.root())
+    }
+
+    /// Returns an inclusion proof for the transition tree.
+    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransitionPath<N>> {
+        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    }
+
+    /// The Merkle tree of input and output IDs for the transition.
+    pub fn to_tree(&self) -> Result<TransitionTree<N>> {
+        Self::function_tree(&self.program_id, &self.function_name, &self.inputs, &self.outputs)
+    }
+
+    /// Returns the Merkle tree for the given program ID, function name, inputs, and outputs.
+    fn function_tree(
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+        inputs: &[Input<N>],
+        outputs: &[Output<N>],
+    ) -> Result<TransitionTree<N>> {
+        // Set the version.
+        let version = 0u8;
+        // Prepare the input leaves with the version, program ID, function name, input variant, and input ID.
+        let input_leaves = inputs.iter().map(|input| {
+            version
+                .to_bits_le()
+                .into_iter()
+                .chain(program_id.to_bits_le().into_iter())
+                .chain(function_name.to_bits_le().into_iter())
+                .chain(input.variant().to_bits_le().into_iter())
+                .chain(input.id().to_bits_le().into_iter())
+                .collect::<Vec<_>>()
+        });
+        // Prepare the output leaves with the version, program ID, function name, output variant, and output ID.
+        let output_leaves = outputs.iter().map(|output| {
+            version
+                .to_bits_le()
+                .into_iter()
+                .chain(program_id.to_bits_le().into_iter())
+                .chain(function_name.to_bits_le().into_iter())
+                .chain(output.variant().to_bits_le().into_iter())
+                .chain(output.id().to_bits_le().into_iter())
+                .collect::<Vec<_>>()
+        });
+        // Compute the function tree.
+        N::merkle_tree_bhp::<TRANSITION_DEPTH>(&input_leaves.chain(output_leaves).collect::<Vec<_>>())
     }
 }

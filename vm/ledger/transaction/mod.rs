@@ -24,12 +24,12 @@ use crate::console::{
 
 use snarkvm_compiler::{Deployment, Execution, Transition};
 
-/// The depth of the Merkle tree for transactions in a block.
+/// The depth of the Merkle tree for the transaction.
 const TRANSACTION_DEPTH: u8 = 16;
 
-/// The Merkle tree for transactions in a block.
+/// The Merkle tree for the transaction.
 type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
-/// The Merkle path for transaction in a block.
+/// The Merkle path for the transaction.
 type TransactionPath<N> = MerklePath<N, TRANSACTION_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -119,7 +119,7 @@ impl<N: Network> Transaction<N> {
         self.to_tree()?.prove(index, &leaf.to_bits_le())
     }
 
-    /// The Merkle tree of transition IDs for the block.
+    /// The Merkle tree of transition IDs for the transaction.
     pub fn to_tree(&self) -> Result<TransactionTree<N>> {
         match self {
             // Compute the deployment tree.
@@ -144,7 +144,7 @@ impl<N: Network> Transaction<N> {
                 .chain(function.to_bytes_le()?.to_bits_le().into_iter())
                 .collect())
         });
-        // Compute the transactions tree.
+        // Compute the deployment tree.
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Result<Vec<_>>>()?)
     }
 
@@ -163,7 +163,7 @@ impl<N: Network> Transaction<N> {
                 .chain(transition.id().to_bits_le().into_iter())
                 .collect()
         });
-        // Compute the transactions tree.
+        // Compute the execution tree.
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())
     }
 }
