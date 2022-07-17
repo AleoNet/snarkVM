@@ -32,9 +32,6 @@ pub use registers::*;
 mod stack;
 pub use stack::*;
 
-mod trace;
-use trace::*;
-
 mod transition;
 pub use transition::*;
 
@@ -194,12 +191,6 @@ impl<N: Network> Process<N> {
         let outputs = stack.evaluate_function::<A>(&function, request.inputs())?;
         // Compute the response.
         let response = Response::new(program.id(), request.inputs().len(), request.tvk(), outputs, &output_types)?;
-
-        // Initialize the trace.
-        let mut trace = Trace::<N>::new(request, &response)?;
-        // Finalize the trace.
-        trace.finalize()?;
-        println!("{:?}", trace.leaves());
 
         Ok(response)
     }

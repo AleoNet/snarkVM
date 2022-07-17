@@ -26,6 +26,8 @@ use crate::{
     vm::VM,
 };
 
+use indexmap::IndexMap;
+
 #[cfg(feature = "parallel")]
 use rayon::{prelude::*, slice::ParallelSlice};
 
@@ -35,19 +37,21 @@ const TRANSACTIONS_DEPTH: u8 = 16;
 /// The Merkle tree for transactions in a block.
 type TransactionsTree<N> = BHPMerkleTree<N, TRANSACTIONS_DEPTH>;
 /// The Merkle path for transaction in a block.
-type TransactionsPath<N> = MerklePath<N, TRANSACTIONS_DEPTH>;
+pub(crate) type TransactionsPath<N> = MerklePath<N, TRANSACTIONS_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
-    /// The list of transactions included in a block.
-    transactions: Vec<Transaction<N>>,
+    /// The transactions included in a block.
+    transactions: IndexMap<N::TransactionID, Transaction<N>>,
 }
 
 impl<N: Network> Transactions<N> {
     /// Initializes from a given transactions list.
     pub fn from(transactions: &[Transaction<N>]) -> Result<Self> {
         // Construct the transactions.
-        let transactions = Self { transactions: transactions.to_vec() };
+        let transactions = Self {
+            transactions: transactions.iter().cloned().map(|transaction| (transaction.id(), transaction)).collect(),
+        };
         // Ensure the transactions are valid.
         match transactions.verify() {
             true => Ok(transactions),
@@ -64,7 +68,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !self.transactions.as_parallel_slice().par_iter().all(|transaction| VM::verify::<N>(transaction)) {
+        if !self.transactions.par_iter().all(|(_, transaction)| VM::verify::<N>(transaction)) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
@@ -115,28 +119,28 @@ impl<N: Network> Transactions<N> {
     // }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
-    pub fn transaction_ids(&self) -> impl Iterator<Item = N::TransactionID> + '_ {
-        self.transactions.iter().map(Transaction::id)
+    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
+        self.transactions.keys()
     }
 
     /// Returns an iterator over the transition public keys, for all executed transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transactions.iter().flat_map(Transaction::transition_public_keys)
+        self.transactions.values().flat_map(Transaction::transition_public_keys)
     }
 
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.iter().flat_map(Transaction::serial_numbers)
+        self.transactions.values().flat_map(Transaction::serial_numbers)
     }
 
     /// Returns an iterator over the commitments, for all executed transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.iter().flat_map(Transaction::commitments)
+        self.transactions.values().flat_map(Transaction::commitments)
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.iter().flat_map(Transaction::nonces)
+        self.transactions.values().flat_map(Transaction::nonces)
     }
 
     // /// Returns the net value balance, by summing the value balance from all transactions.
@@ -168,26 +172,6 @@ impl<N: Network> Transactions<N> {
     //         false => Err(anyhow!("Block must have 1 coinbase transaction, found {}", num_coinbase)),
     //     }
     // }
-}
-
-impl<N: Network> Transactions<N> {
-    /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
-    pub fn to_root(&self) -> Result<Field<N>> {
-        Ok(*self.to_tree()?.root())
-    }
-
-    /// Returns an inclusion proof for the transactions tree.
-    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransactionsPath<N>> {
-        self.to_tree()?.prove(index, &leaf.to_bits_le())
-    }
-
-    /// The Merkle tree of transaction IDs for the block.
-    pub fn to_tree(&self) -> Result<TransactionsTree<N>> {
-        // Compute the transactions tree.
-        N::merkle_tree_bhp::<TRANSACTIONS_DEPTH>(
-            &self.transactions.iter().map(Transaction::id).map(|id| (*id).to_bits_le()).collect::<Vec<_>>(),
-        )
-    }
 
     // /// Returns records from the transactions belonging to the given account view key.
     // pub fn to_decrypted_records<'a>(
@@ -196,6 +180,34 @@ impl<N: Network> Transactions<N> {
     // ) -> impl Iterator<Item = Record<N>> + 'a {
     //     self.transactions.iter().flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     // }
+}
+
+impl<N: Network> Transactions<N> {
+    /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
+    pub fn to_root(&self) -> Result<Field<N>> {
+        Ok(*self.to_tree()?.root())
+    }
+
+    /// Returns the Merkle path for the transactions leaf.
+    pub fn to_path(&self, index: usize, leaf: impl ToBits) -> Result<TransactionsPath<N>> {
+        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    }
+
+    /// The Merkle tree of transaction IDs for the block.
+    pub fn to_tree(&self) -> Result<TransactionsTree<N>> {
+        Self::transactions_tree(&self.transactions)
+    }
+
+    /// Returns the Merkle tree for the given transactions.
+    fn transactions_tree(transactions: &IndexMap<N::TransactionID, Transaction<N>>) -> Result<TransactionsTree<N>> {
+        // Prepare the leaves.
+        let leaves = transactions.values().enumerate().map(|(index, transaction)| {
+            // Construct the leaf as (index || transaction ID).
+            (index as u32).to_bits_le().into_iter().chain(transaction.id().to_bits_le().into_iter()).collect()
+        });
+        // Compute the deployment tree.
+        N::merkle_tree_bhp::<TRANSACTIONS_DEPTH>(&leaves.collect::<Vec<_>>())
+    }
 }
 
 impl<N: Network> FromBytes for Transactions<N> {
@@ -218,7 +230,7 @@ impl<N: Network> ToBytes for Transactions<N> {
         // Write the number of transactions.
         (self.transactions.len() as u16).write_le(&mut writer)?;
         // Write the transactions.
-        self.transactions.write_le(&mut writer)
+        self.transactions.values().try_for_each(|transaction| transaction.write_le(&mut writer))
     }
 }
 
@@ -252,7 +264,7 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
 }
 
 impl<N: Network> Deref for Transactions<N> {
-    type Target = [Transaction<N>];
+    type Target = IndexMap<N::TransactionID, Transaction<N>>;
 
     fn deref(&self) -> &Self::Target {
         &self.transactions

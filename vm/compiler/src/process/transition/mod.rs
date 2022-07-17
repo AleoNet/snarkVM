@@ -17,6 +17,9 @@
 mod input;
 use input::*;
 
+mod leaf;
+pub use leaf::*;
+
 mod output;
 use output::*;
 
@@ -33,12 +36,12 @@ use console::{
 };
 
 /// The depth of the Merkle tree for the transition.
-const TRANSITION_DEPTH: u8 = 16;
+const TRANSITION_DEPTH: u8 = 4;
 
 /// The Merkle tree for the transition.
 type TransitionTree<N> = BHPMerkleTree<N, TRANSITION_DEPTH>;
-/// The Merkle path for the transition.
-type TransitionPath<N> = MerklePath<N, TRANSITION_DEPTH>;
+/// The Merkle path for an input or output ID in the transition.
+pub type TransitionPath<N> = MerklePath<N, TRANSITION_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
@@ -305,9 +308,59 @@ impl<N: Network> Transition<N> {
         Ok(*self.to_tree()?.root())
     }
 
-    /// Returns an inclusion proof for the transition tree.
-    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransitionPath<N>> {
-        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    /// Returns the Merkle leaf for the given input or output ID in the transition.
+    pub fn to_leaf(&self, id: &Field<N>, is_input: bool) -> Result<TransitionLeaf<N>> {
+        // Set the version.
+        let version = 0u8;
+        // Match on the input or output ID.
+        match is_input {
+            true => {
+                // Iterate through the transition inputs.
+                for (index, input) in self.inputs.iter().enumerate() {
+                    // Check if the input ID matches the given ID.
+                    if id == input.id() {
+                        // Return the transition leaf.
+                        return Ok(TransitionLeaf::new(
+                            version,
+                            index as u8,
+                            self.program_id,
+                            self.function_name,
+                            input.variant(),
+                            *id,
+                        ));
+                    }
+                }
+                // Error if the input ID was not found.
+                bail!("Input ID not found in transition")
+            }
+            false => {
+                // Iterate through the transition outputs.
+                for (index, output) in self.outputs.iter().enumerate() {
+                    // Check if the output ID matches the given ID.
+                    if id == output.id() {
+                        // Compute the output index.
+                        let output_index = (self.inputs.len() + index) as u8;
+                        // Return the transition leaf.
+                        return Ok(TransitionLeaf::new(
+                            version,
+                            output_index,
+                            self.program_id,
+                            self.function_name,
+                            output.variant(),
+                            *id,
+                        ));
+                    }
+                }
+                // Error if the output ID was not found.
+                bail!("Output ID not found in transition")
+            }
+        }
+    }
+
+    /// Returns the Merkle path for the transition leaf.
+    pub fn to_path(&self, leaf: &TransitionLeaf<N>) -> Result<TransitionPath<N>> {
+        // Compute the Merkle path.
+        self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
     }
 
     /// The Merkle tree of input and output IDs for the transition.
@@ -324,29 +377,40 @@ impl<N: Network> Transition<N> {
     ) -> Result<TransitionTree<N>> {
         // Set the version.
         let version = 0u8;
-        // Prepare the input leaves with the version, program ID, function name, input variant, and input ID.
-        let input_leaves = inputs.iter().map(|input| {
-            version
+        // Prepare the input leaves.
+        let input_leaves = inputs.iter().enumerate().map(|(index, input)| {
+            // Construct each leaf as (version || index || program ID || function name || variant || ID).
+            TransitionLeaf::new(version, index as u8, *program_id, *function_name, input.variant(), *input.id())
                 .to_bits_le()
-                .into_iter()
-                .chain(program_id.to_bits_le().into_iter())
-                .chain(function_name.to_bits_le().into_iter())
-                .chain(input.variant().to_bits_le().into_iter())
-                .chain(input.id().to_bits_le().into_iter())
-                .collect::<Vec<_>>()
         });
-        // Prepare the output leaves with the version, program ID, function name, output variant, and output ID.
-        let output_leaves = outputs.iter().map(|output| {
-            version
-                .to_bits_le()
-                .into_iter()
-                .chain(program_id.to_bits_le().into_iter())
-                .chain(function_name.to_bits_le().into_iter())
-                .chain(output.variant().to_bits_le().into_iter())
-                .chain(output.id().to_bits_le().into_iter())
-                .collect::<Vec<_>>()
+        // Prepare the output leaves.
+        let output_leaves = outputs.iter().enumerate().map(|(index, output)| {
+            // Construct each leaf as (version || index || program ID || function name || variant || ID).
+            TransitionLeaf::new(
+                version,
+                (inputs.len() + index) as u8,
+                *program_id,
+                *function_name,
+                output.variant(),
+                *output.id(),
+            )
+            .to_bits_le()
         });
         // Compute the function tree.
         N::merkle_tree_bhp::<TRANSITION_DEPTH>(&input_leaves.chain(output_leaves).collect::<Vec<_>>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_transition_tree_depth() {
+        // Ensure the log2 relationship between depth and the number of transition inputs & outputs.
+        assert_eq!(1 << TRANSITION_DEPTH as usize, CurrentNetwork::MAX_INPUTS + CurrentNetwork::MAX_OUTPUTS);
     }
 }

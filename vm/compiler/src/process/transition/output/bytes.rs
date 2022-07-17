@@ -72,7 +72,7 @@ impl<N: Network> FromBytes for Output<N> {
 }
 
 impl<N: Network> ToBytes for Output<N> {
-    /// Writes the literal to a buffer.
+    /// Writes the output to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Constant(plaintext_hash, plaintext) => {

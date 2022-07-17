@@ -26,7 +26,7 @@ const HEADER_DEPTH: u8 = 3;
 /// The Merkle tree for the block header.
 type HeaderTree<N> = BHPMerkleTree<N, HEADER_DEPTH>;
 /// The Merkle path for the block header.
-type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
+pub(crate) type HeaderPath<N> = MerklePath<N, HEADER_DEPTH>;
 
 /// The header for the block contains metadata that uniquely identifies the block.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

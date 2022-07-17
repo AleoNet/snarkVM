@@ -20,6 +20,9 @@ pub use block::*;
 mod header;
 pub use header::*;
 
+mod state_path;
+pub use state_path::*;
+
 mod transaction;
 pub use transaction::*;
 

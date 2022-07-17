@@ -14,23 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod leaf;
+pub use leaf::*;
+
 mod string;
 
 use crate::console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
+    program::{Identifier, ProgramID},
     types::{Field, Group},
 };
-
 use snarkvm_compiler::{Deployment, Execution, Transition};
 
 /// The depth of the Merkle tree for the transaction.
-const TRANSACTION_DEPTH: u8 = 16;
+const TRANSACTION_DEPTH: u8 = 4;
 
 /// The Merkle tree for the transaction.
 type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
-/// The Merkle path for the transaction.
-type TransactionPath<N> = MerklePath<N, TRANSACTION_DEPTH>;
+/// The Merkle path for a function or transition in the transaction.
+pub type TransactionPath<N> = MerklePath<N, TRANSACTION_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
@@ -62,48 +65,48 @@ impl<N: Network> Transaction<N> {
     /// Returns the transaction ID.
     pub const fn id(&self) -> N::TransactionID {
         match self {
-            Transaction::Deploy(id, ..) => *id,
-            Transaction::Execute(id, ..) => *id,
+            Self::Deploy(id, ..) => *id,
+            Self::Execute(id, ..) => *id,
         }
     }
 
     /// Returns an iterator over the transition IDs, for all executed transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
-            Transaction::Deploy(..) => [].iter().map(Transition::id),
-            Transaction::Execute(.., execution) => execution.iter().map(Transition::id),
+            Self::Deploy(..) => [].iter().map(Transition::id),
+            Self::Execute(.., execution) => execution.iter().map(Transition::id),
         }
     }
 
     /// Returns an iterator over the transition public keys, for all executed transitions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         match self {
-            Transaction::Deploy(..) => [].iter().map(Transition::tpk),
-            Transaction::Execute(.., execution) => execution.iter().map(Transition::tpk),
+            Self::Deploy(..) => [].iter().map(Transition::tpk),
+            Self::Execute(.., execution) => execution.iter().map(Transition::tpk),
         }
     }
 
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
-            Transaction::Deploy(..) => [].iter().flat_map(Transition::serial_numbers),
-            Transaction::Execute(.., execution) => execution.iter().flat_map(Transition::serial_numbers),
+            Self::Deploy(..) => [].iter().flat_map(Transition::serial_numbers),
+            Self::Execute(.., execution) => execution.iter().flat_map(Transition::serial_numbers),
         }
     }
 
     /// Returns an iterator over the commitments, for all executed transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
-            Transaction::Deploy(..) => [].iter().flat_map(Transition::commitments),
-            Transaction::Execute(.., execution) => execution.iter().flat_map(Transition::commitments),
+            Self::Deploy(..) => [].iter().flat_map(Transition::commitments),
+            Self::Execute(.., execution) => execution.iter().flat_map(Transition::commitments),
         }
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         match self {
-            Transaction::Deploy(..) => [].iter().flat_map(Transition::nonces),
-            Transaction::Execute(.., execution) => execution.iter().flat_map(Transition::nonces),
+            Self::Deploy(..) => [].iter().flat_map(Transition::nonces),
+            Self::Execute(.., execution) => execution.iter().flat_map(Transition::nonces),
         }
     }
 }
@@ -114,9 +117,52 @@ impl<N: Network> Transaction<N> {
         Ok(*self.to_tree()?.root())
     }
 
-    /// Returns an inclusion proof for the transaction tree.
-    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransactionPath<N>> {
-        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    /// Returns the Merkle leaf for the given ID of a function or transition in the transaction.
+    pub fn to_leaf(&self, id: &Field<N>) -> Result<TransactionLeaf<N>> {
+        match self {
+            Self::Deploy(_, deployment) => {
+                // Iterate through the functions in the deployment.
+                for (index, function) in deployment.program().functions().values().enumerate() {
+                    // Check if the function ID matches the given ID.
+                    if *id == N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())? {
+                        // Return the transaction leaf.
+                        return Ok(TransactionLeaf::new(
+                            0u8,
+                            index as u16,
+                            *deployment.program().id(),
+                            *function.name(),
+                            *id,
+                        ));
+                    }
+                }
+                // Error if the function ID was not found.
+                bail!("Function ID not found in deployment transaction");
+            }
+            Self::Execute(_, execution) => {
+                // Iterate through the transitions in the execution.
+                for (index, transition) in execution.iter().enumerate() {
+                    // Check if the transition ID matches the given ID.
+                    if id == transition.id() {
+                        // Return the transaction leaf.
+                        return Ok(TransactionLeaf::new(
+                            1u8,
+                            index as u16,
+                            *transition.program_id(),
+                            *transition.function_name(),
+                            *id,
+                        ));
+                    }
+                }
+                // Error if the transition ID was not found.
+                bail!("Transition ID not found in execution transaction");
+            }
+        }
+    }
+
+    /// Returns the Merkle path for the transaction leaf.
+    pub fn to_path(&self, leaf: &TransactionLeaf<N>) -> Result<TransactionPath<N>> {
+        // Compute the Merkle path.
+        self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
     }
 
     /// The Merkle tree of transition IDs for the transaction.
@@ -135,14 +181,17 @@ impl<N: Network> Transaction<N> {
         let variant = 0u8;
         // Retrieve the program.
         let program = deployment.program();
-        // Prepare the leaves with the variant, program ID, and function.
-        let leaves = program.functions().values().map(|function| {
-            Ok(variant
-                .to_bits_le()
-                .into_iter()
-                .chain(program.id().to_bits_le().into_iter())
-                .chain(function.to_bytes_le()?.to_bits_le().into_iter())
-                .collect())
+        // Prepare the leaves.
+        let leaves = program.functions().values().enumerate().map(|(index, function)| {
+            // Construct the leaf as (variant || index || program ID || function name || Hash(function)).
+            Ok(TransactionLeaf::new(
+                variant,
+                index as u16,
+                *program.id(),
+                *function.name(),
+                N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?,
+            )
+            .to_bits_le())
         });
         // Compute the deployment tree.
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Result<Vec<_>>>()?)
@@ -152,16 +201,17 @@ impl<N: Network> Transaction<N> {
     fn execution_tree(execution: &Execution<N>) -> Result<TransactionTree<N>> {
         // Set the variant.
         let variant = 1u8;
-        // Prepare the leaves with the variant, program ID, function name, and transition ID.
-        let leaves = execution.iter().map(|transition| {
-            // Construct the leaf as (variant || program ID || function name || transition ID).
-            variant
-                .to_bits_le()
-                .into_iter()
-                .chain(transition.program_id().to_bits_le().into_iter())
-                .chain(transition.function_name().to_bits_le().into_iter())
-                .chain(transition.id().to_bits_le().into_iter())
-                .collect()
+        // Prepare the leaves.
+        let leaves = execution.iter().enumerate().map(|(index, transition)| {
+            // Construct the leaf as (variant || index || program ID || function name || transition ID).
+            TransactionLeaf::new(
+                variant,
+                index as u16,
+                *transition.program_id(),
+                *transition.function_name(),
+                *transition.id(),
+            )
+            .to_bits_le()
         });
         // Compute the execution tree.
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())

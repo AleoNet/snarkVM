@@ -278,17 +278,31 @@ impl Network for Testnet3 {
     }
 
     /// Returns a Merkle tree with a BHP leaf hasher of 1024-bits and a BHP path hasher of 512-bits.
-    fn merkle_tree_bhp<const DEPTH: u8>(
-        leaves: &[Vec<bool>],
-    ) -> Result<MerkleTree<Self, BHP1024<Self>, BHP512<Self>, DEPTH>> {
+    fn merkle_tree_bhp<const DEPTH: u8>(leaves: &[Vec<bool>]) -> Result<BHPMerkleTree<Self, DEPTH>> {
         MerkleTree::new(&*BHP_1024, &*BHP_512, leaves)
     }
 
     /// Returns a Merkle tree with a Poseidon leaf hasher with input rate of 4 and a Poseidon path hasher with input rate of 2.
-    fn merkle_tree_psd<const DEPTH: u8>(
-        leaves: &[Vec<Field<Self>>],
-    ) -> Result<MerkleTree<Self, Poseidon4<Self>, Poseidon2<Self>, DEPTH>> {
+    fn merkle_tree_psd<const DEPTH: u8>(leaves: &[Vec<Field<Self>>]) -> Result<PoseidonMerkleTree<Self, DEPTH>> {
         MerkleTree::new(&*POSEIDON_4, &*POSEIDON_2, leaves)
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_bhp<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<bool>,
+    ) -> bool {
+        path.verify(&*BHP_1024, &*BHP_512, root, leaf)
+    }
+
+    /// Returns `true` if the given Merkle path is valid for the given root and leaf.
+    fn verify_merkle_path_psd<const DEPTH: u8>(
+        path: &MerklePath<Self, DEPTH>,
+        root: &Field<Self>,
+        leaf: &Vec<Field<Self>>,
+    ) -> bool {
+        path.verify(&*POSEIDON_4, &*POSEIDON_2, root, leaf)
     }
 }
 
