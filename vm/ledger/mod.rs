@@ -42,7 +42,7 @@ use indexmap::{IndexMap, IndexSet};
 const BLOCKS_DEPTH: u8 = 32;
 
 /// The Merkle tree for the blocks.
-type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
+pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 

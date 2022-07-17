@@ -56,6 +56,7 @@ pub struct StatePath<N: Network> {
 
 impl<N: Network> StatePath<N> {
     /// Initializes a new instance of `StatePath`.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         state_root: N::StateRoot,
         block_path: BlockPath<N>,
