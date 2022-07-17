@@ -58,6 +58,11 @@ impl<N: Network> Input<N> {
         }
     }
 
+    /// Returns the public verifier inputs for the proof.
+    pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
+        [self.id()].into_iter().map(|id| **id)
+    }
+
     /// Returns `true` if the input is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
     pub fn verify(&self) -> bool {

@@ -66,6 +66,19 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Returns the checksum if the output is a record.
+    pub const fn checksum(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(_, _, checksum, ..) => Some(checksum),
+            _ => None,
+        }
+    }
+
+    /// Returns the public verifier inputs for the proof.
+    pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
+        [Some(self.id()), self.nonce(), self.checksum()].into_iter().flatten().map(|x| **x)
+    }
+
     /// Returns `true` if the output is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
     pub fn verify(&self) -> bool {

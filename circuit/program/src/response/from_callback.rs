@@ -17,38 +17,51 @@
 use super::*;
 
 impl<A: Aleo> Response<A> {
-    /// Returns `true` if the outputs match their output IDs, and `false` otherwise.
-    pub fn verify(
-        &self,
+    /// Initializes a response, given the number of inputs, caller, tvk, outputs, and output types.
+    pub fn from_callback(
         program_id: &ProgramID<A>,
         num_inputs: usize,
         tvk: &Field<A>,
-        output_types: &[console::ValueType<A::Network>],
-    ) -> Boolean<A> {
-        // Check the outputs against their output IDs.
-        self.output_ids
+        outputs: Vec<console::Value<A::Network>>,        // Note: Console type
+        output_types: &[console::ValueType<A::Network>], // Note: Console type
+    ) -> Self {
+        match outputs
             .iter()
-            .zip_eq(&self.outputs)
             .zip_eq(output_types)
             .enumerate()
-            .map(|(index, ((output_id, output), output_type))| {
-                match output_id {
-                    // For a constant output, compute the hash of the output, and compare it to the computed hash.
-                    OutputID::Constant(expected_hash) => {
+            .map(|(index, (output, output_types))| {
+                match output_types {
+                    // For a constant output, compute the hash of the output.
+                    console::ValueType::Constant(..) => {
+                        // Inject the output as `Mode::Constant`.
+                        let output = Value::new(Mode::Constant, output.clone());
+                        // Ensure the output is a plaintext.
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
+
                         // Hash the output to a field element.
                         let output_hash = A::hash_bhp1024(&output.to_bits_le());
-                        // Ensure the computed hash matches the expected hash.
-                        output_hash.is_equal(expected_hash)
+                        // Return the output ID.
+                        Ok((OutputID::constant(output_hash), output))
                     }
-                    // For a public output, compute the hash of the output, and compare it to the computed hash.
-                    OutputID::Public(expected_hash) => {
+                    // For a public output, compute the hash of the output.
+                    console::ValueType::Public(..) => {
+                        // Inject the output as `Mode::Private`.
+                        let output = Value::new(Mode::Private, output.clone());
+                        // Ensure the output is a plaintext.
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
+
                         // Hash the output to a field element.
                         let output_hash = A::hash_bhp1024(&output.to_bits_le());
-                        // Ensure the computed hash matches the expected hash.
-                        output_hash.is_equal(expected_hash)
+                        // Return the output ID.
+                        Ok((OutputID::public(output_hash), output))
                     }
-                    // For a private output, compute the ciphertext (using `tvk`) and compare the ciphertext hash.
-                    OutputID::Private(expected_hash) => {
+                    // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
+                    console::ValueType::Private(..) => {
+                        // Inject the output as `Mode::Private`.
+                        let output = Value::new(Mode::Private, output.clone());
+                        // Ensure the output is a plaintext.
+                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
+
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Compute the output view key as `Hash(tvk || index)`.
@@ -61,22 +74,19 @@ impl<A: Aleo> Response<A> {
                         };
                         // Hash the ciphertext to a field element.
                         let output_hash = A::hash_bhp1024(&ciphertext.to_bits_le());
-                        // Ensure the computed hash matches the expected hash.
-                        output_hash.is_equal(expected_hash)
+                        // Return the output ID.
+                        Ok((OutputID::private(output_hash), output))
                     }
                     // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
-                    OutputID::Record(expected_cm, expected_nonce, expected_checksum) => {
+                    console::ValueType::Record(record_name) => {
+                        // Inject the output as `Mode::Private`.
+                        let output = Value::new(Mode::Private, output.clone());
+
                         // Retrieve the record.
                         let record = match &output {
                             Value::Record(record) => record,
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
-                        };
-                        // Retrieve the record name as a `Mode::Constant`.
-                        let record_name = match output_type {
-                            console::ValueType::Record(record_name) => Identifier::constant(*record_name),
-                            // Ensure the output is a record.
-                            _ => A::halt(format!("Expected a record type at output {index}")),
                         };
 
                         // Prepare the index as a constant field element.
@@ -84,37 +94,41 @@ impl<A: Aleo> Response<A> {
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &record_name, &randomizer);
+                        let commitment =
+                            record.to_commitment(program_id, &Identifier::constant(*record_name), &randomizer);
 
-                        // Compute the record nonce.
-                        let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
-
-                        // Encrypt the record, using the randomizer.
-                        let encrypted_record = record.encrypt(&randomizer);
-                        // Compute the record checksum, as the hash of the encrypted record.
-                        let checksum = A::hash_bhp1024(&encrypted_record.to_bits_le());
-
-                        // Ensure the computed record commitment matches the expected record commitment.
-                        commitment.is_equal(expected_cm)
-                        // Ensure the computed nonce matches the expected nonce.
-                        & nonce.is_equal(expected_nonce)
-                        // Ensure the computed record checksum matches the expected record checksum.
-                        & checksum.is_equal(expected_checksum)
+                        // Return the output ID.
+                        // Note: Because this is a callback, the output ID is **only** the record commitment.
+                        Ok((OutputID::external_record(commitment), output))
                     }
                     // For an external record output, compute the commitment (using `tvk`) of the output.
-                    OutputID::ExternalRecord(expected_commitment) => {
+                    console::ValueType::ExternalRecord(..) => {
+                        // Inject the output as `Mode::Private`.
+                        let output = Value::new(Mode::Private, output.clone());
+                        // Ensure the output is a record.
+                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
+
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
                         // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Commit the output to a field element.
                         let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
-                        // Ensure the computed commitment matches the expected commitment.
-                        commitment.is_equal(expected_commitment)
+                        // Return the output ID.
+                        Ok((OutputID::external_record(commitment), output))
                     }
                 }
             })
-            .fold(Boolean::constant(true), |acc, x| acc & x)
+            .collect::<Result<Vec<_>>>()
+        {
+            Ok(outputs) => {
+                // Unzip the output IDs from the output values.
+                let (output_ids, outputs) = outputs.into_iter().unzip();
+                // Return the response.
+                Self { output_ids, outputs }
+            }
+            Err(error) => A::halt(error.to_string()),
+        }
     }
 }
 
@@ -126,9 +140,9 @@ mod tests {
 
     use anyhow::Result;
 
-    pub(crate) const ITERATIONS: usize = 50;
+    pub(crate) const ITERATIONS: usize = 20;
 
-    fn check_verify(
+    fn check_from_callback(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
@@ -168,41 +182,48 @@ mod tests {
             let program_id = console::ProgramID::from_str("test.aleo")?;
 
             // Construct the response.
-            let response = console::Response::new(&program_id, 4, &tvk, outputs, &output_types)?;
+            let response = console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types)?;
             // assert!(response.verify());
 
-            // Inject the response into a circuit.
+            // Inject the program ID and `tvk`.
             let program_id = ProgramID::<Circuit>::new(mode, program_id);
             let tvk = Field::<Circuit>::new(mode, tvk);
-            let response = Response::<Circuit>::new(mode, response);
 
             Circuit::scope(format!("Response {i}"), || {
-                let candidate = response.verify(&program_id, 4, &tvk, &output_types);
-                assert!(candidate.eject_value());
+                let candidate_a =
+                    Response::from_callback(&program_id, 4, &tvk, response.outputs().to_vec(), &output_types);
+                assert_eq!(response, candidate_a.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
                     false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
                 }
             });
+
+            // Compute the response using outputs (circuit).
+            let outputs = Inject::new(mode, response.outputs().to_vec());
+            let candidate_b = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
+            assert_eq!(response, candidate_b.eject_value());
+
             Circuit::reset();
         }
         Ok(())
     }
 
+    // Note: These counts are correct. At this (high) level of a program, we override the default mode in many cases,
+    // based on the user-defined visibility in the types. Thus, we have nonzero public, private, and constraint values.
+
     #[test]
-    fn test_verify_constant() -> Result<()> {
-        // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
-        // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 22100, 0, 9900, 9900)
+    fn test_from_callback_constant() -> Result<()> {
+        check_from_callback(Mode::Constant, 22800, 6, 10500, 10500)
     }
 
     #[test]
-    fn test_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 21528, 0, 15563, 15579)
+    fn test_from_callback_public() -> Result<()> {
+        check_from_callback(Mode::Public, 22140, 6, 16066, 16080)
     }
 
     #[test]
-    fn test_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 21528, 0, 15563, 15579)
+    fn test_from_callback_private() -> Result<()> {
+        check_from_callback(Mode::Private, 22140, 6, 16066, 16080)
     }
 }

@@ -306,10 +306,20 @@ impl<N: Network> Process<N> {
                     CallOperator::Resource(resource) => {
                         // Ensure the resource does not reference this closure or function.
                         if resource == closure_or_function_name {
-                            bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.");
+                            bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.")
+                        }
+
+                        // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                        //  But there are legitimate uses for passing a record through to an internal function.
+                        //  We could invoke the internal function without a state transition, but need to match visibility.
+                        if stack.program().contains_function(resource) {
+                            bail!(
+                                "Cannot call '{resource}' from '{closure_or_function_name}'. Use a closure ('closure {resource}:') instead."
+                            )
                         }
                         // Ensure the function or closure exists in the program.
-                        if !stack.program().contains_function(resource) && !stack.program().contains_closure(resource) {
+                        // if !stack.program().contains_function(resource) && !stack.program().contains_closure(resource) {
+                        if !stack.program().contains_closure(resource) {
                             bail!("'{resource}' is not defined in '{}'.", stack.program().id())
                         }
                     }

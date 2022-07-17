@@ -295,7 +295,7 @@ impl<N: Network> Process<N> {
             // Construct the public inputs to verify the proof.
             let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
             // Extend the inputs with the input IDs.
-            inputs.extend(transition.input_ids().map(|id| **id));
+            inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 
             // Retrieve the stack.
             let stack = self.get_stack(transition.program_id())?;
@@ -323,7 +323,7 @@ impl<N: Network> Process<N> {
             }
 
             // Lastly, extend the inputs with the output IDs and fee.
-            inputs.extend(transition.output_ids().map(|id| **id));
+            inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
 
             #[cfg(debug_assertions)]
@@ -850,7 +850,11 @@ function compute:
         // assert_eq!(159387, CurrentAleo::num_gates());
     }
 
+    /// TODO (howardwu): Revisit this decision. A record cannot be spent again.
+    ///  But there are legitimate uses for passing a record through to an internal function.
+    ///  We could invoke the internal function without a state transition, but need to match visibility.
     #[test]
+    #[ignore]
     fn test_process_execute_call_internal_function() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
@@ -987,8 +991,8 @@ function transfer:
     input r1 as address.private;
     input r2 as u64.private;
     sub r0.amount r2 into r3;
-    call mint r1 r2 into r4; // Only for testing, this is bad practice.
-    call mint r0.owner r3 into r5; // Only for testing, this is bad practice.
+    cast r1 0u64 r2 into r4 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
     output r4 as token.record;
     output r5 as token.record;",
         )
@@ -1054,22 +1058,22 @@ function transfer:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
-        assert_eq!(authorization.len(), 4);
+        assert_eq!(authorization.len(), 2);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
         let mut auth_stack = authorization.to_vec_deque();
 
-        // Compute the output value.
-        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(r5, candidate[0]);
-
-        // Compute the output value.
-        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(r4, candidate[0]);
+        // // Compute the output value.
+        // let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
+        // let candidate = response.outputs();
+        // assert_eq!(1, candidate.len());
+        // assert_eq!(r5, candidate[0]);
+        //
+        // // Compute the output value.
+        // let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
+        // let candidate = response.outputs();
+        // assert_eq!(1, candidate.len());
+        // assert_eq!(r4, candidate[0]);
 
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
@@ -1086,7 +1090,7 @@ function transfer:
         assert_eq!(r5, candidate[1]);
 
         // Check again to make sure we didn't modify the authorization before calling `execute`.
-        assert_eq!(authorization.len(), 4);
+        assert_eq!(authorization.len(), 2);
 
         // Execute the request.
         let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
