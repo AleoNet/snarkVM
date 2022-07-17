@@ -48,17 +48,9 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        let rng = &mut test_crypto_rng();
-
         for i in 0..ITERATIONS {
-            // Sample an address and a private key.
-            let private_key = PrivateKey::<CurrentNetwork>::new(rng)?;
-            let address = Address::try_from(&private_key)?;
-
-            // Generate a signature.
-            let message: Vec<_> = (0..i).map(|_| Uniform::rand(rng)).collect();
-            let signature = Signature::sign(&private_key, &message, rng)?;
-            assert!(signature.verify(&address, &message));
+            // Sample a new signature.
+            let signature = test_helpers::sample_signature(i);
 
             // Check the byte representation.
             let signature_bytes = signature.to_bytes_le()?;

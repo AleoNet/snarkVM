@@ -22,6 +22,7 @@ use output::*;
 
 mod bytes;
 mod serialize;
+mod string;
 
 use crate::Proof;
 use console::{
@@ -288,28 +289,5 @@ impl<N: Network> Transition<N> {
     /// Returns an iterator over the nonces, for outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.outputs.iter().flat_map(Output::nonce)
-    }
-}
-
-impl<N: Network> FromStr for Transition<N> {
-    type Err = Error;
-
-    /// Initializes the transition from a JSON-string.
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(input)?)
-    }
-}
-
-impl<N: Network> Debug for Transition<N> {
-    /// Prints the transition as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for Transition<N> {
-    /// Displays the transition as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

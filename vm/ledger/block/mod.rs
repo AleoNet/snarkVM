@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod string;
+
 use crate::{
     console::network::prelude::*,
     ledger::{BlockHeader, Transactions},
 };
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
     /// The hash of this block.
     block_hash: N::BlockHash,
@@ -176,22 +178,6 @@ impl<N: Network> Block<N> {
     /// Returns the transactions in the block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
-    }
-}
-
-impl<N: Network> FromStr for Block<N> {
-    type Err = anyhow::Error;
-
-    /// Initializes the block from a JSON-string.
-    fn from_str(block: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(block)?)
-    }
-}
-
-impl<N: Network> Display for Block<N> {
-    /// Displays the block as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }
 

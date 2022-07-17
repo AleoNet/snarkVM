@@ -365,8 +365,8 @@ impl<N: Network> Call<N> {
                 &tvk,
             ));
 
-            // Inject the response as `Mode::Private` (with the IDs as `Mode::Public`).
-            let response = circuit::Response::from_callback(
+            // Inject the outputs as `Mode::Private` (with the output IDs as `Mode::Public`).
+            let outputs = circuit::Response::process_outputs_from_callback(
                 &program_id,
                 num_inputs,
                 &tvk,
@@ -374,7 +374,7 @@ impl<N: Network> Call<N> {
                 &function.output_types(),
             );
             // Return the circuit outputs.
-            response.outputs().to_vec()
+            outputs
         }
         // Else, throw an error.
         else {

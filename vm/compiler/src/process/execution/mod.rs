@@ -16,6 +16,7 @@
 
 mod bytes;
 mod serialize;
+mod string;
 
 use crate::Transition;
 use console::network::prelude::*;
@@ -63,28 +64,5 @@ impl<N: Network> Deref for Execution<N> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl<N: Network> FromStr for Execution<N> {
-    type Err = Error;
-
-    /// Initializes the execution from a JSON-string.
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(input)?)
-    }
-}
-
-impl<N: Network> Debug for Execution<N> {
-    /// Prints the execution as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for Execution<N> {
-    /// Displays the execution as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

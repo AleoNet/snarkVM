@@ -17,14 +17,14 @@
 use super::*;
 
 impl<A: Aleo> Response<A> {
-    /// Initializes a response, given the number of inputs, caller, tvk, outputs, and output types.
-    pub fn from_callback(
+    /// Returns the injected circuit outputs, given the number of inputs, caller, tvk, outputs, and output types.
+    pub fn process_outputs_from_callback(
         program_id: &ProgramID<A>,
         num_inputs: usize,
         tvk: &Field<A>,
         outputs: Vec<console::Value<A::Network>>,        // Note: Console type
         output_types: &[console::ValueType<A::Network>], // Note: Console type
-    ) -> Self {
+    ) -> Vec<Value<A>> {
         match outputs
             .iter()
             .zip_eq(output_types)
@@ -123,9 +123,9 @@ impl<A: Aleo> Response<A> {
         {
             Ok(outputs) => {
                 // Unzip the output IDs from the output values.
-                let (output_ids, outputs) = outputs.into_iter().unzip();
-                // Return the response.
-                Self { output_ids, outputs }
+                let (_, outputs): (Vec<OutputID<A>>, _) = outputs.into_iter().unzip();
+                // Return the outputs.
+                outputs
             }
             Err(error) => A::halt(error.to_string()),
         }
@@ -190,9 +190,14 @@ mod tests {
             let tvk = Field::<Circuit>::new(mode, tvk);
 
             Circuit::scope(format!("Response {i}"), || {
-                let candidate_a =
-                    Response::from_callback(&program_id, 4, &tvk, response.outputs().to_vec(), &output_types);
-                assert_eq!(response, candidate_a.eject_value());
+                let outputs = Response::process_outputs_from_callback(
+                    &program_id,
+                    4,
+                    &tvk,
+                    response.outputs().to_vec(),
+                    &output_types,
+                );
+                assert_eq!(response.outputs(), outputs.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
                     false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
@@ -214,16 +219,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 22800, 6, 10500, 10500)
+        check_from_callback(Mode::Constant, 19500, 4, 5050, 5050)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 22140, 6, 16066, 16080)
+        check_from_callback(Mode::Public, 19310, 4, 8962, 8970)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 22140, 6, 16066, 16080)
+        check_from_callback(Mode::Private, 19310, 4, 8962, 8970)
     }
 }

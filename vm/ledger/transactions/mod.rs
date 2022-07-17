@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod string;
+
 use crate::{
     console::{
         collections::merkle_tree::MerklePath,
@@ -36,7 +38,7 @@ type TransactionTree<N> = BHPMerkleTree<N, BLOCK_DEPTH>;
 /// The Merkle path for transaction in a block.
 type TransactionPath<N> = MerklePath<N, BLOCK_DEPTH>;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
     /// The list of transactions included in a block.
     transactions: Vec<Transaction<N>>,
@@ -193,22 +195,6 @@ impl<N: Network> Transactions<N> {
     // ) -> impl Iterator<Item = Record<N>> + 'a {
     //     self.transactions.iter().flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     // }
-}
-
-impl<N: Network> FromStr for Transactions<N> {
-    type Err = anyhow::Error;
-
-    /// Initializes a list of transactions from a JSON-string.
-    fn from_str(transactions: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(transactions)?)
-    }
-}
-
-impl<N: Network> Display for Transactions<N> {
-    /// Displays the transactions list as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
-    }
 }
 
 impl<N: Network> FromBytes for Transactions<N> {

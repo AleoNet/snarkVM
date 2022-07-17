@@ -17,8 +17,8 @@
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
-mod from_callback;
 mod from_outputs;
+mod process_outputs_from_callback;
 
 use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
