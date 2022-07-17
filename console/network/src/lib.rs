@@ -95,6 +95,8 @@ pub trait Network:
     type BlockHash: Bech32ID<Field<Self>>;
     /// The transaction ID type.
     type TransactionID: Bech32ID<Field<Self>>;
+    /// The transition ID type.
+    type TransitionID: Bech32ID<Field<Self>>;
 
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self>;

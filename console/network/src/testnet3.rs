@@ -102,6 +102,8 @@ impl Network for Testnet3 {
     type BlockHash = AleoID<Field<Self>, { hrp2!("ab") }>;
     /// The transaction ID type.
     type TransactionID = AleoID<Field<Self>, { hrp2!("at") }>;
+    /// The transition ID type.
+    type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
 
     /// The network ID.
     const ID: u16 = 3;
