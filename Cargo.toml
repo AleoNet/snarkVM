@@ -202,6 +202,10 @@ optional = true
 [dependencies.tracing]
 version = "0.1"
 
+[dependencies.ureq]
+version = "2.5"
+features = ["json"]
+
 [dev-dependencies.bincode]
 version = "1.3"
 

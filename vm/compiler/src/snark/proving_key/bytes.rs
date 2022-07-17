@@ -16,36 +16,18 @@
 
 use super::*;
 
-#[derive(Clone)]
-pub struct ProvingKey<N: Network> {
-    /// The proving key for the function.
-    proving_key: marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>,
-}
-
-impl<N: Network> ProvingKey<N> {
-    /// Initializes a new proving key.
-    pub(super) const fn new(proving_key: marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>) -> Self {
-        Self { proving_key }
-    }
-
-    /// Returns a proof for the given assignment on the circuit.
-    pub fn prove<R: Rng + CryptoRng>(
-        &self,
-        function_name: &Identifier<N>,
-        assignment: &circuit::Assignment<N::Field>,
-        rng: &mut R,
-    ) -> Result<Proof<N>> {
-        let timer = std::time::Instant::now();
-        let proof = Proof::new(Marlin::<N>::prove_batch(self, std::slice::from_ref(assignment), rng)?);
-        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
-        Ok(proof)
-    }
-}
-
 impl<N: Network> FromBytes for ProvingKey<N> {
     /// Reads the proving key from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the version.
+        let version = u16::read_le(&mut reader)?;
+        // Ensure the version is valid.
+        if version != 0 {
+            return Err(error("Invalid verifying key version"));
+        }
+        // Read the proving key.
         let proving_key = FromBytes::read_le(&mut reader)?;
+        // Return the proving key.
         Ok(Self { proving_key })
     }
 }
@@ -53,14 +35,9 @@ impl<N: Network> FromBytes for ProvingKey<N> {
 impl<N: Network> ToBytes for ProvingKey<N> {
     /// Writes the proving key to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the version.
+        0u16.write_le(&mut writer)?;
+        // Write the bytes.
         self.proving_key.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> Deref for ProvingKey<N> {
-    type Target = marlin::CircuitProvingKey<N::PairingCurve, marlin::MarlinHidingMode>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.proving_key
     }
 }

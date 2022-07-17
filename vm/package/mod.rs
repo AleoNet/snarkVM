@@ -19,11 +19,28 @@ mod clean;
 mod is_build_required;
 mod run;
 
+pub use build::{BuildRequest, BuildResponse};
+
 use crate::{
     file::{AVMFile, AleoFile, Manifest, ProverFile, VerifierFile, README},
-    prelude::{Identifier, Locator, Network, PrivateKey, ProgramID, Response, Value},
+    prelude::{
+        de,
+        Deserialize,
+        Deserializer,
+        FromBytesDeserializer,
+        Identifier,
+        Locator,
+        Network,
+        PrivateKey,
+        ProgramID,
+        Response,
+        Serialize,
+        SerializeStruct,
+        Serializer,
+        Value,
+    },
 };
-use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program};
+use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
 
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;
