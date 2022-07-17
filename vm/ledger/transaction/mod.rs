@@ -14,16 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    console::{
-        network::prelude::*,
-        types::{Field, Group},
-    },
-    vm::VM,
+mod string;
+
+use crate::console::{
+    collections::merkle_tree::MerklePath,
+    network::{prelude::*, BHPMerkleTree},
+    types::{Field, Group},
 };
+
 use snarkvm_compiler::{Deployment, Execution, Transition};
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+/// The depth of the Merkle tree for transactions in a block.
+const TRANSACTION_DEPTH: u8 = 16;
+
+/// The Merkle tree for transactions in a block.
+type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
+/// The Merkle path for transaction in a block.
+type TransactionPath<N> = MerklePath<N, TRANSACTION_DEPTH>;
+
+#[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
     Deploy(N::TransactionID, Deployment<N>),
@@ -35,26 +44,19 @@ impl<N: Network> Transaction<N> {
     /// Initializes a new deployment transaction.
     pub fn deploy(deployment: Deployment<N>) -> Result<Self> {
         // Compute the transaction ID.
-        let id = N::hash_bhp1024(&deployment.program().to_bytes_le()?.to_bits_le())?.into();
+        let id = *Self::deployment_tree(&deployment)?.root();
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id, deployment))
+        Ok(Self::Deploy(id.into(), deployment))
     }
 
     /// Initializes a new execution transaction.
     pub fn execute(execution: Execution<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
         ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
-        // Concatenate the transition IDs as bits.
-        let id_bits: Vec<_> = execution.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
         // Compute the transaction ID.
-        let id = N::hash_bhp1024(&id_bits)?.into();
+        let id = *Self::execution_tree(&execution)?.root();
         // Construct the execution transaction.
-        Ok(Self::Execute(id, execution))
-    }
-
-    /// Returns `true` if the transaction is valid.
-    pub fn verify(&self) -> bool {
-        VM::verify::<N>(self)
+        Ok(Self::Execute(id.into(), execution))
     }
 
     /// Returns the transaction ID.
@@ -106,19 +108,63 @@ impl<N: Network> Transaction<N> {
     }
 }
 
-impl<N: Network> FromStr for Transaction<N> {
-    type Err = anyhow::Error;
-
-    /// Initializes the transaction from a JSON-string.
-    fn from_str(transaction: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(transaction)?)
+impl<N: Network> Transaction<N> {
+    /// Returns the transaction root, by computing the root for a Merkle tree of the transition IDs.
+    pub fn to_root(&self) -> Result<Field<N>> {
+        Ok(*self.to_tree()?.root())
     }
-}
 
-impl<N: Network> Display for Transaction<N> {
-    /// Displays the transaction as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    /// Returns an inclusion proof for the transaction tree.
+    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransactionPath<N>> {
+        self.to_tree()?.prove(index, &leaf.to_bits_le())
+    }
+
+    /// The Merkle tree of transition IDs for the block.
+    pub fn to_tree(&self) -> Result<TransactionTree<N>> {
+        match self {
+            // Compute the deployment tree.
+            Transaction::Deploy(_, deployment) => Self::deployment_tree(deployment),
+            // Compute the execution tree.
+            Transaction::Execute(_, execution) => Self::execution_tree(execution),
+        }
+    }
+
+    /// Returns the Merkle tree for the given deployment.
+    fn deployment_tree(deployment: &Deployment<N>) -> Result<TransactionTree<N>> {
+        // Set the variant.
+        let variant = 0u8;
+        // Retrieve the program.
+        let program = deployment.program();
+        // Prepare the leaves with the variant, program ID, and function.
+        let leaves = program.functions().values().map(|function| {
+            Ok(variant
+                .to_bits_le()
+                .into_iter()
+                .chain(program.id().to_bits_le().into_iter())
+                .chain(function.to_bytes_le()?.to_bits_le().into_iter())
+                .collect())
+        });
+        // Compute the transactions tree.
+        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Result<Vec<_>>>()?)
+    }
+
+    /// Returns the Merkle tree for the given execution.
+    fn execution_tree(execution: &Execution<N>) -> Result<TransactionTree<N>> {
+        // Set the variant.
+        let variant = 1u8;
+        // Prepare the leaves with the variant, program ID, function name, and transition ID.
+        let leaves = execution.iter().map(|transition| {
+            // Construct the leaf as (variant || program ID || function name || transition ID).
+            variant
+                .to_bits_le()
+                .into_iter()
+                .chain(transition.program_id().to_bits_le().into_iter())
+                .chain(transition.function_name().to_bits_le().into_iter())
+                .chain(transition.id().to_bits_le().into_iter())
+                .collect()
+        });
+        // Compute the transactions tree.
+        N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())
     }
 }
 
@@ -136,27 +182,36 @@ impl<N: Network> FromBytes for Transaction<N> {
         // Read the variant.
         let variant = u8::read_le(&mut reader)?;
         // Match the variant.
-        let transaction = match variant {
+        let (id, transaction) = match variant {
             0 => {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
                 // Read the deployment.
                 let deployment = Deployment::read_le(&mut reader)?;
-                // Construct the transaction.
-                Transaction::Deploy(id, deployment)
+                // Initialize the transaction.
+                let transaction = Self::deploy(deployment).map_err(|e| error(e.to_string()))?;
+                // Return the ID and the transaction.
+                (id, transaction)
             }
             1 => {
                 // Read the ID.
                 let id = N::TransactionID::read_le(&mut reader)?;
                 // Read the execution.
                 let execution = Execution::read_le(&mut reader)?;
-                // Construct the transaction.
-                Transaction::Execute(id, execution)
+                // Initialize the transaction.
+                let transaction = Self::execute(execution).map_err(|e| error(e.to_string()))?;
+                // Return the ID and the transaction.
+                (id, transaction)
             }
             _ => return Err(error("Invalid transaction variant")),
         };
-        // Return the transaction.
-        Ok(transaction)
+
+        // Ensure the transaction ID matches.
+        match transaction.id() == id {
+            // Return the transaction.
+            true => Ok(transaction),
+            false => Err(error("Transaction ID mismatch")),
+        }
     }
 }
 

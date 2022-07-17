@@ -23,20 +23,19 @@ use crate::{
         types::{Field, Group},
     },
     ledger::Transaction,
+    vm::VM,
 };
-
-use std::sync::Arc;
 
 #[cfg(feature = "parallel")]
 use rayon::{prelude::*, slice::ParallelSlice};
 
 /// The depth of the Merkle tree for transactions in a block.
-const BLOCK_DEPTH: u8 = 16;
+const TRANSACTIONS_DEPTH: u8 = 16;
 
 /// The Merkle tree for transactions in a block.
-type TransactionTree<N> = BHPMerkleTree<N, BLOCK_DEPTH>;
+type TransactionsTree<N> = BHPMerkleTree<N, TRANSACTIONS_DEPTH>;
 /// The Merkle path for transaction in a block.
-type TransactionPath<N> = MerklePath<N, BLOCK_DEPTH>;
+type TransactionsPath<N> = MerklePath<N, TRANSACTIONS_DEPTH>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transactions<N: Network> {
@@ -65,7 +64,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !self.transactions.as_parallel_slice().par_iter().all(|transaction| transaction.verify()) {
+        if !self.transactions.as_parallel_slice().par_iter().all(|transaction| VM::verify::<N>(transaction)) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
@@ -169,23 +168,25 @@ impl<N: Network> Transactions<N> {
     //         false => Err(anyhow!("Block must have 1 coinbase transaction, found {}", num_coinbase)),
     //     }
     // }
+}
 
+impl<N: Network> Transactions<N> {
     /// Returns the transactions root, by computing the root for a Merkle tree of the transaction IDs.
     pub fn to_root(&self) -> Result<Field<N>> {
         Ok(*self.to_tree()?.root())
     }
 
     /// Returns an inclusion proof for the transactions tree.
-    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransactionPath<N>> {
+    pub fn to_inclusion_proof(&self, index: usize, leaf: impl ToBits) -> Result<TransactionsPath<N>> {
         self.to_tree()?.prove(index, &leaf.to_bits_le())
     }
 
     /// The Merkle tree of transaction IDs for the block.
-    pub fn to_tree(&self) -> Result<Arc<TransactionTree<N>>> {
+    pub fn to_tree(&self) -> Result<TransactionsTree<N>> {
         // Compute the transactions tree.
-        Ok(Arc::new(N::merkle_tree_bhp::<BLOCK_DEPTH>(
+        N::merkle_tree_bhp::<TRANSACTIONS_DEPTH>(
             &self.transactions.iter().map(Transaction::id).map(|id| (*id).to_bits_le()).collect::<Vec<_>>(),
-        )?))
+        )
     }
 
     // /// Returns records from the transactions belonging to the given account view key.
@@ -251,7 +252,7 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
 }
 
 impl<N: Network> Deref for Transactions<N> {
-    type Target = Vec<Transaction<N>>;
+    type Target = [Transaction<N>];
 
     fn deref(&self) -> &Self::Target {
         &self.transactions
