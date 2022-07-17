@@ -17,12 +17,13 @@
 mod leaf;
 pub use leaf::*;
 
+mod bytes;
+mod serialize;
 mod string;
 
 use crate::console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Identifier, ProgramID},
     types::{Field, Group},
 };
 use snarkvm_compiler::{Deployment, Execution, Transition};
@@ -70,8 +71,16 @@ impl<N: Network> Transaction<N> {
         }
     }
 
+    /// Returns an iterator over all executed transitions.
+    pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
+        match self {
+            Self::Deploy(..) => [].iter(),
+            Self::Execute(.., execution) => execution.iter(),
+        }
+    }
+
     /// Returns an iterator over the transition IDs, for all executed transitions.
-    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
         match self {
             Self::Deploy(..) => [].iter().map(Transition::id),
             Self::Execute(.., execution) => execution.iter().map(Transition::id),
@@ -142,7 +151,7 @@ impl<N: Network> Transaction<N> {
                 // Iterate through the transitions in the execution.
                 for (index, transition) in execution.iter().enumerate() {
                     // Check if the transition ID matches the given ID.
-                    if id == transition.id() {
+                    if *id == **transition.id() {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new(
                             1u8,
@@ -209,7 +218,7 @@ impl<N: Network> Transaction<N> {
                 index as u16,
                 *transition.program_id(),
                 *transition.function_name(),
-                *transition.id(),
+                **transition.id(),
             )
             .to_bits_le()
         });
@@ -217,193 +226,3 @@ impl<N: Network> Transaction<N> {
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())
     }
 }
-
-impl<N: Network> FromBytes for Transaction<N> {
-    /// Reads the transaction from the buffer.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the version.
-        let version = u16::read_le(&mut reader)?;
-        // Ensure the version is valid.
-        if version != 0 {
-            return Err(error("Invalid transaction version"));
-        }
-
-        // Read the variant.
-        let variant = u8::read_le(&mut reader)?;
-        // Match the variant.
-        let (id, transaction) = match variant {
-            0 => {
-                // Read the ID.
-                let id = N::TransactionID::read_le(&mut reader)?;
-                // Read the deployment.
-                let deployment = Deployment::read_le(&mut reader)?;
-                // Initialize the transaction.
-                let transaction = Self::deploy(deployment).map_err(|e| error(e.to_string()))?;
-                // Return the ID and the transaction.
-                (id, transaction)
-            }
-            1 => {
-                // Read the ID.
-                let id = N::TransactionID::read_le(&mut reader)?;
-                // Read the execution.
-                let execution = Execution::read_le(&mut reader)?;
-                // Initialize the transaction.
-                let transaction = Self::execute(execution).map_err(|e| error(e.to_string()))?;
-                // Return the ID and the transaction.
-                (id, transaction)
-            }
-            _ => return Err(error("Invalid transaction variant")),
-        };
-
-        // Ensure the transaction ID matches.
-        match transaction.id() == id {
-            // Return the transaction.
-            true => Ok(transaction),
-            false => Err(error("Transaction ID mismatch")),
-        }
-    }
-}
-
-impl<N: Network> ToBytes for Transaction<N> {
-    /// Writes the transaction to the buffer.
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the version.
-        0u16.write_le(&mut writer)?;
-
-        // Write the transaction.
-        match self {
-            Self::Deploy(id, deployment) => {
-                // Write the variant.
-                0u8.write_le(&mut writer)?;
-                // Write the ID.
-                id.write_le(&mut writer)?;
-                // Write the deployment.
-                deployment.write_le(&mut writer)
-            }
-            Self::Execute(id, execution) => {
-                // Write the variant.
-                1u8.write_le(&mut writer)?;
-                // Write the ID.
-                id.write_le(&mut writer)?;
-                // Write the execution.
-                execution.write_le(&mut writer)
-            }
-        }
-    }
-}
-
-impl<N: Network> Serialize for Transaction<N> {
-    /// Serializes the transaction to a JSON-string or buffer.
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match serializer.is_human_readable() {
-            true => match self {
-                Self::Deploy(id, deployment) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
-                    transaction.serialize_field("type", "deploy")?;
-                    transaction.serialize_field("id", &id)?;
-                    transaction.serialize_field("deployment", &deployment)?;
-                    transaction.end()
-                }
-                Self::Execute(id, execution) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
-                    transaction.serialize_field("type", "execute")?;
-                    transaction.serialize_field("id", &id)?;
-                    transaction.serialize_field("execution", &execution)?;
-                    transaction.end()
-                }
-            },
-            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
-        }
-    }
-}
-
-impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
-    /// Deserializes the transaction from a JSON-string or buffer.
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        match deserializer.is_human_readable() {
-            true => {
-                // Deserialize the transaction into a JSON value.
-                let transaction = serde_json::Value::deserialize(deserializer)?;
-                // Retrieve the transaction ID.
-                let id: N::TransactionID =
-                    serde_json::from_value(transaction["id"].clone()).map_err(de::Error::custom)?;
-
-                // Recover the transaction.
-                let transaction = match transaction["type"].as_str() {
-                    Some("deploy") => {
-                        // Retrieve the deployment.
-                        let deployment =
-                            serde_json::from_value(transaction["deployment"].clone()).map_err(de::Error::custom)?;
-                        // Construct the transaction.
-                        Transaction::deploy(deployment).map_err(de::Error::custom)?
-                    }
-                    Some("execute") => {
-                        // Retrieve the execution.
-                        let execution =
-                            serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
-                        // Construct the transaction.
-                        Transaction::execute(execution).map_err(de::Error::custom)?
-                    }
-                    _ => return Err(de::Error::custom("Invalid transaction type")),
-                };
-
-                // Ensure the transaction ID matches.
-                match id == transaction.id() {
-                    true => Ok(transaction),
-                    false => {
-                        Err(error("Mismatching transaction ID, possible data corruption")).map_err(de::Error::custom)
-                    }
-                }
-            }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction"),
-        }
-    }
-}
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::ledger::Block;
-//     use console::network::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//     type CurrentAleo = circuit::AleoV0;
-//
-//     #[test]
-//     fn test_serde_json() {
-//         let expected = (*Block::<CurrentNetwork>::genesis::<CurrentAleo>().unwrap().transactions())[0].clone();
-//
-//         // Serialize
-//         let expected_string = expected.to_string();
-//         let candidate_string = serde_json::to_string(&expected).unwrap();
-//         assert_eq!(2670, candidate_string.len(), "Update me if serialization has changed");
-//         assert_eq!(expected_string, candidate_string);
-//
-//         // Deserialize
-//         assert_eq!(
-//             expected,
-//             Transaction::<CurrentNetwork>::from_str(&candidate_string).unwrap()
-//         );
-//         assert_eq!(expected, serde_json::from_str(&candidate_string).unwrap());
-//     }
-//
-//     #[test]
-//     fn test_bincode() {
-//         let expected = (*Block::<CurrentNetwork>::genesis::<CurrentAleo>().unwrap().transactions())[0].clone();
-//
-//         // Serialize
-//         let expected_bytes = expected.to_bytes_le().unwrap();
-//         let candidate_bytes = bincode::serialize(&expected).unwrap();
-//         assert_eq!(1362, expected_bytes.len(), "Update me if serialization has changed");
-//         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
-//
-//         // Deserialize
-//         assert_eq!(
-//             expected,
-//             Transaction::<CurrentNetwork>::read_le(&expected_bytes[..]).unwrap()
-//         );
-//         assert_eq!(expected, bincode::deserialize(&candidate_bytes[..]).unwrap());
-//     }
-// }

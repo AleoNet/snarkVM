@@ -299,6 +299,9 @@ impl<N: Network> Stack<N> {
     /// Deploys the program with the given program ID, as a deployment.
     #[inline]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Deployment<N>> {
+        // Ensure the program contains functions.
+        ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
+
         // Initialize a mapping for the bundle.
         let mut bundle = IndexMap::with_capacity(self.program.functions().len());
 

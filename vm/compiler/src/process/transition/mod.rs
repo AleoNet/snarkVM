@@ -46,7 +46,7 @@ pub type TransitionPath<N> = MerklePath<N, TRANSITION_DEPTH>;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
     /// The transition ID.
-    id: Field<N>,
+    id: N::TransitionID,
     /// The program ID.
     program_id: ProgramID<N>,
     /// The function name.
@@ -235,7 +235,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the transition ID.
-    pub const fn id(&self) -> &Field<N> {
+    pub const fn id(&self) -> &N::TransitionID {
         &self.id
     }
 

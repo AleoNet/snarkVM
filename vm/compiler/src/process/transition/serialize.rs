@@ -45,7 +45,8 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                 // Parse the transition from a string into a value.
                 let transition = serde_json::Value::deserialize(deserializer)?;
                 // Retrieve the ID.
-                let id: Field<N> = serde_json::from_value(transition["id"].clone()).map_err(de::Error::custom)?;
+                let id: N::TransitionID =
+                    serde_json::from_value(transition["id"].clone()).map_err(de::Error::custom)?;
 
                 // Recover the transition.
                 let transition = Self::new(

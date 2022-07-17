@@ -227,13 +227,15 @@ impl<N: Network> Process<N> {
         let response = stack.execute_function::<A, R>(CallStack::Execute(authorization, execution.clone()), rng)?;
         // Extract the execution.
         let execution = execution.read().clone();
+        // Ensure the execution is not empty.
+        ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
 
         Ok((response, execution))
     }
 
     /// Verifies a program call for the given execution.
     #[inline]
-    pub fn verify(&self, execution: &Execution<N>) -> Result<()> {
+    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -259,6 +261,9 @@ impl<N: Network> Process<N> {
         while let Ok(transition) = queue.pop() {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
+
+            // Ensure the transition ID is correct.
+            ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");
 
             // Ensure the number of inputs is within the allowed range.
             ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
@@ -582,7 +587,7 @@ mod tests {
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
 
-        assert!(process.verify(&execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -722,7 +727,7 @@ function hello_world:
         assert_eq!(record_a, candidate[0]);
         assert_eq!(record_b, candidate[1]);
 
-        assert!(process.verify(&execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -830,7 +835,7 @@ function compute:
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
 
-        assert!(process.verify(&execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -942,7 +947,7 @@ function transfer:
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
-        assert!(process.verify(&execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -1090,7 +1095,7 @@ function transfer:
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
-        assert!(process.verify(&execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //

@@ -188,61 +188,28 @@ impl VM {
     /// Verifies a program call for the given execution.
     #[inline]
     pub fn verify<N: Network>(transaction: &Transaction<N>) -> bool {
+        // Compute the Merkle root of the transaction.
+        match transaction.to_root() {
+            // Ensure the transaction ID is correct.
+            Ok(transaction_root) => {
+                if *transaction.id() != transaction_root {
+                    warn!("Incorrect transaction ID ({})", transaction.id());
+                    return false;
+                }
+            }
+            Err(error) => {
+                warn!("Failed to compute the Merkle root of the transaction: {transaction} {error}");
+                return false;
+            }
+        };
+
         match transaction {
-            Transaction::Deploy(id, deployment) => {
-                // Convert the program into bytes.
-                let program_bytes = match deployment.program().to_bytes_le() {
-                    Ok(bytes) => bytes,
-                    Err(error) => {
-                        warn!("Unable to convert program into bytes for transaction (deploy, {id}): {error}");
-                        return false;
-                    }
-                };
-
-                // Check the transaction ID.
-                match N::hash_bhp1024(&program_bytes.to_bits_le()) {
-                    Ok(candidate_id) => {
-                        // Ensure the transaction ID matches the one in the transaction.
-                        if candidate_id != **id {
-                            warn!("Transaction ({id}) has an incorrect transaction ID.");
-                            return false;
-                        }
-                    }
-                    Err(error) => {
-                        warn!("Unable to compute transaction ID for transaction (deploy, {id}): {error}");
-                        return false;
-                    }
-                };
-
+            Transaction::Deploy(_, deployment) => {
                 // TODO (howardwu): Check the program (1. ensure the program ID does not exist already, 2. check it is well-formed).
                 // TODO (howardwu): Check the verifying key.
                 true
             }
-            Transaction::Execute(id, execution) => {
-                // Ensure there is at least 1 transition.
-                if execution.is_empty() {
-                    warn!("Transaction ({id}) has no transitions.");
-                    return false;
-                }
-
-                // Check the transaction ID.
-                let id_bits: Vec<_> = execution.iter().flat_map(|transition| transition.id().to_bits_le()).collect();
-                match N::hash_bhp1024(&id_bits) {
-                    Ok(candidate_id) => {
-                        // Ensure the transaction ID matches the one in the transaction.
-                        if candidate_id != **id {
-                            warn!("Transaction ({id}) has an incorrect transaction ID.");
-                            return false;
-                        }
-                    }
-                    Err(error) => {
-                        warn!("Unable to compute transaction ID for transaction (execute, {id}): {error}");
-                        return false;
-                    }
-                };
-
-                //******** Verify the execution. ********//
-
+            Transaction::Execute(_, execution) => {
                 // Compute the core logic.
                 macro_rules! logic {
                     ($process:expr, $network:path, $aleo:path) => {{
@@ -250,7 +217,7 @@ impl VM {
                             // Prepare the execution.
                             let execution = cast_ref!(&execution as Execution<$network>);
                             // Verify the execution.
-                            $process.verify(execution)
+                            $process.verify_execution(execution)
                         };
                         task()
                     }};
@@ -266,5 +233,107 @@ impl VM {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use crate::console::{
+        account::PrivateKey,
+        network::Testnet3,
+        program::{Identifier, Value},
+    };
+    use snarkvm_compiler::{Program, Transition};
+
+    use once_cell::sync::OnceCell;
+
+    type CurrentNetwork = Testnet3;
+
+    pub(crate) fn sample_program() -> Program<CurrentNetwork> {
+        static INSTANCE: OnceCell<Program<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                Program::<CurrentNetwork>::from_str(
+                    r"
+program testing.aleo;
+
+function compute:
+    input r0 as u32.private;
+    input r1 as u32.public;
+    add r0 r1 into r2;
+    output r2 as u32.public;",
+                )
+                .unwrap()
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_deployment_transaction() -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                let program = sample_program();
+                // Add the program.
+                VM::add_program(&program).unwrap();
+
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+                // Deploy.
+                let transaction = VM::deploy(program.id(), rng).unwrap();
+                // Verify.
+                assert!(VM::verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_execution_transaction() -> Transaction<CurrentNetwork> {
+        static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new program.
+                let program = sample_program();
+                // Add the program.
+                VM::add_program(&program).unwrap();
+
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+                // Initialize a new caller.
+                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                // Authorize.
+                let authorization = VM::authorize(
+                    &caller_private_key,
+                    program.id(),
+                    Identifier::from_str("compute").unwrap(),
+                    &[
+                        Value::<CurrentNetwork>::from_str("5u32").unwrap(),
+                        Value::<CurrentNetwork>::from_str("10u32").unwrap(),
+                    ],
+                    rng,
+                )
+                .unwrap();
+                assert_eq!(authorization.len(), 1);
+
+                // Execute.
+                let (_response, transaction) = VM::execute(authorization, rng).unwrap();
+                // Verify.
+                assert!(VM::verify(&transaction));
+                // Return the transaction.
+                transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
+        // Retrieve the transaction.
+        let transaction = sample_execution_transaction();
+        // Retrieve the transitions.
+        let mut transitions = transaction.transitions();
+        // Return a transition.
+        transitions.next().cloned().unwrap()
     }
 }

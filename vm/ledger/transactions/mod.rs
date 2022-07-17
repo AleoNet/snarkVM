@@ -29,7 +29,7 @@ use crate::{
 use indexmap::IndexMap;
 
 #[cfg(feature = "parallel")]
-use rayon::{prelude::*, slice::ParallelSlice};
+use rayon::prelude::*;
 
 /// The depth of the Merkle tree for transactions in a block.
 const TRANSACTIONS_DEPTH: u8 = 16;

@@ -26,7 +26,7 @@ impl<N: Network> FromBytes for Transition<N> {
             return Err(error("Invalid transition version"));
         }
 
-        let transition_id = Field::read_le(&mut reader)?;
+        let transition_id = N::TransitionID::read_le(&mut reader)?;
         let program_id = FromBytes::read_le(&mut reader)?;
         let function_name = FromBytes::read_le(&mut reader)?;
 
