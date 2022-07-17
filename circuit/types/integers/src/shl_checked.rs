@@ -71,7 +71,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
         let two = Self::one() + Self::one();
         let base = match I::is_signed() {
             // If `self` is a signed integer and is negative, then negate the base.
-            true => Self::ternary(&self.is_less_than(&Self::zero()), &(Self::zero() - &two), &two),
+            // Note that if `self.msb()` is 1 then `self` is negative.
+            true => Self::ternary(self.msb(), &(Self::zero() - &two), &two),
             // Otherwise return two.
             false => two,
         };
