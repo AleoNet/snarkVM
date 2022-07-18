@@ -42,6 +42,13 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the Merkle tree for the given transactions.
     fn transactions_tree(transactions: &IndexMap<N::TransactionID, Transaction<N>>) -> Result<TransactionsTree<N>> {
+        // Ensure the number of transactions is within the allowed range.
+        ensure!(
+            transactions.len() <= Self::MAX_TRANSACTIONS,
+            "Block cannot exceed {} transactions, found {}",
+            Self::MAX_TRANSACTIONS,
+            transactions.len()
+        );
         // Prepare the leaves.
         let leaves = transactions.values().map(|transaction| transaction.id().to_bits_le());
         // Compute the deployment tree.

@@ -78,6 +78,7 @@ macro_rules! process_mut {
     }};
 }
 
+#[derive(Clone)]
 pub struct VM<N: Network> {
     /// The process for Aleo Testnet3 (V0).
     process: Arc<RwLock<Process<crate::prelude::Testnet3>>>,
@@ -343,13 +344,23 @@ function compute:
             .clone()
     }
 
+    pub(crate) fn sample_vm() -> VM<CurrentNetwork> {
+        static INSTANCE: OnceCell<VM<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize a new VM.
+                VM::<CurrentNetwork>::new().unwrap()
+            })
+            .clone()
+    }
+
     pub(crate) fn sample_deployment_transaction() -> Transaction<CurrentNetwork> {
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                // Initialize a new VM.
-                let vm = VM::<CurrentNetwork>::new().unwrap();
-                // Initialize a new program.
+                // Initialize the VM.
+                let vm = sample_vm();
+                // Initialize the program.
                 let program = sample_program();
 
                 // Initialize the RNG.
@@ -368,17 +379,15 @@ function compute:
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                let mut vm = VM::<CurrentNetwork>::new().unwrap();
-                // Initialize a new program.
-                let program = sample_program();
-
-                // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
-                // Deploy.
-                let transaction = vm.deploy(&program, rng).unwrap();
+                // Initialize the VM.
+                let mut vm = sample_vm().clone();
+                // Deploy the program.
+                let transaction = sample_deployment_transaction();
                 // On Deploy.
                 vm.on_deploy(&transaction).unwrap();
 
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
@@ -386,7 +395,7 @@ function compute:
                 let authorization = vm
                     .authorize(
                         &caller_private_key,
-                        program.id(),
+                        &ProgramID::from_str("testing.aleo").unwrap(),
                         Identifier::from_str("compute").unwrap(),
                         &[
                             Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),

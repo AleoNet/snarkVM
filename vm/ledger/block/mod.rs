@@ -100,6 +100,25 @@ impl<N: Network> Block<N> {
             }
         };
 
+        // Compute the transactions root.
+        match self.transactions.to_root() {
+            // Ensure the transactions root matches the one in the block header.
+            Ok(root) => {
+                if &root != self.header.transactions_root() {
+                    warn!(
+                        "Block ({}) has an incorrect transactions root: expected {}",
+                        self.block_hash,
+                        self.header.transactions_root()
+                    );
+                    return false;
+                }
+            }
+            Err(error) => {
+                warn!("Failed to compute the Merkle root of the block transactions: {error}");
+                return false;
+            }
+        };
+
         // Ensure the transactions are valid.
         if !self.transactions.verify(vm) {
             warn!("Block contains invalid transactions: {:?}", self);

@@ -69,18 +69,6 @@ impl<N: Network> Transactions<N> {
             return false;
         }
 
-        // Ensure each transaction is well-formed.
-        if !self.transactions.par_iter().all(|(_, transaction)| transaction.verify(vm)) {
-            eprintln!("Invalid transaction found in the transactions list");
-            return false;
-        }
-
-        // Ensure there are no duplicate transactions.
-        if has_duplicates(self.transaction_ids()) {
-            eprintln!("Found duplicate transaction id in the transactions list");
-            return false;
-        }
-
         // Ensure there are no duplicate transition public keys.
         if has_duplicates(self.transition_public_keys()) {
             eprintln!("Found duplicate transition public keys in the transactions list");
@@ -102,6 +90,12 @@ impl<N: Network> Transactions<N> {
         // Ensure there are no duplicate nonces.
         if has_duplicates(self.nonces()) {
             eprintln!("Found duplicate nonces in the transactions list");
+            return false;
+        }
+
+        // Ensure each transaction is well-formed.
+        if !self.transactions.par_iter().all(|(_, transaction)| transaction.verify(vm)) {
+            eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
 
@@ -193,49 +187,45 @@ impl<N: Network> Deref for Transactions<N> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::ledger::Block;
-//
-//     use snarkvm::prelude::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//     type A = snarkvm::circuit::AleoV0;
-//
-//     // TODO (raychu86): Make the genesis block static, so we don't have to regenerate one for every test.
-//
-//     // #[test]
-//     // fn test_to_decrypted_records() {
-//     //     let rng = &mut thread_rng();
-//     //     let account = Account::<CurrentNetwork>::new(rng);
-//     //
-//     //     // Craft a transaction with 1 coinbase record.
-//     //     let genesis_block = Block::<Testnet2>::genesis();
-//     //     let (transaction, expected_record) = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
-//     //
-//     //     // Craft a Transactions struct with 1 coinbase record.
-//     //     let transactions = Transactions::from(&[transaction]).unwrap();
-//     //     let decrypted_records = transactions
-//     //         .to_decrypted_records(&account.view_key().into())
-//     //         .collect::<Vec<Record<CurrentNetwork>>>();
-//     //     assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
-//     //
-//     //     let candidate_record = decrypted_records.first().unwrap();
-//     //     assert_eq!(&expected_record, candidate_record);
-//     //     assert_eq!(expected_record.owner(), candidate_record.owner());
-//     //     assert_eq!(expected_record.value(), candidate_record.value());
-//     //     // TODO (howardwu): Reenable this after fixing how payloads are handled.
-//     //     // assert_eq!(expected_record.payload(), candidate_record.payload());
-//     //     assert_eq!(expected_record.program_id(), candidate_record.program_id());
-//     // }
-//
-//     #[test]
-//     fn test_duplicate_transactions() {
-//         // Fetch any transaction.
-//         let transaction = Block::<CurrentNetwork>::genesis::<A>().unwrap().transactions().transactions[0].clone();
-//
-//         // Duplicate the transaction, and ensure it is invalid.
-//         assert!(Transactions::from(&[transaction.clone(), transaction]).is_err());
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_duplicate_transactions() {
+        // Retrieve the VM.
+        let vm = crate::ledger::vm::test_helpers::sample_vm();
+        // Retrieve a transaction.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        // Duplicate the transaction.
+        let transactions = Transactions::from(&[transaction.clone(), transaction]).unwrap();
+        // Ensure the `Transactions` struct only has one instance of the transaction.
+        assert_eq!(transactions.len(), 1);
+        assert!(!has_duplicates(transactions.transaction_ids()));
+        assert!(transactions.verify(&vm));
+    }
+
+    // #[test]
+    // fn test_to_decrypted_records() {
+    //     let rng = &mut thread_rng();
+    //     let account = Account::<CurrentNetwork>::new(rng);
+    //
+    //     // Craft a transaction with 1 coinbase record.
+    //     let genesis_block = Block::<Testnet2>::genesis();
+    //     let (transaction, expected_record) = Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+    //
+    //     // Craft a Transactions struct with 1 coinbase record.
+    //     let transactions = Transactions::from(&[transaction]).unwrap();
+    //     let decrypted_records = transactions
+    //         .to_decrypted_records(&account.view_key().into())
+    //         .collect::<Vec<Record<CurrentNetwork>>>();
+    //     assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
+    //
+    //     let candidate_record = decrypted_records.first().unwrap();
+    //     assert_eq!(&expected_record, candidate_record);
+    //     assert_eq!(expected_record.owner(), candidate_record.owner());
+    //     assert_eq!(expected_record.value(), candidate_record.value());
+    //     // assert_eq!(expected_record.payload(), candidate_record.payload());
+    //     assert_eq!(expected_record.program_id(), candidate_record.program_id());
+    // }
+}
