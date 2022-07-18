@@ -19,7 +19,14 @@ use super::*;
 impl<N: Network> FromBytes for Transition<N> {
     /// Reads the output from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let transition_id = Field::read_le(&mut reader)?;
+        // Read the version.
+        let version = u16::read_le(&mut reader)?;
+        // Ensure the version is valid.
+        if version != 0 {
+            return Err(error("Invalid transition version"));
+        }
+
+        let transition_id = N::TransitionID::read_le(&mut reader)?;
         let program_id = FromBytes::read_le(&mut reader)?;
         let function_name = FromBytes::read_le(&mut reader)?;
 
@@ -40,8 +47,8 @@ impl<N: Network> FromBytes for Transition<N> {
         let fee = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition = Transition::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
-            .map_err(|e| error(e.to_string()))?;
+        let transition =
+            Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee).map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
@@ -53,6 +60,9 @@ impl<N: Network> FromBytes for Transition<N> {
 impl<N: Network> ToBytes for Transition<N> {
     /// Writes the literal to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the version.
+        0u16.write_le(&mut writer)?;
+
         self.id.write_le(&mut writer)?;
         self.program_id.write_le(&mut writer)?;
         self.function_name.write_le(&mut writer)?;

@@ -16,6 +16,8 @@
 
 #[derive(Error, Debug)]
 pub enum SerializationError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
     /// During serialization with bincode, we encountered a serialization issue
     #[error(transparent)]
     BincodeError(#[from] bincode::Error),

@@ -14,26 +14,45 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    console::network::prelude::*,
-    ledger::{BlockHeader, Transactions},
-};
+mod header;
+pub use header::*;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+mod transaction;
+pub use transaction::*;
+
+mod transactions;
+pub use transactions::*;
+
+mod bytes;
+mod genesis;
+mod serialize;
+mod string;
+
+use crate::{
+    console::{
+        account::{Address, PrivateKey},
+        network::prelude::*,
+        program::Value,
+    },
+    ledger::vm::VM,
+};
+use snarkvm_compiler::Program;
+
+#[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
     /// The hash of this block.
     block_hash: N::BlockHash,
     /// The hash of the previous block.
     previous_hash: N::BlockHash,
     /// The header of the block.
-    header: BlockHeader<N>,
+    header: Header<N>,
     /// The transactions in the block.
     transactions: Transactions<N>,
 }
 
 impl<N: Network> Block<N> {
     /// Initializes a new block from a given previous hash, header, and transactions list.
-    pub fn from(previous_hash: N::BlockHash, header: BlockHeader<N>, transactions: Transactions<N>) -> Result<Self> {
+    pub fn from(previous_hash: N::BlockHash, header: Header<N>, transactions: Transactions<N>) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
         // Compute the block hash.
@@ -43,60 +62,8 @@ impl<N: Network> Block<N> {
         Ok(Self { block_hash, previous_hash, header, transactions })
     }
 
-    //     /// Initializes a new genesis block with one coinbase transaction.
-    //     pub fn genesis<A: circuit::Aleo<Network = N, BaseField = N::Field>>() -> Result<Self> {
-    //         // Initialize a fixed RNG.
-    //         let rng = &mut test_crypto_rng_fixed();
-    //         // Sample a private key.
-    //         let private_key = PrivateKey::<N>::new(rng)?;
-    //         let address = Address::try_from(&private_key)?;
-    //         // Initialize the program.
-    //         let program = Program::from_str(
-    //             r"program stake.aleo;
-    //
-    //   record stake:
-    //     owner as address.private;
-    //     gates as u64.private;
-    //
-    //   function initialize:
-    //     input r0 as address.private;
-    //     input r1 as u64.private;
-    //     cast r0 r1 into r2 as stake.record;
-    //     output r2 as stake.record;
-    // ",
-    //         )?;
-    //         // Initialize the process.
-    //         let mut process = Process::<N, A>::new(program)?;
-    //         // Initialize a genesis transaction.
-    //         let authorization = process.authorize(
-    //             &private_key,
-    //             &ProgramID::from_str("stake.aleo")?,
-    //             Identifier::from_str("initialize")?,
-    //             &[
-    //                 Value::from_str(&format!("{address}"))?,
-    //                 Value::from_str("1_000_000_000_000_000_u64")?,
-    //             ],
-    //             rng,
-    //         )?;
-    //         let transitions = process.execute(authorization, rng)?.1.to_vec();
-    //         let transaction = Transaction::execute(transitions)?;
-    //
-    //         // Prepare the components.
-    //         let header = BlockHeader::genesis();
-    //         let transactions = Transactions::from(&[transaction])?;
-    //         let previous_hash = N::BlockHash::default();
-    //
-    //         // Construct the block.
-    //         let block = Self::from(previous_hash, header, transactions)?;
-    //         // Ensure the block is valid genesis block.
-    //         match block.is_genesis() {
-    //             true => Ok(block),
-    //             false => bail!("Failed to initialize a genesis block"),
-    //         }
-    //     }
-
     /// Returns `true` if the block is well-formed.
-    pub fn is_valid(&self) -> bool {
+    pub fn verify(&self, vm: &VM<N>) -> bool {
         // If the block is the genesis block, check that it is valid.
         if self.header.height() == 0 && !self.is_genesis() {
             warn!("Invalid genesis block");
@@ -133,29 +100,32 @@ impl<N: Network> Block<N> {
             }
         };
 
-        // Ensure the block is not empty.
-        if self.transactions.is_empty() {
-            warn!("Block contains no transactions: {:?}", self);
-            return false;
-        }
+        // Compute the transactions root.
+        match self.transactions.to_root() {
+            // Ensure the transactions root matches the one in the block header.
+            Ok(root) => {
+                if &root != self.header.transactions_root() {
+                    warn!(
+                        "Block ({}) has an incorrect transactions root: expected {}",
+                        self.block_hash,
+                        self.header.transactions_root()
+                    );
+                    return false;
+                }
+            }
+            Err(error) => {
+                warn!("Failed to compute the Merkle root of the block transactions: {error}");
+                return false;
+            }
+        };
 
         // Ensure the transactions are valid.
-        if !self.transactions.is_valid() {
+        if !self.transactions.verify(vm) {
             warn!("Block contains invalid transactions: {:?}", self);
             return false;
         }
 
         true
-    }
-
-    /// Returns `true` if the block is a genesis block.
-    pub fn is_genesis(&self) -> bool {
-        // Ensure the previous block hash is zero.
-        self.previous_hash == N::BlockHash::default()
-            // Ensure the header is a genesis block header.
-            && self.header.is_genesis()
-            // Ensure there is one transaction in the genesis block.
-            && self.transactions.len() == 1
     }
 
     /// Returns the block hash.
@@ -169,7 +139,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns the block header.
-    pub const fn header(&self) -> &BlockHeader<N> {
+    pub const fn header(&self) -> &Header<N> {
         &self.header
     }
 
@@ -179,152 +149,14 @@ impl<N: Network> Block<N> {
     }
 }
 
-impl<N: Network> FromStr for Block<N> {
-    type Err = anyhow::Error;
+impl<N: Network> Block<N> {
+    /// Returns an iterator over all transactions in `self` that are deployments.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.deployments()
+    }
 
-    /// Initializes the block from a JSON-string.
-    fn from_str(block: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(block)?)
+    /// Returns an iterator over all transactions in `self` that are executions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.executions()
     }
 }
-
-impl<N: Network> Display for Block<N> {
-    /// Displays the block as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
-    }
-}
-
-impl<N: Network> FromBytes for Block<N> {
-    /// Reads the block from the buffer.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the version.
-        let version = u16::read_le(&mut reader)?;
-        // Ensure the version is valid.
-        if version != 0 {
-            return Err(error("Invalid block version"));
-        }
-
-        // Read the block.
-        let block_hash: N::BlockHash = FromBytes::read_le(&mut reader)?;
-        let previous_hash = FromBytes::read_le(&mut reader)?;
-        let header = FromBytes::read_le(&mut reader)?;
-        let transactions = FromBytes::read_le(&mut reader)?;
-
-        // Construct the block.
-        let block = Self::from(previous_hash, header, transactions).map_err(|e| error(e.to_string()))?;
-        // Ensure the block hash matches.
-        match block_hash == block.hash() {
-            true => Ok(block),
-            false => Err(error("Mismatching block hash, possible data corruption")),
-        }
-    }
-}
-
-impl<N: Network> ToBytes for Block<N> {
-    /// Writes the block to the buffer.
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the version.
-        0u16.write_le(&mut writer)?;
-
-        // Write the block.
-        self.block_hash.write_le(&mut writer)?;
-        self.previous_hash.write_le(&mut writer)?;
-        self.header.write_le(&mut writer)?;
-        self.transactions.write_le(&mut writer)
-    }
-}
-
-impl<N: Network> Serialize for Block<N> {
-    /// Serializes the block to a JSON-string or buffer.
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match serializer.is_human_readable() {
-            true => {
-                let mut block = serializer.serialize_struct("Block", 4)?;
-                block.serialize_field("block_hash", &self.block_hash)?;
-                block.serialize_field("previous_hash", &self.previous_hash)?;
-                block.serialize_field("header", &self.header)?;
-                block.serialize_field("transactions", &self.transactions)?;
-                block.end()
-            }
-            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
-        }
-    }
-}
-
-impl<'de, N: Network> Deserialize<'de> for Block<N> {
-    /// Deserializes the block from a JSON-string or buffer.
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        match deserializer.is_human_readable() {
-            true => {
-                let block = serde_json::Value::deserialize(deserializer)?;
-                let block_hash: N::BlockHash =
-                    serde_json::from_value(block["block_hash"].clone()).map_err(de::Error::custom)?;
-
-                // Recover the block.
-                let block = Self::from(
-                    serde_json::from_value(block["previous_hash"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["header"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(block["transactions"].clone()).map_err(de::Error::custom)?,
-                )
-                .map_err(de::Error::custom)?;
-
-                // Ensure the block hash matches.
-                match block_hash == block.hash() {
-                    true => Ok(block),
-                    false => Err(error("Mismatching block hash, possible data corruption")).map_err(de::Error::custom),
-                }
-            }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "block"),
-        }
-    }
-}
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     use snarkvm::prelude::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//     type A = snarkvm::circuit::AleoV0;
-//
-//     #[test]
-//     fn test_block_serde_json() {
-//         let block = Block::<CurrentNetwork>::genesis::<A>().unwrap();
-//
-//         // Serialize
-//         let expected_string = block.to_string();
-//         let candidate_string = serde_json::to_string(&block).unwrap();
-//         assert_eq!(3057, candidate_string.len(), "Update me if serialization has changed");
-//         assert_eq!(expected_string, candidate_string);
-//
-//         // Deserialize
-//         assert_eq!(block, Block::from_str(&candidate_string).unwrap());
-//         assert_eq!(block, serde_json::from_str(&candidate_string).unwrap());
-//     }
-//
-//     #[test]
-//     fn test_block_bincode() {
-//         let block = Block::<CurrentNetwork>::genesis::<A>().unwrap();
-//
-//         // Serialize
-//         let expected_bytes = block.to_bytes_le().unwrap();
-//         let candidate_bytes = bincode::serialize(&block).unwrap();
-//         assert_eq!(1532, expected_bytes.len(), "Update me if serialization has changed");
-//         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
-//         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
-//
-//         // Deserialize
-//         assert_eq!(block, Block::read_le(&expected_bytes[..]).unwrap());
-//         assert_eq!(block, bincode::deserialize(&candidate_bytes[..]).unwrap());
-//     }
-//
-//     #[test]
-//     fn test_block_genesis() {
-//         let block = Block::<CurrentNetwork>::genesis::<A>().unwrap();
-//         assert!(block.is_genesis());
-//     }
-// }

@@ -18,11 +18,11 @@
 use snarkvm_circuit_types::environment::assert_scope;
 
 mod from_outputs;
-mod verify;
+mod process_outputs_from_callback;
 
 use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Boolean, Equal, Field};
+use snarkvm_circuit_types::{environment::prelude::*, Field};
 
 pub enum OutputID<A: Aleo> {
     /// The hash of the constant output.
@@ -154,83 +154,6 @@ pub struct Response<A: Aleo> {
     output_ids: Vec<OutputID<A>>,
     /// The function outputs.
     outputs: Vec<Value<A>>,
-}
-
-#[cfg(console)]
-impl<A: Aleo> Inject for Response<A> {
-    type Primitive = console::Response<A::Network>;
-
-    /// Initializes the response from the given mode and console response.
-    fn new(_: Mode, response: Self::Primitive) -> Self {
-        // Inject the outputs.
-        let outputs = match response
-            .output_ids()
-            .iter()
-            .zip_eq(response.outputs())
-            .map(|(output_id, output)| {
-                match output_id {
-                    // A constant output is injected as `Mode::Constant`.
-                    console::OutputID::Constant(..) => {
-                        // Inject the output as `Mode::Constant`.
-                        let output = Value::new(Mode::Constant, output.clone());
-                        // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // A public output is injected as `Mode::Private`.
-                    console::OutputID::Public(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // A private output is injected as `Mode::Private`.
-                    console::OutputID::Private(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a plaintext.
-                        ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // A record output is injected as `Mode::Private`.
-                    console::OutputID::Record(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a record.
-                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                    // An external record output is injected as `Mode::Private`.
-                    console::OutputID::ExternalRecord(..) => {
-                        // Inject the output as `Mode::Private`.
-                        let output = Value::new(Mode::Private, output.clone());
-                        // Ensure the output is a record.
-                        ensure!(matches!(output, Value::Record(..)), "Expected a record output");
-                        // Return the output.
-                        Ok(output)
-                    }
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()
-        {
-            Ok(outputs) => outputs,
-            Err(error) => A::halt(format!("{error}")),
-        };
-
-        Self {
-            output_ids: response
-                .output_ids()
-                .iter()
-                .map(|output_id| OutputID::new(Mode::Public, output_id.clone()))
-                .collect(),
-            outputs,
-        }
-    }
 }
 
 impl<A: Aleo> Response<A> {

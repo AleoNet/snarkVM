@@ -20,26 +20,44 @@ impl<N: Network> Process<N> {
     /// Adds a new program to the process.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Retrieve the program ID.
-        let program_id = program.id();
-
-        // If the program already exists, ensure it is the same and return.
-        if self.programs.contains_key(program_id) {
-            // Retrieve the existing program.
-            let existing_program = self.get_program(program_id)?;
-            // Ensure the program is the same.
-            match existing_program == program {
-                true => return Ok(()),
-                false => bail!("Program already exists but with different contents"),
+        // Compute the program stack.
+        let stack = self.compute_stack(program)?;
+        // Check if the program ID exists in the process.
+        match self.contains_program(program.id()) {
+            // If the program already exists, ensure it is the same and return.
+            true => {
+                // Retrieve the existing stack.
+                let existing_stack = self.get_stack(program.id())?;
+                // Ensure the stacks are the same.
+                match existing_stack == &stack {
+                    true => Ok(()),
+                    false => bail!("Program already exists but differs in its contents."),
+                }
+            }
+            // Otherwise, insert the program stack.
+            false => {
+                // Add the stack to the process.
+                self.stacks.insert(*program.id(), stack);
+                // Return success.
+                Ok(())
             }
         }
+    }
 
-        // Ensure the program is not already added.
-        ensure!(!self.programs.contains_key(program_id), "Program '{program_id}' already exists");
+    /// Checks the given program is well-formed, computing its stack in the process.
+    #[inline]
+    pub fn compute_stack(&self, program: &Program<N>) -> Result<Stack<N>> {
+        // Retrieve the program ID.
+        let program_id = program.id();
+        // Ensure the program network-level domain (NLD) is correct.
+        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
+        // Ensure the program contains functions.
+        ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
+
         // Ensure the program imports all exist in the process already.
         for import in program.imports().keys() {
             ensure!(
-                self.programs.contains_key(import),
+                self.contains_program(import),
                 "Cannot add program '{program_id}' because its import '{import}' must be added first"
             );
         }
@@ -52,7 +70,7 @@ impl<N: Network> Process<N> {
             // Retrieve the external stack for the import program ID.
             let external_stack = self.get_stack(external_id)?;
             // Add the external stack to the stack.
-            stack.add_external_stack(external_stack)?;
+            stack.add_external_stack(external_stack.clone())?;
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
@@ -68,14 +86,8 @@ impl<N: Network> Process<N> {
             // Add the register types to the stack.
             stack.add_function_types(function.name(), register_types)?;
         }
-
-        // Add the program to the process.
-        self.programs.insert(*program_id, program.clone());
-        // Add the stack to the process.
-        self.stacks.insert(*program_id, stack);
-
-        // Return success.
-        Ok(())
+        // Return the stack.
+        Ok(stack)
     }
 }
 
@@ -310,10 +322,20 @@ impl<N: Network> Process<N> {
                     CallOperator::Resource(resource) => {
                         // Ensure the resource does not reference this closure or function.
                         if resource == closure_or_function_name {
-                            bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.");
+                            bail!("Cannot invoke 'call' to self (in '{resource}'): self-recursive call.")
+                        }
+
+                        // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                        //  But there are legitimate uses for passing a record through to an internal function.
+                        //  We could invoke the internal function without a state transition, but need to match visibility.
+                        if stack.program().contains_function(resource) {
+                            bail!(
+                                "Cannot call '{resource}' from '{closure_or_function_name}'. Use a closure ('closure {resource}:') instead."
+                            )
                         }
                         // Ensure the function or closure exists in the program.
-                        if !stack.program().contains_function(resource) && !stack.program().contains_closure(resource) {
+                        // if !stack.program().contains_function(resource) && !stack.program().contains_closure(resource) {
+                        if !stack.program().contains_closure(resource) {
                             bail!("'{resource}' is not defined in '{}'.", stack.program().id())
                         }
                     }

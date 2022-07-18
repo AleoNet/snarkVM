@@ -14,32 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
 mod helpers;
-pub(crate) use helpers::*;
+pub use helpers::*;
+
+mod register_types;
+pub use register_types::*;
+
+mod registers;
+pub use registers::*;
 
 mod stack;
 pub use stack::*;
-
-mod trace;
-use trace::*;
 
 mod transition;
 pub use transition::*;
 
 mod add_program;
 
-use crate::{
-    CallOperator,
-    Certificate,
-    Closure,
-    Function,
-    Instruction,
-    Opcode,
-    Operand,
-    Program,
-    ProvingKey,
-    VerifyingKey,
-};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -54,8 +52,6 @@ use std::sync::Arc;
 
 #[derive(Default)]
 pub struct Process<N: Network> {
-    /// The mapping of program IDs to programs.
-    programs: IndexMap<ProgramID<N>, Program<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
@@ -65,26 +61,32 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn new() -> Self {
-        Self { programs: IndexMap::new(), stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() }
+    pub fn new() -> Result<Self> {
+        // Initialize the process.
+        let process = Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
+        // Return the process.
+        Ok(process)
     }
 
     /// Returns `true` if the process contains the program with the given ID.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
-        self.programs.contains_key(program_id)
+        self.stacks.contains_key(program_id)
     }
 
     /// Returns the program for the given program ID.
     #[inline]
     pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
-        self.programs.get(program_id).ok_or_else(|| anyhow!("Program not found: {program_id}"))
+        self.stacks
+            .get(program_id)
+            .map(|stack| stack.program())
+            .ok_or_else(|| anyhow!("Program '{program_id}' not found"))
     }
 
     /// Returns the stack for the given program ID.
     #[inline]
-    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<Stack<N>> {
-        self.stacks.get(program_id).cloned().ok_or_else(|| anyhow!("Stack not found: {program_id}"))
+    pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
+        self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' not found"))
     }
 
     /// Returns the proving key for the given program ID and function name.
@@ -105,17 +107,28 @@ impl<N: Network> Process<N> {
         self.get_stack(program_id)?.get_verifying_key(function_name)
     }
 
-    /// Inserts the given proving key and verifying key, for the given program ID and function name.
+    /// Inserts the given proving key, for the given program ID and function name.
     #[inline]
-    pub fn insert_key(
+    pub fn insert_proving_key(
         &self,
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
         proving_key: ProvingKey<N>,
+    ) {
+        // Add the proving key to the mapping.
+        self.circuit_keys.insert_proving_key(program_id, function_name, proving_key);
+    }
+
+    /// Inserts the given verifying key, for the given program ID and function name.
+    #[inline]
+    pub fn insert_verifying_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
         verifying_key: VerifyingKey<N>,
     ) {
-        // Add the circuit key to the mapping.
-        self.circuit_keys.insert(program_id, function_name, proving_key, verifying_key);
+        // Add the verifying key to the mapping.
+        self.circuit_keys.insert_verifying_key(program_id, function_name, verifying_key);
     }
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.
@@ -130,40 +143,15 @@ impl<N: Network> Process<N> {
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
     }
 
-    /// Deploys the program with the given program ID.
+    /// Deploys the program with the given program ID, as a deployment.
     #[inline]
-    #[allow(clippy::type_complexity)]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
         program_id: &ProgramID<N>,
         rng: &mut R,
-    ) -> Result<Vec<(Identifier<N>, VerifyingKey<N>, Certificate<N>)>> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-
-        // Initialize a vector for the deployment.
-        let mut deployment = Vec::with_capacity(stack.program().functions().len());
-
-        for function_name in stack.program().functions().keys() {
-            // If the proving key or verifying key does not exist, synthesize them.
-            if !self.circuit_keys.contains_key(program_id, function_name) {
-                // Synthesize the proving and verifying key.
-                stack.synthesize_key::<A, R>(function_name, rng)?;
-            }
-
-            // Retrieve the proving key.
-            let proving_key = stack.get_proving_key(function_name)?;
-            // Retrieve the verifying key.
-            let verifying_key = stack.get_verifying_key(function_name)?;
-
-            // Certify the circuit.
-            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
-
-            // Add the verifying key and certificate to the deployment.
-            deployment.push((*function_name, verifying_key, certificate));
-        }
-
-        Ok(deployment)
+    ) -> Result<Deployment<N>> {
+        // Compute the deployment.
+        self.get_stack(program_id)?.deploy::<A, R>(rng)
     }
 
     /// Authorizes a call to the program function for the given inputs.
@@ -176,35 +164,16 @@ impl<N: Network> Process<N> {
         inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Authorization<N>> {
-        // Ensure the program exists.
-        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
-
         // Retrieve the program, function, and input types.
         let (program, function, input_types, _) = self.get_function_info(program_id, &function_name)?;
-
-        // Ensure the number of inputs matches.
-        if input_types.len() != inputs.len() {
-            bail!(
-                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
-                function.name(),
-                program.id(),
-                input_types.len(),
-                inputs.len()
-            )
-        }
-
         // Compute the request.
         let request = Request::sign(private_key, *program.id(), *function.name(), inputs, &input_types, rng)?;
-
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
-
-        // Retrieve the stack.
-        let stack = self.get_stack(program.id())?;
         // Construct the authorization from the function.
-        let _response = stack
+        let _response = self
+            .get_stack(program.id())?
             .execute_function::<A, R>(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
-
         // Return the authorization.
         Ok(authorization)
     }
@@ -216,17 +185,6 @@ impl<N: Network> Process<N> {
         let (program, function, input_types, output_types) =
             self.get_function_info(request.program_id(), request.function_name())?;
 
-        // Ensure the number of inputs matches.
-        if input_types.len() != request.inputs().len() {
-            bail!(
-                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
-                function.name(),
-                program.id(),
-                input_types.len(),
-                request.inputs().len()
-            )
-        }
-
         // Ensure the request is well-formed.
         ensure!(request.verify(&input_types), "Request is invalid");
 
@@ -236,12 +194,6 @@ impl<N: Network> Process<N> {
         let outputs = stack.evaluate_function::<A>(&function, request.inputs())?;
         // Compute the response.
         let response = Response::new(program.id(), request.inputs().len(), request.tvk(), outputs, &output_types)?;
-
-        // Initialize the trace.
-        let mut trace = Trace::<N>::new(request, &response)?;
-        // Finalize the trace.
-        trace.finalize()?;
-        println!("{:?}", trace.leaves());
 
         Ok(response)
     }
@@ -253,8 +205,6 @@ impl<N: Network> Process<N> {
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Execution<N>)> {
-        trace!("Starting execute");
-
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
         // Prepare the stack.
@@ -280,14 +230,61 @@ impl<N: Network> Process<N> {
         let response = stack.execute_function::<A, R>(CallStack::Execute(authorization, execution.clone()), rng)?;
         // Extract the execution.
         let execution = execution.read().clone();
+        // Ensure the execution is not empty.
+        ensure!(!execution.is_empty(), "Execution of '{}/{}' is empty", request.program_id(), request.function_name());
 
         Ok((response, execution))
     }
 
-    /// Verifies a program call for the given execution.
+    /// Verifies the given deployment is well-formed.
     #[inline]
-    pub fn verify(&self, execution: Execution<N>) -> Result<()> {
-        trace!("Starting verify");
+    pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        deployment: &Deployment<N>,
+        rng: &mut R,
+    ) -> Result<()> {
+        // Retrieve the edition.
+        let edition = deployment.edition();
+        // Retrieve the program.
+        let program = deployment.program().clone();
+        // Retrieve the program ID.
+        let program_id = deployment.program().id();
+
+        // Ensure the edition matches.
+        ensure!(edition == N::EDITION, "Deployed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
+        // Ensure the program does not already exist in the process.
+        ensure!(!self.contains_program(program_id), "Program '{program_id}' already exists");
+
+        // Check Program //
+
+        // Serialize the program into bytes.
+        let program_bytes = program.to_bytes_le()?;
+        // Ensure the program deserializes from bytes correctly.
+        ensure!(program == Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
+
+        // Serialize the program into string.
+        let program_string = program.to_string();
+        // Ensure the program deserializes from a string correctly.
+        ensure!(program == Program::from_str(&program_string)?, "Program string serialization failed");
+
+        // Ensure the program is well-formed, by computing the stack.
+        let stack = self.compute_stack(&program)?;
+
+        // Check Certificates //
+
+        // Ensure the verifying keys are well-formed and the certificates are valid.
+        stack.verify_deployment::<A, R>(deployment.verifying_keys(), rng)?;
+
+        Ok(())
+    }
+
+    /// Verifies the given execution is valid.
+    #[inline]
+    pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
+        // Retrieve the edition.
+        let edition = execution.edition();
+        // Ensure the edition matches.
+        ensure!(edition == N::EDITION, "Executed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
 
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
@@ -296,8 +293,10 @@ impl<N: Network> Process<N> {
         {
             // Retrieve the transition (without popping it).
             let transition = execution.peek()?;
+            // Retrieve the stack.
+            let stack = self.get_stack(transition.program_id())?;
             // Ensure the number of calls matches the number of transitions.
-            let number_of_calls = self.get_number_of_calls(transition.program_id(), transition.function_name())?;
+            let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
             ensure!(
                 number_of_calls == execution.len(),
                 "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
@@ -306,12 +305,20 @@ impl<N: Network> Process<N> {
         }
 
         // Replicate the execution stack for verification.
-        let mut queue = execution;
+        let mut queue = execution.clone();
 
         // Verify each transition.
         while let Ok(transition) = queue.pop() {
             #[cfg(debug_assertions)]
             println!("Verifying transition for {}/{}...", transition.program_id(), transition.function_name());
+
+            // Ensure the transition ID is correct.
+            ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");
+
+            // Ensure the number of inputs is within the allowed range.
+            ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
+            // Ensure the number of outputs is within the allowed range.
+            ensure!(transition.outputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
 
             // Ensure each input is valid.
             if transition.inputs().iter().any(|input| !input.verify()) {
@@ -321,8 +328,9 @@ impl<N: Network> Process<N> {
             if transition.outputs().iter().any(|output| !output.verify()) {
                 bail!("Failed to verify a transition output")
             }
+
             // Ensure the fee is correct.
-            match Stack::is_coinbase(transition.program_id(), transition.function_name()) {
+            match Program::is_coinbase(transition.program_id(), transition.function_name()) {
                 true => ensure!(transition.fee() < &0, "The fee must be negative in a coinbase transition"),
                 false => ensure!(transition.fee() >= &0, "The fee must be zero or positive"),
             }
@@ -333,7 +341,7 @@ impl<N: Network> Process<N> {
             // Construct the public inputs to verify the proof.
             let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
             // Extend the inputs with the input IDs.
-            inputs.extend(transition.input_ids().map(|id| *id));
+            inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 
             // Retrieve the stack.
             let stack = self.get_stack(transition.program_id())?;
@@ -344,7 +352,7 @@ impl<N: Network> Process<N> {
             for instruction in function.instructions() {
                 if let Instruction::Call(call) = instruction {
                     // Determine if this is a function call.
-                    if call.is_function_call(&stack)? {
+                    if call.is_function_call(stack)? {
                         num_function_calls += 1;
                     }
                 }
@@ -353,15 +361,15 @@ impl<N: Network> Process<N> {
             if num_function_calls > 0 {
                 // This loop takes the last `num_function_call` transitions, and reverses them
                 // to order them in the order they were defined in the function.
-                for transition in queue.to_vec().iter().rev().take(num_function_calls).rev() {
+                for transition in (*queue).iter().rev().take(num_function_calls).rev() {
                     // Extend the inputs with the input and output IDs of the external call.
-                    inputs.extend(transition.input_ids().map(|id| *id));
-                    inputs.extend(transition.output_ids().map(|id| *id));
+                    inputs.extend(transition.input_ids().map(|id| **id));
+                    inputs.extend(transition.output_ids().map(|id| **id));
                 }
             }
 
             // Lastly, extend the inputs with the output IDs and fee.
-            inputs.extend(transition.output_ids().map(|id| *id));
+            inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
 
             #[cfg(debug_assertions)]
@@ -388,6 +396,8 @@ impl<N: Network> Process<N> {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
     ) -> Result<(&Program<N>, Function<N>, Vec<ValueType<N>>, Vec<ValueType<N>>)> {
+        // Ensure the program exists.
+        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
         // Retrieve the program.
         let program = self.get_program(program_id)?;
         // Ensure the function exists.
@@ -420,32 +430,6 @@ impl<N: Network> Process<N> {
         }
 
         Ok((program, function, input_types, output_types))
-    }
-
-    /// Returns the expected number of calls for the given program ID and function name.
-    #[inline]
-    fn get_number_of_calls(&self, program_id: &ProgramID<N>, function_name: &Identifier<N>) -> Result<usize> {
-        // Retrieve the stack.
-        let stack = self.get_stack(program_id)?;
-        // Retrieve the function from the stack.
-        let function = stack.get_function(function_name)?;
-        // Determine the number of calls for this function (including the function itself).
-        let mut num_calls = 1;
-        for instruction in function.instructions() {
-            if let Instruction::Call(call) = instruction {
-                // Determine if this is a function call.
-                if call.is_function_call(&stack)? {
-                    // Increment by the number of calls.
-                    num_calls += match call.operator() {
-                        CallOperator::Locator(locator) => {
-                            self.get_number_of_calls(locator.program_id(), locator.resource())?
-                        }
-                        CallOperator::Resource(resource) => self.get_number_of_calls(stack.program_id(), resource)?,
-                    };
-                }
-            }
-        }
-        Ok(num_calls)
     }
 }
 
@@ -494,7 +478,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new();
+                let mut process = Process::<CurrentNetwork>::new().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
 
@@ -510,8 +494,8 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
-        static INSTANCE: OnceCell<Transition<CurrentNetwork>> = OnceCell::new();
+    pub(crate) fn sample_execution() -> Execution<CurrentNetwork> {
+        static INSTANCE: OnceCell<Execution<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize a new program.
@@ -537,7 +521,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new();
+                let mut process = Process::<CurrentNetwork>::new().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
                 // Authorize the function call.
@@ -557,10 +541,19 @@ function compute:
                 // Execute the request.
                 let (_response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
                 assert_eq!(execution.len(), 1);
-                // Return the transition.
-                execution.get(0).unwrap()
+                // Return the execution.
+                execution
             })
             .clone()
+    }
+
+    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
+        // Retrieve the execution.
+        let mut execution = sample_execution();
+        // Ensure the execution is not empty.
+        assert!(!execution.is_empty());
+        // Return the transition.
+        execution.pop().unwrap()
     }
 }
 
@@ -580,42 +573,23 @@ mod tests {
     #[test]
     fn test_process_execute_genesis() {
         // Initialize a new program.
-        let program = Program::<CurrentNetwork>::from_str(
-            r"program stake.aleo;
-
-  record stake:
-    owner as address.private;
-    gates as u64.private;
-
-  function initialize:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as stake.record;
-    output r2 as stake.record;",
-        )
-        .unwrap();
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("initialize").unwrap();
+        let program = Program::<CurrentNetwork>::genesis().unwrap();
 
         // Initialize the RNG.
         let rng = &mut test_crypto_rng();
-
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
         let caller = Address::try_from(&caller_private_key).unwrap();
-
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
         let r1 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
-
         // Declare the expected output value.
         let r2 = Value::from_str(&format!("{{ owner: {caller}.private, gates: 1_000_000_000_000_000_u64.private }}"))
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -624,28 +598,24 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                function_name,
+                Identifier::from_str("start").unwrap(),
                 &[r0.clone(), r1.clone()],
                 rng,
             )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.get(0).unwrap();
-
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
-
         // Execute the request.
         let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
-
-        assert!(process.verify(execution).is_ok());
-
+        assert!(process.verify_execution(&execution).is_ok());
         // use circuit::Environment;
         //
         // assert_eq!(22152, CurrentAleo::num_constants());
@@ -656,7 +626,7 @@ mod tests {
 
         /******************************************/
 
-        // Ensure a non-special program fails.
+        // Ensure a non-coinbase program function fails.
 
         // Initialize a new program.
         let program = Program::<CurrentNetwork>::from_str(
@@ -666,24 +636,29 @@ mod tests {
     owner as address.private;
     gates as u64.private;
 
-  function initialize:
+  function start:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
     output r2 as token.record;",
         )
         .unwrap();
-
         process.add_program(&program).unwrap();
 
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1], rng)
+            .authorize::<CurrentAleo, _>(
+                &caller_private_key,
+                program.id(),
+                Identifier::from_str("start").unwrap(),
+                &[r0, r1],
+                rng,
+            )
             .unwrap();
         let result = process.execute::<CurrentAleo, _>(authorization, rng);
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/initialize' is not satisfied on the given inputs.")
+            format!("'token.aleo/start' is not satisfied on the given inputs.")
         );
     }
 
@@ -706,7 +681,7 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
@@ -753,7 +728,7 @@ function hello_world:
         let record_b = Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private }}")).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -784,7 +759,7 @@ function hello_world:
         assert_eq!(record_a, candidate[0]);
         assert_eq!(record_b, candidate[1]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -856,14 +831,14 @@ function compute:
         let r5 = Value::from_str("8field").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -892,7 +867,7 @@ function compute:
         assert_eq!(r4, candidate[2]);
         assert_eq!(r5, candidate[3]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -903,7 +878,11 @@ function compute:
         // assert_eq!(159387, CurrentAleo::num_gates());
     }
 
+    /// TODO (howardwu): Revisit this decision. A record cannot be spent again.
+    ///  But there are legitimate uses for passing a record through to an internal function.
+    ///  We could invoke the internal function without a state transition, but need to match visibility.
     #[test]
+    #[ignore]
     fn test_process_execute_call_internal_function() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
@@ -964,7 +943,7 @@ function transfer:
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -1000,7 +979,7 @@ function transfer:
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //
@@ -1040,8 +1019,8 @@ function transfer:
     input r1 as address.private;
     input r2 as u64.private;
     sub r0.amount r2 into r3;
-    call mint r1 r2 into r4; // Only for testing, this is bad practice.
-    call mint r0.owner r3 into r5; // Only for testing, this is bad practice.
+    cast r1 0u64 r2 into r4 as token.record;
+    cast r0.owner r0.gates r3 into r5 as token.record;
     output r4 as token.record;
     output r5 as token.record;",
         )
@@ -1049,7 +1028,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program0).unwrap();
 
@@ -1107,22 +1086,22 @@ function transfer:
         let authorization = process
             .authorize::<CurrentAleo, _>(&caller0_private_key, program1.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
-        assert_eq!(authorization.len(), 4);
+        assert_eq!(authorization.len(), 2);
         println!("\nAuthorize\n{:#?}\n\n", authorization.to_vec_deque());
 
         let mut auth_stack = authorization.to_vec_deque();
 
-        // Compute the output value.
-        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(r5, candidate[0]);
-
-        // Compute the output value.
-        let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
-        let candidate = response.outputs();
-        assert_eq!(1, candidate.len());
-        assert_eq!(r4, candidate[0]);
+        // // Compute the output value.
+        // let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
+        // let candidate = response.outputs();
+        // assert_eq!(1, candidate.len());
+        // assert_eq!(r5, candidate[0]);
+        //
+        // // Compute the output value.
+        // let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
+        // let candidate = response.outputs();
+        // assert_eq!(1, candidate.len());
+        // assert_eq!(r4, candidate[0]);
 
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(&auth_stack.pop_back().unwrap()).unwrap();
@@ -1139,7 +1118,7 @@ function transfer:
         assert_eq!(r5, candidate[1]);
 
         // Check again to make sure we didn't modify the authorization before calling `execute`.
-        assert_eq!(authorization.len(), 4);
+        assert_eq!(authorization.len(), 2);
 
         // Execute the request.
         let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
@@ -1148,7 +1127,7 @@ function transfer:
         assert_eq!(r4, candidate[0]);
         assert_eq!(r5, candidate[1]);
 
-        assert!(process.verify(execution).is_ok());
+        assert!(process.verify_execution(&execution).is_ok());
 
         // use circuit::Environment;
         //

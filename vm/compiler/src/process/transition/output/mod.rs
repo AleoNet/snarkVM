@@ -16,12 +16,15 @@
 
 mod bytes;
 mod serialize;
+mod string;
 
 use console::{
     network::prelude::*,
     program::{Ciphertext, Plaintext, Record},
     types::Field,
 };
+
+type Variant = u16;
 
 /// The transition output.
 #[derive(Clone, PartialEq, Eq)]
@@ -39,81 +42,87 @@ pub enum Output<N: Network> {
 }
 
 impl<N: Network> Output<N> {
-    /// Returns the ID(s) of the output.
-    pub fn id(&self) -> Vec<Field<N>> {
+    /// Returns the variant of the output.
+    pub fn variant(&self) -> Variant {
         match self {
-            Output::Constant(id, ..) => vec![*id],
-            Output::Public(id, ..) => vec![*id],
-            Output::Private(id, ..) => vec![*id],
-            Output::Record(commitment, nonce, checksum, _) => vec![*commitment, *nonce, *checksum],
-            Output::ExternalRecord(id) => vec![*id],
+            Output::Constant(_, _) => 0,
+            Output::Public(_, _) => 1,
+            Output::Private(_, _) => 2,
+            Output::Record(_, _, _, _) => 3,
+            Output::ExternalRecord(_) => 4,
+        }
+    }
+
+    /// Returns the ID of the output.
+    pub fn id(&self) -> &Field<N> {
+        match self {
+            Output::Constant(id, ..) => id,
+            Output::Public(id, ..) => id,
+            Output::Private(id, ..) => id,
+            Output::Record(commitment, ..) => commitment,
+            Output::ExternalRecord(id) => id,
         }
     }
 
     /// Returns the commitment if the output is a record.
-    pub fn commitment(&self) -> Option<&Field<N>> {
+    pub const fn commitment(&self) -> Option<&Field<N>> {
         match self {
             Output::Record(commitment, ..) => Some(commitment),
             _ => None,
         }
     }
 
-    /// Returns `true` if the output is well-formed.
-    /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self) -> bool {
+    /// Returns the nonce if the output is a record.
+    pub const fn nonce(&self) -> Option<&Field<N>> {
         match self {
-            Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => hash == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            Output::Record(_, _, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => checksum == &candidate_hash,
-                Err(error) => {
-                    eprintln!("{error}");
-                    false
-                }
-            },
-            _ => true,
+            Output::Record(_, nonce, ..) => Some(nonce),
+            _ => None,
         }
     }
-}
 
-impl<N: Network> FromStr for Output<N> {
-    type Err = Error;
-
-    /// Initializes the output from a JSON-string.
-    fn from_str(output: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(output)?)
+    /// Returns the checksum if the output is a record.
+    pub const fn checksum(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(_, _, checksum, ..) => Some(checksum),
+            _ => None,
+        }
     }
-}
 
-impl<N: Network> Debug for Output<N> {
-    /// Prints the output as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
+    /// Returns the public verifier inputs for the proof.
+    pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
+        [Some(self.id()), self.nonce(), self.checksum()].into_iter().flatten().map(|x| **x)
     }
-}
 
-impl<N: Network> Display for Output<N> {
-    /// Displays the output as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    /// Returns `true` if the output is well-formed.
+    /// If the optional value exists, this method checks that it hashes to the output ID.
+    pub fn verify(&self) -> bool {
+        // Ensure the hash of the value (if the value exists) is correct.
+        let result = match self {
+            Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
+            },
+            Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
+            },
+            Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                Err(error) => Err(error),
+            },
+            Output::Record(_, _, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+                Ok(candidate_hash) => Ok(checksum == &candidate_hash),
+                Err(error) => Err(error),
+            },
+            _ => Ok(true),
+        };
+
+        match result {
+            Ok(is_hash_valid) => is_hash_valid,
+            Err(error) => {
+                eprintln!("{error}");
+                false
+            }
+        }
     }
 }

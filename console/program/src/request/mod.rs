@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// mod bytes;
+mod input_id;
+pub use input_id::InputID;
+
+mod bytes;
+mod serialize;
 mod sign;
+mod string;
 mod verify;
 
 use crate::{Identifier, ProgramID, Value, ValueType};
@@ -23,21 +28,7 @@ use snarkvm_console_account::{Address, ComputeKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum InputID<N: Network> {
-    /// The hash of the constant input.
-    Constant(Field<N>),
-    /// The hash of the public input.
-    Public(Field<N>),
-    /// The ciphertext hash of the private input.
-    Private(Field<N>),
-    /// The gamma value and serial number of the record input.
-    Record(Group<N>, Field<N>),
-    /// The commitment of the external record input.
-    ExternalRecord(Field<N>),
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Request<N: Network> {
     /// The request caller.
     caller: Address<N>,
@@ -86,7 +77,12 @@ impl<N: Network>
             Scalar<N>,
         ),
     ) -> Self {
-        Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk }
+        // Ensure the network ID is correct.
+        if *network_id != N::ID {
+            N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
+        } else {
+            Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk }
+        }
     }
 }
 
@@ -146,5 +142,58 @@ impl<N: Network> Request<N> {
     /// Returns the transition secret key `tsk`.
     pub const fn tsk(&self) -> &Scalar<N> {
         &self.tsk
+    }
+}
+
+#[cfg(test)]
+mod test_helpers {
+    use super::*;
+    use snarkvm_console_network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 1000;
+
+    pub(super) fn sample_requests() -> Vec<Request<CurrentNetwork>> {
+        let rng = &mut test_crypto_rng();
+
+        (0..ITERATIONS)
+            .map(|i| {
+                // Sample a random private key and address.
+                let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let address = Address::try_from(&private_key).unwrap();
+
+                // Construct a program ID and function name.
+                let program_id = ProgramID::from_str("token.aleo").unwrap();
+                let function_name = Identifier::from_str("transfer").unwrap();
+
+                // Prepare a record belonging to the address.
+                let record_string =
+                    format!("{{ owner: {address}.private, gates: {i}u64.private, token_amount: {i}u64.private }}");
+
+                // Construct four inputs.
+                let input_constant = Value::from_str(&format!("{{ token_amount: {i}u128 }}")).unwrap();
+                let input_public = Value::from_str(&format!("{{ token_amount: {i}u128 }}")).unwrap();
+                let input_private = Value::from_str(&format!("{{ token_amount: {i}u128 }}")).unwrap();
+                let input_record = Value::from_str(&record_string).unwrap();
+                let input_external_record = Value::from_str(&record_string).unwrap();
+                let inputs = vec![input_constant, input_public, input_private, input_record, input_external_record];
+
+                // Construct the input types.
+                let input_types = vec![
+                    ValueType::from_str("amount.constant").unwrap(),
+                    ValueType::from_str("amount.public").unwrap(),
+                    ValueType::from_str("amount.private").unwrap(),
+                    ValueType::from_str("token.record").unwrap(),
+                    ValueType::from_str("token.aleo/token.record").unwrap(),
+                ];
+
+                // Compute the signed request.
+                let request =
+                    Request::sign(&private_key, program_id, function_name, &inputs, &input_types, rng).unwrap();
+                assert!(request.verify(&input_types));
+                request
+            })
+            .collect()
     }
 }

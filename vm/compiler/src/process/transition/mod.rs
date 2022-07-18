@@ -17,15 +17,23 @@
 mod input;
 use input::*;
 
+mod leaf;
+pub use leaf::*;
+
+mod merkle;
+pub use merkle::*;
+
 mod output;
 use output::*;
 
 mod bytes;
 mod serialize;
+mod string;
 
 use crate::Proof;
 use console::{
-    network::prelude::*,
+    collections::merkle_tree::MerklePath,
+    network::{prelude::*, BHPMerkleTree},
     program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value, ValueType},
     types::{Field, Group},
 };
@@ -33,7 +41,7 @@ use console::{
 #[derive(Clone, PartialEq, Eq)]
 pub struct Transition<N: Network> {
     /// The transition ID.
-    id: Field<N>,
+    id: N::TransitionID,
     /// The program ID.
     program_id: ProgramID<N>,
     /// The function name.
@@ -62,14 +70,9 @@ impl<N: Network> Transition<N> {
         fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
-        let id = N::hash_bhp1024(
-            &inputs
-                .iter()
-                .flat_map(|input| input.id().to_bits_le())
-                .chain(outputs.iter().flat_map(|output| output.id().to_bits_le()))
-                .collect::<Vec<_>>(),
-        )?;
-        Ok(Self { id, program_id, function_name, inputs, outputs, proof, tpk, fee })
+        let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
+        // Return the transition.
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, proof, tpk, fee })
     }
 
     /// Initializes a new transition from a request and response.
@@ -215,13 +218,14 @@ impl<N: Network> Transition<N> {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        // Retrieve the `tpk`.
         let tpk = request.to_tpk();
-
+        // Return the transition.
         Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
     }
 
     /// Returns the transition ID.
-    pub const fn id(&self) -> &Field<N> {
+    pub const fn id(&self) -> &N::TransitionID {
         &self.id
     }
 
@@ -241,8 +245,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the input IDs.
-    pub fn input_ids(&self) -> impl '_ + Iterator<Item = Field<N>> {
-        self.inputs.iter().map(|input| input.id())
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().map(Input::id)
     }
 
     /// Return the outputs.
@@ -251,8 +255,8 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the output IDs.
-    pub fn output_ids(&self) -> impl '_ + Iterator<Item = Field<N>> {
-        self.outputs.iter().flat_map(Output::id)
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.outputs.iter().map(Output::id)
     }
 
     /// Returns the proof.
@@ -281,27 +285,9 @@ impl<N: Network> Transition<N> {
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.outputs.iter().flat_map(Output::commitment)
     }
-}
 
-impl<N: Network> FromStr for Transition<N> {
-    type Err = Error;
-
-    /// Initializes the transition from a JSON-string.
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(input)?)
-    }
-}
-
-impl<N: Network> Debug for Transition<N> {
-    /// Prints the transition as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(self, f)
-    }
-}
-
-impl<N: Network> Display for Transition<N> {
-    /// Displays the transition as a JSON-string.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    /// Returns an iterator over the nonces, for outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.outputs.iter().flat_map(Output::nonce)
     }
 }

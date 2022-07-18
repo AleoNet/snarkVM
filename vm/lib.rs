@@ -16,9 +16,8 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
+#![allow(clippy::single_element_loop)]
 
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate tracing;
 
@@ -30,7 +29,6 @@ extern crate thiserror;
 pub mod cli;
 pub mod file;
 pub mod package;
-pub mod vm;
 
 mod ledger;
 pub use ledger::*;

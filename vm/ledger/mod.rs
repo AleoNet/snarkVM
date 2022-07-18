@@ -17,32 +17,40 @@
 mod block;
 pub use block::*;
 
-mod header;
-pub use header::*;
+// mod blocks;
+// pub use blocks::*;
 
-mod transaction;
-pub use transaction::*;
+mod state_path;
+pub use state_path::*;
 
-mod transactions;
-pub use transactions::*;
+mod vm;
+pub use vm::*;
 
 use crate::console::{
-    network::prelude::*,
-    program::{Identifier, Plaintext},
+    collections::merkle_tree::MerklePath,
+    network::{prelude::*, BHPMerkleTree},
 };
 use snarkvm_compiler::Program;
 
 use indexmap::{IndexMap, IndexSet};
 
+/// The depth of the Merkle tree for the blocks.
+const BLOCKS_DEPTH: u8 = 32;
+
+/// The Merkle tree for the blocks.
+pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
+/// The Merkle path for the blocks.
+pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
+
 #[derive(Clone, Default)]
 #[allow(dead_code)]
 pub struct Ledger<N: Network> {
-    /// The mapping of program IDs to their programs.
-    programs: IndexMap<u64, Program<N>>,
-    /// The mapping of program IDs to their global state.
-    states: IndexMap<u64, IndexMap<Identifier<N>, Plaintext<N>>>,
     /// The mapping of block numbers to blocks.
     blocks: IndexMap<u32, Block<N>>,
+    /// The mapping of program IDs to their programs.
+    programs: IndexMap<u64, Program<N>>,
+    // /// The mapping of program IDs to their global state.
+    // states: IndexMap<u64, IndexMap<Identifier<N>, Plaintext<N>>>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexSet<Transaction<N>>,
 }
@@ -50,12 +58,17 @@ pub struct Ledger<N: Network> {
 impl<N: Network> Ledger<N> {
     /// Initializes a new ledger.
     pub fn new() -> Self {
-        Self {
-            programs: IndexMap::new(),
-            states: IndexMap::new(),
-            blocks: IndexMap::new(),
-            memory_pool: IndexSet::new(),
-        }
+        Self { programs: IndexMap::new(), blocks: IndexMap::new(), memory_pool: IndexSet::new() }
+    }
+
+    /// Returns an iterator over all transactions in `self` that are deployments.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.blocks.values().flat_map(|block| block.deployments())
+    }
+
+    /// Returns an iterator over all transactions in `self` that are executions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.blocks.values().flat_map(|block| block.executions())
     }
 }
 

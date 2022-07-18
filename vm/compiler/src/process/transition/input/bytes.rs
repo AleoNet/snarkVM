@@ -19,7 +19,7 @@ use super::*;
 impl<N: Network> FromBytes for Input<N> {
     /// Reads the input from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index = u16::read_le(&mut reader)?;
+        let index = Variant::read_le(&mut reader)?;
         let literal = match index {
             0 => {
                 let plaintext_hash: Field<N> = FromBytes::read_le(&mut reader)?;
@@ -60,10 +60,9 @@ impl<N: Network> FromBytes for Input<N> {
 impl<N: Network> ToBytes for Input<N> {
     /// Writes the input to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        type Size = u16;
         match self {
             Self::Constant(plaintext_hash, plaintext) => {
-                (0 as Size).write_le(&mut writer)?;
+                (0 as Variant).write_le(&mut writer)?;
                 plaintext_hash.write_le(&mut writer)?;
                 match plaintext {
                     Some(plaintext) => {
@@ -74,7 +73,7 @@ impl<N: Network> ToBytes for Input<N> {
                 }
             }
             Self::Public(plaintext_hash, plaintext) => {
-                (1 as Size).write_le(&mut writer)?;
+                (1 as Variant).write_le(&mut writer)?;
                 plaintext_hash.write_le(&mut writer)?;
                 match plaintext {
                     Some(plaintext) => {
@@ -85,7 +84,7 @@ impl<N: Network> ToBytes for Input<N> {
                 }
             }
             Self::Private(ciphertext_hash, ciphertext) => {
-                (2 as Size).write_le(&mut writer)?;
+                (2 as Variant).write_le(&mut writer)?;
                 ciphertext_hash.write_le(&mut writer)?;
                 match ciphertext {
                     Some(ciphertext) => {
@@ -96,11 +95,11 @@ impl<N: Network> ToBytes for Input<N> {
                 }
             }
             Self::Record(serial_number) => {
-                (3 as Size).write_le(&mut writer)?;
+                (3 as Variant).write_le(&mut writer)?;
                 serial_number.write_le(&mut writer)
             }
             Self::ExternalRecord(input_commitment) => {
-                (4 as Size).write_le(&mut writer)?;
+                (4 as Variant).write_le(&mut writer)?;
                 input_commitment.write_le(&mut writer)
             }
         }

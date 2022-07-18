@@ -177,7 +177,16 @@ impl<N: Network> Call<N> {
             CallOperator::Locator(locator) => {
                 (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
             }
-            CallOperator::Resource(resource) => (stack.clone(), resource),
+            CallOperator::Resource(resource) => {
+                // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                //  But there are legitimate uses for passing a record through to an internal function.
+                //  We could invoke the internal function without a state transition, but need to match visibility.
+                if stack.program().contains_function(resource) {
+                    bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
+                }
+
+                (stack.clone(), resource)
+            }
         };
 
         // If the operator is a closure, retrieve the closure and compute the output.
@@ -229,15 +238,20 @@ impl<N: Network> Call<N> {
             CallOperator::Locator(locator) => {
                 (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
             }
-            CallOperator::Resource(resource) => (stack.clone(), resource),
+            CallOperator::Resource(resource) => {
+                // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                //  But there are legitimate uses for passing a record through to an internal function.
+                //  We could invoke the internal function without a state transition, but need to match visibility.
+                if stack.program().contains_function(resource) {
+                    bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
+                }
+
+                (stack.clone(), resource)
+            }
         };
 
         // If the operator is a closure, retrieve the closure and compute the output.
         let outputs = if let Ok(closure) = substack.program().get_closure(resource) {
-            // Ensure the number of inputs matches the number of input statements.
-            if closure.inputs().len() != inputs.len() {
-                bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
-            }
             // Execute the closure, and load the outputs.
             substack.execute_closure(&closure, &inputs, registers.call_stack())?
         }
@@ -259,8 +273,6 @@ impl<N: Network> Call<N> {
             let (request, response) = {
                 // Eject the circuit inputs.
                 let inputs = inputs.eject_value();
-                // Retrieve the input types.
-                let input_types = function.input_types();
 
                 // Initialize an RNG.
                 let rng = &mut rand::thread_rng();
@@ -275,7 +287,7 @@ impl<N: Network> Call<N> {
                             *substack.program_id(),
                             *function.name(),
                             &inputs,
-                            &input_types,
+                            &function.input_types(),
                             rng,
                         )?;
 
@@ -290,6 +302,27 @@ impl<N: Network> Call<N> {
                         // Execute the request.
                         let response = substack.execute_function::<A, _>(call_stack, rng)?;
 
+                        // Return the request and response.
+                        (request, response)
+                    }
+                    CallStack::CheckDeployment(_, private_key, ..) => {
+                        // Compute the request.
+                        let request = Request::sign(
+                            &private_key,
+                            *substack.program_id(),
+                            *function.name(),
+                            &inputs,
+                            &function.input_types(),
+                            rng,
+                        )?;
+
+                        // Retrieve the call stack.
+                        let mut call_stack = registers.call_stack();
+                        // Push the request onto the call stack.
+                        call_stack.push(request.clone())?;
+
+                        // Execute the request.
+                        let response = substack.execute_function::<A, _>(call_stack, rng)?;
                         // Return the request and response.
                         (request, response)
                     }
@@ -353,13 +386,16 @@ impl<N: Network> Call<N> {
                 &tvk,
             ));
 
-            // Inject the response as `Mode::Private` (with the IDs as `Mode::Public`).
-            let response = circuit::Response::new(circuit::Mode::Private, response);
-            // Ensure the response matches its declared IDs.
-            A::assert(response.verify(&program_id, num_inputs, &tvk, &function.output_types()));
-
+            // Inject the outputs as `Mode::Private` (with the output IDs as `Mode::Public`).
+            let outputs = circuit::Response::process_outputs_from_callback(
+                &program_id,
+                num_inputs,
+                &tvk,
+                response.outputs().to_vec(),
+                &function.output_types(),
+            );
             // Return the circuit outputs.
-            response.outputs().to_vec()
+            outputs
         }
         // Else, throw an error.
         else {
@@ -384,7 +420,16 @@ impl<N: Network> Call<N> {
             CallOperator::Locator(locator) => {
                 (true, stack.get_external_program(locator.program_id())?, locator.resource())
             }
-            CallOperator::Resource(resource) => (false, stack.program(), resource),
+            CallOperator::Resource(resource) => {
+                // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                //  But there are legitimate uses for passing a record through to an internal function.
+                //  We could invoke the internal function without a state transition, but need to match visibility.
+                if stack.program().contains_function(resource) {
+                    bail!("Cannot call '{resource}'. Use a closure ('closure {resource}:') instead.")
+                }
+
+                (false, stack.program(), resource)
+            }
         };
 
         // If the operator is a closure, retrieve the closure and compute the output types.

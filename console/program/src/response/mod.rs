@@ -32,7 +32,7 @@ pub enum OutputID<N: Network> {
     ExternalRecord(Field<N>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Response<N: Network> {
     /// The output ID for the transition.
     output_ids: Vec<OutputID<N>>,

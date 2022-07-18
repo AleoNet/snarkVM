@@ -29,26 +29,11 @@ use snarkvm_utilities::{
     Write,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use itertools::Itertools;
-use rand::Rng;
-use std::{
-    collections::BTreeMap,
-    fs::{File, OpenOptions},
-    io::{BufReader, Seek, SeekFrom},
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, io::BufReader};
 
-lazy_static::lazy_static! {
-    static ref UNIVERSAL_SRS_15: Vec<u8> = Degree15::load_bytes().expect("Failed to load universal SRS of degree 15");
-    static ref UNIVERSAL_SRS_GAMMA: Vec<u8> = Gamma::load_bytes().expect("Failed to load universal SRS gamma powers");
-}
-
-// Amount of powers contained in `UNIVERSAL_SRS_GAMMA`.
-const NUM_UNIVERSAL_SRS_GAMMA: usize = 84;
-// Size of a serialized power of G.
-const POWER_OF_G_SERIALIZED_SIZE: usize = 97;
-
+const DEGREE_15: usize = 1 << 15;
 const DEGREE_16: usize = 1 << 16;
 const DEGREE_17: usize = 1 << 17;
 const DEGREE_18: usize = 1 << 18;
@@ -63,176 +48,172 @@ const DEGREE_26: usize = 1 << 26;
 const DEGREE_27: usize = 1 << 27;
 const DEGREE_28: usize = 1 << 28;
 
-/// An abstraction over a vector of powers of G, meant to reduce
-/// memory burden when handling universal setup parameters.
-#[derive(Debug)]
-pub struct PowersOfG<E: PairingEngine> {
-    /// Filepath of the powers we're using.
-    file_path: String,
-    /// A handle to the file on disk containing the powers of G.
-    /// The handle is guarded to avoid read/write conflicts with potential
-    /// clones.
-    /// Contains group elements of the form `[G, \beta * G, \beta^2 * G, ..., \beta^{d} G]`.
-    file: File,
-    /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
-    /// These are used for hiding.
-    powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
-    /// The degree up to which we have powers.
-    /// Mostly just used for ensuring we download in the proper order,
-    /// length checks are actually done by checking file metadata.
-    degree: usize,
+/// The maximum degree supported by the SRS.
+const MAXIMUM_DEGREE: usize = DEGREE_28;
+
+/// Number of powers contained in `UNIVERSAL_SRS_GAMMA`.
+const NUM_UNIVERSAL_SRS_GAMMA: usize = 84;
+
+lazy_static::lazy_static! {
+    static ref UNIVERSAL_SRS_15: Vec<u8> = Degree15::load_bytes().expect("Failed to load universal SRS of degree 15");
+    static ref UNIVERSAL_SRS_GAMMA: Vec<u8> = Gamma::load_bytes().expect("Failed to load universal SRS gamma powers");
 }
 
-// NOTE: this drops the powers into a tmp file.
-// I assume this is only used for testing but this needs to be verified.
-impl<E: PairingEngine> From<(Vec<E::G1Affine>, BTreeMap<usize, E::G1Affine>)> for PowersOfG<E> {
-    fn from(value: (Vec<E::G1Affine>, BTreeMap<usize, E::G1Affine>)) -> Self {
-        let mut dir = std::env::temp_dir();
-        dir.push(format!("powers_of_g_{}", rand::thread_rng().gen::<u32>()));
-        let mut file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(dir.clone())
-            .expect("should be able to create tmp powers of g");
-
-        for power in value.0 {
-            power.write_le(&mut file).unwrap();
-        }
-
-        drop(file);
-        let mut powers = Self::new(dir).unwrap();
-        powers.powers_of_beta_times_gamma_g = value.1;
-        powers
-    }
+/// A vector of powers of beta G.
+#[derive(Debug)]
+pub struct PowersOfG<E: PairingEngine> {
+    /// A boolean indicator if the powers were from a setup.
+    is_setup: bool,
+    /// The number of group elements in `powers_of_beta_g`.
+    current_degree: usize,
+    /// Group elements of form `[G, \beta * G, \beta^2 * G, ..., \beta^{d} G]`.
+    powers_of_beta_g: Vec<E::G1Affine>,
+    /// Group elements of form `{ \beta^i \gamma G }`, where `i` is from 0 to `degree`, used for hiding.
+    powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
 }
 
 impl<E: PairingEngine> PowersOfG<E> {
-    /// Returns a new instance of `PowersOfG`, which will store its
-    /// powers in a file at `file_path`.
-    pub fn new(file_path: PathBuf) -> Result<Self> {
-        // Open the given file, creating it if it doesn't yet exist.
-        let mut file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
-
-        // If the file is empty, let's write the base powers (up to degree 15) to it.
-        if file.metadata()?.len() == 0 {
-            file.write_all(&UNIVERSAL_SRS_15)?;
-        }
-
-        let degree = file.metadata()?.len() as usize / POWER_OF_G_SERIALIZED_SIZE;
-
-        let mut powers = Self {
-            file_path: String::from(file_path.to_str().expect("could not get filepath for powers of g")),
-            file,
-            powers_of_beta_times_gamma_g: BTreeMap::new(),
-            degree,
+    /// Initializes a new instance of the powers.
+    pub fn setup(
+        powers_of_beta_g: Vec<E::G1Affine>,
+        powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
+    ) -> Result<Self> {
+        // Initialize the powers.
+        let powers = Self {
+            is_setup: true,
+            current_degree: powers_of_beta_g.len(),
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g,
         };
-
-        powers.regenerate_powers_of_beta_times_gamma_g()?;
+        // Return the powers.
         Ok(powers)
+    }
+
+    /// Initializes an existing instance of the powers.
+    pub fn load() -> Result<Self> {
+        // Initialize a `BufReader`.
+        let mut reader = BufReader::new(&UNIVERSAL_SRS_15[..]);
+        // Deserialize the group elements.
+        let powers_of_beta_g = (0..DEGREE_15)
+            .map(|_| E::G1Affine::read_le(&mut reader))
+            // .map(|_| E::G1Affine::deserialize_with_mode(&mut reader, Compress::No, Validate::No))
+            .collect::<Result<Vec<_>, _>>()?;
+        // Ensure the number of elements is correct.
+        ensure!(powers_of_beta_g.len() == DEGREE_15, "Incorrect number of powers in the recovered SRS");
+
+        // Initialize the powers.
+        let powers = Self {
+            is_setup: false,
+            current_degree: DEGREE_15,
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g: Self::regenerate_powers_of_beta_times_gamma_g(DEGREE_15)?,
+        };
+        // Return the powers.
+        Ok(powers)
+    }
+
+    /// Returns the power of beta times G specified by `target_power`.
+    pub fn power_of_beta_g(&mut self, target_power: usize) -> Result<E::G1Affine> {
+        // Ensure the powers exist, and download the missing powers if necessary.
+        if target_power >= self.current_degree {
+            self.download_up_to(target_power)?;
+        }
+        // Return the power.
+        self.powers_of_beta_g.get(target_power).copied().ok_or_else(|| anyhow!("Failed to get power of beta G"))
+    }
+
+    /// Slices the underlying file to return a vector of affine elements between `lower` and `upper`.
+    pub fn powers_of_beta_g(&mut self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
+        // Ensure the lower power is less than the upper power.
+        ensure!(lower < upper, "Lower power must be less than upper power");
+        // Ensure the powers exist, and download the missing powers if necessary.
+        if upper >= self.current_degree {
+            self.download_up_to(upper)?;
+        }
+        // Return the powers.
+        Ok(self.powers_of_beta_g[lower..upper].to_vec())
+    }
+
+    /// Returns the powers of beta * gamma G.
+    pub fn powers_times_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
+        &self.powers_of_beta_times_gamma_g
     }
 
     /// Return the number of current powers of G.
     pub fn degree(&self) -> usize {
-        self.degree
-    }
-
-    /// Returns the power of beta times G specified by `target_power`.
-    // NOTE: `std::ops::Index` was not used here as the trait requires
-    // that we return a reference. We can not return a reference to
-    // something that does not exist when this function is called.
-    pub fn power_of_beta_g(&mut self, target_power: usize) -> E::G1Affine {
-        let index_start = self.get_starting_byte_index(target_power).expect("Failed to load starting byte index");
-
-        // Move our offset to the start of the desired element.
-        let mut reader = BufReader::new(&self.file);
-        reader.seek(SeekFrom::Start(index_start as u64)).expect("could not seek to element starting index");
-
-        // Now read it out, deserialize it, and return it.
-        FromBytes::read_le(&mut reader).expect("powers of g corrupted")
-    }
-
-    /// Slices the underlying file to return a vector of affine elements
-    /// between `lower` and `upper`.
-    pub fn powers_of_beta_g(&mut self, lower: usize, upper: usize) -> Vec<E::G1Affine> {
-        // Ensure index exists for upper power.
-        let _ = self.get_starting_byte_index(upper).expect("Failed to load upper power index");
-        let index_start = self.get_starting_byte_index(lower).expect("Failed to load lower power index");
-
-        // Move our offset to the start of the desired element.
-        let mut reader = BufReader::new(&self.file);
-        reader.seek(SeekFrom::Start(index_start as u64)).expect("could not seek to element starting index");
-
-        // Now iterate until we fill a vector with all desired elements.
-        let mut powers = Vec::with_capacity((upper - lower) as usize);
-        for _ in lower..upper {
-            powers.push(E::G1Affine::read_le(&mut reader).expect("powers of g corrupted"));
-        }
-        powers
-    }
-
-    /// Returns the index in the `file` for the starting byte of the `target_power` being requested.
-    fn get_starting_byte_index(&mut self, target_power: usize) -> Result<usize> {
-        let starting_byte_index = match target_power.checked_mul(POWER_OF_G_SERIALIZED_SIZE) {
-            Some(index) => index,
-            None => bail!("Attempted to load {target_power}th power of G, exceeding the bounds"),
-        };
-
-        // Ensure the powers exist, and download the missing powers if necessary.
-        if starting_byte_index > self.file.metadata()?.len() as usize {
-            self.download_up_to(target_power.next_power_of_two())?;
-        }
-
-        Ok(starting_byte_index)
+        self.current_degree
     }
 
     /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
     /// and updates `Self` in place with the new powers.
     pub fn download_up_to(&mut self, target_degree: usize) -> Result<()> {
+        // Initialize the first degree to download.
+        let mut next_degree = std::cmp::max(self.current_degree.next_power_of_two(), DEGREE_16);
+
         // Determine the degrees to download.
-        let mut degrees_to_download = vec![];
-        let mut current = self.degree;
-        while current < target_degree {
-            degrees_to_download.push(current * 2);
-            current *= 2;
+        let mut download_queue = Vec::new();
+        // Download the powers until the target degree is reached.
+        while next_degree <= target_degree && next_degree <= MAXIMUM_DEGREE {
+            // Append the next degree to the download queue.
+            download_queue.push(next_degree);
+            // Update the next degree.
+            next_degree *= 2;
         }
 
         // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
-        if !degrees_to_download.is_empty() {
-            for degree in &degrees_to_download {
-                // Download the universal SRS powers.
-                let bytes = match *degree {
-                    DEGREE_16 => Degree16::load_bytes()?,
-                    DEGREE_17 => Degree17::load_bytes()?,
-                    DEGREE_18 => Degree18::load_bytes()?,
-                    DEGREE_19 => Degree19::load_bytes()?,
-                    DEGREE_20 => Degree20::load_bytes()?,
-                    DEGREE_21 => Degree21::load_bytes()?,
-                    DEGREE_22 => Degree22::load_bytes()?,
-                    DEGREE_23 => Degree23::load_bytes()?,
-                    DEGREE_24 => Degree24::load_bytes()?,
-                    DEGREE_25 => Degree25::load_bytes()?,
-                    DEGREE_26 => Degree26::load_bytes()?,
-                    DEGREE_27 => Degree27::load_bytes()?,
-                    DEGREE_28 => Degree28::load_bytes()?,
-                    _ => bail!("Invalid degree '{degree}' selected"),
-                };
-
-                // Write the powers to the file.
-                self.file.seek(SeekFrom::End(0))?;
-                self.file.write_all(&bytes)?;
-
-                // Update the `degree`.
-                self.degree = *degree;
+        if !download_queue.is_empty() {
+            // If the powers are from a setup, then it cannot download more powers.
+            if self.is_setup {
+                bail!(
+                    "Cannot download more than {} powers for this setup (attempted {})",
+                    self.degree(),
+                    target_degree
+                );
             }
 
-            self.regenerate_powers_of_beta_times_gamma_g()?;
-        }
+            for degree in &download_queue {
+                println!("Downloading SRS of degree {}", degree);
 
+                // Download the universal SRS powers.
+                let (number_of_elements, additional_bytes) = match *degree {
+                    DEGREE_16 => (DEGREE_15, Degree16::load_bytes()?),
+                    DEGREE_17 => (DEGREE_16, Degree17::load_bytes()?),
+                    DEGREE_18 => (DEGREE_17, Degree18::load_bytes()?),
+                    DEGREE_19 => (DEGREE_18, Degree19::load_bytes()?),
+                    DEGREE_20 => (DEGREE_19, Degree20::load_bytes()?),
+                    DEGREE_21 => (DEGREE_20, Degree21::load_bytes()?),
+                    DEGREE_22 => (DEGREE_21, Degree22::load_bytes()?),
+                    DEGREE_23 => (DEGREE_22, Degree23::load_bytes()?),
+                    DEGREE_24 => (DEGREE_23, Degree24::load_bytes()?),
+                    DEGREE_25 => (DEGREE_24, Degree25::load_bytes()?),
+                    DEGREE_26 => (DEGREE_25, Degree26::load_bytes()?),
+                    DEGREE_27 => (DEGREE_26, Degree27::load_bytes()?),
+                    DEGREE_28 => (DEGREE_27, Degree28::load_bytes()?),
+                    _ => bail!("Cannot download an invalid degree of '{degree}'"),
+                };
+
+                // Initialize a `BufReader`.
+                let mut reader = BufReader::new(&additional_bytes[..]);
+                // Deserialize the group elements.
+                let additional_powers = (0..number_of_elements)
+                    .map(|_| E::G1Affine::read_le(&mut reader))
+                    // .map(|_| E::G1Affine::deserialize_with_mode(&mut reader, Compress::No, Validate::No))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                // Extend the powers.
+                self.powers_of_beta_g.extend(&additional_powers);
+                // Update the `degree`.
+                self.current_degree = self.powers_of_beta_g.len();
+            }
+            // Regenerate the powers of beta * gamma G.
+            self.powers_of_beta_times_gamma_g = Self::regenerate_powers_of_beta_times_gamma_g(self.current_degree)?;
+        }
         Ok(())
     }
+}
 
-    fn regenerate_powers_of_beta_times_gamma_g(&mut self) -> Result<()> {
+impl<E: PairingEngine> PowersOfG<E> {
+    fn regenerate_powers_of_beta_times_gamma_g(current_degree: usize) -> Result<BTreeMap<usize, E::G1Affine>> {
         let mut alpha_powers_g1 = vec![];
         let mut reader = BufReader::new(UNIVERSAL_SRS_GAMMA.as_slice());
         for _ in 0..NUM_UNIVERSAL_SRS_GAMMA {
@@ -245,93 +226,137 @@ impl<E: PairingEngine> PowersOfG<E> {
         }
         alpha_powers_g1[3..].iter().chunks(3).into_iter().enumerate().for_each(|(i, powers)| {
             // Avoid underflows and just stop populating the map if we're going to.
-            if self.degree() - 1 > (1 << i) {
+            if current_degree - 1 > (1 << i) {
                 let powers = powers.into_iter().collect::<Vec<_>>();
-                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 2, *powers[0]);
-                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 3, *powers[1]);
-                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 4, *powers[2]);
+                alpha_tau_powers_g1.insert(current_degree - 1 - (1 << i) + 2, *powers[0]);
+                alpha_tau_powers_g1.insert(current_degree - 1 - (1 << i) + 3, *powers[1]);
+                alpha_tau_powers_g1.insert(current_degree - 1 - (1 << i) + 4, *powers[2]);
             }
         });
-
-        self.powers_of_beta_times_gamma_g = alpha_tau_powers_g1;
-
-        Ok(())
-    }
-
-    pub fn get_powers_times_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
-        &self.powers_of_beta_times_gamma_g
-    }
-}
-
-impl<E: PairingEngine> ToBytes for PowersOfG<E> {
-    fn write_le<W: Write>(&self, writer: W) -> std::io::Result<()> {
-        self.serialize_with_mode(writer, Compress::Yes).map_err(|e| e.into())
+        Ok(alpha_tau_powers_g1)
     }
 }
 
 impl<E: PairingEngine> FromBytes for PowersOfG<E> {
+    /// Reads the powers from the buffer.
     fn read_le<R: Read>(reader: R) -> std::io::Result<Self> {
-        Self::deserialize_with_mode(reader, Compress::Yes, Validate::Yes).map_err(|e| e.into())
+        Self::deserialize_with_mode(reader, Compress::No, Validate::No).map_err(|e| e.into())
+    }
+}
+
+impl<E: PairingEngine> ToBytes for PowersOfG<E> {
+    /// Writes the powers to the buffer.
+    fn write_le<W: Write>(&self, writer: W) -> std::io::Result<()> {
+        self.serialize_with_mode(writer, Compress::No).map_err(|e| e.into())
     }
 }
 
 impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
+    /// Serializes the powers to the buffer.
     fn serialize_with_mode<W: Write>(&self, mut writer: W, mode: Compress) -> Result<(), SerializationError> {
-        bincode::serialize_into(&mut writer, &self.file_path).unwrap();
+        // Serialize `is_setup`.
+        self.is_setup.serialize_with_mode(&mut writer, mode)?;
 
-        // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
-        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
-            (*key as u32).serialize_with_mode(&mut writer, mode)?;
-            power_of_gamma_g.serialize_with_mode(&mut writer, mode)?;
+        // If the powers are from a setup, then serialize each component.
+        if self.is_setup {
+            // Serialize the number of powers of beta G.
+            (self.current_degree as u32).serialize_with_mode(&mut writer, mode)?;
+            // Serialize the powers of beta G.
+            for power_of_beta_g in &self.powers_of_beta_g {
+                power_of_beta_g.serialize_with_mode(&mut writer, mode)?;
+            }
+
+            // Serialize the number of powers of beta * gamma G.
+            (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+            // Serialize the powers of beta * gamma G.
+            for (index, power_of_beta_times_gamma_g) in &self.powers_of_beta_times_gamma_g {
+                // Serialize the index.
+                (*index as u32).serialize_with_mode(&mut writer, mode)?;
+                // Serialize the power of beta * gamma G.
+                power_of_beta_times_gamma_g.serialize_with_mode(&mut writer, mode)?;
+            }
         }
         Ok(())
     }
 
+    /// Returns the number of bytes required to serialize the powers.
     fn serialized_size(&self, mode: Compress) -> usize {
-        let mut size = self.file_path.serialized_size(mode);
-        size += (self.powers_of_beta_times_gamma_g.len() as u32).serialized_size(mode);
-        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
-            size += (*key as u32).serialized_size(mode);
-            size += power_of_gamma_g.serialized_size(mode);
-        }
+        // Initialize the size.
+        let mut size = 1;
+        // If the powers are from a setup, then serialize each component.
+        if self.is_setup {
+            size += (self.current_degree as u32).serialized_size(mode);
+            for power_of_beta_g in &self.powers_of_beta_g {
+                size += power_of_beta_g.serialized_size(mode);
+            }
 
+            size += (self.powers_of_beta_times_gamma_g.len() as u32).serialized_size(mode);
+            for (index, power_of_beta_times_gamma_g) in &self.powers_of_beta_times_gamma_g {
+                size += (*index as u32).serialized_size(mode);
+                size += power_of_beta_times_gamma_g.serialized_size(mode);
+            }
+        }
+        // Return the size.
         size
     }
 }
 
-impl<E: PairingEngine> Valid for PowersOfG<E> {
-    fn check(&self) -> Result<(), SerializationError> {
-        self.powers_of_beta_times_gamma_g.check()
-    }
-}
-
 impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
+    /// Deserializes the powers from the buffer.
     fn deserialize_with_mode<R: Read>(
         mut reader: R,
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let file_path: String = bincode::deserialize_from(&mut reader).unwrap();
+        // Deserialize `is_setup`.
+        let is_setup = bool::deserialize_with_mode(&mut reader, compress, validate)?;
 
-        // Deserialize `powers_of_beta_times_gamma_g`.
-        let powers_of_gamma_g_num_elements: u32 =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let mut keys = Vec::with_capacity(powers_of_gamma_g_num_elements as usize);
-        let mut values = Vec::with_capacity(powers_of_gamma_g_num_elements as usize);
-        for _ in 0..powers_of_gamma_g_num_elements {
-            let key = u32::deserialize_with_mode(&mut reader, compress, validate)?;
-            let power_of_gamma_g = E::G1Affine::deserialize_with_mode(&mut reader, compress, Validate::No)?;
-            keys.push(key as usize);
-            values.push(power_of_gamma_g);
-        }
-        if validate == Validate::Yes {
-            E::G1Affine::batch_check(values.iter())?;
-        }
-        let powers_of_beta_times_gamma_g = keys.into_iter().zip(values).collect();
+        // If the powers are from a setup, then deserialize each component.
+        if is_setup {
+            // Deserialize the number of powers of beta G.
+            let degree = u32::deserialize_with_mode(&mut reader, compress, validate)?;
+            // Deserialize the powers of beta G.
+            let powers_of_beta_g = (0..degree)
+                .map(|_| {
+                    // Deserialize the group element.
+                    E::G1Affine::deserialize_with_mode(&mut reader, compress, Validate::No)
+                    // E::G1Affine::read_le(&mut reader)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
-        let mut powers = PowersOfG::new(PathBuf::from(file_path)).unwrap();
-        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
-        Ok(powers)
+            // Deserialize the number of powers of beta * gamma G.
+            let number_of_powers = u32::deserialize_with_mode(&mut reader, compress, validate)?;
+            // Deserialize the powers of beta * gamma G.
+            let powers_of_beta_times_gamma_g = (0..number_of_powers)
+                .map(|_| {
+                    // Deserialize the index.
+                    let index = u32::deserialize_with_mode(&mut reader, compress, validate)?;
+                    // Deserialize the group element.
+                    let element = E::G1Affine::deserialize_with_mode(&mut reader, compress, Validate::No)?;
+                    // Return the index and the group element.
+                    Ok::<_, SerializationError>((index as usize, element))
+                })
+                .collect::<Result<BTreeMap<_, _>, _>>()?;
+
+            // If the validation is enabled, check that the group elements are on the curve.
+            if validate == Validate::Yes {
+                // Perform a batch check over the elements.
+                E::G1Affine::batch_check(powers_of_beta_g.iter())?;
+                // Perform a batch check over the elements.
+                E::G1Affine::batch_check(powers_of_beta_times_gamma_g.values())?;
+            }
+            // Return the powers.
+            Ok(Self::setup(powers_of_beta_g, powers_of_beta_times_gamma_g)?)
+        } else {
+            Ok(Self::load()?)
+        }
+    }
+}
+
+impl<E: PairingEngine> Valid for PowersOfG<E> {
+    /// Checks that the powers are valid.
+    fn check(&self) -> Result<(), SerializationError> {
+        self.powers_of_beta_g.check()?;
+        self.powers_of_beta_times_gamma_g.check()
     }
 }

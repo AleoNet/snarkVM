@@ -23,7 +23,7 @@ impl<A: Aleo> Response<A> {
         num_inputs: usize,
         tvk: &Field<A>,
         outputs: Vec<Value<A>>,
-        output_types: &[console::ValueType<A::Network>],
+        output_types: &[console::ValueType<A::Network>], // Note: Console type
     ) -> Self {
         // Compute the output IDs.
         let output_ids = outputs
@@ -35,14 +35,22 @@ impl<A: Aleo> Response<A> {
                     // For a constant output, compute the hash of the output.
                     console::ValueType::Constant(..) => {
                         // Hash the output to a field element.
-                        let output_hash = A::hash_bhp1024(&output.to_bits_le());
+                        let output_hash = match &output {
+                            Value::Plaintext(plaintext) => A::hash_bhp1024(&plaintext.to_bits_le()),
+                            // Ensure the output is a plaintext.
+                            Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                        };
                         // Return the output ID.
                         OutputID::constant(output_hash)
                     }
                     // For a public output, compute the hash of the output.
                     console::ValueType::Public(..) => {
                         // Hash the output to a field element.
-                        let output_hash = A::hash_bhp1024(&output.to_bits_le());
+                        let output_hash = match &output {
+                            Value::Plaintext(plaintext) => A::hash_bhp1024(&plaintext.to_bits_le()),
+                            // Ensure the output is a plaintext.
+                            Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                        };
                         // Return the output ID.
                         OutputID::public(output_hash)
                     }
@@ -121,10 +129,16 @@ mod tests {
 
     pub(crate) const ITERATIONS: usize = 20;
 
-    fn check_verify(mode: Mode) -> Result<()> {
+    fn check_from_outputs(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
         let rng = &mut test_crypto_rng();
 
-        for _ in 0..ITERATIONS {
+        for i in 0..ITERATIONS {
             // Construct four outputs.
             let output_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
@@ -158,34 +172,40 @@ mod tests {
             let response = console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types)?;
             // assert!(response.verify());
 
-            // Inject the response into a circuit.
+            // Inject the program ID, `tvk`, and outputs.
             let program_id = ProgramID::<Circuit>::new(mode, program_id);
             let tvk = Field::<Circuit>::new(mode, tvk);
-            let response = Response::<Circuit>::new(mode, response);
-            assert!(response.verify(&program_id, 4, &tvk, &output_types).eject_value());
-
-            // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, outputs);
-            let response = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
-            assert!(response.verify(&program_id, 4, &tvk, &output_types).eject_value());
 
+            Circuit::scope(format!("Response {i}"), || {
+                // Compute the response using outputs (circuit).
+                let candidate = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
+                assert_eq!(response, candidate.eject_value());
+                match mode.is_constant() {
+                    true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
+                    false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
+                }
+            });
             Circuit::reset();
         }
         Ok(())
     }
 
+    // Note: These counts are correct. At this (high) level of a program, we override the default mode in many cases,
+    // based on the user-defined visibility in the types. Thus, we have nonzero public, private, and constraint values.
+
     #[test]
     fn test_from_outputs_constant() -> Result<()> {
-        check_verify(Mode::Constant)
+        check_from_outputs(Mode::Constant, 23500, 6, 8400, 8400)
     }
 
     #[test]
     fn test_from_outputs_public() -> Result<()> {
-        check_verify(Mode::Public)
+        check_from_outputs(Mode::Public, 21351, 6, 15775, 15792)
     }
 
     #[test]
     fn test_from_outputs_private() -> Result<()> {
-        check_verify(Mode::Private)
+        check_from_outputs(Mode::Private, 21351, 6, 15775, 15792)
     }
 }

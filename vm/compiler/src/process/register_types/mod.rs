@@ -16,15 +16,15 @@
 
 mod matches;
 
-use crate::Stack;
+use crate::{Operand, Stack};
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, LiteralType, PlaintextType, Register, RegisterType},
+    program::{EntryType, Identifier, Interface, LiteralType, PlaintextType, RecordType, Register, RegisterType},
 };
 
 use indexmap::IndexMap;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct RegisterTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,

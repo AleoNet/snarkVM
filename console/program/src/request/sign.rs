@@ -29,8 +29,14 @@ impl<N: Network> Request<N> {
         rng: &mut R,
     ) -> Result<Self> {
         // Ensure the number of inputs matches the number of input types.
-        if inputs.len() != input_types.len() {
-            bail!("Expected {} inputs, found {}", input_types.len(), inputs.len())
+        if input_types.len() != inputs.len() {
+            bail!(
+                "Function '{}' in the program '{}' expects {} inputs, but {} were provided.",
+                function_name,
+                program_id,
+                input_types.len(),
+                inputs.len()
+            )
         }
 
         // Retrieve `sk_sig`.
