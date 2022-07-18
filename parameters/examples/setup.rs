@@ -183,7 +183,7 @@ pub fn posw_setup<N: Network>() -> Result<()> {
     Ok(())
 }
 
-/// Runs the trial SRS setup. (cargo run --release --example setup trial_srs 1048576)
+/// Runs the trial SRS setup. (cargo run --release --example setup trial_srs 524288)
 pub fn trial_srs<N: snarkvm_console::network::Network>(num_gates: usize) -> Result<()> {
     const TRIAL_SRS_METADATA: &str = "universal.srs.trial.metadata";
     const TRIAL_SRS: &str = "universal.srs.trial";
