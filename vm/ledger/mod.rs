@@ -23,6 +23,9 @@ pub use block::*;
 mod state_path;
 pub use state_path::*;
 
+mod vm;
+pub use vm::*;
+
 use crate::console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},

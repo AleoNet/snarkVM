@@ -24,10 +24,13 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::console::{
-    collections::merkle_tree::MerklePath,
-    network::{prelude::*, BHPMerkleTree},
-    types::{Field, Group},
+use crate::{
+    console::{
+        collections::merkle_tree::MerklePath,
+        network::{prelude::*, BHPMerkleTree},
+        types::{Field, Group},
+    },
+    ledger::vm::VM,
 };
 use snarkvm_compiler::{Deployment, Execution, Transition};
 
@@ -40,6 +43,9 @@ pub enum Transaction<N: Network> {
 }
 
 impl<N: Network> Transaction<N> {
+    /// The maximum number of transitions allowed in a transaction.
+    const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
+
     /// Initializes a new deployment transaction.
     pub fn deploy(deployment: Deployment<N>) -> Result<Self> {
         // Ensure the transaction is not empty.
@@ -58,6 +64,45 @@ impl<N: Network> Transaction<N> {
         let id = *Self::execution_tree(&execution)?.root();
         // Construct the execution transaction.
         Ok(Self::Execute(id.into(), execution))
+    }
+
+    /// Returns `true` if the transaction is well-formed.
+    pub fn verify(&self, vm: &VM<N>) -> bool {
+        // Compute the Merkle root of the transaction.
+        match self.to_root() {
+            // Ensure the transaction ID is correct.
+            Ok(root) => {
+                if *self.id() != root {
+                    warn!("Incorrect transaction ID ({})", self.id());
+                    return false;
+                }
+            }
+            Err(error) => {
+                warn!("Failed to compute the Merkle root of the transaction: {error}\n{self}");
+                return false;
+            }
+        };
+
+        match self {
+            Transaction::Deploy(_, deployment) => {
+                // Check the deployment size.
+                if let Err(error) = Self::check_deployment_size(deployment) {
+                    warn!("Invalid transaction (deployment): {error}");
+                    return false;
+                }
+                // Verify the deployment.
+                vm.verify_deployment(&deployment)
+            }
+            Transaction::Execute(_, execution) => {
+                // Check the deployment size.
+                if let Err(error) = Self::check_execution_size(execution) {
+                    warn!("Invalid transaction (execution): {error}");
+                    return false;
+                }
+                // Verify the execution.
+                vm.verify_execution(&execution)
+            }
+        }
     }
 }
 

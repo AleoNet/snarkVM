@@ -17,7 +17,7 @@
 use super::*;
 
 /// The depth of the Merkle tree for the transaction.
-const TRANSACTION_DEPTH: u8 = 4;
+pub(super) const TRANSACTION_DEPTH: u8 = 4;
 
 /// The Merkle tree for the transaction.
 type TransactionTree<N> = BHPMerkleTree<N, TRANSACTION_DEPTH>;
@@ -41,7 +41,7 @@ impl<N: Network> Transaction<N> {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new(
                             0u8,
-                            index as u32,
+                            index as u16,
                             *deployment.program().id(),
                             *function.name(),
                             *id,
@@ -59,7 +59,7 @@ impl<N: Network> Transaction<N> {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new(
                             1u8,
-                            index as u32,
+                            index as u16,
                             *transition.program_id(),
                             *transition.function_name(),
                             *id,
@@ -92,6 +92,8 @@ impl<N: Network> Transaction<N> {
 impl<N: Network> Transaction<N> {
     /// Returns the Merkle tree for the given deployment.
     pub(super) fn deployment_tree(deployment: &Deployment<N>) -> Result<TransactionTree<N>> {
+        // Ensure the number of leaves is within the Merkle tree size.
+        Self::check_deployment_size(deployment)?;
         // Set the variant.
         let variant = 0u8;
         // Retrieve the program.
@@ -101,7 +103,7 @@ impl<N: Network> Transaction<N> {
             // Construct the leaf as (variant || index || program ID || function name || Hash(function)).
             Ok(TransactionLeaf::new(
                 variant,
-                index as u32,
+                index as u16,
                 *program.id(),
                 *function.name(),
                 N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?,
@@ -114,6 +116,8 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the Merkle tree for the given execution.
     pub(super) fn execution_tree(execution: &Execution<N>) -> Result<TransactionTree<N>> {
+        // Ensure the number of leaves is within the Merkle tree size.
+        Self::check_execution_size(execution)?;
         // Set the variant.
         let variant = 1u8;
         // Prepare the leaves.
@@ -121,7 +125,7 @@ impl<N: Network> Transaction<N> {
             // Construct the leaf as (variant || index || program ID || function name || transition ID).
             TransactionLeaf::new(
                 variant,
-                index as u32,
+                index as u16,
                 *transition.program_id(),
                 *transition.function_name(),
                 **transition.id(),
@@ -130,5 +134,43 @@ impl<N: Network> Transaction<N> {
         });
         // Compute the execution tree.
         N::merkle_tree_bhp::<TRANSACTION_DEPTH>(&leaves.collect::<Vec<_>>())
+    }
+
+    /// Returns `true` if the deployment is within the size bounds.
+    pub(super) fn check_deployment_size(deployment: &Deployment<N>) -> Result<()> {
+        // Retrieve the program.
+        let program = deployment.program();
+        // Retrieve the functions.
+        let functions = program.functions();
+        // Retrieve the verifying keys.
+        let verifying_keys = deployment.verifying_keys();
+
+        // Ensure the number of functions and verifying keys match.
+        ensure!(
+            functions.len() == verifying_keys.len(),
+            "Number of functions ('{}') and verifying keys ('{}') do not match",
+            functions.len(),
+            verifying_keys.len()
+        );
+        // Ensure the number of functions is within the allowed range.
+        ensure!(
+            functions.len() <= Self::MAX_TRANSITIONS,
+            "Deployment cannot exceed {} functions, found {}",
+            Self::MAX_TRANSITIONS,
+            functions.len()
+        );
+        Ok(())
+    }
+
+    /// Returns `true` if the execution is within the size bounds.
+    pub(super) fn check_execution_size(execution: &Execution<N>) -> Result<()> {
+        // Ensure the number of functions is within the allowed range.
+        ensure!(
+            execution.len() <= Self::MAX_TRANSITIONS,
+            "Execution cannot exceed {} transitions, found {}",
+            Self::MAX_TRANSITIONS,
+            execution.len()
+        );
+        Ok(())
     }
 }

@@ -409,8 +409,8 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_transition_tree_depth() {
-        // Ensure the log2 relationship between depth and the number of transition inputs & outputs.
-        assert_eq!(1 << TRANSITION_DEPTH as usize, CurrentNetwork::MAX_INPUTS + CurrentNetwork::MAX_OUTPUTS);
+    fn test_transition_depth() {
+        // Ensure the log2 relationship between depth and the maximum number of transition inputs & outputs.
+        assert_eq!(2usize.pow(TRANSITION_DEPTH as u32), CurrentNetwork::MAX_INPUTS + CurrentNetwork::MAX_OUTPUTS);
     }
 }

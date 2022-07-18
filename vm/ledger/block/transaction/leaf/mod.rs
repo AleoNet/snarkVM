@@ -31,7 +31,7 @@ pub struct TransactionLeaf<N: Network> {
     /// The variant of the Merkle leaf.
     variant: u8,
     /// The index of the Merkle leaf.
-    index: u32,
+    index: u16,
     /// The program ID.
     program_id: ProgramID<N>,
     /// The function name.
@@ -44,7 +44,7 @@ impl<N: Network> TransactionLeaf<N> {
     /// Initializes a new instance of `TransactionLeaf`.
     pub const fn new(
         variant: u8,
-        index: u32,
+        index: u16,
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
         id: Field<N>,
@@ -53,7 +53,7 @@ impl<N: Network> TransactionLeaf<N> {
     }
 
     /// Returns the index of the Merkle leaf.
-    pub const fn index(&self) -> u32 {
+    pub const fn index(&self) -> u16 {
         self.index
     }
 

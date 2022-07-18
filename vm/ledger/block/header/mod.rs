@@ -21,6 +21,7 @@ mod merkle;
 pub use merkle::*;
 
 mod bytes;
+mod genesis;
 mod serialize;
 mod string;
 
@@ -114,22 +115,6 @@ impl<N: Network> Header<N> {
         }
     }
 
-    /// Initializes the genesis block header.
-    pub fn genesis(transactions: &Transactions<N>) -> Result<Self> {
-        Ok(Self {
-            previous_state_root: Field::zero(),
-            transactions_root: transactions.to_root()?,
-            metadata: Metadata {
-                network: N::ID,
-                height: 0u32,
-                round: 0u64,
-                coinbase_target: u64::MAX,
-                proof_target: u64::MAX,
-                timestamp: 0i64,
-            },
-        })
-    }
-
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
         match self.metadata.height == 0u32 {
@@ -153,26 +138,6 @@ impl<N: Network> Header<N> {
                     && self.metadata.timestamp != 0i64
             }
         }
-    }
-
-    /// Returns `true` if the block header is a genesis block header.
-    pub fn is_genesis(&self) -> bool {
-        // Ensure the previous ledger root is zero.
-        self.previous_state_root == Field::zero()
-            // Ensure the transactions root is nonzero.
-            && self.transactions_root != Field::zero()
-            // Ensure the network ID is correct.
-            && self.metadata.network == N::ID
-            // Ensure the height in the genesis block is 0.
-            && self.metadata.height == 0u32
-            // Ensure the round in the genesis block is 0.
-            && self.metadata.round == 0u64
-            // Ensure the coinbase target in the genesis block is u64::MAX.
-            && self.metadata.coinbase_target == u64::MAX
-            // Ensure the proof target in the genesis block is u64::MAX.
-            && self.metadata.proof_target == u64::MAX
-            // Ensure the timestamp in the genesis block is 0.
-            && self.metadata.timestamp == 0i64
     }
 
     /// Returns the previous state root from the block header.
@@ -215,42 +180,3 @@ impl<N: Network> Header<N> {
         self.metadata.timestamp
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     use snarkvm::prelude::Testnet3;
-//
-//     type CurrentNetwork = Testnet3;
-//
-//     /// Returns the expected block header size by summing its expected subcomponents.
-//     /// Update this method if the contents of a block header have changed.
-//     fn get_expected_size<N: Network>() -> usize {
-//         2 + 4 + 8 + 8 + 8 + 8 + ((N::Field::size_in_bits() + <N::Field as PrimeField>::Parameters::REPR_SHAVE_BITS as usize) / 8) * 2
-//     }
-//
-//     #[test]
-//     fn test_block_header_genesis_size() {
-//         let expected_block_header_size = get_expected_size::<CurrentNetwork>();
-//         let block_header = BlockHeader::<CurrentNetwork>::genesis();
-//         assert_eq!(block_header.to_bytes_le().unwrap().len(), expected_block_header_size);
-//     }
-
-//     #[test]
-//     fn test_block_header_genesis() {
-//         let block_header = BlockHeader::<CurrentNetwork>::genesis();
-//         assert!(block_header.is_genesis());
-//
-//         // Ensure the genesis block contains the following.
-//         assert_eq!(block_header.height, 0);
-//         assert_eq!(block_header.round, 0);
-//         assert_eq!(block_header.timestamp, 0);
-//         assert_eq!(block_header.coinbase_target, u64::MAX);
-//         assert_eq!(block_header.proof_target, u64::MAX);
-//
-//         // Ensure the genesis block does *not* contain the following.
-//         // assert_ne!(block_header.previous_state_root, Default::default());
-//         // assert_ne!(block_header.transactions_root, Default::default());
-//     }
-// }

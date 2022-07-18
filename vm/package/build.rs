@@ -196,10 +196,10 @@ impl<N: Network> Package<N> {
                         response.function_name()
                     );
                     // Insert the proving key.
-                    process.insert_proving_key(&response.program_id(), function_name, response.proving_key().clone());
+                    process.insert_proving_key(response.program_id(), function_name, response.proving_key().clone());
                     // Insert the verifying key.
                     process.insert_verifying_key(
-                        &response.program_id(),
+                        response.program_id(),
                         function_name,
                         response.verifying_key().clone(),
                     );

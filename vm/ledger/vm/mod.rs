@@ -231,55 +231,63 @@ impl<N: Network> VM<N> {
         };
 
         match transaction {
-            Transaction::Deploy(_, deployment) => {
-                // Compute the core logic.
-                macro_rules! logic {
-                    ($process:expr, $network:path, $aleo:path) => {{
-                        let task = || {
-                            // Prepare the deployment.
-                            let deployment = cast_ref!(&deployment as Deployment<$network>);
-                            // Initialize an RNG.
-                            let rng = &mut rand::thread_rng();
-                            // Verify the deployment.
-                            $process.verify_deployment::<$aleo, _>(&deployment, rng)
-                        };
-                        task()
-                    }};
-                }
+            Transaction::Deploy(_, deployment) => self.verify_deployment(deployment),
+            Transaction::Execute(_, execution) => self.verify_execution(execution),
+        }
+    }
 
-                // Process the logic.
-                match process!(self, logic) {
-                    Ok(()) => true,
-                    Err(error) => {
-                        eprintln!("Transaction (deployment) verification failed: {error}");
-                        warn!("Transaction (deployment) verification failed: {error}");
-                        false
-                    }
-                }
+    /// Verifies a program call for the given execution.
+    #[inline]
+    pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                let task = || {
+                    // Prepare the deployment.
+                    let deployment = cast_ref!(&deployment as Deployment<$network>);
+                    // Initialize an RNG.
+                    let rng = &mut rand::thread_rng();
+                    // Verify the deployment.
+                    $process.verify_deployment::<$aleo, _>(&deployment, rng)
+                };
+                task()
+            }};
+        }
+
+        // Process the logic.
+        match process!(self, logic) {
+            Ok(()) => true,
+            Err(error) => {
+                eprintln!("Transaction (deployment) verification failed: {error}");
+                warn!("Transaction (deployment) verification failed: {error}");
+                false
             }
-            Transaction::Execute(_, execution) => {
-                // Compute the core logic.
-                macro_rules! logic {
-                    ($process:expr, $network:path, $aleo:path) => {{
-                        let task = || {
-                            // Prepare the execution.
-                            let execution = cast_ref!(&execution as Execution<$network>);
-                            // Verify the execution.
-                            $process.verify_execution(execution)
-                        };
-                        task()
-                    }};
-                }
+        }
+    }
 
-                // Process the logic.
-                match process!(self, logic) {
-                    Ok(()) => true,
-                    Err(error) => {
-                        eprintln!("Transaction (execution) verification failed: {error}");
-                        warn!("Transaction (execution) verification failed: {error}");
-                        false
-                    }
-                }
+    /// Verifies a program call for the given execution.
+    #[inline]
+    pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                let task = || {
+                    // Prepare the execution.
+                    let execution = cast_ref!(&execution as Execution<$network>);
+                    // Verify the execution.
+                    $process.verify_execution(execution)
+                };
+                task()
+            }};
+        }
+
+        // Process the logic.
+        match process!(self, logic) {
+            Ok(()) => true,
+            Err(error) => {
+                eprintln!("Transaction (execution) verification failed: {error}");
+                warn!("Transaction (execution) verification failed: {error}");
+                false
             }
         }
     }
@@ -297,6 +305,7 @@ pub(crate) mod test_helpers {
         ledger::Block,
     };
     use snarkvm_compiler::{Program, Transition};
+    use snarkvm_utilities::test_crypto_rng_fixed;
 
     use once_cell::sync::OnceCell;
 
@@ -403,14 +412,14 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_block() -> Block<CurrentNetwork> {
+    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
         static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
                 let mut vm = VM::<CurrentNetwork>::new().unwrap();
                 // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
+                let rng = &mut test_crypto_rng_fixed();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.

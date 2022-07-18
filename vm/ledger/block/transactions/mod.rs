@@ -17,6 +17,8 @@
 mod merkle;
 pub use merkle::*;
 
+mod bytes;
+mod serialize;
 mod string;
 
 use crate::{
@@ -25,8 +27,7 @@ use crate::{
         network::{prelude::*, BHPMerkleTree},
         types::{Field, Group},
     },
-    ledger::Transaction,
-    vm::VM,
+    ledger::{vm::VM, Transaction},
 };
 
 use indexmap::IndexMap;
@@ -41,6 +42,9 @@ pub struct Transactions<N: Network> {
 }
 
 impl<N: Network> Transactions<N> {
+    /// The maximum number of transactions allowed in a block.
+    const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
+
     /// Initializes from a given transactions list.
     pub fn from(transactions: &[Transaction<N>]) -> Result<Self> {
         // Construct the transactions.
@@ -59,8 +63,14 @@ impl<N: Network> Transactions<N> {
             return false;
         }
 
+        // Ensure the number of transactions is within the allowed range.
+        if self.transactions.len() > Self::MAX_TRANSACTIONS {
+            eprintln!("Cannot validate a transactions list with more than {} transactions", Self::MAX_TRANSACTIONS);
+            return false;
+        }
+
         // Ensure each transaction is well-formed.
-        if !self.transactions.par_iter().all(|(_, transaction)| vm.verify(transaction)) {
+        if !self.transactions.par_iter().all(|(_, transaction)| transaction.verify(vm)) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
@@ -166,19 +176,6 @@ impl<N: Network> Transactions<N> {
     //         .fold(AleoAmount::ZERO, |a, b| a.add(b))
     // }
 
-    // /// Returns the coinbase transaction for the block.
-    // pub fn to_coinbase_transaction(&self) -> Result<Transaction<N>> {
-    //     // Filter out all transactions with a positive value balance.
-    //     let coinbase_transaction: Vec<_> = self.iter().filter(|t| t.value_balance().is_negative()).collect();
-    //
-    //     // Ensure there is exactly 1 coinbase transaction.
-    //     let num_coinbase = coinbase_transaction.len();
-    //     match num_coinbase == 1 {
-    //         true => Ok(coinbase_transaction[0].clone()),
-    //         false => Err(anyhow!("Block must have 1 coinbase transaction, found {}", num_coinbase)),
-    //     }
-    // }
-
     // /// Returns records from the transactions belonging to the given account view key.
     // pub fn to_decrypted_records<'a>(
     //     &'a self,
@@ -186,59 +183,6 @@ impl<N: Network> Transactions<N> {
     // ) -> impl Iterator<Item = Record<N>> + 'a {
     //     self.transactions.iter().flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     // }
-}
-
-impl<N: Network> FromBytes for Transactions<N> {
-    /// Reads the transactions from buffer.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the number of transactions.
-        let num_txs: u16 = FromBytes::read_le(&mut reader)?;
-        // Read the transactions.
-        let transactions = (0..num_txs).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
-        // Return the transactions.
-        Self::from(&transactions).map_err(|e| error(e.to_string()))
-    }
-}
-
-impl<N: Network> ToBytes for Transactions<N> {
-    /// Writes the transactions to a buffer.
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the number of transactions.
-        (self.transactions.len() as u16).write_le(&mut writer)?;
-        // Write the transactions.
-        self.transactions.values().try_for_each(|transaction| transaction.write_le(&mut writer))
-    }
-}
-
-impl<N: Network> Serialize for Transactions<N> {
-    /// Serializes the transactions to a JSON-string or buffer.
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match serializer.is_human_readable() {
-            true => {
-                let mut transactions = serializer.serialize_struct("Transactions", 1)?;
-                transactions.serialize_field("transactions", &self.transactions)?;
-                transactions.end()
-            }
-            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
-        }
-    }
-}
-
-impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
-    /// Deserializes the transactions from a JSON-string or buffer.
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        match deserializer.is_human_readable() {
-            true => {
-                let transactions = serde_json::Value::deserialize(deserializer)?;
-                let transactions: Vec<_> =
-                    serde_json::from_value(transactions["transactions"].clone()).map_err(de::Error::custom)?;
-                Ok(Self::from(&transactions).map_err(de::Error::custom)?)
-            }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transactions"),
-        }
-    }
 }
 
 impl<N: Network> Deref for Transactions<N> {
@@ -293,42 +237,5 @@ impl<N: Network> Deref for Transactions<N> {
 //
 //         // Duplicate the transaction, and ensure it is invalid.
 //         assert!(Transactions::from(&[transaction.clone(), transaction]).is_err());
-//     }
-//
-//     #[test]
-//     fn test_transactions_serde_json() {
-//         let expected_transactions = Block::<CurrentNetwork>::genesis::<A>().unwrap().transactions().clone();
-//
-//         // Serialize
-//         let expected_string = expected_transactions.to_string();
-//         let candidate_string = serde_json::to_string(&expected_transactions).unwrap();
-//         assert_eq!(2689, candidate_string.len(), "Update me if serialization has changed");
-//         assert_eq!(expected_string, candidate_string);
-//
-//         // Deserialize
-//         assert_eq!(
-//             expected_transactions,
-//             Transactions::<CurrentNetwork>::from_str(&candidate_string).unwrap()
-//         );
-//         assert_eq!(expected_transactions, serde_json::from_str(&candidate_string).unwrap());
-//     }
-//
-//     #[test]
-//     fn test_transactions_bincode() {
-//         let expected_transactions = Block::<CurrentNetwork>::genesis::<A>().unwrap().transactions().clone();
-//
-//         // Serialize
-//         let expected_bytes = expected_transactions.to_bytes_le().unwrap();
-//         let candidate_bytes = bincode::serialize(&expected_transactions).unwrap();
-//         assert_eq!(1364, expected_bytes.len(), "Update me if serialization has changed");
-//         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
-//         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
-//
-//         // Deserialize
-//         assert_eq!(
-//             expected_transactions,
-//             Transactions::<CurrentNetwork>::read_le(&expected_bytes[..]).unwrap()
-//         );
-//         assert_eq!(expected_transactions, bincode::deserialize(&candidate_bytes[..]).unwrap());
 //     }
 // }

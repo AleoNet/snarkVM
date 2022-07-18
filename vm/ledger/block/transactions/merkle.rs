@@ -17,7 +17,7 @@
 use super::*;
 
 /// The depth of the Merkle tree for transactions in a block.
-const TRANSACTIONS_DEPTH: u8 = 16;
+pub(super) const TRANSACTIONS_DEPTH: u8 = 16;
 
 /// The Merkle tree for transactions in a block.
 type TransactionsTree<N> = BHPMerkleTree<N, TRANSACTIONS_DEPTH>;
@@ -46,5 +46,19 @@ impl<N: Network> Transactions<N> {
         let leaves = transactions.values().map(|transaction| transaction.id().to_bits_le());
         // Compute the deployment tree.
         N::merkle_tree_bhp::<TRANSACTIONS_DEPTH>(&leaves.collect::<Vec<_>>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_transactions_depth() {
+        // Ensure the log2 relationship between depth and the maximum number of transactions.
+        assert_eq!(2usize.pow(TRANSACTIONS_DEPTH as u32), Transactions::<CurrentNetwork>::MAX_TRANSACTIONS);
     }
 }

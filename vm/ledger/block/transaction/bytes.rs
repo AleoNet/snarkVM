@@ -102,8 +102,8 @@ mod tests {
     #[test]
     fn test_bytes() -> Result<()> {
         for expected in [
-            crate::vm::test_helpers::sample_deployment_transaction(),
-            crate::vm::test_helpers::sample_execution_transaction(),
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(),
         ]
         .into_iter()
         {

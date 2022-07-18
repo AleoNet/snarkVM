@@ -17,6 +17,7 @@
 use super::*;
 
 impl<N: Network> Serialize for Header<N> {
+    /// Serializes the header to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
@@ -37,6 +38,7 @@ impl<N: Network> Serialize for Header<N> {
 }
 
 impl<'de, N: Network> Deserialize<'de> for Header<N> {
+    /// Deserializes the header from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
@@ -64,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        for expected in [*crate::vm::test_helpers::sample_block().header()].into_iter() {
+        for expected in [*crate::ledger::vm::test_helpers::sample_genesis_block().header()].into_iter() {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected)?;
@@ -78,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        for expected in [*crate::vm::test_helpers::sample_block().header()].into_iter() {
+        for expected in [*crate::ledger::vm::test_helpers::sample_genesis_block().header()].into_iter() {
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;
             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
