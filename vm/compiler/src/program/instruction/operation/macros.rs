@@ -706,6 +706,8 @@ mod tests {
                         let mut should_succeed = true;
                         #[allow(unused_mut)]
                         let mut is_shift_operator = false;
+                        #[allow(unused_mut)]
+                        let mut is_division_operator = false;
                         /// A helper macro to check the conditions.
                         #[allow(unused_macros)]
                         macro_rules! check_condition {
@@ -730,8 +732,10 @@ mod tests {
                                 // This indicator is later used in the for-loops below.
                                 is_shift_operator |= true;
                             };
-                            ("ensure divide by zero halt") => {
-                                should_succeed &= (*b) != 0
+                            ("ensure divide by zero halts") => {
+                                should_succeed &= (*b) != 0;
+                                // This indicator is later used in the for-loops below.
+                                is_division_operator |= true;
                             };
                         }
                         // Check the conditions.
@@ -758,6 +762,8 @@ mod tests {
                                 let mut should_panic_on_halt = false;
                                 // If the operation is a shift operator, check if the mode of the RHS is a constant.
                                 should_panic_on_halt |= is_shift_operator && mode_b.is_constant();
+                                // If the operation is a division operator, check if the mode of the RHS is a constant.
+                                should_panic_on_halt |= is_division_operator && mode_b.is_constant();
 
                                 // If this iteration should succeed, ensure the evaluated and executed outputs match the expected output.
                                 if should_succeed {

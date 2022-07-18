@@ -33,6 +33,7 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
         match I::is_signed() {
             // Note: This addition must be checked as `-Integer::MIN` is an invalid operation.
             true => Integer::one().add_checked(&!self),
+            // Note: `halt` is necessary since negation is not defined for unsigned integers.
             false => E::halt("Attempted to negate an unsigned integer"),
         }
     }

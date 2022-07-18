@@ -177,13 +177,15 @@ mod tests {
                 assert_eq!(console::Integer::new(expected), candidate.eject_value());
                 // assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                 // assert_output_mode!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
+                assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
             }),
             None => {
                 match (mode_a, mode_b) {
                     (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::pow_checked),
                     _ => Circuit::scope(name, || {
                         let _candidate = a.pow_checked(&b);
-                        // assert_count_fails!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+                        // assert_count_fails!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));A
+                        assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
                     }),
                 }
             }
