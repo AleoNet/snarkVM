@@ -69,6 +69,16 @@ impl<N: Network> Ledger<N> {
             memory_pool: IndexSet::new(),
         }
     }
+
+    /// Returns an iterator over all transactions in `self` that are deployments.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.blocks.values().flat_map(|block| block.deployments())
+    }
+
+    /// Returns an iterator over all transactions in `self` that are executions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.blocks.values().flat_map(|block| block.executions())
+    }
 }
 
 #[cfg(test)]

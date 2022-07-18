@@ -18,7 +18,7 @@ mod string;
 
 use crate::{
     console::network::prelude::*,
-    ledger::{Header, Transactions},
+    ledger::{Header, Transaction, Transactions},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -178,6 +178,18 @@ impl<N: Network> Block<N> {
     /// Returns the transactions in the block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
+    }
+}
+
+impl<N: Network> Block<N> {
+    /// Returns an iterator over all transactions in `self` that are deployments.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.deployments()
+    }
+
+    /// Returns an iterator over all transactions in `self` that are executions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.executions()
     }
 }
 

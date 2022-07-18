@@ -27,7 +27,6 @@ use crate::{
         de,
         Deserialize,
         Deserializer,
-        FromBytesDeserializer,
         Identifier,
         Locator,
         Network,

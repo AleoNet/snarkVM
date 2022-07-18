@@ -59,7 +59,9 @@ impl<N: Network> Transaction<N> {
         // Construct the execution transaction.
         Ok(Self::Execute(id.into(), execution))
     }
+}
 
+impl<N: Network> Transaction<N> {
     /// Returns the transaction ID.
     pub const fn id(&self) -> N::TransactionID {
         match self {

@@ -107,7 +107,21 @@ impl<N: Network> Transactions<N> {
 
         true
     }
+}
 
+impl<N: Network> Transactions<N> {
+    /// Returns an iterator over all transactions in `self` that are deployments.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.values().filter(|transaction| matches!(transaction, Transaction::Deploy(..)))
+    }
+
+    /// Returns an iterator over all transactions in `self` that are executions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.values().filter(|transaction| matches!(transaction, Transaction::Execute(..)))
+    }
+}
+
+impl<N: Network> Transactions<N> {
     // /// Returns the state roots, by constructing a flattened list of state roots from all transactions.
     // pub fn state_roots(&self) -> impl Iterator<Item = N::LedgerRoot> + '_ {
     //     self.transactions.iter().map(Transaction::state_roots)
