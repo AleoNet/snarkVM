@@ -380,7 +380,7 @@ function compute:
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let mut vm = sample_vm().clone();
+                let mut vm = sample_vm();
                 // Deploy the program.
                 let transaction = sample_deployment_transaction();
                 // On Deploy.

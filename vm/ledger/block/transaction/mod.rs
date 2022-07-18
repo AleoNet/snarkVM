@@ -91,7 +91,7 @@ impl<N: Network> Transaction<N> {
                     return false;
                 }
                 // Verify the deployment.
-                vm.verify_deployment(&deployment)
+                vm.verify_deployment(deployment)
             }
             Transaction::Execute(_, execution) => {
                 // Check the deployment size.
@@ -100,7 +100,7 @@ impl<N: Network> Transaction<N> {
                     return false;
                 }
                 // Verify the execution.
-                vm.verify_execution(&execution)
+                vm.verify_execution(execution)
             }
         }
     }

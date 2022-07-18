@@ -2067,7 +2067,6 @@ dependencies = [
  "clap 3.2.7",
  "colored",
  "indexmap",
- "lazy_static",
  "once_cell",
  "parking_lot 0.12.1",
  "rand",

@@ -19,8 +19,6 @@
 #![allow(clippy::single_element_loop)]
 
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate tracing;
 
 #[cfg(feature = "cli")]
