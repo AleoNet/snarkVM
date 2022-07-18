@@ -63,7 +63,7 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn new() -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
+        let process = Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
         // Return the process.
         Ok(process)
     }

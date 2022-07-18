@@ -19,41 +19,25 @@ mod serialize;
 mod string;
 mod to_bits;
 
-use crate::console::{
-    network::prelude::*,
-    program::{Identifier, ProgramID},
-    types::Field,
-};
+use crate::console::{network::prelude::*, types::Field};
 
-/// The Merkle leaf for a function or transition in the transaction.
+/// The Merkle leaf for the block header.
 #[derive(Clone, PartialEq, Eq)]
-pub struct TransactionLeaf<N: Network> {
-    /// The variant of the Merkle leaf.
-    variant: u8,
+pub struct HeaderLeaf<N: Network> {
     /// The index of the Merkle leaf.
-    index: u16,
-    /// The program ID.
-    program_id: ProgramID<N>,
-    /// The function name.
-    function_name: Identifier<N>,
+    index: u8,
     /// The ID.
     id: Field<N>,
 }
 
-impl<N: Network> TransactionLeaf<N> {
-    /// Initializes a new instance of `TransactionLeaf`.
-    pub const fn new(
-        variant: u8,
-        index: u16,
-        program_id: ProgramID<N>,
-        function_name: Identifier<N>,
-        id: Field<N>,
-    ) -> Self {
-        Self { variant, index, program_id, function_name, id }
+impl<N: Network> HeaderLeaf<N> {
+    /// Initializes a new instance of `HeaderLeaf`.
+    pub const fn new(index: u8, id: Field<N>) -> Self {
+        Self { index, id }
     }
 
     /// Returns the index of the Merkle leaf.
-    pub const fn index(&self) -> u16 {
+    pub const fn index(&self) -> u8 {
         self.index
     }
 
@@ -70,16 +54,10 @@ mod test_helpers {
 
     type CurrentNetwork = Testnet3;
 
-    pub(super) fn sample_leaf() -> TransactionLeaf<CurrentNetwork> {
+    pub(super) fn sample_leaf() -> HeaderLeaf<CurrentNetwork> {
         // Initialize an RNG.
         let rng = &mut test_crypto_rng();
         // Construct a new leaf.
-        TransactionLeaf::new(
-            rng.gen(),
-            rng.gen(),
-            FromStr::from_str("hello.aleo").unwrap(),
-            FromStr::from_str("runner").unwrap(),
-            Uniform::rand(rng),
-        )
+        HeaderLeaf::new(rng.gen(), Uniform::rand(rng))
     }
 }

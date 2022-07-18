@@ -87,7 +87,7 @@ impl<N: Network> StatePath<N> {
         );
         // Ensure the transactions path is valid.
         ensure!(
-            N::verify_merkle_path_bhp(&transactions_path, &header_leaf, &transaction_id.to_bits_le()),
+            N::verify_merkle_path_bhp(&transactions_path, &header_leaf.id(), &transaction_id.to_bits_le()),
             "Transaction '{transaction_id}' does not belong to '{header_leaf}' (a header leaf)",
         );
         // Ensure the header path is valid.

@@ -17,22 +17,15 @@
 mod block;
 pub use block::*;
 
-mod header;
-pub use header::*;
+// mod blocks;
+// pub use blocks::*;
 
 mod state_path;
 pub use state_path::*;
 
-mod transaction;
-pub use transaction::*;
-
-mod transactions;
-pub use transactions::*;
-
 use crate::console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Identifier, Plaintext},
 };
 use snarkvm_compiler::Program;
 
@@ -49,12 +42,12 @@ pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 #[derive(Clone, Default)]
 #[allow(dead_code)]
 pub struct Ledger<N: Network> {
-    /// The mapping of program IDs to their programs.
-    programs: IndexMap<u64, Program<N>>,
-    /// The mapping of program IDs to their global state.
-    states: IndexMap<u64, IndexMap<Identifier<N>, Plaintext<N>>>,
     /// The mapping of block numbers to blocks.
     blocks: IndexMap<u32, Block<N>>,
+    /// The mapping of program IDs to their programs.
+    programs: IndexMap<u64, Program<N>>,
+    // /// The mapping of program IDs to their global state.
+    // states: IndexMap<u64, IndexMap<Identifier<N>, Plaintext<N>>>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexSet<Transaction<N>>,
 }
@@ -62,12 +55,7 @@ pub struct Ledger<N: Network> {
 impl<N: Network> Ledger<N> {
     /// Initializes a new ledger.
     pub fn new() -> Self {
-        Self {
-            programs: IndexMap::new(),
-            states: IndexMap::new(),
-            blocks: IndexMap::new(),
-            memory_pool: IndexSet::new(),
-        }
+        Self { programs: IndexMap::new(), blocks: IndexMap::new(), memory_pool: IndexSet::new() }
     }
 
     /// Returns an iterator over all transactions in `self` that are deployments.

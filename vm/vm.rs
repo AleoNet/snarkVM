@@ -19,7 +19,6 @@ use crate::{
         account::PrivateKey,
         network::prelude::*,
         program::{Identifier, ProgramID, Response, Value},
-        types::Field,
     },
     ledger::Transaction,
 };
@@ -289,10 +288,13 @@ impl<N: Network> VM<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::console::{
-        account::{Address, PrivateKey},
-        network::Testnet3,
-        program::{Identifier, Value},
+    use crate::{
+        console::{
+            account::{Address, PrivateKey},
+            network::Testnet3,
+            program::{Identifier, Value},
+        },
+        ledger::Block,
     };
     use snarkvm_compiler::{Program, Transition};
 
@@ -368,8 +370,6 @@ function compute:
                 // On Deploy.
                 vm.on_deploy(&transaction).unwrap();
 
-                // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
@@ -399,6 +399,22 @@ function compute:
                 assert!(vm.verify(&transaction));
                 // Return the transaction.
                 transaction
+            })
+            .clone()
+    }
+
+    pub(crate) fn sample_block() -> Block<CurrentNetwork> {
+        static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
+        INSTANCE
+            .get_or_init(|| {
+                // Initialize the VM.
+                let mut vm = VM::<CurrentNetwork>::new().unwrap();
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+                // Initialize a new caller.
+                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                // Return the block.
+                Block::genesis(&mut vm, &caller_private_key, rng).unwrap()
             })
             .clone()
     }

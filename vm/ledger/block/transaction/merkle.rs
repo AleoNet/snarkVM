@@ -41,7 +41,7 @@ impl<N: Network> Transaction<N> {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new(
                             0u8,
-                            index as u16,
+                            index as u32,
                             *deployment.program().id(),
                             *function.name(),
                             *id,
@@ -59,7 +59,7 @@ impl<N: Network> Transaction<N> {
                         // Return the transaction leaf.
                         return Ok(TransactionLeaf::new(
                             1u8,
-                            index as u16,
+                            index as u32,
                             *transition.program_id(),
                             *transition.function_name(),
                             *id,
@@ -101,7 +101,7 @@ impl<N: Network> Transaction<N> {
             // Construct the leaf as (variant || index || program ID || function name || Hash(function)).
             Ok(TransactionLeaf::new(
                 variant,
-                index as u16,
+                index as u32,
                 *program.id(),
                 *function.name(),
                 N::hash_bhp1024(&function.to_bytes_le()?.to_bits_le())?,
@@ -121,7 +121,7 @@ impl<N: Network> Transaction<N> {
             // Construct the leaf as (variant || index || program ID || function name || transition ID).
             TransactionLeaf::new(
                 variant,
-                index as u16,
+                index as u32,
                 *transition.program_id(),
                 *transition.function_name(),
                 **transition.id(),

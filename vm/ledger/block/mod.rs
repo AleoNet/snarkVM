@@ -14,15 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod header;
+pub use header::*;
+
+mod transaction;
+pub use transaction::*;
+
+mod transactions;
+pub use transactions::*;
+
 mod string;
 
 use crate::{
     console::{
         account::{Address, PrivateKey},
         network::prelude::*,
-        program::{Identifier, ProgramID, Value},
+        program::Value,
     },
-    ledger::{Header, Transaction, Transactions},
     vm::VM,
 };
 use snarkvm_compiler::Program;
@@ -71,9 +79,11 @@ impl<N: Network> Block<N> {
         // Execute the genesis program.
         let (_, execution) = vm.execute(authorization, rng)?;
 
-        // Prepare the components.
-        let header = Header::genesis();
+        // Prepare the transactions.
         let transactions = Transactions::from(&[deploy, execution])?;
+        // Prepare the block header.
+        let header = Header::genesis(&transactions)?;
+        // Prepare the previous block hash.
         let previous_hash = N::BlockHash::default();
 
         // Construct the block.
@@ -138,8 +148,8 @@ impl<N: Network> Block<N> {
         self.previous_hash == N::BlockHash::default()
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
-            // Ensure there is one transaction in the genesis block.
-            && self.transactions.len() == 1
+            // Ensure there are two transactions in the genesis block.
+            && self.transactions.len() == 2
     }
 
     /// Returns the block hash.
