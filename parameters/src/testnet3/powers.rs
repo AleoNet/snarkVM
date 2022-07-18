@@ -95,7 +95,8 @@ impl<E: PairingEngine> PowersOfG<E> {
         let mut reader = BufReader::new(&UNIVERSAL_SRS_15[..]);
         // Deserialize the group elements.
         let powers_of_beta_g = (0..DEGREE_15)
-            .map(|_| E::G1Affine::deserialize_with_mode(&mut reader, Compress::No, Validate::No))
+            .map(|_| E::G1Affine::read_le(&mut reader))
+            // .map(|_| E::G1Affine::deserialize_with_mode(&mut reader, Compress::No, Validate::No))
             .collect::<Result<Vec<_>, _>>()?;
         // Ensure the number of elements is correct.
         ensure!(powers_of_beta_g.len() == DEGREE_15, "Incorrect number of powers in the recovered SRS");
@@ -146,10 +147,11 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
     /// and updates `Self` in place with the new powers.
     pub fn download_up_to(&mut self, target_degree: usize) -> Result<()> {
+        // Initialize the first degree to download.
+        let mut next_degree = std::cmp::max(self.current_degree.next_power_of_two(), DEGREE_16);
+
         // Determine the degrees to download.
         let mut download_queue = Vec::new();
-        // Initialize the first degree to download.
-        let mut next_degree = std::cmp::max(self.current_degree.next_power_of_two(), DEGREE_15);
         // Download the powers until the target degree is reached.
         while next_degree <= target_degree && next_degree <= MAXIMUM_DEGREE {
             // Append the next degree to the download queue.
@@ -194,7 +196,8 @@ impl<E: PairingEngine> PowersOfG<E> {
                 let mut reader = BufReader::new(&additional_bytes[..]);
                 // Deserialize the group elements.
                 let additional_powers = (0..number_of_elements)
-                    .map(|_| E::G1Affine::deserialize_with_mode(&mut reader, Compress::No, Validate::No))
+                    .map(|_| E::G1Affine::read_le(&mut reader))
+                    // .map(|_| E::G1Affine::deserialize_with_mode(&mut reader, Compress::No, Validate::No))
                     .collect::<Result<Vec<_>, _>>()?;
 
                 // Extend the powers.
