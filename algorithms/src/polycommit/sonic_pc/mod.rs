@@ -98,7 +98,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                     max_degree - lowest_shift_degree + 1
                 ));
 
-                let shifted_powers_of_beta_g = pp.powers_of_beta_g(lowest_shift_degree, pp.max_degree() + 1).to_vec();
+                let shifted_powers_of_beta_g = pp.powers_of_beta_g(lowest_shift_degree, pp.max_degree() + 1)?.to_vec();
                 let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
                 let _max_gamma_g = pp.get_powers_times_gamma_g().keys().last().unwrap();
@@ -122,7 +122,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             (None, None)
         };
 
-        let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1).to_vec();
+        let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1)?.to_vec();
         let powers_of_beta_times_gamma_g =
             (0..=supported_hiding_bound + 1).map(|i| pp.get_powers_times_gamma_g()[&i]).collect();
 
@@ -136,7 +136,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 return Err(PCError::LagrangeBasisSizeIsTooLarge);
             }
             let domain = crate::fft::EvaluationDomain::new(size).unwrap();
-            let lagrange_basis_at_beta_g = pp.lagrange_basis(domain);
+            let lagrange_basis_at_beta_g = pp.lagrange_basis(domain)?;
             assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
             lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);
             end_timer!(lagrange_time);
@@ -152,7 +152,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             max_degree,
         };
 
-        let g = pp.power_of_beta_g(0);
+        let g = pp.power_of_beta_g(0)?;
         let h = pp.h;
         let beta_h = pp.beta_h;
         let gamma_g = pp.get_powers_times_gamma_g()[&0];

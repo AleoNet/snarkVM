@@ -19,6 +19,8 @@ use crate::snark::marlin::FiatShamirError;
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]
 pub enum PCError {
+    AnyhowError(anyhow::Error),
+
     FSError(FiatShamirError),
     /// The query set contains a label for a polynomial that was not provided as
     /// input to the `PC::open`.
@@ -100,6 +102,12 @@ pub enum PCError {
 
 impl snarkvm_utilities::error::Error for PCError {}
 
+impl From<anyhow::Error> for PCError {
+    fn from(other: anyhow::Error) -> Self {
+        Self::AnyhowError(other)
+    }
+}
+
 impl From<FiatShamirError> for PCError {
     fn from(other: FiatShamirError) -> Self {
         Self::FSError(other)
@@ -109,53 +117,54 @@ impl From<FiatShamirError> for PCError {
 impl core::fmt::Display for PCError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            PCError::FSError(e) => write!(f, "{e}"),
-            PCError::MissingPolynomial { label } => {
+            Self::AnyhowError(error) => write!(f, "{error}"),
+            Self::FSError(e) => write!(f, "{e}"),
+            Self::MissingPolynomial { label } => {
                 write!(f, "`QuerySet` refers to polynomial \"{}\", but it was not provided.", label)
             }
-            PCError::MissingEvaluation { label } => write!(
+            Self::MissingEvaluation { label } => write!(
                 f,
                 "`QuerySet` refers to polynomial \"{}\", but `Evaluations` does not contain an evaluation for it.",
                 label
             ),
-            PCError::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
-            PCError::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
-            PCError::TooManyCoefficients { num_coefficients, num_powers } => write!(
+            Self::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
+            Self::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
+            Self::TooManyCoefficients { num_coefficients, num_powers } => write!(
                 f,
                 "the number of coefficients in the polynomial ({:?}) is greater than\
                  the maximum number of powers in `Powers` ({:?})",
                 num_coefficients, num_powers
             ),
-            PCError::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
-            PCError::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
+            Self::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
+            Self::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
                 f,
                 "the degree of the hiding poly ({:?}) is not less than the maximum number of powers in `Powers` ({:?})",
                 hiding_poly_degree, num_powers
             ),
-            PCError::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
-            PCError::EquationHasDegreeBounds(e) => {
+            Self::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
+            Self::EquationHasDegreeBounds(e) => {
                 write!(f, "the eqaution \"{}\" contained degree-bounded polynomials", e)
             }
-            PCError::UnsupportedDegreeBound(bound) => {
+            Self::UnsupportedDegreeBound(bound) => {
                 write!(f, "the degree bound ({:?}) is not supported by the parameters", bound)
             }
-            PCError::LagrangeBasisSizeIsNotPowerOfTwo => {
+            Self::LagrangeBasisSizeIsNotPowerOfTwo => {
                 write!(f, "the Lagrange Basis size is not a power of two")
             }
-            PCError::UnsupportedLagrangeBasisSize(size) => {
+            Self::UnsupportedLagrangeBasisSize(size) => {
                 write!(f, "the Lagrange basis size ({:?}) is not supported by the parameters", size)
             }
-            PCError::LagrangeBasisSizeIsTooLarge => {
+            Self::LagrangeBasisSizeIsTooLarge => {
                 write!(f, "the Lagrange Basis size larger than max supported degree")
             }
-            PCError::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
+            Self::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
                 f,
                 "the degree bound ({:?}) for the polynomial {} \
                  (having degree {:?}) is greater than the maximum \
                  supported degree ({:?})",
                 degree_bound, label, poly_degree, supported_degree
             ),
-            PCError::Terminated => write!(f, "terminated"),
+            Self::Terminated => write!(f, "terminated"),
         }
     }
 }
