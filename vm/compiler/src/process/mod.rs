@@ -61,8 +61,11 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn new() -> Self {
-        Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() }
+    pub fn new() -> Result<Self> {
+        // Initialize the process.
+        let mut process = Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
+        // Return the process.
+        Ok(process)
     }
 
     /// Returns `true` if the process contains the program with the given ID.
@@ -240,13 +243,17 @@ impl<N: Network> Process<N> {
         deployment: &Deployment<N>,
         rng: &mut R,
     ) -> Result<()> {
+        // Retrieve the edition.
+        let edition = deployment.edition();
         // Retrieve the program.
         let program = deployment.program().clone();
         // Retrieve the program ID.
         let program_id = deployment.program().id();
 
+        // Ensure the edition matches.
+        ensure!(edition == N::EDITION, "Deployed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
         // Ensure the program does not already exist in the process.
-        ensure!(self.contains_program(program_id), "Program '{program_id}' already exists");
+        ensure!(!self.contains_program(program_id), "Program '{program_id}' already exists");
 
         // Check Program //
 
@@ -274,6 +281,11 @@ impl<N: Network> Process<N> {
     /// Verifies the given execution is valid.
     #[inline]
     pub fn verify_execution(&self, execution: &Execution<N>) -> Result<()> {
+        // Retrieve the edition.
+        let edition = execution.edition();
+        // Ensure the edition matches.
+        ensure!(edition == N::EDITION, "Executed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
+
         // Ensure the execution contains transitions.
         ensure!(!execution.is_empty(), "There are no transitions in the execution");
 
@@ -318,7 +330,7 @@ impl<N: Network> Process<N> {
             }
 
             // Ensure the fee is correct.
-            match Stack::is_coinbase(transition.program_id(), transition.function_name()) {
+            match Program::is_coinbase(transition.program_id(), transition.function_name()) {
                 true => ensure!(transition.fee() < &0, "The fee must be negative in a coinbase transition"),
                 false => ensure!(transition.fee() >= &0, "The fee must be zero or positive"),
             }
@@ -466,7 +478,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new();
+                let mut process = Process::<CurrentNetwork>::new().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
 
@@ -509,7 +521,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new();
+                let mut process = Process::<CurrentNetwork>::new().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
                 // Authorize the function call.
@@ -561,42 +573,23 @@ mod tests {
     #[test]
     fn test_process_execute_genesis() {
         // Initialize a new program.
-        let program = Program::<CurrentNetwork>::from_str(
-            r"program stake.aleo;
-
-  record stake:
-    owner as address.private;
-    gates as u64.private;
-
-  function initialize:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as stake.record;
-    output r2 as stake.record;",
-        )
-        .unwrap();
-
-        // Declare the function name.
-        let function_name = Identifier::from_str("initialize").unwrap();
+        let program = Program::<CurrentNetwork>::genesis().unwrap();
 
         // Initialize the RNG.
         let rng = &mut test_crypto_rng();
-
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
         let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
         let caller = Address::try_from(&caller_private_key).unwrap();
-
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
         let r1 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
-
         // Declare the expected output value.
         let r2 = Value::from_str(&format!("{{ owner: {caller}.private, gates: 1_000_000_000_000_000_u64.private }}"))
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -605,28 +598,24 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                function_name,
+                Identifier::from_str("start").unwrap(),
                 &[r0.clone(), r1.clone()],
                 rng,
             )
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.get(0).unwrap();
-
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
-
         // Execute the request.
         let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
-
         assert!(process.verify_execution(&execution).is_ok());
-
         // use circuit::Environment;
         //
         // assert_eq!(22152, CurrentAleo::num_constants());
@@ -637,7 +626,7 @@ mod tests {
 
         /******************************************/
 
-        // Ensure a non-special program fails.
+        // Ensure a non-coinbase program function fails.
 
         // Initialize a new program.
         let program = Program::<CurrentNetwork>::from_str(
@@ -647,24 +636,29 @@ mod tests {
     owner as address.private;
     gates as u64.private;
 
-  function initialize:
+  function start:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
     output r2 as token.record;",
         )
         .unwrap();
-
         process.add_program(&program).unwrap();
 
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1], rng)
+            .authorize::<CurrentAleo, _>(
+                &caller_private_key,
+                program.id(),
+                Identifier::from_str("start").unwrap(),
+                &[r0, r1],
+                rng,
+            )
             .unwrap();
         let result = process.execute::<CurrentAleo, _>(authorization, rng);
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/initialize' is not satisfied on the given inputs.")
+            format!("'token.aleo/start' is not satisfied on the given inputs.")
         );
     }
 
@@ -687,7 +681,7 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
@@ -734,7 +728,7 @@ function hello_world:
         let record_b = Value::from_str(&format!("{{ owner: {caller}.private, gates: 4321u64.private }}")).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -837,14 +831,14 @@ function compute:
         let r5 = Value::from_str("8field").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -949,7 +943,7 @@ function transfer:
             .unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -1034,7 +1028,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program0).unwrap();
 

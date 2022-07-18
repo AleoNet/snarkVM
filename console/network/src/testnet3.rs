@@ -107,6 +107,8 @@ impl Network for Testnet3 {
     /// The transition ID type.
     type TransitionID = AleoID<Field<Self>, { hrp2!("as") }>;
 
+    /// The network edition.
+    const EDITION: u16 = 0;
     /// The network ID.
     const ID: u16 = 3;
     /// The network name.

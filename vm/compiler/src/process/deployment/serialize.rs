@@ -21,7 +21,8 @@ impl<N: Network> Serialize for Deployment<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut deployment = serializer.serialize_struct("Deployment", 2)?;
+                let mut deployment = serializer.serialize_struct("Deployment", 3)?;
+                deployment.serialize_field("edition", &self.edition)?;
                 deployment.serialize_field("program", &self.program)?;
                 deployment.serialize_field("verifying_keys", &self.verifying_keys)?;
                 deployment.end()
@@ -41,6 +42,8 @@ impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
 
                 // Recover the deployment.
                 let deployment = Self::new(
+                    // Retrieve the edition.
+                    serde_json::from_value(deployment["edition"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the program.
                     serde_json::from_value(deployment["program"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the verifying keys.

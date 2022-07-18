@@ -25,6 +25,8 @@ impl<N: Network> FromBytes for Execution<N> {
         if version != 0 {
             return Err(error("Invalid execution version"));
         }
+        // Read the edition.
+        let edition = u16::read_le(&mut reader)?;
         // Read the number of transitions.
         let num_transitions = u16::read_le(&mut reader)?;
         // Ensure the number of transitions is nonzero.
@@ -36,7 +38,7 @@ impl<N: Network> FromBytes for Execution<N> {
         let transitions =
             (0..num_transitions).map(|_| Transition::read_le(&mut reader)).collect::<IoResult<Vec<_>>>()?;
         // Return the new `Execution` instance.
-        Self::from(&transitions).map_err(|e| error(e.to_string()))
+        Self::from(edition, &transitions).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -45,10 +47,12 @@ impl<N: Network> ToBytes for Execution<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
+        // Write the edition.
+        self.edition.write_le(&mut writer)?;
         // Write the number of transitions.
-        (self.0.len() as u16).write_le(&mut writer)?;
+        (self.transitions.len() as u16).write_le(&mut writer)?;
         // Write the transitions.
-        self.0.write_le(&mut writer)
+        self.transitions.write_le(&mut writer)
     }
 }
 

@@ -17,9 +17,15 @@
 mod string;
 
 use crate::{
-    console::network::prelude::*,
+    console::{
+        account::{Address, PrivateKey},
+        network::prelude::*,
+        program::{Identifier, ProgramID, Value},
+    },
     ledger::{Header, Transaction, Transactions},
+    vm::VM,
 };
+use snarkvm_compiler::Program;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -45,60 +51,42 @@ impl<N: Network> Block<N> {
         Ok(Self { block_hash, previous_hash, header, transactions })
     }
 
-    //     /// Initializes a new genesis block with one coinbase transaction.
-    //     pub fn genesis<A: circuit::Aleo<Network = N, BaseField = N::Field>>() -> Result<Self> {
-    //         // Initialize a fixed RNG.
-    //         let rng = &mut test_crypto_rng_fixed();
-    //         // Sample a private key.
-    //         let private_key = PrivateKey::<N>::new(rng)?;
-    //         let address = Address::try_from(&private_key)?;
-    //         // Initialize the program.
-    //         let program = Program::from_str(
-    //             r"program stake.aleo;
-    //
-    //   record stake:
-    //     owner as address.private;
-    //     gates as u64.private;
-    //
-    //   function initialize:
-    //     input r0 as address.private;
-    //     input r1 as u64.private;
-    //     cast r0 r1 into r2 as stake.record;
-    //     output r2 as stake.record;
-    // ",
-    //         )?;
-    //         // Initialize the process.
-    //         let mut process = Process::<N, A>::new(program)?;
-    //         // Initialize a genesis transaction.
-    //         let authorization = process.authorize(
-    //             &private_key,
-    //             &ProgramID::from_str("stake.aleo")?,
-    //             Identifier::from_str("initialize")?,
-    //             &[
-    //                 Value::from_str(&format!("{address}"))?,
-    //                 Value::from_str("1_000_000_000_000_000_u64")?,
-    //             ],
-    //             rng,
-    //         )?;
-    //         let transitions = process.execute(authorization, rng)?.1.to_vec();
-    //         let transaction = Transaction::execute(transitions)?;
-    //
-    //         // Prepare the components.
-    //         let header = BlockHeader::genesis();
-    //         let transactions = Transactions::from(&[transaction])?;
-    //         let previous_hash = N::BlockHash::default();
-    //
-    //         // Construct the block.
-    //         let block = Self::from(previous_hash, header, transactions)?;
-    //         // Ensure the block is valid genesis block.
-    //         match block.is_genesis() {
-    //             true => Ok(block),
-    //             false => bail!("Failed to initialize a genesis block"),
-    //         }
-    //     }
+    /// Initializes a new genesis block.
+    pub fn genesis<R: Rng + CryptoRng>(vm: &mut VM<N>, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Self> {
+        // Initialize the genesis program.
+        let genesis = Program::genesis()?;
+        // Deploy the genesis program.
+        let deploy = vm.deploy(&genesis, rng)?;
+        // Add the genesis program.
+        vm.on_deploy(&deploy)?;
+
+        // Prepare the caller.
+        let caller = Address::try_from(private_key)?;
+        // Prepare the function name.
+        let function_name = FromStr::from_str("start")?;
+        // Prepare the function inputs.
+        let inputs = [Value::from_str(&caller.to_string())?, Value::from_str("1_100_000_000_000_000_u64")?];
+        // Authorize the call to start.
+        let authorization = vm.authorize(private_key, genesis.id(), function_name, &inputs, rng)?;
+        // Execute the genesis program.
+        let (_, execution) = vm.execute(authorization, rng)?;
+
+        // Prepare the components.
+        let header = Header::genesis();
+        let transactions = Transactions::from(&[deploy, execution])?;
+        let previous_hash = N::BlockHash::default();
+
+        // Construct the block.
+        let block = Self::from(previous_hash, header, transactions)?;
+        // Ensure the block is valid genesis block.
+        match block.is_genesis() {
+            true => Ok(block),
+            false => bail!("Failed to initialize a genesis block"),
+        }
+    }
 
     /// Returns `true` if the block is well-formed.
-    pub fn is_valid(&self) -> bool {
+    pub fn verify(&self, vm: &VM<N>) -> bool {
         // If the block is the genesis block, check that it is valid.
         if self.header.height() == 0 && !self.is_genesis() {
             warn!("Invalid genesis block");
@@ -135,14 +123,8 @@ impl<N: Network> Block<N> {
             }
         };
 
-        // Ensure the block is not empty.
-        if self.transactions.is_empty() {
-            warn!("Block contains no transactions: {:?}", self);
-            return false;
-        }
-
         // Ensure the transactions are valid.
-        if !self.transactions.verify() {
+        if !self.transactions.verify(vm) {
             warn!("Block contains invalid transactions: {:?}", self);
             return false;
         }

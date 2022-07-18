@@ -87,6 +87,26 @@ impl<N: Network> Program<N> {
         })
     }
 
+    /// Initializes a genesis program.
+    #[inline]
+    pub fn genesis() -> Result<Self> {
+        Self::from_str(
+            r"
+program genesis.aleo;
+
+record genesis:
+    owner as address.private;
+    gates as u64.private;
+
+function start:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as genesis.record;
+    output r2 as genesis.record;
+",
+        )
+    }
+
     /// Returns the ID of the program.
     pub const fn id(&self) -> &ProgramID<N> {
         &self.id
@@ -492,6 +512,12 @@ impl<N: Network> Program<N> {
         // Check if the name is a keyword.
         Self::KEYWORDS.iter().any(|keyword| *keyword == name)
     }
+
+    /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
+    #[inline]
+    pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
+        program_id.to_string() == "genesis.aleo" && function_name.to_string() == "start"
+    }
 }
 
 impl<N: Network> TypeName for Program<N> {
@@ -619,7 +645,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -669,7 +695,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -719,7 +745,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -783,7 +809,7 @@ function compute:
 
         {
             // Construct the process.
-            let mut process = Process::<CurrentNetwork>::new();
+            let mut process = Process::<CurrentNetwork>::new().unwrap();
             // Add the program to the process.
             process.add_program(&program).unwrap();
             // Check that the circuit key can be synthesized.
@@ -791,7 +817,7 @@ function compute:
         }
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -873,7 +899,7 @@ function compute:
         let function = program.get_function(&function_name).unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new();
+        let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 

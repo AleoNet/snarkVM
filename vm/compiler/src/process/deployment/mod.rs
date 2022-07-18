@@ -25,6 +25,8 @@ use indexmap::IndexMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Deployment<N: Network> {
+    /// The edition.
+    edition: u16,
     /// The program.
     program: Program<N>,
     /// The mapping of function names to their verifying key and certificate.
@@ -34,10 +36,16 @@ pub struct Deployment<N: Network> {
 impl<N: Network> Deployment<N> {
     /// Initializes a new deployment.
     pub fn new(
+        edition: u16,
         program: Program<N>,
         verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
     ) -> Self {
-        Self { program, verifying_keys }
+        Self { edition, program, verifying_keys }
+    }
+
+    /// Returns the edition.
+    pub const fn edition(&self) -> u16 {
+        self.edition
     }
 
     /// Returns the program.
@@ -84,12 +92,11 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new();
-                // Add the program to the process.
-                process.add_program(&program).unwrap();
-
+                let process = Process::<CurrentNetwork>::new().unwrap();
+                // Compute the stack.
+                let stack = process.compute_stack(&program).unwrap();
                 // Compute the deployment.
-                process.deploy::<CurrentAleo, _>(program.id(), rng).unwrap()
+                stack.deploy::<CurrentAleo, _>(rng).unwrap()
             })
             .clone()
     }

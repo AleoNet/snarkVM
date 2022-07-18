@@ -25,6 +25,9 @@ impl<N: Network> FromBytes for Deployment<N> {
         if version != 0 {
             return Err(error("Invalid deployment version"));
         }
+
+        // Read the edition.
+        let edition = u16::read_le(&mut reader)?;
         // Read the program.
         let program = Program::read_le(&mut reader)?;
 
@@ -43,7 +46,7 @@ impl<N: Network> FromBytes for Deployment<N> {
             bundle.insert(identifier, (verifying_key, certificate));
         }
 
-        Ok(Self { program, verifying_keys: bundle })
+        Ok(Self { edition, program, verifying_keys: bundle })
     }
 }
 
@@ -52,6 +55,8 @@ impl<N: Network> ToBytes for Deployment<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
+        // Write the edition.
+        self.edition.write_le(&mut writer)?;
         // Write the program.
         self.program.write_le(&mut writer)?;
         // Write the number of entries in the bundle.

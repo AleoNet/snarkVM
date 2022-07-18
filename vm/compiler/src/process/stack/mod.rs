@@ -333,7 +333,7 @@ impl<N: Network> Stack<N> {
         }
 
         // Return the deployment.
-        Ok(Deployment::new(self.program.clone(), bundle))
+        Ok(Deployment::new(N::EDITION, self.program.clone(), bundle))
     }
 
     /// Checks each function in the program on the given verifying key and certificate.
@@ -744,7 +744,7 @@ impl<N: Network> Stack<N> {
         }
 
         // If the program and function is not a coinbase function, then ensure the i64 gates is positive.
-        if !Self::is_coinbase(&program_id, function.name()) {
+        if !Program::is_coinbase(&program_id, function.name()) {
             use circuit::MSB;
 
             // Ensure the i64 gates MSB is false.
@@ -822,12 +822,6 @@ impl<N: Network> Stack<N> {
 
         // Return the response.
         Ok(response)
-    }
-
-    /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
-    #[inline]
-    pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        program_id.to_string() == "stake.aleo" && function_name.to_string() == "initialize"
     }
 
     /// Prints the current state of the circuit.

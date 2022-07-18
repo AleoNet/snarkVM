@@ -62,6 +62,8 @@ pub trait Network:
     const ID: u16;
     /// The network name.
     const NAME: &'static str;
+    /// The network edition.
+    const EDITION: u16;
 
     /// The maximum recursive depth of a value and/or entry.
     /// Note: This value must be strictly less than u8::MAX.

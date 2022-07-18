@@ -21,8 +21,9 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 1)?;
-                execution.serialize_field("transitions", &self.0)?;
+                let mut execution = serializer.serialize_struct("Execution", 2)?;
+                execution.serialize_field("edition", &self.edition)?;
+                execution.serialize_field("transitions", &self.transitions)?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -37,11 +38,13 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
             true => {
                 // Parse the execution from a string into a value.
                 let execution = serde_json::Value::deserialize(deserializer)?;
+                // Retrieve the edition.
+                let edition = serde_json::from_value(execution["edition"].clone()).map_err(de::Error::custom)?;
                 // Retrieve the transitions.
                 let transitions: Vec<_> =
                     serde_json::from_value(execution["transitions"].clone()).map_err(de::Error::custom)?;
                 // Recover the execution.
-                Self::from(&transitions).map_err(de::Error::custom)
+                Self::from(edition, &transitions).map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
         }

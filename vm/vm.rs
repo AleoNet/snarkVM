@@ -19,11 +19,13 @@ use crate::{
         account::PrivateKey,
         network::prelude::*,
         program::{Identifier, ProgramID, Response, Value},
+        types::Field,
     },
     ledger::Transaction,
 };
 use snarkvm_compiler::{Authorization, Deployment, Execution, Process, Program};
 
+use core::marker::PhantomData;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -49,19 +51,14 @@ macro_rules! cast_ref {
     }};
 }
 
-lazy_static! {
-    /// The process for Aleo Testnet3 (V0).
-    pub(crate) static ref TESTNET3_V0: Arc<RwLock<Process<crate::prelude::Testnet3>>> = Arc::new(RwLock::new(Process::new()));
-}
-
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
 macro_rules! process {
     // Example: process!(logic)
-    ($logic:ident) => {{
+    ($self:ident, $logic:ident) => {{
         // Process the logic.
         match N::ID {
             crate::prelude::Testnet3::ID => {
-                $logic!(TESTNET3_V0.read(), crate::prelude::Testnet3, crate::circuit::AleoV0)
+                $logic!($self.process.read(), crate::prelude::Testnet3, crate::circuit::AleoV0)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
@@ -71,47 +68,48 @@ macro_rules! process {
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
 macro_rules! process_mut {
     // Example: process!(logic)
-    ($logic:ident) => {{
+    ($self:ident, $logic:ident) => {{
         // Process the logic.
         match N::ID {
             crate::prelude::Testnet3::ID => {
-                $logic!(TESTNET3_V0.write(), crate::prelude::Testnet3, crate::circuit::AleoV0)
+                $logic!($self.process.write(), crate::prelude::Testnet3, crate::circuit::AleoV0)
             }
             _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
         }
     }};
 }
 
-pub struct VM;
+pub struct VM<N: Network> {
+    /// The process for Aleo Testnet3 (V0).
+    process: Arc<RwLock<Process<crate::prelude::Testnet3>>>,
+    /// PhantomData.
+    _phantom: PhantomData<N>,
+}
 
-impl VM {
-    /// Adds a new program to the VM.
+impl<N: Network> VM<N> {
+    /// Initializes a new VM.
     #[inline]
-    pub fn add_program<N: Network>(program: &Program<N>) -> Result<()> {
+    pub fn new() -> Result<Self> {
+        Ok(Self { process: Arc::new(RwLock::new(Process::new()?)), _phantom: PhantomData })
+    }
+
+    /// Deploys a program with the given program ID.
+    #[inline]
+    pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Transaction<N>> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the program.
                 let program = cast_ref!(&program as Program<$network>);
-                // Add the program.
-                $process.add_program(program)
-            }};
-        }
-        // Process the logic.
-        process_mut!(logic)
-    }
 
-    /// Deploys a program with the given program ID.
-    #[inline]
-    pub fn deploy<N: Network, R: Rng + CryptoRng>(program_id: &ProgramID<N>, rng: &mut R) -> Result<Transaction<N>> {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the program ID.
-                let program_id = cast_ref!(&program_id as ProgramID<$network>);
-
+                // Ensure the program does not already exist.
+                if $process.contains_program(program.id()) {
+                    bail!("Cannot deploy program '{}': program already exists", program.id())
+                }
+                // Compute the stack.
+                let stack = $process.compute_stack(program)?;
                 // Compute the deployment.
-                let deployment = $process.deploy::<$aleo, _>(program_id, rng)?;
+                let deployment = stack.deploy::<$aleo, _>(rng)?;
                 // Construct the transaction.
                 let transaction = Transaction::deploy(deployment)?;
 
@@ -122,12 +120,41 @@ impl VM {
             }};
         }
         // Process the logic.
-        process!(logic)
+        process!(self, logic)
+    }
+
+    /// Adds a new program to the VM.
+    pub fn on_deploy(&mut self, transaction: &Transaction<N>) -> Result<()> {
+        // Ensure the transaction is a deployment.
+        ensure!(matches!(transaction, Transaction::Deploy(..)), "Invalid transaction type: expected a deployment");
+        // Ensure the transaction is valid.
+        ensure!(self.verify(transaction), "Invalid transaction: failed to verify");
+
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Prepare the transaction.
+                let transaction = cast_ref!(&transaction as Transaction<$network>);
+                // Deploy the program.
+                if let Transaction::Deploy(_, deployment) = transaction {
+                    // Add the program.
+                    $process.add_program(deployment.program())?;
+                    // Insert the verifying keys.
+                    for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
+                        $process.insert_verifying_key(deployment.program().id(), function_name, verifying_key.clone());
+                    }
+                }
+                Ok(())
+            }};
+        }
+        // Process the logic.
+        process_mut!(self, logic)
     }
 
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
-    pub fn authorize<N: Network, R: Rng + CryptoRng>(
+    pub fn authorize<R: Rng + CryptoRng>(
+        &self,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
         function_name: Identifier<N>,
@@ -154,12 +181,13 @@ impl VM {
             }};
         }
         // Process the logic.
-        process!(logic)
+        process!(self, logic)
     }
 
     /// Executes a call to the program function for the given inputs.
     #[inline]
-    pub fn execute<N: Network, R: Rng + CryptoRng>(
+    pub fn execute<R: Rng + CryptoRng>(
+        &self,
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<(Response<N>, Transaction<N>)> {
@@ -182,12 +210,12 @@ impl VM {
             }};
         }
         // Process the logic.
-        process!(logic)
+        process!(self, logic)
     }
 
     /// Verifies a program call for the given execution.
     #[inline]
-    pub fn verify<N: Network>(transaction: &Transaction<N>) -> bool {
+    pub fn verify(&self, transaction: &Transaction<N>) -> bool {
         // Compute the Merkle root of the transaction.
         match transaction.to_root() {
             // Ensure the transaction ID is correct.
@@ -221,9 +249,10 @@ impl VM {
                 }
 
                 // Process the logic.
-                match process!(logic) {
+                match process!(self, logic) {
                     Ok(()) => true,
                     Err(error) => {
+                        eprintln!("Transaction (deployment) verification failed: {error}");
                         warn!("Transaction (deployment) verification failed: {error}");
                         false
                     }
@@ -244,9 +273,10 @@ impl VM {
                 }
 
                 // Process the logic.
-                match process!(logic) {
+                match process!(self, logic) {
                     Ok(()) => true,
                     Err(error) => {
+                        eprintln!("Transaction (execution) verification failed: {error}");
                         warn!("Transaction (execution) verification failed: {error}");
                         false
                     }
@@ -306,17 +336,17 @@ function compute:
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
+                // Initialize a new VM.
+                let vm = VM::<CurrentNetwork>::new().unwrap();
                 // Initialize a new program.
                 let program = sample_program();
-                // Add the program.
-                VM::add_program(&program).unwrap();
 
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
                 // Deploy.
-                let transaction = VM::deploy(program.id(), rng).unwrap();
+                let transaction = vm.deploy(&program, rng).unwrap();
                 // Verify.
-                assert!(VM::verify(&transaction));
+                assert!(vm.verify(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -327,10 +357,16 @@ function compute:
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
+                let mut vm = VM::<CurrentNetwork>::new().unwrap();
                 // Initialize a new program.
                 let program = sample_program();
-                // Add the program.
-                VM::add_program(&program).unwrap();
+
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+                // Deploy.
+                let transaction = vm.deploy(&program, rng).unwrap();
+                // On Deploy.
+                vm.on_deploy(&transaction).unwrap();
 
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
@@ -338,28 +374,29 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
                 // Authorize.
-                let authorization = VM::authorize(
-                    &caller_private_key,
-                    program.id(),
-                    Identifier::from_str("compute").unwrap(),
-                    &[
-                        Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
-                        Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
-                        Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
-                        Value::<CurrentNetwork>::from_str(&format!(
-                            "{{ owner: {address}.private, gates: 5u64.private, amount: 100u64.private }}"
-                        ))
-                        .unwrap(),
-                    ],
-                    rng,
-                )
-                .unwrap();
+                let authorization = vm
+                    .authorize(
+                        &caller_private_key,
+                        program.id(),
+                        Identifier::from_str("compute").unwrap(),
+                        &[
+                            Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
+                            Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
+                            Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
+                            Value::<CurrentNetwork>::from_str(&format!(
+                                "{{ owner: {address}.private, gates: 5u64.private, amount: 100u64.private }}"
+                            ))
+                            .unwrap(),
+                        ],
+                        rng,
+                    )
+                    .unwrap();
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let (_response, transaction) = VM::execute(authorization, rng).unwrap();
+                let (_response, transaction) = vm.execute(authorization, rng).unwrap();
                 // Verify.
-                assert!(VM::verify(&transaction));
+                assert!(vm.verify(&transaction));
                 // Return the transaction.
                 transaction
             })

@@ -47,15 +47,12 @@ impl<N: Network> Transactions<N> {
         let transactions = Self {
             transactions: transactions.iter().cloned().map(|transaction| (transaction.id(), transaction)).collect(),
         };
-        // Ensure the transactions are valid.
-        match transactions.verify() {
-            true => Ok(transactions),
-            false => bail!("Failed to initialize a new 'Transactions' instance"),
-        }
+        // Return the transactions.
+        Ok(transactions)
     }
 
     /// Returns `true` if the transactions are well-formed.
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, vm: &VM<N>) -> bool {
         // Ensure the transactions list is not empty.
         if self.transactions.is_empty() {
             eprintln!("Cannot validate an empty transactions list");
@@ -63,7 +60,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !self.transactions.par_iter().all(|(_, transaction)| VM::verify::<N>(transaction)) {
+        if !self.transactions.par_iter().all(|(_, transaction)| vm.verify(transaction)) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }

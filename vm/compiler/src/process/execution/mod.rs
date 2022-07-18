@@ -22,25 +22,40 @@ use crate::Transition;
 use console::network::prelude::*;
 
 #[derive(Clone, Default, PartialEq, Eq)]
-pub struct Execution<N: Network>(Vec<Transition<N>>);
+pub struct Execution<N: Network> {
+    /// The edition.
+    edition: u16,
+    /// The transitions.
+    transitions: Vec<Transition<N>>,
+}
 
 impl<N: Network> Execution<N> {
     /// Initialize a new `Execution` instance.
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self { edition: N::EDITION, transitions: Vec::new() }
     }
 
     /// Initializes a new `Execution` instance with the given transitions.
-    pub fn from(transitions: &[Transition<N>]) -> Result<Self> {
+    pub fn from(edition: u16, transitions: &[Transition<N>]) -> Result<Self> {
         // Ensure the transitions is not empty.
         ensure!(!transitions.is_empty(), "Execution cannot initialize from empty list of transitions");
         // Return the new `Execution` instance.
-        Ok(Self(transitions.to_vec()))
+        match edition == N::EDITION {
+            true => Ok(Self { edition, transitions: transitions.to_vec() }),
+            false => bail!("Execution cannot initialize with a different edition"),
+        }
     }
 
+    /// Returns the edition.
+    pub const fn edition(&self) -> u16 {
+        self.edition
+    }
+}
+
+impl<N: Network> Execution<N> {
     /// Returns the `Transition` at the given index.
     pub fn get(&self, index: usize) -> Result<Transition<N>> {
-        self.0.get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
+        self.transitions.get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing transition {index}"))
     }
 
     /// Returns the next `Transition` in the execution.
@@ -50,12 +65,12 @@ impl<N: Network> Execution<N> {
 
     /// Appends the given `Transition` to the execution.
     pub fn push(&mut self, transition: Transition<N>) {
-        self.0.push(transition);
+        self.transitions.push(transition);
     }
 
     /// Pops the last `Transition` from the execution.
     pub fn pop(&mut self) -> Result<Transition<N>> {
-        self.0.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
+        self.transitions.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
     }
 }
 
@@ -63,6 +78,6 @@ impl<N: Network> Deref for Execution<N> {
     type Target = [Transition<N>];
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.transitions
     }
 }
