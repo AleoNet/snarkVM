@@ -30,6 +30,9 @@ impl<N: Network> FromBytes for Instruction<N> {
                 let index = u16::read_le(&mut $reader)?;
 
                 // Build the cases for all instructions.
+                if index as usize >= Instruction::<N>::OPCODES.len() {
+                    return Err(error(format!("Failed to deserialize an instruction: invalid opcode index ({index})")));
+                }
                 $(if Instruction::<N>::OPCODES[index as usize] == $variant::<N>::opcode() {
                     // Read the instruction.
                     let instruction = $variant::read_le(&mut $reader)?;
