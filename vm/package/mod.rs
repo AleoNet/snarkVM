@@ -178,3 +178,56 @@ impl<N: Network> Package<N> {
         Ok(process)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console::network::Testnet3;
+    use std::{fs::File, io::Write};
+
+    type CurrentNetwork = Testnet3;
+
+    fn temp_dir() -> PathBuf {
+        tempfile::tempdir().expect("Failed to open temporary directory").into_path()
+    }
+
+    #[test]
+    fn test_get_process() {
+        // Initialize a temporary directory.
+        let directory = temp_dir();
+
+        let program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
+
+        let program_string = r"
+program token.aleo;
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    token_amount as u64.private;
+
+function compute:
+    input r0 as token.record;
+    add.w r0.token_amount r0.token_amount into r1;
+    output r1 as u64.private;";
+
+        // Write the program string to a file in the temporary directory.
+        let path = directory.join("main.aleo");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(program_string.as_bytes()).unwrap();
+
+        // Create the manifest file.
+        let _manifest_file = Manifest::create(&directory, &program_id).unwrap();
+
+        // Create the build directory.
+        let build_directory = directory.join("build");
+        std::fs::create_dir_all(&build_directory).unwrap();
+
+        // Open the package at the temporary directory.
+        let package = Package::<Testnet3>::open(&directory).unwrap();
+
+        // Get the program process and check all instructions.
+        assert!(package.get_process().is_ok());
+        assert_eq!(package.program_id(), &program_id);
+    }
+}
