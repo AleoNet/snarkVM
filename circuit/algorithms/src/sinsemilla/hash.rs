@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: u8> Hash for Sinsemilla<E, NUM_WINDOWS> {
+impl<E: Lookup + Environment, const NUM_WINDOWS: u8> Hash for Sinsemilla<E, NUM_WINDOWS> {
     type Input = Boolean<E>;
     type Output = Field<E>;
 

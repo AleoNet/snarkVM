@@ -19,23 +19,31 @@ mod hash_uncompressed;
 
 #[cfg(all(test, console))]
 use snarkvm_circuit_types::environment::assert_scope;
+use snarkvm_circuit_types::environment::Lookup;
 
 use crate::{Hash, HashUncompressed};
 use snarkvm_circuit_types::prelude::*;
+use snarkvm_r1cs::LookupTable;
 
 /// Sinsemilla is a collision-resistant hash function that takes a fixed-length input.
 /// The Sinsemilla hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct Sinsemilla<E: Environment, const NUM_WINDOWS: u8> {
+pub struct Sinsemilla<E: Lookup + Environment, const NUM_WINDOWS: u8> {
     q: Group<E>,
 }
 
 #[cfg(console)]
-impl<E: Environment, const NUM_WINDOWS: u8> Inject for Sinsemilla<E, NUM_WINDOWS> {
+impl<E: Lookup + Environment, const NUM_WINDOWS: u8> Inject for Sinsemilla<E, NUM_WINDOWS> {
     type Primitive = console::Sinsemilla<E::Network, NUM_WINDOWS>;
 
     /// Initializes a new instance of Sinsemilla with the given setup message.
     fn new(_mode: Mode, sinsemilla: Self::Primitive) -> Self {
         // Push the lookup table into the constraint system.
+        let mut table = LookupTable::default();
+        sinsemilla.p_lookups().iter().enumerate().for_each(|(i, el)| {
+            let (x, y) = el.to_xy_coordinate();
+            table.fill(*console::Field::<E::Network>::from_u8(i as u8), *x, *y);
+        });
+        E::add_lookup_table(table);
 
         Self { q: Group::constant(sinsemilla.q()) }
     }

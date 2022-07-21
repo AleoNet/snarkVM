@@ -2085,6 +2085,7 @@ dependencies = [
  "snarkvm-console-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
 ]
 

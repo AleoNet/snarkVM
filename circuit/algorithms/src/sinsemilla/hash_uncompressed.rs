@@ -18,7 +18,7 @@ use super::*;
 
 use std::borrow::Cow;
 
-impl<E: Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, NUM_WINDOWS> {
+impl<E: Lookup + Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, NUM_WINDOWS> {
     type Input = Boolean<E>;
     type Output = Group<E>;
 
@@ -33,13 +33,15 @@ impl<E: Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, N
             false => E::halt(format!("The Sinsemilla hash input cannot exceed {} bits.", max_len)),
         }
 
-        // let zero = Field::<E>::zero();
         input.chunks(console::SINSEMILLA_WINDOW_SIZE).fold(self.q.clone(), |acc, bits| {
             // Recover the bit window as a native integer value so we can index into the lookup table.
             let i = Field::from_bits_le(bits);
-            // let (s_x, s_y) = E::unary_lookup(i);
-            // let s = Group::from_xy_coordinates(s_x, s_y);
-            acc.double() // + s
+            let (s_x, s_y) = E::unary_lookup(0, i);
+            let s = Group::from_xy_coordinates(
+                Field::from(LinearCombination::from(s_x)),
+                Field::from(LinearCombination::from(s_y)),
+            );
+            acc.double() + s
         })
     }
 }
