@@ -69,14 +69,17 @@ impl Lookup for Circuit {
         id: usize,
         key: A,
     ) -> (Variable<Self::BaseField>, Variable<Self::BaseField>) {
-        let val = key.into().value();
+        let lc = key.into();
+        let val = lc.value();
         let (a, b) = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
             let row = lookup_tables[id].table.iter().find(|row| row.0 == val).unwrap();
             (row.1, row.2)
         });
 
-        (Self::new_variable(Mode::Private, a), Self::new_variable(Mode::Private, b))
+        let vars = (Self::new_variable(Mode::Private, a), Self::new_variable(Mode::Private, b));
+        Self::enforce_lookup(|| (lc, vars.0.clone(), vars.1.clone()));
+        vars
     }
 
     fn binary_lookup<A: Into<LinearCombination<Self::BaseField>>, B: Into<LinearCombination<Self::BaseField>>>(
@@ -84,15 +87,19 @@ impl Lookup for Circuit {
         key_1: A,
         key_2: B,
     ) -> Variable<Self::BaseField> {
-        let val_1 = key_1.into().value();
-        let val_2 = key_2.into().value();
+        let lc_1 = key_1.into();
+        let lc_2 = key_2.into();
+        let val_1 = lc_1.value();
+        let val_2 = lc_2.value();
         let a = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
             let row = lookup_tables[id].table.iter().find(|row| row.0 == val_1 && row.1 == val_2).unwrap();
             row.2
         });
 
-        Self::new_variable(Mode::Private, a)
+        let var = Self::new_variable(Mode::Private, a);
+        Self::enforce_lookup(|| (lc_1, lc_2, var.clone()));
+        var
     }
 
     fn index_lookup(
@@ -105,11 +112,13 @@ impl Lookup for Circuit {
             (row.0, row.1, row.2)
         });
 
-        (
+        let vars = (
             Self::new_variable(Mode::Private, a),
             Self::new_variable(Mode::Private, b),
             Self::new_variable(Mode::Private, c),
-        )
+        );
+        Self::enforce_lookup(|| vars.clone());
+        vars
     }
 
     fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
