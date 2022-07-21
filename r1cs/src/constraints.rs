@@ -33,8 +33,4 @@ impl<F: Field> LookupConstraints<F> {
     pub fn insert(&mut self, index: ConstraintIndex) -> bool {
         self.indices.insert(index)
     }
-
-    pub fn lookup(&self, key: &[F]) -> Option<&F> {
-        self.table.lookup(key)
-    }
 }
