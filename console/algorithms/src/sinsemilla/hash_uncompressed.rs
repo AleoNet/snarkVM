@@ -33,7 +33,7 @@ impl<E: Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, N
             false => E::halt(format!("The Sinsemilla hash input cannot exceed {} bits.", max_len)),
         }
 
-        Ok(input.chunks(SINSEMILLA_WINDOW_SIZE.into()).fold(self.q.clone(), |acc, bits| {
+        Ok(input.chunks(SINSEMILLA_WINDOW_SIZE).fold(self.q, |acc, bits| {
             // Recover the bit window as an integer value so we can index into the lookup table.
             let i = bits.iter().fold(0, |mut acc, bit| {
                 acc >>= 1;
@@ -43,7 +43,7 @@ impl<E: Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, N
                 acc
             });
 
-            acc.double() + self.p_lookups[i as usize].clone()
+            acc.double() + self.p_lookups[i as usize]
         }))
     }
 }
