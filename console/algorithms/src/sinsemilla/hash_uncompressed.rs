@@ -35,8 +35,8 @@ impl<E: Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, N
 
         Ok(input.chunks(SINSEMILLA_WINDOW_SIZE).fold(self.q, |acc, bits| {
             // Recover the bit window as an integer value so we can index into the lookup table.
-            let i = bits.iter().fold(0, |mut acc, bit| {
-                acc >>= 1;
+            let i = bits.iter().rev().fold(0, |mut acc, bit| {
+                acc <<= 1;
                 if *bit {
                     acc += 1;
                 }

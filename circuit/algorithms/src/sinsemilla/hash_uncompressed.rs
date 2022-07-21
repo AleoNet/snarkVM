@@ -34,7 +34,6 @@ impl<E: Lookup + Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsem
         }
 
         input.chunks(console::SINSEMILLA_WINDOW_SIZE).fold(self.q.clone(), |acc, bits| {
-            // Recover the bit window as a native integer value so we can index into the lookup table.
             let i = Field::from_bits_le(bits);
             let (s_x, s_y) = E::unary_lookup(0, i);
             let s = Group::from_xy_coordinates(
@@ -48,25 +47,22 @@ impl<E: Lookup + Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsem
 
 #[cfg(test)]
 mod tests {
-    /*
     use super::*;
-    use snarkvm_algorithms::{crh::SinsemillaCRH, CRH};
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
-    use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_circuit_types::environment::Circuit;
+    use snarkvm_utilities::{test_rng, Uniform};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "SinsemillaCircuit0";
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
-    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
+    fn check_hash_uncompressed<const NUM_WINDOWS: u8>(mode: Mode) {
+        use console::Hash as H;
 
-    fn check_hash_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
         // Initialize the Sinsemilla hash.
-        let native = SinsemillaCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
-        let circuit = Sinsemilla::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
+        let native_2 = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
+        let circuit = Sinsemilla::<Circuit, NUM_WINDOWS>::new(Mode::Constant, native_2);
         // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
+        let num_input_bits = NUM_WINDOWS as usize * console::SINSEMILLA_WINDOW_SIZE;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -81,7 +77,7 @@ mod tests {
                 let candidate = circuit.hash_uncompressed(&circuit_input);
                 println!("{}", Circuit::num_constraints_in_scope());
                 println!("{}", Circuit::num_constants_in_scope());
-                assert_eq!(Circuit::affine_from_x_coordinate(expected), candidate.eject_value());
+                assert_eq!(expected, candidate.eject_value().to_x_coordinate());
             });
         }
     }
@@ -89,19 +85,18 @@ mod tests {
     #[test]
     fn test_hash_uncompressed_constant() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<10, 52>(Mode::Constant);
+        check_hash_uncompressed::<103>(Mode::Constant);
     }
 
     #[test]
     fn test_hash_uncompressed_public() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<10, 52>(Mode::Public);
+        check_hash_uncompressed::<103>(Mode::Public);
     }
 
     #[test]
     fn test_hash_uncompressed_private() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<10, 52>(Mode::Private);
+        check_hash_uncompressed::<103>(Mode::Private);
     }
-    */
 }
