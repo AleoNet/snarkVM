@@ -30,6 +30,9 @@ pub use environment::*;
 pub mod helpers;
 pub use helpers::*;
 
+pub mod lookup;
+pub use lookup::*;
+
 pub mod macros;
 pub use macros::*;
 

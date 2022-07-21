@@ -14,10 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Constraint, Mode, *};
+use crate::{
+    helpers::{BaseConstraint, Constraint},
+    Mode,
+    *,
+};
 
 use core::{cell::RefCell, fmt};
 use std::rc::Rc;
+
+use snarkvm_r1cs::LookupTable;
 
 type Field = <console::Testnet3 as console::Environment>::Field;
 
@@ -26,6 +32,7 @@ thread_local! {
     pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
     pub(super) static ZERO: LinearCombination<Field> = LinearCombination::zero();
     pub(super) static ONE: LinearCombination<Field> = LinearCombination::one();
+    pub(super) static LOOKUP_TABLES: Rc<RefCell<Vec<LookupTable<Field>>>> = Rc::new(RefCell::new(vec![]));
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -176,7 +183,8 @@ impl Environment for Circuit {
                         }
                         false => {
                             // Construct the constraint object.
-                            let constraint = Constraint((**circuit).borrow().scope(), a, b, c);
+                            let constraint =
+                                Constraint::MulConstraint(BaseConstraint((**circuit).borrow().scope(), a, b, c));
                             // Append the constraint.
                             (**circuit).borrow_mut().enforce(constraint)
                         }
