@@ -915,8 +915,7 @@ mod lookup_test {
             c.mul_assign(&b);
 
             let mut table = LookupTable::default();
-            let lookup_value = [a, b];
-            table.fill(lookup_value, c);
+            table.fill(a, b, c);
 
             let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25, table };
 

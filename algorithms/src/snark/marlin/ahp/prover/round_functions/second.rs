@@ -80,7 +80,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 table
                     .table
                     .iter()
-                    .map(|(key, value)| key[0] + *zeta * key[1] + zeta_squared * value)
+                    .map(|(first, second, third)| *first + *zeta * second + zeta_squared * third)
                     .collect::<Vec<F>>()
             })
             .collect::<Vec<F>>();

@@ -154,9 +154,12 @@ impl<F: Field> CS<F> for ConstraintSystem<F> {
                     .sum::<F>()
             })
             .collect::<Vec<F>>();
-        let value =
-            table.lookup(&[evaluated_values[0], evaluated_values[1]]).ok_or(SynthesisError::LookupValueMissing)?;
-        if evaluated_values[2] == *value {
+        if table
+            .table
+            .table
+            .iter()
+            .any(|row| row.0 == evaluated_values[0] && row.1 == evaluated_values[1] && row.2 == evaluated_values[2])
+        {
             table.insert(self.num_constraints);
             self.num_constraints += 1;
             Ok(())
