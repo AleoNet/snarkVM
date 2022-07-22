@@ -121,7 +121,7 @@ optional = true
 version = "0.5"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
-version = "0.4.43"
+version = "0.4.44"
 
 [dependencies.derivative]
 version = "2"
