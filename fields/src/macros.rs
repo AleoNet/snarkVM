@@ -94,47 +94,64 @@ macro_rules! sqrt_impl {
             Zero => Some(*$self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let mut z = $Self::two_adic_root_of_unity();
-                let mut w = $self.pow($P::T_MINUS_ONE_DIV_TWO);
-                let mut x = w * $self;
-                let mut b = x * w;
+                let n = $P::TWO_ADICITY;
+                // `T` is equivalent to `m` in the paper.
+                let v = $self.pow($P::T_MINUS_ONE_DIV_TWO);
+                let x = $self.pow($P::T);
+                let g = $Self::two_adic_root_of_unity().pow($P::T);
+                let two = $Self::from(2u8);
+                let n_field = $Self::from(n);
 
-                let mut v = $P::TWO_ADICITY as usize;
-                // t = self^t
-                #[cfg(debug_assertions)]
-                {
-                    let mut check = b;
-                    for _ in 0..(v - 1) {
-                        check.square_in_place();
-                    }
-                    if !check.is_one() {
-                        panic!("Input is not a square root, but it passed the QR test")
-                    }
+                let k = ((n - 1) as f64).sqrt().floor() as usize;
+                // TODO: find `l_0..l_i`.
+                let l_s: Vec<$Self> = Vec::with_capacity(k);
+                let mut x_s: Vec<$Self> = Vec::with_capacity(k);
+                for i in 0..k {
+                    x_s.push(x.pow(
+                        two.pow((n_field - $Self::one() - (l_s.iter().take(i + 1).sum::<$Self>())).to_repr()).to_repr(),
+                    ));
                 }
 
-                while !b.is_one() {
-                    let mut k = 0usize;
-
-                    let mut b2k = b;
-                    while !b2k.is_one() {
-                        // invariant: b2k = b^(2^k) after entering this loop
-                        b2k.square_in_place();
-                        k += 1;
+                let find = |delta: $Self| -> $Self {
+                    let mut mu = delta;
+                    let mut i = $Self::zero();
+                    while mu != -$Self::one() {
+                        mu.square_in_place();
+                        i += $Self::one();
                     }
 
-                    let j = v - k - 1;
-                    w = z;
-                    for _ in 0..j {
-                        w.square_in_place();
+                    i
+                };
+
+                let eval = |alpha: $Self| -> $Self {
+                    let mut delta = alpha;
+                    let mut s = $Self::zero();
+                    while delta != $Self::one() {
+                        let i = find(delta);
+                        let n_minus_one_minus_i = (n_field - $Self::one() - i).to_repr();
+                        s += two.pow(n_minus_one_minus_i);
+                        if i > $Self::zero() {
+                            delta *= g.pow(two.pow(n_minus_one_minus_i).to_repr());
+                        } else {
+                            delta = -delta;
+                        }
                     }
 
-                    z = w.square();
-                    b *= &z;
-                    x *= &w;
-                    v = k;
+                    s
+                };
+
+                let mut s = $Self::zero();
+                let mut t = $Self::zero();
+                for i in 0..k {
+                    t = (s + t) / two.pow(l_s[i].to_repr());
+                    let gamma = g.pow(t.to_repr());
+                    let alpha = x_s[i] * gamma;
+                    s = eval(alpha);
                 }
 
-                Some(x)
+                t = s + t;
+                let gamma = g.pow((t / two).to_repr());
+                Some(*$self * v * gamma)
             }
         }
     }};
