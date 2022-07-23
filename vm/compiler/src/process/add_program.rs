@@ -279,7 +279,7 @@ impl<N: Network> Process<N> {
         match instruction.opcode() {
             Opcode::Literal(opcode) => {
                 // Ensure the opcode **is** a reserved opcode.
-                ensure!(Self::is_reserved_opcode(&Identifier::from_str(opcode)?), "'{opcode}' is not an opcode.");
+                ensure!(Program::<N>::is_reserved_opcode(opcode), "'{opcode}' is not an opcode.");
                 // Ensure the instruction is not the cast operation.
                 ensure!(!matches!(instruction, Instruction::Cast(..)), "Instruction '{instruction}' is a 'cast'.");
                 // Ensure the instruction has one destination register.
@@ -433,13 +433,5 @@ impl<N: Network> Process<N> {
             }
         }
         Ok(())
-    }
-
-    /// Returns `true` if the given name is a reserved opcode.
-    fn is_reserved_opcode(name: &Identifier<N>) -> bool {
-        // Convert the given name to a string.
-        let name = name.to_string();
-        // Check if the given name matches the root of any opcode (the first part, up to the first '.').
-        Instruction::<N>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
     }
 }

@@ -214,7 +214,7 @@ impl<N: Network> Program<N> {
         // Ensure the import name is new.
         ensure!(self.is_unique_name(&import_name), "'{import_name}' is already in use.");
         // Ensure the import name is not a reserved opcode.
-        ensure!(!self.is_reserved_opcode(&import_name), "'{import_name}' is a reserved opcode.");
+        ensure!(!Self::is_reserved_opcode(&import_name.to_string()), "'{import_name}' is a reserved opcode.");
         // Ensure the import name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&import_name), "'{import_name}' is a reserved keyword.");
 
@@ -247,7 +247,7 @@ impl<N: Network> Program<N> {
         // Ensure the interface name is new.
         ensure!(self.is_unique_name(&interface_name), "'{interface_name}' is already in use.");
         // Ensure the interface name is not a reserved opcode.
-        ensure!(!self.is_reserved_opcode(&interface_name), "'{interface_name}' is a reserved opcode.");
+        ensure!(!Self::is_reserved_opcode(&interface_name.to_string()), "'{interface_name}' is a reserved opcode.");
         // Ensure the interface name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&interface_name), "'{interface_name}' is a reserved keyword.");
 
@@ -300,7 +300,7 @@ impl<N: Network> Program<N> {
         // Ensure the record name is new.
         ensure!(self.is_unique_name(&record_name), "'{record_name}' is already in use.");
         // Ensure the record name is not a reserved opcode.
-        ensure!(!self.is_reserved_opcode(&record_name), "'{record_name}' is a reserved opcode.");
+        ensure!(!Self::is_reserved_opcode(&record_name.to_string()), "'{record_name}' is a reserved opcode.");
         // Ensure the record name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&record_name), "'{record_name}' is a reserved keyword.");
 
@@ -357,7 +357,7 @@ impl<N: Network> Program<N> {
         // Ensure the closure name is new.
         ensure!(self.is_unique_name(&closure_name), "'{closure_name}' is already in use.");
         // Ensure the closure name is not a reserved opcode.
-        ensure!(!self.is_reserved_opcode(&closure_name), "'{closure_name}' is a reserved opcode.");
+        ensure!(!Self::is_reserved_opcode(&closure_name.to_string()), "'{closure_name}' is a reserved opcode.");
         // Ensure the closure name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&closure_name), "'{closure_name}' is a reserved keyword.");
 
@@ -402,7 +402,7 @@ impl<N: Network> Program<N> {
         // Ensure the function name is new.
         ensure!(self.is_unique_name(&function_name), "'{function_name}' is already in use.");
         // Ensure the function name is not a reserved opcode.
-        ensure!(!self.is_reserved_opcode(&function_name), "'{function_name}' is a reserved opcode.");
+        ensure!(!Self::is_reserved_opcode(&function_name.to_string()), "'{function_name}' is a reserved opcode.");
         // Ensure the function name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
@@ -498,11 +498,9 @@ impl<N: Network> Program<N> {
     }
 
     /// Returns `true` if the given name is a reserved opcode.
-    fn is_reserved_opcode(&self, name: &Identifier<N>) -> bool {
-        // Convert the given name to a string.
-        let name = name.to_string();
-        // Check if the given name matches the root of any opcode (the first part, up to the first '.').
-        Instruction::<N>::OPCODES.iter().any(|opcode| (**opcode).split('.').next() == Some(&name))
+    pub fn is_reserved_opcode(name: &str) -> bool {
+        // Check if the given name matches any opcode (in its entirety; including past the first '.' if it exists).
+        Instruction::<N>::OPCODES.iter().any(|opcode| **opcode == name)
     }
 
     /// Returns `true` if the given name uses a reserved keyword.

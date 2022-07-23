@@ -49,7 +49,7 @@ pub struct MerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHas
 impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8>
     MerkleTree<E, LH, PH, DEPTH>
 {
-    #[timed]
+    // #[timed]
     #[inline]
     /// Initializes a new Merkle tree with the given leaves.
     pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
@@ -109,7 +109,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         })
     }
 
-    #[timed]
+    // #[timed]
     #[inline]
     /// Returns a new Merkle tree with the given new leaves appended to it.
     pub fn append(&mut self, new_leaves: &[LH::Leaf]) -> Result<()> {
