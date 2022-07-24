@@ -49,7 +49,7 @@ pub trait Lookup: Environment {
         index: usize,
     ) -> Result<(Variable<Self::BaseField>, Variable<Self::BaseField>, Variable<Self::BaseField>), EnvironmentError>;
 
-    fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
+    fn enforce_lookup<Fn, A, B, C>(id: usize, constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
         A: Into<LinearCombination<Self::BaseField>>,
@@ -83,7 +83,7 @@ impl Lookup for Circuit {
         })?;
 
         let vars = (Self::new_variable(Mode::Private, a), Self::new_variable(Mode::Private, b));
-        Self::enforce_lookup(|| (lc, vars.0.clone(), vars.1.clone()));
+        Self::enforce_lookup(id, || (lc, vars.0.clone(), vars.1.clone()));
         Ok(vars)
     }
 
@@ -107,7 +107,7 @@ impl Lookup for Circuit {
         })?;
 
         let var = Self::new_variable(Mode::Private, a);
-        Self::enforce_lookup(|| (lc_1, lc_2, var.clone()));
+        Self::enforce_lookup(id, || (lc_1, lc_2, var.clone()));
         Ok(var)
     }
 
@@ -128,11 +128,11 @@ impl Lookup for Circuit {
             Self::new_variable(Mode::Private, b),
             Self::new_variable(Mode::Private, c),
         );
-        Self::enforce_lookup(|| vars.clone());
+        Self::enforce_lookup(id, || vars.clone());
         Ok(vars)
     }
 
-    fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
+    fn enforce_lookup<Fn, A, B, C>(id: usize, constraint: Fn)
     where
         Fn: FnOnce() -> (A, B, C),
         A: Into<LinearCombination<Self::BaseField>>,
@@ -149,7 +149,7 @@ impl Lookup for Circuit {
                     // Construct the constraint object.
                     // TODO: fix right table index
                     let constraint =
-                        Constraint::LookupConstraint(BaseConstraint((**circuit).borrow().scope(), a, b, c), 0);
+                        Constraint::LookupConstraint(BaseConstraint((**circuit).borrow().scope(), a, b, c), id);
                     // Append the constraint.
                     (**circuit).borrow_mut().enforce_lookup(constraint)
                 });
