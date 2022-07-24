@@ -35,12 +35,16 @@ impl<E: Lookup + Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsem
 
         input.chunks(console::SINSEMILLA_WINDOW_SIZE).fold(self.q.clone(), |acc, bits| {
             let i = Field::from_bits_le(bits);
-            let (s_x, s_y) = E::unary_lookup(0, i);
-            let s = Group::from_xy_coordinates(
-                Field::from(LinearCombination::from(s_x)),
-                Field::from(LinearCombination::from(s_y)),
-            );
-            acc.double() + s
+            match E::unary_lookup(0, i) {
+                Ok((s_x, s_y)) => {
+                    let s = Group::from_xy_coordinates(
+                        Field::from(LinearCombination::from(s_x)),
+                        Field::from(LinearCombination::from(s_y)),
+                    );
+                    acc.double() + s
+                }
+                Err(e) => E::halt(e.to_string()),
+            }
         })
     }
 }

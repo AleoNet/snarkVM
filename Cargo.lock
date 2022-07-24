@@ -2122,6 +2122,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-r1cs",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]

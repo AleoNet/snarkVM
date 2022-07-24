@@ -19,6 +19,7 @@ use crate::{
     Circuit,
     Constraint,
     Environment,
+    EnvironmentError,
     LinearCombination,
     Mode,
     Variable,
@@ -35,18 +36,18 @@ pub trait Lookup: Environment {
     fn unary_lookup<A: Into<LinearCombination<Self::BaseField>>>(
         id: usize,
         key: A,
-    ) -> (Variable<Self::BaseField>, Variable<Self::BaseField>);
+    ) -> Result<(Variable<Self::BaseField>, Variable<Self::BaseField>), EnvironmentError>;
 
     fn binary_lookup<A: Into<LinearCombination<Self::BaseField>>, B: Into<LinearCombination<Self::BaseField>>>(
         id: usize,
         key_1: A,
         key_2: B,
-    ) -> Variable<Self::BaseField>;
+    ) -> Result<Variable<Self::BaseField>, EnvironmentError>;
 
     fn index_lookup(
         id: usize,
         index: usize,
-    ) -> (Variable<Self::BaseField>, Variable<Self::BaseField>, Variable<Self::BaseField>);
+    ) -> Result<(Variable<Self::BaseField>, Variable<Self::BaseField>, Variable<Self::BaseField>), EnvironmentError>;
 
     fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
     where
@@ -68,49 +69,59 @@ impl Lookup for Circuit {
     fn unary_lookup<A: Into<LinearCombination<Self::BaseField>>>(
         id: usize,
         key: A,
-    ) -> (Variable<Self::BaseField>, Variable<Self::BaseField>) {
+    ) -> Result<(Variable<Self::BaseField>, Variable<Self::BaseField>), EnvironmentError> {
         let lc = key.into();
         let val = lc.value();
         let (a, b) = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
-            let row = lookup_tables[id].0.iter().find(|row| row.0 == val).unwrap();
-            (row.1, row.2)
-        });
+            let table = lookup_tables.get(id).ok_or(EnvironmentError::LookupTableMissing)?;
+            if let Some(row) = table.0.iter().find(|row| row.0 == val) {
+                Ok((row.1, row.2))
+            } else {
+                Err(EnvironmentError::LookupValueMissing)
+            }
+        })?;
 
         let vars = (Self::new_variable(Mode::Private, a), Self::new_variable(Mode::Private, b));
         Self::enforce_lookup(|| (lc, vars.0.clone(), vars.1.clone()));
-        vars
+        Ok(vars)
     }
 
     fn binary_lookup<A: Into<LinearCombination<Self::BaseField>>, B: Into<LinearCombination<Self::BaseField>>>(
         id: usize,
         key_1: A,
         key_2: B,
-    ) -> Variable<Self::BaseField> {
+    ) -> Result<Variable<Self::BaseField>, EnvironmentError> {
         let lc_1 = key_1.into();
         let lc_2 = key_2.into();
         let val_1 = lc_1.value();
         let val_2 = lc_2.value();
         let a = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
-            let row = lookup_tables[id].0.iter().find(|row| row.0 == val_1 && row.1 == val_2).unwrap();
-            row.2
-        });
+            let table = lookup_tables.get(id).ok_or(EnvironmentError::LookupTableMissing)?;
+            if let Some(row) = table.0.iter().find(|row| row.0 == val_1 && row.1 == val_2) {
+                Ok(row.2)
+            } else {
+                Err(EnvironmentError::LookupValueMissing)
+            }
+        })?;
 
         let var = Self::new_variable(Mode::Private, a);
         Self::enforce_lookup(|| (lc_1, lc_2, var.clone()));
-        var
+        Ok(var)
     }
 
     fn index_lookup(
         id: usize,
         index: usize,
-    ) -> (Variable<Self::BaseField>, Variable<Self::BaseField>, Variable<Self::BaseField>) {
+    ) -> Result<(Variable<Self::BaseField>, Variable<Self::BaseField>, Variable<Self::BaseField>), EnvironmentError>
+    {
         let (a, b, c) = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
-            let row = lookup_tables[id].0[index];
-            (row.0, row.1, row.2)
-        });
+            let table = lookup_tables.get(id).ok_or(EnvironmentError::LookupTableMissing)?;
+            let row = table.0.get(index).ok_or(EnvironmentError::LookupValueMissing)?;
+            Ok((row.0, row.1, row.2))
+        })?;
 
         let vars = (
             Self::new_variable(Mode::Private, a),
@@ -118,7 +129,7 @@ impl Lookup for Circuit {
             Self::new_variable(Mode::Private, c),
         );
         Self::enforce_lookup(|| vars.clone());
-        vars
+        Ok(vars)
     }
 
     fn enforce_lookup<Fn, A, B, C>(constraint: Fn)
