@@ -73,7 +73,7 @@ impl Lookup for Circuit {
         let val = lc.value();
         let (a, b) = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
-            let row = lookup_tables[id].table.iter().find(|row| row.0 == val).unwrap();
+            let row = lookup_tables[id].0.iter().find(|row| row.0 == val).unwrap();
             (row.1, row.2)
         });
 
@@ -93,7 +93,7 @@ impl Lookup for Circuit {
         let val_2 = lc_2.value();
         let a = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
-            let row = lookup_tables[id].table.iter().find(|row| row.0 == val_1 && row.1 == val_2).unwrap();
+            let row = lookup_tables[id].0.iter().find(|row| row.0 == val_1 && row.1 == val_2).unwrap();
             row.2
         });
 
@@ -108,7 +108,7 @@ impl Lookup for Circuit {
     ) -> (Variable<Self::BaseField>, Variable<Self::BaseField>, Variable<Self::BaseField>) {
         let (a, b, c) = LOOKUP_TABLES.with(|lookup_tables| {
             let lookup_tables = &*(**lookup_tables).borrow();
-            let row = lookup_tables[id].table[index];
+            let row = lookup_tables[id].0[index];
             (row.0, row.1, row.2)
         });
 

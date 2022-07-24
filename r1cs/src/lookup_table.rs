@@ -18,18 +18,16 @@ use snarkvm_fields::Field;
 use snarkvm_utilities::serialize::*;
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct LookupTable<F: Field> {
-    pub table: Vec<(F, F, F)>,
-}
+pub struct LookupTable<F: Field>(pub Vec<(F, F, F)>);
 
 impl<F: Field> Default for LookupTable<F> {
     fn default() -> Self {
-        Self { table: vec![] }
+        Self(vec![])
     }
 }
 
 impl<F: Field> LookupTable<F> {
     pub fn fill(&mut self, val_1: F, val_2: F, val_3: F) {
-        self.table.push((val_1, val_2, val_3))
+        self.0.push((val_1, val_2, val_3))
     }
 }

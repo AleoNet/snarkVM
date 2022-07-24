@@ -166,7 +166,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
 
         let res = if let Some(lookup_table) = &self.lookup_table {
             lookup_table
-                .table
+                .0
                 .iter()
                 .find(|row| row.0 == a && row.1 == b && row.2 == c)
                 .ok_or(SynthesisError::LookupValueMissing)?

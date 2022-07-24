@@ -78,7 +78,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .iter()
             .flat_map(|table| {
                 table
-                    .table
+                    .0
                     .iter()
                     .map(|(first, second, third)| *first + *zeta * second + zeta_squared * third)
                     .collect::<Vec<F>>()

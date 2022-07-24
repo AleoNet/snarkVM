@@ -469,7 +469,7 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
 
         let res = if let Some(lookup_table) = &self.lookup_table {
             lookup_table
-                .table
+                .0
                 .iter()
                 .find(|row| row.0 == evaluated[0] && row.1 == evaluated[1] && row.2 == evaluated[2])
                 .ok_or(SynthesisError::LookupValueMissing)?
