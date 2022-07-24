@@ -63,8 +63,9 @@ mod tests {
 
         // Initialize the Sinsemilla hash.
         let native = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
-        let native_2 = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
-        let circuit = Sinsemilla::<Circuit, NUM_WINDOWS>::new(Mode::Constant, native_2);
+        let circuit = Sinsemilla::<Circuit, NUM_WINDOWS>::new(Mode::Constant, native);
+
+        let native = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS as usize * console::SINSEMILLA_WINDOW_SIZE;
 

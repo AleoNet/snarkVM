@@ -61,20 +61,15 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.
             let native = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
-            let native_2 = console::Sinsemilla::<<Circuit as Environment>::Network, NUM_WINDOWS>::setup(MESSAGE);
+            let q = native.q();
 
             Circuit::scope("Sinsemilla::setup", || {
                 // Perform the setup operation.
-                let circuit = Sinsemilla::<Circuit, NUM_WINDOWS>::new(Mode::Constant, native_2);
+                let circuit = Sinsemilla::<Circuit, NUM_WINDOWS>::new(Mode::Constant, native);
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Check for equivalency of the Q.
-                assert_eq!(native.q(), circuit.q.eject_value());
-
-                // Check for equality of the lookup table.
-                // native.p_lookups().iter().zip_eq(circuit.p_lookups.iter()).for_each(|(expected, candidate)| {
-                //     assert_eq!(expected.to_affine(), candidate.eject_value());
-                // });
+                assert_eq!(q, circuit.q.eject_value());
             });
         }
     }
