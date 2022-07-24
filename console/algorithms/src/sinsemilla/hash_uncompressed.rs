@@ -42,7 +42,6 @@ impl<E: Environment, const NUM_WINDOWS: u8> HashUncompressed for Sinsemilla<E, N
                 }
                 acc
             });
-
             acc.double() + self.p_lookups[i as usize]
         }))
     }

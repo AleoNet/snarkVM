@@ -90,8 +90,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         }
 
         Ok(input.chunks(WINDOW_SIZE).fold(self.0.q, |acc, bits| {
-            let i = bits.iter().fold(0, |mut acc, bit| {
-                acc >>= 1;
+            let i = bits.iter().rev().fold(0, |mut acc, bit| {
+                acc <<= 1;
                 if *bit {
                     acc += 1u16;
                 }
