@@ -878,7 +878,7 @@ function compute:
         // assert_eq!(159387, CurrentAleo::num_gates());
     }
 
-    /// TODO (howardwu): Revisit this decision. A record cannot be spent again.
+    /// TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
     ///  But there are legitimate uses for passing a record through to an internal function.
     ///  We could invoke the internal function without a state transition, but need to match visibility.
     #[test]
