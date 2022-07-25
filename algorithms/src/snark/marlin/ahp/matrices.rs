@@ -230,7 +230,7 @@ mod tests {
     use snarkvm_fields::{One, Zero};
 
     fn entry(matrix: &Matrix<F>, row: usize, col: usize) -> F {
-        matrix[row].iter().find_map(|(f, i)| (i == &col).then(|| *f)).unwrap_or_else(F::zero)
+        matrix[row].iter().find_map(|(f, i)| (i == &col).then_some(*f)).unwrap_or_else(F::zero)
     }
 
     #[test]
