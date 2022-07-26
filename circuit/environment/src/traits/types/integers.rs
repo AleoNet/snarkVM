@@ -83,6 +83,10 @@ pub trait IntegerCore<I: IntegerType>:
     + Not<Output = Self>
     + One
     + Parser
+    + RemAssign
+    + Rem<Output = Self>
+    + RemChecked<Output = Self>
+    + RemWrapped<Output = Self>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>

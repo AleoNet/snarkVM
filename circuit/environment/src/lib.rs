@@ -103,6 +103,8 @@ pub mod prelude {
         MulAssign,
         Neg,
         Not,
+        Rem,
+        RemAssign,
         Shl,
         ShlAssign,
         Shr,
