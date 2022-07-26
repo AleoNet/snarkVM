@@ -511,6 +511,42 @@ crate::operation!(
     }
 );
 
+/// Divides `first` by `second`, storing the remainder in `destination`.
+pub type Rem<N> = BinaryLiteral<N, RemOperation<N>>;
+
+crate::operation!(
+    pub struct RemOperation<core::ops::Rem, core::ops::Rem, rem, "rem"> {
+        (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I64, I64) => I64 ("ensure overflows halt", "ensure divide by zero halts"),
+        (I128, I128) => I128 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure overflows halt", "ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure overflows halt", "ensure divide by zero halts"),
+    }
+);
+
+/// Divides `first` by `second`, wrapping around at the boundary of the type, storing the remainder in `destination`.
+pub type RemWrapped<N> = BinaryLiteral<N, RemWrappedOperation<N>>;
+
+crate::operation!(
+    pub struct RemWrappedOperation<console::prelude::RemWrapped, circuit::prelude::RemWrapped, rem_wrapped, "rem.w"> {
+        (I8, I8) => I8 ("ensure divide by zero halts"),
+        (I16, I16) => I16 ("ensure divide by zero halts"),
+        (I32, I32) => I32 ("ensure divide by zero halts"),
+        (I64, I64) => I64 ("ensure divide by zero halts"),
+        (I128, I128) => I128 ("ensure divide by zero halts"),
+        (U8, U8) => U8 ("ensure divide by zero halts"),
+        (U16, U16) => U16 ("ensure divide by zero halts"),
+        (U32, U32) => U32 ("ensure divide by zero halts"),
+        (U64, U64) => U64 ("ensure divide by zero halts"),
+        (U128, U128) => U128 ("ensure divide by zero halts"),
+    }
+);
+
 /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
 pub type Shl<N> = BinaryLiteral<N, ShlOperation<N>>;
 
