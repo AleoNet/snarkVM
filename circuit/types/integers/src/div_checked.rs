@@ -68,40 +68,46 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
 
     #[inline]
     fn div_checked(&self, other: &Integer<E, I>) -> Self::Output {
-        // Determine the variable mode.
-        if self.is_constant() && other.is_constant() {
-            // Halt on division by zero.
-            E::assert(other.is_not_equal(&Self::zero()));
-            // Compute the quotient and return the new constant.
-            match self.eject_value().checked_div(&other.eject_value()) {
+        match (self.is_constant(), other.is_constant()) {
+            // If `other` is a constant and is zero, then halt.
+            (_, true) if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
+            // If `self` and `other` are constants, and other is not zero, then directly return the value of the division.
+            (true, true) => match self.eject_value().checked_div(&other.eject_value()) {
                 Some(value) => Integer::constant(console::Integer::new(value)),
-                None => E::halt("Overflow or underflow on division of two integer constants"),
+                None => E::halt("Overflow on division of two integer constants"),
+            },
+            // Handle the remaining cases.
+            // Note that `other` is either a constant and non-zero, or not a constant.
+            _ => {
+                if I::is_signed() {
+                    // Ensure this is not a division by zero.
+                    E::assert(other.is_not_equal(&Self::zero()));
+
+                    // Ensure that overflow cannot occur in this division.
+                    // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
+                    let min = Integer::constant(console::Integer::MIN);
+                    let neg_one = Integer::constant(-console::Integer::one());
+                    let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
+                    E::assert(!overflows);
+
+                    // Divide the absolute value of `self` and `other` in the base field.
+                    // Note that it is safe to use `abs_wrapped`, since the case for console::Integer::MIN is handled above.
+                    let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+                    let unsigned_divisor = other.abs_wrapped().cast_as_dual();
+                    // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
+                    let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
+
+                    // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
+                    let signed_quotient = Integer { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
+                    let operands_same_sign = &self.msb().is_equal(other.msb());
+
+                    Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
+                } else {
+                    // Return the quotient of `self` and `other`.
+                    // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
+                    self.div_wrapped(other)
+                }
             }
-        } else if I::is_signed() {
-            // Ensure this is not a division by zero.
-            E::assert(other.is_not_equal(&Self::zero()));
-
-            // Ensure that overflow cannot occur in this division.
-            // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
-            let min = Integer::constant(console::Integer::MIN);
-            let neg_one = Integer::constant(-console::Integer::one());
-            let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
-            E::assert_eq(overflows, E::zero());
-
-            // Divide the absolute value of `self` and `other` in the base field.
-            // Note that it is safe to use `abs_wrapped`, since the case for console::Integer::MIN is handled above.
-            let unsigned_dividend = self.abs_wrapped().cast_as_dual();
-            let unsigned_divisor = other.abs_wrapped().cast_as_dual();
-            let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
-
-            // Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
-            let signed_quotient = Integer { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-            let operands_same_sign = &self.msb().is_equal(other.msb());
-
-            Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
-        } else {
-            // Return the quotient of `self` and `other`.
-            self.div_wrapped(other)
         }
     }
 }

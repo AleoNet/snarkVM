@@ -29,12 +29,11 @@ impl<E: Environment, I: IntegerType> RemWrapped<Self> for Integer<E, I> {
             // Handle the remaining cases.
             // Note that `other` is either a constant and non-zero, or not a constant.
             _ => {
-                E::assert(other.is_not_equal(&Self::zero()));
-
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `other` in the base field.
                     let unsigned_dividend = self.abs_wrapped().cast_as_dual();
                     let unsigned_divisor = other.abs_wrapped().cast_as_dual();
+                    // Note that the call to `rem_wrapped` checks that `unsigned_divisor` is not zero.
                     let unsigned_remainder = unsigned_dividend.rem_wrapped(&unsigned_divisor);
 
                     let signed_remainder = Self { bits_le: unsigned_remainder.bits_le, phantom: Default::default() };
@@ -42,6 +41,10 @@ impl<E: Environment, I: IntegerType> RemWrapped<Self> for Integer<E, I> {
                     // The remainder takes on the same sign as `self` because the division operation rounds towards zero.
                     Self::ternary(&!self.msb(), &signed_remainder, &Self::zero().sub_wrapped(&signed_remainder))
                 } else {
+                    // Check that `other` is not zero.
+                    // Note that all other implementations of `rem_wrapped` and `rem_checked` invoke this check.
+                    E::assert(other.is_not_equal(&Self::zero()));
+
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
                         self.unsigned_division_via_witness(other).1

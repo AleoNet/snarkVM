@@ -29,29 +29,23 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             // Handle the remaining cases.
             // Note that `other` is either a constant and non-zero, or not a constant.
             _ => {
-                E::assert(other.is_not_equal(&Self::zero()));
-
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `other` in the base field.
                     let unsigned_dividend = self.abs_wrapped().cast_as_dual();
                     let unsigned_divisor = other.abs_wrapped().cast_as_dual();
+                    // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
                     let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
                     //  Note that quotient <= |console::Integer::MIN|, since the dividend <= |console::Integer::MIN| and 0 <= quotient <= dividend.
                     let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
                     let operands_same_sign = &self.msb().is_equal(other.msb());
-                    let signed_quotient = Self::ternary(
-                        operands_same_sign,
-                        &signed_quotient,
-                        &Self::zero().sub_wrapped(&signed_quotient),
-                    );
 
-                    // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
-                    let min = Self::constant(console::Integer::MIN);
-                    let neg_one = Self::constant(-console::Integer::one());
-                    let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
-                    Self::ternary(&overflows, &min, &signed_quotient)
+                    // Note that this expression handles the wrapping case, where the dividend is `I::MIN` and the divisor is `-1` and the result should be `I::MIN`.
+                    Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
                 } else {
+                    // Ensure that `other` is not zero.
+                    // Note that all other implementations of `div_wrapped` and `div_checked` invoke this check.
+                    E::assert(other.is_not_equal(&Self::zero()));
                     // If the product of two unsigned integers can fit in the base field, then we can perform an optimized division operation.
                     if 2 * I::BITS < E::BaseField::size_in_data_bits() as u64 {
                         self.unsigned_division_via_witness(other).0
@@ -100,7 +94,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Divides `self` by `other`, using binary long division returning the quotient and remainder
     /// See https://en.wikipedia.org/wiki/Division_algorithm under "Integer division (unsigned) with remainder".
     /// Note that this method should be used when 2 * I::BITS >= E::BaseField::size_in_data_bits().
-    fn unsigned_binary_long_division(&self, other: &Self) -> (Self, Field<E>) {
+    pub(super) fn unsigned_binary_long_division(&self, other: &Self) -> (Self, Field<E>) {
         let divisor = other.to_field();
         let max = Self::constant(console::Integer::MAX).to_field();
 

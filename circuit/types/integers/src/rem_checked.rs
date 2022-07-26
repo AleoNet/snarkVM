@@ -79,20 +79,18 @@ impl<E: Environment, I: IntegerType> RemChecked<Self> for Integer<E, I> {
             // Handle the remaining cases.
             // Note that `other` is either a constant and non-zero, or not a constant.
             _ => {
-                // Ensure this is not a division by zero.
-                E::assert(other.is_not_equal(&Self::zero()));
-
                 if I::is_signed() {
                     // Ensure that overflow cannot occur when computing the associated division operations.
                     // Signed integer division overflows when the dividend is Integer::MIN and the divisor is -1.
                     let min = Integer::constant(console::Integer::MIN);
                     let neg_one = Integer::constant(-console::Integer::one());
                     let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
-                    E::assert_eq(overflows, E::zero());
+                    E::assert(!overflows);
 
                     // Divide the absolute value of `self` and `other` in the base field.
                     let unsigned_dividend = self.abs_wrapped().cast_as_dual();
                     let unsigned_divisor = other.abs_wrapped().cast_as_dual();
+                    // Note that this call to `rem_wrapped` checks that `unsigned_divisor` is not zero.
                     let unsigned_remainder = unsigned_dividend.rem_wrapped(&unsigned_divisor);
 
                     let signed_remainder = Self { bits_le: unsigned_remainder.bits_le, phantom: Default::default() };
@@ -101,6 +99,7 @@ impl<E: Environment, I: IntegerType> RemChecked<Self> for Integer<E, I> {
                     Self::ternary(&!self.msb(), &signed_remainder, &Self::zero().sub_wrapped(&signed_remainder))
                 } else {
                     // Return the remainder of `self` and `other`.
+                    // Note that this call to `rem_wrapped` checks that `unsigned_divisor` is not zero.
                     self.rem_wrapped(other)
                 }
             }
