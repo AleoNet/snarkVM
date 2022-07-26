@@ -299,7 +299,7 @@ impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I>
 impl<E: Environment, I: IntegerType> Rem<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
-    /// Returns the `remainder` of `self` and `other`.
+    /// Returns the `remainder` of `self` divided by `other`.
     #[inline]
     fn rem(self, other: Integer<E, I>) -> Self {
         match self.integer.checked_rem(&other.integer) {
@@ -312,7 +312,7 @@ impl<E: Environment, I: IntegerType> Rem<Integer<E, I>> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Rem<&Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
-    /// Returns the `remainder` of `self` and `other`.
+    /// Returns the `remainder` of `self` divided by `other`.
     #[inline]
     fn rem(self, other: &Integer<E, I>) -> Self {
         match self.integer.checked_rem(&other.integer) {
@@ -325,12 +325,34 @@ impl<E: Environment, I: IntegerType> Rem<&Integer<E, I>> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> RemWrapped<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
-    /// Returns the `remainder` of `self` and `other`.
+    /// Returns the `remainder` of `self` divided by `other`.
     #[inline]
     fn rem_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
         match other.is_zero() {
             true => E::halt(format!("Integer remainder by zero: {self} % {other}")),
             false => Integer::new(self.integer.wrapping_rem(&other.integer)),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> RemAssign<Integer<E, I>> for Integer<E, I> {
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem_assign(&mut self, other: Integer<E, I>) {
+        match self.integer.checked_rem(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> RemAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Returns the `remainder` of `self` divided by `other`.
+    #[inline]
+    fn rem_assign(&mut self, other: &Integer<E, I>) {
+        match self.integer.checked_rem(&other.integer) {
+            Some(integer) => self.integer = integer,
+            None => E::halt(format!("Integer remainder failed on: {self} and {other}")),
         }
     }
 }
