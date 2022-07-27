@@ -61,7 +61,6 @@ pub struct Ledger<N: Network> {
 impl<N: Network> Ledger<N> {
     /// Initializes a new ledger.
     pub fn new() -> Result<Self> {
-        // TODO (raychu86): Inject the genesis block.
         Ok(Self {
             programs: IndexMap::new(),
             blocks: IndexMap::new(),
@@ -122,8 +121,9 @@ impl<N: Network> Ledger<N> {
     }
 
     /// Adds the given canon block, if it is well-formed and does not already exist.
-    pub fn add_next_block(&mut self, vm: &VM<N>, block: &Block<N>) -> Result<()> {
+    pub fn add_next_block(&mut self, _vm: &VM<N>, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Handle block verification.
+
         // Ensure the block itself is valid.
         // if !block.verify(vm) {
         //     return Err(anyhow!("The given block is invalid"));
@@ -229,6 +229,7 @@ impl<N: Network> Ledger<N> {
         let latest_block_hash = self.latest_block_hash();
         let previous_block_hash = self.get_previous_block_hash(latest_block_height)?;
 
+        // Construct the state root and block path.
         let state_root = *self.latest_state_root();
         let block_path = self.state_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
 
@@ -272,6 +273,27 @@ mod tests {
     fn test_deploy() -> Result<()> {
         // Initialize a new ledger.
         let _ledger = Ledger::<CurrentNetwork>::new().unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_state_path() -> Result<()> {
+        // Initialize a new ledger.
+        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
+
+        // Sample the genesis block.
+        let genesis_block = sample_genesis_block();
+
+        // Initialize the VM.
+        let vm = VM::<CurrentNetwork>::new().unwrap();
+
+        ledger.add_next_block(&vm, &genesis_block).unwrap();
+
+        let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
+        let commitment = commitments[0];
+
+        let _state_path = ledger.to_state_path(commitment).unwrap();
 
         Ok(())
     }
