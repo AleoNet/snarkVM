@@ -89,6 +89,11 @@ impl<N: Network> Ledger<N> {
         *self.blocks.keys().max().unwrap_or(&0u32)
     }
 
+    /// Returns the height of the latest block.
+    pub fn latest_block(&self) -> Result<&Block<N>> {
+        self.get_block(self.latest_block_height())
+    }
+
     /// Returns the hash of the latest block.
     pub fn latest_block_hash(&self) -> N::BlockHash {
         self.blocks.get(&self.latest_block_height()).map(|block| block.hash()).unwrap_or_default()
@@ -123,7 +128,6 @@ impl<N: Network> Ledger<N> {
     /// Adds the given canon block, if it is well-formed and does not already exist.
     pub fn add_next_block(&mut self, _vm: &VM<N>, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Handle block verification.
-
         // Ensure the block itself is valid.
         // if !block.verify(vm) {
         //     return Err(anyhow!("The given block is invalid"));
@@ -151,7 +155,14 @@ impl<N: Network> Ledger<N> {
             return Err(anyhow!("The given block hash already exists in the ledger"));
         }
 
-        // TODO (raychu86): Add timestamp and difficulty verification.
+        // Ensure the next block timestamp is after the current block timestamp.
+        if let Ok(latest_block) = self.latest_block() {
+            if block.header().timestamp() <= latest_block.header().timestamp() {
+                return Err(anyhow!("The given block timestamp is before the current timestamp"));
+            }
+        }
+
+        // TODO (raychu86): Add proof and coinbase target verification.
 
         // Insert the block into the ledger.
         self.blocks.insert(height, block.clone());
@@ -286,6 +297,7 @@ mod tests {
         let genesis_block = sample_genesis_block();
 
         // Initialize the VM.
+        // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
         let vm = VM::<CurrentNetwork>::new().unwrap();
 
         ledger.add_next_block(&vm, &genesis_block).unwrap();
