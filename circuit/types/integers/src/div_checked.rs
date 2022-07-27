@@ -80,9 +80,6 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             // Note that `other` is either a constant and non-zero, or not a constant.
             _ => {
                 if I::is_signed() {
-                    // Ensure this is not a division by zero.
-                    E::assert(other.is_not_equal(&Self::zero()));
-
                     // Ensure that overflow cannot occur in this division.
                     // Signed integer division wraps when the dividend is Integer::MIN and the divisor is -1.
                     let min = Integer::constant(console::Integer::MIN);
@@ -93,6 +90,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                     // Divide the absolute value of `self` and `other` in the base field.
                     // Note that it is safe to use `abs_wrapped`, since the case for console::Integer::MIN is handled above.
                     let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+                    // Note that `unsigned_divisor` is zero iff `other` is zero.
                     let unsigned_divisor = other.abs_wrapped().cast_as_dual();
                     // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
                     let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);

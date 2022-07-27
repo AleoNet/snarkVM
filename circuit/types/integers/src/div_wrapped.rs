@@ -32,6 +32,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `other` in the base field.
                     let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+                    // Note that `unsigned_divisor` is zero iff `other` is zero.
                     let unsigned_divisor = other.abs_wrapped().cast_as_dual();
                     // Note that this call to `div_wrapped` checks that `unsigned_divisor` is not zero.
                     let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
