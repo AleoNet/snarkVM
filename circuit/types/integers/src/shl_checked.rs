@@ -69,16 +69,25 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
     #[inline]
     fn shl_checked(&self, rhs: &Integer<E, M>) -> Self::Output {
         let two = Self::one() + Self::one();
-        let base = match I::is_signed() {
-            // If `self` is a signed integer and is negative, then negate the base.
-            // Note that if `self.msb()` is 1 then `self` is negative.
-            true => Self::ternary(self.msb(), &(Self::zero() - &two), &two),
-            // Otherwise return two.
-            false => two,
-        };
+        match I::is_signed() {
+            true => {
+                // If `self` is a signed integer and is negative, then negate self and the base.
+                // This ensures that if `rhs` is I::BITS - 1, then the result does not spuriously overflow.
+                // Consider the case: -1 << 7 == -128. This number is representable in `I` however, if we do not negate `self` and `base`, the exponentiation (2 ^ 7) will overflow.
 
-        // Compute `self` * 2 ^ `rhs`.
-        self.mul_checked(&base.pow_checked(rhs))
+                // Note that using `abs_wrapped` is safe, since the only value of `self` that wraps is I::MIN and produces I::MIN.
+                // Consider the case: I::MIN << b for some valid b.
+                //   - If b = 0, we have I::MIN << 0 ==> -I::MIN * (-2)^0 ==> I::MIN * 1 ==> I::MIN.
+                //   - If b > 0, we have I::MIN << b ==> -I::MIN * (-2)^b ==> I::MIN * (-2)^b, which overflows for all non-zero b.
+                let lhs = Self::ternary(self.msb(), &self.abs_wrapped(), self);
+                let base = Self::ternary(self.msb(), &(Self::zero() - &two), &two);
+
+                // Compute `lhs` * `base` ^ `rhs`.
+                lhs.mul_checked(&base.pow_checked(rhs))
+            }
+            // Compute `lhs` * 2 ^ `rhs`.
+            false => self.mul_checked(&two.pow_checked(rhs)),
+        }
     }
 }
 
@@ -157,10 +166,10 @@ mod tests {
         let b = Integer::<Circuit, M>::new(mode_b, second);
 
         let two = I::one().wrapping_add(&I::one());
-        let base = if I::is_signed() {
-            if (*first).lt(&I::zero()) { I::zero().wrapping_sub(&two) } else { two }
+        let (first, base) = if I::is_signed() {
+            if (*first).lt(&I::zero()) { (first.wrapping_abs(), I::zero().wrapping_sub(&two)) } else { (*first, two) }
         } else {
-            two
+            (*first, two)
         };
 
         match base.checked_pow(&second.to_u32().unwrap()).and_then(|result| first.checked_mul(&result)) {
@@ -198,6 +207,9 @@ mod tests {
         for i in 0..ITERATIONS {
             let first = Uniform::rand(&mut test_rng());
             let second = Uniform::rand(&mut test_rng());
+
+            let name = format!("Shl Zero: {} << {} {}", mode_a, mode_b, i);
+            check_shl::<I, M>(&name, first, second, mode_a, mode_b);
 
             let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
             check_shl::<I, M>(&name, first, second, mode_a, mode_b);
