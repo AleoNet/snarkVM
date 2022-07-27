@@ -125,13 +125,13 @@ impl<N: Network> Ledger<N> {
     pub fn add_next_block(&mut self, vm: &VM<N>, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Handle block verification.
         // Ensure the block itself is valid.
-        if !block.verify(vm) {
-            return Err(anyhow!("The given block is invalid"));
-        }
+        // if !block.verify(vm) {
+        //     return Err(anyhow!("The given block is invalid"));
+        // }
 
         // Ensure the next block height is correct.
         let height = block.header().height();
-        if self.latest_block_height() + 1 != height {
+        if self.latest_block_height() != 0 && self.latest_block_height() + 1 != height {
             return Err(anyhow!("The given block has an incorrect block height"));
         }
 
@@ -153,9 +153,10 @@ impl<N: Network> Ledger<N> {
 
         // TODO (raychu86): Add timestamp and difficulty verification.
 
-        // TODO (raychu86): Handle state path verification.
+        // Insert the block into the ledger.
+        self.blocks.insert(height, block.clone());
 
-        // TODO (raychu86): Update the state_tree.
+        // Add to the ledger state tree.
         self.state_tree.append(&[block.hash().to_bits_le()])?;
 
         Ok(())
@@ -220,7 +221,7 @@ impl<N: Network> Ledger<N> {
 
         // Construct the block header path.
         let header_root = block_header.to_root()?;
-        let header_leaf = HeaderLeaf::<N>::new(1, transaction.to_root()?);
+        let header_leaf = HeaderLeaf::<N>::new(1, *block_header.transactions_root());
         let header_path = block_header.to_path(&header_leaf)?;
 
         // Construct the block path.
@@ -263,7 +264,7 @@ impl<N: Network> Default for Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::console::network::Testnet3;
+    use crate::{console::network::Testnet3, test_helpers::sample_genesis_block};
 
     type CurrentNetwork = Testnet3;
 

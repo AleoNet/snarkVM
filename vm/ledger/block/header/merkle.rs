@@ -33,7 +33,7 @@ impl<N: Network> Header<N> {
     /// Returns the Merkle path for the Merkle tree of the block header.
     pub fn to_path(&self, leaf: &HeaderLeaf<N>) -> Result<HeaderPath<N>> {
         // Compute the Merkle path.
-        self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
+        self.to_tree()?.prove(leaf.index() as usize, &leaf.id().to_bits_le())
     }
 
     /// Returns an instance of the Merkle tree for the block header.

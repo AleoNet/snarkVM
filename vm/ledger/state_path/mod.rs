@@ -92,7 +92,7 @@ impl<N: Network> StatePath<N> {
         );
         // Ensure the header path is valid.
         ensure!(
-            N::verify_merkle_path_bhp(&header_path, &header_root, &header_leaf.to_bits_le()),
+            N::verify_merkle_path_bhp(&header_path, &header_root, &header_leaf.id().to_bits_le()),
             "'{header_leaf}' (a header leaf) does not belong to '{block_hash}' (a block header)",
         );
         // Ensure the block hash is correct.
