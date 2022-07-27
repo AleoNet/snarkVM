@@ -66,7 +66,7 @@ impl<N: Network> Ledger<N> {
             programs: IndexMap::new(),
             blocks: IndexMap::new(),
             memory_pool: IndexSet::new(),
-            state_tree: N::merkle_tree_bhp(&vec![])?,
+            state_tree: N::merkle_tree_bhp(&[])?,
         })
     }
 
@@ -82,7 +82,7 @@ impl<N: Network> Ledger<N> {
 
     /// Returns the latest state root of the ledger.
     pub fn latest_state_root(&self) -> &Field<N> {
-        &self.state_tree.root()
+        self.state_tree.root()
     }
 
     /// Returns the height of the latest block.
@@ -92,7 +92,7 @@ impl<N: Network> Ledger<N> {
 
     /// Returns the hash of the latest block.
     pub fn latest_block_hash(&self) -> N::BlockHash {
-        self.blocks.get(&self.latest_block_height()).map(|block| block.hash()).unwrap_or(N::BlockHash::default())
+        self.blocks.get(&self.latest_block_height()).map(|block| block.hash()).unwrap_or_default()
     }
 
     /// Returns the previous block hash given the block height.
@@ -228,7 +228,7 @@ impl<N: Network> Ledger<N> {
         let latest_block_hash = self.latest_block_hash();
         let previous_block_hash = self.get_previous_block_hash(latest_block_height)?;
 
-        let state_root = self.latest_state_root().clone();
+        let state_root = *self.latest_state_root();
         let block_path = self.state_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
 
         StatePath::new(
@@ -255,7 +255,7 @@ impl<N: Network> Default for Ledger<N> {
             programs: IndexMap::new(),
             blocks: IndexMap::new(),
             memory_pool: IndexSet::new(),
-            state_tree: N::merkle_tree_bhp(&vec![]).unwrap(),
+            state_tree: N::merkle_tree_bhp(&[]).unwrap(),
         }
     }
 }
