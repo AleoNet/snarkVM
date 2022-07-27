@@ -165,14 +165,7 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
 
-        let two = I::one().wrapping_add(&I::one());
-        let (first, base) = if I::is_signed() {
-            if (*first).lt(&I::zero()) { (first.wrapping_abs(), I::zero().wrapping_sub(&two)) } else { (*first, two) }
-        } else {
-            (*first, two)
-        };
-
-        match base.checked_pow(&second.to_u32().unwrap()).and_then(|result| first.checked_mul(&result)) {
+        match first.checked_shl(&second.to_u32().unwrap()) {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.shl_checked(&b);
                 assert_eq!(expected, *candidate.eject_value());

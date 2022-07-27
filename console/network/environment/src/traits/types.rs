@@ -311,7 +311,6 @@ pub(super) mod integer_type {
     };
     use num_traits::{
         CheckedNeg,
-        CheckedShl,
         CheckedShr,
         One as NumOne,
         PrimInt,
@@ -400,6 +399,31 @@ pub(super) mod integer_type {
     binary_impl!(CheckedPow, i32, checked_pow, self, v, u32, Option<i32>, i32::checked_pow(*self, *v));
     binary_impl!(CheckedPow, i64, checked_pow, self, v, u32, Option<i64>, i64::checked_pow(*self, *v));
     binary_impl!(CheckedPow, i128, checked_pow, self, v, u32, Option<i128>, i128::checked_pow(*self, *v));
+
+    pub trait CheckedShl: Sized {
+        fn checked_shl(&self, v: &u32) -> Option<Self>;
+    }
+
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, u8, checked_shl, self, v, u32, Option<u8>, u8::checked_pow(2u8, *v).and_then(|x| u8::checked_mul(*self, x)));
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, u16, checked_shl, self, v, u32, Option<u16>, u16::checked_pow(2u16, *v).and_then(|x| u16::checked_mul(*self, x)));
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, u32, checked_shl, self, v, u32, Option<u32>, u32::checked_pow(2u32, *v).and_then(|x| u32::checked_mul(*self, x)));
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, u64, checked_shl, self, v, u32, Option<u64>, u64::checked_pow(2u64, *v).and_then(|x| u64::checked_mul(*self, x)));
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, u128, checked_shl, self, v, u32, Option<u128>, u128::checked_pow(2u128, *v).and_then(|x| u128::checked_mul(*self, x)));
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, i8, checked_shl, self, v, u32, Option<i8>, if *self < 0 { i8::checked_pow(-2i8, *v).and_then(|x| i8::checked_mul(i8::wrapping_abs(*self), x)) } else { i8::checked_pow(2i8, *v).and_then(|x| i8::checked_mul(*self, x)) });
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, i16, checked_shl, self, v, u32, Option<i16>, if *self < 0 { i16::checked_pow(-2i16, *v).and_then(|x| i16::checked_mul(i16::wrapping_abs(*self), x)) } else { i16::checked_pow(2i16, *v).and_then(|x| i16::checked_mul(*self, x)) });
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, i32, checked_shl, self, v, u32, Option<i32>, if *self < 0 { i32::checked_pow(-2i32, *v).and_then(|x| i32::checked_mul(i32::wrapping_abs(*self), x)) } else { i32::checked_pow(2i32, *v).and_then(|x| i32::checked_mul(*self, x)) });
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, i64, checked_shl, self, v, u32, Option<i64>, if *self < 0 { i64::checked_pow(-2i64, *v).and_then(|x| i64::checked_mul(i64::wrapping_abs(*self), x)) } else { i64::checked_pow(2i64, *v).and_then(|x| i64::checked_mul(*self, x)) });
+    #[rustfmt::skip]
+    binary_impl!(CheckedShl, i128, checked_shl, self, v, u32, Option<i128>, if *self < 0 { i128::checked_pow(-2i128, *v).and_then(|x| i128::checked_mul(i128::wrapping_abs(*self), x)) } else { i128::checked_pow(2i128, *v).and_then(|x| i128::checked_mul(*self, x)) });
 
     pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
         fn wrapping_div(&self, v: &Self) -> Self;
