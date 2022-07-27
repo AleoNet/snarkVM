@@ -103,8 +103,22 @@ macro_rules! sqrt_impl {
                 let n_field = $Self::from(n);
 
                 let k = ((n - 1) as f64).sqrt().floor() as usize;
-                // TODO: find `l_0..l_i`.
-                let l_s: Vec<$Self> = Vec::with_capacity(k);
+                let k_field = $Self::from(k as u64);
+                let k_2 = ((k as f64) / 2.0).floor() as usize;
+                let k_2_field = $Self::from(k_2 as u64);
+                let k_1 = k - k_2;
+                let l_minus_one_times_k = n_field - $Self::one() - k_2_field;
+                let l_minus_one = l_minus_one_times_k / k_field;
+                let l = l_minus_one + $Self::one();
+                let mut l_s: Vec<$Self> = Vec::with_capacity(k);
+
+                for _ in 0..k_1 {
+                    l_s.push(l_minus_one);
+                }
+                for _ in 0..k_2 {
+                    l_s.push(l);
+                }
+
                 let mut x_s: Vec<$Self> = Vec::with_capacity(k);
                 for i in 0..k {
                     x_s.push(x.pow(
@@ -119,7 +133,6 @@ macro_rules! sqrt_impl {
                         mu.square_in_place();
                         i += $Self::one();
                     }
-
                     i
                 };
 
@@ -136,7 +149,6 @@ macro_rules! sqrt_impl {
                             delta = -delta;
                         }
                     }
-
                     s
                 };
 
