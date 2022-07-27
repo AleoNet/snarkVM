@@ -71,19 +71,27 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlChecked<Integer<E, M>> for
         let two = Self::one() + Self::one();
         match I::is_signed() {
             true => {
-                // If `self` is a signed integer and is negative, then negate self and the base.
-                // This ensures that if `rhs` is I::BITS - 1, then the result does not spuriously overflow.
-                // Consider the case: -1 << 7 == -128. This number is representable in `I` however, if we do not negate `self` and `base`, the exponentiation (2 ^ 7) will overflow.
+                // Compute 2 ^ `lhs` as unsigned integer of the size I::BITS.
+                // This is necessary to avoid a spurious overflow when `rhs` is I::BITS - 1.
+                // For example, 2i8 ^ 7i8 overflows, however -1i8 << 7i8 ==> -1i8 * 2i8 ^ 7i8 ==> -128i8, which is a valid i8 value.
+                let unsigned_two = two.cast_as_dual();
+                // Note that `pow_checked` is used to enforce that `rhs` < I::BITS.
+                let unsigned_factor = unsigned_two.pow_checked(rhs);
+                // For all values of `rhs` such that `rhs` < I::BITS,
+                //  - if `rhs` == I::BITS - 1, `signed_factor` == I::MIN,
+                //  - otherwise, `signed_factor` is the same as `unsigned_factor`.
+                let signed_factor = Self { bits_le: unsigned_factor.bits_le, phantom: Default::default() };
 
-                // Note that using `abs_wrapped` is safe, since the only value of `self` that wraps is I::MIN and produces I::MIN.
-                // Consider the case: I::MIN << b for some valid b.
-                //   - If b = 0, we have I::MIN << 0 ==> -I::MIN * (-2)^0 ==> I::MIN * 1 ==> I::MIN.
-                //   - If b > 0, we have I::MIN << b ==> -I::MIN * (-2)^b ==> I::MIN * (-2)^b, which overflows for all non-zero b.
-                let lhs = Self::ternary(self.msb(), &self.abs_wrapped(), self);
-                let base = Self::ternary(self.msb(), &(Self::zero() - &two), &two);
+                // If `signed_factor` is I::MIN, then negate `self` in order to balance the sign of I::MIN.
+                let signed_factor_is_min = &signed_factor.is_equal(&Self::constant(console::Integer::MIN));
+                // - If `signed_factor` is I::MIN,
+                //     - and `self` is zero or I::MIN, then `lhs` is equal to `self`.
+                //     - otherwise, `lhs` is equal to `-self`.
+                // - Otherwise, `lhs` is equal to `self`.
+                let lhs = Self::ternary(signed_factor_is_min, &Self::zero().sub_wrapped(self), self);
 
-                // Compute `lhs` * `base` ^ `rhs`.
-                lhs.mul_checked(&base.pow_checked(rhs))
+                // Compute `lhs` * `factor`, which is equivalent to `lhs` * 2 ^ `rhs`.
+                lhs.mul_checked(&signed_factor)
             }
             // Compute `lhs` * 2 ^ `rhs`.
             false => self.mul_checked(&two.pow_checked(rhs)),
@@ -155,7 +163,7 @@ mod tests {
 
     const ITERATIONS: u64 = 32;
 
-    fn check_shl<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
+    fn check_shl<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe + TryFrom<u64>>(
         name: &str,
         first: console::Integer<<Circuit as Environment>::Network, I>,
         second: console::Integer<<Circuit as Environment>::Network, M>,
@@ -176,9 +184,12 @@ mod tests {
             }),
             None => match (mode_a, mode_b) {
                 (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::shl_checked),
-                // TODO: This can either halt or be unsatisfied. Make the expectation more precise once output_mode is completely defined.
                 (_, Mode::Constant) => {
-                    if std::panic::catch_unwind(|| Integer::shl_checked(&a, &b)).is_ok() {
+                    // If `second` >= I::BITS, then the invocation to `pow_checked` will halt.
+                    // Otherwise, the invocation to `mul_checked` will not be satisfied.
+                    if *second >= M::try_from(I::BITS).unwrap_or_default() {
+                        check_operation_halts(&a, &b, Integer::shl_checked);
+                    } else {
                         Circuit::scope(name, || {
                             let _candidate = a.shl_checked(&b);
                             // assert_count_fails!(ShlChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
@@ -196,7 +207,10 @@ mod tests {
         Circuit::reset();
     }
 
-    fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
+    fn run_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe + TryFrom<u64>>(
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
         for i in 0..ITERATIONS {
             let first = Uniform::rand(&mut test_rng());
             let second = Uniform::rand(&mut test_rng());
@@ -217,8 +231,10 @@ mod tests {
         }
     }
 
-    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(mode_a: Mode, mode_b: Mode)
-    where
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe + TryFrom<u64>>(
+        mode_a: Mode,
+        mode_b: Mode,
+    ) where
         RangeInclusive<I>: Iterator<Item = I>,
         RangeInclusive<M>: Iterator<Item = M>,
     {
