@@ -311,6 +311,7 @@ pub(super) mod integer_type {
     };
     use num_traits::{
         CheckedNeg,
+        CheckedRem,
         CheckedShl,
         CheckedShr,
         One as NumOne,
@@ -331,6 +332,7 @@ pub(super) mod integer_type {
         + CheckedAbs
         + CheckedNeg
         + CheckedPow
+        + CheckedRem
         + CheckedShl
         + CheckedShr
         + Debug
