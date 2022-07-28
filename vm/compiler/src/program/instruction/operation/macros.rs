@@ -718,6 +718,7 @@ mod tests {
                                     "add" => should_succeed &= (*a).checked_add(*b).is_some(),
                                     "div" => should_succeed &= (*a).checked_div(*b).is_some(),
                                     "mul" => should_succeed &= (*a).checked_mul(*b).is_some(),
+                                    "rem" => should_succeed &= (*a).checked_rem(*b).is_some(),
                                     "sub" => should_succeed &= (*a).checked_sub(*b).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::Operation<_, _, _, 2>>::OPCODE),
                                 }

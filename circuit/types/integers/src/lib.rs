@@ -35,6 +35,8 @@ pub mod not;
 pub mod or;
 pub mod pow_checked;
 pub mod pow_wrapped;
+pub mod rem_checked;
+pub mod rem_wrapped;
 pub mod shl_checked;
 pub mod shl_wrapped;
 pub mod shr_checked;
