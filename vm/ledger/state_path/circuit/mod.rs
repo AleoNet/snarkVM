@@ -105,24 +105,22 @@ impl<A: Aleo> Eject for StatePath<A> {
 
     /// Ejects the mode of the ciphertext.
     fn eject_mode(&self) -> Mode {
-        // (
-        //     &self.state_root,
-        //     &self.block_path,
-        //     &self.block_hash,
-        //     &self.previous_block_hash,
-        //     &self.header_root,
-        //     &self.header_path,
-        //     &self.header_leaf,
-        //     &self.transactions_path,
-        //     &self.transaction_id,
-        //     &self.transaction_path,
-        //     &self.transaction_leaf,
-        //     &self.transition_path,
-        //     &self.transition_leaf,
-        // )
-        //     .eject_mode()
-
-        unimplemented!()
+        (
+            &self.state_root,
+            &self.block_path,
+            &self.block_hash,
+            &self.previous_block_hash,
+            &self.header_root,
+            &self.header_path,
+            &self.header_leaf,
+            &self.transactions_path,
+            &self.transaction_id,
+            &self.transaction_path,
+            &self.transaction_leaf,
+            &self.transition_path,
+            &self.transition_leaf,
+        )
+            .eject_mode()
     }
 
     /// Ejects the ciphertext.
