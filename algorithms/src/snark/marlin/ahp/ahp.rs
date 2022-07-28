@@ -50,7 +50,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["matrix_sumcheck", "lincheck_sumcheck"];
 
     pub fn zk_bound() -> Option<usize> {
-        MM::ZK.then(|| 1)
+        MM::ZK.then_some(1)
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.

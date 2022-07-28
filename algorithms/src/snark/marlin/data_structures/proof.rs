@@ -173,7 +173,7 @@ impl<F: PrimeField> Evaluations<F> {
 
 impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
-        let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then(|| *v)).collect::<Vec<_>>();
+        let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then_some(*v)).collect::<Vec<_>>();
         assert_eq!(z_b_evals.len(), batch_size);
         Self { z_b_evals, g_1_eval: map["g_1"], g_a_eval: map["g_a"], g_b_eval: map["g_b"], g_c_eval: map["g_c"] }
     }
