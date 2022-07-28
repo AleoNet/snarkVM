@@ -34,6 +34,7 @@ use crate::console::{
 use snarkvm_compiler::Program;
 
 use indexmap::{IndexMap, IndexSet};
+use time::OffsetDateTime;
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
@@ -125,6 +126,44 @@ impl<N: Network> Ledger<N> {
         self.blocks.values().any(|block| &block.hash() == hash)
     }
 
+    /// Returns a proposal block constructed with the transactions in the mempool.
+    pub fn propose_block(&self, transactions: Transactions<N>) -> Result<Block<N>> {
+        // // TODO (raychu86): Fetch a maximum number of transactions from the memory pool.
+        // // Fetch the transactions from the mempool.
+        // let transactions = Transactions::<N>::from(&self.memory_pool.iter().cloned().collect::<Vec<_>>())?;
+
+        // Fetch the latest block hash
+        let latest_block_hash = self.latest_block_hash();
+
+        // Construct the block header.
+        let latest_state_root = self.latest_state_root();
+        let transactions_root = transactions.to_root()?;
+        let network = N::ID;
+        let height = self.latest_block_height() + 1;
+        // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
+        let round = 1;
+        let coinbase_target = 0;
+        let proof_target = 0;
+        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        let header = Header::from(
+            *latest_state_root,
+            transactions_root,
+            network,
+            height,
+            round,
+            coinbase_target,
+            proof_target,
+            timestamp,
+        )?;
+
+        // Construct the new block.
+        let block = Block::from(latest_block_hash, header, transactions)?;
+
+        // TODO (raychu86): Ensure the block is valid.
+
+        Ok(block)
+    }
+
     /// Adds the given canon block, if it is well-formed and does not already exist.
     pub fn add_next_block(&mut self, _vm: &VM<N>, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Handle block verification.
@@ -163,6 +202,11 @@ impl<N: Network> Ledger<N> {
         }
 
         // TODO (raychu86): Add proof and coinbase target verification.
+
+        // TODO (raychu86): Remove the included transactions from the mempool.
+        // for transaction in block.transactions().iter() {
+        //     self.memory_pool.remove(transaction);
+        // }
 
         // Insert the block into the ledger.
         self.blocks.insert(height, block.clone());
@@ -276,7 +320,10 @@ impl<N: Network> Default for Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{console::network::Testnet3, test_helpers::sample_genesis_block};
+    use crate::{
+        console::network::Testnet3,
+        test_helpers::{sample_execution_transaction, sample_genesis_block},
+    };
 
     type CurrentNetwork = Testnet3;
 
@@ -300,12 +347,45 @@ mod tests {
         // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
         let vm = VM::<CurrentNetwork>::new().unwrap();
 
+        // Add the genesis block to the ledger.
         ledger.add_next_block(&vm, &genesis_block).unwrap();
 
+        // Construct the state path
         let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
         let commitment = commitments[0];
 
         let _state_path = ledger.to_state_path(commitment).unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_new_blocks() -> Result<()> {
+        // Initialize a new ledger.
+        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
+
+        // Sample the genesis block.
+        let genesis_block = sample_genesis_block();
+
+        // Initialize the VM.
+        // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
+        let vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Add the genesis block to the ledger.
+        ledger.add_next_block(&vm, &genesis_block).unwrap();
+
+        assert_eq!(ledger.latest_block_height(), 0);
+        assert_eq!(ledger.latest_block_hash(), genesis_block.hash());
+
+        // Construct a new block
+        let new_transaction = sample_execution_transaction();
+        let transactions = Transactions::from(&[new_transaction]).unwrap();
+
+        let new_block = ledger.propose_block(transactions).unwrap();
+        ledger.add_next_block(&vm, &new_block).unwrap();
+
+        assert_eq!(ledger.latest_block_height(), 1);
+        assert_eq!(ledger.latest_block_hash(), new_block.hash());
 
         Ok(())
     }
