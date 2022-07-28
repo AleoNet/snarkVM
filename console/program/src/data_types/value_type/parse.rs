@@ -112,11 +112,19 @@ mod tests {
             Ok(("", ValueType::<CurrentNetwork>::from_str("token.record")?)),
             ValueType::<CurrentNetwork>::parse("token.record")
         );
+        assert_eq!(
+            ValueType::<CurrentNetwork>::Record(Identifier::from_str("message")?),
+            ValueType::<CurrentNetwork>::parse("message.record")?.1
+        );
 
         // ExternalRecord type.
         assert_eq!(
             Ok(("", ValueType::<CurrentNetwork>::from_str("howard.aleo/message.record")?)),
             ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")
+        );
+        assert_eq!(
+            ValueType::<CurrentNetwork>::ExternalRecord(Locator::from_str("howard.aleo/message")?),
+            ValueType::<CurrentNetwork>::parse("howard.aleo/message.record")?.1
         );
 
         Ok(())

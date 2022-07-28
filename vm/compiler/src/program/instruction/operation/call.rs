@@ -178,7 +178,7 @@ impl<N: Network> Call<N> {
                 (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
             }
             CallOperator::Resource(resource) => {
-                // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
                 if stack.program().contains_function(resource) {
@@ -239,7 +239,7 @@ impl<N: Network> Call<N> {
                 (stack.get_external_stack(locator.program_id())?.clone(), locator.resource())
             }
             CallOperator::Resource(resource) => {
-                // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
                 if stack.program().contains_function(resource) {
@@ -421,7 +421,7 @@ impl<N: Network> Call<N> {
                 (true, stack.get_external_program(locator.program_id())?, locator.resource())
             }
             CallOperator::Resource(resource) => {
-                // TODO (howardwu): Revisit this decision. A record cannot be spent again.
+                // TODO (howardwu): Revisit this decision to forbid calling internal functions. A record cannot be spent again.
                 //  But there are legitimate uses for passing a record through to an internal function.
                 //  We could invoke the internal function without a state transition, but need to match visibility.
                 if stack.program().contains_function(resource) {

@@ -534,7 +534,7 @@ mod tests {
     use console::{
         account::PrivateKey,
         network::Testnet3,
-        program::{Plaintext, Record, Value},
+        program::{Locator, Plaintext, Record, Value, ValueType},
     };
 
     use parking_lot::RwLock;
@@ -612,6 +612,71 @@ function compute:
         assert!(program.contains_function(&Identifier::from_str("compute")?));
         // Ensure the retrieved function matches.
         assert_eq!(function, program.get_function(&Identifier::from_str("compute")?)?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_program_import() -> Result<()> {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"
+import eth.aleo;
+import usdc.aleo;
+
+program swap.aleo;
+
+// The `swap` function transfers ownership of the record
+// for token A to the record owner of token B, and vice-versa.
+function swap:
+    // Input the record for token A.
+    input r0 as eth.aleo/eth.record;
+    // Input the record for token B.
+    input r1 as usdc.aleo/usdc.record;
+
+    // Send the record for token A to the owner of token B.
+    call eth.aleo/transfer r0 r1.owner r0.amount into r2 r3;
+
+    // Send the record for token B to the owner of token A.
+    call usdc.aleo/transfer r1 r0.owner r1.amount into r4 r5;
+
+    // Output the new record for token A.
+    output r2 as eth.aleo/eth.record;
+    // Output the new record for token B.
+    output r4 as usdc.aleo/usdc.record;
+    ",
+        )
+        .unwrap();
+
+        // Ensure the program imports exist.
+        assert!(program.contains_import(&ProgramID::from_str("eth.aleo")?));
+        assert!(program.contains_import(&ProgramID::from_str("usdc.aleo")?));
+
+        // Retrieve the 'swap' function.
+        let function = program.get_function(&Identifier::from_str("swap")?)?;
+
+        // Ensure there are two inputs.
+        assert_eq!(function.inputs().len(), 2);
+        assert_eq!(function.input_types().len(), 2);
+
+        // Ensure the inputs are external records.
+        assert_eq!(function.input_types()[0], ValueType::ExternalRecord(Locator::from_str("eth.aleo/eth")?));
+        assert_eq!(function.input_types()[1], ValueType::ExternalRecord(Locator::from_str("usdc.aleo/usdc")?));
+
+        // Ensure there are two instructions.
+        assert_eq!(function.instructions().len(), 2);
+
+        // Ensure the instructions are calls.
+        assert_eq!(function.instructions()[0].opcode(), Opcode::Call);
+        assert_eq!(function.instructions()[1].opcode(), Opcode::Call);
+
+        // Ensure there are two outputs.
+        assert_eq!(function.outputs().len(), 2);
+        assert_eq!(function.output_types().len(), 2);
+
+        // Ensure the outputs are external records.
+        assert_eq!(function.output_types()[0], ValueType::ExternalRecord(Locator::from_str("eth.aleo/eth")?));
+        assert_eq!(function.output_types()[1], ValueType::ExternalRecord(Locator::from_str("usdc.aleo/usdc")?));
 
         Ok(())
     }
