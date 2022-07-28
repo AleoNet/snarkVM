@@ -296,6 +296,35 @@ impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I>
     }
 }
 
+impl<E: Environment, I: IntegerType> ModChecked<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the result of taking the modulus of `self` with respect to `other`.
+    #[inline]
+    fn mod_checked(&self, other: &Integer<E, I>) -> Self {
+        match I::is_signed() {
+            true => E::halt("Taking the modulus of signed integers is not supported"),
+            false => match self.integer.checked_rem(&other.integer) {
+                Some(integer) => Integer::new(integer),
+                None => E::halt(format!("Integer modulus failed on: {self} and {other}")),
+            },
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> ModWrapped<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the result of taking the modulus of `self` with respect to `other`.
+    #[inline]
+    fn mod_wrapped(&self, other: &Integer<E, I>) -> Self {
+        match I::is_signed() {
+            true => E::halt("Taking the modulus of signed integers is not supported"),
+            false => Integer::new(self.integer.wrapping_rem(&other.integer)),
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType> Rem<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
