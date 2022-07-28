@@ -304,7 +304,7 @@ impl<E: Environment, I: IntegerType> ModChecked<Integer<E, I>> for Integer<E, I>
     fn mod_checked(&self, other: &Integer<E, I>) -> Self {
         match I::is_signed() {
             true => E::halt("Taking the modulus of signed integers is not supported"),
-            false => match self.integer.checked_rem(&other.integer) {
+            false => match self.integer.checked_mod(&other.integer) {
                 Some(integer) => Integer::new(integer),
                 None => E::halt(format!("Integer modulus failed on: {self} and {other}")),
             },
@@ -320,7 +320,10 @@ impl<E: Environment, I: IntegerType> ModWrapped<Integer<E, I>> for Integer<E, I>
     fn mod_wrapped(&self, other: &Integer<E, I>) -> Self {
         match I::is_signed() {
             true => E::halt("Taking the modulus of signed integers is not supported"),
-            false => Integer::new(self.integer.wrapping_rem(&other.integer)),
+            false => match other.is_zero() {
+                true => E::halt(format!("Integer modulus by zero: {self} % {other}")),
+                false => Integer::new(self.integer.wrapping_mod(&other.integer)),
+            },
         }
     }
 }
