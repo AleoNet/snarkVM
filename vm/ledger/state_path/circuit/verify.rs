@@ -19,10 +19,8 @@ use super::*;
 // TODO (raychu86): Inject this check into the `execute` call.
 
 impl<A: Aleo> StatePath<A> {
-    /// Returns `true` if the state path is valid for the given `commitment`.
-    pub fn verify(&self, commitment: &Field<A>) -> Boolean<A> {
-        // TODO (raychu86): Construct the transition id from the commitment.
-
+    /// Returns `true` if the state path is valid.
+    pub fn verify(&self) -> Boolean<A> {
         // Ensure the transition path is valid.
         let transition_path_is_valid = A::verify_merkle_path_bhp(
             &self.transition_path,
@@ -110,8 +108,7 @@ mod tests {
 
         // Ensure the circuit state path is valid.
         let mode = Mode::Public;
-        let circuit_commitment = Field::new(mode, *commitment);
-        let is_valid = circuit_state_path.verify(&circuit_commitment);
+        let is_valid = circuit_state_path.verify();
 
         AleoV0::assert(is_valid);
         assert!(AleoV0::is_satisfied());
