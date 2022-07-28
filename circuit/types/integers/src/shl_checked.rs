@@ -215,11 +215,12 @@ mod tests {
             let first = Uniform::rand(&mut test_rng());
             let second = Uniform::rand(&mut test_rng());
 
-            let name = format!("Shl Zero: {} << {} {}", mode_a, mode_b, i);
-            check_shl::<I, M>(&name, first, second, mode_a, mode_b);
-
             let name = format!("Shl: {} << {} {}", mode_a, mode_b, i);
             check_shl::<I, M>(&name, first, second, mode_a, mode_b);
+
+            // Check that shift left by zero is computed correctly.
+            let name = format!("Identity: {} << {} {}", mode_a, mode_b, i);
+            check_shl::<I, M>(&name, first, console::Integer::zero(), mode_a, mode_b);
 
             // Check that shift left by one is computed correctly.
             let name = format!("Double: {} << {} {}", mode_a, mode_b, i);
