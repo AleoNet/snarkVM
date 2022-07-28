@@ -61,6 +61,21 @@ impl<N: Network> TransactionLeaf<N> {
     pub const fn id(&self) -> Field<N> {
         self.id
     }
+
+    /// Returns the variant of the Merkle leaf.
+    pub const fn variant(&self) -> u8 {
+        self.variant
+    }
+
+    /// Returns the program ID in the Merkle leaf.
+    pub const fn program_id(&self) -> ProgramID<N> {
+        self.program_id
+    }
+
+    /// Returns the function name in the Merkle leaf.
+    pub const fn function_name(&self) -> Identifier<N> {
+        self.function_name
+    }
 }
 
 #[cfg(test)]
