@@ -86,10 +86,7 @@ macro_rules! impl_primefield_from_int {
 macro_rules! sqrt_impl {
     ($Self:ident, $P:tt, $self:expr) => {{
         use crate::LegendreSymbol::*;
-        // https://eprint.iacr.org/2012/685.pdf (page 12, algorithm 5)
-        // Actually this is just normal Tonelli-Shanks; since `P::Generator`
-        // is a quadratic non-residue, `P::ROOT_OF_UNITY = P::GENERATOR ^ t`
-        // is also a quadratic non-residue (since `t` is odd).
+        // https://eprint.iacr.org/2020/1407.pdf (page 4, algorithm 1)
         match $self.legendre() {
             Zero => Some(*$self),
             QuadraticNonResidue => None,
