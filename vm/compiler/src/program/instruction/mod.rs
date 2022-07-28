@@ -123,6 +123,10 @@ pub enum Instruction<N: Network> {
     LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
     LessThanOrEqual(LessThanOrEqual<N>),
+    /// Computes `first` mod `second`, storing the outcome in `destination`.
+    Mod(Mod<N>),
+    /// Computes `first` mod `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    ModWrapped(ModWrapped<N>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<N>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -228,6 +232,8 @@ macro_rules! instruction {
             IsNotEqual,
             LessThan,
             LessThanOrEqual,
+            Mod,
+            ModWrapped,
             Mul,
             MulWrapped,
             Nand,
