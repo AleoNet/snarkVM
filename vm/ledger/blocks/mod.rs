@@ -143,14 +143,20 @@ impl<N: Network> Blocks<N> {
     /// Returns the block given the block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
         // TODO (raychu86): Inject a genesis block.
-        match height == 0 {
-            true => panic!("Ensure a genesis block exists"),
-            false => Ok(Block::from(
-                self.get_previous_block_hash(height)?,
-                *self.get_block_header(height)?,
-                self.get_block_transactions(height)?.clone(),
-            )?),
-        }
+        // match height == 0 {
+        //     true => panic!("Ensure a genesis block exists"),
+        //     false => Ok(Block::from(
+        //         self.get_previous_block_hash(height)?,
+        //         *self.get_block_header(height)?,
+        //         self.get_block_transactions(height)?.clone(),
+        //     )?),
+        // }
+
+        Block::from(
+            self.get_previous_block_hash(height)?,
+            *self.get_block_header(height)?,
+            self.get_block_transactions(height)?.clone(),
+        )
     }
 
     /// Returns the block hash given the block height.
@@ -201,6 +207,44 @@ impl<N: Network> Blocks<N> {
         self.transactions.values().flat_map(|transactions| transactions.commitments()).contains(commitment)
     }
 
+    /// Returns a proposal block constructed with the transactions in the mempool.
+    pub fn propose_block(&self, transactions: Transactions<N>) -> Result<Block<N>> {
+        // Fetch the latest block hash
+        let latest_block_hash = self.latest_block_hash();
+
+        // Construct the block header.
+        let latest_state_root = self.latest_state_root();
+        let transactions_root = transactions.to_root()?;
+        let network = N::ID;
+        let height = self.latest_block_height() + 1;
+        // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
+        let round = 1;
+        let coinbase_target = 0;
+        let proof_target = 0;
+        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        let header = Header::from(
+            *latest_state_root,
+            transactions_root,
+            network,
+            height,
+            round,
+            coinbase_target,
+            proof_target,
+            timestamp,
+        )?;
+
+        // Construct the new block.
+        let block = Block::from(latest_block_hash, header, transactions)?;
+
+        // TODO (raychu86): Ensure the block is valid.
+        // // Ensure the block itself is valid.
+        // if !block.is_valid(vm) {
+        //     return Err(anyhow!("The proposed block is invalid"));
+        // }
+
+        Ok(block)
+    }
+
     /// Adds the given block as the next block in the chain.
     pub fn add_next(&mut self, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Validate the block using a valid VM.
@@ -234,9 +278,11 @@ impl<N: Network> Blocks<N> {
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
 
         // Ensure the next block timestamp is after the current block timestamp.
-        let current_block = self.latest_block()?;
-        if block.header().timestamp() <= current_block.header().timestamp() {
-            return Err(anyhow!("The given block timestamp is before the current timestamp"));
+        if self.contains_height(0) {
+            let current_block = self.latest_block()?;
+            if block.header().timestamp() <= current_block.header().timestamp() {
+                return Err(anyhow!("The given block timestamp is before the current timestamp"));
+            }
         }
 
         // TODO (raychu86): Add proof and coinbase target verification.
@@ -399,10 +445,64 @@ impl<N: Network> Blocks<N> {
 }
 
 #[cfg(test)]
-#[allow(clippy::comparison_chain)]
 mod tests {
     use super::*;
-    use crate::console::network::Testnet3;
+    use crate::{
+        console::network::Testnet3,
+        test_helpers::{sample_execution_transaction, sample_genesis_block},
+    };
 
     type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_deploy() -> Result<()> {
+        let _blocks = Blocks::<CurrentNetwork>::new().unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_new_state_path() -> Result<()> {
+        let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
+
+        // Sample the genesis block.
+        let genesis_block = sample_genesis_block();
+
+        // Add the genesis block to the ledger.
+        blocks.add_next(&genesis_block).unwrap();
+
+        // Construct the state path
+        let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
+        let commitment = commitments[0];
+
+        let _state_path = blocks.to_state_path(commitment).unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_new_blocks() -> Result<()> {
+        let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
+
+        // Sample the genesis block.
+        let genesis_block = sample_genesis_block();
+
+        // Add the genesis block to the ledger.
+        blocks.add_next(&genesis_block).unwrap();
+
+        assert_eq!(blocks.latest_block_height(), 0);
+        assert_eq!(blocks.latest_block_hash(), genesis_block.hash());
+
+        // Construct a new block
+        let new_transaction = sample_execution_transaction();
+        let transactions = Transactions::from(&[new_transaction]).unwrap();
+
+        let new_block = blocks.propose_block(transactions).unwrap();
+        blocks.add_next(&new_block).unwrap();
+
+        assert_eq!(blocks.latest_block_height(), 1);
+        assert_eq!(blocks.latest_block_hash(), new_block.hash());
+
+        Ok(())
+    }
 }

@@ -320,10 +320,7 @@ impl<N: Network> Default for Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        console::network::Testnet3,
-        test_helpers::{sample_execution_transaction, sample_genesis_block},
-    };
+    use crate::console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
 
@@ -334,59 +331,35 @@ mod tests {
 
         Ok(())
     }
-
-    #[test]
-    fn test_state_path() -> Result<()> {
-        // Initialize a new ledger.
-        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
-
-        // Sample the genesis block.
-        let genesis_block = sample_genesis_block();
-
-        // Initialize the VM.
-        // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
-        let vm = VM::<CurrentNetwork>::new().unwrap();
-
-        // Add the genesis block to the ledger.
-        ledger.add_next_block(&vm, &genesis_block).unwrap();
-
-        // Construct the state path
-        let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
-        let commitment = commitments[0];
-
-        let _state_path = ledger.to_state_path(commitment).unwrap();
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_new_blocks() -> Result<()> {
-        // Initialize a new ledger.
-        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
-
-        // Sample the genesis block.
-        let genesis_block = sample_genesis_block();
-
-        // Initialize the VM.
-        // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
-        let vm = VM::<CurrentNetwork>::new().unwrap();
-
-        // Add the genesis block to the ledger.
-        ledger.add_next_block(&vm, &genesis_block).unwrap();
-
-        assert_eq!(ledger.latest_block_height(), 0);
-        assert_eq!(ledger.latest_block_hash(), genesis_block.hash());
-
-        // Construct a new block
-        let new_transaction = sample_execution_transaction();
-        let transactions = Transactions::from(&[new_transaction]).unwrap();
-
-        let new_block = ledger.propose_block(transactions).unwrap();
-        ledger.add_next_block(&vm, &new_block).unwrap();
-
-        assert_eq!(ledger.latest_block_height(), 1);
-        assert_eq!(ledger.latest_block_hash(), new_block.hash());
-
-        Ok(())
-    }
+    //
+    // #[test]
+    // fn test_new_blocks() -> Result<()> {
+    //     // Initialize a new ledger.
+    //     let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
+    //
+    //     // Sample the genesis block.
+    //     let genesis_block = sample_genesis_block();
+    //
+    //     // Initialize the VM.
+    //     // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
+    //     let vm = VM::<CurrentNetwork>::new().unwrap();
+    //
+    //     // Add the genesis block to the ledger.
+    //     ledger.add_next_block(&vm, &genesis_block).unwrap();
+    //
+    //     assert_eq!(ledger.latest_block_height(), 0);
+    //     assert_eq!(ledger.latest_block_hash(), genesis_block.hash());
+    //
+    //     // Construct a new block
+    //     let new_transaction = sample_execution_transaction();
+    //     let transactions = Transactions::from(&[new_transaction]).unwrap();
+    //
+    //     let new_block = ledger.propose_block(transactions).unwrap();
+    //     ledger.add_next_block(&vm, &new_block).unwrap();
+    //
+    //     assert_eq!(ledger.latest_block_height(), 1);
+    //     assert_eq!(ledger.latest_block_hash(), new_block.hash());
+    //
+    //     Ok(())
+    // }
 }
