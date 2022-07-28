@@ -20,7 +20,7 @@ use crate::{
         network::{prelude::*, BHPMerkleTree},
         types::Field,
     },
-    ledger::{block, state_path::StatePath, Block, Header, HeaderLeaf, Transaction, Transactions},
+    ledger::{state_path::StatePath, Block, Header, HeaderLeaf, Transaction, Transactions},
 };
 
 use anyhow::{anyhow, Result};
@@ -39,17 +39,17 @@ pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 #[derive(Clone)]
 pub struct Blocks<N: Network> {
     /// The current block height.
-    current_height: u32,
+    pub(super) current_height: u32,
     /// The current block hash.
-    current_hash: N::BlockHash,
+    pub(super) current_hash: N::BlockHash,
     /// The current state tree.
-    state_tree: StateTree<N>,
+    pub(super) state_tree: StateTree<N>,
     /// The chain of previous block hashes.
-    previous_hashes: IndexMap<u32, N::BlockHash>,
+    pub(super) previous_hashes: IndexMap<u32, N::BlockHash>,
     /// The chain of block headers.
-    headers: IndexMap<u32, Header<N>>,
+    pub(super) headers: IndexMap<u32, Header<N>>,
     /// The chain of block transactions.
-    transactions: IndexMap<u32, Transactions<N>>,
+    pub(super) transactions: IndexMap<u32, Transactions<N>>,
 }
 
 impl<N: Network> Blocks<N> {
@@ -462,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_state_path() -> Result<()> {
+    fn test_state_path() -> Result<()> {
         let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
 
         // Sample the genesis block.
