@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
@@ -26,27 +25,27 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
-    // Create a genesis block.
-    let genesis_block = Block::<N>::new_genesis(recipient, &mut thread_rng())?;
-    assert!(genesis_block.is_valid());
-    assert!(genesis_block.is_genesis());
-    assert!(genesis_block.header().is_genesis());
-    assert!(genesis_block.to_coinbase_transaction()?.is_valid());
-
-    println!("\n{}\n", serde_json::to_string_pretty(&genesis_block)?);
-
-    println!("Genesis block size - {}\n", genesis_block.to_bytes_le()?.len());
-    println!("Genesis block header size - {}\n", genesis_block.header().to_bytes_le()?.len());
-    println!("Genesis block header proof size - {}\n", genesis_block.header().proof().to_bytes_le()?.len());
-    println!("Genesis coinbase transaction size - {}\n", genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len());
-    println!(
-        "Genesis coinbase transition size - {}\n",
-        genesis_block.to_coinbase_transaction()?.transitions()[0].to_bytes_le()?.len()
-    );
-
-    genesis_block.to_bytes_le()
-}
+// pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
+//     // Create a genesis block.
+//     let genesis_block = Block::<N>::new_genesis(recipient, &mut thread_rng())?;
+//     assert!(genesis_block.is_valid());
+//     assert!(genesis_block.is_genesis());
+//     assert!(genesis_block.header().is_genesis());
+//     assert!(genesis_block.to_coinbase_transaction()?.is_valid());
+//
+//     println!("\n{}\n", serde_json::to_string_pretty(&genesis_block)?);
+//
+//     println!("Genesis block size - {}\n", genesis_block.to_bytes_le()?.len());
+//     println!("Genesis block header size - {}\n", genesis_block.header().to_bytes_le()?.len());
+//     println!("Genesis block header proof size - {}\n", genesis_block.header().proof().to_bytes_le()?.len());
+//     println!("Genesis coinbase transaction size - {}\n", genesis_block.to_coinbase_transaction()?.to_bytes_le()?.len());
+//     println!(
+//         "Genesis coinbase transition size - {}\n",
+//         genesis_block.to_coinbase_transaction()?.transitions()[0].to_bytes_le()?.len()
+//     );
+//
+//     genesis_block.to_bytes_le()
+// }
 
 pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
     let mut file = File::create(path)?;
@@ -62,20 +61,13 @@ pub fn main() {
     }
 
     match args[1].as_str() {
-        "testnet1" => {
-            let recipient = Address::from_str(&args[2]).unwrap();
-            let genesis_file = &args[3];
-
-            let genesis_block = generate::<Testnet1>(recipient).unwrap();
-            store(genesis_file, &genesis_block).unwrap();
-        }
-        "testnet2" => {
-            let recipient = Address::from_str(&args[2]).unwrap();
-            let genesis_file = &args[3];
-
-            let genesis_block = generate::<Testnet2>(recipient).unwrap();
-            store(genesis_file, &genesis_block).unwrap();
-        }
+        // "testnet3" => {
+        //     let recipient = Address::from_str(&args[2]).unwrap();
+        //     let genesis_file = &args[3];
+        //
+        //     let genesis_block = generate::<Testnet3>(recipient).unwrap();
+        //     store(genesis_file, &genesis_block).unwrap();
+        // }
         _ => panic!("Invalid network"),
     };
 }
