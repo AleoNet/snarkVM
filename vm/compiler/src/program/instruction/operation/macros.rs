@@ -707,6 +707,8 @@ mod tests {
                         #[allow(unused_mut)]
                         let mut is_shift_operator = false;
                         #[allow(unused_mut)]
+                        let mut shift_exceeds_bitwidth = false;
+                        #[allow(unused_mut)]
                         let mut is_division_operator = false;
                         /// A helper macro to check the conditions.
                         #[allow(unused_macros)]
@@ -726,12 +728,36 @@ mod tests {
                             };
                             ("ensure shifting past boundary halts") => {
                                 match *<$operation as $crate::Operation<_, _, _, 2>>::OPCODE {
-                                    "shl" => should_succeed &= (*a).checked_shl(*b as u32).is_some(),
+                                    // Note that this case needs special handling, since the desired behavior of `checked_shl` deviates from Rust semantics.
+                                    "shl" => {
+                                        // Instantiate two as a constant.
+                                        let zero = $input_a::<CurrentNetwork>::zero();
+                                        let two = $input_a::<CurrentNetwork>::one() + $input_a::one();
+                                        should_succeed &= match *a < *zero {
+                                            // For positive values, perform a checked exponentiation and multiplication.
+                                            false => (*two).checked_pow(*b as u32).and_then(|x| (*a).checked_mul(x)).is_some(),
+                                            true => {
+                                                // Compute a wrapping exponentiation.
+                                                let factor = (*two).wrapping_pow(*b as u32);
+                                                match factor.cmp(&0) {
+                                                    // If `factor` is equal to zero, the exponentiation above overflowed.
+                                                    Ordering::Equal => false,
+                                                    // If `factor` is less than zero, then `b` is equal to 1 - bitwidth(a).
+                                                    // In this case, negate `a` to balance signs.
+                                                    Ordering::Less => (a.wrapping_neg()).checked_mul(factor).is_some(),
+                                                    // If `factor` is greater than zero, then the above exponentiation did not overflow
+                                                    // Then, perform a checked multiplication.
+                                                    Ordering::Greater => (*a).checked_mul(factor).is_some(),
+                                                }
+                                            }
+                                        };
+                                    }
                                     "shr" => should_succeed &= (*a).checked_shr(*b as u32).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::Operation<_, _, _, 2>>::OPCODE),
                                 }
-                                // This indicator is later used in the for-loops below.
+                                // These indicators are later used in the for-loops below.
                                 is_shift_operator |= true;
+                                shift_exceeds_bitwidth |= ((*b as u32) >= $input_a::<CurrentNetwork>::size_in_bits() as u32);
                             };
                             ("ensure divide by zero halts") => {
                                 should_succeed &= (*b) != 0;
@@ -761,8 +787,8 @@ mod tests {
                                 // This indicator bit is used to check that a case panics on halt,
                                 // instead of checking that the circuit is not satisfied (i.e. for `Public|Private && Constant`).
                                 let mut should_panic_on_halt = false;
-                                // If the operation is a shift operator, check if the mode of the RHS is a constant.
-                                should_panic_on_halt |= is_shift_operator && mode_b.is_constant();
+                                // If the operation is a shift operator, check if the mode of the RHS is a constant and if the shift amount exceeds the bitwidth.
+                                should_panic_on_halt |= is_shift_operator && shift_exceeds_bitwidth && mode_b.is_constant();
                                 // If the operation is a division operator, check if the mode of the RHS is a constant.
                                 should_panic_on_halt |= is_division_operator && mode_b.is_constant();
 
