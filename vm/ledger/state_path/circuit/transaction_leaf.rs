@@ -41,7 +41,6 @@ impl<A: Aleo> TransactionLeaf<A> {
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Inject for TransactionLeaf<A> {
     type Primitive = crate::ledger::state_path::TransactionLeaf<A::Network>;
 
@@ -52,12 +51,11 @@ impl<A: Aleo> Inject for TransactionLeaf<A> {
             index: U16::new(mode, snarkvm_console::types::U16::new(transaction_leaf.index())),
             program_id: ProgramID::new(mode, transaction_leaf.program_id()),
             function_name: Identifier::new(mode, transaction_leaf.function_name()),
-            id: Field::new(mode, header_leaf.id()),
+            id: Field::new(mode, transaction_leaf.id()),
         }
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Eject for TransactionLeaf<A> {
     type Primitive = crate::ledger::state_path::TransactionLeaf<A::Network>;
 

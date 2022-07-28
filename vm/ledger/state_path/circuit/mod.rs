@@ -77,66 +77,66 @@ pub struct StatePath<A: Aleo> {
     transition_leaf: TransitionLeaf<A>,
 }
 
-#[cfg(console)]
 impl<A: Aleo> Inject for StatePath<A> {
     type Primitive = crate::ledger::state_path::StatePath<A::Network>;
 
     /// Initializes a new ciphertext circuit from a primitive.
     fn new(mode: Mode, state_path: Self::Primitive) -> Self {
         Self {
-            state_root: Field::new(mode, state_path.state_root()),
-            block_path: BlockPath::new(mode, state.block_path()),
-            block_hash: Field::new(mode, state.block_hash()),
-            previous_block_hash: Field::new(mode, state.previous_block_hash()),
-            header_root: Field::new(mode, state.header_root()),
-            header_path: HeaderPath::new(mode, state.header_path()),
-            header_leaf: HeaderLeaf::new(mode, state.header_leaf()),
-            transactions_path: TransactionsPath::new(mode, state.transactions_path()),
-            transaction_id: Field::new(mode, state.transaction_id()),
-            transaction_path: TransactionPath::new(mode, state.transaction_path()),
-            transaction_leaf: TransactionLeaf::new(mode, state.transaction_leaf()),
-            transition_path: TransitionPath::new(mode, state.transition_path()),
-            transition_leaf: TransitionLeaf::new(mode, state.transition_leaf()),
+            state_root: Field::new(mode, *state_path.state_root()),
+            block_path: BlockPath::new(mode, state_path.block_path().clone()),
+            block_hash: Field::new(mode, *state_path.block_hash()),
+            previous_block_hash: Field::new(mode, *state_path.previous_block_hash()),
+            header_root: Field::new(mode, *state_path.header_root()),
+            header_path: HeaderPath::new(mode, state_path.header_path().clone()),
+            header_leaf: HeaderLeaf::new(mode, state_path.header_leaf().clone()),
+            transactions_path: TransactionsPath::new(mode, state_path.transactions_path().clone()),
+            transaction_id: Field::new(mode, **state_path.transaction_id()),
+            transaction_path: TransactionPath::new(mode, state_path.transaction_path().clone()),
+            transaction_leaf: TransactionLeaf::new(mode, state_path.transaction_leaf().clone()),
+            transition_path: TransitionPath::new(mode, state_path.transition_path().clone()),
+            transition_leaf: TransitionLeaf::new(mode, state_path.transition_leaf().clone()),
         }
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Eject for StatePath<A> {
     type Primitive = crate::ledger::state_path::StatePath<A::Network>;
 
     /// Ejects the mode of the ciphertext.
     fn eject_mode(&self) -> Mode {
-        (
-            &self.state_root,
-            &self.block_path,
-            &self.block_hash,
-            &self.previous_block_hash,
-            &self.header_root,
-            &self.header_path,
-            &self.header_leaf,
-            &self.transactions_path,
-            &self.transaction_id,
-            &self.transaction_path,
-            &self.transaction_leaf,
-            &self.transition_path,
-            &self.transition_leaf,
-        )
-            .eject_mode()
+        // (
+        //     &self.state_root,
+        //     &self.block_path,
+        //     &self.block_hash,
+        //     &self.previous_block_hash,
+        //     &self.header_root,
+        //     &self.header_path,
+        //     &self.header_leaf,
+        //     &self.transactions_path,
+        //     &self.transaction_id,
+        //     &self.transaction_path,
+        //     &self.transaction_leaf,
+        //     &self.transition_path,
+        //     &self.transition_leaf,
+        // )
+        //     .eject_mode()
+
+        unimplemented!()
     }
 
     /// Ejects the ciphertext.
     fn eject_value(&self) -> Self::Primitive {
         match Self::Primitive::new(
-            self.state_root.eject_value(),
+            self.state_root.eject_value().into(),
             self.block_path.eject_value(),
-            self.block_hash.eject_value(),
-            &self.previous_block_hash.eject_value(),
+            self.block_hash.eject_value().into(),
+            self.previous_block_hash.eject_value().into(),
             self.header_root.eject_value(),
             self.header_path.eject_value(),
             self.header_leaf.eject_value(),
             self.transactions_path.eject_value(),
-            self.transaction_id.eject_value(),
+            self.transaction_id.eject_value().into(),
             self.transaction_path.eject_value(),
             self.transaction_leaf.eject_value(),
             self.transition_path.eject_value(),

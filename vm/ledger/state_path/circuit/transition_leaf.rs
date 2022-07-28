@@ -43,7 +43,6 @@ impl<A: Aleo> TransitionLeaf<A> {
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Inject for TransitionLeaf<A> {
     type Primitive = crate::ledger::state_path::TransitionLeaf<A::Network>;
 
@@ -60,7 +59,6 @@ impl<A: Aleo> Inject for TransitionLeaf<A> {
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Eject for TransitionLeaf<A> {
     type Primitive = crate::ledger::state_path::TransitionLeaf<A::Network>;
 
@@ -74,10 +72,10 @@ impl<A: Aleo> Eject for TransitionLeaf<A> {
         Self::Primitive::new(
             *self.version.eject_value(),
             *self.index.eject_value(),
-            *self.program_id.eject_value(),
-            *self.function_name.eject_value(),
+            self.program_id.eject_value(),
+            self.function_name.eject_value(),
             *self.variant.eject_value(),
-            *self.id.eject_value(),
+            self.id.eject_value(),
         )
     }
 }

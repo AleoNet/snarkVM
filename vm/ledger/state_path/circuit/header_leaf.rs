@@ -32,7 +32,6 @@ impl<A: Aleo> HeaderLeaf<A> {
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Inject for HeaderLeaf<A> {
     type Primitive = crate::ledger::state_path::HeaderLeaf<A::Network>;
 
@@ -45,7 +44,6 @@ impl<A: Aleo> Inject for HeaderLeaf<A> {
     }
 }
 
-#[cfg(console)]
 impl<A: Aleo> Eject for HeaderLeaf<A> {
     type Primitive = crate::ledger::state_path::HeaderLeaf<A::Network>;
 

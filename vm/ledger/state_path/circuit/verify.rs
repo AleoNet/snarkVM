@@ -67,3 +67,50 @@ impl<A: Aleo> StatePath<A> {
             .is_equal(&state_root_is_valid)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        circuit::{environment::Inject, network::AleoV0, types::Field, Mode},
+        console::network::Testnet3,
+        ledger::state_path::circuit::StatePath as StatePathCircuit,
+        test_helpers::sample_genesis_block,
+        Ledger,
+        VM,
+    };
+
+    type CurrentNetwork = Testnet3;
+    type CurrentAleo = AleoV0;
+
+    #[test]
+    fn test_state_path_verify() {
+        // Initialize a new ledger.
+        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
+
+        // Sample the genesis block.
+        let genesis_block = sample_genesis_block();
+
+        // Initialize the VM.
+        // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
+        let vm = VM::<CurrentNetwork>::new().unwrap();
+
+        ledger.add_next_block(&vm, &genesis_block).unwrap();
+
+        // Construct the native state path
+        let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
+        let commitment = commitments[0];
+        let native_state_path = ledger.to_state_path(commitment).unwrap();
+
+        // Construct the circuit state path
+        let circuit_state_path = StatePathCircuit::<CurrentAleo>::new(Mode::Public, native_state_path);
+
+        // Ensure the circuit state path is valid.
+        let mode = Mode::Public;
+        let circuit_commitment = Field::new(mode, *commitment);
+        let is_valid = circuit_state_path.verify(&circuit_commitment);
+
+        AleoV0::assert(is_valid);
+        assert!(AleoV0::is_satisfied());
+    }
+}
