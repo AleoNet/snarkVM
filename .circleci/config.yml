@@ -578,7 +578,7 @@ workflows:
       - circuit-types-boolean
       - circuit-types-field
       - circuit-types-group
-#      - circuit-types-integers
+      - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
       - console
