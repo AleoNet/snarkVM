@@ -40,7 +40,7 @@ impl<A: Aleo> StatePath<A> {
         // Ensure the transactions path is valid.
         let transactions_path_is_valid = A::verify_merkle_path_bhp(
             &self.transactions_path,
-            &self.header_leaf.id(),
+            self.header_leaf.id(),
             &self.transaction_id.to_bits_le(),
         );
 

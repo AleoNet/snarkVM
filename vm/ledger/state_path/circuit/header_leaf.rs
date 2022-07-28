@@ -16,7 +16,7 @@
 
 use snarkvm_circuit::{
     network::Aleo,
-    types::{environment::prelude::*, Boolean, Field, U16, U8},
+    types::{environment::prelude::*, Field, U8},
 };
 
 #[derive(Clone)]
