@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod circuit;
-pub use circuit::*;
 
 use crate::{
     console::{network::prelude::*, types::Field},

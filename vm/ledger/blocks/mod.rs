@@ -20,7 +20,7 @@ use crate::{
         network::{prelude::*, BHPMerkleTree},
         types::Field,
     },
-    ledger::{block, state_path::StatePath, Block, Header, Transaction, Transactions},
+    ledger::{block, state_path::StatePath, Block, Header, HeaderLeaf, Transaction, Transactions},
 };
 
 use anyhow::{anyhow, Result};
@@ -53,27 +53,28 @@ pub struct Blocks<N: Network> {
 }
 
 impl<N: Network> Blocks<N> {
-    // /// Initializes a new instance of `Blocks` with the genesis block.
-    // pub fn new() -> Result<Self> {
-    //     let genesis_block = N::genesis_block();
-    //     let height = genesis_block.height();
-    //
-    //     let mut blocks = Self {
-    //         current_height: height,
-    //         current_hash: genesis_block.hash(),
-    //         ledger_tree: LedgerTree::<N>::new()?,
-    //         previous_hashes: Default::default(),
-    //         headers: Default::default(),
-    //         transactions: Default::default(),
-    //     };
-    //
-    //     blocks.ledger_tree.add(&genesis_block.hash())?;
-    //     blocks.previous_hashes.insert(height, genesis_block.previous_block_hash());
-    //     blocks.headers.insert(height, genesis_block.header().clone());
-    //     blocks.transactions.insert(height, genesis_block.transactions().clone());
-    //
-    //     Ok(blocks)
-    // }
+    /// Initializes a new instance of `Blocks` with the genesis block.
+    pub fn new() -> Result<Self> {
+        // TODO (raychu86): Inject a genesis block.
+        // let genesis_block = N::genesis_block();
+        // let height = genesis_block.height();
+
+        let mut blocks = Self {
+            current_height: 0,
+            current_hash: Default::default(),
+            state_tree: N::merkle_tree_bhp(&[])?,
+            previous_hashes: Default::default(),
+            headers: Default::default(),
+            transactions: Default::default(),
+        };
+
+        // blocks.state_tree.append(&[genesis_block.hash().to_bits_le()])?;
+        // blocks.previous_hashes.insert(height, genesis_block.previous_hash());
+        // blocks.headers.insert(height, genesis_block.header().clone());
+        // blocks.transactions.insert(height, genesis_block.transactions().clone());
+
+        Ok(blocks)
+    }
 
     /// Returns the latest block height.
     pub fn latest_block_height(&self) -> u32 {
@@ -141,12 +142,12 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the block given the block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-        // TODO (raychu86): Inject a static genesis block.
+        // TODO (raychu86): Inject a genesis block.
         match height == 0 {
             true => panic!("Ensure a genesis block exists"),
             false => Ok(Block::from(
                 self.get_previous_block_hash(height)?,
-                self.get_block_header(height)?.clone(),
+                *self.get_block_header(height)?,
                 self.get_block_transactions(height)?.clone(),
             )?),
         }
@@ -276,7 +277,7 @@ impl<N: Network> Blocks<N> {
             blocks.current_hash = block_hash;
             blocks.state_tree.append(&[block.hash().to_bits_le()])?;
             blocks.previous_hashes.insert(height, block.previous_hash());
-            blocks.headers.insert(height, block.header().clone());
+            blocks.headers.insert(height, *block.header());
             blocks.transactions.insert(height, block.transactions().clone());
 
             *self = blocks;
@@ -290,103 +291,100 @@ impl<N: Network> Blocks<N> {
         &self.state_tree
     }
 
-    // /// Returns an inclusion proof for the ledger tree.
-    // pub fn to_ledger_root_inclusion_proof(
-    //     &self,
-    //     block_hash: &N::BlockHash,
-    // ) -> Result<MerklePath<N::LedgerRootParameters>> {
-    //     self.ledger_tree.to_ledger_inclusion_proof(block_hash)
-    // }
-
     ///
     /// Returns a state path for the given commitment.
     ///
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        // // TODO (raychu86): Add support for input and output ids.
-        // // Find the transaction that contains the record commitment.
-        // let transaction = self
-        //     .transactions
-        //     .iter()
-        //     .filter(|(_, transaction)| transaction.commitments().contains(&commitment))
-        //     .collect::<Vec<_>>();
-        //
-        // if transaction.len() != 1 {
-        //     return Err(anyhow!("Multiple transactions associated with commitment {}", commitment.to_string()));
-        // }
-        //
-        // let (transaction_id, transaction) = transaction[0];
-        //
-        // // Find the block that contains the record transaction id.
-        // let block = self
-        //     .blocks
-        //     .iter()
-        //     .filter(|(_, transaction)| block.transactions().transaction_ids().contains(&transaction_id))
-        //     .collect::<Vec<_>>();
-        //
-        // if block.len() != 1 {
-        //     return Err(anyhow!("Multiple blocks associated with transaction id {}", transaction_id.to_string()));
-        // }
-        //
-        // let (_, block) = block[0];
-        // let block_header = block.header();
-        //
-        // // Find the transition that contains the record commitment.
-        // let transition = transaction
-        //     .transitions()
-        //     .filter(|transition| transition.commitments().contains(&commitment))
-        //     .collect::<Vec<_>>();
-        //
-        // if transition.len() != 1 {
-        //     return Err(anyhow!("Multiple transitions associated with commitment {}", commitment.to_string()));
-        // }
-        //
-        // let transition = transition[0];
-        // let transition_id = transition.id();
-        //
-        // // Construct the transition path and transaction leaf.
-        // let transition_leaf = transition.to_leaf(commitment, false)?;
-        // let transition_path = transition.to_path(&transition_leaf)?;
-        //
-        // // Construct the transaction path and transaction leaf.
-        // let transaction_leaf = transaction.to_leaf(transition_id)?;
-        // let transaction_path = transaction.to_path(&transaction_leaf)?;
-        //
-        // // Construct the transactions path.
-        // let transactions = block.transactions();
-        // let transaction_index = transactions.iter().position(|(id, _)| id == transaction_id).unwrap();
-        // let transactions_path = transactions.to_path(transaction_index, **transaction_id)?;
-        //
-        // // Construct the block header path.
-        // let header_root = block_header.to_root()?;
-        // let header_leaf = HeaderLeaf::<N>::new(1, *block_header.transactions_root());
-        // let header_path = block_header.to_path(&header_leaf)?;
-        //
-        // // Construct the block path.
-        // let latest_block_height = self.latest_block_height();
-        // let latest_block_hash = self.latest_block_hash();
-        // let previous_block_hash = self.get_previous_block_hash(latest_block_height)?;
-        //
-        // // Construct the state root and block path.
-        // let state_root = *self.latest_state_root();
-        // let block_path = self.state_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
-        //
-        // StatePath::new(
-        //     state_root.into(),
-        //     block_path,
-        //     latest_block_hash,
-        //     previous_block_hash,
-        //     header_root,
-        //     header_path,
-        //     header_leaf,
-        //     transactions_path,
-        //     *transaction_id,
-        //     transaction_path,
-        //     transaction_leaf,
-        //     transition_path,
-        //     transition_leaf,
-        // )
+        // TODO (raychu86): Add support for input and output ids.
+        // Find the transaction that contains the record commitment.
+        let transaction = self
+            .transactions
+            .iter()
+            .flat_map(|(_, transactions)| &**transactions)
+            .filter(|(_, transaction)| transaction.commitments().contains(&commitment))
+            .collect::<Vec<_>>();
 
-        unimplemented!()
+        if transaction.len() != 1 {
+            return Err(anyhow!("Multiple transactions associated with commitment {}", commitment.to_string()));
+        }
+
+        let (transaction_id, transaction) = transaction[0];
+
+        // Find the block height that contains the record transaction id.
+        let block_height = self
+            .transactions
+            .iter()
+            .filter_map(|(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
+                true => Some(block_height),
+                false => None,
+            })
+            .collect::<Vec<_>>();
+
+        if block_height.len() != 1 {
+            return Err(anyhow!(
+                "Multiple block heights associated with transaction id {}",
+                transaction_id.to_string()
+            ));
+        }
+
+        let block_height = *block_height[0];
+        let block_header = self.get_block_header(block_height)?;
+
+        // Find the transition that contains the record commitment.
+        let transition = transaction
+            .transitions()
+            .filter(|transition| transition.commitments().contains(&commitment))
+            .collect::<Vec<_>>();
+
+        if transition.len() != 1 {
+            return Err(anyhow!("Multiple transitions associated with commitment {}", commitment.to_string()));
+        }
+
+        let transition = transition[0];
+        let transition_id = transition.id();
+
+        // Construct the transition path and transaction leaf.
+        let transition_leaf = transition.to_leaf(commitment, false)?;
+        let transition_path = transition.to_path(&transition_leaf)?;
+
+        // Construct the transaction path and transaction leaf.
+        let transaction_leaf = transaction.to_leaf(transition_id)?;
+        let transaction_path = transaction.to_path(&transaction_leaf)?;
+
+        // Construct the transactions path.
+        let transactions = self.get_block_transactions(block_height)?;
+        let transaction_index = transactions.iter().position(|(id, _)| id == transaction_id).unwrap();
+        let transactions_path = transactions.to_path(transaction_index, **transaction_id)?;
+
+        // Construct the block header path.
+        let header_root = block_header.to_root()?;
+        let header_leaf = HeaderLeaf::<N>::new(1, *block_header.transactions_root());
+        let header_path = block_header.to_path(&header_leaf)?;
+
+        // Construct the block path.
+        let latest_block_height = self.latest_block_height();
+        let latest_block_hash = self.latest_block_hash();
+        let previous_block_hash = self.get_previous_block_hash(latest_block_height)?;
+
+        // Construct the state root and block path.
+        let state_root = *self.latest_state_root();
+        let block_path = self.state_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
+
+        StatePath::new(
+            state_root.into(),
+            block_path,
+            latest_block_hash,
+            previous_block_hash,
+            header_root,
+            header_path,
+            header_leaf,
+            transactions_path,
+            *transaction_id,
+            transaction_path,
+            transaction_leaf,
+            transition_path,
+            transition_leaf,
+        )
     }
 
     /// Returns the expected coinbase target given the previous block and expected next block details.
