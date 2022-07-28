@@ -2526,6 +2526,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-frost"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "derivative",
+ "digest 0.10.3",
+ "getrandom",
+ "hashbrown 0.12.1",
+ "hex",
+ "itertools",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_xorshift",
+ "rayon",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "snarkvm-console",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-parameters",
+ "snarkvm-r1cs",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm-gadgets"
 version = "0.7.5"
 dependencies = [
