@@ -28,7 +28,7 @@ mod verify;
 use snarkvm_circuit::{
     collections::merkle_tree::MerklePath,
     network::Aleo,
-    types::{environment::prelude::*, Boolean, Field, U16, U8},
+    types::{environment::prelude::*, Boolean, Field},
 };
 
 /// The depth of the Merkle tree for the blocks.

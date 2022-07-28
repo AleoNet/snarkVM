@@ -73,7 +73,7 @@ impl<A: Aleo> StatePath<A> {
 mod tests {
     use super::*;
     use crate::{
-        circuit::{environment::Inject, network::AleoV0, types::Field, Mode},
+        circuit::{environment::Inject, network::AleoV0, Mode},
         console::network::Testnet3,
         ledger::state_path::circuit::StatePath as StatePathCircuit,
         test_helpers::sample_genesis_block,
@@ -107,7 +107,6 @@ mod tests {
         let circuit_state_path = StatePathCircuit::<CurrentAleo>::new(Mode::Public, native_state_path);
 
         // Ensure the circuit state path is valid.
-        let mode = Mode::Public;
         let is_valid = circuit_state_path.verify();
 
         AleoV0::assert(is_valid);
