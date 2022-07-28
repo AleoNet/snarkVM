@@ -26,20 +26,23 @@ impl<A: Aleo> StatePath<A> {
         // Ensure the transition path is valid.
         let transition_path_is_valid = A::verify_merkle_path_bhp(
             &self.transition_path,
-            self.transition_leaf.id(),
+            self.transaction_leaf.id(),
             &self.transition_leaf.to_bits_le(),
         );
 
         // Ensure the transaction path is valid.
         let transaction_path_is_valid = A::verify_merkle_path_bhp(
             &self.transaction_path,
-            self.transaction_leaf.id(),
+            &self.transaction_id,
             &self.transaction_leaf.to_bits_le(),
         );
 
         // Ensure the transactions path is valid.
-        let transactions_path_is_valid =
-            A::verify_merkle_path_bhp(&self.transactions_path, &self.transaction_id, &self.transaction_id.to_bits_le());
+        let transactions_path_is_valid = A::verify_merkle_path_bhp(
+            &self.transactions_path,
+            &self.header_leaf.id(),
+            &self.transaction_id.to_bits_le(),
+        );
 
         // Ensure the header path is valid.
         let header_path_is_valid =
