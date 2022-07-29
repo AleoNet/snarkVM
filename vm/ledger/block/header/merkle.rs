@@ -130,6 +130,11 @@ mod tests {
             let leaf = header.to_leaf(header.transactions_root())?;
             assert_eq!(leaf.index(), 1);
             check_path(root, header.to_path(&leaf)?)?;
+
+            // Check the 7th leaf.
+            let leaf = header.to_leaf(&CurrentNetwork::hash_bhp512(&header.metadata().to_bits_le())?)?;
+            assert_eq!(leaf.index(), 7);
+            check_path(root, header.to_path(&leaf)?)?;
         }
 
         Ok(())

@@ -150,6 +150,11 @@ impl<N: Network> Header<N> {
         &self.transactions_root
     }
 
+    /// Returns the metadata of the block header.
+    pub const fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
     /// Returns the network ID of the block.
     pub const fn network(&self) -> u16 {
         self.metadata.network
