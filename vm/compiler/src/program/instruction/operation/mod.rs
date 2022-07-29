@@ -324,23 +324,10 @@ crate::operation!(
 );
 
 /// Computes the result of `first` mod `second`, storing the outcome in the destination.
-pub type Mod<N> = BinaryLiteral<N, ModOperation<N>>;
+pub type Modulo<N> = BinaryLiteral<N, ModuloOperation<N>>;
 
 crate::operation!(
-    pub struct ModOperation<console::prelude::ModChecked, circuit::prelude::ModChecked, mod_checked, "mod"> {
-        (U8, U8) => U8("ensure divide by zero halts"),
-        (U16, U16) => U16("ensure divide by zero halts"),
-        (U32, U32) => U32("ensure divide by zero halts"),
-        (U64, U64) => U64("ensure divide by zero halts"),
-        (U128, U128) => U128("ensure divide by zero halts"),
-    }
-);
-
-/// Computes the result of `first` mod `second`, storing the outcome in the destination.
-pub type ModWrapped<N> = BinaryLiteral<N, ModWrappedOperation<N>>;
-
-crate::operation!(
-    pub struct ModWrappedOperation<console::prelude::ModWrapped, circuit::prelude::ModWrapped, mod_wrapped, "mod.w"> {
+    pub struct ModuloOperation<console::prelude::Modulo, circuit::prelude::Modulo, modulo, "mod"> {
         (U8, U8) => U8("ensure divide by zero halts"),
         (U16, U16) => U16("ensure divide by zero halts"),
         (U32, U32) => U32("ensure divide by zero halts"),

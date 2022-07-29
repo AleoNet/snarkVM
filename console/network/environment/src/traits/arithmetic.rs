@@ -58,18 +58,11 @@ pub trait DivWrapped<Rhs: ?Sized = Self> {
     fn div_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for modding two values, enforcing an overflow never occurs.
-pub trait ModChecked<Rhs: ?Sized = Self> {
+/// Binary operator for modding two values.
+pub trait Modulo<Rhs: ?Sized = Self> {
     type Output;
 
-    fn mod_checked(&self, rhs: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for modding two values, wrapping the result if an overflow occurs.
-pub trait ModWrapped<Rhs: ?Sized = Self> {
-    type Output;
-
-    fn mod_wrapped(&self, rhs: &Rhs) -> Self::Output;
+    fn modulo(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for multiplying two values, enforcing an overflow never occurs.

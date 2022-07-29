@@ -276,6 +276,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + for<'a> DivAssign<&'a Self>
     + Eq
     + Equal
+    + Modulo
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>
@@ -284,6 +285,10 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + Not<Output = Self>
     + One
     + Parser
+    + Rem<Self, Output = Self>
+    + for<'a> Rem<&'a Self, Output = Self>
+    + RemAssign<Self>
+    + for<'a> RemAssign<&'a Self>
     + Send
     + SizeInBits
     + SizeInBytes
@@ -329,7 +334,6 @@ pub(super) mod integer_type {
     pub trait IntegerType:
         'static
         + CheckedAbs
-        + CheckedMod
         + CheckedNeg
         + CheckedPow
         + CheckedRem
@@ -342,6 +346,7 @@ pub(super) mod integer_type {
         + FromBytes
         + FromStr<Err = ParseIntError>
         + Hash
+        + Modulo
         + NumZero
         + NumOne
         + PartialOrd
@@ -353,7 +358,6 @@ pub(super) mod integer_type {
         + Uniform
         + WrappingAbs
         + WrappingAdd
-        + WrappingMod
         + WrappingMul
         + WrappingNeg
         + WrappingPow
@@ -404,21 +408,6 @@ pub(super) mod integer_type {
     binary_impl!(CheckedPow, i64, checked_pow, self, v, u32, Option<i64>, i64::checked_pow(*self, *v));
     binary_impl!(CheckedPow, i128, checked_pow, self, v, u32, Option<i128>, i128::checked_pow(*self, *v));
 
-    pub trait CheckedMod: Sized {
-        fn checked_mod(&self, v: &Self) -> Option<Self>;
-    }
-
-    binary_impl!(CheckedMod, u8, checked_mod, self, v, u8, Option<u8>, u8::checked_rem(*self, *v));
-    binary_impl!(CheckedMod, u16, checked_mod, self, v, u16, Option<u16>, u16::checked_rem(*self, *v));
-    binary_impl!(CheckedMod, u32, checked_mod, self, v, u32, Option<u32>, u32::checked_rem(*self, *v));
-    binary_impl!(CheckedMod, u64, checked_mod, self, v, u64, Option<u64>, u64::checked_rem(*self, *v));
-    binary_impl!(CheckedMod, u128, checked_mod, self, v, u128, Option<u128>, u128::checked_rem(*self, *v));
-    binary_impl!(CheckedMod, i8, checked_mod, self, _v, i8, Option<i8>, None);
-    binary_impl!(CheckedMod, i16, checked_mod, self, _v, i16, Option<i16>, None);
-    binary_impl!(CheckedMod, i32, checked_mod, self, _v, i32, Option<i32>, None);
-    binary_impl!(CheckedMod, i64, checked_mod, self, _v, i64, Option<i64>, None);
-    binary_impl!(CheckedMod, i128, checked_mod, self, _v, i128, Option<i128>, None);
-
     pub trait CheckedShl: Sized {
         fn checked_shl(&self, v: &u32) -> Option<Self>;
     }
@@ -444,6 +433,26 @@ pub(super) mod integer_type {
     #[rustfmt::skip]
     binary_impl!(CheckedShl, i128, checked_shl, self, v, u32, Option<i128>, u128::checked_pow(2u128, *v).and_then(|x| i128::checked_mul(if (x as i128) == i128::MIN { self.wrapping_neg() } else { *self }, x as i128)));
 
+    pub trait Modulo: Sized + Rem<Self, Output = Self> {
+        fn modulo(&self, v: &Self) -> Self;
+    }
+
+    binary_impl!(Modulo, u8, modulo, self, v, Self, u8, u8::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u16, modulo, self, v, Self, u16, u16::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u32, modulo, self, v, Self, u32, u32::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u64, modulo, self, v, Self, u64, u64::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u128, modulo, self, v, Self, u128, u128::wrapping_rem(*self, *v));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i8, modulo, self, _v, Self, i8, panic!("modulo is not implemented for i8"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i16, modulo, self, _v, Self, i16, panic!("modulo is not implemented for i16"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i32, modulo, self, _v, Self, i32, panic!("modulo is not implemented for i32"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i64, modulo, self, _v, Self, i64, panic!("modulo is not implemented for i64"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i128, modulo, self, _v, Self, i128, panic!("modulo is not implemented for i128"));
+
     pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
         fn wrapping_div(&self, v: &Self) -> Self;
     }
@@ -458,26 +467,6 @@ pub(super) mod integer_type {
     binary_impl!(WrappingDiv, i32, wrapping_div, self, v, Self, i32, i32::wrapping_div(*self, *v));
     binary_impl!(WrappingDiv, i64, wrapping_div, self, v, Self, i64, i64::wrapping_div(*self, *v));
     binary_impl!(WrappingDiv, i128, wrapping_div, self, v, Self, i128, i128::wrapping_div(*self, *v));
-
-    pub trait WrappingMod: Sized + Rem<Self, Output = Self> {
-        fn wrapping_mod(&self, v: &Self) -> Self;
-    }
-
-    binary_impl!(WrappingMod, u8, wrapping_mod, self, v, Self, u8, u8::wrapping_rem(*self, *v));
-    binary_impl!(WrappingMod, u16, wrapping_mod, self, v, Self, u16, u16::wrapping_rem(*self, *v));
-    binary_impl!(WrappingMod, u32, wrapping_mod, self, v, Self, u32, u32::wrapping_rem(*self, *v));
-    binary_impl!(WrappingMod, u64, wrapping_mod, self, v, Self, u64, u64::wrapping_rem(*self, *v));
-    binary_impl!(WrappingMod, u128, wrapping_mod, self, v, Self, u128, u128::wrapping_rem(*self, *v));
-    #[rustfmt::skip]
-    binary_impl!(WrappingMod, i8, wrapping_mod, self, _v, Self, i8, panic!("wrapping_mod is not implemented for i8"));
-    #[rustfmt::skip]
-    binary_impl!(WrappingMod, i16, wrapping_mod, self, _v, Self, i16, panic!("wrapping_mod is not implemented for i16"));
-    #[rustfmt::skip]
-    binary_impl!(WrappingMod, i32, wrapping_mod, self, _v, Self, i32, panic!("wrapping_mod is not implemented for i32"));
-    #[rustfmt::skip]
-    binary_impl!(WrappingMod, i64, wrapping_mod, self, _v, Self, i64, panic!("wrapping_mod is not implemented for i64"));
-    #[rustfmt::skip]
-    binary_impl!(WrappingMod, i128, wrapping_mod, self, _v, Self, i128, panic!("wrapping_mod is not implemented for i128"));
 
     pub trait WrappingRem: Sized + Rem<Self, Output = Self> {
         fn wrapping_rem(&self, v: &Self) -> Self;
