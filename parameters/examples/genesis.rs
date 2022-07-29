@@ -14,15 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::ToBytes;
-
-use anyhow::Result;
-use rand::thread_rng;
 use std::{
     fs::File,
     io::{Result as IoResult, Write},
     path::Path,
-    str::FromStr,
 };
 
 // pub fn generate<N: Network>(recipient: Address<N>) -> Result<Vec<u8>> {
@@ -53,6 +48,7 @@ pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
     Ok(())
 }
 
+#[allow(clippy::match_single_binding)]
 pub fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {

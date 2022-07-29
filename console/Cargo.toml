@@ -37,7 +37,9 @@ version = "0.7.5"
 optional = true
 
 [features]
-default = [ "account", "algorithms", "collections", "network", "program", "types" ]
+default = [ "parallel", "account", "algorithms", "collections", "network", "program", "types" ]
+parallel = [ "snarkvm-console-collections/parallel" ]
+
 account = [ "network", "snarkvm-console-account" ]
 algorithms = [ "snarkvm-console-algorithms" ]
 collections = [ "algorithms", "snarkvm-console-collections" ]

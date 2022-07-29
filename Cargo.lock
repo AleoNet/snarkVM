@@ -2560,7 +2560,7 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "serde",
- "snarkvm-algorithms",
+ "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-r1cs",

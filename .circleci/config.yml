@@ -496,7 +496,7 @@ jobs:
             sudo apt-get install nodejs
             curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
             cd wasm && wasm-pack test --node
-            # cargo test --target wasm32-unknown-unknown --features wasm
+            # cargo test --target wasm32-unknown-unknown
       - clear_environment:
           cache_key: snarkvm-wasm-cache
 

@@ -19,10 +19,8 @@ use snarkvm_algorithms::{
     snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
     SNARK,
 };
-use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
-use rand::{prelude::ThreadRng, thread_rng};
 use serde_json::{json, Value};
 use std::{
     fs::File,
@@ -48,12 +46,12 @@ fn write_remote(filename: &str, version: &str, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// Writes the given bytes to the given filename.
-fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
-    let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
-    file.write_all(bytes)?;
-    Ok(())
-}
+// /// Writes the given bytes to the given filename.
+// fn write_local(filename: &str, bytes: &[u8]) -> Result<()> {
+//     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
+//     file.write_all(bytes)?;
+//     Ok(())
+// }
 
 /// Writes the given metadata as JSON to the given filename.
 fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
