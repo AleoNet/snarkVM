@@ -2004,7 +2004,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "blake2",
- "blake2s_simd",
  "criterion",
  "crossbeam-channel",
  "csv",
