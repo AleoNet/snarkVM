@@ -1,0 +1,606 @@
+
+running 58 tests
+test bls12_377::fq6::test::test_fq2_mul_nonresidue ... ignored
+test bls12_377::tests::test_bilinearity ... ignored
+test bls12_377::tests::test_bls12_377_fq ... ignored
+test bls12_377::tests::test_bls12_377_fq12 ... ignored
+test bls12_377::tests::test_bls12_377_fq2 ... ignored
+test bls12_377::tests::test_bls12_377_fq6 ... ignored
+test bls12_377::tests::test_bls12_377_fr ... ignored
+test bls12_377::tests::test_fq12_mul_by_014 ... ignored
+test bls12_377::tests::test_fq12_mul_by_034 ... ignored
+test bls12_377::tests::test_fq2_basics ... ignored
+test bls12_377::tests::test_fq2_legendre ... ignored
+test bls12_377::tests::test_fq2_mul_nonresidue ... ignored
+test bls12_377::tests::test_fq2_ordering ... ignored
+test bls12_377::tests::test_fq6_mul_by_01 ... ignored
+test bls12_377::tests::test_fq6_mul_by_1 ... ignored
+test bls12_377::tests::test_fq_add_assign ... ignored
+test bls12_377::tests::test_fq_double_in_place ... ignored
+test bls12_377::tests::test_fq_inverse ... ignored
+test bls12_377::tests::test_fq_is_half ... ignored
+test bls12_377::tests::test_fq_legendre ... ignored
+test bls12_377::tests::test_fq_mul_assign ... ignored
+test bls12_377::tests::test_fq_negate ... ignored
+test bls12_377::tests::test_fq_num_bits ... ignored
+test bls12_377::tests::test_fq_ordering ... ignored
+test bls12_377::tests::test_fq_pow ... ignored
+test bls12_377::tests::test_fq_repr_from ... ignored
+test bls12_377::tests::test_fq_repr_is_odd ... ignored
+test bls12_377::tests::test_fq_repr_is_zero ... ignored
+test bls12_377::tests::test_fq_repr_num_bits ... ignored
+test bls12_377::tests::test_fq_root_of_unity ... ignored
+test bls12_377::tests::test_fq_sqrt ... ignored
+test bls12_377::tests::test_fq_squaring ... ignored
+test bls12_377::tests::test_fq_sub_assign ... ignored
+test bls12_377::tests::test_g1_generator ... ignored
+test bls12_377::tests::test_g1_projective_curve ... ignored
+test bls12_377::tests::test_g1_projective_group ... ignored
+test bls12_377::tests::test_g2_generator ... ignored
+test bls12_377::tests::test_g2_projective_curve ... ignored
+test bls12_377::tests::test_g2_projective_group ... ignored
+test edwards_bls12::tests::print_montgomery_to_weierstrass_parameters ... ignored
+test edwards_bls12::tests::test_affine_group ... ignored
+test edwards_bls12::tests::test_conversion ... ignored
+test edwards_bls12::tests::test_edwards_bls12_fq ... ignored
+test edwards_bls12::tests::test_edwards_bls12_fr ... ignored
+test edwards_bls12::tests::test_edwards_to_montgomery_point ... ignored
+test edwards_bls12::tests::test_generator ... ignored
+test edwards_bls12::tests::test_isomorphism ... ignored
+test edwards_bls12::tests::test_montgomery_conversion ... ignored
+test edwards_bls12::tests::test_projective_curve ... ignored
+test edwards_bls12::tests::test_projective_group ... ignored
+test edwards_bw6::tests::test_affine_group ... ignored
+test edwards_bw6::tests::test_conversion ... ignored
+test edwards_bw6::tests::test_edwards_bw6_fq ... ignored
+test edwards_bw6::tests::test_edwards_bw6_fr ... ignored
+test edwards_bw6::tests::test_generator ... ignored
+test edwards_bw6::tests::test_montgomery_conversion ... ignored
+test edwards_bw6::tests::test_projective_curve ... ignored
+test edwards_bw6::tests::test_projective_group ... ignored
+
+test result: ok. 0 passed; 0 failed; 58 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+WARNING: HTML report generation will become a non-default optional feature in Criterion.rs 0.4.0.
+This feature is being moved to cargo-criterion (https://github.com/bheisler/cargo-criterion) and will be optional in a future version of Criterion.rs. To silence this warning, either switch to cargo-criterion or enable the 'html_reports' feature in your Cargo.toml.
+
+Gnuplot not found, using plotters backend
+Benchmarking bls12_377: g1_rand
+Benchmarking bls12_377: g1_rand: Warming up for 3.0000 s
+Benchmarking bls12_377: g1_rand: Collecting 100 samples in estimated 5.6185 s (45k iterations)
+Benchmarking bls12_377: g1_rand: Analyzing
+bls12_377: g1_rand      time:   [123.45 us 123.80 us 124.16 us]
+                        change: [-0.3868% +0.0829% +0.4991%] (p = 0.71 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+
+Benchmarking bls12_377: g1_mul_assign
+Benchmarking bls12_377: g1_mul_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: g1_mul_assign: Collecting 100 samples in estimated 5.0180 s (30k iterations)
+Benchmarking bls12_377: g1_mul_assign: Analyzing
+bls12_377: g1_mul_assign
+                        time:   [166.99 us 167.44 us 167.92 us]
+                        change: [+1.8995% +2.1629% +2.4201%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: g1_add_assign
+Benchmarking bls12_377: g1_add_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: g1_add_assign: Collecting 100 samples in estimated 5.0005 s (7.9M iterations)
+Benchmarking bls12_377: g1_add_assign: Analyzing
+bls12_377: g1_add_assign
+                        time:   [633.54 ns 636.37 ns 639.19 ns]
+                        change: [+1.4434% +1.7762% +2.1439%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking bls12_377: g1_add_assign_mixed
+Benchmarking bls12_377: g1_add_assign_mixed: Warming up for 3.0000 s
+Benchmarking bls12_377: g1_add_assign_mixed: Collecting 100 samples in estimated 5.0014 s (11M iterations)
+Benchmarking bls12_377: g1_add_assign_mixed: Analyzing
+bls12_377: g1_add_assign_mixed
+                        time:   [464.80 ns 466.63 ns 468.60 ns]
+                        change: [+2.1420% +2.6005% +3.0739%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: g1_double
+Benchmarking bls12_377: g1_double: Warming up for 3.0000 s
+Benchmarking bls12_377: g1_double: Collecting 100 samples in estimated 5.0013 s (16M iterations)
+Benchmarking bls12_377: g1_double: Analyzing
+bls12_377: g1_double    time:   [310.49 ns 312.24 ns 313.96 ns]
+                        change: [+1.0852% +1.6499% +2.2805%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: g2_rand
+Benchmarking bls12_377: g2_rand: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 6.1s, enable flat sampling, or reduce sample count to 60.
+Benchmarking bls12_377: g2_rand: Collecting 100 samples in estimated 6.1233 s (5050 iterations)
+Benchmarking bls12_377: g2_rand: Analyzing
+bls12_377: g2_rand      time:   [1.1958 ms 1.2048 ms 1.2166 ms]
+                        change: [+1.4485% +1.8983% +2.4648%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: g2_mul_assign
+Benchmarking bls12_377: g2_mul_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: g2_mul_assign: Collecting 100 samples in estimated 6.5231 s (10k iterations)
+Benchmarking bls12_377: g2_mul_assign: Analyzing
+bls12_377: g2_mul_assign
+                        time:   [642.48 us 643.20 us 643.99 us]
+                        change: [+0.8701% +1.1406% +1.3791%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: g2_add_assign
+Benchmarking bls12_377: g2_add_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: g2_add_assign: Collecting 100 samples in estimated 5.0000 s (1.8M iterations)
+Benchmarking bls12_377: g2_add_assign: Analyzing
+bls12_377: g2_add_assign
+                        time:   [2.6933 us 2.6982 us 2.7039 us]
+                        change: [+0.5740% +0.9024% +1.2543%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: g2_add_assign_mixed
+Benchmarking bls12_377: g2_add_assign_mixed: Warming up for 3.0000 s
+Benchmarking bls12_377: g2_add_assign_mixed: Collecting 100 samples in estimated 5.0007 s (2.7M iterations)
+Benchmarking bls12_377: g2_add_assign_mixed: Analyzing
+bls12_377: g2_add_assign_mixed
+                        time:   [1.8861 us 1.8918 us 1.8996 us]
+                        change: [-0.1048% +0.2105% +0.5150%] (p = 0.19 > 0.05)
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking bls12_377: g2_double
+Benchmarking bls12_377: g2_double: Warming up for 3.0000 s
+Benchmarking bls12_377: g2_double: Collecting 100 samples in estimated 5.0011 s (4.2M iterations)
+Benchmarking bls12_377: g2_double: Analyzing
+bls12_377: g2_double    time:   [1.1884 us 1.1924 us 1.1971 us]
+                        change: [-0.3117% -0.0666% +0.1754%] (p = 0.61 > 0.05)
+                        No change in performance detected.
+Found 9 outliers among 100 measurements (9.00%)
+  6 (6.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking bls12_377: fq_repr_add_nocarry
+Benchmarking bls12_377: fq_repr_add_nocarry: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_repr_add_nocarry: Collecting 100 samples in estimated 5.0000 s (1.3B iterations)
+Benchmarking bls12_377: fq_repr_add_nocarry: Analyzing
+bls12_377: fq_repr_add_nocarry
+                        time:   [3.7379 ns 3.7593 ns 3.7832 ns]
+                        change: [+0.7421% +1.3265% +2.0243%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fq_repr_sub_noborrow
+Benchmarking bls12_377: fq_repr_sub_noborrow: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_repr_sub_noborrow: Collecting 100 samples in estimated 5.0000 s (1.2B iterations)
+Benchmarking bls12_377: fq_repr_sub_noborrow: Analyzing
+bls12_377: fq_repr_sub_noborrow
+                        time:   [4.2057 ns 4.2248 ns 4.2486 ns]
+                        change: [+1.8683% +2.4624% +3.1345%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 7 outliers among 100 measurements (7.00%)
+  5 (5.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fq_repr_num_bits
+Benchmarking bls12_377: fq_repr_num_bits: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_repr_num_bits: Collecting 100 samples in estimated 5.0000 s (1.7B iterations)
+Benchmarking bls12_377: fq_repr_num_bits: Analyzing
+bls12_377: fq_repr_num_bits
+                        time:   [2.9916 ns 2.9965 ns 3.0015 ns]
+                        change: [+0.5411% +0.8106% +1.1024%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking bls12_377: fq_repr_mul2
+Benchmarking bls12_377: fq_repr_mul2: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_repr_mul2: Collecting 100 samples in estimated 5.0000 s (1.4B iterations)
+Benchmarking bls12_377: fq_repr_mul2: Analyzing
+bls12_377: fq_repr_mul2 time:   [3.6148 ns 3.6268 ns 3.6414 ns]
+                        change: [+1.8609% +2.2104% +2.5708%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq_repr_div2
+Benchmarking bls12_377: fq_repr_div2: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_repr_div2: Collecting 100 samples in estimated 5.0000 s (1.4B iterations)
+Benchmarking bls12_377: fq_repr_div2: Analyzing
+bls12_377: fq_repr_div2 time:   [3.5999 ns 3.6091 ns 3.6186 ns]
+                        change: [+0.6374% +0.8873% +1.1277%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 7 outliers among 100 measurements (7.00%)
+  6 (6.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq_add_assign
+Benchmarking bls12_377: fq_add_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_add_assign: Collecting 100 samples in estimated 5.0000 s (850M iterations)
+Benchmarking bls12_377: fq_add_assign: Analyzing
+bls12_377: fq_add_assign
+                        time:   [5.6395 ns 5.7425 ns 5.8548 ns]
+                        change: [+9.2379% +11.707% +14.278%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: fq_sub_assign
+Benchmarking bls12_377: fq_sub_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_sub_assign: Collecting 100 samples in estimated 5.0000 s (872M iterations)
+Benchmarking bls12_377: fq_sub_assign: Analyzing
+bls12_377: fq_sub_assign
+                        time:   [5.7837 ns 5.8051 ns 5.8273 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq_mul_assign
+Benchmarking bls12_377: fq_mul_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_mul_assign: Collecting 100 samples in estimated 5.0001 s (138M iterations)
+Benchmarking bls12_377: fq_mul_assign: Analyzing
+bls12_377: fq_mul_assign
+                        time:   [36.131 ns 36.258 ns 36.398 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+Benchmarking bls12_377: fq_double
+Benchmarking bls12_377: fq_double: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_double: Collecting 100 samples in estimated 5.0000 s (1.3B iterations)
+Benchmarking bls12_377: fq_double: Analyzing
+bls12_377: fq_double    time:   [3.9859 ns 3.9942 ns 4.0023 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq_square
+Benchmarking bls12_377: fq_square: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_square: Collecting 100 samples in estimated 5.0002 s (140M iterations)
+Benchmarking bls12_377: fq_square: Analyzing
+bls12_377: fq_square    time:   [35.443 ns 35.530 ns 35.614 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking bls12_377: fq_inverse
+Benchmarking bls12_377: fq_inverse: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_inverse: Collecting 100 samples in estimated 5.0025 s (601k iterations)
+Benchmarking bls12_377: fq_inverse: Analyzing
+bls12_377: fq_inverse   time:   [8.3450 us 8.3769 us 8.4107 us]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq_negate
+Benchmarking bls12_377: fq_negate: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_negate: Collecting 100 samples in estimated 5.0000 s (1.2B iterations)
+Benchmarking bls12_377: fq_negate: Analyzing
+bls12_377: fq_negate    time:   [4.3363 ns 4.3536 ns 4.3744 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fq_sqrt
+Benchmarking bls12_377: fq_sqrt: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_sqrt: Collecting 100 samples in estimated 5.2745 s (96k iterations)
+Benchmarking bls12_377: fq_sqrt: Analyzing
+bls12_377: fq_sqrt      time:   [54.915 us 55.053 us 55.204 us]
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq_into_repr
+Benchmarking bls12_377: fq_into_repr: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_into_repr: Collecting 100 samples in estimated 5.0000 s (215M iterations)
+Benchmarking bls12_377: fq_into_repr: Analyzing
+bls12_377: fq_into_repr time:   [23.059 ns 23.109 ns 23.162 ns]
+
+Benchmarking bls12_377: fq_from_repr
+Benchmarking bls12_377: fq_from_repr: Warming up for 3.0000 s
+Benchmarking bls12_377: fq_from_repr: Collecting 100 samples in estimated 5.0002 s (119M iterations)
+Benchmarking bls12_377: fq_from_repr: Analyzing
+bls12_377: fq_from_repr time:   [42.054 ns 42.190 ns 42.354 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq12_add_assign
+Benchmarking bls12_377: fq12_add_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq12_add_assign: Collecting 100 samples in estimated 5.0007 s (32M iterations)
+Benchmarking bls12_377: fq12_add_assign: Analyzing
+bls12_377: fq12_add_assign
+                        time:   [162.50 ns 163.10 ns 163.74 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq12_sub_assign
+Benchmarking bls12_377: fq12_sub_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq12_sub_assign: Collecting 100 samples in estimated 5.0003 s (56M iterations)
+Benchmarking bls12_377: fq12_sub_assign: Analyzing
+bls12_377: fq12_sub_assign
+                        time:   [88.084 ns 88.590 ns 89.080 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+Benchmarking bls12_377: fq12_mul_assign
+Benchmarking bls12_377: fq12_mul_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq12_mul_assign: Collecting 100 samples in estimated 5.0057 s (1.2M iterations)
+Benchmarking bls12_377: fq12_mul_assign: Analyzing
+bls12_377: fq12_mul_assign
+                        time:   [4.2564 us 4.2742 us 4.2961 us]
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq12_double
+Benchmarking bls12_377: fq12_double: Warming up for 3.0000 s
+Benchmarking bls12_377: fq12_double: Collecting 100 samples in estimated 5.0001 s (62M iterations)
+Benchmarking bls12_377: fq12_double: Analyzing
+bls12_377: fq12_double  time:   [79.711 ns 80.202 ns 80.659 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: fq12_square
+Benchmarking bls12_377: fq12_square: Warming up for 3.0000 s
+Benchmarking bls12_377: fq12_square: Collecting 100 samples in estimated 5.0074 s (1.6M iterations)
+Benchmarking bls12_377: fq12_square: Analyzing
+bls12_377: fq12_square  time:   [3.1665 us 3.1775 us 3.1889 us]
+Found 7 outliers among 100 measurements (7.00%)
+  5 (5.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fq12_inverse
+Benchmarking bls12_377: fq12_inverse: Warming up for 3.0000 s
+Benchmarking bls12_377: fq12_inverse: Collecting 100 samples in estimated 5.0331 s (318k iterations)
+Benchmarking bls12_377: fq12_inverse: Analyzing
+bls12_377: fq12_inverse time:   [15.600 us 15.678 us 15.768 us]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fq2_add_assign
+Benchmarking bls12_377: fq2_add_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_add_assign: Collecting 100 samples in estimated 5.0000 s (447M iterations)
+Benchmarking bls12_377: fq2_add_assign: Analyzing
+bls12_377: fq2_add_assign
+                        time:   [11.114 ns 11.213 ns 11.326 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  9 (9.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fq2_sub_assign
+Benchmarking bls12_377: fq2_sub_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_sub_assign: Collecting 100 samples in estimated 5.0000 s (485M iterations)
+Benchmarking bls12_377: fq2_sub_assign: Analyzing
+bls12_377: fq2_sub_assign
+                        time:   [10.371 ns 10.395 ns 10.418 ns]
+
+Benchmarking bls12_377: fq2_mul_assign
+Benchmarking bls12_377: fq2_mul_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_mul_assign: Collecting 100 samples in estimated 5.0005 s (35M iterations)
+Benchmarking bls12_377: fq2_mul_assign: Analyzing
+bls12_377: fq2_mul_assign
+                        time:   [139.70 ns 140.41 ns 141.30 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking bls12_377: fq2_double
+Benchmarking bls12_377: fq2_double: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_double: Collecting 100 samples in estimated 5.0000 s (661M iterations)
+Benchmarking bls12_377: fq2_double: Analyzing
+bls12_377: fq2_double   time:   [7.5670 ns 7.6047 ns 7.6474 ns]
+Found 8 outliers among 100 measurements (8.00%)
+  6 (6.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fq2_square
+Benchmarking bls12_377: fq2_square: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_square: Collecting 100 samples in estimated 5.0005 s (45M iterations)
+Benchmarking bls12_377: fq2_square: Analyzing
+bls12_377: fq2_square   time:   [110.57 ns 111.39 ns 112.24 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: fq2_inverse
+Benchmarking bls12_377: fq2_inverse: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_inverse: Collecting 100 samples in estimated 5.0097 s (611k iterations)
+Benchmarking bls12_377: fq2_inverse: Analyzing
+bls12_377: fq2_inverse  time:   [8.1822 us 8.2079 us 8.2332 us]
+
+Benchmarking bls12_377: fq2_sqrt
+Benchmarking bls12_377: fq2_sqrt: Warming up for 3.0000 s
+Benchmarking bls12_377: fq2_sqrt: Collecting 100 samples in estimated 5.2196 s (61k iterations)
+Benchmarking bls12_377: fq2_sqrt: Analyzing
+bls12_377: fq2_sqrt     time:   [87.026 us 87.496 us 88.010 us]
+Found 10 outliers among 100 measurements (10.00%)
+  3 (3.00%) low severe
+  2 (2.00%) low mild
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking bls12_377: fr_repr_add_nocarry
+Benchmarking bls12_377: fr_repr_add_nocarry: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_repr_add_nocarry: Collecting 100 samples in estimated 5.0000 s (1.7B iterations)
+Benchmarking bls12_377: fr_repr_add_nocarry: Analyzing
+bls12_377: fr_repr_add_nocarry
+                        time:   [3.0033 ns 3.0159 ns 3.0289 ns]
+Found 11 outliers among 100 measurements (11.00%)
+  6 (6.00%) high mild
+  5 (5.00%) high severe
+
+Benchmarking bls12_377: fr_repr_sub_noborrow
+Benchmarking bls12_377: fr_repr_sub_noborrow: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_repr_sub_noborrow: Collecting 100 samples in estimated 5.0000 s (1.7B iterations)
+Benchmarking bls12_377: fr_repr_sub_noborrow: Analyzing
+bls12_377: fr_repr_sub_noborrow
+                        time:   [2.9473 ns 2.9545 ns 2.9628 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+Benchmarking bls12_377: fr_repr_num_bits
+Benchmarking bls12_377: fr_repr_num_bits: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_repr_num_bits: Collecting 100 samples in estimated 5.0000 s (1.5B iterations)
+Benchmarking bls12_377: fr_repr_num_bits: Analyzing
+bls12_377: fr_repr_num_bits
+                        time:   [3.2564 ns 3.2650 ns 3.2735 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking bls12_377: fr_repr_mul2
+Benchmarking bls12_377: fr_repr_mul2: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_repr_mul2: Collecting 100 samples in estimated 5.0000 s (1.6B iterations)
+Benchmarking bls12_377: fr_repr_mul2: Analyzing
+bls12_377: fr_repr_mul2 time:   [3.0331 ns 3.0408 ns 3.0515 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: fr_repr_div2
+Benchmarking bls12_377: fr_repr_div2: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_repr_div2: Collecting 100 samples in estimated 5.0000 s (1.7B iterations)
+Benchmarking bls12_377: fr_repr_div2: Analyzing
+bls12_377: fr_repr_div2 time:   [3.0242 ns 3.0297 ns 3.0369 ns]
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking bls12_377: fr_add_assign
+Benchmarking bls12_377: fr_add_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_add_assign: Collecting 100 samples in estimated 5.0000 s (1.3B iterations)
+Benchmarking bls12_377: fr_add_assign: Analyzing
+bls12_377: fr_add_assign
+                        time:   [3.6651 ns 3.7336 ns 3.8052 ns]
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fr_sub_assign
+Benchmarking bls12_377: fr_sub_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_sub_assign: Collecting 100 samples in estimated 5.0000 s (1.4B iterations)
+Benchmarking bls12_377: fr_sub_assign: Analyzing
+bls12_377: fr_sub_assign
+                        time:   [3.4776 ns 3.4814 ns 3.4862 ns]
+Found 14 outliers among 100 measurements (14.00%)
+  1 (1.00%) low severe
+  1 (1.00%) low mild
+  2 (2.00%) high mild
+  10 (10.00%) high severe
+
+Benchmarking bls12_377: fr_mul_assign
+Benchmarking bls12_377: fr_mul_assign: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_mul_assign: Collecting 100 samples in estimated 5.0000 s (292M iterations)
+Benchmarking bls12_377: fr_mul_assign: Analyzing
+bls12_377: fr_mul_assign
+                        time:   [17.217 ns 17.269 ns 17.325 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fr_double
+Benchmarking bls12_377: fr_double: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_double: Collecting 100 samples in estimated 5.0000 s (1.4B iterations)
+Benchmarking bls12_377: fr_double: Analyzing
+bls12_377: fr_double    time:   [3.5092 ns 3.5203 ns 3.5324 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: fr_square
+Benchmarking bls12_377: fr_square: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_square: Collecting 100 samples in estimated 5.0000 s (296M iterations)
+Benchmarking bls12_377: fr_square: Analyzing
+bls12_377: fr_square    time:   [16.826 ns 16.879 ns 16.934 ns]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: fr_inverse
+Benchmarking bls12_377: fr_inverse: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_inverse: Collecting 100 samples in estimated 5.0034 s (1.5M iterations)
+Benchmarking bls12_377: fr_inverse: Analyzing
+bls12_377: fr_inverse   time:   [3.3843 us 3.3986 us 3.4127 us]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking bls12_377: fr_negate
+Benchmarking bls12_377: fr_negate: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_negate: Collecting 100 samples in estimated 5.0000 s (1.7B iterations)
+Benchmarking bls12_377: fr_negate: Analyzing
+bls12_377: fr_negate    time:   [2.9637 ns 2.9750 ns 2.9873 ns]
+Found 6 outliers among 100 measurements (6.00%)
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking bls12_377: fr_sqrt
+Benchmarking bls12_377: fr_sqrt: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_sqrt: Collecting 100 samples in estimated 5.0570 s (207k iterations)
+Benchmarking bls12_377: fr_sqrt: Analyzing
+bls12_377: fr_sqrt      time:   [24.642 us 24.703 us 24.771 us]
+
+Benchmarking bls12_377: fr_into_repr
+Benchmarking bls12_377: fr_into_repr: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_into_repr: Collecting 100 samples in estimated 5.0000 s (470M iterations)
+Benchmarking bls12_377: fr_into_repr: Analyzing
+bls12_377: fr_into_repr time:   [10.545 ns 10.566 ns 10.590 ns]
+Found 10 outliers among 100 measurements (10.00%)
+  1 (1.00%) low mild
+  6 (6.00%) high mild
+  3 (3.00%) high severe
+
+Benchmarking bls12_377: fr_from_repr
+Benchmarking bls12_377: fr_from_repr: Warming up for 3.0000 s
+Benchmarking bls12_377: fr_from_repr: Collecting 100 samples in estimated 5.0001 s (279M iterations)
+Benchmarking bls12_377: fr_from_repr: Analyzing
+bls12_377: fr_from_repr time:   [17.634 ns 17.659 ns 17.692 ns]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+Benchmarking bls12_377: pairing_miller_loop
+Benchmarking bls12_377: pairing_miller_loop: Warming up for 3.0000 s
+Benchmarking bls12_377: pairing_miller_loop: Collecting 100 samples in estimated 6.3052 s (15k iterations)
+Benchmarking bls12_377: pairing_miller_loop: Analyzing
+bls12_377: pairing_miller_loop
+                        time:   [413.53 us 415.48 us 418.44 us]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking bls12_377: pairing_final_exponentiation
+Benchmarking bls12_377: pairing_final_exponentiation: Warming up for 3.0000 s
+Benchmarking bls12_377: pairing_final_exponentiation: Collecting 100 samples in estimated 8.4900 s (10k iterations)
+Benchmarking bls12_377: pairing_final_exponentiation: Analyzing
+bls12_377: pairing_final_exponentiation
+                        time:   [835.86 us 839.44 us 843.11 us]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking bls12_377: pairing_full
+Benchmarking bls12_377: pairing_full: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 7.2s, enable flat sampling, or reduce sample count to 50.
+Benchmarking bls12_377: pairing_full: Collecting 100 samples in estimated 7.2030 s (5050 iterations)
+Benchmarking bls12_377: pairing_full: Analyzing
+bls12_377: pairing_full time:   [1.4418 ms 1.4472 ms 1.4525 ms]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
