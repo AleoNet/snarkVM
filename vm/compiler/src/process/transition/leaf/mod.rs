@@ -55,24 +55,14 @@ impl<N: Network> TransitionLeaf<N> {
         Self { version, index, program_id, function_name, variant, id }
     }
 
-    /// Returns the index of the Merkle leaf.
-    pub const fn index(&self) -> u8 {
-        self.index
-    }
-
-    /// Returns the ID in the Merkle leaf.
-    pub const fn id(&self) -> Field<N> {
-        self.id
-    }
-
     /// Returns the version of the Merkle leaf.
     pub const fn version(&self) -> u8 {
         self.version
     }
 
-    /// Returns the variant of the Merkle leaf.
-    pub const fn variant(&self) -> u16 {
-        self.variant
+    /// Returns the index of the Merkle leaf.
+    pub const fn index(&self) -> u8 {
+        self.index
     }
 
     /// Returns the program ID in the Merkle leaf.
@@ -83,6 +73,16 @@ impl<N: Network> TransitionLeaf<N> {
     /// Returns the function name in the Merkle leaf.
     pub const fn function_name(&self) -> Identifier<N> {
         self.function_name
+    }
+
+    /// Returns the variant of the Merkle leaf.
+    pub const fn variant(&self) -> u16 {
+        self.variant
+    }
+
+    /// Returns the ID in the Merkle leaf.
+    pub const fn id(&self) -> Field<N> {
+        self.id
     }
 }
 
