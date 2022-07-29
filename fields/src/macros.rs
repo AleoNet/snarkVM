@@ -94,7 +94,7 @@ macro_rules! sqrt_impl {
                 let n = $P::TWO_ADICITY;
                 // `T` is equivalent to `m` in the paper.
                 let v = $self.pow($P::T_MINUS_ONE_DIV_TWO);
-                let x = $self.pow($P::T);
+                let x = *$self * v.square();
                 let g = $Self::two_adic_root_of_unity().pow($P::T);
                 let two = $Self::from(2u8);
                 let n_field = $Self::from(n);
