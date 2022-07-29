@@ -20,10 +20,8 @@ use crate::{
 };
 
 use core::borrow::Borrow;
-// use std::collections::hash_map::HashMap;
 use std::{
-    // collections::hash_map::{HashMap, Keys, Values},
-    collections::hash_map::{HashMap, IntoIter, IntoKeys, IntoValues},
+    collections::hash_map::{HashMap, Iter, Keys, Values},
     hash::Hash,
 };
 
@@ -37,8 +35,8 @@ pub struct MemoryMap<
 
 impl<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone + 'a,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone + 'a,
 > Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
@@ -69,19 +67,13 @@ impl<
 
 impl<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone + 'a,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone + 'a,
 > MapReader<'a, K, V> for MemoryMap<K, V>
 {
-    // TODO (raychu86): There is a lifetime issue with using standard `Iter`, `Keys`, and `Values` because the traits
-    //  expect owned objects.
-    type Iterator = IntoIter<K, V>;
-    type Keys = IntoKeys<K, V>;
-    type Values = IntoValues<K, V>;
-
-    // type Iterator = Iter<'a, K, V>;
-    // type Keys = Keys<'a, K, V>;
-    // type Values = Values<'a, K, V>;
+    type Iterator = Iter<'a, K, V>;
+    type Keys = Keys<'a, K, V>;
+    type Values = Values<'a, K, V>;
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -110,21 +102,31 @@ impl<
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
-    fn iter(&self) -> Self::Iterator {
-        self.map.clone().into_iter()
+    fn iter(&'a self) -> Self::Iterator {
+        self.map.iter()
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
-    fn keys(&self) -> Self::Keys {
-        self.map.clone().into_keys()
+    fn keys(&'a self) -> Self::Keys {
+        self.map.keys()
     }
 
     ///
     /// Returns an iterator over each value in the map.
     ///
-    fn values(&self) -> Self::Values {
-        self.map.clone().into_values()
+    fn values(&'a self) -> Self::Values {
+        self.map.values()
+    }
+}
+
+impl<
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+> Default for MemoryMap<K, V>
+{
+    fn default() -> Self {
+        Self { map: HashMap::new() }
     }
 }

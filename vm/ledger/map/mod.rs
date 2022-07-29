@@ -24,8 +24,8 @@ use std::hash::Hash;
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    V: PartialEq + Eq + Serialize + DeserializeOwned,
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + 'a,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + 'a,
 >: MapReader<'a, K, V>
 {
     ///
@@ -47,13 +47,13 @@ pub trait Map<
 /// A trait representing map-like storage operations with read-only capabilities.
 pub trait MapReader<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    V: PartialEq + Eq + Serialize + DeserializeOwned,
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + 'a,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + 'a,
 >
 {
-    type Iterator: Iterator<Item = (K, V)>;
-    type Keys: Iterator<Item = K>;
-    type Values: Iterator<Item = V>;
+    type Iterator: Iterator<Item = (&'a K, &'a V)>;
+    type Keys: Iterator<Item = &'a K>;
+    type Values: Iterator<Item = &'a V>;
 
     ///
     /// Returns `true` if the given key exists in the map.

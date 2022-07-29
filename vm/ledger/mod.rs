@@ -94,7 +94,7 @@ impl<N: Network> Ledger<N> {
     }
 
     /// Returns `true` if the given block height exists on the canon chain.
-    pub fn contains_block_height(&self, height: u32) -> bool {
+    pub fn contains_block_height(&self, height: u32) -> Result<bool> {
         self.blocks.contains_height(height)
     }
 

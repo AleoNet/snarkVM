@@ -20,13 +20,19 @@ use crate::{
         network::{prelude::*, BHPMerkleTree},
         types::Field,
     },
-    ledger::{state_path::StatePath, Block, Header, HeaderLeaf, Transaction, Transactions},
+    ledger::{
+        map::{memory_map::MemoryMap, Map, MapReader},
+        state_path::StatePath,
+        Block,
+        Header,
+        HeaderLeaf,
+        Transaction,
+        Transactions,
+    },
 };
 
 use anyhow::{anyhow, Result};
 use time::OffsetDateTime;
-
-use indexmap::IndexMap;
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
@@ -45,11 +51,11 @@ pub struct Blocks<N: Network> {
     /// The current state tree.
     pub(super) state_tree: StateTree<N>,
     /// The chain of previous block hashes.
-    pub(super) previous_hashes: IndexMap<u32, N::BlockHash>,
+    pub(super) previous_hashes: MemoryMap<u32, N::BlockHash>,
     /// The chain of block headers.
-    pub(super) headers: IndexMap<u32, Header<N>>,
+    pub(super) headers: MemoryMap<u32, Header<N>>,
     /// The chain of block transactions.
-    pub(super) transactions: IndexMap<u32, Transactions<N>>,
+    pub(super) transactions: MemoryMap<u32, Transactions<N>>,
 }
 
 impl<N: Network> Blocks<N> {
@@ -59,7 +65,7 @@ impl<N: Network> Blocks<N> {
         // let genesis_block = N::genesis_block();
         // let height = genesis_block.height();
 
-        let mut blocks = Self {
+        let blocks = Self {
             current_height: 0,
             current_hash: Default::default(),
             state_tree: N::merkle_tree_bhp(&[])?,
@@ -118,7 +124,7 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the previous block hash given the block height.
     pub fn get_previous_block_hash(&self, height: u32) -> Result<N::BlockHash> {
-        match self.previous_hashes.get(&height) {
+        match self.previous_hashes.get(&height)? {
             Some(previous_hash) => Ok(*previous_hash),
             None => Err(anyhow!("Missing previous block hash for height {}", height)),
         }
@@ -126,7 +132,7 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the block header given the block height.
     pub fn get_block_header(&self, height: u32) -> Result<&Header<N>> {
-        match self.headers.get(&height) {
+        match self.headers.get(&height)? {
             Some(header) => Ok(header),
             None => Err(anyhow!("Missing block header for height {}", height)),
         }
@@ -134,7 +140,7 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the block transactions given the block height.
     pub fn get_block_transactions(&self, height: u32) -> Result<&Transactions<N>> {
-        match self.transactions.get(&height) {
+        match self.transactions.get(&height)? {
             Some(transactions) => Ok(transactions),
             None => Err(anyhow!("Missing block transactions for height {}", height)),
         }
@@ -167,7 +173,7 @@ impl<N: Network> Blocks<N> {
 
         match height == self.current_height {
             true => Ok(self.current_hash),
-            false => match self.previous_hashes.get(&(height + 1)) {
+            false => match self.previous_hashes.get(&(height + 1))? {
                 Some(block_hash) => Ok(*block_hash),
                 None => Err(anyhow!("Missing block hash for height {}", height)),
             },
@@ -175,10 +181,11 @@ impl<N: Network> Blocks<N> {
     }
 
     /// Returns `true` if the given block height exists.
-    pub fn contains_height(&self, height: u32) -> bool {
-        self.previous_hashes.contains_key(&height)
-            || self.headers.contains_key(&height)
-            || self.transactions.contains_key(&height)
+    pub fn contains_height(&self, height: u32) -> Result<bool> {
+        self.previous_hashes
+            .contains_key(&height)
+            .or_else(|_| self.headers.contains_key(&height))
+            .or_else(|_| self.transactions.contains_key(&height))
     }
 
     /// Returns `true` if the given state root exists.
@@ -260,7 +267,7 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the block height does not already exist.
-        if self.contains_height(height) {
+        if self.contains_height(height)? {
             return Err(anyhow!("The given block height already exists in the ledger"));
         }
 
@@ -278,7 +285,7 @@ impl<N: Network> Blocks<N> {
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
 
         // Ensure the next block timestamp is after the current block timestamp.
-        if self.contains_height(0) {
+        if self.contains_height(0)? {
             let current_block = self.latest_block()?;
             if block.header().timestamp() <= current_block.header().timestamp() {
                 return Err(anyhow!("The given block timestamp is before the current timestamp"));
@@ -322,9 +329,9 @@ impl<N: Network> Blocks<N> {
             blocks.current_height = height;
             blocks.current_hash = block_hash;
             blocks.state_tree.append(&[block.hash().to_bits_le()])?;
-            blocks.previous_hashes.insert(height, block.previous_hash());
-            blocks.headers.insert(height, *block.header());
-            blocks.transactions.insert(height, block.transactions().clone());
+            blocks.previous_hashes.insert::<u32>(height, block.previous_hash())?;
+            blocks.headers.insert::<u32>(height, *block.header())?;
+            blocks.transactions.insert::<u32>(height, block.transactions().clone())?;
 
             *self = blocks;
         }
