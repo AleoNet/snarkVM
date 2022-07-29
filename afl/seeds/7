@@ -1,0 +1,26 @@
+program token.aleo;
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    token_amount as u64.private;
+
+closure execute:
+    input r0 as field;
+    input r1 as field;
+    add r0 r1 into r2;
+    add r0 r2 into r3;
+    add r2 r3 into r4;
+    output r4 as field;
+    output r3 as field;
+    output r2 as field;
+
+function compute:
+    input r0 as field.private;
+    input r1 as field.public;
+    input r2 as token.record;
+    call execute r0 r1 into r3 r4 r5;
+    output r2 as token.record;
+    output r3 as field.private;
+    output r4 as field.private;
+    output r5 as field.private;
