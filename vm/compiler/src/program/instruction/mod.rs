@@ -401,7 +401,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            51,
+            53,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
