@@ -23,11 +23,6 @@ path = "benches/msm/variable_base.rs"
 harness = false
 
 [[bench]]
-name = "commitment_bhp"
-path = "benches/commitment/bhp.rs"
-harness = false
-
-[[bench]]
 name = "pedersen_crh"
 path = "benches/crh/pedersen.rs"
 harness = false
@@ -40,11 +35,6 @@ harness = false
 [[bench]]
 name = "hash_to_curve"
 path = "benches/crypto_hash/hash_to_curve.rs"
-harness = false
-
-[[bench]]
-name = "merkle_tree"
-path = "benches/merkle_tree/merkle_tree.rs"
 harness = false
 
 [[bench]]
@@ -239,11 +229,9 @@ default = [
   "snarkvm-utilities/default"
 ]
 full = [
-  "commitment",
   "crh",
   "encryption",
   "fft",
-  "merkle_tree",
   "msm",
   "polycommit_full",
   "prf",
@@ -251,12 +239,10 @@ full = [
   "snark"
 ]
 wasm = [
-  "commitment",
   "crh",
   "crypto_hash",
   "encryption",
   "fft",
-  "merkle_tree",
   "msm",
   "polycommit_wasm",
   "prf",
@@ -271,12 +257,10 @@ cuda = [ "rust-gpu-tools" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
 profiler = [ "aleo-std/profiler" ]
 
-commitment = [ "crh" ]
 crh = [ "crypto_hash" ]
 crypto_hash = [ "blake2s_simd" ]
 encryption = [ "signature" ]
 fft = [ ]
-merkle_tree = [ ]
 msm = [ ]
 polycommit = [ "rand_core", "fft", "crh", "msm" ]
 polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]

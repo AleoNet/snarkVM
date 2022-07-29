@@ -29,9 +29,6 @@ extern crate thiserror;
 
 pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce};
 
-#[cfg(feature = "commitment")]
-pub mod commitment;
-
 #[cfg(feature = "crh")]
 pub mod crh;
 
@@ -46,9 +43,6 @@ pub use errors::*;
 
 #[cfg(feature = "fft")]
 pub mod fft;
-
-#[cfg(feature = "merkle_tree")]
-pub mod merkle_tree;
 
 #[cfg(feature = "msm")]
 pub mod msm;
