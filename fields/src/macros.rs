@@ -109,19 +109,16 @@ macro_rules! sqrt_impl {
                 let l = l_minus_one + $Self::one();
                 let mut l_s: Vec<$Self> = Vec::with_capacity(k);
 
-                for _ in 0..k_1 {
-                    l_s.push(l_minus_one);
-                }
-                for _ in 0..k_2 {
-                    l_s.push(l);
-                }
+                l_s.resize(l_s.len() + k_1, l_minus_one);
+                l_s.resize(l_s.len() + k_2, l);
 
                 let mut x_s: Vec<$Self> = Vec::with_capacity(k);
-                for i in 0..k {
-                    x_s.push(x.pow(
-                        two.pow((n_field - $Self::one() - (l_s.iter().take(i + 1).sum::<$Self>())).to_repr()).to_repr(),
-                    ));
-                }
+                let mut l_sum = $Self::zero();
+                l_s.iter().for_each(|l| {
+                    l_sum += l;
+                    let x = x.pow(two.pow((n_field - $Self::one() - l_sum).to_repr()).to_repr());
+                    x_s.push(x);
+                });
 
                 let find = |delta: $Self| -> $Self {
                     let mut mu = delta;
@@ -151,12 +148,12 @@ macro_rules! sqrt_impl {
 
                 let mut s = $Self::zero();
                 let mut t = $Self::zero();
-                for i in 0..k {
-                    t = (s + t) / two.pow(l_s[i].to_repr());
+                l_s.iter().zip(x_s.iter()).for_each(|(l, x)| {
+                    t = (s + t) / two.pow(l.to_repr());
                     let gamma = g.pow(t.to_repr());
-                    let alpha = x_s[i] * gamma;
+                    let alpha = *x * gamma;
                     s = eval(alpha);
-                }
+                });
 
                 t = s + t;
                 let gamma = g.pow((t / two).to_repr());
