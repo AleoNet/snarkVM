@@ -1986,7 +1986,6 @@ dependencies = [
  "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-gadgets",
  "snarkvm-parameters",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -2485,29 +2484,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-gadgets"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "blake2",
- "criterion",
- "derivative",
- "itertools",
- "num-bigint",
- "num-integer",
- "num-traits",
- "rand",
- "rand_chacha",
- "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-r1cs",
- "snarkvm-utilities",
- "thiserror",
-]
-
-[[package]]
 name = "snarkvm-parameters"
 version = "0.7.5"
 dependencies = [
@@ -2587,7 +2563,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-gadgets",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "wasm-bindgen",

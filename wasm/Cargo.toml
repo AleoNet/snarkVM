@@ -39,12 +39,6 @@ version = "0.7.5"
 optional = true
 default-features = false
 
-[dependencies.snarkvm-gadgets]
-path = "../gadgets"
-version = "0.7.5"
-optional = true
-default-features = false
-
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -86,7 +80,6 @@ full = [
   "algorithms",
   "curves",
   "fields",
-  "gadgets",
   "r1cs"
 ]
 parallel = [
@@ -98,5 +91,4 @@ parallel = [
 algorithms = [ "snarkvm-algorithms" ]
 curves = [ "snarkvm-curves" ]
 fields = [ "snarkvm-fields" ]
-gadgets = [ "snarkvm-gadgets" ]
 r1cs = [ "snarkvm-r1cs" ]
