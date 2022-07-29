@@ -341,7 +341,6 @@ impl<N: Network> Blocks<N> {
     /// Returns a state path for the given commitment.
     ///
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        // TODO (raychu86): Add support for input and output ids.
         // Find the transaction that contains the record commitment.
         let transaction = self
             .transactions

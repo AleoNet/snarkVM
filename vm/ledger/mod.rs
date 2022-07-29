@@ -26,6 +26,9 @@ pub use state_path::*;
 mod vm;
 pub use vm::*;
 
+mod map;
+pub use map::*;
+
 use crate::console::{network::prelude::*, types::Field};
 use snarkvm_compiler::Program;
 
