@@ -66,8 +66,14 @@ version = "1.0"
 version = "0.3"
 default-features = false
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [features]
 default = [ "std", "derive" ]
 std = [ ]
 derive = [ "snarkvm-utilities-derives" ]
 parallel = [ "rayon", "num_cpus", "aleo-std" ]
+fuzzing = [ "arbitrary" ]

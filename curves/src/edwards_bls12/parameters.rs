@@ -28,6 +28,7 @@ use std::str::FromStr;
 pub type EdwardsAffine = Affine<EdwardsParameters>;
 pub type EdwardsProjective = Projective<EdwardsParameters>;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EdwardsParameters;
 

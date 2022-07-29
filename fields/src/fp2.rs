@@ -35,7 +35,10 @@ use std::{
 };
 
 pub trait Fp2Parameters: 'static + Send + Sync + Serialize + for<'a> Deserialize<'a> {
+    #[cfg(not(feature = "fuzzing"))]
     type Fp: PrimeField;
+    #[cfg(feature = "fuzzing")]
+    type Fp: PrimeField + for<'a> arbitrary::Arbitrary<'a>;
 
     /// Coefficients for the Frobenius automorphism.
     const FROBENIUS_COEFF_FP2_C1: [Self::Fp; 2];
@@ -50,6 +53,7 @@ pub trait Fp2Parameters: 'static + Send + Sync + Serialize + for<'a> Deserialize
     }
 }
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = "P: Fp2Parameters"),

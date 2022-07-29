@@ -30,6 +30,7 @@ pub use snarkvm_console_types_integers::Integer;
 
 use core::marker::PhantomData;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct StringType<E: Environment> {
     /// The underlying string.

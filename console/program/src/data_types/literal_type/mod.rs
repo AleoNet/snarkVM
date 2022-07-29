@@ -24,6 +24,7 @@ use core::fmt::{self, Debug, Display};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum LiteralType {
     /// The Aleo address type.

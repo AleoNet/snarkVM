@@ -32,6 +32,7 @@ use rand::{
     Rng,
 };
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct BigInteger256(pub [u64; 4]);
 

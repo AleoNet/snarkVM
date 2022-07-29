@@ -141,8 +141,17 @@ pub trait AffineCurve:
     + ToMinimalBits
     + Zero
 {
+    #[cfg(not(feature = "fuzzing"))]
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
+    #[cfg(feature = "fuzzing")]
+    type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField>
+        + From<Self>
+        + Into<Self>
+        + for<'a> arbitrary::Arbitrary<'a>;
+    #[cfg(not(feature = "fuzzing"))]
     type BaseField: Field + SquareRootField;
+    #[cfg(feature = "fuzzing")]
+    type BaseField: Field + SquareRootField + for<'a> arbitrary::Arbitrary<'a>;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
     type Coordinates;
 
@@ -253,7 +262,10 @@ pub trait PairingCurve: AffineCurve {
 }
 
 pub trait ModelParameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
+    #[cfg(not(feature = "fuzzing"))]
     type BaseField: Field + SquareRootField;
+    #[cfg(feature = "fuzzing")]
+    type BaseField: Field + SquareRootField + for<'a> arbitrary::Arbitrary<'a>;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
 

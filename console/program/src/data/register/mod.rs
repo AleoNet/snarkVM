@@ -22,6 +22,7 @@ use crate::Identifier;
 use snarkvm_console_network::prelude::*;
 
 /// A register contains the location data to a value in memory.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Register<N: Network> {
     /// A register contains its locator in memory.

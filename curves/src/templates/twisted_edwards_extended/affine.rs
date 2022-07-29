@@ -41,6 +41,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,

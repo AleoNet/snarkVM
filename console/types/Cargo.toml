@@ -77,3 +77,12 @@ string = [
   "snarkvm-console-types-field",
   "snarkvm-console-types-integers"
 ]
+fuzzing = [
+    "snarkvm-console-types-address/fuzzing",
+    "snarkvm-console-types-boolean/fuzzing",
+    "snarkvm-console-types-field/fuzzing",
+    "snarkvm-console-types-group/fuzzing",
+    "snarkvm-console-types-integers/fuzzing",
+    "snarkvm-console-types-scalar/fuzzing",
+    "snarkvm-console-types-string/fuzzing",
+]

@@ -57,6 +57,7 @@ use console::{
     program::{Register, RegisterType},
 };
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Instruction<N: Network> {
     /// Compute the absolute value of `first`, checking for overflow, and storing the outcome in `destination`.

@@ -24,6 +24,7 @@ use console::{
 
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {value_type}`.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {
     /// The input register.

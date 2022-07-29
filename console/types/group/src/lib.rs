@@ -43,6 +43,7 @@ pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_scalar::Scalar;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Group<E: Environment> {
     /// The underlying group element.

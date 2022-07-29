@@ -25,6 +25,7 @@ use console::{
 /// An output statement defines an output of a function, and may refer to the value
 /// in either a register or a register member. An output statement is of the form
 /// `output {register} as {value_type};`.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output register.

@@ -24,6 +24,7 @@ use console::{
 
 /// An import statement defines an imported program, and is of the form `import {name}.{network};`.
 /// If no `network`-level domain is specified, the default network is used.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Import<N: Network> {
     /// The imported program ID.

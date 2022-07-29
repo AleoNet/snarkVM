@@ -23,6 +23,7 @@ use crate::bls12_377::Fq;
 
 pub type Fq2 = Fp2<Fq2Parameters>;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Fq2Parameters;
 

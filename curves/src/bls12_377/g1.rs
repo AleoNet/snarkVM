@@ -26,6 +26,7 @@ use crate::{
     ProjectiveCurve,
 };
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Bls12_377G1Parameters;
 

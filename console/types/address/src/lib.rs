@@ -35,6 +35,7 @@ pub use snarkvm_console_types_boolean::Boolean;
 pub use snarkvm_console_types_field::Field;
 pub use snarkvm_console_types_group::Group;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Address<E: Environment> {
     /// The underlying address.

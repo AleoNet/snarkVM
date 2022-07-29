@@ -56,6 +56,11 @@ version = "0.2"
 [dependencies.once_cell]
 version = "1.13.1"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 default-features = false
@@ -72,3 +77,4 @@ version = "0.3"
 
 [features]
 default = [ "snarkvm-curves/default", "snarkvm-r1cs/default" ]
+fuzzing = ["arbitrary"]

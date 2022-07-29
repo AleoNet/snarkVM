@@ -51,6 +51,16 @@ pub struct Field<E: Environment> {
     bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, E: Environment> arbitrary::Arbitrary<'a> for Field<E> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Field {
+            linear_combination: <LinearCombination<E::BaseField> as arbitrary::Arbitrary>::arbitrary(u)?,
+            bits_le: OnceCell::with_value(<Vec<Boolean<E>> as arbitrary::Arbitrary>::arbitrary(u)?),
+        })
+    }
+}
+
 impl<E: Environment> FieldTrait for Field<E> {}
 
 #[cfg(console)]

@@ -23,6 +23,7 @@ use snarkvm_console_network::prelude::*;
 
 use enum_index::EnumIndex;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum EntryType<N: Network> {
     /// A constant type.

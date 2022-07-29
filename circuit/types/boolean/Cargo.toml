@@ -21,9 +21,15 @@ optional = true
 path = "../../environment"
 version = "0.9.0"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [dev-dependencies.criterion]
 version = "0.3"
 
 [features]
 default = [ "enable_console" ]
 enable_console = [ "console" ]
+fuzzing = ["arbitrary"]

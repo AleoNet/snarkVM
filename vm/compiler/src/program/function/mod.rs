@@ -49,6 +49,34 @@ pub struct Function<N: Network> {
     finalize: Option<(FinalizeCommand<N>, Finalize<N>)>,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Function<N>
+where
+    <N as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let name = <Identifier<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        let mut inputs = IndexSet::new();
+        let iter = u.arbitrary_iter::<Input<N>>()?;
+        for elem_result in iter {
+            let i = elem_result?;
+            inputs.insert(i);
+        }
+
+        let instructions = <Vec<Instruction<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        let mut outputs = IndexSet::new();
+        let iter = u.arbitrary_iter::<Output<N>>()?;
+        for elem_result in iter {
+            let i = elem_result?;
+            outputs.insert(i);
+        }
+
+        Ok(Function { name, inputs, instructions, outputs })
+    }
+}
+
 impl<N: Network> Function<N> {
     /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {

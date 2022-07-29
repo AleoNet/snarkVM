@@ -38,6 +38,7 @@ use console::{
 use indexmap::IndexMap;
 
 /// Casts the operands into the declared type.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Cast<N: Network> {
     /// The operands.

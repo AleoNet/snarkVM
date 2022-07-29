@@ -49,6 +49,7 @@ use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 /// ```
 pub type Fr = Fp256<FrParameters>;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 pub struct FrParameters;
 
 impl Fp256Parameters for FrParameters {}

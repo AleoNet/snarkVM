@@ -6,6 +6,10 @@ description = "Network console library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[features]
+default = []
+fuzzing = ["arbitrary", "snarkvm-console-network-environment/fuzzing"]
+
 [dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 version = "0.9.0"
@@ -55,3 +59,8 @@ version = "1.4"
 
 [dependencies.serde]
 version = "1.0"
+
+[dependencies.arbitrary]
+version = "1.0"
+features = ["derive"]
+optional = true

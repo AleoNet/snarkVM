@@ -113,6 +113,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9a8f622bcf6ff3df478e9deba3e03e4e04b300f8e6a139e192c05fa3490afc7"
 
 [[package]]
+name = "arbitrary"
+version = "1.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f44124848854b941eafdb34f05b3bcf59472f643c7e151eba7c2b69daa469ed5"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -599,6 +608,17 @@ name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2 1.0.43",
+ "quote 1.0.21",
+ "syn 1.0.99",
+]
+
+[[package]]
+name = "derive_arbitrary"
+version = "1.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "226ad66541d865d7a7173ad6a9e691c33fdb910ac723f4bc734b3e5294a1f931"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
@@ -2254,6 +2274,7 @@ dependencies = [
 name = "snarkvm-circuit-environment"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "criterion",
  "indexmap",
  "itertools",
@@ -2330,6 +2351,7 @@ dependencies = [
 name = "snarkvm-circuit-types-boolean"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "criterion",
  "snarkvm-circuit-environment",
  "snarkvm-console-types-boolean",
@@ -2339,6 +2361,7 @@ dependencies = [
 name = "snarkvm-circuit-types-field"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-console-types-field",
@@ -2372,6 +2395,7 @@ dependencies = [
 name = "snarkvm-circuit-types-scalar"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "snarkvm-circuit-environment",
  "snarkvm-circuit-types-boolean",
  "snarkvm-circuit-types-field",
@@ -2396,6 +2420,7 @@ name = "snarkvm-compiler"
 version = "0.9.0"
 dependencies = [
  "anyhow",
+ "arbitrary",
  "bincode",
  "colored",
  "indexmap",
@@ -2476,6 +2501,7 @@ name = "snarkvm-console-network"
 version = "0.9.0"
 dependencies = [
  "anyhow",
+ "arbitrary",
  "itertools",
  "lazy_static",
  "serde",
@@ -2494,6 +2520,7 @@ name = "snarkvm-console-network-environment"
 version = "0.9.0"
 dependencies = [
  "anyhow",
+ "arbitrary",
  "bech32",
  "itertools",
  "nom",
@@ -2509,6 +2536,7 @@ dependencies = [
 name = "snarkvm-console-program"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "enum_index",
  "enum_index_derive",
@@ -2540,6 +2568,7 @@ dependencies = [
 name = "snarkvm-console-types-address"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2552,6 +2581,7 @@ dependencies = [
 name = "snarkvm-console-types-boolean"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2561,6 +2591,7 @@ dependencies = [
 name = "snarkvm-console-types-field"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2571,6 +2602,7 @@ dependencies = [
 name = "snarkvm-console-types-group"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2583,6 +2615,7 @@ dependencies = [
 name = "snarkvm-console-types-integers"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2594,6 +2627,7 @@ dependencies = [
 name = "snarkvm-console-types-scalar"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2605,6 +2639,7 @@ dependencies = [
 name = "snarkvm-console-types-string"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
@@ -2617,6 +2652,7 @@ dependencies = [
 name = "snarkvm-curves"
 version = "0.9.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "criterion",
  "rand",
@@ -2633,6 +2669,7 @@ version = "0.9.0"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "arbitrary",
  "derivative",
  "itertools",
  "num-traits",
@@ -2707,6 +2744,7 @@ version = "0.9.0"
 dependencies = [
  "aleo-std",
  "anyhow",
+ "arbitrary",
  "bincode",
  "num-bigint",
  "num_cpus",

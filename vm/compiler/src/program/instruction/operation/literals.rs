@@ -29,6 +29,7 @@ pub type BinaryLiteral<N, O> = Literals<N, O, 2>;
 /// A ternary literal operation.
 pub type TernaryLiteral<N, O> = Literals<N, O, 3>;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
     /// The operands.

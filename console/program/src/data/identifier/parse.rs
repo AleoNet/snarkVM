@@ -76,6 +76,7 @@ impl<N: Network> Debug for Identifier<N> {
 
 impl<N: Network> Display for Identifier<N> {
     /// Prints the identifier as a string.
+    #[cfg(not(feature = "fuzzing"))]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Convert the identifier to bits.
         let bits_le = self.0.to_bits_le();
@@ -99,6 +100,13 @@ impl<N: Network> Display for Identifier<N> {
             },
             None => Err(fmt::Error),
         }
+    }
+
+    // This implementation is manual due to some nasty panic that only occurs with libfuzzer, perhaps due to
+    // it leaking some non-panic error messages to stdout; the panic points to `anyhow::private::format_err`.
+    #[cfg(feature = "fuzzing")]
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "<fuzzed Identifier>")
     }
 }
 

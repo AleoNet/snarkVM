@@ -24,6 +24,7 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::Field;
 
 /// A locator is of the form `{program_id}/{resource}` (i.e. `howard.aleo/notify`).
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Locator<N: Network> {
     /// The program ID.

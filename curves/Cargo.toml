@@ -56,6 +56,11 @@ features = [ "derive" ]
 [dependencies.thiserror]
 version = "1.0"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [dev-dependencies.bincode]
 version = "1.3.3"
 
@@ -70,3 +75,4 @@ rustc_version = "0.4"
 
 [features]
 default = [ "snarkvm-fields/default", "snarkvm-utilities/default" ]
+fuzzing = [ "arbitrary", "snarkvm-fields/fuzzing", "snarkvm-utilities/fuzzing" ]

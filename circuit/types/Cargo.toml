@@ -6,6 +6,10 @@ description = "Primitive circuit for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[features]
+default = []
+fuzzing = ["snarkvm-circuit-environment/fuzzing", "snarkvm-circuit-types-boolean/fuzzing", "snarkvm-circuit-types-field/fuzzing", "snarkvm-circuit-types-scalar/fuzzing"]
+
 [dependencies.snarkvm-circuit-environment]
 path = "../environment"
 version = "0.9.0"

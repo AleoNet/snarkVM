@@ -42,6 +42,7 @@ use console::{
 
 use indexmap::IndexMap;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum ProgramDefinition {
     /// A program mapping.
@@ -74,6 +75,60 @@ pub struct Program<N: Network> {
     closures: IndexMap<Identifier<N>, Closure<N>>,
     /// A map of the declared functions for the program.
     functions: IndexMap<Identifier<N>, Function<N>>,
+}
+
+#[cfg(feature = "fuzzing")]
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Program<N>
+where
+    <N as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let id = <ProgramID<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        let mut imports = IndexMap::new();
+        let iter = u.arbitrary_iter::<(ProgramID<N>, Import<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            imports.insert(k, v);
+        }
+
+        let mut identifiers = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, ProgramDefinition)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            identifiers.insert(k, v);
+        }
+
+        let mut interfaces = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, Interface<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            interfaces.insert(k, v);
+        }
+
+        let mut records = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, RecordType<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            records.insert(k, v);
+        }
+
+        let mut closures = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, Closure<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            closures.insert(k, v);
+        }
+
+        let mut functions = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, Function<N>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            functions.insert(k, v);
+        }
+
+        Ok(Program { id, imports, identifiers, interfaces, records, closures, functions })
+    }
 }
 
 impl<N: Network> Program<N> {

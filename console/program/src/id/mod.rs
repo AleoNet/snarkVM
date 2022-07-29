@@ -34,6 +34,20 @@ pub struct ProgramID<N: Network> {
     network: Identifier<N>,
 }
 
+#[cfg(feature = "fuzzing")]
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for ProgramID<N>
+where
+    <N as Environment>::Field: arbitrary::Arbitrary<'a>,
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let name = <Identifier<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        // no need to fuzz it twice, and "aleo" is the only accepted value
+        let network = Identifier::from_str("aleo").unwrap();
+
+        Ok(ProgramID { name, network })
+    }
+}
+
 impl<N: Network> From<(Identifier<N>, Identifier<N>)> for ProgramID<N> {
     /// Initializes a program ID from a name and network-level domain identifier.
     fn from((name, network): (Identifier<N>, Identifier<N>)) -> Self {
