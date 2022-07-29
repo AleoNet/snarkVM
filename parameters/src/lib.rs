@@ -30,10 +30,6 @@ pub mod macros;
 pub mod errors;
 pub use errors::*;
 
-pub mod testnet1;
-
-pub mod testnet2;
-
 pub mod testnet3;
 
 pub mod traits;

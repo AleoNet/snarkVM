@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet2::Testnet2, Account, Address, PrivateKey, ViewKey};
-use snarkvm_utilities::ToBits;
+use snarkvm_console::{
+    account::{Address, PrivateKey, ViewKey},
+    network::Testnet3,
+};
+use snarkvm_utilities::test_crypto_rng;
 
 use core::str::FromStr;
 use wasm_bindgen_test::*;
@@ -25,34 +28,34 @@ const ITERATIONS: usize = 1000;
 #[wasm_bindgen_test]
 fn test_account() {
     const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1zkp8cC4jgHEBnbtu3xxs1Ndja2EMizcvTRDq5Nikdkukg1p";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1iAf6a7fv6ELA4ECwAth1hDNUJJNNoWNThmREjpybqder";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1n1n3ZbnVEtXVe3La2xWkUvY3EY7XaCG6RZJJ3tbvrrrD";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo1wvgwnqvy46qq0zemj0k6sfp3zv0mp77rw97khvwuhac05yuwscxqmfyhwf";
 
-    let private_key = PrivateKey::<Testnet2>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+    let private_key = PrivateKey::<Testnet3>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
     assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, private_key.to_string());
 
-    let view_key = ViewKey::from(&private_key);
+    let view_key = ViewKey::try_from(&private_key).unwrap();
     assert_eq!(ALEO_TESTNET2_VIEW_KEY, view_key.to_string());
 
-    let address = Address::from(&view_key);
+    let address = Address::try_from(&view_key).unwrap();
     assert_eq!(ALEO_TESTNET2_ADDRESS, address.to_string());
 }
 
 #[wasm_bindgen_test]
 fn test_account_sign() {
     for _ in 0..ITERATIONS {
-        // Sample a new account.
-        let rng = &mut rand::thread_rng();
-        let account = Account::<Testnet2>::new(rng);
+        // Sample a new private key and address.
+        let rng = &mut test_crypto_rng();
+        let private_key = PrivateKey::<Testnet3>::new(rng).unwrap();
+        let address = Address::try_from(&private_key).unwrap();
 
         // Sign a message with the account private key.
-        let result = account.private_key().sign(&b"hello world!".to_bits_le(), rng);
+        let result = private_key.sign_bytes("hello world!".as_bytes(), rng);
         assert!(result.is_ok(), "Failed to generate a signature");
 
         // Verify the signed message.
         let signature = result.unwrap();
-        let result = account.address().verify_signature(&b"hello world!".to_bits_le(), &signature);
-        assert!(result.is_ok(), "Failed to execute signature verification");
-        assert!(result.unwrap(), "Signature is invalid");
+        let result = signature.verify_bytes(&address, "hello world!".as_bytes());
+        assert!(result, "Failed to execute signature verification");
     }
 }

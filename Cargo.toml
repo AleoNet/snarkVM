@@ -52,16 +52,13 @@ members = [
   "console/types/scalar",
   "console/types/string",
   "curves",
-  "dpc",
   "fields",
-  "gadgets",
   "parameters",
   "r1cs",
   "utilities",
   "utilities/derives", # excluded from [features], for internal use primarily
   "vm/compiler", # for internal use primarily
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
-  ".integration" # excluded from [features], for CI only
 ]
 
 [lib]
@@ -74,7 +71,7 @@ required-features = ["cli"]
 
 [features]
 default = ["cli", "parallel"]
-full = ["algorithms", "circuit", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+full = ["algorithms", "circuit", "console", "curves", "fields", "parameters", "r1cs", "utilities"]
 
 ## snarkVM CLI ##
 cli = ["anyhow", "circuit", "console", "clap", "colored", "rand", "self_update", "serde_json", "thiserror"]
@@ -84,9 +81,7 @@ algorithms = ["snarkvm-algorithms"]
 circuit = ["snarkvm-circuit"]
 console = ["snarkvm-console"]
 curves = ["snarkvm-curves"]
-dpc = ["snarkvm-dpc"]
 fields = ["snarkvm-fields"]
-gadgets = ["snarkvm-gadgets"]
 parameters = ["snarkvm-parameters"]
 r1cs = ["snarkvm-r1cs"]
 utilities = ["snarkvm-utilities"]
@@ -119,18 +114,8 @@ path = "./curves"
 version = "0.7.5"
 optional = true
 
-[dependencies.snarkvm-dpc]
-path = "./dpc"
-version = "0.7.5"
-optional = true
-
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.7.5"
-optional = true
-
-[dependencies.snarkvm-gadgets]
-path = "./gadgets"
 version = "0.7.5"
 optional = true
 

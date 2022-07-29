@@ -446,16 +446,6 @@ jobs:
           workspace_member: fields
           cache_key: snarkvm-fields-cache
 
-  gadgets:
-    docker:
-      - image: cimg/rust:1.62
-    resource_class: xlarge
-    steps:
-      - run_serial:
-          workspace_member: gadgets
-          cache_key: snarkvm-gadgets-cache
-          flags: --features core,nonnative
-
   parameters:
     docker:
       - image: cimg/rust:1.62
@@ -506,7 +496,7 @@ jobs:
             sudo apt-get install nodejs
             curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
             cd wasm && wasm-pack test --node
-            # cargo test --target wasm32-unknown-unknown --features wasm
+            # cargo test --target wasm32-unknown-unknown
       - clear_environment:
           cache_key: snarkvm-wasm-cache
 
@@ -598,7 +588,6 @@ workflows:
       - console-types-string
       - curves
       - fields
-      - gadgets
       - parameters
       - r1cs
       - utilities
@@ -618,7 +607,6 @@ workflows:
                 console,
                 curves,
                 fields,
-                gadgets,
                 parameters,
                 r1cs,
                 utilities

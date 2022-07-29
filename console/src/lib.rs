@@ -36,5 +36,6 @@ pub use snarkvm_console_program as program;
 pub use snarkvm_console_types as types;
 
 pub mod prelude {
+    #[cfg(feature = "network")]
     pub use crate::network::prelude::*;
 }

@@ -1250,15 +1250,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_threads"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2819ce041d2ee131036f4fc9d6ae7ae125a3a40e97ba64d04fe799ad9dabbb44"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1994,9 +1985,7 @@ dependencies = [
  "snarkvm-compiler",
  "snarkvm-console",
  "snarkvm-curves",
- "snarkvm-dpc",
  "snarkvm-fields",
- "snarkvm-gadgets",
  "snarkvm-parameters",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -2481,37 +2470,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-dpc"
-version = "0.7.5"
-dependencies = [
- "aleo-std",
- "anyhow",
- "base58",
- "bech32",
- "bincode",
- "blake2",
- "criterion",
- "derivative",
- "hex",
- "itertools",
- "once_cell",
- "rand",
- "rand_chacha",
- "rayon",
- "serde",
- "serde_json",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-gadgets",
- "snarkvm-parameters",
- "snarkvm-r1cs",
- "snarkvm-utilities",
- "thiserror",
- "time",
-]
-
-[[package]]
 name = "snarkvm-fields"
 version = "0.7.5"
 dependencies = [
@@ -2523,41 +2481,6 @@ dependencies = [
  "serde",
  "snarkvm-utilities",
  "thiserror",
-]
-
-[[package]]
-name = "snarkvm-gadgets"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "blake2",
- "criterion",
- "derivative",
- "itertools",
- "num-bigint",
- "num-integer",
- "num-traits",
- "rand",
- "rand_chacha",
- "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-r1cs",
- "snarkvm-utilities",
- "thiserror",
-]
-
-[[package]]
-name = "snarkvm-integration"
-version = "0.7.5"
-dependencies = [
- "aleo-std",
- "rand",
- "rand_chacha",
- "snarkvm-dpc",
- "snarkvm-utilities",
- "time",
 ]
 
 [[package]]
@@ -2581,7 +2504,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-console",
  "snarkvm-curves",
- "snarkvm-dpc",
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
@@ -2638,11 +2560,9 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "serde",
- "snarkvm-algorithms",
+ "snarkvm-console",
  "snarkvm-curves",
- "snarkvm-dpc",
  "snarkvm-fields",
- "snarkvm-gadgets",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "wasm-bindgen",
@@ -2794,16 +2714,6 @@ dependencies = [
  "proc-macro2 1.0.42",
  "quote 1.0.20",
  "syn 1.0.98",
-]
-
-[[package]]
-name = "time"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72c91f41dcb2f096c05f0873d667dceec1087ce5bcf984ec8ffb19acddbb3217"
-dependencies = [
- "libc",
- "num_threads",
 ]
 
 [[package]]

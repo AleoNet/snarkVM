@@ -88,9 +88,6 @@ default-features = false
 [dev-dependencies.snarkvm-console]
 path = "../console"
 
-[dev-dependencies.snarkvm-dpc]
-path = "../dpc"
-
 [dev-dependencies.curl]
 version = "0.4.34"
 
