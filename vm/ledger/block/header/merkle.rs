@@ -36,6 +36,26 @@ impl<N: Network> Header<N> {
         self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
     }
 
+    /// Returns the Merkle leaf for the given ID in the header.
+    pub fn to_leaf(&self, id: &Field<N>) -> Result<HeaderLeaf<N>> {
+        // If the ID is the previous state root, return the 0th leaf.
+        if id == &self.previous_state_root {
+            Ok(HeaderLeaf::<N>::new(0, self.previous_state_root))
+        }
+        // If the ID is the previous state root, return the 1st leaf.
+        else if id == &self.transactions_root {
+            Ok(HeaderLeaf::<N>::new(1, self.transactions_root))
+        }
+        // If the ID is the metadata hash, then return the 7th leaf.
+        else if id == &N::hash_bhp512(&self.metadata.to_bits_le())? {
+            Ok(HeaderLeaf::<N>::new(7, *id))
+        }
+        // Otherwise, bail.
+        else {
+            bail!("Non-existent block header leaf ID: {id}")
+        }
+    }
+
     /// Returns an instance of the Merkle tree for the block header.
     pub fn to_tree(&self) -> Result<HeaderTree<N>> {
         // Construct the metadata bits (the last leaf in the Merkle tree).
@@ -62,5 +82,56 @@ impl<N: Network> Header<N> {
 
         // Compute the Merkle tree.
         N::merkle_tree_bhp::<HEADER_DEPTH>(&leaves)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::console::network::Testnet3;
+    use snarkvm_utilities::test_crypto_rng;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 1_000;
+
+    fn check_path<N: Network>(root: Field<N>, header_path: HeaderPath<N>) -> Result<()> {
+        let expected_bytes = header_path.to_bytes_le()?;
+        assert_eq!(header_path, HeaderPath::<N>::read_le(&expected_bytes[..])?);
+        assert!(HeaderPath::<N>::read_le(&expected_bytes[1..]).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_merkle() -> Result<()> {
+        let rng = &mut test_crypto_rng();
+
+        for _ in 0..ITERATIONS {
+            let header = Header::<CurrentNetwork>::from(
+                Field::rand(rng),
+                Field::rand(rng),
+                CurrentNetwork::ID,
+                u32::rand(rng),
+                u64::rand(rng),
+                u64::rand(rng),
+                u64::rand(rng),
+                rng.gen_range(0..i64::MAX),
+            )?;
+
+            // Compute the header root.
+            let root = header.to_root()?;
+
+            // Check the 0th leaf.
+            let leaf = header.to_leaf(header.previous_state_root())?;
+            assert_eq!(leaf.index(), 0);
+            check_path(root, header.to_path(&leaf)?)?;
+
+            // Check the 1st leaf.
+            let leaf = header.to_leaf(header.transactions_root())?;
+            assert_eq!(leaf.index(), 1);
+            check_path(root, header.to_path(&leaf)?)?;
+        }
+
+        Ok(())
     }
 }

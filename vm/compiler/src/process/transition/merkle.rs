@@ -30,6 +30,12 @@ impl<N: Network> Transition<N> {
         Ok(*self.to_tree()?.root())
     }
 
+    /// Returns the Merkle path for the transition leaf.
+    pub fn to_path(&self, leaf: &TransitionLeaf<N>) -> Result<TransitionPath<N>> {
+        // Compute the Merkle path.
+        self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
+    }
+
     /// Returns the Merkle leaf for the given input or output ID in the transition.
     pub fn to_leaf(&self, id: &Field<N>, is_input: bool) -> Result<TransitionLeaf<N>> {
         // Set the version.
@@ -77,12 +83,6 @@ impl<N: Network> Transition<N> {
                 bail!("Output ID not found in transition")
             }
         }
-    }
-
-    /// Returns the Merkle path for the transition leaf.
-    pub fn to_path(&self, leaf: &TransitionLeaf<N>) -> Result<TransitionPath<N>> {
-        // Compute the Merkle path.
-        self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
     }
 
     /// The Merkle tree of input and output IDs for the transition.
