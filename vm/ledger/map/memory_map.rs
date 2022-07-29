@@ -22,8 +22,8 @@ use crate::{
 use core::borrow::Borrow;
 // use std::collections::hash_map::HashMap;
 use std::{
+    // collections::hash_map::{HashMap, Keys, Values},
     collections::hash_map::{HashMap, IntoIter, IntoKeys, IntoValues},
-    // collections::hash_map::{HashMap, Iter, Keys, Values},
     hash::Hash,
 };
 
@@ -35,8 +35,11 @@ pub struct MemoryMap<
     pub(super) map: HashMap<K, V>,
 }
 
-impl<'a, K: PartialEq + Eq + Hash + Serialize + DeserializeOwned, V: PartialEq + Eq + Serialize + DeserializeOwned>
-    Map<'a, K, V> for MemoryMap<K, V>
+impl<
+    'a,
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+> Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
     /// Inserts the given key-value pair into the map.
@@ -64,8 +67,11 @@ impl<'a, K: PartialEq + Eq + Hash + Serialize + DeserializeOwned, V: PartialEq +
     }
 }
 
-impl<'a, K: PartialEq + Eq + Hash + Serialize + DeserializeOwned, V: PartialEq + Eq + Serialize + DeserializeOwned>
-    MapReader<'a, K, V> for MemoryMap<K, V>
+impl<
+    'a,
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+> MapReader<'a, K, V> for MemoryMap<K, V>
 {
     // TODO (raychu86): There is a lifetime issue with using standard `Iter`, `Keys`, and `Values` because the traits
     //  expect owned objects.
@@ -99,24 +105,26 @@ impl<'a, K: PartialEq + Eq + Hash + Serialize + DeserializeOwned, V: PartialEq +
         Ok(self.map.get(key))
     }
 
+    // TODO (raychu86): This is extremely inefficient due to cloning as a workaround for lifetimes.
+
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
-    fn iter(&'a self) -> Self::Iterator {
-        self.map.into_iter()
+    fn iter(&self) -> Self::Iterator {
+        self.map.clone().into_iter()
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
-    fn keys(&'a self) -> Self::Keys {
-        self.map.into_keys()
+    fn keys(&self) -> Self::Keys {
+        self.map.clone().into_keys()
     }
 
     ///
     /// Returns an iterator over each value in the map.
     ///
-    fn values(&'a self) -> Self::Values {
-        self.map.into_values()
+    fn values(&self) -> Self::Values {
+        self.map.clone().into_values()
     }
 }
