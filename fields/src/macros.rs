@@ -120,12 +120,12 @@ macro_rules! sqrt_impl {
                     x_s.push(x);
                 });
 
-                let find = |delta: $Self| -> $Self {
+                let find = |delta: $Self| -> u32 {
                     let mut mu = delta;
-                    let mut i = $Self::zero();
+                    let mut i = 0;
                     while mu != -$Self::one() {
                         mu.square_in_place();
-                        i += $Self::one();
+                        i += 1;
                     }
                     i
                 };
@@ -135,10 +135,11 @@ macro_rules! sqrt_impl {
                     let mut s = $Self::zero();
                     while delta != $Self::one() {
                         let i = find(delta);
-                        let n_minus_one_minus_i = (n_field - $Self::one() - i).to_repr();
-                        s += two.pow(n_minus_one_minus_i);
-                        if i > $Self::zero() {
-                            delta *= g.pow(two.pow(n_minus_one_minus_i).to_repr());
+                        let n_minus_one_minus_i = n - 1 - i;
+                        s += two.pow(BigInteger::from(n_minus_one_minus_i as u64));
+                        if i > 0 {
+                            delta *= $Self::from_repr($P::POWERS_OF_G[n_minus_one_minus_i as usize])
+                                .expect("precomputed powers of g should always convert properly");
                         } else {
                             delta = -delta;
                         }

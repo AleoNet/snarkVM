@@ -40,4 +40,6 @@ pub trait FftParameters: 'static + Send + Sync + Sized {
     /// GENERATOR^((MODULUS-1) / (2^s *
     /// SMALL_SUBGROUP_BASE^SMALL_SUBGROUP_BASE_ADICITY)) Used for mixed-radix FFT.
     const LARGE_SUBGROUP_ROOT_OF_UNITY: Option<Self::BigInteger> = None;
+
+    const POWERS_OF_G: &'static [Self::BigInteger];
 }
