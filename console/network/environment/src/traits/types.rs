@@ -468,47 +468,16 @@ pub(super) mod integer_type {
     binary_impl!(WrappingMod, u32, wrapping_mod, self, v, Self, u32, u32::wrapping_rem(*self, *v));
     binary_impl!(WrappingMod, u64, wrapping_mod, self, v, Self, u64, u64::wrapping_rem(*self, *v));
     binary_impl!(WrappingMod, u128, wrapping_mod, self, v, Self, u128, u128::wrapping_rem(*self, *v));
+    #[rustfmt::skip]
     binary_impl!(WrappingMod, i8, wrapping_mod, self, _v, Self, i8, panic!("wrapping_mod is not implemented for i8"));
-    binary_impl!(
-        WrappingMod,
-        i16,
-        wrapping_mod,
-        self,
-        _v,
-        Self,
-        i16,
-        panic!("wrapping_mod is not implemented for i16")
-    );
-    binary_impl!(
-        WrappingMod,
-        i32,
-        wrapping_mod,
-        self,
-        _v,
-        Self,
-        i32,
-        panic!("wrapping_mod is not implemented for i32")
-    );
-    binary_impl!(
-        WrappingMod,
-        i64,
-        wrapping_mod,
-        self,
-        _v,
-        Self,
-        i64,
-        panic!("wrapping_mod is not implemented for i64")
-    );
-    binary_impl!(
-        WrappingMod,
-        i128,
-        wrapping_mod,
-        self,
-        _v,
-        Self,
-        i128,
-        panic!("wrapping_mod is not implemented for i128")
-    );
+    #[rustfmt::skip]
+    binary_impl!(WrappingMod, i16, wrapping_mod, self, _v, Self, i16, panic!("wrapping_mod is not implemented for i16"));
+    #[rustfmt::skip]
+    binary_impl!(WrappingMod, i32, wrapping_mod, self, _v, Self, i32, panic!("wrapping_mod is not implemented for i32"));
+    #[rustfmt::skip]
+    binary_impl!(WrappingMod, i64, wrapping_mod, self, _v, Self, i64, panic!("wrapping_mod is not implemented for i64"));
+    #[rustfmt::skip]
+    binary_impl!(WrappingMod, i128, wrapping_mod, self, _v, Self, i128, panic!("wrapping_mod is not implemented for i128"));
 
     pub trait WrappingRem: Sized + Rem<Self, Output = Self> {
         fn wrapping_rem(&self, v: &Self) -> Self;
