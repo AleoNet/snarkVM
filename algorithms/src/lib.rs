@@ -29,17 +29,8 @@ extern crate thiserror;
 
 pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce};
 
-#[cfg(feature = "commitment")]
-pub mod commitment;
-
-#[cfg(feature = "crh")]
-pub mod crh;
-
 #[cfg(feature = "crypto_hash")]
 pub mod crypto_hash;
-
-#[cfg(feature = "encryption")]
-pub mod encryption;
 
 pub mod errors;
 pub use errors::*;
@@ -47,20 +38,11 @@ pub use errors::*;
 #[cfg(feature = "fft")]
 pub mod fft;
 
-#[cfg(feature = "merkle_tree")]
-pub mod merkle_tree;
-
 #[cfg(feature = "msm")]
 pub mod msm;
 
 #[cfg(feature = "polycommit")]
 pub mod polycommit;
-
-#[cfg(feature = "prf")]
-pub mod prf;
-
-#[cfg(feature = "signature")]
-pub mod signature;
 
 #[cfg(feature = "snark")]
 pub mod snark;

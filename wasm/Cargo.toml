@@ -20,12 +20,10 @@ edition = "2021"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
-[dependencies.snarkvm-algorithms]
-path = "../algorithms"
+[dependencies.snarkvm-console]
+path = "../console"
 version = "0.7.5"
 optional = true
-default-features = false
-features = [ "wasm" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -33,21 +31,8 @@ version = "0.7.5"
 optional = true
 default-features = false
 
-[dependencies.snarkvm-dpc]
-path = "../dpc"
-version = "0.7.5"
-optional = true
-default-features = false
-features = ["wasm"]
-
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
-optional = true
-default-features = false
-
-[dependencies.snarkvm-gadgets]
-path = "../gadgets"
 version = "0.7.5"
 optional = true
 default-features = false
@@ -90,23 +75,18 @@ version = "0.3.30"
 [features]
 default = [ "full", "parallel" ]
 full = [
-  "algorithms",
+  "console",
   "curves",
-  "dpc",
   "fields",
-  "gadgets",
   "r1cs"
 ]
 parallel = [
-  "snarkvm-algorithms/parallel",
-  "snarkvm-dpc/parallel",
+  "snarkvm-console/parallel",
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
 ]
 
-algorithms = [ "snarkvm-algorithms" ]
+console = [ "snarkvm-console" ]
 curves = [ "snarkvm-curves" ]
-dpc = ["snarkvm-dpc"]
 fields = [ "snarkvm-fields" ]
-gadgets = [ "snarkvm-gadgets" ]
 r1cs = [ "snarkvm-r1cs" ]

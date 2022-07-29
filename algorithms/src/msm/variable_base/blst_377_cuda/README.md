@@ -25,33 +25,3 @@ This may be necessary to ensure the compatibility of your GPU drivers.
   cd snarkVM/algorithms/src/msm/variable_base/blst_377_cuda
   ./build.sh
 ```
-
-### 3. Benchmark the GPU implementations
-
-#### Benchmark POSW:
-
-Native:
-```bash
-  cd snarkVM/dpc
-  cargo bench --bench posw 
-```
-
-GPU:
-```bash
-  cd snarkVM/dpc
-  cargo bench --bench posw --features "snarkvm-algorithms/cuda"
-```
-
-#### Benchmark Transactions:
-
-Native:
-```bash
-  cd snarkVM/dpc
-  cargo bench --bench transaction 
-```
-
-GPU:
-```bash
-  cd snarkVM/dpc
-  cargo bench --bench transaction --features "snarkvm-algorithms/cuda"
-```

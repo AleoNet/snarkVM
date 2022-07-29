@@ -610,17 +610,17 @@ impl<N: Network> Stack<N> {
             bail!("Expected {num_inputs} inputs, found {}", console_request.inputs().len())
         }
 
-        // Initialize the registers.
-        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
-
         // Ensure the inputs match their expected types.
         console_request.inputs().iter().zip_eq(&function.input_types()).try_for_each(|(input, input_type)| {
-            // Ensure the input matches the input type in the substack function.
+            // Ensure the input matches the input type in the function.
             self.matches_value_type(input, input_type)
         })?;
 
         // Ensure the request is well-formed.
         ensure!(console_request.verify(&function.input_types()), "Request is invalid");
+
+        // Initialize the registers.
+        let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
 
         use circuit::{Eject, Inject};
 

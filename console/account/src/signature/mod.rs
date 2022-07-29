@@ -17,6 +17,9 @@
 mod bytes;
 mod parse;
 mod serialize;
+mod verify;
+
+#[cfg(feature = "private_key")]
 mod sign;
 
 #[cfg(feature = "compute_key")]

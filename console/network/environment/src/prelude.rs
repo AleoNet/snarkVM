@@ -57,6 +57,8 @@ pub use core::{
         MulAssign,
         Neg,
         Not,
+        Rem,
+        RemAssign,
         Shl,
         ShlAssign,
         Shr,

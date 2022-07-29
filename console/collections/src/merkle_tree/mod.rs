@@ -49,7 +49,7 @@ pub struct MerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHas
 impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>>, const DEPTH: u8>
     MerkleTree<E, LH, PH, DEPTH>
 {
-    // #[timed]
+    #[timed]
     #[inline]
     /// Initializes a new Merkle tree with the given leaves.
     pub fn new(leaf_hasher: &LH, path_hasher: &PH, leaves: &[LH::Leaf]) -> Result<Self> {
@@ -109,7 +109,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
         })
     }
 
-    // #[timed]
+    #[timed]
     #[inline]
     /// Returns a new Merkle tree with the given new leaves appended to it.
     pub fn append(&mut self, new_leaves: &[LH::Leaf]) -> Result<()> {
@@ -289,7 +289,7 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 #[inline]
 fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
     // Ensure the tree size is less than 2^52 (for casting to an f64).
-    let tree_depth = match tree_size < 4503599627370496 {
+    let tree_depth = match (tree_size as u64) < 4503599627370496_u64 {
         // Compute the log2 of the tree size.
         true => (tree_size as f64).log2(),
         false => bail!("Tree size must be less than 2^52"),

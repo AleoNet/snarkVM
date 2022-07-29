@@ -41,8 +41,6 @@ pub use snarkvm_circuit as circuit;
 pub use snarkvm_console as console;
 #[cfg(feature = "curves")]
 pub use snarkvm_curves as curves;
-#[cfg(feature = "dpc")]
-pub use snarkvm_dpc as dpc;
 #[cfg(feature = "fields")]
 pub use snarkvm_fields as fields;
 #[cfg(feature = "gadgets")]

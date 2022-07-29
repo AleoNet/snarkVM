@@ -141,6 +141,10 @@ pub enum Instruction<N: Network> {
     Pow(Pow<N>),
     /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
     PowWrapped(PowWrapped<N>),
+    /// Divides `first` by `second`, storing the remainder in `destination`.
+    Rem(Rem<N>),
+    /// Divides `first` by `second`, wrapping around at the boundary of the type, storing the remainder in `destination`.
+    RemWrapped(RemWrapped<N>),
     /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
     Shl(Shl<N>),
     /// Shifts `first` left by `second` bits, continuing past the boundary of the type, storing the outcome in `destination`.
@@ -233,6 +237,8 @@ macro_rules! instruction {
             Or,
             Pow,
             PowWrapped,
+            Rem,
+            RemWrapped,
             Shl,
             ShlWrapped,
             Shr,
@@ -389,7 +395,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            49,
+            51,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
