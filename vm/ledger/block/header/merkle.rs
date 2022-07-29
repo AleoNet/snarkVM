@@ -33,26 +33,30 @@ impl<N: Network> Header<N> {
     /// Returns the Merkle path for the Merkle tree of the block header.
     pub fn to_path(&self, leaf: &HeaderLeaf<N>) -> Result<HeaderPath<N>> {
         // Compute the Merkle path.
-        self.to_tree()?.prove(leaf.index() as usize, &leaf.id().to_bits_le())
+        self.to_tree()?.prove(leaf.index() as usize, &leaf.to_bits_le())
     }
 
     /// Returns an instance of the Merkle tree for the block header.
-    #[allow(clippy::useless_vec)]
     pub fn to_tree(&self) -> Result<HeaderTree<N>> {
-        // Construct the metadata leaf (the last leaf in the Merkle tree).
-        let metadata = self.metadata.to_bits_le(); // 304 bits
-        // Ensure the metadata leaf is the correct size.
-        ensure!(metadata.len() == 304, "Incorrect block header metadata size");
+        // Construct the metadata bits (the last leaf in the Merkle tree).
+        let metadata_bits = self.metadata.to_bits_le(); // 304 bits
+        // Ensure the metadata bits is the correct size.
+        ensure!(metadata_bits.len() == 304, "Incorrect block header metadata size");
+        // Hash the metadata bits.
+        let metadata_hash = N::hash_bhp512(&metadata_bits)?;
 
         // Determine the number of leaves.
         let num_leaves = usize::pow(2, HEADER_DEPTH as u32);
 
         // Construct the Merkle leaves.
         let mut leaves: Vec<Vec<bool>> = Vec::with_capacity(num_leaves);
-        leaves.push(self.previous_state_root.to_bits_le());
-        leaves.push(self.transactions_root.to_bits_le());
-        leaves.extend_from_slice(&vec![vec![false; 256]; 5]);
-        leaves.push(metadata);
+        leaves.push(HeaderLeaf::<N>::new(0, self.previous_state_root).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(1, self.transactions_root).to_bits_le());
+        for i in 2..7 {
+            leaves.push(HeaderLeaf::<N>::new(i, Field::zero()).to_bits_le());
+        }
+        leaves.push(HeaderLeaf::<N>::new(7, metadata_hash).to_bits_le());
+
         // Ensure the correct number of leaves are allocated.
         ensure!(num_leaves == leaves.len(), "Incorrect number of leaves in the Merkle tree for the block header");
 
