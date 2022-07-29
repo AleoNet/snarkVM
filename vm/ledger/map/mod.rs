@@ -31,15 +31,14 @@ pub trait Map<
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert<Q>(&self, key: Q, value: V) -> Result<()>
+    fn insert<Q>(&mut self, key: K, value: V) -> Result<()>
     where
-        K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize;
 
     ///
     /// Removes the key-value pair for the given key from the map.
     ///
-    fn remove<Q>(&self, key: &Q) -> Result<()>
+    fn remove<Q>(&mut self, key: &Q) -> Result<()>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;

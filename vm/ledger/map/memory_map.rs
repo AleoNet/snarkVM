@@ -25,7 +25,6 @@ use std::{
     collections::hash_map::{HashMap, IntoIter, IntoKeys, IntoValues},
     // collections::hash_map::{HashMap, Iter, Keys, Values},
     hash::Hash,
-    sync::Arc,
 };
 
 #[derive(Clone)]
@@ -39,24 +38,14 @@ pub struct MemoryMap<
 impl<'a, K: PartialEq + Eq + Hash + Serialize + DeserializeOwned, V: PartialEq + Eq + Serialize + DeserializeOwned>
     Map<'a, K, V> for MemoryMap<K, V>
 {
-    //TODO (raychu86): Find a fix for `insert` and `remove` not having a mutable self.
-
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert<Q>(&self, key: Q, value: V) -> Result<()>
+    fn insert<Q>(&mut self, key: K, value: V) -> Result<()>
     where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + Serialize,
+        Q: PartialEq + Eq + Hash + Serialize,
     {
-        // TODO (raychu86): FIX THIS.
-
-        // let k = (key as &dyn std::any::Any).downcast_ref::<K>().unwrap();
-        // self.map.insert(k, value);
-
-        // (&$variable as &dyn std::any::Any).downcast_ref::<$object<$network>>()
-
-        self.map.insert(*key, value);
+        self.map.insert(key, value);
 
         Ok(())
     }
@@ -64,7 +53,7 @@ impl<'a, K: PartialEq + Eq + Hash + Serialize + DeserializeOwned, V: PartialEq +
     ///
     /// Removes the key-value pair for the given key from the map.
     ///
-    fn remove<Q>(&self, key: &Q) -> Result<()>
+    fn remove<Q>(&mut self, key: &Q) -> Result<()>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
