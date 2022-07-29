@@ -95,7 +95,11 @@ mod tests {
 
     const ITERATIONS: u64 = 1_000;
 
-    fn check_path<N: Network>(root: Field<N>, header_path: HeaderPath<N>) -> Result<()> {
+    fn check_path<N: Network>(header_path: HeaderPath<N>, root: Field<N>, leaf: &HeaderLeaf<N>) -> Result<()> {
+        // Ensure that the path is valid for the corresponding root and leaf.
+        assert!(N::verify_merkle_path_bhp(&header_path, &root, &leaf.to_bits_le()));
+
+        // Check serialization.
         let expected_bytes = header_path.to_bytes_le()?;
         assert_eq!(header_path, HeaderPath::<N>::read_le(&expected_bytes[..])?);
         assert!(HeaderPath::<N>::read_le(&expected_bytes[1..]).is_err());
@@ -124,17 +128,17 @@ mod tests {
             // Check the 0th leaf.
             let leaf = header.to_leaf(header.previous_state_root())?;
             assert_eq!(leaf.index(), 0);
-            check_path(root, header.to_path(&leaf)?)?;
+            check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 1st leaf.
             let leaf = header.to_leaf(header.transactions_root())?;
             assert_eq!(leaf.index(), 1);
-            check_path(root, header.to_path(&leaf)?)?;
+            check_path(header.to_path(&leaf)?, root, &leaf)?;
 
             // Check the 7th leaf.
             let leaf = header.to_leaf(&CurrentNetwork::hash_bhp512(&header.metadata().to_bits_le())?)?;
             assert_eq!(leaf.index(), 7);
-            check_path(root, header.to_path(&leaf)?)?;
+            check_path(header.to_path(&leaf)?, root, &leaf)?;
         }
 
         Ok(())
