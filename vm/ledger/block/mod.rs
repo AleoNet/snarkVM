@@ -29,6 +29,7 @@ mod serialize;
 mod string;
 
 use crate::{
+    compiler::{Deployment, Execution},
     console::{
         account::{Address, PrivateKey},
         network::prelude::*,
@@ -198,12 +199,12 @@ impl<N: Network> Block<N> {
 
 impl<N: Network> Block<N> {
     /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
         self.transactions.deployments()
     }
 
     /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
         self.transactions.executions()
     }
 }

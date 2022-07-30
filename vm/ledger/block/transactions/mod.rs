@@ -22,7 +22,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    compiler::Transition,
+    compiler::{Deployment, Execution, Transition},
     console::{
         collections::merkle_tree::MerklePath,
         network::{prelude::*, BHPMerkleTree},
@@ -116,26 +116,35 @@ impl<N: Network> Transactions<N> {
 }
 
 impl<N: Network> Transactions<N> {
-    /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
-        self.transactions.values().filter(|transaction| matches!(transaction, Transaction::Deploy(..)))
-    }
-
-    /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
-        self.transactions.values().filter(|transaction| matches!(transaction, Transaction::Execute(..)))
-    }
-}
-
-impl<N: Network> Transactions<N> {
     // /// Returns the state roots, by constructing a flattened list of state roots from all transactions.
     // pub fn state_roots(&self) -> impl Iterator<Item = N::LedgerRoot> + '_ {
     //     self.transactions.iter().map(Transaction::state_roots)
     // }
 
+    /// Returns an iterator over all transactions, for all transactions in `self`.
+    pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.values()
+    }
+
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
         self.transactions.keys()
+    }
+
+    /// Returns an iterator over all transactions in `self` that are deployments.
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
+        self.transactions.values().filter_map(|transaction| match transaction {
+            Transaction::Deploy(_, deployment) => Some(deployment),
+            _ => None,
+        })
+    }
+
+    /// Returns an iterator over all transactions in `self` that are executions.
+    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
+        self.transactions.values().filter_map(|transaction| match transaction {
+            Transaction::Execute(_, execution) => Some(execution),
+            _ => None,
+        })
     }
 
     /// Returns an iterator over all executed transitions.
