@@ -49,11 +49,11 @@ impl<A: Aleo> Inject for TransitionLeaf<A> {
     /// Initializes a new transition leaf circuit from a primitive.
     fn new(mode: Mode, transition_leaf: Self::Primitive) -> Self {
         Self {
-            version: U8::new(mode, snarkvm_console::types::U8::new(transition_leaf.version())),
-            index: U8::new(mode, snarkvm_console::types::U8::new(transition_leaf.index())),
+            version: U8::new(mode, crate::console::types::U8::new(transition_leaf.version())),
+            index: U8::new(mode, crate::console::types::U8::new(transition_leaf.index())),
             program_id: ProgramID::new(mode, transition_leaf.program_id()),
             function_name: Identifier::new(mode, transition_leaf.function_name()),
-            variant: U16::new(mode, snarkvm_console::types::U16::new(transition_leaf.variant())),
+            variant: U16::new(mode, crate::console::types::U16::new(transition_leaf.variant())),
             id: Field::new(mode, transition_leaf.id()),
         }
     }

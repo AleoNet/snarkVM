@@ -22,6 +22,7 @@ mod serialize;
 mod string;
 
 use crate::{
+    compiler::Transition,
     console::{
         collections::merkle_tree::MerklePath,
         network::{prelude::*, BHPMerkleTree},
@@ -66,6 +67,12 @@ impl<N: Network> Transactions<N> {
         // Ensure the number of transactions is within the allowed range.
         if self.transactions.len() > Self::MAX_TRANSACTIONS {
             eprintln!("Cannot validate a transactions list with more than {} transactions", Self::MAX_TRANSACTIONS);
+            return false;
+        }
+
+        // Ensure there are no duplicate transition IDs.
+        if has_duplicates(self.transition_ids()) {
+            eprintln!("Found duplicate transition in the transactions list");
             return false;
         }
 
@@ -131,6 +138,16 @@ impl<N: Network> Transactions<N> {
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
         self.transactions.keys()
+    }
+
+    /// Returns an iterator over all executed transitions.
+    pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
+        self.transactions.values().flat_map(Transaction::transitions)
+    }
+
+    /// Returns an iterator over the transition IDs, for all executed transitions.
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
+        self.transactions.values().flat_map(Transaction::transition_ids)
     }
 
     /// Returns an iterator over the transition public keys, for all executed transactions.

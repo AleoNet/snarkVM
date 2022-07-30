@@ -22,31 +22,31 @@ impl<A: Aleo> StatePath<A> {
     /// Returns `true` if the state path is valid.
     pub fn verify(&self) -> Boolean<A> {
         // Ensure the transition path is valid.
-        let transition_path_is_valid = A::verify_merkle_path_bhp(
+        let check_transition_path = A::verify_merkle_path_bhp(
             &self.transition_path,
             self.transaction_leaf.id(),
             &self.transition_leaf.to_bits_le(),
         );
 
         // Ensure the transaction path is valid.
-        let transaction_path_is_valid = A::verify_merkle_path_bhp(
+        let check_transaction_path = A::verify_merkle_path_bhp(
             &self.transaction_path,
             &self.transaction_id,
             &self.transaction_leaf.to_bits_le(),
         );
 
         // Ensure the transactions path is valid.
-        let transactions_path_is_valid = A::verify_merkle_path_bhp(
+        let check_transactions_path = A::verify_merkle_path_bhp(
             &self.transactions_path,
             self.header_leaf.id(),
             &self.transaction_id.to_bits_le(),
         );
 
         // Ensure the header path is valid.
-        let header_path_is_valid =
-            A::verify_merkle_path_bhp(&self.header_path, &self.header_root, &self.header_leaf.id().to_bits_le());
+        let check_header_path =
+            A::verify_merkle_path_bhp(&self.header_path, &self.header_root, &self.header_leaf.to_bits_le());
 
-        // Ensure the block hash is correct.
+        // Construct the block hash preimage.
         let block_hash_preimage = self
             .previous_block_hash
             .to_bits_le()
@@ -54,18 +54,19 @@ impl<A: Aleo> StatePath<A> {
             .chain(self.header_root.to_bits_le().into_iter())
             .collect::<Vec<_>>();
 
-        let block_hash_is_valid = A::hash_bhp1024(&block_hash_preimage).is_equal(&self.block_hash);
+        // Ensure the block path is valid.
+        let check_block_hash = A::hash_bhp1024(&block_hash_preimage).is_equal(&self.block_hash);
 
         // Ensure the state root is correct.
-        let state_root_is_valid =
+        let check_state_root =
             A::verify_merkle_path_bhp(&self.block_path, &self.state_root, &self.block_hash.to_bits_le());
 
-        transition_path_is_valid
-            .is_equal(&transaction_path_is_valid)
-            .is_equal(&transactions_path_is_valid)
-            .is_equal(&header_path_is_valid)
-            .is_equal(&block_hash_is_valid)
-            .is_equal(&state_root_is_valid)
+        check_transition_path
+            .is_equal(&check_transaction_path)
+            .is_equal(&check_transactions_path)
+            .is_equal(&check_header_path)
+            .is_equal(&check_block_hash)
+            .is_equal(&check_state_root)
     }
 }
 
@@ -76,9 +77,7 @@ mod tests {
         circuit::{environment::Inject, network::AleoV0, Mode},
         console::network::Testnet3,
         ledger::state_path::circuit::StatePath as StatePathCircuit,
-        test_helpers::sample_genesis_block,
         Ledger,
-        VM,
     };
 
     type CurrentNetwork = Testnet3;
@@ -87,29 +86,20 @@ mod tests {
     #[test]
     fn test_state_path_verify() {
         // Initialize a new ledger.
-        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
+        let ledger = Ledger::<CurrentNetwork>::new().unwrap();
+        // Retrieve the genesis block.
+        let genesis = ledger.get_block(0).unwrap();
 
-        // Sample the genesis block.
-        let genesis_block = sample_genesis_block();
-
-        // Initialize the VM.
-        // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
-        let vm = VM::<CurrentNetwork>::new().unwrap();
-
-        ledger.add_next_block(&vm, &genesis_block).unwrap();
-
-        // Construct the native state path
-        let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
+        // Construct the native state path.
+        let commitments = genesis.transactions().commitments().collect::<Vec<_>>();
         let commitment = commitments[0];
         let native_state_path = ledger.to_state_path(commitment).unwrap();
 
         // Construct the circuit state path
         let circuit_state_path = StatePathCircuit::<CurrentAleo>::new(Mode::Public, native_state_path);
-
         // Ensure the circuit state path is valid.
         let is_valid = circuit_state_path.verify();
-
-        AleoV0::assert(is_valid);
-        assert!(AleoV0::is_satisfied());
+        assert!(is_valid.eject_value());
+        assert!(CurrentAleo::is_satisfied());
     }
 }

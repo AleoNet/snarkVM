@@ -47,8 +47,8 @@ impl<A: Aleo> Inject for TransactionLeaf<A> {
     /// Initializes a new transaction leaf circuit from a primitive.
     fn new(mode: Mode, transaction_leaf: Self::Primitive) -> Self {
         Self {
-            variant: U8::new(mode, snarkvm_console::types::U8::new(transaction_leaf.variant())),
-            index: U16::new(mode, snarkvm_console::types::U16::new(transaction_leaf.index())),
+            variant: U8::new(mode, crate::console::types::U8::new(transaction_leaf.variant())),
+            index: U16::new(mode, crate::console::types::U16::new(transaction_leaf.index())),
             program_id: ProgramID::new(mode, transaction_leaf.program_id()),
             function_name: Identifier::new(mode, transaction_leaf.function_name()),
             id: Field::new(mode, transaction_leaf.id()),

@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    compiler::Transition,
     console::{
         collections::merkle_tree::MerklePath,
         network::{prelude::*, BHPMerkleTree},
-        types::Field,
+        types::{Field, Group},
     },
     ledger::{
         map::{memory_map::MemoryMap, Map, MapReader},
@@ -74,40 +75,12 @@ impl<N: Network> Blocks<N> {
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
         })
     }
+}
 
-    /// Returns the latest block height.
-    pub fn latest_block_height(&self) -> u32 {
-        self.current_height
-    }
-
-    /// Returns the latest block hash.
-    pub fn latest_block_hash(&self) -> N::BlockHash {
-        self.current_hash
-    }
-
+impl<N: Network> Blocks<N> {
     /// Returns the latest state root.
     pub fn latest_state_root(&self) -> &Field<N> {
         self.block_tree.root()
-    }
-
-    /// Returns the latest block timestamp.
-    pub fn latest_block_timestamp(&self) -> Result<i64> {
-        Ok(self.get_block_header(self.current_height)?.timestamp())
-    }
-
-    /// Returns the latest block coinbase target.
-    pub fn latest_block_coinbase_target(&self) -> Result<u64> {
-        Ok(self.get_block_header(self.current_height)?.coinbase_target())
-    }
-
-    /// Returns the latest block proof target.
-    pub fn latest_block_proof_target(&self) -> Result<u64> {
-        Ok(self.get_block_header(self.current_height)?.proof_target())
-    }
-
-    /// Returns the latest block transactions.
-    pub fn latest_block_transactions(&self) -> Result<&Transactions<N>> {
-        self.get_block_transactions(self.current_height)
     }
 
     /// Returns the latest block.
@@ -115,52 +88,132 @@ impl<N: Network> Blocks<N> {
         self.get_block(self.current_height)
     }
 
-    /// Returns the previous block hash given the block height.
-    pub fn get_previous_block_hash(&self, height: u32) -> Result<N::BlockHash> {
+    /// Returns the latest block height.
+    pub fn latest_height(&self) -> u32 {
+        self.current_height
+    }
+
+    /// Returns the latest block hash.
+    pub fn latest_hash(&self) -> N::BlockHash {
+        self.current_hash
+    }
+
+    /// Returns the latest round number.
+    pub fn latest_round(&self) -> Result<u64> {
+        Ok(self.get_header(self.current_height)?.round())
+    }
+
+    /// Returns the latest block coinbase target.
+    pub fn latest_coinbase_target(&self) -> Result<u64> {
+        Ok(self.get_header(self.current_height)?.coinbase_target())
+    }
+
+    /// Returns the latest block proof target.
+    pub fn latest_proof_target(&self) -> Result<u64> {
+        Ok(self.get_header(self.current_height)?.proof_target())
+    }
+
+    /// Returns the latest block timestamp.
+    pub fn latest_timestamp(&self) -> Result<i64> {
+        Ok(self.get_header(self.current_height)?.timestamp())
+    }
+
+    /// Returns the latest block transactions.
+    pub fn latest_transactions(&self) -> Result<&Transactions<N>> {
+        self.get_transactions(self.current_height)
+    }
+}
+
+impl<N: Network> Blocks<N> {
+    /// Returns the block for the given block height.
+    pub fn get_block(&self, height: u32) -> Result<Block<N>> {
+        Block::from(self.get_previous_hash(height)?, *self.get_header(height)?, self.get_transactions(height)?.clone())
+    }
+
+    /// Returns the block hash for the given block height.
+    pub fn get_hash(&self, height: u32) -> Result<N::BlockHash> {
+        match height.cmp(&self.current_height) {
+            Ordering::Equal => Ok(self.current_hash),
+            Ordering::Less => match self.previous_hashes.get(&(height + 1))? {
+                Some(block_hash) => Ok(*block_hash),
+                None => bail!("Missing block hash for block {height}"),
+            },
+            Ordering::Greater => bail!("Block {height} (given) is greater than the current height"),
+        }
+    }
+
+    /// Returns the previous block hash for the given block height.
+    pub fn get_previous_hash(&self, height: u32) -> Result<N::BlockHash> {
         match self.previous_hashes.get(&height)? {
             Some(previous_hash) => Ok(*previous_hash),
             None => Err(anyhow!("Missing previous block hash for height {}", height)),
         }
     }
 
-    /// Returns the block header given the block height.
-    pub fn get_block_header(&self, height: u32) -> Result<&Header<N>> {
+    /// Returns the block header for the given block height.
+    pub fn get_header(&self, height: u32) -> Result<&Header<N>> {
         match self.headers.get(&height)? {
             Some(header) => Ok(header),
             None => Err(anyhow!("Missing block header for height {}", height)),
         }
     }
 
-    /// Returns the block transactions given the block height.
-    pub fn get_block_transactions(&self, height: u32) -> Result<&Transactions<N>> {
+    /// Returns the block transactions for the given block height.
+    pub fn get_transactions(&self, height: u32) -> Result<&Transactions<N>> {
         match self.transactions.get(&height)? {
             Some(transactions) => Ok(transactions),
             None => Err(anyhow!("Missing block transactions for height {}", height)),
         }
     }
+}
 
-    /// Returns the block given the block height.
-    pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-        Block::from(
-            self.get_previous_block_hash(height)?,
-            *self.get_block_header(height)?,
-            self.get_block_transactions(height)?.clone(),
-        )
+impl<N: Network> Blocks<N> {
+    /// Returns an iterator over all transactions.
+    pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
+        self.transactions.values().flat_map(|transactions| transactions.values())
     }
 
-    /// Returns the block hash given the block height.
-    pub fn get_block_hash(&self, height: u32) -> Result<N::BlockHash> {
-        if height > self.current_height {
-            return Err(anyhow!("Given block height {} is greater than current height", height));
-        }
+    /// Returns an iterator over the transaction IDs, for all transactions in `self`.
+    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
+        self.transactions.values().flat_map(Transactions::transaction_ids)
+    }
 
-        match height == self.current_height {
-            true => Ok(self.current_hash),
-            false => match self.previous_hashes.get(&(height + 1))? {
-                Some(block_hash) => Ok(*block_hash),
-                None => Err(anyhow!("Missing block hash for height {}", height)),
-            },
-        }
+    /// Returns an iterator over all executed transitions.
+    pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
+        self.transactions.values().flat_map(Transactions::transitions)
+    }
+
+    /// Returns an iterator over the transition IDs, for all executed transitions.
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
+        self.transactions.values().flat_map(Transactions::transition_ids)
+    }
+
+    /// Returns an iterator over the transition public keys, for all executed transactions.
+    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+        self.transactions.values().flat_map(Transactions::transition_public_keys)
+    }
+
+    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
+    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.values().flat_map(Transactions::serial_numbers)
+    }
+
+    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
+    pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.values().flat_map(Transactions::commitments)
+    }
+
+    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.values().flat_map(Transactions::nonces)
+    }
+}
+
+impl<N: Network> Blocks<N> {
+    /// Returns `true` if the given state root exists.
+    pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
+        state_root == self.latest_state_root()
+            || self.headers.values().map(Header::previous_state_root).any(|root| root == state_root)
     }
 
     /// Returns `true` if the given block height exists.
@@ -171,12 +224,6 @@ impl<N: Network> Blocks<N> {
             .or_else(|_| self.transactions.contains_key(&height))
     }
 
-    /// Returns `true` if the given state root exists.
-    pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
-        state_root == self.latest_state_root()
-            || self.headers.values().map(Header::previous_state_root).any(|root| root == state_root)
-    }
-
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
         self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
@@ -184,29 +231,56 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given transaction exists.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        self.transactions.values().flat_map(|transactions| &**transactions).any(|(_, tx)| *tx == *transaction)
+        self.transaction_ids().contains(&transaction.id())
+    }
+
+    /// Returns `true` if the given transaction ID exists.
+    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> bool {
+        self.transaction_ids().contains(transaction_id)
+    }
+
+    /// Returns `true` if the given transition exists.
+    pub fn contains_transition(&self, transition: &Transition<N>) -> bool {
+        self.transition_ids().contains(transition.id())
+    }
+
+    /// Returns `true` if the given transition ID exists.
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
+        self.transition_ids().contains(transition_id)
+    }
+
+    /// Returns `true` if the given transition public key exists.
+    pub fn contains_transition_public_keys(&self, tpk: &Group<N>) -> bool {
+        self.transition_public_keys().contains(tpk)
     }
 
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
-        self.transactions.values().flat_map(|transactions| transactions.serial_numbers()).contains(serial_number)
+        self.serial_numbers().contains(serial_number)
     }
 
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
-        self.transactions.values().flat_map(|transactions| transactions.commitments()).contains(commitment)
+        self.commitments().contains(commitment)
     }
 
+    /// Returns `true` if the given nonce exists.
+    pub fn contains_nonce(&self, commitment: &Field<N>) -> bool {
+        self.nonces().contains(commitment)
+    }
+}
+
+impl<N: Network> Blocks<N> {
     /// Returns a proposal block constructed with the transactions in the mempool.
     pub fn propose_block(&self, transactions: Transactions<N>) -> Result<Block<N>> {
         // Fetch the latest block hash
-        let latest_block_hash = self.latest_block_hash();
+        let latest_block_hash = self.latest_hash();
 
         // Construct the block header.
         let latest_state_root = self.latest_state_root();
         let transactions_root = transactions.to_root()?;
         let network = N::ID;
-        let height = self.latest_block_height() + 1;
+        let height = self.latest_height() + 1;
         // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
         let round = 1;
         let coinbase_target = 0;
@@ -245,7 +319,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the next block height is correct.
         let height = block.header().height();
-        if self.latest_block_height() != 0 && self.latest_block_height() + 1 != height {
+        if self.latest_height() != 0 && self.latest_height() + 1 != height {
             return Err(anyhow!("The given block has an incorrect block height"));
         }
 
@@ -363,7 +437,7 @@ impl<N: Network> Blocks<N> {
         }
 
         let block_height = *block_height[0];
-        let block_header = self.get_block_header(block_height)?;
+        let block_header = self.get_header(block_height)?;
 
         // Find the transition that contains the record commitment.
         let transition = transaction
@@ -387,7 +461,7 @@ impl<N: Network> Blocks<N> {
         let transaction_path = transaction.to_path(&transaction_leaf)?;
 
         // Construct the transactions path.
-        let transactions = self.get_block_transactions(block_height)?;
+        let transactions = self.get_transactions(block_height)?;
         let transaction_index = transactions.iter().position(|(id, _)| id == transaction_id).unwrap();
         let transactions_path = transactions.to_path(transaction_index, **transaction_id)?;
 
@@ -397,9 +471,9 @@ impl<N: Network> Blocks<N> {
         let header_path = block_header.to_path(&header_leaf)?;
 
         // Construct the block path.
-        let latest_block_height = self.latest_block_height();
-        let latest_block_hash = self.latest_block_hash();
-        let previous_block_hash = self.get_previous_block_hash(latest_block_height)?;
+        let latest_block_height = self.latest_height();
+        let latest_block_hash = self.latest_hash();
+        let previous_block_hash = self.get_previous_hash(latest_block_height)?;
 
         // Construct the state root and block path.
         let state_root = *self.latest_state_root();
@@ -436,10 +510,7 @@ impl<N: Network> Blocks<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        console::network::Testnet3,
-        test_helpers::{sample_execution_transaction, sample_genesis_block},
-    };
+    use crate::{console::network::Testnet3, test_helpers::sample_execution_transaction};
 
     type CurrentNetwork = Testnet3;
 
@@ -449,8 +520,8 @@ mod tests {
         let genesis = Block::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a new ledger.
-        let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
-        // Get the genesis block.
+        let blocks = Blocks::<CurrentNetwork>::new().unwrap();
+        // Retrieve the genesis block.
         let candidate = blocks.get_block(0).unwrap();
         // Ensure the genesis block matches.
         assert_eq!(genesis, candidate);
@@ -463,16 +534,13 @@ mod tests {
 
     #[test]
     fn test_state_path() {
-        let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
+        // Initialize the ledger with the genesis block.
+        let blocks = Blocks::<CurrentNetwork>::new().unwrap();
+        // Retrieve the genesis block.
+        let genesis = blocks.get_block(0).unwrap();
 
-        // Sample the genesis block.
-        let genesis_block = sample_genesis_block();
-
-        // Add the genesis block to the ledger.
-        blocks.add_next(&genesis_block).unwrap();
-
-        // Construct the state path
-        let commitments = genesis_block.transactions().commitments().collect::<Vec<_>>();
+        // Construct the state path.
+        let commitments = genesis.transactions().commitments().collect::<Vec<_>>();
         let commitment = commitments[0];
 
         let _state_path = blocks.to_state_path(commitment).unwrap();
@@ -480,25 +548,21 @@ mod tests {
 
     #[test]
     fn test_new_blocks() {
+        // Initialize the ledger with the genesis block.
         let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
+        // Retrieve the genesis block.
+        let genesis = blocks.get_block(0).unwrap();
+        assert_eq!(blocks.latest_height(), 0);
+        assert_eq!(blocks.latest_hash(), genesis.hash());
 
-        // Sample the genesis block.
-        let genesis_block = sample_genesis_block();
-
-        // Add the genesis block to the ledger.
-        blocks.add_next(&genesis_block).unwrap();
-
-        assert_eq!(blocks.latest_block_height(), 0);
-        assert_eq!(blocks.latest_block_hash(), genesis_block.hash());
-
-        // Construct a new block
+        // Construct a new block.
         let new_transaction = sample_execution_transaction();
         let transactions = Transactions::from(&[new_transaction]).unwrap();
 
         let new_block = blocks.propose_block(transactions).unwrap();
         blocks.add_next(&new_block).unwrap();
 
-        assert_eq!(blocks.latest_block_height(), 1);
-        assert_eq!(blocks.latest_block_hash(), new_block.hash());
+        assert_eq!(blocks.latest_height(), 1);
+        assert_eq!(blocks.latest_hash(), new_block.hash());
     }
 }

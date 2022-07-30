@@ -16,12 +16,14 @@
 
 use snarkvm_circuit::{
     network::Aleo,
-    types::{environment::prelude::*, Field, U8},
+    types::{environment::prelude::*, Boolean, Field, U8},
 };
 
 #[derive(Clone)]
 pub struct HeaderLeaf<A: Aleo> {
+    /// The index of the Merkle leaf.
     index: U8<A>,
+    /// The ID.
     id: Field<A>,
 }
 
@@ -33,19 +35,16 @@ impl<A: Aleo> HeaderLeaf<A> {
 }
 
 impl<A: Aleo> Inject for HeaderLeaf<A> {
-    type Primitive = crate::ledger::state_path::HeaderLeaf<A::Network>;
+    type Primitive = crate::ledger::HeaderLeaf<A::Network>;
 
     /// Initializes a new header leaf circuit from a primitive.
-    fn new(mode: Mode, header_leaf: Self::Primitive) -> Self {
-        Self {
-            index: U8::new(mode, snarkvm_console::types::U8::new(header_leaf.index())),
-            id: Field::new(mode, header_leaf.id()),
-        }
+    fn new(mode: Mode, leaf: Self::Primitive) -> Self {
+        Self { index: U8::new(mode, crate::console::types::U8::new(leaf.index())), id: Field::new(mode, leaf.id()) }
     }
 }
 
 impl<A: Aleo> Eject for HeaderLeaf<A> {
-    type Primitive = crate::ledger::state_path::HeaderLeaf<A::Network>;
+    type Primitive = crate::ledger::HeaderLeaf<A::Network>;
 
     /// Ejects the mode of the header leaf.
     fn eject_mode(&self) -> Mode {
@@ -55,5 +54,23 @@ impl<A: Aleo> Eject for HeaderLeaf<A> {
     /// Ejects the header leaf.
     fn eject_value(&self) -> Self::Primitive {
         Self::Primitive::new(*self.index.eject_value(), self.id.eject_value())
+    }
+}
+
+impl<A: Aleo> ToBits for HeaderLeaf<A> {
+    type Boolean = Boolean<A>;
+
+    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        let mut bits_le = self.index.to_bits_le();
+        bits_le.extend(self.id.to_bits_le());
+        bits_le
+    }
+
+    /// Outputs the big-endian bit representation of `self` *without* leading zeros.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        let mut bits_be = self.index.to_bits_be();
+        bits_be.extend(self.id.to_bits_be());
+        bits_be
     }
 }

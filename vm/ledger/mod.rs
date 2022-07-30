@@ -70,7 +70,7 @@ impl<N: Network> Ledger<N> {
 
     /// Returns the height of the latest block.
     pub fn latest_block_height(&self) -> u32 {
-        self.blocks.latest_block_height()
+        self.blocks.latest_height()
     }
 
     /// Returns the height of the latest block.
@@ -80,12 +80,12 @@ impl<N: Network> Ledger<N> {
 
     /// Returns the hash of the latest block.
     pub fn latest_block_hash(&self) -> N::BlockHash {
-        self.blocks.latest_block_hash()
+        self.blocks.latest_hash()
     }
 
     /// Returns the previous block hash given the block height.
     pub fn get_previous_block_hash(&self, height: u32) -> Result<N::BlockHash> {
-        self.blocks.get_previous_block_hash(height)
+        self.blocks.get_previous_hash(height)
     }
 
     /// Returns the block at a given block height.
@@ -126,49 +126,39 @@ impl<N: Network> Ledger<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        console::network::Testnet3,
-        test_helpers::{sample_execution_transaction, sample_genesis_block},
-    };
+    use crate::{console::network::Testnet3, test_helpers::sample_execution_transaction};
 
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_deploy() -> Result<()> {
+    fn test_deploy() {
         // Initialize a new ledger.
         let _ledger = Ledger::<CurrentNetwork>::new().unwrap();
-
-        Ok(())
     }
 
     #[test]
-    fn test_new_blocks() -> Result<()> {
+    fn test_new_blocks() {
         // Initialize a new ledger.
         let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
 
-        // Sample the genesis block.
-        let genesis_block = sample_genesis_block();
+        // Retrieve the genesis block.
+        let genesis = ledger.get_block(0).unwrap();
+
+        assert_eq!(ledger.latest_block_height(), 0);
+        assert_eq!(ledger.latest_block_hash(), genesis.hash());
+
+        // Construct a new block.
+        let new_transaction = sample_execution_transaction();
+        let transactions = Transactions::from(&[new_transaction]).unwrap();
 
         // Initialize the VM.
         // TODO (raychu86): This VM needs to have the program deployments to verify blocks properly.
         let vm = VM::<CurrentNetwork>::new().unwrap();
-
-        // Add the genesis block to the ledger.
-        ledger.add_next_block(&vm, &genesis_block).unwrap();
-
-        assert_eq!(ledger.latest_block_height(), 0);
-        assert_eq!(ledger.latest_block_hash(), genesis_block.hash());
-
-        // Construct a new block
-        let new_transaction = sample_execution_transaction();
-        let transactions = Transactions::from(&[new_transaction]).unwrap();
 
         let new_block = ledger.propose_block(transactions).unwrap();
         ledger.add_next_block(&vm, &new_block).unwrap();
 
         assert_eq!(ledger.latest_block_height(), 1);
         assert_eq!(ledger.latest_block_hash(), new_block.hash());
-
-        Ok(())
     }
 }
