@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    compiler::{Authorization, Deployment, Execution, Process, Program, Stack},
     console::{
         account::PrivateKey,
         network::prelude::*,
@@ -22,7 +23,6 @@ use crate::{
     },
     ledger::Transaction,
 };
-use snarkvm_compiler::{Authorization, Deployment, Execution, Process, Program};
 
 use core::marker::PhantomData;
 use parking_lot::RwLock;
@@ -106,8 +106,8 @@ impl<N: Network> VM<N> {
                 if $process.contains_program(program.id()) {
                     bail!("Cannot deploy program '{}': program already exists", program.id())
                 }
-                // Compute the stack.
-                let stack = $process.compute_stack(program)?;
+                // Construct the stack.
+                let stack = Stack::new(&$process, program)?;
                 // Compute the deployment.
                 let deployment = stack.deploy::<$aleo, _>(rng)?;
                 // Construct the transaction.

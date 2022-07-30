@@ -17,5 +17,6 @@
 use super::*;
 
 mod matches;
+mod process;
 mod sample;
 mod synthesize;

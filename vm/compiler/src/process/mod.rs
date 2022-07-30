@@ -37,11 +37,11 @@ pub use transition::*;
 
 mod add_program;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, ProvingKey, VerifyingKey};
+use crate::{Function, Instruction, Program, ProvingKey, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, PlaintextType, ProgramID, Register, RegisterType, Request, Response, Value, ValueType},
+    program::{Identifier, ProgramID, Request, Response, Value, ValueType},
     types::I64,
 };
 
@@ -66,6 +66,12 @@ impl<N: Network> Process<N> {
         let process = Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
         // Return the process.
         Ok(process)
+    }
+
+    /// Returns the circuit keys.
+    #[inline]
+    pub const fn circuit_keys(&self) -> &CircuitKeys<N> {
+        &self.circuit_keys
     }
 
     /// Returns `true` if the process contains the program with the given ID.
@@ -268,7 +274,7 @@ impl<N: Network> Process<N> {
         ensure!(program == Program::from_str(&program_string)?, "Program string serialization failed");
 
         // Ensure the program is well-formed, by computing the stack.
-        let stack = self.compute_stack(&program)?;
+        let stack = Stack::new(self, &program)?;
 
         // Check Certificates //
 

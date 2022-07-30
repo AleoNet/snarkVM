@@ -29,7 +29,9 @@ use crate::{
     Execution,
     Function,
     Instruction,
+    Opcode,
     Operand,
+    Process,
     Program,
     ProvingKey,
     RegisterTypes,
@@ -53,6 +55,7 @@ use console::{
         ProgramID,
         Record,
         RecordType,
+        Register,
         RegisterType,
         Request,
         Response,
@@ -119,48 +122,50 @@ pub struct Stack<N: Network> {
 impl<N: Network> Stack<N> {
     /// Initializes a new stack, given the program and register types.
     #[inline]
-    pub fn new(program: Program<N>, circuit_keys: CircuitKeys<N>) -> Result<Self> {
-        // TODO (howardwu): Process every closure and function before returning.
-        Ok(Self { program, external_stacks: IndexMap::new(), program_types: IndexMap::new(), circuit_keys })
-    }
-
-    /// Adds a new external stack to the stack.
-    #[inline]
-    pub fn add_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
+    pub fn new(process: &Process<N>, program: &Program<N>) -> Result<Self> {
         // Retrieve the program ID.
-        let program_id = *external_stack.program_id();
-        // Ensure the external stack is not already added.
-        ensure!(!self.external_stacks.contains_key(&program_id), "Program '{program_id}' already exists");
-        // Ensure the program exists in the main program imports.
-        ensure!(self.program.contains_import(&program_id), "'{program_id}' does not exist in the main program imports");
-        // Ensure the external stack is not for the main program.
-        ensure!(self.program.id() != external_stack.program_id(), "External stack program cannot be the main program");
-        // Add the external stack to the stack.
-        self.external_stacks.insert(program_id, external_stack);
-        // Return success.
-        Ok(())
-    }
+        let program_id = program.id();
+        // Ensure the program network-level domain (NLD) is correct.
+        ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
+        // Ensure the program contains functions.
+        ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 
-    /// Adds the given closure name and register types to the stack.
-    #[inline]
-    pub fn add_closure_types(&mut self, name: &Identifier<N>, register_types: RegisterTypes<N>) -> Result<()> {
-        // Ensure the closure name is not already added.
-        ensure!(!self.program_types.contains_key(name), "Closure '{name}' already exists");
-        // Add the closure name and register types to the stack.
-        self.program_types.insert(*name, register_types);
-        // Return success.
-        Ok(())
-    }
+        // Construct the stack for the program.
+        let mut stack = Self {
+            program: program.clone(),
+            external_stacks: IndexMap::new(),
+            program_types: IndexMap::new(),
+            circuit_keys: process.circuit_keys().clone(),
+        };
 
-    /// Adds the given function name and register types to the stack.
-    #[inline]
-    pub fn add_function_types(&mut self, name: &Identifier<N>, register_types: RegisterTypes<N>) -> Result<()> {
-        // Ensure the function name is not already added.
-        ensure!(!self.program_types.contains_key(name), "Function '{name}' already exists");
-        // Add the function name and register types to the stack.
-        self.program_types.insert(*name, register_types);
-        // Return success.
-        Ok(())
+        // Add all of the imports into the stack.
+        for import in program.imports().keys() {
+            // Ensure the program imports all exist in the process already.
+            ensure!(
+                process.contains_program(import),
+                "Cannot add program '{program_id}' because its import '{import}' must be added first"
+            );
+            // Retrieve the external stack for the import program ID.
+            let external_stack = process.get_stack(import)?;
+            // Add the external stack to the stack.
+            stack.add_external_stack(external_stack.clone())?;
+        }
+        // Add the program closures to the stack.
+        for closure in program.closures().values() {
+            // Compute the register types.
+            let register_types = stack.process_closure(closure)?;
+            // Add the register types to the stack.
+            stack.add_closure_types(closure.name(), register_types)?;
+        }
+        // Add the program functions to the stack.
+        for function in program.functions().values() {
+            // Compute the register types.
+            let register_types = stack.process_function(function)?;
+            // Add the register types to the stack.
+            stack.add_function_types(function.name(), register_types)?;
+        }
+        // Return the stack.
+        Ok(stack)
     }
 
     /// Returns the program.
