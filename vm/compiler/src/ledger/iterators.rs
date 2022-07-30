@@ -16,7 +16,14 @@
 
 use super::*;
 
-impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
+impl<
+    N: Network,
+    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
+    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
+    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+{
     /// Returns an iterator over all transactions.
     pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
         self.transactions.values().flat_map(Transactions::transactions)

@@ -38,7 +38,7 @@ mod iterators;
 mod latest;
 
 use crate::{
-    ledger::map::{memory_map::MemoryMap, Map, MapReader},
+    ledger::map::Map,
     process::{Deployment, Execution},
 };
 use console::{
@@ -62,7 +62,13 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Clone)]
-pub struct Ledger<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> {
+pub struct Ledger<
+    N: Network,
+    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
+    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
+    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
+> {
     /// The current block height.
     current_height: u32,
     /// The current block hash.
@@ -70,20 +76,27 @@ pub struct Ledger<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>
     /// The current block tree.
     block_tree: BlockTree<N>,
     /// The chain of previous block hashes.
-    previous_hashes: PreviousHashes,
+    previous_hashes: PreviousHashesMap,
     /// The chain of block headers.
-    headers: MemoryMap<u32, Header<N>>,
+    headers: HeadersMap,
     /// The chain of block transactions.
-    transactions: MemoryMap<u32, Transactions<N>>,
+    transactions: TransactionsMap,
     /// The mapping of program IDs to their deployment.
-    programs: MemoryMap<ProgramID<N>, Deployment<N>>,
+    programs: ProgramsMap,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexSet<Transaction<N>>,
     // /// The mapping of program IDs to their global state.
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
-impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
+impl<
+    N: Network,
+    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
+    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
+    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+{
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
@@ -340,13 +353,28 @@ impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, P
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod test_helpers {
     use super::*;
-    use crate::ledger::vm::test_helpers::sample_execution_transaction;
+    use crate::ledger::memory_map::MemoryMap;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentLedger = Ledger<CurrentNetwork, MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>>;
+    pub(crate) type CurrentLedger = Ledger<
+        CurrentNetwork,
+        MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>,
+        MemoryMap<u32, Header<CurrentNetwork>>,
+        MemoryMap<u32, Transactions<CurrentNetwork>>,
+        MemoryMap<ProgramID<CurrentNetwork>, Deployment<CurrentNetwork>>,
+    >;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_execution_transaction};
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_deploy() {

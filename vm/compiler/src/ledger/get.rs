@@ -16,7 +16,14 @@
 
 use super::*;
 
-impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
+impl<
+    N: Network,
+    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
+    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
+    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+{
     /// Returns the block for the given block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
         Block::from(self.get_previous_hash(height)?, *self.get_header(height)?, self.get_transactions(height)?.clone())
@@ -62,10 +69,10 @@ impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, P
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ledger::test_helpers::CurrentLedger;
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-    type CurrentLedger = Ledger<CurrentNetwork, MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>>;
 
     #[test]
     fn test_get_block() {

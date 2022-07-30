@@ -73,13 +73,12 @@ impl<A: Aleo> StatePath<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{state_path::circuit::StatePath as StatePathCircuit, Ledger, MemoryMap};
+    use crate::ledger::{state_path::circuit::StatePath as StatePathCircuit, test_helpers::CurrentLedger};
     use circuit::{environment::Inject, network::AleoV0, Mode};
-    use console::network::{Network, Testnet3};
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
-    type CurrentLedger = Ledger<CurrentNetwork, MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>>;
 
     #[test]
     fn test_state_path_verify() {
