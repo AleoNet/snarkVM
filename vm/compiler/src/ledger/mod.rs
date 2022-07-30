@@ -49,8 +49,8 @@ use console::{
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
 
-use anyhow::{anyhow, Result};
-use indexmap::IndexSet;
+use anyhow::Result;
+use indexmap::IndexMap;
 use time::OffsetDateTime;
 
 /// The depth of the Merkle tree for the blocks.
@@ -84,7 +84,7 @@ pub struct Ledger<
     /// The mapping of program IDs to their deployment.
     programs: ProgramsMap,
     /// The memory pool of unconfirmed transactions.
-    memory_pool: IndexSet<Transaction<N>>,
+    memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
     // /// The mapping of program IDs to their global state.
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
@@ -110,7 +110,7 @@ impl<
             headers: [(genesis.height(), *genesis.header())].into_iter().collect(),
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
             programs: genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
-            memory_pool: IndexSet::new(),
+            memory_pool: Default::default(),
         })
     }
 
@@ -163,14 +163,13 @@ impl<
         // }
 
         // Ensure the next block height is correct.
-        let height = block.header().height();
-        if self.latest_height() != 0 && self.latest_height() + 1 != height {
+        if self.latest_height() != 0 && self.latest_height() + 1 != block.height() {
             bail!("The given block has an incorrect block height")
         }
 
         // Ensure the block height does not already exist.
-        if self.contains_height(height)? {
-            bail!("The given block height already exists in the ledger")
+        if self.contains_height(block.height())? {
+            bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
         // Ensure the previous block hash is correct.
@@ -179,19 +178,15 @@ impl<
         }
 
         // Ensure the block hash does not already exist.
-        let block_hash = block.hash();
-        if self.contains_block_hash(&block_hash) {
-            bail!("The given block hash already exists in the ledger")
+        if self.contains_block_hash(&block.hash()) {
+            bail!("Block hash '{}' already exists in the ledger", block.hash())
         }
 
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
 
         // Ensure the next block timestamp is after the current block timestamp.
-        if self.contains_height(0)? {
-            let current_block = self.latest_block()?;
-            if block.header().timestamp() <= current_block.header().timestamp() {
-                bail!("The given block timestamp is before the current timestamp")
-            }
+        if block.header().timestamp() <= self.latest_block()?.header().timestamp() {
+            bail!("The given block timestamp is before the current timestamp")
         }
 
         // TODO (raychu86): Add proof and coinbase target verification.
@@ -240,14 +235,27 @@ impl<
 
         // Add the block to the ledger. This code section executes atomically.
         {
+            /* ATOMIC CODE SECTION */
+
             let mut ledger = self.clone();
 
-            ledger.current_height = height;
-            ledger.current_hash = block_hash;
+            // Update the blocks.
+            ledger.current_height = block.height();
+            ledger.current_hash = block.hash();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-            ledger.previous_hashes.insert::<u32>(height, block.previous_hash())?;
-            ledger.headers.insert::<u32>(height, *block.header())?;
-            ledger.transactions.insert::<u32>(height, block.transactions().clone())?;
+            ledger.previous_hashes.insert::<u32>(block.height(), block.previous_hash())?;
+            ledger.headers.insert::<u32>(block.height(), *block.header())?;
+            ledger.transactions.insert::<u32>(block.height(), block.transactions().clone())?;
+
+            // Update the map of deployed programs.
+            for (program_id, deployment) in block.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())) {
+                ledger.programs.insert::<ProgramID<N>>(program_id, deployment)?;
+            }
+
+            // Clear the memory pool of these transactions.
+            for transaction_id in block.transaction_ids() {
+                ledger.memory_pool.remove(transaction_id);
+            }
 
             *self = ledger;
         }
@@ -260,9 +268,7 @@ impl<
         &self.block_tree
     }
 
-    ///
     /// Returns a state path for the given commitment.
-    ///
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
         // Find the transaction that contains the record commitment.
         let transaction = self
