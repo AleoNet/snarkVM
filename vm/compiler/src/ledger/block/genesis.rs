@@ -22,9 +22,16 @@ impl<N: Network> Block<N> {
         // Initialize the genesis program.
         let genesis = Program::genesis()?;
         // Deploy the genesis program.
-        let deploy = vm.deploy(&genesis, rng)?;
+        let deploy_genesis = vm.deploy(&genesis, rng)?;
         // Add the genesis program.
-        vm.on_deploy(&deploy)?;
+        vm.on_deploy(&deploy_genesis)?;
+
+        // Initialize the credits program.
+        let credits = Program::credits()?;
+        // Deploy the credits program.
+        let deploy_credits = vm.deploy(&credits, rng)?;
+        // Add the credits program.
+        vm.on_deploy(&deploy_credits)?;
 
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
@@ -38,7 +45,7 @@ impl<N: Network> Block<N> {
         let (_, execution) = vm.execute(authorization, rng)?;
 
         // Prepare the transactions.
-        let transactions = Transactions::from(&[deploy, execution])?;
+        let transactions = Transactions::from(&[deploy_genesis, deploy_credits, execution])?;
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
@@ -59,8 +66,8 @@ impl<N: Network> Block<N> {
         self.previous_hash == N::BlockHash::default()
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
-            // Ensure there are two transactions in the genesis block.
-            && self.transactions.len() == 2
+            // Ensure there are three transactions in the genesis block.
+            && self.transactions.len() == 3
     }
 }
 
