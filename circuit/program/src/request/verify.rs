@@ -373,11 +373,11 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 35303, 0, 31030, 31074)
+        check_verify(Mode::Public, 35303, 0, 31033, 31078)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 35303, 0, 31030, 31074)
+        check_verify(Mode::Private, 35303, 0, 31033, 31078)
     }
 }
