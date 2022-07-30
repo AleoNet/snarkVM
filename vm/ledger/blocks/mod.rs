@@ -29,6 +29,7 @@ use crate::{
         Transaction,
         Transactions,
     },
+    parameters::testnet3::GenesisBytes,
 };
 
 use anyhow::{anyhow, Result};
@@ -38,7 +39,7 @@ use time::OffsetDateTime;
 const BLOCKS_DEPTH: u8 = 32;
 
 /// The Merkle tree for the block state.
-pub type StateTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
+pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
@@ -48,8 +49,8 @@ pub struct Blocks<N: Network> {
     pub(super) current_height: u32,
     /// The current block hash.
     pub(super) current_hash: N::BlockHash,
-    /// The current state tree.
-    pub(super) state_tree: StateTree<N>,
+    /// The current block tree.
+    pub(super) block_tree: BlockTree<N>,
     /// The chain of previous block hashes.
     pub(super) previous_hashes: MemoryMap<u32, N::BlockHash>,
     /// The chain of block headers.
@@ -61,25 +62,17 @@ pub struct Blocks<N: Network> {
 impl<N: Network> Blocks<N> {
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
-        // TODO (raychu86): Inject a genesis block.
-        // let genesis_block = N::genesis_block();
-        // let height = genesis_block.height();
-
-        let blocks = Self {
-            current_height: 0,
-            current_hash: Default::default(),
-            state_tree: N::merkle_tree_bhp(&[])?,
-            previous_hashes: Default::default(),
-            headers: Default::default(),
-            transactions: Default::default(),
-        };
-
-        // blocks.state_tree.append(&[genesis_block.hash().to_bits_le()])?;
-        // blocks.previous_hashes.insert(height, genesis_block.previous_hash());
-        // blocks.headers.insert(height, genesis_block.header().clone());
-        // blocks.transactions.insert(height, genesis_block.transactions().clone());
-
-        Ok(blocks)
+        // Load the genesis block.
+        let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+        // Construct the blocks.
+        Ok(Self {
+            current_height: genesis.height(),
+            current_hash: genesis.hash(),
+            block_tree: N::merkle_tree_bhp(&[genesis.hash().to_bits_le()])?,
+            previous_hashes: [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
+            headers: [(genesis.height(), genesis.header().clone())].into_iter().collect(),
+            transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
+        })
     }
 
     /// Returns the latest block height.
@@ -94,7 +87,7 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the latest state root.
     pub fn latest_state_root(&self) -> &Field<N> {
-        self.state_tree.root()
+        self.block_tree.root()
     }
 
     /// Returns the latest block timestamp.
@@ -148,16 +141,6 @@ impl<N: Network> Blocks<N> {
 
     /// Returns the block given the block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-        // TODO (raychu86): Inject a genesis block.
-        // match height == 0 {
-        //     true => panic!("Ensure a genesis block exists"),
-        //     false => Ok(Block::from(
-        //         self.get_previous_block_hash(height)?,
-        //         *self.get_block_header(height)?,
-        //         self.get_block_transactions(height)?.clone(),
-        //     )?),
-        // }
-
         Block::from(
             self.get_previous_block_hash(height)?,
             *self.get_block_header(height)?,
@@ -328,7 +311,7 @@ impl<N: Network> Blocks<N> {
 
             blocks.current_height = height;
             blocks.current_hash = block_hash;
-            blocks.state_tree.append(&[block.hash().to_bits_le()])?;
+            blocks.block_tree.append(&[block.hash().to_bits_le()])?;
             blocks.previous_hashes.insert::<u32>(height, block.previous_hash())?;
             blocks.headers.insert::<u32>(height, *block.header())?;
             blocks.transactions.insert::<u32>(height, block.transactions().clone())?;
@@ -340,8 +323,8 @@ impl<N: Network> Blocks<N> {
     }
 
     /// Returns the ledger tree.
-    pub fn to_ledger_tree(&self) -> &StateTree<N> {
-        &self.state_tree
+    pub fn to_ledger_tree(&self) -> &BlockTree<N> {
+        &self.block_tree
     }
 
     ///
@@ -420,7 +403,7 @@ impl<N: Network> Blocks<N> {
 
         // Construct the state root and block path.
         let state_root = *self.latest_state_root();
-        let block_path = self.state_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
+        let block_path = self.block_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
 
         StatePath::new(
             state_root.into(),
@@ -461,14 +444,25 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_deploy() -> Result<()> {
-        let _blocks = Blocks::<CurrentNetwork>::new().unwrap();
+    fn test_get_block() {
+        // Load the genesis block.
+        let genesis = Block::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
-        Ok(())
+        // Initialize a new ledger.
+        let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
+        // Get the genesis block.
+        let candidate = blocks.get_block(0).unwrap();
+        // Ensure the genesis block matches.
+        assert_eq!(genesis, candidate);
     }
 
     #[test]
-    fn test_state_path() -> Result<()> {
+    fn test_deploy() {
+        let _blocks = Blocks::<CurrentNetwork>::new().unwrap();
+    }
+
+    #[test]
+    fn test_state_path() {
         let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
 
         // Sample the genesis block.
@@ -482,12 +476,10 @@ mod tests {
         let commitment = commitments[0];
 
         let _state_path = blocks.to_state_path(commitment).unwrap();
-
-        Ok(())
     }
 
     #[test]
-    fn test_new_blocks() -> Result<()> {
+    fn test_new_blocks() {
         let mut blocks = Blocks::<CurrentNetwork>::new().unwrap();
 
         // Sample the genesis block.
@@ -508,7 +500,5 @@ mod tests {
 
         assert_eq!(blocks.latest_block_height(), 1);
         assert_eq!(blocks.latest_block_hash(), new_block.hash());
-
-        Ok(())
     }
 }

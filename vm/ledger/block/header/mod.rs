@@ -109,14 +109,14 @@ impl<N: Network> Header<N> {
             metadata: Metadata { network, height, round, coinbase_target, proof_target, timestamp },
         };
         // Ensure the header is valid.
-        match header.is_valid() {
+        match header.verify() {
             true => Ok(header),
             false => bail!("Invalid block header: {:?}", header),
         }
     }
 
     /// Returns `true` if the block header is well-formed.
-    pub fn is_valid(&self) -> bool {
+    pub fn verify(&self) -> bool {
         match self.metadata.height == 0u32 {
             true => self.is_genesis(),
             false => {

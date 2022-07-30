@@ -34,6 +34,17 @@ pub struct MemoryMap<
 }
 
 impl<
+    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
+    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+> FromIterator<(K, V)> for MemoryMap<K, V>
+{
+    /// Initializes a new `MemoryMap` from the given iterator.
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        Self { map: HashMap::from_iter(iter) }
+    }
+}
+
+impl<
     'a,
     K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone + 'a,
     V: PartialEq + Eq + Serialize + DeserializeOwned + Clone + 'a,

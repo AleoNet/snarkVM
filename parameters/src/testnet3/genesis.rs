@@ -14,5 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod genesis;
-pub use genesis::*;
+pub struct GenesisBytes;
+
+impl GenesisBytes {
+    pub fn load_bytes() -> &'static [u8] {
+        include_bytes!("./resources/block.genesis")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_genesis_block() {
+        let bytes = GenesisBytes::load_bytes();
+        assert_eq!(442314, bytes.len() as u64, "Update me if serialization has changed");
+    }
+}

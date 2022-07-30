@@ -26,7 +26,7 @@ pub trait Map<
     'a,
     K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + 'a,
     V: PartialEq + Eq + Serialize + DeserializeOwned + 'a,
->: MapReader<'a, K, V>
+>: MapReader<'a, K, V> + FromIterator<(K, V)>
 {
     ///
     /// Inserts the given key-value pair into the map.

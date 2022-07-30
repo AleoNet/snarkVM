@@ -2510,6 +2510,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sha2",
+ "snarkvm",
  "snarkvm-algorithms",
  "snarkvm-console",
  "snarkvm-curves",

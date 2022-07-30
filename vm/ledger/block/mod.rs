@@ -33,6 +33,7 @@ use crate::{
         account::{Address, PrivateKey},
         network::prelude::*,
         program::Value,
+        types::Field,
     },
     ledger::vm::VM,
 };
@@ -71,7 +72,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the block header is valid.
-        if !self.header.is_valid() {
+        if !self.header.verify() {
             warn!("Invalid block header: {:?}", self.header);
             return false;
         }
@@ -127,7 +128,9 @@ impl<N: Network> Block<N> {
 
         true
     }
+}
 
+impl<N: Network> Block<N> {
     /// Returns the block hash.
     pub const fn hash(&self) -> N::BlockHash {
         self.block_hash
@@ -137,12 +140,56 @@ impl<N: Network> Block<N> {
     pub const fn previous_hash(&self) -> N::BlockHash {
         self.previous_hash
     }
+}
 
+impl<N: Network> Block<N> {
     /// Returns the block header.
     pub const fn header(&self) -> &Header<N> {
         &self.header
     }
 
+    /// Returns the previous state root from the block header.
+    pub const fn previous_state_root(&self) -> &Field<N> {
+        &self.header.previous_state_root()
+    }
+
+    /// Returns the transactions root in the block header.
+    pub const fn transactions_root(&self) -> &Field<N> {
+        &self.header.transactions_root()
+    }
+
+    /// Returns the network ID of the block.
+    pub const fn network(&self) -> u16 {
+        self.header.network()
+    }
+
+    /// Returns the height of the block.
+    pub const fn height(&self) -> u32 {
+        self.header.height()
+    }
+
+    /// Returns the round number of the block.
+    pub const fn round(&self) -> u64 {
+        self.header.round()
+    }
+
+    /// Returns the coinbase target for this block.
+    pub const fn coinbase_target(&self) -> u64 {
+        self.header.coinbase_target()
+    }
+
+    /// Returns the proof target for this block.
+    pub const fn proof_target(&self) -> u64 {
+        self.header.proof_target()
+    }
+
+    /// Returns the Unix timestamp (UTC) for this block.
+    pub const fn timestamp(&self) -> i64 {
+        self.header.timestamp()
+    }
+}
+
+impl<N: Network> Block<N> {
     /// Returns the transactions in the block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions

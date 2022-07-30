@@ -70,7 +70,7 @@ path = "vm/cli/main.rs"
 required-features = ["cli"]
 
 [features]
-default = ["cli", "parallel"]
+default = ["cli", "parallel", "parameters"]
 full = ["algorithms", "circuit", "console", "curves", "fields", "parameters", "r1cs", "utilities"]
 
 ## snarkVM CLI ##
