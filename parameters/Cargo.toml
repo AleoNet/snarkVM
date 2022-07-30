@@ -80,6 +80,9 @@ version = "0.11"
 features = [ "wasm-bindgen" ]
 optional = true
 
+[dev-dependencies.snarkvm]
+path = ".."
+
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.7.5"

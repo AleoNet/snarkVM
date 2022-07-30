@@ -32,8 +32,8 @@ pub enum InputID<A: Aleo> {
     Public(Field<A>),
     /// The ciphertext hash of the private input.
     Private(Field<A>),
-    /// The `(gamma, serial_number)` tuple of the record input.
-    Record(Group<A>, Field<A>),
+    /// The `(commitment, gamma, serial_number)` tuple of the record input.
+    Record(Field<A>, Group<A>, Field<A>),
     /// The commitment of the external record input.
     ExternalRecord(Field<A>),
 }
@@ -51,10 +51,12 @@ impl<A: Aleo> Inject for InputID<A> {
             console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the ciphertext hash as `Mode::Public`.
             console::InputID::Private(field) => Self::Private(Field::new(Mode::Public, field)),
-            // Inject gamma as `Mode::Private` and the expected serial number as `Mode::Public`.
-            console::InputID::Record(gamma, serial_number) => {
-                Self::Record(Group::new(Mode::Private, gamma), Field::new(Mode::Public, serial_number))
-            }
+            // Inject commitment and gamma as `Mode::Private`, and the expected serial number as `Mode::Public`.
+            console::InputID::Record(commitment, gamma, serial_number) => Self::Record(
+                Field::new(Mode::Private, commitment),
+                Group::new(Mode::Private, gamma),
+                Field::new(Mode::Public, serial_number),
+            ),
             // Inject the commitment as `Mode::Public`.
             console::InputID::ExternalRecord(field) => Self::ExternalRecord(Field::new(Mode::Public, field)),
         }
@@ -71,7 +73,9 @@ impl<A: Aleo> Eject for InputID<A> {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
             Self::Private(field) => field.eject_mode(),
-            Self::Record(gamma, serial_number) => Mode::combine(gamma.eject_mode(), [serial_number.eject_mode()]),
+            Self::Record(commitment, gamma, serial_number) => {
+                Mode::combine(commitment.eject_mode(), [gamma.eject_mode(), serial_number.eject_mode()])
+            }
             Self::ExternalRecord(field) => field.eject_mode(),
         }
     }
@@ -82,8 +86,8 @@ impl<A: Aleo> Eject for InputID<A> {
             Self::Constant(field) => console::InputID::Constant(field.eject_value()),
             Self::Public(field) => console::InputID::Public(field.eject_value()),
             Self::Private(field) => console::InputID::Private(field.eject_value()),
-            Self::Record(gamma, serial_number) => {
-                console::InputID::Record(gamma.eject_value(), serial_number.eject_value())
+            Self::Record(commitment, gamma, serial_number) => {
+                console::InputID::Record(commitment.eject_value(), gamma.eject_value(), serial_number.eject_value())
             }
             Self::ExternalRecord(field) => console::InputID::ExternalRecord(field.eject_value()),
         }
@@ -99,7 +103,9 @@ impl<A: Aleo> ToFields for InputID<A> {
             InputID::Constant(field) => vec![field.clone()],
             InputID::Public(field) => vec![field.clone()],
             InputID::Private(field) => vec![field.clone()],
-            InputID::Record(gamma, serial_number) => vec![gamma.to_x_coordinate(), serial_number.clone()],
+            InputID::Record(commitment, gamma, serial_number) => {
+                vec![commitment.clone(), gamma.to_x_coordinate(), serial_number.clone()]
+            }
             InputID::ExternalRecord(field) => vec![field.clone()],
         }
     }

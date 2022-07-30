@@ -1250,6 +1250,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "num_threads"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2819ce041d2ee131036f4fc9d6ae7ae125a3a40e97ba64d04fe799ad9dabbb44"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1991,7 +2000,6 @@ dependencies = [
  "snarkvm-utilities",
  "tempfile",
  "thiserror",
- "tracing",
  "ureq",
  "walkdir",
 ]
@@ -2256,6 +2264,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-parameters",
  "snarkvm-utilities",
+ "time",
  "tracing",
 ]
 
@@ -2500,6 +2509,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "sha2",
+ "snarkvm",
  "snarkvm-algorithms",
  "snarkvm-console",
  "snarkvm-curves",
@@ -2713,6 +2723,16 @@ dependencies = [
  "proc-macro2 1.0.42",
  "quote 1.0.20",
  "syn 1.0.98",
+]
+
+[[package]]
+name = "time"
+version = "0.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72c91f41dcb2f096c05f0873d667dceec1087ce5bcf984ec8ffb19acddbb3217"
+dependencies = [
+ "libc",
+ "num_threads",
 ]
 
 [[package]]

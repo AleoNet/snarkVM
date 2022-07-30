@@ -24,6 +24,7 @@ mod bytes;
 mod decrypt;
 mod encrypt;
 mod find;
+mod is_owner;
 mod num_randomizers;
 mod parse_ciphertext;
 mod parse_plaintext;

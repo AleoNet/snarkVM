@@ -62,7 +62,7 @@ impl<N: Network> Deployment<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program};
+    use crate::{Process, Program, Stack};
     use console::network::Testnet3;
 
     use once_cell::sync::OnceCell;
@@ -94,7 +94,7 @@ function compute:
                 // Construct the process.
                 let process = Process::<CurrentNetwork>::new().unwrap();
                 // Compute the stack.
-                let stack = process.compute_stack(&program).unwrap();
+                let stack = Stack::new(&process, &program).unwrap();
                 // Compute the deployment.
                 stack.deploy::<CurrentAleo, _>(rng).unwrap()
             })

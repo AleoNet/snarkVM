@@ -166,7 +166,7 @@ impl<N: Network> Request<N> {
                     let serial_number =
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
                     // Add gamma and the serial number to the inputs.
-                    input_ids.push(InputID::Record(gamma, serial_number));
+                    input_ids.push(InputID::Record(commitment, gamma, serial_number));
                 }
                 // An external record input is committed (using `tvk`) to a field element.
                 ValueType::ExternalRecord(..) => {

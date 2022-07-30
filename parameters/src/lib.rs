@@ -32,9 +32,6 @@ pub use errors::*;
 
 pub mod testnet3;
 
-pub mod traits;
-pub use traits::*;
-
 pub mod prelude {
-    pub use crate::{errors::*, traits::*};
+    pub use crate::errors::*;
 }

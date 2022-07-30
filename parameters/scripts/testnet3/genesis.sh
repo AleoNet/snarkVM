@@ -4,8 +4,8 @@
 
 # Generate transactions
 
-# Inputs: network, recipient address, amount, genesis filepath, transaction filepath
+# Inputs: network, recipient private key, genesis filepath, transaction filepath
 
-cargo run --release --example genesis testnet3 aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah block.genesis -- --nocapture || exit
+cargo run --release --example genesis testnet3 $1 block.genesis -- --nocapture || exit
 
 mv block.genesis ../../src/testnet3/resources || exit
