@@ -66,7 +66,7 @@ impl<
     }
 
     /// Returns the output records that belong to the given view key.
-    pub fn get_output_record<'a>(
+    pub fn get_output_records<'a>(
         &'a self,
         view_key: &'a ViewKey<N>,
     ) -> impl '_ + Iterator<Item = (Field<N>, Result<Record<N, Plaintext<N>>>)> {
