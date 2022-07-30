@@ -123,7 +123,9 @@ impl<N: Network> Transition<N> {
                         // Return the private input.
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
-                    (InputID::Record(_, serial_number), Value::Record(..)) => Ok(Input::Record(*serial_number)),
+                    (InputID::Record(commitment, _, serial_number), Value::Record(..)) => {
+                        Ok(Input::Record(*serial_number, Origin::Commitment(*commitment)))
+                    }
                     (InputID::ExternalRecord(input_commitment), Value::Record(..)) => {
                         Ok(Input::ExternalRecord(*input_commitment))
                     }

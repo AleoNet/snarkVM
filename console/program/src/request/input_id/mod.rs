@@ -29,8 +29,8 @@ pub enum InputID<N: Network> {
     Public(Field<N>),
     /// The ciphertext hash of the private input.
     Private(Field<N>),
-    /// The gamma value and serial number of the record input.
-    Record(Group<N>, Field<N>),
+    /// The commitment, gamma value, and serial number of the record input.
+    Record(Field<N>, Group<N>, Field<N>),
     /// The commitment of the external record input.
     ExternalRecord(Field<N>),
 }

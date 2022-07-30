@@ -117,7 +117,7 @@ impl<N: Network> Request<N> {
                         message.push(candidate_hash);
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number) => {
                         // Prepare the index as a constant field element.
                         let index = Field::from_u16(index as u16);
                         // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
@@ -135,7 +135,9 @@ impl<N: Network> Request<N> {
                             _ => bail!("Expected a record type at input {index}"),
                         };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&self.program_id, record_name, &randomizer)?;
+                        let candidate_cm = record.to_commitment(&self.program_id, record_name, &randomizer)?;
+                        // Ensure the commitment matches.
+                        ensure!(*commitment == candidate_cm, "Expected a record input with the same commitment");
                         // Ensure the record belongs to the caller.
                         ensure!(**record.owner() == self.caller, "Input record does not belong to the caller");
                         // Ensure the record gates is less than or equal to 2^52.
@@ -144,7 +146,7 @@ impl<N: Network> Request<N> {
                         }
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
-                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
+                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
                         let h_r = (*gamma * challenge) + (h * response);
                         // Add `H`, `r * H`, and `gamma` to the message.
@@ -157,7 +159,7 @@ impl<N: Network> Request<N> {
                         ])?;
                         // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
                         let candidate_sn =
-                            N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
+                            N::commit_bhp512(&(N::serial_number_domain(), *commitment).to_bits_le(), &sn_nonce)?;
                         // Ensure the serial number matches.
                         ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
                     }

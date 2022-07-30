@@ -19,8 +19,8 @@ use super::*;
 impl<N: Network> FromBytes for Input<N> {
     /// Reads the input from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index = Variant::read_le(&mut reader)?;
-        let literal = match index {
+        let variant = Variant::read_le(&mut reader)?;
+        let literal = match variant {
             0 => {
                 let plaintext_hash: Field<N> = FromBytes::read_le(&mut reader)?;
                 let plaintext_exists: bool = FromBytes::read_le(&mut reader)?;
@@ -49,9 +49,22 @@ impl<N: Network> FromBytes for Input<N> {
                 };
                 Self::Private(ciphertext_hash, ciphertext)
             }
-            3 => Self::Record(FromBytes::read_le(&mut reader)?),
+            3 => {
+                // Read the serial number.
+                let serial_number: Field<N> = FromBytes::read_le(&mut reader)?;
+                // Read the origin type.
+                let origin_type = u8::read_le(&mut reader)?;
+                // Read the origin.
+                match origin_type {
+                    0 => Self::Record(serial_number, Origin::Commitment(FromBytes::read_le(&mut reader)?)),
+                    1 => Self::Record(serial_number, Origin::StateRoot(FromBytes::read_le(&mut reader)?)),
+                    _ => {
+                        return Err(error(format!("Failed to decode transition input with origin type {origin_type}")));
+                    }
+                }
+            }
             4 => Self::ExternalRecord(FromBytes::read_le(&mut reader)?),
-            5.. => return Err(error(format!("Failed to decode input variant {index}"))),
+            5.. => return Err(error(format!("Failed to decode transition input variant {variant}"))),
         };
         Ok(literal)
     }
@@ -94,9 +107,19 @@ impl<N: Network> ToBytes for Input<N> {
                     None => false.write_le(&mut writer),
                 }
             }
-            Self::Record(serial_number) => {
+            Self::Record(serial_number, origin) => {
                 (3 as Variant).write_le(&mut writer)?;
-                serial_number.write_le(&mut writer)
+                serial_number.write_le(&mut writer)?;
+                match origin {
+                    Origin::Commitment(commitment) => {
+                        0u8.write_le(&mut writer)?;
+                        commitment.write_le(&mut writer)
+                    }
+                    Origin::StateRoot(root) => {
+                        1u8.write_le(&mut writer)?;
+                        root.write_le(&mut writer)
+                    }
+                }
             }
             Self::ExternalRecord(input_commitment) => {
                 (4 as Variant).write_le(&mut writer)?;
@@ -145,7 +168,8 @@ mod tests {
             check_bytes(Input::<CurrentNetwork>::Private(Uniform::rand(rng), None))?;
 
             // Record
-            check_bytes(Input::<CurrentNetwork>::Record(Uniform::rand(rng)))?;
+            check_bytes(Input::<CurrentNetwork>::Record(Uniform::rand(rng), Origin::Commitment(Uniform::rand(rng))))?;
+            check_bytes(Input::<CurrentNetwork>::Record(Uniform::rand(rng), Origin::StateRoot(Uniform::rand(rng))))?;
 
             // ExternalRecord
             check_bytes(Input::<CurrentNetwork>::ExternalRecord(Uniform::rand(rng)))?;

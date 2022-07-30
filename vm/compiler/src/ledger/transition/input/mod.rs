@@ -26,6 +26,14 @@ use console::{
 
 type Variant = u16;
 
+#[derive(Clone, PartialEq, Eq)]
+pub enum Origin<N: Network> {
+    /// The origin is a commitment.
+    Commitment(Field<N>),
+    /// The origin is a state root.
+    StateRoot(N::StateRoot),
+}
+
 /// The transition input.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Input<N: Network> {
@@ -35,8 +43,8 @@ pub enum Input<N: Network> {
     Public(Field<N>, Option<Plaintext<N>>),
     /// The ciphertext hash and (optional) ciphertext.
     Private(Field<N>, Option<Ciphertext<N>>),
-    /// The serial number.
-    Record(Field<N>),
+    /// The serial number and the origin of the record.
+    Record(Field<N>, Origin<N>),
     /// The input commitment to the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
 }
@@ -45,21 +53,21 @@ impl<N: Network> Input<N> {
     /// Returns the variant of the input.
     pub fn variant(&self) -> Variant {
         match self {
-            Input::Constant(_, _) => 0,
-            Input::Public(_, _) => 1,
-            Input::Private(_, _) => 2,
-            Input::Record(_) => 3,
-            Input::ExternalRecord(_) => 4,
+            Input::Constant(..) => 0,
+            Input::Public(..) => 1,
+            Input::Private(..) => 2,
+            Input::Record(..) => 3,
+            Input::ExternalRecord(..) => 4,
         }
     }
 
     /// Returns the ID of the input.
     pub fn id(&self) -> &Field<N> {
         match self {
-            Input::Constant(id, _) => id,
-            Input::Public(id, _) => id,
-            Input::Private(id, _) => id,
-            Input::Record(serial_number) => serial_number,
+            Input::Constant(id, ..) => id,
+            Input::Public(id, ..) => id,
+            Input::Private(id, ..) => id,
+            Input::Record(serial_number, ..) => serial_number,
             Input::ExternalRecord(id) => id,
         }
     }
@@ -67,7 +75,7 @@ impl<N: Network> Input<N> {
     /// Returns the serial number, if the input is a record.
     pub fn serial_number(&self) -> Option<&Field<N>> {
         match self {
-            Input::Record(serial_number) => Some(serial_number),
+            Input::Record(serial_number, ..) => Some(serial_number),
             _ => None,
         }
     }

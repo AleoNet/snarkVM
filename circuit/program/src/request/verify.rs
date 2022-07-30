@@ -88,7 +88,7 @@ impl<A: Aleo> Request<A> {
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number) => {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
@@ -106,10 +106,10 @@ impl<A: Aleo> Request<A> {
                             _ => A::halt(format!("Expected a record input at input {index}")),
                         };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
+                        let candidate_commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
 
                         // Compute the generator `H` as `HashToGroup(commitment)`.
-                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), commitment.clone()]);
+                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
                         let h_r = (gamma * challenge) + (&h * response);
                         // Add `H`, `r * H`, and `gamma` to the message.
@@ -122,10 +122,12 @@ impl<A: Aleo> Request<A> {
                         ]);
                         // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
                         let candidate_serial_number =
-                            A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
+                            A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
+                            // Ensure the candidate commitment matches the expected commitment.
+                            & commitment.is_equal(&candidate_commitment)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(&self.caller)
                             // Ensure the record gates is less than or equal to 2^52.
@@ -232,7 +234,7 @@ impl<A: Aleo> Request<A> {
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number) => {
                         // Prepare the index as a constant field element.
                         let input_index = Field::constant(console::Field::from_u16(index as u16));
                         // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
@@ -250,7 +252,7 @@ impl<A: Aleo> Request<A> {
                             _ => A::halt(format!("Expected a record type at input {index}")),
                         };
                         // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, &record_name, &randomizer);
+                        let candidate_commitment = record.to_commitment(program_id, &record_name, &randomizer);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
@@ -259,10 +261,12 @@ impl<A: Aleo> Request<A> {
                         ]);
                         // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
                         let candidate_serial_number =
-                            A::commit_bhp512(&(A::serial_number_domain(), commitment).to_bits_le(), &sn_nonce);
+                            A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
+                            // Ensure the candidate commitment matches the expected commitment.
+                            & commitment.is_equal(&candidate_commitment)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(caller)
                             // Ensure the record gates is less than or equal to 2^52.
