@@ -43,7 +43,7 @@ pub enum Output<N: Network> {
 
 impl<N: Network> Output<N> {
     /// Returns the variant of the output.
-    pub fn variant(&self) -> Variant {
+    pub const fn variant(&self) -> Variant {
         match self {
             Output::Constant(_, _) => 0,
             Output::Public(_, _) => 1,
@@ -54,7 +54,7 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns the ID of the output.
-    pub fn id(&self) -> &Field<N> {
+    pub const fn id(&self) -> &Field<N> {
         match self {
             Output::Constant(id, ..) => id,
             Output::Public(id, ..) => id,
@@ -64,7 +64,15 @@ impl<N: Network> Output<N> {
         }
     }
 
-    /// Returns the commitment if the output is a record.
+    /// Returns the record, commitment, and nonce, if the output is a record.
+    pub const fn record(&self) -> Option<(&Record<N, Ciphertext<N>>, &Field<N>, &Field<N>)> {
+        match self {
+            Output::Record(commitment, nonce, _, Some(record)) => Some((record, commitment, nonce)),
+            _ => None,
+        }
+    }
+
+    /// Returns the commitment, if the output is a record.
     pub const fn commitment(&self) -> Option<&Field<N>> {
         match self {
             Output::Record(commitment, ..) => Some(commitment),
@@ -72,7 +80,7 @@ impl<N: Network> Output<N> {
         }
     }
 
-    /// Returns the nonce if the output is a record.
+    /// Returns the nonce, if the output is a record.
     pub const fn nonce(&self) -> Option<&Field<N>> {
         match self {
             Output::Record(_, nonce, ..) => Some(nonce),
@@ -80,7 +88,7 @@ impl<N: Network> Output<N> {
         }
     }
 
-    /// Returns the checksum if the output is a record.
+    /// Returns the checksum, if the output is a record.
     pub const fn checksum(&self) -> Option<&Field<N>> {
         match self {
             Output::Record(_, _, checksum, ..) => Some(checksum),

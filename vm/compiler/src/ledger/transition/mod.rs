@@ -34,7 +34,7 @@ use crate::Proof;
 use console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Identifier, InputID, OutputID, ProgramID, Request, Response, Value, ValueType},
+    program::{Ciphertext, Identifier, InputID, OutputID, ProgramID, Record, Request, Response, Value, ValueType},
     types::{Field, Group},
 };
 
@@ -259,6 +259,11 @@ impl<N: Network> Transition<N> {
     /// Returns the output IDs.
     pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.outputs.iter().map(Output::id)
+    }
+
+    /// Returns the output records as a tuple comprised of `(record, commitment, nonce)`.
+    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Record<N, Ciphertext<N>>, &Field<N>, &Field<N>)> {
+        self.outputs.iter().flat_map(Output::record)
     }
 
     /// Returns the proof.

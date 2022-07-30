@@ -51,7 +51,7 @@ pub enum Input<N: Network> {
 
 impl<N: Network> Input<N> {
     /// Returns the variant of the input.
-    pub fn variant(&self) -> Variant {
+    pub const fn variant(&self) -> Variant {
         match self {
             Input::Constant(..) => 0,
             Input::Public(..) => 1,
@@ -62,7 +62,7 @@ impl<N: Network> Input<N> {
     }
 
     /// Returns the ID of the input.
-    pub fn id(&self) -> &Field<N> {
+    pub const fn id(&self) -> &Field<N> {
         match self {
             Input::Constant(id, ..) => id,
             Input::Public(id, ..) => id,
@@ -73,7 +73,7 @@ impl<N: Network> Input<N> {
     }
 
     /// Returns the serial number, if the input is a record.
-    pub fn serial_number(&self) -> Option<&Field<N>> {
+    pub const fn serial_number(&self) -> Option<&Field<N>> {
         match self {
             Input::Record(serial_number, ..) => Some(serial_number),
             _ => None,
