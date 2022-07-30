@@ -330,6 +330,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Prints the current state of the circuit.
+    #[cfg(debug_assertions)]
     fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 

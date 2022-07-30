@@ -19,13 +19,6 @@ use super::*;
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
     pub fn genesis<R: Rng + CryptoRng>(vm: &mut VM<N>, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Self> {
-        // Initialize the genesis program.
-        let genesis = Program::genesis()?;
-        // Deploy the genesis program.
-        let deploy_genesis = vm.deploy(&genesis, rng)?;
-        // Add the genesis program.
-        vm.on_deploy(&deploy_genesis)?;
-
         // Initialize the credits program.
         let credits = Program::credits()?;
         // Deploy the credits program.
@@ -36,16 +29,16 @@ impl<N: Network> Block<N> {
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
         // Prepare the function name.
-        let function_name = FromStr::from_str("start")?;
+        let function_name = FromStr::from_str("genesis")?;
         // Prepare the function inputs.
         let inputs = [Value::from_str(&caller.to_string())?, Value::from_str("1_100_000_000_000_000_u64")?];
         // Authorize the call to start.
-        let authorization = vm.authorize(private_key, genesis.id(), function_name, &inputs, rng)?;
+        let authorization = vm.authorize(private_key, credits.id(), function_name, &inputs, rng)?;
         // Execute the genesis program.
         let (_, execution) = vm.execute(authorization, rng)?;
 
         // Prepare the transactions.
-        let transactions = Transactions::from(&[deploy_genesis, deploy_credits, execution])?;
+        let transactions = Transactions::from(&[deploy_credits, execution])?;
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
@@ -67,7 +60,7 @@ impl<N: Network> Block<N> {
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
             // Ensure there are three transactions in the genesis block.
-            && self.transactions.len() == 3
+            && self.transactions.len() == 2
     }
 }
 

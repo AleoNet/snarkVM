@@ -71,7 +71,7 @@ mod tests {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected)?;
-            assert_eq!(2824880, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(2824640, candidate_string.len(), "Update me if serialization has changed");
 
             // Deserialize
             assert_eq!(expected, Block::from_str(expected_string)?);
@@ -87,7 +87,7 @@ mod tests {
             let expected_bytes = expected.to_bytes_le()?;
             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
-            assert_eq!(1764683, expected_bytes.len(), "Update me if serialization has changed");
+            assert_eq!(1764618, expected_bytes.len(), "Update me if serialization has changed");
 
             // Deserialize
             assert_eq!(expected, Block::read_le(&expected_bytes[..])?);

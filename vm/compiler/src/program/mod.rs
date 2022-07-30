@@ -87,26 +87,6 @@ impl<N: Network> Program<N> {
         })
     }
 
-    /// Initializes the genesis program.
-    #[inline]
-    pub fn genesis() -> Result<Self> {
-        Self::from_str(
-            r"
-program genesis.aleo;
-
-record genesis:
-    owner as address.private;
-    gates as u64.private;
-
-function start:
-    input r0 as address.private;
-    input r1 as u64.private;
-    cast r0 r1 into r2 as genesis.record;
-    output r2 as genesis.record;
-",
-        )
-    }
-
     /// Initializes the credits program.
     #[inline]
     pub fn credits() -> Result<Self> {
@@ -117,6 +97,12 @@ program credits.aleo;
 record credits:
     owner as address.private;
     gates as u64.private;
+
+function genesis:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as credits.record;
+    output r2 as credits.record;
 
 function transfer:
     input r0 as credits.record;
@@ -554,7 +540,7 @@ impl<N: Network> Program<N> {
     /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
     #[inline]
     pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        program_id.to_string() == "genesis.aleo" && function_name.to_string() == "start"
+        program_id.to_string() == "credits.aleo" && function_name.to_string() == "genesis"
     }
 }
 

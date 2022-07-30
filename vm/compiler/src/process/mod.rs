@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn test_process_execute_genesis() {
         // Initialize a new program.
-        let program = Program::<CurrentNetwork>::genesis().unwrap();
+        let program = Program::<CurrentNetwork>::credits().unwrap();
 
         // Initialize the RNG.
         let rng = &mut test_crypto_rng();
@@ -376,9 +376,9 @@ mod tests {
         let caller = Address::try_from(&caller_private_key).unwrap();
         // Declare the input value.
         let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
-        let r1 = Value::<CurrentNetwork>::from_str("1_000_000_000_000_000_u64").unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("1_100_000_000_000_000_u64").unwrap();
         // Declare the expected output value.
-        let r2 = Value::from_str(&format!("{{ owner: {caller}.private, gates: 1_000_000_000_000_000_u64.private }}"))
+        let r2 = Value::from_str(&format!("{{ owner: {caller}.private, gates: 1_100_000_000_000_000_u64.private }}"))
             .unwrap();
 
         // Construct the process.
@@ -391,7 +391,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("start").unwrap(),
+                Identifier::from_str("genesis").unwrap(),
                 &[r0.clone(), r1.clone()],
                 rng,
             )
