@@ -49,6 +49,22 @@ impl<N: Network> VerifyingKey<N> {
             }
         }
     }
+
+    /// Returns `true` if the batch proof is valid for the given public inputs.
+    pub fn verify_batch(&self, function_name: &Identifier<N>, inputs: &[&[N::Field]], proof: &Proof<N>) -> bool {
+        let timer = std::time::Instant::now();
+        match Marlin::<N>::verify_batch(self, inputs, proof) {
+            Ok(is_valid) => {
+                let elapsed = timer.elapsed().as_millis();
+                println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                is_valid
+            }
+            Err(error) => {
+                println!("{}", format!(" • Verifier failed: {error}").dimmed());
+                false
+            }
+        }
+    }
 }
 
 impl<N: Network> Deref for VerifyingKey<N> {
