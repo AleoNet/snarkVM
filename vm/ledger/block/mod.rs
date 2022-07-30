@@ -150,12 +150,12 @@ impl<N: Network> Block<N> {
 
     /// Returns the previous state root from the block header.
     pub const fn previous_state_root(&self) -> &Field<N> {
-        &self.header.previous_state_root()
+        self.header.previous_state_root()
     }
 
     /// Returns the transactions root in the block header.
     pub const fn transactions_root(&self) -> &Field<N> {
-        &self.header.transactions_root()
+        self.header.transactions_root()
     }
 
     /// Returns the network ID of the block.

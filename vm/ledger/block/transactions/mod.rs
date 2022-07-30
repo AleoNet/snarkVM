@@ -49,11 +49,9 @@ impl<N: Network> Transactions<N> {
     /// Initializes from a given transactions list.
     pub fn from(transactions: &[Transaction<N>]) -> Result<Self> {
         // Construct the transactions.
-        let transactions = Self {
-            transactions: transactions.iter().cloned().map(|transaction| (transaction.id(), transaction)).collect(),
-        };
+        let transactions = transactions.iter().cloned().map(|transaction| (transaction.id(), transaction)).collect();
         // Return the transactions.
-        Ok(transactions)
+        Ok(Self { transactions })
     }
 
     /// Returns `true` if the transactions are well-formed.

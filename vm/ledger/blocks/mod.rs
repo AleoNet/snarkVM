@@ -71,7 +71,7 @@ impl<N: Network> Blocks<N> {
             current_hash: genesis.hash(),
             block_tree: N::merkle_tree_bhp(&[genesis.hash().to_bits_le()])?,
             previous_hashes: [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
-            headers: [(genesis.height(), genesis.header().clone())].into_iter().collect(),
+            headers: [(genesis.height(), *genesis.header())].into_iter().collect(),
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
         })
     }
@@ -146,7 +146,7 @@ impl<N: Network> Blocks<N> {
     pub fn get_previous_hash(&self, height: u32) -> Result<N::BlockHash> {
         match self.previous_hashes.get(&height)? {
             Some(previous_hash) => Ok(*previous_hash),
-            None => Err(anyhow!("Missing previous block hash for height {}", height)),
+            None => bail!("Missing previous block hash for block {height}"),
         }
     }
 
@@ -154,7 +154,7 @@ impl<N: Network> Blocks<N> {
     pub fn get_header(&self, height: u32) -> Result<&Header<N>> {
         match self.headers.get(&height)? {
             Some(header) => Ok(header),
-            None => Err(anyhow!("Missing block header for height {}", height)),
+            None => bail!("Missing block header for block {height}"),
         }
     }
 
@@ -162,7 +162,7 @@ impl<N: Network> Blocks<N> {
     pub fn get_transactions(&self, height: u32) -> Result<&Transactions<N>> {
         match self.transactions.get(&height)? {
             Some(transactions) => Ok(transactions),
-            None => Err(anyhow!("Missing block transactions for height {}", height)),
+            None => bail!("Missing block transactions for block {height}"),
         }
     }
 }
