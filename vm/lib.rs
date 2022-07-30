@@ -71,7 +71,7 @@ pub mod traits {
 }
 
 pub mod prelude {
-    pub use crate::{errors::*, traits::*};
+    pub use crate::{compiler::*, errors::*, traits::*};
 
     #[cfg(feature = "algorithms")]
     pub use crate::algorithms::prelude::*;
