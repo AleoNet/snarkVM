@@ -45,7 +45,7 @@ impl<N: Network> Block<N> {
         let previous_hash = N::BlockHash::default();
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transactions)?;
+        let block = Self::new(private_key, previous_hash, header, transactions, rng)?;
         // Ensure the block is valid genesis block.
         match block.is_genesis() {
             true => Ok(block),

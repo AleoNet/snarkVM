@@ -16,47 +16,44 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Block<N> {
-    /// Reads the block from the buffer.
+impl<N: Network> FromBytes for Metadata<N> {
+    /// Reads the metadata from the buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u16::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid block version"));
+            return Err(error("Invalid metadata version"));
         }
 
-        // Read the block.
-        let block_hash: N::BlockHash = FromBytes::read_le(&mut reader)?;
-        let previous_hash = FromBytes::read_le(&mut reader)?;
-        let header = FromBytes::read_le(&mut reader)?;
-        let transactions = FromBytes::read_le(&mut reader)?;
-        let signature = FromBytes::read_le(&mut reader)?;
+        // Read from the buffer.
+        let network = u16::read_le(&mut reader)?;
+        let round = u64::read_le(&mut reader)?;
+        let height = u32::read_le(&mut reader)?;
+        let coinbase_target = u64::read_le(&mut reader)?;
+        let proof_target = u64::read_le(&mut reader)?;
+        let timestamp = i64::read_le(&mut reader)?;
 
-        // Construct the block.
-        let block = Self::from(previous_hash, header, transactions, signature).map_err(|e| error(e.to_string()))?;
-        // Ensure the block hash matches.
-        match block_hash == block.hash() {
-            true => Ok(block),
-            false => Err(error("Mismatching block hash, possible data corruption")),
-        }
+        // Construct the metadata.
+        Self::new(network, round, height, coinbase_target, proof_target, timestamp).map_err(|e| error(e.to_string()))
     }
 }
 
-impl<N: Network> ToBytes for Block<N> {
-    /// Writes the block to the buffer.
+impl<N: Network> ToBytes for Metadata<N> {
+    /// Writes the metadata to the buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
 
-        // Write the block.
-        self.block_hash.write_le(&mut writer)?;
-        self.previous_hash.write_le(&mut writer)?;
-        self.header.write_le(&mut writer)?;
-        self.transactions.write_le(&mut writer)?;
-        self.signature.write_le(&mut writer)
+        // Write to the buffer.
+        self.network.write_le(&mut writer)?;
+        self.round.write_le(&mut writer)?;
+        self.height.write_le(&mut writer)?;
+        self.coinbase_target.write_le(&mut writer)?;
+        self.proof_target.write_le(&mut writer)?;
+        self.timestamp.write_le(&mut writer)
     }
 }
 
@@ -69,11 +66,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        for expected in [crate::ledger::vm::test_helpers::sample_genesis_block()].into_iter() {
+        for expected in [*crate::ledger::vm::test_helpers::sample_genesis_block().metadata()].into_iter() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, Block::read_le(&expected_bytes[..])?);
-            assert!(Block::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Metadata::read_le(&expected_bytes[..])?);
+            assert!(Metadata::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

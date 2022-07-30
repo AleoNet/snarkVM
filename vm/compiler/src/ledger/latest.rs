@@ -21,8 +21,9 @@ impl<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
 {
     /// Returns the latest state root.
     pub const fn latest_state_root(&self) -> &Field<N> {
@@ -34,19 +35,19 @@ impl<
         self.get_block(self.current_height)
     }
 
-    /// Returns the latest block height.
-    pub const fn latest_height(&self) -> u32 {
-        self.current_height
-    }
-
     /// Returns the latest block hash.
     pub const fn latest_hash(&self) -> N::BlockHash {
         self.current_hash
     }
 
+    /// Returns the latest block height.
+    pub const fn latest_height(&self) -> u32 {
+        self.current_height
+    }
+
     /// Returns the latest round number.
-    pub fn latest_round(&self) -> Result<u64> {
-        Ok(self.get_header(self.current_height)?.round())
+    pub const fn latest_round(&self) -> u64 {
+        self.current_round
     }
 
     /// Returns the latest block coinbase target.

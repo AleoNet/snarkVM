@@ -21,13 +21,19 @@ impl<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
 {
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
         state_root == self.latest_state_root()
             || self.headers.values().map(Header::previous_state_root).any(|root| root == state_root)
+    }
+
+    /// Returns `true` if the given block hash exists.
+    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
+        self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
     }
 
     /// Returns `true` if the given block height exists.
@@ -36,11 +42,6 @@ impl<
             .contains_key(&height)
             .or_else(|_| self.headers.contains_key(&height))
             .or_else(|_| self.transactions.contains_key(&height))
-    }
-
-    /// Returns `true` if the given block hash exists.
-    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
-        self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
     }
 
     /// Returns `true` if the given transaction exists.

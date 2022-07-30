@@ -47,7 +47,7 @@ impl<N: Network> Header<N> {
             Ok(HeaderLeaf::<N>::new(1, self.transactions_root))
         }
         // If the ID is the metadata hash, then return the 7th leaf.
-        else if id == &N::hash_bhp512(&self.metadata.to_bits_le())? {
+        else if id == &self.metadata.to_hash()? {
             Ok(HeaderLeaf::<N>::new(7, *id))
         }
         // Otherwise, bail.
@@ -58,13 +58,6 @@ impl<N: Network> Header<N> {
 
     /// Returns an instance of the Merkle tree for the block header.
     pub fn to_tree(&self) -> Result<HeaderTree<N>> {
-        // Construct the metadata bits (the last leaf in the Merkle tree).
-        let metadata_bits = self.metadata.to_bits_le(); // 304 bits
-        // Ensure the metadata bits is the correct size.
-        ensure!(metadata_bits.len() == 304, "Incorrect block header metadata size");
-        // Hash the metadata bits.
-        let metadata_hash = N::hash_bhp512(&metadata_bits)?;
-
         // Determine the number of leaves.
         let num_leaves = usize::pow(2, HEADER_DEPTH as u32);
 
@@ -75,7 +68,7 @@ impl<N: Network> Header<N> {
         for i in 2..7 {
             leaves.push(HeaderLeaf::<N>::new(i, Field::zero()).to_bits_le());
         }
-        leaves.push(HeaderLeaf::<N>::new(7, metadata_hash).to_bits_le());
+        leaves.push(HeaderLeaf::<N>::new(7, self.metadata.to_hash()?).to_bits_le());
 
         // Ensure the correct number of leaves are allocated.
         ensure!(num_leaves == leaves.len(), "Incorrect number of leaves in the Merkle tree for the block header");
@@ -114,12 +107,14 @@ mod tests {
             let header = Header::<CurrentNetwork>::from(
                 Field::rand(rng),
                 Field::rand(rng),
-                CurrentNetwork::ID,
-                u32::rand(rng),
-                u64::rand(rng),
-                u64::rand(rng),
-                u64::rand(rng),
-                rng.gen_range(0..i64::MAX),
+                Metadata::new(
+                    CurrentNetwork::ID,
+                    u64::rand(rng),
+                    u32::rand(rng),
+                    u64::rand(rng),
+                    u64::rand(rng),
+                    rng.gen_range(0..i64::MAX),
+                )?,
             )?;
 
             // Compute the header root.

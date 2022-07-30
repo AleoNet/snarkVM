@@ -14,21 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub struct GenesisBytes;
+use super::*;
 
-impl GenesisBytes {
-    pub fn load_bytes() -> &'static [u8] {
-        include_bytes!("./resources/block.genesis")
+impl<N: Network> FromStr for Metadata<N> {
+    type Err = Error;
+
+    /// Initializes the metadata from a JSON-string.
+    fn from_str(metadata: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(metadata)?)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl<N: Network> Debug for Metadata<N> {
+    /// Prints the metadata as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
 
-    #[test]
-    fn test_genesis_block() {
-        let bytes = GenesisBytes::load_bytes();
-        assert_eq!(1764748, bytes.len() as u64, "Update me if serialization has changed");
+impl<N: Network> Display for Metadata<N> {
+    /// Displays the metadata as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

@@ -14,21 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub struct GenesisBytes;
+use super::*;
 
-impl GenesisBytes {
-    pub fn load_bytes() -> &'static [u8] {
-        include_bytes!("./resources/block.genesis")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_genesis_block() {
-        let bytes = GenesisBytes::load_bytes();
-        assert_eq!(1764748, bytes.len() as u64, "Update me if serialization has changed");
+impl<N: Network> Metadata<N> {
+    /// Returns the metadata hash.
+    pub fn to_hash(&self) -> Result<Field<N>> {
+        // Construct the metadata bits (the last leaf in the Merkle tree).
+        let metadata_bits = self.to_bits_le(); // 304 bits
+        // Ensure the metadata bits is the correct size.
+        ensure!(metadata_bits.len() == 304, "Incorrect metadata size");
+        // Hash the metadata bits.
+        let metadata_hash = N::hash_bhp512(&metadata_bits)?;
+        // Return the metadata hash.
+        Ok(metadata_hash)
     }
 }

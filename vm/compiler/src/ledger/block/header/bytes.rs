@@ -30,25 +30,10 @@ impl<N: Network> FromBytes for Header<N> {
         // Read from the buffer.
         let previous_state_root = Field::<N>::read_le(&mut reader)?;
         let transactions_root = Field::<N>::read_le(&mut reader)?;
-        let network = u16::read_le(&mut reader)?;
-        let height = u32::read_le(&mut reader)?;
-        let round = u64::read_le(&mut reader)?;
-        let coinbase_target = u64::read_le(&mut reader)?;
-        let proof_target = u64::read_le(&mut reader)?;
-        let timestamp = i64::read_le(&mut reader)?;
+        let metadata = Metadata::read_le(&mut reader)?;
 
         // Construct the block header.
-        Self::from(
-            previous_state_root,
-            transactions_root,
-            network,
-            height,
-            round,
-            coinbase_target,
-            proof_target,
-            timestamp,
-        )
-        .map_err(|e| error(e.to_string()))
+        Self::from(previous_state_root, transactions_root, metadata).map_err(|e| error(e.to_string()))
     }
 }
 
@@ -62,12 +47,7 @@ impl<N: Network> ToBytes for Header<N> {
         // Write to the buffer.
         self.previous_state_root.write_le(&mut writer)?;
         self.transactions_root.write_le(&mut writer)?;
-        self.metadata.network.write_le(&mut writer)?;
-        self.metadata.height.write_le(&mut writer)?;
-        self.metadata.round.write_le(&mut writer)?;
-        self.metadata.coinbase_target.write_le(&mut writer)?;
-        self.metadata.proof_target.write_le(&mut writer)?;
-        self.metadata.timestamp.write_le(&mut writer)
+        self.metadata.write_le(&mut writer)
     }
 }
 

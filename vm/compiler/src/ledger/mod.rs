@@ -42,7 +42,7 @@ use crate::{
     process::{Deployment, Execution},
 };
 use console::{
-    account::{PrivateKey, ViewKey},
+    account::{PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
     program::{Identifier, Plaintext, ProgramID, Record},
@@ -77,20 +77,25 @@ pub struct Ledger<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
 > {
-    /// The current block height.
-    current_height: u32,
     /// The current block hash.
     current_hash: N::BlockHash,
+    /// The current block height.
+    current_height: u32,
+    /// The current round number.
+    current_round: u64,
     /// The current block tree.
     block_tree: BlockTree<N>,
-    /// The chain of previous block hashes.
+    /// The map of previous block hashes.
     previous_hashes: PreviousHashesMap,
-    /// The chain of block headers.
+    /// The map of block headers.
     headers: HeadersMap,
-    /// The chain of block transactions.
+    /// The map of block transactions.
     transactions: TransactionsMap,
+    /// The map of block signatures.
+    signatures: SignatureMap,
     /// The mapping of program IDs to their deployment.
     programs: ProgramsMap,
     /// The memory pool of unconfirmed transactions.
@@ -104,8 +109,9 @@ impl<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
 {
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
@@ -113,12 +119,14 @@ impl<
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
         // Construct the blocks.
         Ok(Self {
-            current_height: genesis.height(),
             current_hash: genesis.hash(),
+            current_height: genesis.height(),
+            current_round: genesis.round(),
             block_tree: N::merkle_tree_bhp(&[genesis.hash().to_bits_le()])?,
             previous_hashes: [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
             headers: [(genesis.height(), *genesis.header())].into_iter().collect(),
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
+            signatures: [(genesis.height(), *genesis.signature())].into_iter().collect(),
             programs: genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
             memory_pool: Default::default(),
         })
@@ -165,7 +173,7 @@ impl<
     }
 
     /// Returns a candidate for the next block in the ledger.
-    pub fn propose_next_block(&self) -> Result<Block<N>> {
+    pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
         // Construct the transactions for the block.
         let transactions = self.memory_pool.values().collect::<Transactions<N>>();
 
@@ -174,24 +182,25 @@ impl<
         let state_root = self.latest_state_root();
 
         // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
-        let round = 1;
+        let round = block.round() + 1;
         let coinbase_target = u64::MAX;
         let proof_target = u64::MAX;
 
-        // Construct the header.
-        let header = Header::from(
-            *state_root,
-            transactions.to_root()?,
+        // Construct the certificate.
+        let certificate = Metadata::new(
             N::ID,
-            block.height() + 1,
             round,
+            block.height() + 1,
             coinbase_target,
             proof_target,
             OffsetDateTime::now_utc().unix_timestamp(),
         )?;
 
+        // Construct the header.
+        let header = Header::from(*state_root, transactions.to_root()?, certificate)?;
+
         // Construct the new block.
-        let block = Block::from(block.hash(), header, transactions)?;
+        let block = Block::new(private_key, block.hash(), header, transactions, rng)?;
 
         // TODO (raychu86): Ensure the block is valid.
         // // Ensure the block itself is valid.
@@ -212,6 +221,16 @@ impl<
         //     bail!("The given block is invalid"));
         // }
 
+        // Ensure the previous block hash is correct.
+        if self.current_hash != block.previous_hash() {
+            bail!("The given block has an incorrect previous block hash")
+        }
+
+        // Ensure the block hash does not already exist.
+        if self.contains_block_hash(&block.hash()) {
+            bail!("Block hash '{}' already exists in the ledger", block.hash())
+        }
+
         // Ensure the next block height is correct.
         if self.latest_height() != 0 && self.latest_height() + 1 != block.height() {
             bail!("The given block has an incorrect block height")
@@ -222,14 +241,9 @@ impl<
             bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
-        // Ensure the previous block hash is correct.
-        if self.current_hash != block.previous_hash() {
-            bail!("The given block has an incorrect previous block hash")
-        }
-
-        // Ensure the block hash does not already exist.
-        if self.contains_block_hash(&block.hash()) {
-            bail!("Block hash '{}' already exists in the ledger", block.hash())
+        // Ensure the next round is correct.
+        if self.latest_round() != 0 && self.latest_round() + 1 /*+ block.number_of_aborts()*/ != block.round() {
+            bail!("The given block has an incorrect round number")
         }
 
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
@@ -316,8 +330,9 @@ impl<
             let mut ledger = self.clone();
 
             // Update the blocks.
-            ledger.current_height = block.height();
             ledger.current_hash = block.hash();
+            ledger.current_height = block.height();
+            ledger.current_round = block.round();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
             ledger.previous_hashes.insert::<u32>(block.height(), block.previous_hash())?;
             ledger.headers.insert::<u32>(block.height(), *block.header())?;
@@ -457,13 +472,18 @@ pub(crate) mod test_helpers {
         MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>,
         MemoryMap<u32, Header<CurrentNetwork>>,
         MemoryMap<u32, Transactions<CurrentNetwork>>,
+        MemoryMap<u32, Signature<CurrentNetwork>>,
         MemoryMap<ProgramID<CurrentNetwork>, Deployment<CurrentNetwork>>,
     >;
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_execution_transaction};
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_state_path() {
@@ -481,6 +501,11 @@ mod tests {
 
     #[test]
     fn test_new_blocks() {
+        let rng = &mut test_crypto_rng();
+
+        // Sample a private key.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
         // Initialize the ledger with the genesis block.
         let mut ledger = CurrentLedger::new().unwrap();
         // Retrieve the genesis block.
@@ -493,7 +518,7 @@ mod tests {
         ledger.add_to_memory_pool(new_transaction).unwrap();
 
         // Propose the next block.
-        let next_block = ledger.propose_next_block().unwrap();
+        let next_block = ledger.propose_next_block(&private_key, rng).unwrap();
 
         // Construct a next block.
         ledger.add_next_block(&next_block).unwrap();

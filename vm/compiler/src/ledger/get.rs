@@ -21,12 +21,18 @@ impl<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
 {
     /// Returns the block for the given block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-        Block::from(self.get_previous_hash(height)?, *self.get_header(height)?, self.get_transactions(height)?.clone())
+        Block::from(
+            self.get_previous_hash(height)?,
+            *self.get_header(height)?,
+            self.get_transactions(height)?.clone(),
+            *self.get_signature(height)?,
+        )
     }
 
     /// Returns the block hash for the given block height.
@@ -62,6 +68,14 @@ impl<
         match self.transactions.get(&height)? {
             Some(transactions) => Ok(transactions),
             None => bail!("Missing block transactions for block {height}"),
+        }
+    }
+
+    /// Returns the block signature for the given block height.
+    pub fn get_signature(&self, height: u32) -> Result<&Signature<N>> {
+        match self.signatures.get(&height)? {
+            Some(signature) => Ok(signature),
+            None => bail!("Missing signature for block {height}"),
         }
     }
 
