@@ -45,7 +45,7 @@ use console::{
     account::{PrivateKey, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Plaintext, ProgramID, Record},
+    program::{Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
@@ -241,45 +241,63 @@ impl<
 
         // TODO (raychu86): Add proof and coinbase target verification.
 
-        for (_, transaction) in block.transactions().iter() {
+        for transaction_id in block.transaction_ids() {
             // Ensure the transaction in the block do not already exist.
-            if self.contains_transaction(transaction) {
-                bail!("Transaction '{transaction}' already exists in the ledger")
+            if self.contains_transaction_id(transaction_id) {
+                bail!("Transaction '{transaction_id}' already exists in the ledger")
             }
-            // TODO (raychu86): Ensure the transaction in the block references a valid past or current ledger root.
-            // if !self.contains_state_root(&transaction.state_root()) {
-            //     bail!(
-            //         "The given transaction references a non-existent state root {}",
-            //         &transaction.state_root()
-            //     ));
-            // }
         }
 
+        // TODO (raychu86): Ensure the transaction in the block references a valid past or current ledger root.
+        // if !self.contains_state_root(&transaction.state_root()) {
+        //     bail!(
+        //         "The given transaction references a non-existent state root {}",
+        //         &transaction.state_root()
+        //     ));
+        // }
+
         // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in block.transactions().transition_public_keys() {
+        for tpk in block.transition_public_keys() {
             if self.contains_transition_public_key(tpk) {
                 bail!("Transition public key '{tpk}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given serial numbers.
-        for serial_number in block.transactions().serial_numbers() {
+        for serial_number in block.serial_numbers() {
             if self.contains_serial_number(serial_number) {
                 bail!("Serial number '{serial_number}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given commitments.
-        for commitment in block.transactions().commitments() {
+        for commitment in block.commitments() {
             if self.contains_commitment(commitment) {
                 bail!("Commitment '{commitment}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given nonces.
-        for nonce in block.transactions().nonces() {
+        for nonce in block.nonces() {
             if self.contains_nonce(nonce) {
                 bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        let latest_height = self.latest_height();
+        let credits_program_id = ProgramID::from_str("credits.aleo")?;
+        let credits_genesis = Identifier::from_str("genesis")?;
+
+        for transition in block.transitions() {
+            if latest_height > 0 {
+                // Ensure the genesis function is not called.
+                if *transition.program_id() == credits_program_id && *transition.function_name() == credits_genesis {
+                    bail!("The genesis function cannot be called.")
+                }
+                // Ensure the transition fee is not negative.
+                if *transition.fee() < 0i64 {
+                    bail!("The transition fee cannot be negative.")
+                }
             }
         }
 

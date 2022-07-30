@@ -25,7 +25,7 @@ impl<
 > Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
 {
     /// Returns the latest state root.
-    pub fn latest_state_root(&self) -> &Field<N> {
+    pub const fn latest_state_root(&self) -> &Field<N> {
         self.block_tree.root()
     }
 
@@ -35,12 +35,12 @@ impl<
     }
 
     /// Returns the latest block height.
-    pub fn latest_height(&self) -> u32 {
+    pub const fn latest_height(&self) -> u32 {
         self.current_height
     }
 
     /// Returns the latest block hash.
-    pub fn latest_hash(&self) -> N::BlockHash {
+    pub const fn latest_hash(&self) -> N::BlockHash {
         self.current_hash
     }
 
