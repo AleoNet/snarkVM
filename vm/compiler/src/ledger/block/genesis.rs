@@ -38,7 +38,7 @@ impl<N: Network> Block<N> {
         let (_, execution) = vm.execute(authorization, rng)?;
 
         // Prepare the transactions.
-        let transactions = Transactions::from(&[deploy_credits, execution])?;
+        let transactions = Transactions::from(&[deploy_credits, execution]);
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.

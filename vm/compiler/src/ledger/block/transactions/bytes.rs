@@ -31,7 +31,7 @@ impl<N: Network> FromBytes for Transactions<N> {
         // Read the transactions.
         let transactions = (0..num_txs).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
         // Return the transactions.
-        Self::from(&transactions).map_err(|e| error(e.to_string()))
+        Ok(Self::from(&transactions))
     }
 }
 

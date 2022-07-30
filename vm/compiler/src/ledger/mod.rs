@@ -124,34 +124,74 @@ impl<
         })
     }
 
-    /// Returns a proposal block constructed with the transactions in the mempool.
-    pub fn propose_block(&self, transactions: Transactions<N>) -> Result<Block<N>> {
-        // Fetch the latest block hash
-        let latest_block_hash = self.latest_hash();
+    /// Appends the given transaction to the memory pool.
+    pub fn add_to_memory_pool(&mut self, transaction: Transaction<N>) -> Result<()> {
+        // Ensure the transaction does not already exist.
+        if self.memory_pool.contains_key(&transaction.id()) {
+            bail!("Transaction '{}' already exists in the memory pool.", transaction.id());
+        }
 
-        // Construct the block header.
-        let latest_state_root = self.latest_state_root();
-        let transactions_root = transactions.to_root()?;
-        let network = N::ID;
-        let height = self.latest_height() + 1;
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in transaction.transition_public_keys() {
+            if self.contains_transition_public_key(tpk) {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given serial numbers.
+        for serial_number in transaction.serial_numbers() {
+            if self.contains_serial_number(serial_number) {
+                bail!("Serial number '{serial_number}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given commitments.
+        for commitment in transaction.commitments() {
+            if self.contains_commitment(commitment) {
+                bail!("Commitment '{commitment}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given nonces.
+        for nonce in transaction.nonces() {
+            if self.contains_nonce(nonce) {
+                bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        // Insert the transaction to the memory pool.
+        self.memory_pool.insert(transaction.id(), transaction);
+        Ok(())
+    }
+
+    /// Returns a candidate for the next block in the ledger.
+    pub fn propose_next_block(&self) -> Result<Block<N>> {
+        // Construct the transactions for the block.
+        let transactions = self.memory_pool.values().collect::<Transactions<N>>();
+
+        // Fetch the latest block and state root.
+        let block = self.latest_block()?;
+        let state_root = self.latest_state_root();
+
         // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
         let round = 1;
-        let coinbase_target = 0;
-        let proof_target = 0;
-        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        let coinbase_target = u64::MAX;
+        let proof_target = u64::MAX;
+
+        // Construct the header.
         let header = Header::from(
-            *latest_state_root,
-            transactions_root,
-            network,
-            height,
+            *state_root,
+            transactions.to_root()?,
+            N::ID,
+            block.height() + 1,
             round,
             coinbase_target,
             proof_target,
-            timestamp,
+            OffsetDateTime::now_utc().unix_timestamp(),
         )?;
 
         // Construct the new block.
-        let block = Block::from(latest_block_hash, header, transactions)?;
+        let block = Block::from(block.hash(), header, transactions)?;
 
         // TODO (raychu86): Ensure the block is valid.
         // // Ensure the block itself is valid.
@@ -163,7 +203,7 @@ impl<
     }
 
     /// Checks the given block is valid next block.
-    pub fn check_next(&self, block: &Block<N>) -> Result<()> {
+    pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Add deployed programs to the ledger.
 
         // TODO (raychu86): Validate the block using a valid VM.
@@ -247,9 +287,9 @@ impl<
     }
 
     /// Adds the given block as the next block in the chain.
-    pub fn add_next(&mut self, block: &Block<N>) -> Result<()> {
+    pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
         // Ensure the given block is a valid next block.
-        self.check_next(block)?;
+        self.check_next_block(block)?;
 
         /* ATOMIC CODE SECTION */
 
@@ -405,7 +445,6 @@ pub(crate) mod test_helpers {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_execution_transaction};
 
     #[test]
@@ -431,14 +470,17 @@ mod tests {
         assert_eq!(ledger.latest_height(), 0);
         assert_eq!(ledger.latest_hash(), genesis.hash());
 
-        // Construct a new block.
+        // Add a transaction to the memory pool.
         let new_transaction = sample_execution_transaction();
-        let transactions = Transactions::from(&[new_transaction]).unwrap();
+        ledger.add_to_memory_pool(new_transaction).unwrap();
 
-        let new_block = ledger.propose_block(transactions).unwrap();
-        ledger.add_next(&new_block).unwrap();
+        // Propose the next block.
+        let next_block = ledger.propose_next_block().unwrap();
+
+        // Construct a next block.
+        ledger.add_next_block(&next_block).unwrap();
 
         assert_eq!(ledger.latest_height(), 1);
-        assert_eq!(ledger.latest_hash(), new_block.hash());
+        assert_eq!(ledger.latest_hash(), next_block.hash());
     }
 }

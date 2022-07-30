@@ -128,10 +128,6 @@ impl<N: Network> Header<N> {
                     && self.metadata.height != 0u32
                     // Ensure the round is nonzero.
                     && self.metadata.round != 0u64
-                    // Ensure the coinbase target is not u64::MAX.
-                    && self.metadata.coinbase_target != u64::MAX
-                    // Ensure the proof target is not u64::MAX.
-                    && self.metadata.proof_target != u64::MAX
                     // Ensure the timestamp in the block is nonzero.
                     && self.metadata.timestamp != 0i64
             }

@@ -38,7 +38,7 @@ impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
                 let transactions = serde_json::Value::deserialize(deserializer)?;
                 let transactions: Vec<_> =
                     serde_json::from_value(transactions["transactions"].clone()).map_err(de::Error::custom)?;
-                Ok(Self::from(&transactions).map_err(de::Error::custom)?)
+                Ok(Self::from(&transactions))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transactions"),
         }
