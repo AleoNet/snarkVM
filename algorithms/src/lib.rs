@@ -16,6 +16,7 @@
 
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 #[cfg(feature = "wasm")]
 #[macro_use]
