@@ -64,7 +64,7 @@ impl<
     }
 
     /// Returns `true` if the given transition public key exists.
-    pub fn contains_transition_public_keys(&self, tpk: &Group<N>) -> bool {
+    pub fn contains_transition_public_key(&self, tpk: &Group<N>) -> bool {
         self.transition_public_keys().contains(tpk)
     }
 
@@ -79,7 +79,7 @@ impl<
     }
 
     /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, commitment: &Field<N>) -> bool {
-        self.nonces().contains(commitment)
+    pub fn contains_nonce(&self, nonce: &Field<N>) -> bool {
+        self.nonces().contains(nonce)
     }
 }

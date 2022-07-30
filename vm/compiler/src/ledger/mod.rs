@@ -146,7 +146,7 @@ impl<
         // TODO (raychu86): Ensure the block is valid.
         // // Ensure the block itself is valid.
         // if !block.is_valid(vm) {
-        //     return Err(anyhow!("The proposed block is invalid"));
+        //     bail!("The proposed block is invalid"));
         // }
 
         Ok(block)
@@ -159,29 +159,29 @@ impl<
         // TODO (raychu86): Validate the block using a valid VM.
         // // Ensure the block itself is valid.
         // if !block.is_valid(vm) {
-        //     return Err(anyhow!("The given block is invalid"));
+        //     bail!("The given block is invalid"));
         // }
 
         // Ensure the next block height is correct.
         let height = block.header().height();
         if self.latest_height() != 0 && self.latest_height() + 1 != height {
-            return Err(anyhow!("The given block has an incorrect block height"));
+            bail!("The given block has an incorrect block height")
         }
 
         // Ensure the block height does not already exist.
         if self.contains_height(height)? {
-            return Err(anyhow!("The given block height already exists in the ledger"));
+            bail!("The given block height already exists in the ledger")
         }
 
         // Ensure the previous block hash is correct.
         if self.current_hash != block.previous_hash() {
-            return Err(anyhow!("The given block has an incorrect previous block hash"));
+            bail!("The given block has an incorrect previous block hash")
         }
 
         // Ensure the block hash does not already exist.
         let block_hash = block.hash();
         if self.contains_block_hash(&block_hash) {
-            return Err(anyhow!("The given block hash already exists in the ledger"));
+            bail!("The given block hash already exists in the ledger")
         }
 
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
@@ -190,7 +190,7 @@ impl<
         if self.contains_height(0)? {
             let current_block = self.latest_block()?;
             if block.header().timestamp() <= current_block.header().timestamp() {
-                return Err(anyhow!("The given block timestamp is before the current timestamp"));
+                bail!("The given block timestamp is before the current timestamp")
             }
         }
 
@@ -199,28 +199,42 @@ impl<
         for (_, transaction) in block.transactions().iter() {
             // Ensure the transaction in the block do not already exist.
             if self.contains_transaction(transaction) {
-                return Err(anyhow!("The given block has a duplicate transaction in the ledger"));
+                bail!("Transaction '{transaction}' already exists in the ledger")
             }
             // TODO (raychu86): Ensure the transaction in the block references a valid past or current ledger root.
             // if !self.contains_state_root(&transaction.state_root()) {
-            //     return Err(anyhow!(
+            //     bail!(
             //         "The given transaction references a non-existent state root {}",
             //         &transaction.state_root()
             //     ));
             // }
         }
 
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in block.transactions().transition_public_keys() {
+            if self.contains_transition_public_key(tpk) {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
+            }
+        }
+
         // Ensure the ledger does not already contain a given serial numbers.
         for serial_number in block.transactions().serial_numbers() {
             if self.contains_serial_number(serial_number) {
-                return Err(anyhow!("Serial number already exists in the ledger"));
+                bail!("Serial number '{serial_number}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given commitments.
         for commitment in block.transactions().commitments() {
             if self.contains_commitment(commitment) {
-                return Err(anyhow!("Commitment already exists in the ledger"));
+                bail!("Commitment '{commitment}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given nonces.
+        for nonce in block.transactions().nonces() {
+            if self.contains_nonce(nonce) {
+                bail!("Nonce '{nonce}' already exists in the ledger")
             }
         }
 
@@ -259,7 +273,7 @@ impl<
             .collect::<Vec<_>>();
 
         if transaction.len() != 1 {
-            return Err(anyhow!("Multiple transactions associated with commitment {}", commitment.to_string()));
+            bail!("Multiple transactions associated with commitment {}", commitment.to_string())
         }
 
         let (transaction_id, transaction) = transaction[0];
@@ -275,10 +289,7 @@ impl<
             .collect::<Vec<_>>();
 
         if block_height.len() != 1 {
-            return Err(anyhow!(
-                "Multiple block heights associated with transaction id {}",
-                transaction_id.to_string()
-            ));
+            bail!("Multiple block heights associated with transaction id {}", transaction_id.to_string())
         }
 
         let block_height = *block_height[0];
@@ -291,7 +302,7 @@ impl<
             .collect::<Vec<_>>();
 
         if transition.len() != 1 {
-            return Err(anyhow!("Multiple transitions associated with commitment {}", commitment.to_string()));
+            bail!("Multiple transitions associated with commitment {}", commitment.to_string())
         }
 
         let transition = transition[0];
@@ -375,11 +386,6 @@ mod tests {
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-
-    #[test]
-    fn test_deploy() {
-        let _ledger = CurrentLedger::new().unwrap();
-    }
 
     #[test]
     fn test_state_path() {
