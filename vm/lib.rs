@@ -16,10 +16,6 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
-#![allow(clippy::single_element_loop)]
-
-#[macro_use]
-extern crate tracing;
 
 #[cfg(feature = "cli")]
 #[macro_use]
@@ -29,9 +25,6 @@ extern crate thiserror;
 pub mod cli;
 pub mod file;
 pub mod package;
-
-mod ledger;
-pub use ledger::*;
 
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;

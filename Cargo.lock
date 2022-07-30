@@ -2000,8 +2000,6 @@ dependencies = [
  "snarkvm-utilities",
  "tempfile",
  "thiserror",
- "time",
- "tracing",
  "ureq",
  "walkdir",
 ]
@@ -2266,6 +2264,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-parameters",
  "snarkvm-utilities",
+ "time",
  "tracing",
 ]
 

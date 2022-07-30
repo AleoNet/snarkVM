@@ -181,12 +181,6 @@ optional = true
 version = "1.0"
 optional = true
 
-[dependencies.time]
-version = "0.3.9"
-
-[dependencies.tracing]
-version = "0.1"
-
 [dependencies.ureq]
 version = "2.5"
 features = ["json"]

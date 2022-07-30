@@ -32,9 +32,6 @@ pub use registers::*;
 mod stack;
 pub use stack::*;
 
-mod transition;
-pub use transition::*;
-
 mod authorize;
 mod deploy;
 mod evaluate;
@@ -232,7 +229,7 @@ impl<N: Network> Process<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program};
+    use crate::{Process, Program, Transition};
     use console::{
         account::PrivateKey,
         network::Testnet3,
