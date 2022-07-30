@@ -23,9 +23,9 @@ use core::{borrow::Borrow, hash::Hash};
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + 'a,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + 'a,
->: MapReader<'a, K, V> + FromIterator<(K, V)>
+    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a>,
+    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a>,
+>: Clone + MapReader<'a, K, V> + FromIterator<(K, V)>
 {
     ///
     /// Inserts the given key-value pair into the map.
@@ -46,8 +46,8 @@ pub trait Map<
 /// A trait representing map-like storage operations with read-only capabilities.
 pub trait MapReader<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + 'a,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + 'a,
+    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a>,
+    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a>,
 >
 {
     type Iterator: Iterator<Item = (&'a K, &'a V)>;

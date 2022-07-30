@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Ledger<N> {
+impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
     /// Returns the latest state root.
     pub fn latest_state_root(&self) -> &Field<N> {
         self.block_tree.root()

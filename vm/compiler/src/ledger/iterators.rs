@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Ledger<N> {
+impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
     /// Returns an iterator over all transactions.
     pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
         self.transactions.values().flat_map(Transactions::transactions)

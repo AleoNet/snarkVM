@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Ledger<N> {
+impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
         state_root == self.latest_state_root()

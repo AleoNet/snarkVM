@@ -22,15 +22,15 @@ use std::collections::hash_map::{HashMap, Iter, Keys, Values};
 
 #[derive(Clone)]
 pub struct MemoryMap<
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned,
-    V: PartialEq + Eq + Serialize + DeserializeOwned,
+    K: PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
+    V: PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
 > {
     pub(super) map: HashMap<K, V>,
 }
 
 impl<
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
 > FromIterator<(K, V)> for MemoryMap<K, V>
 {
     /// Initializes a new `MemoryMap` from the given iterator.
@@ -41,8 +41,8 @@ impl<
 
 impl<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone + 'a,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone + 'a,
+    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
+    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
 > Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
@@ -73,8 +73,8 @@ impl<
 
 impl<
     'a,
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone + 'a,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone + 'a,
+    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
+    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
 > MapReader<'a, K, V> for MemoryMap<K, V>
 {
     type Iterator = Iter<'a, K, V>;
@@ -128,8 +128,8 @@ impl<
 }
 
 impl<
-    K: PartialEq + Eq + Hash + Serialize + DeserializeOwned + Clone,
-    V: PartialEq + Eq + Serialize + DeserializeOwned + Clone,
+    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
 > Default for MemoryMap<K, V>
 {
     fn default() -> Self {

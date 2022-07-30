@@ -62,7 +62,7 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 #[derive(Clone)]
-pub struct Ledger<N: Network> {
+pub struct Ledger<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> {
     /// The current block height.
     current_height: u32,
     /// The current block hash.
@@ -70,7 +70,7 @@ pub struct Ledger<N: Network> {
     /// The current block tree.
     block_tree: BlockTree<N>,
     /// The chain of previous block hashes.
-    previous_hashes: MemoryMap<u32, N::BlockHash>,
+    previous_hashes: PreviousHashes,
     /// The chain of block headers.
     headers: MemoryMap<u32, Header<N>>,
     /// The chain of block transactions.
@@ -83,7 +83,7 @@ pub struct Ledger<N: Network> {
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
-impl<N: Network> Ledger<N> {
+impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
@@ -100,9 +100,7 @@ impl<N: Network> Ledger<N> {
             memory_pool: IndexSet::new(),
         })
     }
-}
 
-impl<N: Network> Ledger<N> {
     /// Returns a proposal block constructed with the transactions in the mempool.
     pub fn propose_block(&self, transactions: Transactions<N>) -> Result<Block<N>> {
         // Fetch the latest block hash
@@ -215,16 +213,16 @@ impl<N: Network> Ledger<N> {
 
         // Add the block to the ledger. This code section executes atomically.
         {
-            let mut blocks = self.clone();
+            let mut ledger = self.clone();
 
-            blocks.current_height = height;
-            blocks.current_hash = block_hash;
-            blocks.block_tree.append(&[block.hash().to_bits_le()])?;
-            blocks.previous_hashes.insert::<u32>(height, block.previous_hash())?;
-            blocks.headers.insert::<u32>(height, *block.header())?;
-            blocks.transactions.insert::<u32>(height, block.transactions().clone())?;
+            ledger.current_height = height;
+            ledger.current_hash = block_hash;
+            ledger.block_tree.append(&[block.hash().to_bits_le()])?;
+            ledger.previous_hashes.insert::<u32>(height, block.previous_hash())?;
+            ledger.headers.insert::<u32>(height, *block.header())?;
+            ledger.transactions.insert::<u32>(height, block.transactions().clone())?;
 
-            *self = blocks;
+            *self = ledger;
         }
 
         Ok(())
@@ -348,16 +346,17 @@ mod tests {
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentLedger = Ledger<CurrentNetwork, MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>>;
 
     #[test]
     fn test_deploy() {
-        let _ledger = Ledger::<CurrentNetwork>::new().unwrap();
+        let _ledger = CurrentLedger::new().unwrap();
     }
 
     #[test]
     fn test_state_path() {
         // Initialize the ledger with the genesis block.
-        let ledger = Ledger::<CurrentNetwork>::new().unwrap();
+        let ledger = CurrentLedger::new().unwrap();
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
 
@@ -371,7 +370,7 @@ mod tests {
     #[test]
     fn test_new_blocks() {
         // Initialize the ledger with the genesis block.
-        let mut ledger = Ledger::<CurrentNetwork>::new().unwrap();
+        let mut ledger = CurrentLedger::new().unwrap();
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
         assert_eq!(ledger.latest_height(), 0);

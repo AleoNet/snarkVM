@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Ledger<N> {
+impl<N: Network, PreviousHashes: for<'a> Map<'a, u32, N::BlockHash>> Ledger<N, PreviousHashes> {
     /// Returns the block for the given block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
         Block::from(self.get_previous_hash(height)?, *self.get_header(height)?, self.get_transactions(height)?.clone())
@@ -65,6 +65,7 @@ mod tests {
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+    type CurrentLedger = Ledger<CurrentNetwork, MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>>;
 
     #[test]
     fn test_get_block() {
@@ -72,7 +73,7 @@ mod tests {
         let genesis = Block::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a new ledger.
-        let ledger = Ledger::<CurrentNetwork>::new().unwrap();
+        let ledger = CurrentLedger::new().unwrap();
         // Retrieve the genesis block.
         let candidate = ledger.get_block(0).unwrap();
         // Ensure the genesis block matches.
