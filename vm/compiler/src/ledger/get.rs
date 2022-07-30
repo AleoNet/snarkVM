@@ -64,6 +64,22 @@ impl<
             None => bail!("Missing block transactions for block {height}"),
         }
     }
+
+    /// Returns the output records that belong to the given view key.
+    pub fn get_output_record<'a>(
+        &'a self,
+        view_key: &'a ViewKey<N>,
+    ) -> impl '_ + Iterator<Item = (Field<N>, Result<Record<N, Plaintext<N>>>)> {
+        // Derive the address from the view key.
+        let address = view_key.to_address();
+
+        self.transitions().flat_map(Transition::output_records).flat_map(move |(commitment, (record, nonce))| {
+            match record.is_owner(&address, view_key, nonce) {
+                true => Some((*commitment, record.decrypt(view_key, nonce))),
+                false => None,
+            }
+        })
+    }
 }
 
 #[cfg(test)]

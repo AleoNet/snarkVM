@@ -27,7 +27,7 @@ pub enum OutputID<N: Network> {
     /// The ciphertext hash of the private output.
     Private(Field<N>),
     /// The `(commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<N>, Field<N>, Field<N>),
+    Record(Field<N>, Group<N>, Field<N>),
     /// The commitment of the external record output.
     ExternalRecord(Field<N>),
 }
@@ -117,7 +117,7 @@ impl<N: Network> Response<N> {
                         let commitment = record.to_commitment(program_id, record_name, &randomizer)?;
 
                         // Compute the record nonce.
-                        let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
+                        let nonce = N::g_scalar_multiply(&randomizer);
 
                         // Encrypt the record, using the randomizer.
                         let encrypted_record = record.encrypt(randomizer)?;

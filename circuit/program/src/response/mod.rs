@@ -22,7 +22,7 @@ mod process_outputs_from_callback;
 
 use crate::{Identifier, ProgramID, Value};
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Field};
+use snarkvm_circuit_types::{environment::prelude::*, Field, Group};
 
 pub enum OutputID<A: Aleo> {
     /// The hash of the constant output.
@@ -32,7 +32,7 @@ pub enum OutputID<A: Aleo> {
     /// The ciphertext hash of the private output.
     Private(Field<A>),
     /// The `(commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<A>, Field<A>, Field<A>),
+    Record(Field<A>, Group<A>, Field<A>),
     /// The commitment of the external record output.
     ExternalRecord(Field<A>),
 }
@@ -53,7 +53,7 @@ impl<A: Aleo> Inject for OutputID<A> {
             // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
             console::OutputID::Record(commitment, nonce, checksum) => Self::Record(
                 Field::new(Mode::Public, commitment),
-                Field::new(Mode::Public, nonce),
+                Group::new(Mode::Public, nonce),
                 Field::new(Mode::Public, checksum),
             ),
             // Inject the expected commitment as `Mode::Public`.
@@ -94,10 +94,10 @@ impl<A: Aleo> OutputID<A> {
     }
 
     /// Initializes a record output ID.
-    fn record(expected_commitment: Field<A>, expected_nonce: Field<A>, expected_checksum: Field<A>) -> Self {
+    fn record(expected_commitment: Field<A>, expected_nonce: Group<A>, expected_checksum: Field<A>) -> Self {
         // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
         let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
-        let output_nonce = Field::new(Mode::Public, expected_nonce.eject_value());
+        let output_nonce = Group::new(Mode::Public, expected_nonce.eject_value());
         let output_checksum = Field::new(Mode::Public, expected_checksum.eject_value());
         // Ensure the injected commitment, nonce, and checksum match the given commitment, nonce, and checksum.
         A::assert_eq(&output_commitment, expected_commitment);

@@ -89,7 +89,7 @@ impl<A: Aleo> Response<A> {
                             record.to_commitment(program_id, &Identifier::constant(*record_name), &randomizer);
 
                         // Compute the record nonce.
-                        let nonce = A::g_scalar_multiply(&randomizer).to_x_coordinate();
+                        let nonce = A::g_scalar_multiply(&randomizer);
 
                         // Encrypt the record, using the randomizer.
                         let encrypted_record = record.encrypt(&randomizer);

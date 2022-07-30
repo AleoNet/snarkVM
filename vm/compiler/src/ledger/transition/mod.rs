@@ -189,7 +189,7 @@ impl<N: Network> Transition<N> {
                         ensure!(*commitment == candidate_cm, "The output record commitment is incorrect");
 
                         // Compute the record nonce.
-                        let candidate_nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
+                        let candidate_nonce = N::g_scalar_multiply(&randomizer);
                         // Ensure the nonce matches.
                         ensure!(*nonce == candidate_nonce, "The output record nonce is incorrect");
 
@@ -262,7 +262,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns the output records as a tuple comprised of `(record, commitment, nonce)`.
-    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Record<N, Ciphertext<N>>, &Field<N>, &Field<N>)> {
+    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, (&Record<N, Ciphertext<N>>, &Group<N>))> {
         self.outputs.iter().flat_map(Output::record)
     }
 
@@ -294,7 +294,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns an iterator over the nonces, for outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.outputs.iter().flat_map(Output::nonce)
     }
 }

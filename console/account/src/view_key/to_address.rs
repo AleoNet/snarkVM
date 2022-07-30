@@ -14,39 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod serialize;
-mod string;
-mod to_address;
-mod try_from;
-
-#[cfg(feature = "compute_key")]
-use crate::ComputeKey;
-#[cfg(feature = "private_key")]
-use crate::PrivateKey;
-
-use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Address, Scalar};
-
-use base58::{FromBase58, ToBase58};
-
-/// The account view key used to decrypt records and ciphertext.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ViewKey<N: Network>(Scalar<N>);
+use super::*;
 
 impl<N: Network> ViewKey<N> {
-    /// Initializes the account view key from a scalar.
-    pub const fn from_scalar(view_key: Scalar<N>) -> Self {
-        Self(view_key)
-    }
-}
-
-impl<N: Network> Deref for ViewKey<N> {
-    type Target = Scalar<N>;
-
-    /// Returns the account view key as a scalar.
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    /// Returns the address corresponding to the view key.
+    pub fn to_address(&self) -> Address<N> {
+        Address::new(N::g_scalar_multiply(self))
     }
 }
 
@@ -60,15 +33,14 @@ mod tests {
     const ITERATIONS: u64 = 1000;
 
     #[test]
-    fn test_from_scalar() -> Result<()> {
+    fn test_try_from() -> Result<()> {
         for _ in 0..ITERATIONS {
-            // Sample a new address.
+            // Sample a new view key and address.
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let expected = ViewKey::try_from(private_key)?;
+            let view_key = ViewKey::try_from(private_key)?;
+            let address = Address::try_from(private_key)?;
 
-            // Check the scalar representation.
-            let candidate = *expected;
-            assert_eq!(expected, ViewKey::from_scalar(candidate));
+            assert_eq!(address, view_key.to_address());
         }
         Ok(())
     }

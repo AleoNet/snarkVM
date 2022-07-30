@@ -21,7 +21,7 @@ mod string;
 use console::{
     network::prelude::*,
     program::{Ciphertext, Plaintext, Record},
-    types::Field,
+    types::{Field, Group},
 };
 
 type Variant = u16;
@@ -36,7 +36,7 @@ pub enum Output<N: Network> {
     /// The ciphertext hash and (optional) ciphertext.
     Private(Field<N>, Option<Ciphertext<N>>),
     /// The commitment, nonce, checksum, and (optional) record ciphertext.
-    Record(Field<N>, Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
+    Record(Field<N>, Group<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
     /// The output commitment of the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
 }
@@ -66,9 +66,9 @@ impl<N: Network> Output<N> {
 
     /// Returns the record, commitment, and nonce, if the output is a record.
     #[allow(clippy::type_complexity)]
-    pub const fn record(&self) -> Option<(&Record<N, Ciphertext<N>>, &Field<N>, &Field<N>)> {
+    pub const fn record(&self) -> Option<(&Field<N>, (&Record<N, Ciphertext<N>>, &Group<N>))> {
         match self {
-            Output::Record(commitment, nonce, _, Some(record)) => Some((record, commitment, nonce)),
+            Output::Record(commitment, nonce, _, Some(record)) => Some((commitment, (record, nonce))),
             _ => None,
         }
     }
@@ -82,7 +82,7 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns the nonce, if the output is a record.
-    pub const fn nonce(&self) -> Option<&Field<N>> {
+    pub const fn nonce(&self) -> Option<&Group<N>> {
         match self {
             Output::Record(_, nonce, ..) => Some(nonce),
             _ => None,
@@ -99,7 +99,15 @@ impl<N: Network> Output<N> {
 
     /// Returns the public verifier inputs for the proof.
     pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
-        [Some(self.id()), self.nonce(), self.checksum()].into_iter().flatten().map(|x| **x)
+        // Append the output ID.
+        [**self.id()].into_iter()
+            // Append the nonce if it exists.
+            .chain(self.nonce().map(|nonce| {
+                let (x, y) = nonce.to_xy_coordinate();
+                [*x, *y]
+            }).into_iter().flatten())
+            // Append the checksum if it exists.
+            .chain([self.checksum().map(|sum| **sum)].into_iter().flatten())
     }
 
     /// Returns `true` if the output is well-formed.

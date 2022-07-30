@@ -52,10 +52,7 @@ impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
 
     /// Derives the account address from an account compute key.
     fn try_from(compute_key: &ComputeKey<N>) -> Result<Self, Self::Error> {
-        // Compute pk_prf := G^sk_prf.
-        let pk_prf = N::g_scalar_multiply(&compute_key.sk_prf());
-        // Compute the address := pk_sig + pr_sig + pk_prf.
-        Ok(Self::new(compute_key.pk_sig() + compute_key.pr_sig() + pk_prf))
+        Ok(compute_key.to_address())
     }
 }
 
@@ -75,8 +72,7 @@ impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
 
     /// Derives the account address from an account view key.
     fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
-        // Compute G^view_key.
-        Ok(Self::new(N::g_scalar_multiply(view_key)))
+        Ok(view_key.to_address())
     }
 }
 

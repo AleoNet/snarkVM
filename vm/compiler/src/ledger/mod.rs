@@ -42,9 +42,10 @@ use crate::{
     process::{Deployment, Execution},
 };
 use console::{
+    account::ViewKey,
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::ProgramID,
+    program::{Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
@@ -152,8 +153,8 @@ impl<
         Ok(block)
     }
 
-    /// Adds the given block as the next block in the chain.
-    pub fn add_next(&mut self, block: &Block<N>) -> Result<()> {
+    /// Checks the given block is valid next block.
+    pub fn check_next(&self, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Add deployed programs to the ledger.
 
         // TODO (raychu86): Validate the block using a valid VM.
@@ -233,10 +234,18 @@ impl<
             }
         }
 
+        Ok(())
+    }
+
+    /// Adds the given block as the next block in the chain.
+    pub fn add_next(&mut self, block: &Block<N>) -> Result<()> {
+        // Ensure the given block is a valid next block.
+        self.check_next(block)?;
+
+        /* ATOMIC CODE SECTION */
+
         // Add the block to the ledger. This code section executes atomically.
         {
-            /* ATOMIC CODE SECTION */
-
             let mut ledger = self.clone();
 
             // Update the blocks.

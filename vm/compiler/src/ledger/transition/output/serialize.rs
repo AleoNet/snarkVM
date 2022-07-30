@@ -97,7 +97,7 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                     }),
                     Some("record") => {
                         // Retrieve the nonce.
-                        let nonce: Field<N> =
+                        let nonce: Group<N> =
                             serde_json::from_value(output["nonce"].clone()).map_err(de::Error::custom)?;
                         // Retrieve the checksum.
                         let checksum: Field<N> =
@@ -138,7 +138,7 @@ mod tests {
         "{\"type\":\"constant\",\"id\":\"5field\"}",
         "{\"type\":\"public\",\"id\":\"0field\"}",
         "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\", \"nonce\":\"123456789field\", \"checksum\":\"123456789field\"}",
+        "{\"type\":\"record\",\"id\":\"123456789field\", \"nonce\":\"0group\", \"checksum\":\"123456789field\"}",
         "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
     ];
 

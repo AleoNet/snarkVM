@@ -79,7 +79,7 @@ impl<
     }
 
     /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, nonce: &Field<N>) -> bool {
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
         self.nonces().contains(nonce)
     }
 }

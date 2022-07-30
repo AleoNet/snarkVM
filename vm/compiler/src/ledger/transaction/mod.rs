@@ -156,7 +156,7 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         match self {
             Self::Deploy(..) => [].iter().flat_map(Transition::nonces),
             Self::Execute(.., execution) => execution.iter().flat_map(Transition::nonces),

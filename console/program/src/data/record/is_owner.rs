@@ -18,14 +18,14 @@ use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
     /// Decrypts `self` into plaintext using the given view key & nonce.
-    pub fn is_owner(&self, address: &Address<N>, view_key: &ViewKey<N>, nonce: Group<N>) -> bool {
+    pub fn is_owner(&self, address: &Address<N>, view_key: &ViewKey<N>, nonce: &Group<N>) -> bool {
         match &self.owner {
             // If the owner is public, check if the address is the owner.
             Owner::Public(owner) => owner == address,
             // If the owner is private, decrypt the owner to check if it matches the address.
             Owner::Private(ciphertext) => {
                 // Compute the record view key.
-                let record_view_key = (nonce * **view_key).to_x_coordinate();
+                let record_view_key = (*nonce * **view_key).to_x_coordinate();
                 // Compute the 0th randomizer.
                 let randomizer = N::hash_many_psd8(&[N::encryption_domain(), record_view_key], 1);
                 // Decrypt the owner.
@@ -85,7 +85,7 @@ mod tests {
         let address = Address::try_from(&view_key)?;
 
         // Ensure the record belongs to the owner.
-        assert!(ciphertext.is_owner(&address, &view_key, nonce));
+        assert!(ciphertext.is_owner(&address, &view_key, &nonce));
 
         // Sample a random view key and address.
         let private_key = PrivateKey::<N>::new(&mut test_crypto_rng())?;
@@ -93,7 +93,7 @@ mod tests {
         let address = Address::try_from(&private_key)?;
 
         // Ensure the random address is not the owner.
-        assert!(!ciphertext.is_owner(&address, &view_key, nonce));
+        assert!(!ciphertext.is_owner(&address, &view_key, &nonce));
 
         Ok(())
     }
