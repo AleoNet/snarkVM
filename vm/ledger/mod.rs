@@ -26,6 +26,11 @@ pub use vm::*;
 mod map;
 pub use map::*;
 
+mod contains;
+mod get;
+mod iterators;
+mod latest;
+
 use crate::{
     compiler::{Deployment, Execution, Transition},
     console::{
@@ -66,10 +71,10 @@ pub struct Ledger<N: Network> {
     transactions: MemoryMap<u32, Transactions<N>>,
     /// The mapping of program IDs to their deployment.
     programs: MemoryMap<ProgramID<N>, Deployment<N>>,
-    // /// The mapping of program IDs to their global state.
-    // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexSet<Transaction<N>>,
+    // /// The mapping of program IDs to their global state.
+    // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
 impl<N: Network> Ledger<N> {
@@ -88,209 +93,6 @@ impl<N: Network> Ledger<N> {
             programs: genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
             memory_pool: IndexSet::new(),
         })
-    }
-}
-
-impl<N: Network> Ledger<N> {
-    /// Returns the latest state root.
-    pub fn latest_state_root(&self) -> &Field<N> {
-        self.block_tree.root()
-    }
-
-    /// Returns the latest block.
-    pub fn latest_block(&self) -> Result<Block<N>> {
-        self.get_block(self.current_height)
-    }
-
-    /// Returns the latest block height.
-    pub fn latest_height(&self) -> u32 {
-        self.current_height
-    }
-
-    /// Returns the latest block hash.
-    pub fn latest_hash(&self) -> N::BlockHash {
-        self.current_hash
-    }
-
-    /// Returns the latest round number.
-    pub fn latest_round(&self) -> Result<u64> {
-        Ok(self.get_header(self.current_height)?.round())
-    }
-
-    /// Returns the latest block coinbase target.
-    pub fn latest_coinbase_target(&self) -> Result<u64> {
-        Ok(self.get_header(self.current_height)?.coinbase_target())
-    }
-
-    /// Returns the latest block proof target.
-    pub fn latest_proof_target(&self) -> Result<u64> {
-        Ok(self.get_header(self.current_height)?.proof_target())
-    }
-
-    /// Returns the latest block timestamp.
-    pub fn latest_timestamp(&self) -> Result<i64> {
-        Ok(self.get_header(self.current_height)?.timestamp())
-    }
-
-    /// Returns the latest block transactions.
-    pub fn latest_transactions(&self) -> Result<&Transactions<N>> {
-        self.get_transactions(self.current_height)
-    }
-}
-
-impl<N: Network> Ledger<N> {
-    /// Returns the block for the given block height.
-    pub fn get_block(&self, height: u32) -> Result<Block<N>> {
-        Block::from(self.get_previous_hash(height)?, *self.get_header(height)?, self.get_transactions(height)?.clone())
-    }
-
-    /// Returns the block hash for the given block height.
-    pub fn get_hash(&self, height: u32) -> Result<N::BlockHash> {
-        match height.cmp(&self.current_height) {
-            Ordering::Equal => Ok(self.current_hash),
-            Ordering::Less => match self.previous_hashes.get(&(height + 1))? {
-                Some(block_hash) => Ok(*block_hash),
-                None => bail!("Missing block hash for block {height}"),
-            },
-            Ordering::Greater => bail!("Block {height} (given) is greater than the current height"),
-        }
-    }
-
-    /// Returns the previous block hash for the given block height.
-    pub fn get_previous_hash(&self, height: u32) -> Result<N::BlockHash> {
-        match self.previous_hashes.get(&height)? {
-            Some(previous_hash) => Ok(*previous_hash),
-            None => bail!("Missing previous block hash for block {height}"),
-        }
-    }
-
-    /// Returns the block header for the given block height.
-    pub fn get_header(&self, height: u32) -> Result<&Header<N>> {
-        match self.headers.get(&height)? {
-            Some(header) => Ok(header),
-            None => bail!("Missing block header for block {height}"),
-        }
-    }
-
-    /// Returns the block transactions for the given block height.
-    pub fn get_transactions(&self, height: u32) -> Result<&Transactions<N>> {
-        match self.transactions.get(&height)? {
-            Some(transactions) => Ok(transactions),
-            None => bail!("Missing block transactions for block {height}"),
-        }
-    }
-}
-
-impl<N: Network> Ledger<N> {
-    /// Returns an iterator over all transactions.
-    pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
-        self.transactions.values().flat_map(Transactions::transactions)
-    }
-
-    /// Returns an iterator over the transaction IDs, for all transactions in `self`.
-    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
-        self.transactions.values().flat_map(Transactions::transaction_ids)
-    }
-
-    /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
-        self.transactions.values().flat_map(Transactions::deployments)
-    }
-
-    /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
-        self.transactions.values().flat_map(Transactions::executions)
-    }
-
-    /// Returns an iterator over all executed transitions.
-    pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
-        self.transactions.values().flat_map(Transactions::transitions)
-    }
-
-    /// Returns an iterator over the transition IDs, for all executed transitions.
-    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.transactions.values().flat_map(Transactions::transition_ids)
-    }
-
-    /// Returns an iterator over the transition public keys, for all executed transactions.
-    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transactions.values().flat_map(Transactions::transition_public_keys)
-    }
-
-    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
-    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.values().flat_map(Transactions::serial_numbers)
-    }
-
-    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
-    pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.values().flat_map(Transactions::commitments)
-    }
-
-    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.values().flat_map(Transactions::nonces)
-    }
-}
-
-impl<N: Network> Ledger<N> {
-    /// Returns `true` if the given state root exists.
-    pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
-        state_root == self.latest_state_root()
-            || self.headers.values().map(Header::previous_state_root).any(|root| root == state_root)
-    }
-
-    /// Returns `true` if the given block height exists.
-    pub fn contains_height(&self, height: u32) -> Result<bool> {
-        self.previous_hashes
-            .contains_key(&height)
-            .or_else(|_| self.headers.contains_key(&height))
-            .or_else(|_| self.transactions.contains_key(&height))
-    }
-
-    /// Returns `true` if the given block hash exists.
-    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
-        self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
-    }
-
-    /// Returns `true` if the given transaction exists.
-    pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        self.transaction_ids().contains(&transaction.id())
-    }
-
-    /// Returns `true` if the given transaction ID exists.
-    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> bool {
-        self.transaction_ids().contains(transaction_id)
-    }
-
-    /// Returns `true` if the given transition exists.
-    pub fn contains_transition(&self, transition: &Transition<N>) -> bool {
-        self.transition_ids().contains(transition.id())
-    }
-
-    /// Returns `true` if the given transition ID exists.
-    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
-        self.transition_ids().contains(transition_id)
-    }
-
-    /// Returns `true` if the given transition public key exists.
-    pub fn contains_transition_public_keys(&self, tpk: &Group<N>) -> bool {
-        self.transition_public_keys().contains(tpk)
-    }
-
-    /// Returns `true` if the given serial number exists.
-    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
-        self.serial_numbers().contains(serial_number)
-    }
-
-    /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
-        self.commitments().contains(commitment)
-    }
-
-    /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, commitment: &Field<N>) -> bool {
-        self.nonces().contains(commitment)
     }
 }
 
@@ -422,8 +224,8 @@ impl<N: Network> Ledger<N> {
         Ok(())
     }
 
-    /// Returns the ledger tree.
-    pub fn to_ledger_tree(&self) -> &BlockTree<N> {
+    /// Returns the block tree.
+    pub fn to_block_tree(&self) -> &BlockTree<N> {
         &self.block_tree
     }
 
@@ -539,19 +341,6 @@ mod tests {
     use crate::{console::network::Testnet3, test_helpers::sample_execution_transaction};
 
     type CurrentNetwork = Testnet3;
-
-    #[test]
-    fn test_get_block() {
-        // Load the genesis block.
-        let genesis = Block::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
-
-        // Initialize a new ledger.
-        let ledger = Ledger::<CurrentNetwork>::new().unwrap();
-        // Retrieve the genesis block.
-        let candidate = ledger.get_block(0).unwrap();
-        // Ensure the genesis block matches.
-        assert_eq!(genesis, candidate);
-    }
 
     #[test]
     fn test_deploy() {
