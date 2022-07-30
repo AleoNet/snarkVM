@@ -276,6 +276,7 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + for<'a> DivAssign<&'a Self>
     + Eq
     + Equal
+    + Modulo
     + Mul<Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + MulAssign<Self>
@@ -284,6 +285,10 @@ pub trait IntegerCore<I: integer_type::IntegerType>:
     + Not<Output = Self>
     + One
     + Parser
+    + Rem<Self, Output = Self>
+    + for<'a> Rem<&'a Self, Output = Self>
+    + RemAssign<Self>
+    + for<'a> RemAssign<&'a Self>
     + Send
     + SizeInBits
     + SizeInBytes
@@ -341,6 +346,7 @@ pub(super) mod integer_type {
         + FromBytes
         + FromStr<Err = ParseIntError>
         + Hash
+        + Modulo
         + NumZero
         + NumOne
         + PartialOrd
@@ -426,6 +432,26 @@ pub(super) mod integer_type {
     binary_impl!(CheckedShl, i64, checked_shl, self, v, u32, Option<i64>, u64::checked_pow(2u64, *v).and_then(|x| i64::checked_mul(if (x as i64) == i64::MIN { self.wrapping_neg() } else { *self }, x as i64)));
     #[rustfmt::skip]
     binary_impl!(CheckedShl, i128, checked_shl, self, v, u32, Option<i128>, u128::checked_pow(2u128, *v).and_then(|x| i128::checked_mul(if (x as i128) == i128::MIN { self.wrapping_neg() } else { *self }, x as i128)));
+
+    pub trait Modulo: Sized + Rem<Self, Output = Self> {
+        fn modulo(&self, v: &Self) -> Self;
+    }
+
+    binary_impl!(Modulo, u8, modulo, self, v, Self, u8, u8::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u16, modulo, self, v, Self, u16, u16::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u32, modulo, self, v, Self, u32, u32::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u64, modulo, self, v, Self, u64, u64::wrapping_rem(*self, *v));
+    binary_impl!(Modulo, u128, modulo, self, v, Self, u128, u128::wrapping_rem(*self, *v));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i8, modulo, self, _v, Self, i8, panic!("modulo is not implemented for i8"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i16, modulo, self, _v, Self, i16, panic!("modulo is not implemented for i16"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i32, modulo, self, _v, Self, i32, panic!("modulo is not implemented for i32"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i64, modulo, self, _v, Self, i64, panic!("modulo is not implemented for i64"));
+    #[rustfmt::skip]
+    binary_impl!(Modulo, i128, modulo, self, _v, Self, i128, panic!("modulo is not implemented for i128"));
 
     pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
         fn wrapping_div(&self, v: &Self) -> Self;

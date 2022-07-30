@@ -123,6 +123,8 @@ pub enum Instruction<N: Network> {
     LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
     LessThanOrEqual(LessThanOrEqual<N>),
+    /// Computes `first` mod `second`, storing the outcome in `destination`.
+    Modulo(Modulo<N>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<N>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -228,6 +230,7 @@ macro_rules! instruction {
             IsNotEqual,
             LessThan,
             LessThanOrEqual,
+            Modulo,
             Mul,
             MulWrapped,
             Nand,
@@ -395,7 +398,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            51,
+            52,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

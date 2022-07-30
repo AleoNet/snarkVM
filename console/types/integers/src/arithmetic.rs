@@ -296,6 +296,22 @@ impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I>
     }
 }
 
+impl<E: Environment, I: IntegerType> Modulo<Integer<E, I>> for Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    /// Returns the result of taking the modulus of `self` with respect to `other`.
+    #[inline]
+    fn modulo(&self, other: &Integer<E, I>) -> Self {
+        match I::is_signed() {
+            true => E::halt("Taking the modulus of signed integers is not supported"),
+            false => match other.is_zero() {
+                true => E::halt(format!("Integer modulus by zero: {self} % {other}")),
+                false => Integer::new(self.integer.modulo(&other.integer)),
+            },
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType> Rem<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
 
