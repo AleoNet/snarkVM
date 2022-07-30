@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 #[cfg(test)]
 use snarkvm_circuit_network::AleoV0 as Circuit;

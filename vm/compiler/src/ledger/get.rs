@@ -70,9 +70,6 @@ impl<
 mod tests {
     use super::*;
     use crate::ledger::test_helpers::CurrentLedger;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_get_block() {

@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 #[macro_use]
 extern crate enum_index_derive;

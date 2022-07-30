@@ -389,9 +389,6 @@ pub(crate) mod test_helpers {
 mod tests {
     use super::*;
     use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_execution_transaction};
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_state_path() {

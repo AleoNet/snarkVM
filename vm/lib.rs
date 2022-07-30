@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
+#![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 #[cfg(feature = "cli")]
 #[macro_use]
