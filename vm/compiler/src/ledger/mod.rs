@@ -42,7 +42,7 @@ use crate::{
     process::{Deployment, Execution},
 };
 use console::{
-    account::ViewKey,
+    account::{PrivateKey, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
     program::{Plaintext, ProgramID, Record},
@@ -61,6 +61,15 @@ const BLOCKS_DEPTH: u8 = 32;
 pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
+
+pub enum OutputRecordsFilter<N: Network> {
+    /// Returns all output records associated with the account.
+    All,
+    /// Returns only output records associated with the account that are **spent**.
+    Spent(PrivateKey<N>),
+    /// Returns only output records associated with the account that are **not spent**.
+    Unspent(PrivateKey<N>),
+}
 
 #[derive(Clone)]
 pub struct Ledger<
