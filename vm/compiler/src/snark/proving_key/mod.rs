@@ -44,6 +44,19 @@ impl<N: Network> ProvingKey<N> {
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(proof)
     }
+
+    /// Returns a proof for the given batch of assignments on the circuit.
+    pub fn prove_batch<R: Rng + CryptoRng>(
+        &self,
+        function_name: &Identifier<N>,
+        assignments: &[circuit::Assignment<N::Field>],
+        rng: &mut R,
+    ) -> Result<Proof<N>> {
+        let timer = std::time::Instant::now();
+        let batch_proof = Proof::new(Marlin::<N>::prove_batch(self, assignments, rng)?);
+        println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        Ok(batch_proof)
+    }
 }
 
 impl<N: Network> Deref for ProvingKey<N> {
