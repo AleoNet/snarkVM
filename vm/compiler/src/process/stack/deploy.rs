@@ -27,11 +27,8 @@ impl<N: Network> Stack<N> {
         let mut bundle = IndexMap::with_capacity(self.program.functions().len());
 
         for function_name in self.program.functions().keys() {
-            // If the proving and verifying key do not exist, synthesize it.
-            if !self.contains_proving_key(function_name) || !self.contains_verifying_key(function_name) {
-                // Synthesize the proving and verifying key.
-                self.synthesize_key::<A, R>(function_name, rng)?;
-            }
+            // Synthesize the proving and verifying key.
+            self.synthesize_key::<A, R>(function_name, rng)?;
 
             // Retrieve the proving key.
             let proving_key = self.get_proving_key(function_name)?;

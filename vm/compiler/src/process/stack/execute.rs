@@ -104,8 +104,6 @@ impl<N: Network> Stack<N> {
             console_request.network_id()
         );
 
-        // Retrieve the program ID.
-        let program_id = *console_request.program_id();
         // Retrieve the function from the program.
         let function = self.program.get_function(console_request.function_name())?;
         // Retrieve the number of inputs.
@@ -287,8 +285,14 @@ impl<N: Network> Stack<N> {
 
         // If the circuit is in `Execute` mode, then ensure the circuit is satisfied.
         if let CallStack::Execute(..) = registers.call_stack() {
-            // If the circuit is not satisfied, then throw an error.
-            ensure!(A::is_satisfied(), "'{program_id}/{}' is not satisfied on the given inputs.", function.name());
+            // If the circuit is empty or not satisfied, then throw an error.
+            ensure!(
+                A::num_constraints() > 0 && A::is_satisfied(),
+                "'{}/{}' is not satisfied on the given inputs ({} constraints).",
+                self.program.id(),
+                function.name(),
+                A::num_constraints()
+            );
         }
 
         // Eject the circuit assignment and reset the circuit.
@@ -301,7 +305,7 @@ impl<N: Network> Stack<N> {
             // If the proving key does not exist, then synthesize it.
             if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
-                self.insert_from_assignment(function.name(), &assignment)?;
+                self.synthesize_from_assignment(function.name(), &assignment)?;
             }
         }
 
@@ -312,7 +316,6 @@ impl<N: Network> Stack<N> {
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
         else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
-            // #[cfg(debug_assertions)]
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.

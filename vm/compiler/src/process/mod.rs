@@ -177,7 +177,7 @@ impl<N: Network> Process<N> {
         // Ensure the number of inputs matches the number of input types.
         if function.inputs().len() != input_types.len() {
             bail!(
-                "Function '{function_name}' in the program '{program_id}' expects {} inputs, but {} types were found.",
+                "Function '{function_name}' in program '{program_id}' expects {} inputs, but {} types were found.",
                 function.inputs().len(),
                 input_types.len()
             )
@@ -185,7 +185,7 @@ impl<N: Network> Process<N> {
         // Ensure the number of outputs matches the number of output types.
         if function.outputs().len() != output_types.len() {
             bail!(
-                "Function '{function_name}' in the program '{program_id}' expects {} outputs, but {} types were found.",
+                "Function '{function_name}' in program '{program_id}' expects {} outputs, but {} types were found.",
                 function.outputs().len(),
                 output_types.len()
             )
@@ -428,7 +428,7 @@ mod tests {
     owner as address.private;
     gates as u64.private;
 
-  function start:
+  function genesis:
     input r0 as address.private;
     input r1 as u64.private;
     cast r0 r1 into r2 as token.record;
@@ -441,7 +441,7 @@ mod tests {
             .authorize::<CurrentAleo, _>(
                 &caller_private_key,
                 program.id(),
-                Identifier::from_str("start").unwrap(),
+                Identifier::from_str("genesis").unwrap(),
                 &[r0, r1],
                 rng,
             )
@@ -450,7 +450,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/start' is not satisfied on the given inputs.")
+            format!("'token.aleo/genesis' is not satisfied on the given inputs (25396 constraints).")
         );
     }
 
