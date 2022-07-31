@@ -32,17 +32,18 @@ pub use registers::*;
 mod stack;
 pub use stack::*;
 
+mod additional_fee;
 mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{Certificate, Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
+use crate::{AdditionalFee, Certificate, Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, ProgramID, Request, Response, Value, ValueType},
-    types::I64,
+    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value, ValueType},
+    types::{I64, U64},
 };
 
 use colored::Colorize;
@@ -62,7 +63,11 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn new() -> Result<Self> {
         // Initialize the process.
-        Ok(Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() })
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        // Add the 'credits.aleo' program to the process.
+        process.add_program(&Program::credits()?)?;
+        // Return the process.
+        Ok(process)
     }
 
     /// Adds a new program to the process.
@@ -363,8 +368,6 @@ mod tests {
 
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -378,17 +381,20 @@ mod tests {
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.get(0).unwrap();
+
         // Compute the output value.
         let response = process.evaluate::<CurrentAleo>(&request).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
+
         // Execute the request.
         let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
         let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert!(process.verify_execution(&execution).is_ok());
+
         // use circuit::Environment;
         //
         // assert_eq!(22152, CurrentAleo::num_constants());

@@ -19,26 +19,21 @@ use super::*;
 impl<N: Network> Block<N> {
     /// Initializes a new genesis block.
     pub fn genesis<R: Rng + CryptoRng>(vm: &mut VM<N>, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Self> {
-        // Initialize the credits program.
-        let credits = Program::credits()?;
-        // Deploy the credits program.
-        let deploy_credits = vm.deploy(&credits, rng)?;
-        // Add the credits program.
-        vm.on_deploy(&deploy_credits)?;
-
         // Prepare the caller.
         let caller = Address::try_from(private_key)?;
+        // Prepare the program ID.
+        let program_id = FromStr::from_str("credits.aleo")?;
         // Prepare the function name.
         let function_name = FromStr::from_str("genesis")?;
         // Prepare the function inputs.
         let inputs = [Value::from_str(&caller.to_string())?, Value::from_str("1_100_000_000_000_000_u64")?];
         // Authorize the call to start.
-        let authorization = vm.authorize(private_key, credits.id(), function_name, &inputs, rng)?;
-        // Execute the genesis program.
-        let (_, execution) = vm.execute(authorization, rng)?;
+        let authorization = vm.authorize(private_key, &program_id, function_name, &inputs, rng)?;
+        // Execute the genesis function.
+        let transaction = Transaction::execute_authorization(vm, authorization, rng)?;
 
         // Prepare the transactions.
-        let transactions = Transactions::from(&[deploy_credits, execution]);
+        let transactions = Transactions::from(&[transaction]);
         // Prepare the block header.
         let header = Header::genesis(&transactions)?;
         // Prepare the previous block hash.
@@ -59,8 +54,8 @@ impl<N: Network> Block<N> {
         self.previous_hash == N::BlockHash::default()
             // Ensure the header is a genesis block header.
             && self.header.is_genesis()
-            // Ensure there are three transactions in the genesis block.
-            && self.transactions.len() == 2
+            // Ensure there is 1 transaction in the genesis block.
+            && self.transactions.len() == 1
     }
 }
 

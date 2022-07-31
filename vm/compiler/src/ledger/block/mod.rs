@@ -26,9 +26,8 @@ mod serialize;
 mod string;
 
 use crate::{
-    ledger::{vm::VM, Transition},
+    ledger::{vm::VM, Transaction, Transition},
     process::{Deployment, Execution},
-    Program,
 };
 use console::{
     account::{Address, PrivateKey, Signature},

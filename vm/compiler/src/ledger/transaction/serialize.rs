@@ -21,18 +21,20 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => match self {
-                Self::Deploy(id, deployment) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
+                Self::Deploy(id, deployment, additional_fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 4)?;
                     transaction.serialize_field("type", "deploy")?;
                     transaction.serialize_field("id", &id)?;
                     transaction.serialize_field("deployment", &deployment)?;
+                    transaction.serialize_field("additional_fee", &additional_fee)?;
                     transaction.end()
                 }
-                Self::Execute(id, execution) => {
-                    let mut transaction = serializer.serialize_struct("Transaction", 3)?;
+                Self::Execute(id, execution, additional_fee) => {
+                    let mut transaction = serializer.serialize_struct("Transaction", 4)?;
                     transaction.serialize_field("type", "execute")?;
                     transaction.serialize_field("id", &id)?;
                     transaction.serialize_field("execution", &execution)?;
+                    transaction.serialize_field("additional_fee", &additional_fee)?;
                     transaction.end()
                 }
             },
@@ -58,15 +60,21 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                         // Retrieve the deployment.
                         let deployment =
                             serde_json::from_value(transaction["deployment"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the additional fee.
+                        let additional_fee =
+                            serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
                         // Construct the transaction.
-                        Transaction::deploy(deployment).map_err(de::Error::custom)?
+                        Transaction::from_deployment(deployment, additional_fee).map_err(de::Error::custom)?
                     }
                     Some("execute") => {
                         // Retrieve the execution.
                         let execution =
                             serde_json::from_value(transaction["execution"].clone()).map_err(de::Error::custom)?;
+                        // Retrieve the additional fee.
+                        let additional_fee =
+                            serde_json::from_value(transaction["additional_fee"].clone()).map_err(de::Error::custom)?;
                         // Construct the transaction.
-                        Transaction::execute(execution).map_err(de::Error::custom)?
+                        Transaction::from_execution(execution, additional_fee).map_err(de::Error::custom)?
                     }
                     _ => return Err(de::Error::custom("Invalid transaction type")),
                 };

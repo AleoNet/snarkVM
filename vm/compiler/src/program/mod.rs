@@ -104,6 +104,12 @@ function genesis:
     cast r0 r1 into r2 as credits.record;
     output r2 as credits.record;
 
+function mint:
+    input r0 as address.private;
+    input r1 as u64.private;
+    cast r0 r1 into r2 as credits.record;
+    output r2 as credits.record;
+
 function transfer:
     input r0 as credits.record;
     input r1 as address.private;
@@ -129,6 +135,13 @@ function split:
     cast r0.owner r2 into r4 as credits.record;
     output r3 as credits.record;
     output r4 as credits.record;
+
+function fee:
+    input r0 as credits.record;
+    input r1 as u64.private;
+    sub r0.gates r1 into r2;
+    cast r0.owner r2 into r3 as credits.record;
+    output r3 as credits.record;
 ",
         )
     }
@@ -540,7 +553,8 @@ impl<N: Network> Program<N> {
     /// Returns `true` if the given program ID and function name corresponds to a coinbase function.
     #[inline]
     pub fn is_coinbase(program_id: &ProgramID<N>, function_name: &Identifier<N>) -> bool {
-        program_id.to_string() == "credits.aleo" && function_name.to_string() == "genesis"
+        (program_id.to_string() == "credits.aleo" && function_name.to_string() == "genesis")
+            || (program_id.to_string() == "credits.aleo" && function_name.to_string() == "mint")
     }
 }
 

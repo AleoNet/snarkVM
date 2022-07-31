@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ledger::Transaction,
+    ledger::{AdditionalFee, Transaction},
     process::{Authorization, Deployment, Execution, Process},
     program::Program,
 };
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, ProgramID, Response, Value},
+    program::{Identifier, Plaintext, ProgramID, Record, Response, Value},
 };
 
 use core::marker::PhantomData;
@@ -96,7 +96,7 @@ impl<N: Network> VM<N> {
 
     /// Deploys a program with the given program ID.
     #[inline]
-    pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Transaction<N>> {
+    pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -105,13 +105,11 @@ impl<N: Network> VM<N> {
 
                 // Compute the deployment.
                 let deployment = $process.deploy::<$aleo, _>(program, rng)?;
-                // Construct the transaction.
-                let transaction = Transaction::deploy(deployment)?;
 
                 // Prepare the return.
-                let transaction = cast_ref!(transaction as Transaction<N>).clone();
-                // Return the transaction.
-                Ok(transaction)
+                let deployment = cast_ref!(deployment as Deployment<N>).clone();
+                // Return the deployment.
+                Ok(deployment)
             }};
         }
         // Process the logic.
@@ -123,7 +121,7 @@ impl<N: Network> VM<N> {
         // Ensure the transaction is a deployment.
         ensure!(matches!(transaction, Transaction::Deploy(..)), "Invalid transaction type: expected a deployment");
         // Ensure the transaction is valid.
-        ensure!(self.verify(transaction), "Invalid transaction: failed to verify");
+        ensure!(transaction.verify(self), "Invalid transaction: failed to verify");
 
         // Compute the core logic.
         macro_rules! logic {
@@ -131,7 +129,7 @@ impl<N: Network> VM<N> {
                 // Prepare the transaction.
                 let transaction = cast_ref!(&transaction as Transaction<$network>);
                 // Deploy the program.
-                if let Transaction::Deploy(_, deployment) = transaction {
+                if let Transaction::Deploy(_, deployment, _) = transaction {
                     // Add the program.
                     $process.add_program(deployment.program())?;
                     // Insert the verifying keys.
@@ -189,7 +187,7 @@ impl<N: Network> VM<N> {
         &self,
         authorization: Authorization<N>,
         rng: &mut R,
-    ) -> Result<(Response<N>, Transaction<N>)> {
+    ) -> Result<(Response<N>, Execution<N>)> {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -198,45 +196,56 @@ impl<N: Network> VM<N> {
 
                 // Execute the call.
                 let (response, execution) = $process.execute::<$aleo, _>(authorization.clone(), rng)?;
-                // Construct the transaction.
-                let transaction = Transaction::execute(execution)?;
 
                 // Prepare the return.
                 let response = cast_ref!(response as Response<N>).clone();
-                let transaction = cast_ref!(transaction as Transaction<N>).clone();
-                // Return the response and transaction.
-                Ok((response, transaction))
+                let execution = cast_ref!(execution as Execution<N>).clone();
+                // Return the response and execution.
+                Ok((response, execution))
             }};
         }
         // Process the logic.
         process!(self, logic)
     }
 
-    /// Verifies a program call for the given execution.
+    /// Returns an additional fee for the given private key, credits record, and additional fee amount (in gates).
     #[inline]
-    pub fn verify(&self, transaction: &Transaction<N>) -> bool {
-        // Compute the Merkle root of the transaction.
-        match transaction.to_root() {
-            // Ensure the transaction ID is correct.
-            Ok(transaction_root) => {
-                if *transaction.id() != transaction_root {
-                    warn!("Incorrect transaction ID ({})", transaction.id());
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the transaction: {transaction} {error}");
-                return false;
-            }
-        };
+    pub fn execute_additional_fee<R: Rng + CryptoRng>(
+        &self,
+        private_key: &PrivateKey<N>,
+        credits: Record<N, Plaintext<N>>,
+        additional_fee_in_gates: u64,
+        rng: &mut R,
+    ) -> Result<(Response<N>, AdditionalFee<N>)> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                type RecordPlaintext<NetworkMacro> = Record<NetworkMacro, Plaintext<NetworkMacro>>;
 
-        match transaction {
-            Transaction::Deploy(_, deployment) => self.verify_deployment(deployment),
-            Transaction::Execute(_, execution) => self.verify_execution(execution),
+                // Prepare the private key and credits record.
+                let private_key = cast_ref!(&private_key as PrivateKey<$network>);
+                let credits = cast_ref!(credits as RecordPlaintext<$network>);
+
+                // Execute the call to additional fee.
+                let (response, additional_fee) = $process.execute_additional_fee::<$aleo, _>(
+                    private_key,
+                    credits.clone(),
+                    additional_fee_in_gates,
+                    rng,
+                )?;
+
+                // Prepare the return.
+                let response = cast_ref!(response as Response<N>).clone();
+                let additional_fee = cast_ref!(additional_fee as AdditionalFee<N>).clone();
+                // Return the response and additional fee.
+                Ok((response, additional_fee))
+            }};
         }
+        // Process the logic.
+        process!(self, logic)
     }
 
-    /// Verifies a program call for the given execution.
+    /// Verifies the given deployment.
     #[inline]
     pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
         // Compute the core logic.
@@ -258,14 +267,14 @@ impl<N: Network> VM<N> {
         match process!(self, logic) {
             Ok(()) => true,
             Err(error) => {
-                eprintln!("Transaction (deployment) verification failed: {error}");
-                warn!("Transaction (deployment) verification failed: {error}");
+                eprintln!("Deployment verification failed: {error}");
+                warn!("Deployment verification failed: {error}");
                 false
             }
         }
     }
 
-    /// Verifies a program call for the given execution.
+    /// Verifies the given execution.
     #[inline]
     pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
         // Compute the core logic.
@@ -285,8 +294,35 @@ impl<N: Network> VM<N> {
         match process!(self, logic) {
             Ok(()) => true,
             Err(error) => {
-                eprintln!("Transaction (execution) verification failed: {error}");
-                warn!("Transaction (execution) verification failed: {error}");
+                eprintln!("Execution verification failed: {error}");
+                warn!("Execution verification failed: {error}");
+                false
+            }
+        }
+    }
+
+    /// Verifies the given additional fee.
+    #[inline]
+    pub fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> bool {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                let task = || {
+                    // Prepare the additional fee.
+                    let additional_fee = cast_ref!(&additional_fee as AdditionalFee<$network>);
+                    // Verify the additional fee.
+                    $process.verify_additional_fee(additional_fee)
+                };
+                task()
+            }};
+        }
+
+        // Process the logic.
+        match process!(self, logic) {
+            Ok(()) => true,
+            Err(error) => {
+                eprintln!("Additional fee verification failed: {error}");
+                warn!("Additional fee verification failed: {error}");
                 false
             }
         }
@@ -364,10 +400,18 @@ function compute:
 
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
+                // Initialize a new caller.
+                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+                // Prepare the additional fee.
+                let credits =
+                    Record::from_str(&format!("{{ owner: {address}.private, gates: 10u64.private }}")).unwrap();
+                let additional_fee = (credits, 10);
+
                 // Deploy.
-                let transaction = vm.deploy(&program, rng).unwrap();
+                let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(transaction.verify(&vm));
                 // Return the transaction.
                 transaction
             })
@@ -411,9 +455,9 @@ function compute:
                 assert_eq!(authorization.len(), 1);
 
                 // Execute.
-                let (_response, transaction) = vm.execute(authorization, rng).unwrap();
+                let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
                 // Verify.
-                assert!(vm.verify(&transaction));
+                assert!(transaction.verify(&vm));
                 // Return the transaction.
                 transaction
             })
