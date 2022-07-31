@@ -173,10 +173,8 @@ macro_rules! sqrt_impl {
                     let gamma = calc_gamma(i, &q_s, false);
                     let alpha = *x * gamma;
                     q_s.push(
-                        BigInteger::from(
-                            eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l },
-                        )
-                        .to_bits_le(),
+                        (eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l })
+                            .to_bits_le(),
                     );
                 });
 
