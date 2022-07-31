@@ -401,6 +401,7 @@ function compute:
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
                 // Initialize a new caller.
+
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
                 // Prepare the additional fee.
@@ -488,5 +489,52 @@ function compute:
         let mut transitions = transaction.transitions();
         // Return a transition.
         transitions.next().cloned().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console::network::Testnet3;
+    use snarkvm_utilities::test_crypto_rng;
+
+    type CurrentNetwork = Testnet3;
+
+    use crate::ledger::vm::test_helpers::sample_deployment_transaction;
+
+    #[test]
+    fn test_vm_deploy() {
+        let rng = &mut test_crypto_rng();
+        let vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Fetch the program from the deployment.
+        let deployment = if let Transaction::Deploy(_, deployment, _) = sample_deployment_transaction() {
+            Some(deployment)
+        } else {
+            None
+        }
+        .unwrap();
+
+        let program = deployment.program();
+
+        // Deploy the program.
+        let deployment = vm.deploy(program, rng).unwrap();
+
+        // Ensure the deployment is valid.
+        assert!(vm.verify_deployment(&deployment));
+    }
+
+    #[test]
+    fn test_vm_on_deploy() {
+        let mut vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = sample_deployment_transaction();
+
+        // Deploy the transaction.
+        vm.on_deploy(&deployment_transaction).unwrap();
+
+        // Ensure the VM can't redeploy the same transaction.
+        assert!(vm.on_deploy(&deployment_transaction).is_err());
     }
 }
