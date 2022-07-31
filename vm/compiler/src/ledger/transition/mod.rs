@@ -30,7 +30,7 @@ mod bytes;
 mod serialize;
 mod string;
 
-use crate::Proof;
+use crate::{ledger::map::*, Proof, Transactions};
 use console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
@@ -54,6 +54,8 @@ pub struct Transition<N: Network> {
     proof: Proof<N>,
     /// The transition public key.
     tpk: Group<N>,
+    /// The state root.
+    state_root: N::StateRoot,
     /// The network fee.
     fee: i64,
 }
@@ -67,16 +69,19 @@ impl<N: Network> Transition<N> {
         outputs: Vec<Output<N>>,
         proof: Proof<N>,
         tpk: Group<N>,
+        state_root: N::StateRoot,
         fee: i64,
     ) -> Result<Self> {
         // Compute the transition ID.
         let id = *Self::function_tree(&program_id, &function_name, &inputs, &outputs)?.root();
         // Return the transition.
-        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, proof, tpk, fee })
+        Ok(Self { id: id.into(), program_id, function_name, inputs, outputs, proof, tpk, state_root, fee })
     }
 
     /// Initializes a new transition from a request and response.
-    pub fn from(
+    pub fn from<TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>>(
+        ledger_transactions: TransactionsMap,
+        state_root: N::StateRoot,
         request: &Request<N>,
         response: &Response<N>,
         output_types: &[ValueType<N>],
@@ -124,7 +129,11 @@ impl<N: Network> Transition<N> {
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
                     (InputID::Record(commitment, _, serial_number), Value::Record(..)) => {
-                        Ok(Input::Record(*serial_number, Origin::Commitment(*commitment)))
+                        // Check if the commitment exists in the ledger.
+                        match ledger_transactions.values().flat_map(Transactions::commitments).contains(commitment) {
+                            true => Ok(Input::Record(*serial_number, Origin::StateRoot(state_root))),
+                            false => Ok(Input::Record(*serial_number, Origin::Commitment(*commitment))),
+                        }
                     }
                     (InputID::ExternalRecord(input_commitment), Value::Record(..)) => {
                         Ok(Input::ExternalRecord(*input_commitment))
@@ -223,7 +232,7 @@ impl<N: Network> Transition<N> {
         // Retrieve the `tpk`.
         let tpk = request.to_tpk();
         // Return the transition.
-        Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee)
+        Self::new(program_id, function_name, inputs, outputs, proof, tpk, state_root, fee)
     }
 
     /// Returns the transition ID.
@@ -274,6 +283,11 @@ impl<N: Network> Transition<N> {
     /// Returns the transition public key.
     pub const fn tpk(&self) -> &Group<N> {
         &self.tpk
+    }
+
+    /// Returns the transition state root.
+    pub const fn state_root(&self) -> &N::StateRoot {
+        &self.state_root
     }
 
     /// Returns the network fee.
