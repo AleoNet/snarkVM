@@ -136,7 +136,7 @@ macro_rules! sqrt_impl {
                     while delta != $Self::one() {
                         let i = find(delta);
                         let n_minus_one_minus_i = n - 1 - i;
-                        s += two.pow(BigInteger::from(n_minus_one_minus_i as u64));
+                        s += $Self::from_repr(BigInteger::from(2u64.pow(n_minus_one_minus_i as u32))).unwrap();
                         if i > 0 {
                             delta *= $Self::from_repr($P::POWERS_OF_G[n_minus_one_minus_i as usize])
                                 .expect("precomputed powers of g should always convert properly");
@@ -147,10 +147,21 @@ macro_rules! sqrt_impl {
                     s
                 };
 
+                let calc_kappa = |j: usize, l_s: &Vec<$Self>| -> $Self {
+                    l_s.iter().take(j).fold($Self::zero(), |acc, x| acc + x)
+                        + l_s.iter().skip(2).fold($Self::zero(), |acc, x| acc + x)
+                        + $Self::one()
+                };
+
                 let mut s = $Self::zero();
                 let mut t = $Self::zero();
-                l_s.iter().zip(x_s.iter()).for_each(|(l, x)| {
-                    t = (s + t) / two.pow(l.to_repr());
+                let two_to_l_minus_one = two.pow(l_minus_one.to_repr());
+                let two_to_l = two.pow(l.to_repr());
+                x_s.iter().enumerate().for_each(|(i, x)| {
+                    t = (s + t) / {
+                        if i < k_1 { two_to_l_minus_one } else { two_to_l }
+                    };
+                    // let q = s / two.pow((n_field - l).to_repr());
                     let gamma = g.pow(t.to_repr());
                     let alpha = *x * gamma;
                     s = eval(alpha);
