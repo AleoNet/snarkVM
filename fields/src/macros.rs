@@ -97,6 +97,10 @@ macro_rules! sqrt_impl {
                 let x = *$self * v.square();
 
                 let k = ((n - 1) as f64).sqrt().floor() as u64;
+                // It's important that k_2 results in a number which makes `l_minus_one_times_k`
+                // divisible by `k`, because the native arithmetic will not match the field
+                // arithmetic otherwise (native numbers will divide and round down, but field
+                // elements will end up nowhere near the native number).
                 let k_2 = if n % 2 == 0 { k / 2 } else { (n - 1) % k };
                 let k_1 = k - k_2;
                 let l_minus_one_times_k = n - 1 - k_2;
@@ -108,11 +112,12 @@ macro_rules! sqrt_impl {
 
                 let mut x_s: Vec<$Self> = Vec::with_capacity(k as usize);
                 let mut l_sum = 0;
-                l_s.iter().for_each(|l| {
+                l_s.iter().take((k as usize) - 1).for_each(|l| {
                     l_sum += l;
                     let x = x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)));
                     x_s.push(x);
                 });
+                x_s.push(x);
 
                 let find = |delta: $Self| -> u64 {
                     let mut mu = delta;
@@ -124,8 +129,7 @@ macro_rules! sqrt_impl {
                     i
                 };
 
-                let eval = |alpha: $Self| -> u64 {
-                    let mut delta = alpha;
+                let eval = |mut delta: $Self| -> u64 {
                     let mut s = 0u64;
                     while delta != $Self::one() {
                         let i = find(delta);
@@ -142,20 +146,21 @@ macro_rules! sqrt_impl {
                 };
 
                 let calc_kappa = |i: usize, j: usize, l_s: &Vec<u64>| -> u64 {
-                    l_s.iter().take(j).fold(0, |acc, x| acc + x) + l_s.iter().skip(i + 1).fold(0, |acc, x| acc + x) + 1
+                    l_s.iter().take(j).fold(1, |acc, x| acc + x) + l_s.iter().skip(i + 1).fold(0, |acc, x| acc + x)
                 };
 
                 let calc_gamma = |i: usize, q_s: &Vec<Vec<bool>>, last: bool| -> $Self {
                     let mut gamma = $Self::one();
                     if i != 0 {
-                        q_s.iter().enumerate().for_each(|(j, q_bits)| {
+                        q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q_bits, l))| {
                             let mut kappa = calc_kappa(i, j, &l_s);
                             if last {
                                 kappa -= 1;
                             }
-                            q_bits.iter().enumerate().take(l_s[j] as usize).for_each(|(k, bit)| {
+                            q_bits.iter().enumerate().take(*l as usize).for_each(|(k, bit)| {
                                 if *bit {
-                                    gamma *= $Self::from_repr($P::POWERS_OF_G[(kappa as usize) + k]).unwrap();
+                                    gamma *= $Self::from_repr($P::POWERS_OF_G[(kappa as usize) + k])
+                                        .expect("precomputed powers of g should always convert properly");
                                 }
                             });
                         });
