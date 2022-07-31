@@ -65,6 +65,17 @@ impl<N: Network> Process<N> {
         Ok(Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() })
     }
 
+    /// Adds a new program to the process.
+    #[inline]
+    pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
+        // Compute the program stack.
+        let stack = Stack::new(self, program)?;
+        // Add the stack to the process.
+        self.stacks.insert(*program.id(), stack);
+        // Return success.
+        Ok(())
+    }
+
     /// Returns the universal SRS.
     #[inline]
     pub const fn universal_srs(&self) -> &Arc<UniversalSRS<N>> {
@@ -192,36 +203,6 @@ impl<N: Network> Process<N> {
         }
 
         Ok((program, function, input_types, output_types))
-    }
-}
-
-impl<N: Network> Process<N> {
-    /// Adds a new program to the process.
-    /// This method should only be used for **testing** or **local development**.
-    #[inline]
-    pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Compute the program stack.
-        let stack = Stack::new(self, program)?;
-        // Check if the program ID exists in the process.
-        match self.contains_program(program.id()) {
-            // If the program already exists, ensure it is the same and return.
-            true => {
-                // Retrieve the existing stack.
-                let existing_stack = self.get_stack(program.id())?;
-                // Ensure the stacks are the same.
-                match existing_stack == &stack {
-                    true => Ok(()),
-                    false => bail!("Program already exists but differs in its contents."),
-                }
-            }
-            // Otherwise, insert the program stack.
-            false => {
-                // Add the stack to the process.
-                self.stacks.insert(*program.id(), stack);
-                // Return success.
-                Ok(())
-            }
-        }
     }
 }
 

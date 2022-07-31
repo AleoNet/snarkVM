@@ -17,9 +17,9 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
-    /// Adds a new external stack to the stack.
+    /// Inserts the given external stack to the stack.
     #[inline]
-    pub(crate) fn add_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
+    pub(crate) fn insert_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = *external_stack.program_id();
         // Ensure the external stack is not already added.
@@ -34,11 +34,16 @@ impl<N: Network> Stack<N> {
         Ok(())
     }
 
-    /// Adds the given closure name and register types to the stack.
+    /// Inserts the given closure to the stack.
     #[inline]
-    pub(crate) fn add_closure_types(&mut self, name: &Identifier<N>, register_types: RegisterTypes<N>) -> Result<()> {
+    pub(crate) fn insert_closure(&mut self, closure: &Closure<N>) -> Result<()> {
+        // Retrieve the closure name.
+        let name = closure.name();
         // Ensure the closure name is not already added.
         ensure!(!self.program_types.contains_key(name), "Closure '{name}' already exists");
+
+        // Compute the register types.
+        let register_types = self.compute_closure_types(closure)?;
         // Add the closure name and register types to the stack.
         self.program_types.insert(*name, register_types);
         // Return success.
@@ -47,9 +52,14 @@ impl<N: Network> Stack<N> {
 
     /// Adds the given function name and register types to the stack.
     #[inline]
-    pub(crate) fn add_function_types(&mut self, name: &Identifier<N>, register_types: RegisterTypes<N>) -> Result<()> {
+    pub(crate) fn insert_function(&mut self, function: &Function<N>) -> Result<()> {
+        // Retrieve the function name.
+        let name = function.name();
         // Ensure the function name is not already added.
         ensure!(!self.program_types.contains_key(name), "Function '{name}' already exists");
+
+        // Compute the register types.
+        let register_types = self.compute_function_types(function)?;
         // Add the function name and register types to the stack.
         self.program_types.insert(*name, register_types);
         // Return success.
@@ -60,7 +70,7 @@ impl<N: Network> Stack<N> {
 impl<N: Network> Stack<N> {
     /// Checks that the given closure is well-formed for the given program.
     #[inline]
-    pub(crate) fn process_closure(&self, closure: &Closure<N>) -> Result<RegisterTypes<N>> {
+    fn compute_closure_types(&self, closure: &Closure<N>) -> Result<RegisterTypes<N>> {
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
@@ -89,12 +99,17 @@ impl<N: Network> Stack<N> {
 
     /// Checks that the given function is well-formed for the given program.
     #[inline]
-    pub(crate) fn process_function(&self, function: &Function<N>) -> Result<RegisterTypes<N>> {
+    fn compute_function_types(&self, function: &Function<N>) -> Result<RegisterTypes<N>> {
         // Initialize a map of registers to their types.
         let mut register_types = RegisterTypes::new();
 
         // Step 1. Check the inputs are well-formed.
         for input in function.inputs() {
+            // TODO (howardwu): In order to support constant inputs, update `Self::deploy()` to allow
+            //  the caller to provide optional constant inputs (instead of sampling random constants).
+            //  Then, this check can be removed to enable support for constant inputs in functions.
+            ensure!(!matches!(input.value_type(), ValueType::Constant(..)), "Constant inputs are not supported (yet)");
+
             // Check the input register type.
             self.check_input(&mut register_types, input.register(), &RegisterType::from(*input.value_type()))?;
         }

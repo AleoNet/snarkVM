@@ -124,11 +124,13 @@ pub struct Stack<N: Network> {
 }
 
 impl<N: Network> Stack<N> {
-    /// Initializes a new stack, given the program and register types.
+    /// Initializes a new stack, if it does not already exist, given the process and the program.
     #[inline]
     pub fn new(process: &Process<N>, program: &Program<N>) -> Result<Self> {
         // Retrieve the program ID.
         let program_id = program.id();
+        // Ensure the program does not already exist in the process.
+        ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");
         // Ensure the program network-level domain (NLD) is correct.
         ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
@@ -137,8 +139,8 @@ impl<N: Network> Stack<N> {
         // Construct the stack for the program.
         let mut stack = Self {
             program: program.clone(),
-            external_stacks: IndexMap::new(),
-            program_types: IndexMap::new(),
+            external_stacks: Default::default(),
+            program_types: Default::default(),
             universal_srs: process.universal_srs().clone(),
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
@@ -147,28 +149,23 @@ impl<N: Network> Stack<N> {
         // Add all of the imports into the stack.
         for import in program.imports().keys() {
             // Ensure the program imports all exist in the process already.
-            ensure!(
-                process.contains_program(import),
-                "Cannot add program '{program_id}' because its import '{import}' must be added first"
-            );
+            if !process.contains_program(import) {
+                bail!("Cannot add program '{program_id}' because its import '{import}' must be added first")
+            }
             // Retrieve the external stack for the import program ID.
             let external_stack = process.get_stack(import)?;
             // Add the external stack to the stack.
-            stack.add_external_stack(external_stack.clone())?;
+            stack.insert_external_stack(external_stack.clone())?;
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
-            // Compute the register types.
-            let register_types = stack.process_closure(closure)?;
-            // Add the register types to the stack.
-            stack.add_closure_types(closure.name(), register_types)?;
+            // Add the closure to the stack.
+            stack.insert_closure(closure)?;
         }
         // Add the program functions to the stack.
         for function in program.functions().values() {
-            // Compute the register types.
-            let register_types = stack.process_function(function)?;
-            // Add the register types to the stack.
-            stack.add_function_types(function.name(), register_types)?;
+            // Add the function to the stack.
+            stack.insert_function(function)?;
         }
         // Return the stack.
         Ok(stack)
@@ -233,11 +230,9 @@ impl<N: Network> Stack<N> {
     /// Returns the expected number of calls for the given function name.
     #[inline]
     pub fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
-        // Retrieve the function.
-        let function = self.get_function(function_name)?;
         // Determine the number of calls for this function (including the function itself).
         let mut num_calls = 1;
-        for instruction in function.instructions() {
+        for instruction in self.get_function(function_name)?.instructions() {
             if let Instruction::Call(call) = instruction {
                 // Determine if this is a function call.
                 if call.is_function_call(self)? {
