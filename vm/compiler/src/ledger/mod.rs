@@ -125,6 +125,8 @@ impl<
             vm.on_deploy(deployment_transaction)?;
         }
 
+        // TODO (raychu86): VM needs to load the fee program.
+
         // Construct the blocks.
         Ok(Self {
             current_hash: genesis.hash(),
@@ -141,15 +143,13 @@ impl<
     }
 
     /// Initialize a VM from the stored transactions.
-    pub fn load_vm(&mut self) -> Result<()> {
+    pub fn load_vm(&mut self) -> Result<VM<N>> {
         let mut vm = VM::<N>::new()?;
         for deployment_transaction in self.transactions().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _))) {
             vm.on_deploy(deployment_transaction)?;
         }
 
-        self.vm = vm;
-
-        Ok(())
+        Ok(vm)
     }
 
     /// Appends the given transaction to the memory pool.
@@ -233,11 +233,9 @@ impl<
 
     /// Checks the given block is valid next block.
     pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
-        // TODO (raychu86): Add deployed programs to the ledger.
-
-        // // TODO (raychu86): Validate the block using a valid VM.
+        // TODO (raychu86): Ensure the signature validation check passes.
         // // Ensure the block itself is valid.
-        // if !block.verify(vm) {
+        // if !block.verify(&self.vm) {
         //     bail!("The given block is invalid")
         // }
 
@@ -503,7 +501,10 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_execution_transaction};
+    use crate::ledger::{
+        test_helpers::CurrentLedger,
+        vm::test_helpers::{sample_deployment_transaction, sample_execution_transaction},
+    };
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -548,5 +549,33 @@ mod tests {
 
         assert_eq!(ledger.latest_height(), 1);
         assert_eq!(ledger.latest_hash(), next_block.hash());
+    }
+
+    #[test]
+    fn test_vm() {
+        let rng = &mut test_crypto_rng();
+
+        // Sample a private key.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+        // Initialize the ledger with the genesis block.
+        let mut ledger = CurrentLedger::new().unwrap();
+
+        // Add a transaction to the memory pool.
+        let deployment_transaction = sample_deployment_transaction();
+        ledger.add_to_memory_pool(deployment_transaction.clone()).unwrap();
+
+        // Propose the next block.
+        let next_block = ledger.propose_next_block(&private_key, rng).unwrap();
+
+        // Construct a next block.
+        ledger.add_next_block(&next_block).unwrap();
+
+        // Construct a new ledger from the ledger transactions.
+        let mut vm = ledger.load_vm().unwrap();
+
+        // Ensure that the VM can't redeploy the same program.
+        assert!(vm.on_deploy(&deployment_transaction).is_err());
+        assert!(ledger.vm.on_deploy(&deployment_transaction).is_err());
     }
 }
