@@ -166,23 +166,22 @@ macro_rules! sqrt_impl {
                 let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
                 let two_to_n_minus_l = 2u64.pow((n - l) as u32);
                 let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
-                let mut gamma = $Self::one();
                 x_s.iter().enumerate().for_each(|(i, x)| {
                     // Calculate g^t.
-                    gamma = calc_gamma(i, &q_s, false);
+                    // This algorithm deviates from the standard description in the paper, and is
+                    // explained in detail in page 6, in section 2.1.
+                    let gamma = calc_gamma(i, &q_s, false);
                     let alpha = *x * gamma;
                     q_s.push(
                         BigInteger::from(
-                            eval(alpha) / {
-                                if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l }
-                            },
+                            eval(alpha) / if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l },
                         )
                         .to_bits_le(),
                     );
                 });
 
                 // Calculate g^{t/2}.
-                gamma = calc_gamma(k as usize, &q_s, true);
+                let gamma = calc_gamma(k as usize, &q_s, true);
                 Some(*$self * v * gamma)
             }
         }
