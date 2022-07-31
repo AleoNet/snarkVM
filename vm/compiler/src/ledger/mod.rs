@@ -100,6 +100,9 @@ pub struct Ledger<
     programs: ProgramsMap,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
+
+    /// The VM state.
+    vm: VM<N>,
     // /// The mapping of program IDs to their global state.
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
@@ -117,6 +120,15 @@ impl<
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+
+        // Load the VM with deployment functions.
+        let mut vm = VM::<N>::new()?;
+        for deployment_transaction in
+            genesis.transactions().values().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _)))
+        {
+            vm.on_deploy(deployment_transaction)?;
+        }
+
         // Construct the blocks.
         Ok(Self {
             current_hash: genesis.hash(),
@@ -128,8 +140,21 @@ impl<
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
             signatures: [(genesis.height(), *genesis.signature())].into_iter().collect(),
             programs: genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
+            vm,
             memory_pool: Default::default(),
         })
+    }
+
+    /// Initialize a VM from the stored transactions.
+    pub fn load_vm(&mut self) -> Result<()> {
+        let mut vm = VM::<N>::new()?;
+        for deployment_transaction in self.transactions().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _))) {
+            vm.on_deploy(deployment_transaction)?;
+        }
+
+        self.vm = vm;
+
+        Ok(())
     }
 
     /// Appends the given transaction to the memory pool.
@@ -338,6 +363,14 @@ impl<
             ledger.previous_hashes.insert::<u32>(block.height(), block.previous_hash())?;
             ledger.headers.insert::<u32>(block.height(), *block.header())?;
             ledger.transactions.insert::<u32>(block.height(), block.transactions().clone())?;
+            ledger.signatures.insert::<u32>(block.height(), *block.signature())?;
+
+            // Load the VM with deployment functions in the block.
+            for deployment_transaction in
+                block.transactions().values().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _)))
+            {
+                self.vm.on_deploy(deployment_transaction)?;
+            }
 
             // Update the map of deployed programs.
             for (program_id, deployment) in block.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())) {
