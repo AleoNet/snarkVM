@@ -196,13 +196,13 @@ impl<N: Network> Package<N> {
                         response.function_name()
                     );
                     // Insert the proving key.
-                    process.insert_proving_key(response.program_id(), function_name, response.proving_key().clone());
+                    process.insert_proving_key(response.program_id(), function_name, response.proving_key().clone())?;
                     // Insert the verifying key.
                     process.insert_verifying_key(
                         response.program_id(),
                         function_name,
                         response.verifying_key().clone(),
-                    );
+                    )?;
                 }
                 None => process.synthesize_key::<A, _>(program_id, function_name, &mut rand::thread_rng())?,
             }

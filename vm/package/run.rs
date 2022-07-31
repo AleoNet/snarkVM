@@ -67,12 +67,12 @@ impl<N: Network> Package<N> {
                     // Create the prover.
                     let prover = ProverFile::open(&import_build_directory, function_name)?;
                     // Adds the proving key to the process.
-                    process.insert_proving_key(program.id(), function_name, prover.proving_key().clone());
+                    process.insert_proving_key(program.id(), function_name, prover.proving_key().clone())?;
 
                     // Create the verifier.
                     let verifier = VerifierFile::open(&import_build_directory, function_name)?;
                     // Adds the verifying key to the process.
-                    process.insert_verifying_key(program.id(), function_name, verifier.verifying_key().clone());
+                    process.insert_verifying_key(program.id(), function_name, verifier.verifying_key().clone())?;
                 }
             }
         }
@@ -85,9 +85,9 @@ impl<N: Network> Package<N> {
         let verifier = VerifierFile::open(&build_directory, &function_name)?;
 
         // Adds the proving key to the process.
-        process.insert_proving_key(program_id, &function_name, prover.proving_key().clone());
+        process.insert_proving_key(program_id, &function_name, prover.proving_key().clone())?;
         // Adds the verifying key to the process.
-        process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone());
+        process.insert_verifying_key(program_id, &function_name, verifier.verifying_key().clone())?;
 
         // Execute the circuit.
         let (response, execution) = process.execute::<A, R>(authorization, rng)?;
