@@ -319,8 +319,19 @@ impl<N: Network> Stack<N> {
             let proving_key = self.circuit_keys.get_proving_key(&program_id, function.name())?;
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
+
+            // TODO (raychu86): Construct the transition with the proper ledger state.
+
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, &function.output_types(), proof, *fee)?;
+            let transition = Transition::from(
+                crate::memory_map::MemoryMap::default(),
+                N::StateRoot::default(),
+                &console_request,
+                &response,
+                &function.output_types(),
+                proof,
+                *fee,
+            )?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }
