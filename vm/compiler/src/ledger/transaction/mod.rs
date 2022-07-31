@@ -56,7 +56,7 @@ impl<N: Network> Transaction<N> {
         // Compute the transaction ID.
         let id = *Self::deployment_tree(&deployment, &additional_fee)?.root();
         // Construct the deployment transaction.
-        Ok(Self::Deploy(id.into(), deployment, additional_fee.clone()))
+        Ok(Self::Deploy(id.into(), deployment, additional_fee))
     }
 
     /// Initializes a new execution transaction.
@@ -66,7 +66,7 @@ impl<N: Network> Transaction<N> {
         // Compute the transaction ID.
         let id = *Self::execution_tree(&execution, &additional_fee)?.root();
         // Construct the execution transaction.
-        Ok(Self::Execute(id.into(), execution, additional_fee.clone()))
+        Ok(Self::Execute(id.into(), execution, additional_fee))
     }
 }
 
@@ -204,7 +204,7 @@ impl<N: Network> Transaction<N> {
         match self {
             Self::Deploy(_, _, additional_fee) => [].iter().chain([Some(additional_fee)].into_iter().flatten()),
             Self::Execute(_, execution, additional_fee) => {
-                execution.into_iter().chain([additional_fee.as_ref()].into_iter().flatten())
+                execution.iter().chain([additional_fee.as_ref()].into_iter().flatten())
             }
         }
     }
