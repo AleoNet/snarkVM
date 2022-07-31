@@ -78,7 +78,6 @@ pub struct Ledger<
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
     SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
 > {
     /// The current block hash.
     current_hash: N::BlockHash,
@@ -96,8 +95,6 @@ pub struct Ledger<
     transactions: TransactionsMap,
     /// The map of block signatures.
     signatures: SignatureMap,
-    /// The mapping of program IDs to their deployment.
-    programs: ProgramsMap,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
 
@@ -113,8 +110,7 @@ impl<
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
     SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
 {
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
@@ -139,7 +135,6 @@ impl<
             headers: [(genesis.height(), *genesis.header())].into_iter().collect(),
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
             signatures: [(genesis.height(), *genesis.signature())].into_iter().collect(),
-            programs: genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
             vm,
             memory_pool: Default::default(),
         })
@@ -372,11 +367,6 @@ impl<
                 self.vm.on_deploy(deployment_transaction)?;
             }
 
-            // Update the map of deployed programs.
-            for (program_id, deployment) in block.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())) {
-                ledger.programs.insert::<ProgramID<N>>(program_id, deployment)?;
-            }
-
             // Clear the memory pool of these transactions.
             for transaction_id in block.transaction_ids() {
                 ledger.memory_pool.remove(transaction_id);
@@ -507,7 +497,6 @@ pub(crate) mod test_helpers {
         MemoryMap<u32, Header<CurrentNetwork>>,
         MemoryMap<u32, Transactions<CurrentNetwork>>,
         MemoryMap<u32, Signature<CurrentNetwork>>,
-        MemoryMap<ProgramID<CurrentNetwork>, Deployment<CurrentNetwork>>,
     >;
 }
 
