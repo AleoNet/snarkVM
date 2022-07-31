@@ -97,7 +97,6 @@ macro_rules! sqrt_impl {
                 let x = *$self * v.square();
                 let g = $Self::two_adic_root_of_unity().pow($P::T);
                 let two = $Self::from(2u8);
-                let n_field = $Self::from(n);
 
                 let k = ((n - 1) as f64).sqrt().floor() as u64;
                 let k_2 = ((k as f64) / 2.0).floor() as u64;
@@ -145,24 +144,47 @@ macro_rules! sqrt_impl {
                     s
                 };
 
-                let calc_kappa = |j: usize, l_s: &Vec<$Self>| -> $Self {
-                    l_s.iter().take(j).fold($Self::zero(), |acc, x| acc + x)
-                        + l_s.iter().skip(2).fold($Self::zero(), |acc, x| acc + x)
-                        + $Self::one()
+                let calc_kappa = |i: usize, j: usize, l_s: &Vec<u64>| -> u64 {
+                    l_s.iter().take(j).fold(0, |acc, x| acc + x) + l_s.iter().skip(i + 1).fold(0, |acc, x| acc + x) + 1
                 };
 
                 let mut s = $Self::zero();
                 let mut t = $Self::zero();
+                let mut q_s = Vec::<$Self>::with_capacity(k as usize);
                 let two_to_l_minus_one = $Self::from_repr(BigInteger::from(2u64.pow(l_minus_one as u32))).unwrap();
                 let two_to_l = $Self::from_repr(BigInteger::from(2u64.pow(l as u32))).unwrap();
+                let two_to_n_minus_l = $Self::from_repr(BigInteger::from(2u64.pow((n - l) as u32))).unwrap();
+                let two_to_n_minus_l_minus_one =
+                    $Self::from_repr(BigInteger::from(2u64.pow((n - l_minus_one) as u32))).unwrap();
                 x_s.iter().enumerate().for_each(|(i, x)| {
                     t = (s + t) / {
                         if i < k_1 as usize { two_to_l_minus_one } else { two_to_l }
                     };
-                    // let q = s / two.pow((n_field - l).to_repr());
-                    let gamma = g.pow(t.to_repr());
+
+                    // Calculate g^t.
+                    let gamma = {
+                        let mut gamma = $Self::one();
+                        if i != 0 {
+                            for j in 0..i {
+                                let q_bits = q_s[j].to_bits_le();
+                                let kappa = calc_kappa(i, j, &l_s);
+                                for k in 0..l_s[j] {
+                                    if q_bits[k as usize] {
+                                        let g = $Self::from_repr($P::POWERS_OF_G[(kappa + k) as usize]).unwrap();
+                                        gamma *= g;
+                                    }
+                                }
+                            }
+                        }
+                        gamma
+                    };
                     let alpha = *x * gamma;
                     s = eval(alpha);
+                    q_s.push(
+                        s / {
+                            if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l }
+                        },
+                    );
                 });
 
                 t = s + t;
