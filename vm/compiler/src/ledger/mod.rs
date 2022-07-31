@@ -215,10 +215,10 @@ impl<
     pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Add deployed programs to the ledger.
 
-        // TODO (raychu86): Validate the block using a valid VM.
+        // // TODO (raychu86): Validate the block using a valid VM.
         // // Ensure the block itself is valid.
-        // if !block.is_valid(vm) {
-        //     bail!("The given block is invalid"));
+        // if !block.verify(vm) {
+        //     bail!("The given block is invalid")
         // }
 
         // Ensure the previous block hash is correct.
@@ -241,6 +241,7 @@ impl<
             bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
+        // TODO (raychu86): Ensure the next round number includes timeouts.
         // Ensure the next round is correct.
         if self.latest_round() != 0 && self.latest_round() + 1 /*+ block.number_of_aborts()*/ != block.round() {
             bail!("The given block has an incorrect round number")
