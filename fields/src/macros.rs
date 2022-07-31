@@ -91,7 +91,7 @@ macro_rules! sqrt_impl {
             Zero => Some(*$self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let n = $P::TWO_ADICITY;
+                let n = $P::TWO_ADICITY as u64;
                 // `T` is equivalent to `m` in the paper.
                 let v = $self.pow($P::T_MINUS_ONE_DIV_TWO);
                 let x = *$self * v.square();
@@ -99,28 +99,26 @@ macro_rules! sqrt_impl {
                 let two = $Self::from(2u8);
                 let n_field = $Self::from(n);
 
-                let k = ((n - 1) as f64).sqrt().floor() as usize;
-                let k_field = $Self::from(k as u64);
-                let k_2 = ((k as f64) / 2.0).floor() as usize;
-                let k_2_field = $Self::from(k_2 as u64);
+                let k = ((n - 1) as f64).sqrt().floor() as u64;
+                let k_2 = ((k as f64) / 2.0).floor() as u64;
                 let k_1 = k - k_2;
-                let l_minus_one_times_k = n_field - $Self::one() - k_2_field;
-                let l_minus_one = l_minus_one_times_k / k_field;
-                let l = l_minus_one + $Self::one();
-                let mut l_s: Vec<$Self> = Vec::with_capacity(k);
+                let l_minus_one_times_k = n - 1 - k_2;
+                let l_minus_one = l_minus_one_times_k / k;
+                let l = l_minus_one + 1;
+                let mut l_s: Vec<u64> = Vec::with_capacity(k as usize);
 
-                l_s.resize(l_s.len() + k_1, l_minus_one);
-                l_s.resize(l_s.len() + k_2, l);
+                l_s.resize(l_s.len() + k_1 as usize, l_minus_one);
+                l_s.resize(l_s.len() + k_2 as usize, l);
 
-                let mut x_s: Vec<$Self> = Vec::with_capacity(k);
-                let mut l_sum = $Self::zero();
+                let mut x_s: Vec<$Self> = Vec::with_capacity(k as usize);
+                let mut l_sum = 0u64;
                 l_s.iter().for_each(|l| {
                     l_sum += l;
-                    let x = x.pow(two.pow((n_field - $Self::one() - l_sum).to_repr()).to_repr());
+                    let x = x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)));
                     x_s.push(x);
                 });
 
-                let find = |delta: $Self| -> u32 {
+                let find = |delta: $Self| -> u64 {
                     let mut mu = delta;
                     let mut i = 0;
                     while mu != -$Self::one() {
@@ -155,11 +153,11 @@ macro_rules! sqrt_impl {
 
                 let mut s = $Self::zero();
                 let mut t = $Self::zero();
-                let two_to_l_minus_one = two.pow(l_minus_one.to_repr());
-                let two_to_l = two.pow(l.to_repr());
+                let two_to_l_minus_one = $Self::from_repr(BigInteger::from(2u64.pow(l_minus_one as u32))).unwrap();
+                let two_to_l = $Self::from_repr(BigInteger::from(2u64.pow(l as u32))).unwrap();
                 x_s.iter().enumerate().for_each(|(i, x)| {
                     t = (s + t) / {
-                        if i < k_1 { two_to_l_minus_one } else { two_to_l }
+                        if i < k_1 as usize { two_to_l_minus_one } else { two_to_l }
                     };
                     // let q = s / two.pow((n_field - l).to_repr());
                     let gamma = g.pow(t.to_repr());
