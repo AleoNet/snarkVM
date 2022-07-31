@@ -16,7 +16,7 @@
 
 use crate::{
     ledger::Transaction,
-    process::{Authorization, Deployment, Execution, Process, Stack},
+    process::{Authorization, Deployment, Execution, Process},
     program::Program,
 };
 use console::{
@@ -103,14 +103,8 @@ impl<N: Network> VM<N> {
                 // Prepare the program.
                 let program = cast_ref!(&program as Program<$network>);
 
-                // Ensure the program does not already exist.
-                if $process.contains_program(program.id()) {
-                    bail!("Cannot deploy program '{}': program already exists", program.id())
-                }
-                // Construct the stack.
-                let stack = Stack::new(&$process, program)?;
                 // Compute the deployment.
-                let deployment = stack.deploy::<$aleo, _>(rng)?;
+                let deployment = $process.deploy::<$aleo, _>(program, rng)?;
                 // Construct the transaction.
                 let transaction = Transaction::deploy(deployment)?;
 

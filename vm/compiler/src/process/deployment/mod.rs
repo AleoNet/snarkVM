@@ -39,8 +39,8 @@ impl<N: Network> Deployment<N> {
         edition: u16,
         program: Program<N>,
         verifying_keys: IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
-    ) -> Self {
-        Self { edition, program, verifying_keys }
+    ) -> Result<Self> {
+        Ok(Self { edition, program, verifying_keys })
     }
 
     /// Returns the edition.
@@ -62,7 +62,7 @@ impl<N: Network> Deployment<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program, Stack};
+    use crate::{Process, Program};
     use console::network::Testnet3;
 
     use once_cell::sync::OnceCell;
@@ -93,10 +93,8 @@ function compute:
 
                 // Construct the process.
                 let process = Process::<CurrentNetwork>::new().unwrap();
-                // Compute the stack.
-                let stack = Stack::new(&process, &program).unwrap();
                 // Compute the deployment.
-                stack.deploy::<CurrentAleo, _>(rng).unwrap()
+                process.deploy::<CurrentAleo, _>(&program, rng).unwrap()
             })
             .clone()
     }

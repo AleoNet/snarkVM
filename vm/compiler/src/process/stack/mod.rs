@@ -24,7 +24,6 @@ use crate::{
     CallOperator,
     Certificate,
     Closure,
-    Deployment,
     Execution,
     Function,
     Instruction,

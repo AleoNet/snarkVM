@@ -48,7 +48,8 @@ impl<'de, N: Network> Deserialize<'de> for Deployment<N> {
                     serde_json::from_value(deployment["program"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the verifying keys.
                     serde_json::from_value(deployment["verifying_keys"].clone()).map_err(de::Error::custom)?,
-                );
+                )
+                .map_err(de::Error::custom)?;
 
                 Ok(deployment)
             }
