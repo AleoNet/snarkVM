@@ -108,13 +108,6 @@ impl<A: Aleo> Request<A> {
                         // Compute the record commitment.
                         let candidate_commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
 
-                        // Compute the generator `H` as `HashToGroup(commitment)`.
-                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
-                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                        let h_r = (gamma * challenge) + (&h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
-                        message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
-
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
                             A::serial_number_domain(),
@@ -123,6 +116,13 @@ impl<A: Aleo> Request<A> {
                         // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
                         let candidate_serial_number =
                             A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
+
+                        // Compute the generator `H` as `HashToGroup(commitment)`.
+                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
+                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+                        let h_r = (gamma * challenge) + (&h * response);
+                        // Add `H`, `r * H`, and `gamma` to the message.
+                        message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)

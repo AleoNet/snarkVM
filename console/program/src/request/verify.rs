@@ -145,13 +145,6 @@ impl<N: Network> Request<N> {
                             bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                         }
 
-                        // Compute the generator `H` as `HashToGroup(commitment)`.
-                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
-                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                        let h_r = (*gamma * challenge) + (h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
-                        message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
-
                         // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
                         let sn_nonce = N::hash_to_scalar_psd2(&[
                             N::serial_number_domain(),
@@ -162,6 +155,13 @@ impl<N: Network> Request<N> {
                             N::commit_bhp512(&(N::serial_number_domain(), *commitment).to_bits_le(), &sn_nonce)?;
                         // Ensure the serial number matches.
                         ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
+
+                        // Compute the generator `H` as `HashToGroup(commitment)`.
+                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
+                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+                        let h_r = (*gamma * challenge) + (h * response);
+                        // Add `H`, `r * H`, and `gamma` to the message.
+                        message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {
