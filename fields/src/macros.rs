@@ -125,13 +125,13 @@ macro_rules! sqrt_impl {
                     i
                 };
 
-                let eval = |alpha: $Self| -> $Self {
+                let eval = |alpha: $Self| -> u64 {
                     let mut delta = alpha;
-                    let mut s = $Self::zero();
+                    let mut s = 0u64;
                     while delta != $Self::one() {
                         let i = find(delta);
                         let n_minus_one_minus_i = n - 1 - i;
-                        s += $Self::from_repr(BigInteger::from(2u64.pow(n_minus_one_minus_i as u32))).unwrap();
+                        s += 2u64.pow(n_minus_one_minus_i as u32);
                         if i > 0 {
                             delta *= $Self::from_repr($P::POWERS_OF_G[n_minus_one_minus_i as usize])
                                 .expect("precomputed powers of g should always convert properly");
@@ -164,20 +164,19 @@ macro_rules! sqrt_impl {
                     gamma
                 };
 
-                let mut s = $Self::zero();
                 let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
-                let two_to_n_minus_l = $Self::from_repr(BigInteger::from(2u64.pow((n - l) as u32))).unwrap();
-                let two_to_n_minus_l_minus_one =
-                    $Self::from_repr(BigInteger::from(2u64.pow((n - l_minus_one) as u32))).unwrap();
+                let two_to_n_minus_l = 2u64.pow((n - l) as u32);
+                let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
                 x_s.iter().enumerate().for_each(|(i, x)| {
                     // Calculate g^t.
                     let gamma = calc_gamma(i, &q_s, false);
                     let alpha = *x * gamma;
-                    s = eval(alpha);
                     q_s.push(
-                        (s / {
-                            if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l }
-                        })
+                        BigInteger::from(
+                            eval(alpha) / {
+                                if i < k_1 as usize { two_to_n_minus_l_minus_one } else { two_to_n_minus_l }
+                            },
+                        )
                         .to_bits_le(),
                     );
                 });
