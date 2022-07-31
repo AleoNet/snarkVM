@@ -299,9 +299,9 @@ impl<N: Network> Stack<N> {
             || matches!(registers.call_stack(), CallStack::Execute(..))
         {
             // If the proving key does not exist, then synthesize it.
-            if !self.circuit_keys.contains_proving_key(self.program.id(), function.name()) {
+            if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
-                self.circuit_keys.insert_from_assignment(self.program.id(), function.name(), &assignment)?;
+                self.insert_from_assignment(function.name(), &assignment)?;
             }
         }
 
@@ -316,7 +316,7 @@ impl<N: Network> Stack<N> {
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
-            let proving_key = self.circuit_keys.get_proving_key(self.program.id(), function.name())?;
+            let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Construct the transition.

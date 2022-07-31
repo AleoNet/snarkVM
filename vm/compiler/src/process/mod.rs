@@ -37,7 +37,7 @@ mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{Function, Instruction, Program, ProvingKey, VerifyingKey};
+use crate::{Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -50,12 +50,11 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-#[derive(Default)]
 pub struct Process<N: Network> {
+    /// The universal SRS.
+    universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
-    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
-    circuit_keys: CircuitKeys<N>,
 }
 
 impl<N: Network> Process<N> {
@@ -63,15 +62,13 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn new() -> Result<Self> {
         // Initialize the process.
-        let process = Self { stacks: IndexMap::new(), circuit_keys: CircuitKeys::new() };
-        // Return the process.
-        Ok(process)
+        Ok(Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() })
     }
 
-    /// Returns the circuit keys.
+    /// Returns the universal SRS.
     #[inline]
-    pub const fn circuit_keys(&self) -> &CircuitKeys<N> {
-        &self.circuit_keys
+    pub const fn universal_srs(&self) -> &Arc<UniversalSRS<N>> {
+        &self.universal_srs
     }
 
     /// Returns `true` if the process contains the program with the given ID.
@@ -120,9 +117,10 @@ impl<N: Network> Process<N> {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
         proving_key: ProvingKey<N>,
-    ) {
+    ) -> Result<()> {
         // Add the proving key to the mapping.
-        self.circuit_keys.insert_proving_key(program_id, function_name, proving_key);
+        self.get_stack(program_id)?.insert_proving_key(function_name, proving_key);
+        Ok(())
     }
 
     /// Inserts the given verifying key, for the given program ID and function name.
@@ -132,9 +130,10 @@ impl<N: Network> Process<N> {
         program_id: &ProgramID<N>,
         function_name: &Identifier<N>,
         verifying_key: VerifyingKey<N>,
-    ) {
+    ) -> Result<()> {
         // Add the verifying key to the mapping.
-        self.circuit_keys.insert_verifying_key(program_id, function_name, verifying_key);
+        self.get_stack(program_id)?.insert_verifying_key(function_name, verifying_key);
+        Ok(())
     }
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.

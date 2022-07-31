@@ -16,6 +16,3 @@
 
 mod authorization;
 pub use authorization::*;
-
-mod circuit_keys;
-pub(crate) use circuit_keys::*;

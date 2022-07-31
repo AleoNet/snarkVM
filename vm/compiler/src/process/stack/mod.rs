@@ -23,7 +23,6 @@ use crate::{
     Authorization,
     CallOperator,
     Certificate,
-    CircuitKeys,
     Closure,
     Deployment,
     Execution,
@@ -37,6 +36,7 @@ use crate::{
     RegisterTypes,
     Registers,
     Transition,
+    UniversalSRS,
     VerifyingKey,
 };
 use console::{
@@ -115,8 +115,12 @@ pub struct Stack<N: Network> {
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
-    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
-    circuit_keys: CircuitKeys<N>,
+    /// The universal SRS.
+    universal_srs: Arc<UniversalSRS<N>>,
+    /// The mapping of `(program ID, function name)` to proving key.
+    proving_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), ProvingKey<N>>>>,
+    /// The mapping of `(program ID, function name)` to verifying key.
+    verifying_keys: Arc<RwLock<IndexMap<(ProgramID<N>, Identifier<N>), VerifyingKey<N>>>>,
 }
 
 impl<N: Network> Stack<N> {
@@ -135,7 +139,9 @@ impl<N: Network> Stack<N> {
             program: program.clone(),
             external_stacks: IndexMap::new(),
             program_types: IndexMap::new(),
-            circuit_keys: process.circuit_keys().clone(),
+            universal_srs: process.universal_srs().clone(),
+            proving_keys: Default::default(),
+            verifying_keys: Default::default(),
         };
 
         // Add all of the imports into the stack.
@@ -254,18 +260,70 @@ impl<N: Network> Stack<N> {
         self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
     }
 
+    /// Returns `true` if the proving key for the given function name exists.
+    #[inline]
+    pub fn contains_proving_key(&self, function_name: &Identifier<N>) -> bool {
+        self.proving_keys.read().contains_key(&(*self.program.id(), *function_name))
+    }
+
+    /// Returns `true` if the verifying key for the given function name exists.
+    #[inline]
+    pub fn contains_verifying_key(&self, function_name: &Identifier<N>) -> bool {
+        self.verifying_keys.read().contains_key(&(*self.program.id(), *function_name))
+    }
+
     /// Returns the proving key for the given function name.
     #[inline]
     pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
         // Return the proving key, if it exists.
-        self.circuit_keys.get_proving_key(self.program_id(), function_name)
+        match self.proving_keys.read().get(&(*self.program.id(), *function_name)) {
+            Some(proving_key) => Ok(proving_key.clone()),
+            None => bail!("Proving key not found for: {}/{function_name}", self.program.id()),
+        }
     }
 
     /// Returns the verifying key for the given function name.
     #[inline]
     pub fn get_verifying_key(&self, function_name: &Identifier<N>) -> Result<VerifyingKey<N>> {
         // Return the verifying key, if it exists.
-        self.circuit_keys.get_verifying_key(self.program_id(), function_name)
+        match self.verifying_keys.read().get(&(*self.program.id(), *function_name)) {
+            Some(verifying_key) => Ok(verifying_key.clone()),
+            None => bail!("Verifying key not found for: {}/{function_name}", self.program.id()),
+        }
+    }
+
+    /// Inserts the given proving key for the given function name.
+    #[inline]
+    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) {
+        self.proving_keys.write().insert((*self.program.id(), *function_name), proving_key);
+    }
+
+    /// Inserts the given verifying key for the given function name.
+    #[inline]
+    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) {
+        self.verifying_keys.write().insert((*self.program.id(), *function_name), verifying_key);
+    }
+
+    /// Inserts the derived `(proving_key, verifying_key)` for the given function name and assignment.
+    #[inline]
+    pub fn insert_from_assignment(
+        &self,
+        function_name: &Identifier<N>,
+        assignment: &circuit::Assignment<N::Field>,
+    ) -> Result<()> {
+        let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
+        // Insert the proving key.
+        self.insert_proving_key(function_name, proving_key);
+        // Insert the verifying key.
+        self.insert_verifying_key(function_name, verifying_key);
+        Ok(())
+    }
+
+    /// Removes the proving and verifying key for the given function name.
+    #[inline]
+    pub fn remove(&self, function_name: &Identifier<N>) {
+        self.proving_keys.write().remove(&(*self.program.id(), *function_name));
+        self.verifying_keys.write().remove(&(*self.program.id(), *function_name));
     }
 }
 

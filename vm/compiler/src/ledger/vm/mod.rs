@@ -142,7 +142,11 @@ impl<N: Network> VM<N> {
                     $process.add_program(deployment.program())?;
                     // Insert the verifying keys.
                     for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-                        $process.insert_verifying_key(deployment.program().id(), function_name, verifying_key.clone());
+                        $process.insert_verifying_key(
+                            deployment.program().id(),
+                            function_name,
+                            verifying_key.clone(),
+                        )?;
                     }
                 }
                 Ok(())

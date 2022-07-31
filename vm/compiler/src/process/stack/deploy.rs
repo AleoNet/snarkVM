@@ -28,9 +28,7 @@ impl<N: Network> Stack<N> {
 
         for function_name in self.program.functions().keys() {
             // If the proving and verifying key do not exist, synthesize it.
-            if !self.circuit_keys.contains_proving_key(self.program.id(), function_name)
-                || !self.circuit_keys.contains_verifying_key(self.program.id(), function_name)
-            {
+            if !self.contains_proving_key(function_name) || !self.contains_verifying_key(function_name) {
                 // Synthesize the proving and verifying key.
                 self.synthesize_key::<A, R>(function_name, rng)?;
             }
