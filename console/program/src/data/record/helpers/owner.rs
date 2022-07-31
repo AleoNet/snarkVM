@@ -64,7 +64,7 @@ impl<N: Network> Deref for Owner<N, Plaintext<N>> {
 
 impl<N: Network> Owner<N, Plaintext<N>> {
     /// Encrypts `self` under the given randomizer.
-    pub fn encrypt(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Ciphertext<N>>> {
+    pub fn encrypt_with_randomizer(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Ciphertext<N>>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.
@@ -87,7 +87,7 @@ impl<N: Network> Owner<N, Plaintext<N>> {
 
 impl<N: Network> Owner<N, Ciphertext<N>> {
     /// Decrypts the owner under the given randomizer.
-    pub fn decrypt(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Plaintext<N>>> {
+    pub fn decrypt_with_randomizer(&self, randomizer: &[Field<N>]) -> Result<Owner<N, Plaintext<N>>> {
         match self {
             Self::Public(public) => {
                 // Ensure there is exactly zero randomizers.

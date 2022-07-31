@@ -42,8 +42,8 @@ impl<N: Network> Record<N, Ciphertext<N>> {
 
         // Decrypt the owner.
         let owner = match self.owner.is_public() {
-            true => self.owner.decrypt(&[])?,
-            false => self.owner.decrypt(&[randomizers[index]])?,
+            true => self.owner.decrypt_with_randomizer(&[])?,
+            false => self.owner.decrypt_with_randomizer(&[randomizers[index]])?,
         };
 
         // Increment the index if the owner is private.
@@ -53,8 +53,8 @@ impl<N: Network> Record<N, Ciphertext<N>> {
 
         // Decrypt the gates.
         let gates = match self.gates.is_public() {
-            true => self.gates.decrypt(&[])?,
-            false => self.gates.decrypt(&[randomizers[index]])?,
+            true => self.gates.decrypt_with_randomizer(&[])?,
+            false => self.gates.decrypt_with_randomizer(&[randomizers[index]])?,
         };
 
         // Increment the index if the gates is private.
