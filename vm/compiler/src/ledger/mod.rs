@@ -125,7 +125,8 @@ impl<
             vm.on_deploy(deployment_transaction)?;
         }
 
-        // TODO (raychu86): VM needs to load the fee program.
+        // Synthesize the credit program keys.
+        vm.synthesize_credit_program_keys::<::circuit::AleoV0, _>(&mut snarkvm_utilities::test_crypto_rng_fixed())?;
 
         // Construct the blocks.
         Ok(Self {
@@ -144,7 +145,14 @@ impl<
 
     /// Initialize a VM from the stored transactions.
     pub fn load_vm(&mut self) -> Result<VM<N>> {
+        //
+        // TODO (howardwu): SYNTHESIZE THE CREDITS PROGRAM PKS and VKS ON PROCESS INITIALIZATION.
+        //
         let mut vm = VM::<N>::new()?;
+        // Synthesize the credit program keys.
+        vm.synthesize_credit_program_keys::<::circuit::AleoV0, _>(&mut snarkvm_utilities::test_crypto_rng_fixed())?;
+
+        // Process all the deployment transactions that exist in the ledger.
         for deployment_transaction in self.transactions().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _))) {
             vm.on_deploy(deployment_transaction)?;
         }
@@ -506,6 +514,7 @@ mod tests {
         vm::test_helpers::{sample_deployment_transaction, sample_execution_transaction},
     };
     use console::network::Testnet3;
+    use snarkvm_utilities::test_crypto_rng;
 
     type CurrentNetwork = Testnet3;
 
@@ -532,6 +541,7 @@ mod tests {
 
         // Initialize the ledger with the genesis block.
         let mut ledger = CurrentLedger::new().unwrap();
+
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
         assert_eq!(ledger.latest_height(), 0);
@@ -552,7 +562,7 @@ mod tests {
     }
 
     #[test]
-    fn test_vm() {
+    fn test_ledger_vm() {
         let rng = &mut test_crypto_rng();
 
         // Sample a private key.

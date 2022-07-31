@@ -94,6 +94,18 @@ impl<N: Network> VM<N> {
         Ok(Self { process: Arc::new(RwLock::new(Process::new()?)), _phantom: PhantomData })
     }
 
+    /// Synthesizes the proving and verifying key for the given credit program.
+    #[inline]
+    pub fn synthesize_credit_program_keys<
+        A: circuit::Aleo<Network = console::network::Testnet3>,
+        R: Rng + CryptoRng,
+    >(
+        &self,
+        rng: &mut R,
+    ) -> Result<()> {
+        self.process.write().synthesize_credit_program_keys::<A, R>(rng)
+    }
+
     /// Deploys a program with the given program ID.
     #[inline]
     pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
@@ -346,6 +358,7 @@ pub(crate) mod test_helpers {
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
+    type CurrentAleo = circuit::AleoV0;
 
     pub(crate) fn sample_program() -> Program<CurrentNetwork> {
         static INSTANCE: OnceCell<Program<CurrentNetwork>> = OnceCell::new();
@@ -383,8 +396,13 @@ function compute:
         static INSTANCE: OnceCell<VM<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
+                let rng = &mut test_crypto_rng_fixed();
+
                 // Initialize a new VM.
-                VM::<CurrentNetwork>::new().unwrap()
+                let vm = VM::<CurrentNetwork>::new().unwrap();
+                vm.synthesize_credit_program_keys::<CurrentAleo, _>(rng).unwrap();
+
+                vm
             })
             .clone()
     }
@@ -495,17 +513,14 @@ function compute:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
-    type CurrentNetwork = Testnet3;
-
-    use crate::ledger::vm::test_helpers::sample_deployment_transaction;
+    use crate::ledger::vm::test_helpers::{sample_deployment_transaction, sample_vm};
 
     #[test]
     fn test_vm_deploy() {
         let rng = &mut test_crypto_rng();
-        let vm = VM::<CurrentNetwork>::new().unwrap();
+        let vm = sample_vm();
 
         // Fetch the program from the deployment.
         let deployment = if let Transaction::Deploy(_, deployment, _) = sample_deployment_transaction() {
@@ -526,7 +541,7 @@ mod tests {
 
     #[test]
     fn test_vm_on_deploy() {
-        let mut vm = VM::<CurrentNetwork>::new().unwrap();
+        let mut vm = sample_vm();
 
         // Fetch a deployment transaction.
         let deployment_transaction = sample_deployment_transaction();
