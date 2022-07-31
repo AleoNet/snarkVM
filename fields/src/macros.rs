@@ -97,18 +97,17 @@ macro_rules! sqrt_impl {
                 let x = *$self * v.square();
 
                 let k = ((n - 1) as f64).sqrt().floor() as u64;
-                let k_2 = ((k as f64) / 2.0).floor() as u64;
+                let k_2 = if n % 2 == 0 { k / 2 } else { (n - 1) % k };
                 let k_1 = k - k_2;
                 let l_minus_one_times_k = n - 1 - k_2;
                 let l_minus_one = l_minus_one_times_k / k;
                 let l = l_minus_one + 1;
                 let mut l_s: Vec<u64> = Vec::with_capacity(k as usize);
-
                 l_s.resize(l_s.len() + k_1 as usize, l_minus_one);
                 l_s.resize(l_s.len() + k_2 as usize, l);
 
                 let mut x_s: Vec<$Self> = Vec::with_capacity(k as usize);
-                let mut l_sum = 0u64;
+                let mut l_sum = 0;
                 l_s.iter().for_each(|l| {
                     l_sum += l;
                     let x = x.pow(BigInteger::from(2u64.pow((n - 1 - l_sum) as u32)));
@@ -167,9 +166,10 @@ macro_rules! sqrt_impl {
                 let mut q_s = Vec::<Vec<bool>>::with_capacity(k as usize);
                 let two_to_n_minus_l = 2u64.pow((n - l) as u32);
                 let two_to_n_minus_l_minus_one = 2u64.pow((n - l_minus_one) as u32);
+                let mut gamma = $Self::one();
                 x_s.iter().enumerate().for_each(|(i, x)| {
                     // Calculate g^t.
-                    let gamma = calc_gamma(i, &q_s, false);
+                    gamma = calc_gamma(i, &q_s, false);
                     let alpha = *x * gamma;
                     q_s.push(
                         BigInteger::from(
@@ -182,7 +182,7 @@ macro_rules! sqrt_impl {
                 });
 
                 // Calculate g^{t/2}.
-                let gamma = calc_gamma(k as usize, &q_s, true);
+                gamma = calc_gamma(k as usize, &q_s, true);
                 Some(*$self * v * gamma)
             }
         }
