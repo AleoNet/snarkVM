@@ -108,6 +108,7 @@ impl<N: Network> CallStack<N> {
 }
 
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct Stack<N: Network> {
     /// The program (record types, interfaces, functions).
     program: Program<N>,
