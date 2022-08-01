@@ -33,7 +33,7 @@ path = "../../console/account"
 version = "0.7.5"
 
 [dev-dependencies.anyhow]
-version = "1.0.57"
+version = "1.0.59"
 
 [dev-dependencies.rand]
 version = "0.8"
