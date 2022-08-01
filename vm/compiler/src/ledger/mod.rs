@@ -37,10 +37,7 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::{
-    ledger::map::Map,
-    process::{Deployment, Execution},
-};
+use crate::process::{Deployment, Execution};
 use console::{
     account::{PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
@@ -530,7 +527,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_blocks() {
+    fn test_next_block() {
         let rng = &mut test_crypto_rng();
 
         // Sample a private key.

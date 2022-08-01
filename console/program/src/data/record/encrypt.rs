@@ -19,10 +19,15 @@ use super::*;
 impl<N: Network> Record<N, Plaintext<N>> {
     /// Encrypts `self` for the record owner under the given randomizer.
     pub fn encrypt(&self, randomizer: Scalar<N>) -> Result<Record<N, Ciphertext<N>>> {
-        // Compute the record view key.
-        let record_view_key = (**self.owner * randomizer).to_x_coordinate();
-        // Encrypt the record.
-        self.encrypt_symmetric(&record_view_key)
+        // Ensure the randomizer corresponds to the record nonce.
+        if self.nonce == N::g_scalar_multiply(&randomizer) {
+            // Compute the record view key.
+            let record_view_key = (**self.owner * randomizer).to_x_coordinate();
+            // Encrypt the record.
+            self.encrypt_symmetric(&record_view_key)
+        } else {
+            bail!("Illegal operation: Record::encrypt() randomizer does not correspond to the record nonce.")
+        }
     }
 
     /// Encrypts `self` under the given record view key.
@@ -42,8 +47,8 @@ impl<N: Network> Record<N, Plaintext<N>> {
 
         // Encrypt the owner.
         let owner = match self.owner.is_public() {
-            true => self.owner.encrypt(&[])?,
-            false => self.owner.encrypt(&[randomizers[index]])?,
+            true => self.owner.encrypt_with_randomizer(&[])?,
+            false => self.owner.encrypt_with_randomizer(&[randomizers[index]])?,
         };
 
         // Increment the index if the owner is private.
@@ -53,8 +58,8 @@ impl<N: Network> Record<N, Plaintext<N>> {
 
         // Encrypt the gates.
         let gates = match self.gates.is_public() {
-            true => self.gates.encrypt(&[])?,
-            false => self.gates.encrypt(&[randomizers[index]])?,
+            true => self.gates.encrypt_with_randomizer(&[])?,
+            false => self.gates.encrypt_with_randomizer(&[randomizers[index]])?,
         };
 
         // Increment the index if the gates is private.
@@ -94,6 +99,6 @@ impl<N: Network> Record<N, Plaintext<N>> {
         }
 
         // Return the encrypted record.
-        Ok(Record { owner, gates, data: encrypted_data })
+        Self::from_ciphertext(owner, gates, encrypted_data, self.nonce)
     }
 }

@@ -108,7 +108,11 @@ impl<N: Network> Stack<N> {
             })
             .collect::<Result<IndexMap<_, _>>>()?;
 
-        Record::from_plaintext(owner, gates, data)
+        // Initialize the nonce.
+        let nonce = Group::rand(rng);
+
+        // Return the record.
+        Record::<N, Plaintext<N>>::from_plaintext(owner, gates, data, nonce)
     }
 
     /// Samples an entry according to the given entry type.

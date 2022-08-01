@@ -26,6 +26,7 @@ pub use snarkvm_utilities::{
     has_duplicates,
     io::{Read, Result as IoResult, Write},
     test_crypto_rng,
+    test_crypto_rng_fixed,
     test_rng,
     FromBits as _,
     FromBytes,

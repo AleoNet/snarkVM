@@ -129,10 +129,6 @@ impl<N: Network> Request<N> {
                 }
                 // A record input is computed to its serial number.
                 ValueType::Record(record_name) => {
-                    // Construct the (console) input index as a field element.
-                    let index = Field::from_u16(index as u16);
-                    // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                    let randomizer = N::hash_to_scalar_psd2(&[tvk, index])?;
                     // Retrieve the record.
                     let record = match &input {
                         Value::Record(record) => record,
@@ -140,7 +136,7 @@ impl<N: Network> Request<N> {
                         Value::Plaintext(..) => bail!("Expected a record input, found a plaintext input"),
                     };
                     // Compute the record commitment.
-                    let commitment = record.to_commitment(&program_id, record_name, &randomizer)?;
+                    let commitment = record.to_commitment(&program_id, record_name)?;
                     // Ensure the record belongs to the caller.
                     ensure!(**record.owner() == caller, "Input record for '{program_id}' must belong to the signer");
                     // Ensure the record gates is less than or equal to 2^52.

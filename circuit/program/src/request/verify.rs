@@ -89,10 +89,6 @@ impl<A: Aleo> Request<A> {
                     }
                     // A record input is computed to its serial number.
                     InputID::Record(commitment, gamma, serial_number) => {
-                        // Prepare the index as a constant field element.
-                        let input_index = Field::constant(console::Field::from_u16(index as u16));
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -106,14 +102,7 @@ impl<A: Aleo> Request<A> {
                             _ => A::halt(format!("Expected a record input at input {index}")),
                         };
                         // Compute the record commitment.
-                        let candidate_commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
-
-                        // Compute the generator `H` as `HashToGroup(commitment)`.
-                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
-                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                        let h_r = (gamma * challenge) + (&h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
-                        message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
+                        let candidate_commitment = record.to_commitment(&self.program_id, &record_name);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
@@ -123,6 +112,13 @@ impl<A: Aleo> Request<A> {
                         // Compute `candidate_serial_number` as `Commit(commitment, sn_nonce)`.
                         let candidate_serial_number =
                             A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
+
+                        // Compute the generator `H` as `HashToGroup(commitment)`.
+                        let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
+                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+                        let h_r = (gamma * challenge) + (&h * response);
+                        // Add `H`, `r * H`, and `gamma` to the message.
+                        message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
@@ -235,10 +231,6 @@ impl<A: Aleo> Request<A> {
                     }
                     // A record input is computed to its serial number.
                     InputID::Record(commitment, gamma, serial_number) => {
-                        // Prepare the index as a constant field element.
-                        let input_index = Field::constant(console::Field::from_u16(index as u16));
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), input_index]);
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -252,7 +244,7 @@ impl<A: Aleo> Request<A> {
                             _ => A::halt(format!("Expected a record type at input {index}")),
                         };
                         // Compute the record commitment.
-                        let candidate_commitment = record.to_commitment(program_id, &record_name, &randomizer);
+                        let candidate_commitment = record.to_commitment(program_id, &record_name);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
@@ -316,10 +308,11 @@ mod tests {
             let function_name = console::Identifier::from_str("transfer")?;
 
             // Prepare a record belonging to the address.
-            let record_string =
-                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
+            let record_string = format!(
+                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+            );
 
-            // Construct four inputs.
+            // Construct the inputs.
             let input_constant =
                 console::Value::<<Circuit as Environment>::Network>::from_str("{ token_amount: 9876543210u128 }")
                     .unwrap();
@@ -368,16 +361,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 40000, 0, 15100, 15100)
+        check_verify(Mode::Constant, 41000, 0, 16100, 16100)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 35303, 0, 31033, 31078)
+        check_verify(Mode::Public, 34817, 0, 30393, 30439)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 35303, 0, 31033, 31078)
+        check_verify(Mode::Private, 34817, 0, 30393, 30439)
     }
 }

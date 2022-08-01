@@ -49,37 +49,41 @@ pub struct Record<N: Network, Private: Visibility> {
     gates: Balance<N, Private>,
     /// The program data.
     data: IndexMap<Identifier<N>, Entry<N, Private>>,
+    /// The nonce of the program record.
+    nonce: Group<N>,
 }
 
-impl<N: Network> Record<N, Plaintext<N>> {
-    /// Initializes a new record.
+impl<N: Network, Private: Visibility> Record<N, Private> {
+    /// Initializes a new record plaintext.
     pub fn from_plaintext(
         owner: Owner<N, Plaintext<N>>,
         gates: Balance<N, Plaintext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Plaintext<N>>>,
-    ) -> Result<Self> {
+        nonce: Group<N>,
+    ) -> Result<Record<N, Plaintext<N>>> {
+        let reserved = [Identifier::from_str("owner")?, Identifier::from_str("gates")?];
         // Ensure the members has no duplicate names.
-        ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
+        ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
         // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Self { owner, gates, data })
+        Ok(Record { owner, gates, data, nonce })
     }
-}
 
-impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Initializes a new record.
+    /// Initializes a new record ciphertext.
     pub fn from_ciphertext(
         owner: Owner<N, Ciphertext<N>>,
         gates: Balance<N, Ciphertext<N>>,
         data: IndexMap<Identifier<N>, Entry<N, Ciphertext<N>>>,
-    ) -> Result<Self> {
+        nonce: Group<N>,
+    ) -> Result<Record<N, Ciphertext<N>>> {
+        let reserved = [Identifier::from_str("owner")?, Identifier::from_str("gates")?];
         // Ensure the members has no duplicate names.
-        ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
+        ensure!(!has_duplicates(data.keys().chain(reserved.iter())), "Found a duplicate entry name in a record");
         // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
         ensure!(data.len() <= N::MAX_DATA_ENTRIES, "Found a record that exceeds size ({})", data.len());
         // Return the record.
-        Ok(Self { owner, gates, data })
+        Ok(Record { owner, gates, data, nonce })
     }
 }
 
@@ -97,5 +101,10 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the program data.
     pub const fn data(&self) -> &IndexMap<Identifier<N>, Entry<N, Private>> {
         &self.data
+    }
+
+    /// Returns the nonce of the program record.
+    pub const fn nonce(&self) -> &Group<N> {
+        &self.nonce
     }
 }

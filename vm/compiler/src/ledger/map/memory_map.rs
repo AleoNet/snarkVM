@@ -95,15 +95,13 @@ impl<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&self, key: &Q) -> Result<Option<&V>>
+    fn get<Q>(&'a self, key: &Q) -> Result<Option<&V>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         Ok(self.map.get(key))
     }
-
-    // TODO (raychu86): This is extremely inefficient due to cloning as a workaround for lifetimes.
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.

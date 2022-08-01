@@ -87,7 +87,7 @@ impl<
         // Derive the address from the view key.
         let address = view_key.to_address();
 
-        self.transitions().flat_map(Transition::output_records).flat_map(move |(commitment, (record, nonce))| {
+        self.transitions().flat_map(Transition::output_records).flat_map(move |(commitment, record)| {
             // A helper method to derive the serial number from the private key and commitment.
             let serial_number = |private_key: PrivateKey<N>, commitment: Field<N>| -> Result<Field<N>> {
                 // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -135,8 +135,8 @@ impl<
             };
 
             // Decrypt the record.
-            match record.is_owner(&address, view_key, nonce) {
-                true => match record.decrypt(view_key, nonce) {
+            match record.is_owner(&address, view_key) {
+                true => match record.decrypt(view_key) {
                     Ok(record) => Some((commitment, record)),
                     Err(e) => {
                         warn!("Failed to decrypt output record: {e}");

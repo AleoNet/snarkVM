@@ -64,7 +64,7 @@ impl<N: Network> Deref for Balance<N, Plaintext<N>> {
 
 impl<N: Network> Balance<N, Plaintext<N>> {
     /// Encrypts the balance under the given randomizer.
-    pub fn encrypt(&self, randomizer: &[Field<N>]) -> Result<Balance<N, Ciphertext<N>>> {
+    pub fn encrypt_with_randomizer(&self, randomizer: &[Field<N>]) -> Result<Balance<N, Ciphertext<N>>> {
         match self {
             Self::Public(balance) => {
                 // Ensure there is exactly zero randomizers.
@@ -91,7 +91,7 @@ impl<N: Network> Balance<N, Plaintext<N>> {
 
 impl<N: Network> Balance<N, Ciphertext<N>> {
     /// Decrypts the balance under the given randomizer.
-    pub fn decrypt(&self, randomizer: &[Field<N>]) -> Result<Balance<N, Plaintext<N>>> {
+    pub fn decrypt_with_randomizer(&self, randomizer: &[Field<N>]) -> Result<Balance<N, Plaintext<N>>> {
         match self {
             Self::Public(balance) => {
                 // Ensure there is exactly zero randomizers.

@@ -34,7 +34,19 @@ use crate::Proof;
 use console::{
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Ciphertext, Identifier, InputID, OutputID, ProgramID, Record, Request, Response, Value, ValueType},
+    program::{
+        Ciphertext,
+        Identifier,
+        InputID,
+        OutputID,
+        ProgramID,
+        Record,
+        Register,
+        Request,
+        Response,
+        Value,
+        ValueType,
+    },
     types::{Field, Group},
 };
 
@@ -80,6 +92,7 @@ impl<N: Network> Transition<N> {
         request: &Request<N>,
         response: &Response<N>,
         output_types: &[ValueType<N>],
+        output_registers: &[Register<N>],
         proof: Proof<N>,
         fee: i64,
     ) -> Result<Self> {
@@ -139,8 +152,9 @@ impl<N: Network> Transition<N> {
             .iter()
             .zip_eq(response.outputs())
             .zip_eq(output_types)
+            .zip_eq(output_registers)
             .enumerate()
-            .map(|(index, ((output_id, output), output_type))| {
+            .map(|(index, (((output_id, output), output_type), output_register))| {
                 // Construct the transition output.
                 match (output_id, output) {
                     (OutputID::Constant(output_hash), Value::Plaintext(plaintext)) => {
@@ -171,7 +185,7 @@ impl<N: Network> Transition<N> {
                         // Return the private output.
                         Ok(Output::Private(*output_hash, Some(ciphertext)))
                     }
-                    (OutputID::Record(commitment, nonce, checksum), Value::Record(record)) => {
+                    (OutputID::Record(commitment, checksum), Value::Record(record)) => {
                         // Retrieve the record name.
                         let record_name = match output_type {
                             ValueType::Record(record_name) => record_name,
@@ -179,19 +193,15 @@ impl<N: Network> Transition<N> {
                             _ => bail!("Expected a record type at output {index}"),
                         };
 
-                        // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
                         // Compute the record commitment.
-                        let candidate_cm = record.to_commitment(&program_id, record_name, &randomizer)?;
+                        let candidate_cm = record.to_commitment(&program_id, record_name)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "The output record commitment is incorrect");
 
-                        // Compute the record nonce.
-                        let candidate_nonce = N::g_scalar_multiply(&randomizer);
-                        // Ensure the nonce matches.
-                        ensure!(*nonce == candidate_nonce, "The output record nonce is incorrect");
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u64(output_register.locator());
+                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+                        let randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
 
                         // Encrypt the record, using the randomizer.
                         let record_ciphertext = record.encrypt(randomizer)?;
@@ -201,7 +211,7 @@ impl<N: Network> Transition<N> {
                         ensure!(*checksum == ciphertext_checksum, "The output record ciphertext checksum is incorrect");
 
                         // Return the record output.
-                        Ok(Output::Record(*commitment, *nonce, *checksum, Some(record_ciphertext)))
+                        Ok(Output::Record(*commitment, *checksum, Some(record_ciphertext)))
                     }
                     (OutputID::ExternalRecord(commitment), Value::Record(record)) => {
                         // Construct the (console) output index as a field element.
@@ -261,8 +271,8 @@ impl<N: Network> Transition<N> {
         self.outputs.iter().map(Output::id)
     }
 
-    /// Returns the output records as a tuple comprised of `(record, commitment, nonce)`.
-    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, (&Record<N, Ciphertext<N>>, &Group<N>))> {
+    /// Returns the output records as a tuple comprised of `(commitment, record)`.
+    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
         self.outputs.iter().flat_map(Output::record)
     }
 

@@ -60,8 +60,8 @@ use console::{
         Response,
         Value,
         ValueType,
-        U64,
     },
+    types::{Field, Group, U64},
 };
 
 use indexmap::IndexMap;
@@ -75,18 +75,51 @@ pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
-    Evaluate,
+    Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Execution<N>>>),
 }
 
 impl<N: Network> CallStack<N> {
+    /// Initializes a call stack as `Evaluate`.
+    pub fn evaluate(authorization: Authorization<N>) -> Result<Self> {
+        Ok(CallStack::Evaluate(authorization))
+    }
+
+    /// Initializes a call stack as `Execute`.
+    pub fn execute(authorization: Authorization<N>, execution: Arc<RwLock<Execution<N>>>) -> Result<Self> {
+        Ok(CallStack::Execute(authorization, execution))
+    }
+}
+
+impl<N: Network> CallStack<N> {
+    /// Returns a new and independent replica of the call stack.
+    pub fn replicate(&self) -> Self {
+        match self {
+            CallStack::Authorize(requests, private_key, authorization) => {
+                CallStack::Authorize(requests.clone(), *private_key, authorization.replicate())
+            }
+            CallStack::Synthesize(requests, private_key, authorization) => {
+                CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
+            }
+            CallStack::CheckDeployment(requests, private_key, assignments) => CallStack::CheckDeployment(
+                requests.clone(),
+                *private_key,
+                Arc::new(RwLock::new(assignments.read().clone())),
+            ),
+            CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
+            CallStack::Execute(authorization, execution) => {
+                CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(execution.read().clone())))
+            }
+        }
+    }
+
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
             CallStack::Authorize(requests, ..) => requests.push(request),
             CallStack::Synthesize(requests, ..) => requests.push(request),
             CallStack::CheckDeployment(requests, ..) => requests.push(request),
-            CallStack::Evaluate => (),
+            CallStack::Evaluate(authorization) => authorization.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
         Ok(())
@@ -100,8 +133,21 @@ impl<N: Network> CallStack<N> {
             | CallStack::CheckDeployment(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
-            CallStack::Evaluate => bail!("No requests on the stack when in `evaluate` mode"),
+            CallStack::Evaluate(authorization) => authorization.next(),
             CallStack::Execute(authorization, ..) => authorization.next(),
+        }
+    }
+
+    /// Peeks at the next request from the stack.
+    pub fn peek(&mut self) -> Result<Request<N>> {
+        match self {
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..) => {
+                requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
+            }
+            CallStack::Evaluate(authorization) => authorization.peek_next(),
+            CallStack::Execute(authorization, ..) => authorization.peek_next(),
         }
     }
 }

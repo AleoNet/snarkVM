@@ -48,11 +48,10 @@ impl<N: Network> Serialize for Output<N> {
                     }
                     output.end()
                 }
-                Self::Record(id, nonce, checksum, value) => {
+                Self::Record(id, checksum, value) => {
                     let mut output = serializer.serialize_struct("Output", 5)?;
                     output.serialize_field("type", "record")?;
                     output.serialize_field("id", &id)?;
-                    output.serialize_field("nonce", &nonce)?;
                     output.serialize_field("checksum", &checksum)?;
                     if let Some(value) = value {
                         output.serialize_field("value", &value)?;
@@ -96,14 +95,11 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                         None => None,
                     }),
                     Some("record") => {
-                        // Retrieve the nonce.
-                        let nonce: Group<N> =
-                            serde_json::from_value(output["nonce"].clone()).map_err(de::Error::custom)?;
                         // Retrieve the checksum.
                         let checksum: Field<N> =
                             serde_json::from_value(output["checksum"].clone()).map_err(de::Error::custom)?;
                         // Return the record.
-                        Output::Record(id, nonce, checksum, match output["value"].as_str() {
+                        Output::Record(id, checksum, match output["value"].as_str() {
                             Some(value) => {
                                 Some(Record::<N, Ciphertext<N>>::from_str(value).map_err(de::Error::custom)?)
                             }

@@ -423,8 +423,10 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 let address = Address::try_from(&caller_private_key).unwrap();
                 // Prepare the additional fee.
-                let credits =
-                    Record::from_str(&format!("{{ owner: {address}.private, gates: 10u64.private }}")).unwrap();
+                let credits = Record::from_str(&format!(
+                    "{{ owner: {address}.private, gates: 10u64.private, _nonce: 0group.public }}"
+                ))
+                .unwrap();
                 let additional_fee = (credits, 10);
 
                 // Deploy.
@@ -464,7 +466,7 @@ function compute:
                             Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
                             Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
                             Value::<CurrentNetwork>::from_str(&format!(
-                                "{{ owner: {address}.private, gates: 5u64.private, amount: 100u64.private }}"
+                                "{{ owner: {address}.private, gates: 5u64.private, amount: 100u64.private, _nonce: 0group.public }}"
                             ))
                             .unwrap(),
                         ],

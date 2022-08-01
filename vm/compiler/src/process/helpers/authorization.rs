@@ -28,19 +28,24 @@ impl<N: Network> Authorization<N> {
         Self(Arc::new(RwLock::new(VecDeque::from_iter(requests.iter().cloned()))))
     }
 
+    /// Returns a new and independent replica of the authorization.
+    pub fn replicate(&self) -> Self {
+        Self(Arc::new(RwLock::new(self.0.read().clone())))
+    }
+
     /// Returns the next `Request` in the authorization.
     pub fn peek_next(&self) -> Result<Request<N>> {
-        self.get(0)
+        self.0.read().get(0).cloned().ok_or_else(|| anyhow!("Failed to peek at the next request."))
     }
 
     /// Returns the next `Request` from the authorization.
     pub fn next(&self) -> Result<Request<N>> {
-        self.0.write().pop_front().ok_or_else(|| anyhow!("No more requests in the authorization"))
+        self.0.write().pop_front().ok_or_else(|| anyhow!("No more requests in the authorization."))
     }
 
     /// Returns the `Request` at the given index.
     pub fn get(&self, index: usize) -> Result<Request<N>> {
-        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to 'get' missing request {index}"))
+        self.0.read().get(index).cloned().ok_or_else(|| anyhow!("Attempted to get missing request {index}."))
     }
 
     /// Returns the number of `Request`s in the authorization.
