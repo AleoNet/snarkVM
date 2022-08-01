@@ -145,11 +145,11 @@ macro_rules! sqrt_impl {
                     s
                 };
 
-                let calc_kappa = |i: usize, j: usize, l_s: &Vec<u64>| -> u64 {
-                    l_s.iter().take(j).fold(1, |acc, x| acc + x) + l_s.iter().skip(i + 1).fold(0, |acc, x| acc + x)
+                let calc_kappa = |i: usize, j: usize, l_s: &[u64]| -> u64 {
+                    l_s.iter().take(j).sum::<u64>() + 1 + l_s.iter().skip(i + 1).sum::<u64>()
                 };
 
-                let calc_gamma = |i: usize, q_s: &Vec<Vec<bool>>, last: bool| -> $Self {
+                let calc_gamma = |i: usize, q_s: &[Vec<bool>], last: bool| -> $Self {
                     let mut gamma = $Self::one();
                     if i != 0 {
                         q_s.iter().zip(l_s.iter()).enumerate().for_each(|(j, (q_bits, l))| {
