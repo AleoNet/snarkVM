@@ -44,6 +44,8 @@ pub struct Record<A: Aleo, Private: Visibility<A>> {
     gates: Balance<A, Private>,
     /// The program data.
     data: IndexMap<Identifier<A>, Entry<A, Private>>,
+    /// The nonce of the program record.
+    nonce: Group<A>,
 }
 
 #[cfg(console)]
@@ -56,6 +58,7 @@ impl<A: Aleo> Inject for Record<A, Plaintext<A>> {
             owner: Owner::new(Mode::Private, record.owner().clone()),
             gates: Balance::new(Mode::Private, record.gates().clone()),
             data: Inject::new(Mode::Private, record.data().clone()),
+            nonce: Group::new(Mode::Private, *record.nonce()),
         }
     }
 }
@@ -70,18 +73,20 @@ impl<A: Aleo> Inject for Record<A, Ciphertext<A>> {
             owner: Owner::new(Mode::Private, record.owner().clone()),
             gates: Balance::new(Mode::Private, record.gates().clone()),
             data: Inject::new(Mode::Private, record.data().clone()),
+            nonce: Group::new(Mode::Private, *record.nonce()),
         }
     }
 }
 
 #[cfg(console)]
-impl<A: Aleo> Record<A, Plaintext<A>> {
-    /// Initializes a new record.
+impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
+    /// Initializes a new record plaintext.
     pub fn from_plaintext(
         owner: Owner<A, Plaintext<A>>,
         gates: Balance<A, Plaintext<A>>,
         data: IndexMap<Identifier<A>, Entry<A, Plaintext<A>>>,
-    ) -> Result<Self> {
+        nonce: Group<A>,
+    ) -> Result<Record<A, Plaintext<A>>> {
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
         // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
@@ -91,18 +96,16 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
             data.len()
         );
         // Return the record.
-        Ok(Self { owner, gates, data })
+        Ok(Record { owner, gates, data, nonce })
     }
-}
 
-#[cfg(console)]
-impl<A: Aleo> Record<A, Ciphertext<A>> {
-    /// Initializes a new record.
+    /// Initializes a new record ciphertext.
     pub fn from_ciphertext(
         owner: Owner<A, Ciphertext<A>>,
         gates: Balance<A, Ciphertext<A>>,
         data: IndexMap<Identifier<A>, Entry<A, Ciphertext<A>>>,
-    ) -> Result<Self> {
+        nonce: Group<A>,
+    ) -> Result<Record<A, Ciphertext<A>>> {
         // Ensure the members has no duplicate names.
         ensure!(!has_duplicates(data.iter().map(|(name, ..)| name)), "A duplicate entry name was found in a record");
         // Ensure the number of interfaces is within `A::Network::MAX_DATA_ENTRIES`.
@@ -112,7 +115,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
             data.len()
         );
         // Return the record.
-        Ok(Self { owner, gates, data })
+        Ok(Record { owner, gates, data, nonce })
     }
 }
 
@@ -130,6 +133,11 @@ impl<A: Aleo, Private: Visibility<A>> Record<A, Private> {
     /// Returns the program data.
     pub const fn data(&self) -> &IndexMap<Identifier<A>, Entry<A, Private>> {
         &self.data
+    }
+
+    /// Returns the nonce of the program record.
+    pub const fn nonce(&self) -> &Group<A> {
+        &self.nonce
     }
 }
 
@@ -162,8 +170,9 @@ impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
         };
 
         let data = self.data.iter().map(|(_, entry)| entry.eject_mode()).collect::<Vec<_>>().eject_mode();
+        let nonce = self.nonce.eject_mode();
 
-        Mode::combine(owner, [gates, data])
+        Mode::combine(owner, [gates, data, nonce])
     }
 
     /// Ejects the record.
@@ -182,6 +191,7 @@ impl<A: Aleo> Eject for Record<A, Plaintext<A>> {
             owner,
             gates,
             self.data.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<IndexMap<_, _>>(),
+            self.nonce.eject_value(),
         ) {
             Ok(record) => record,
             Err(error) => A::halt(format!("Record::<Plaintext>::eject_value: {}", error)),
@@ -218,8 +228,9 @@ impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
         };
 
         let data = self.data.iter().map(|(_, entry)| entry.eject_mode()).collect::<Vec<_>>().eject_mode();
+        let nonce = self.nonce.eject_mode();
 
-        Mode::combine(owner, [gates, data])
+        Mode::combine(owner, [gates, data, nonce])
     }
 
     /// Ejects the record.
@@ -238,6 +249,7 @@ impl<A: Aleo> Eject for Record<A, Ciphertext<A>> {
             owner,
             gates,
             self.data.iter().map(|(identifier, entry)| (identifier, entry).eject_value()).collect::<IndexMap<_, _>>(),
+            self.nonce.eject_value(),
         ) {
             Ok(record) => record,
             Err(error) => A::halt(format!("Record::<Ciphertext>::eject_value: {}", error)),

@@ -26,6 +26,7 @@ impl<N: Network> Stack<N> {
         &self,
         closure: &Closure<N>,
         inputs: &[Value<N>],
+        tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
@@ -35,6 +36,8 @@ impl<N: Network> Stack<N> {
         // Initialize the registers.
         let mut registers =
             Registers::<N, A>::new(CallStack::Evaluate, self.get_register_types(closure.name())?.clone());
+        // Set the transition view key.
+        registers.set_tvk(tvk);
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -68,6 +71,7 @@ impl<N: Network> Stack<N> {
         &self,
         function: &Function<N>,
         inputs: &[Value<N>],
+        tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches.
         if function.inputs().len() != inputs.len() {
@@ -83,6 +87,8 @@ impl<N: Network> Stack<N> {
         // Initialize the registers.
         let mut registers =
             Registers::<N, A>::new(CallStack::Evaluate, self.get_register_types(function.name())?.clone());
+        // Set the transition view key.
+        registers.set_tvk(tvk);
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {

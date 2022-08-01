@@ -109,13 +109,13 @@ impl<N: Network> Response<N> {
                             Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
                         };
 
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(program_id, record_name)?;
+
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
-                        // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, record_name, &randomizer)?;
-
                         // Compute the record nonce.
                         let nonce = N::g_scalar_multiply(&randomizer);
 

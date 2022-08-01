@@ -89,10 +89,6 @@ impl<A: Aleo> Request<A> {
                     }
                     // A record input is computed to its serial number.
                     InputID::Record(commitment, gamma, serial_number) => {
-                        // Prepare the index as a constant field element.
-                        let input_index = Field::constant(console::Field::from_u16(index as u16));
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[self.tvk.clone(), input_index]);
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -106,7 +102,7 @@ impl<A: Aleo> Request<A> {
                             _ => A::halt(format!("Expected a record input at input {index}")),
                         };
                         // Compute the record commitment.
-                        let candidate_commitment = record.to_commitment(&self.program_id, &record_name, &randomizer);
+                        let candidate_commitment = record.to_commitment(&self.program_id, &record_name);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[
@@ -235,10 +231,6 @@ impl<A: Aleo> Request<A> {
                     }
                     // A record input is computed to its serial number.
                     InputID::Record(commitment, gamma, serial_number) => {
-                        // Prepare the index as a constant field element.
-                        let input_index = Field::constant(console::Field::from_u16(index as u16));
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), input_index]);
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -252,7 +244,7 @@ impl<A: Aleo> Request<A> {
                             _ => A::halt(format!("Expected a record type at input {index}")),
                         };
                         // Compute the record commitment.
-                        let candidate_commitment = record.to_commitment(program_id, &record_name, &randomizer);
+                        let candidate_commitment = record.to_commitment(program_id, &record_name);
 
                         // Compute `sn_nonce` as `HashToScalar(COFACTOR * gamma)`.
                         let sn_nonce = A::hash_to_scalar_psd2(&[

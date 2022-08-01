@@ -88,14 +88,8 @@ impl<A: Aleo> Response<A> {
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
                         };
-
-                        // Prepare the index as a constant field element.
-                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment =
-                            record.to_commitment(program_id, &Identifier::constant(*record_name), &randomizer);
+                        let commitment = record.to_commitment(program_id, &Identifier::constant(*record_name));
 
                         // Return the output ID.
                         // Note: Because this is a callback, the output ID is **only** the record commitment.
@@ -175,6 +169,15 @@ mod tests {
                 console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            // Construct the output registers.
+            let output_registers = vec![
+                console::Register::Locator(5),
+                console::Register::Locator(6),
+                console::Register::Locator(7),
+                console::Register::Locator(8),
+                console::Register::Locator(9),
+            ];
+
             // Sample a `tvk`.
             let tvk = Uniform::rand(rng);
 
@@ -206,7 +209,7 @@ mod tests {
 
             // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, response.outputs().to_vec());
-            let candidate_b = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
+            let candidate_b = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types, &output_registers);
             assert_eq!(response, candidate_b.eject_value());
 
             Circuit::reset();

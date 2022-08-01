@@ -755,14 +755,17 @@ function swap:
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
+        // Sample a random transition view key.
+        let tvk = Uniform::rand(&mut test_crypto_rng());
+
         // Run the function.
         let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs, tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs, tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -805,13 +808,16 @@ function compute:
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
+        // Sample a random transition view key.
+        let tvk = Uniform::rand(&mut test_crypto_rng());
+
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()], tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input], tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -840,7 +846,7 @@ function compute:
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
         let input =
-            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
+            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
@@ -855,13 +861,16 @@ function compute:
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
+        // Sample a random transition view key.
+        let tvk = Uniform::rand(&mut test_crypto_rng());
+
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()], tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input], tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -927,15 +936,18 @@ function compute:
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
+        // Sample a random transition view key.
+        let tvk = Uniform::rand(&mut test_crypto_rng());
+
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()], tvk).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()], tvk).unwrap();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
@@ -993,7 +1005,7 @@ function compute:
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
         // Declare the input value.
-        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap();
+        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap();
         let input = Value::<CurrentNetwork>::Record(input_record.clone());
         // Declare the expected output value.
         let expected = Value::Record(input_record);
@@ -1009,13 +1021,16 @@ function compute:
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
+        // Sample a random transition view key.
+        let tvk = Uniform::rand(&mut test_crypto_rng());
+
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()], tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input]).unwrap();
+        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input], tvk).unwrap();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }

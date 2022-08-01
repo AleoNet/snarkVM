@@ -118,10 +118,6 @@ impl<N: Network> Request<N> {
                     }
                     // A record input is computed to its serial number.
                     InputID::Record(commitment, gamma, serial_number) => {
-                        // Prepare the index as a constant field element.
-                        let index = Field::from_u16(index as u16);
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -135,7 +131,7 @@ impl<N: Network> Request<N> {
                             _ => bail!("Expected a record type at input {index}"),
                         };
                         // Compute the record commitment.
-                        let candidate_cm = record.to_commitment(&self.program_id, record_name, &randomizer)?;
+                        let candidate_cm = record.to_commitment(&self.program_id, record_name)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "Expected a record input with the same commitment");
                         // Ensure the record belongs to the caller.
@@ -215,8 +211,9 @@ mod tests {
             let function_name = Identifier::from_str("transfer").unwrap();
 
             // Prepare a record belonging to the address.
-            let record_string =
-                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
+            let record_string = format!(
+                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}"
+            );
 
             // Construct four inputs.
             let input_constant = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();

@@ -60,8 +60,8 @@ use console::{
         Response,
         Value,
         ValueType,
-        U64,
     },
+    types::{Field, Group, U64},
 };
 
 use indexmap::IndexMap;
@@ -102,6 +102,19 @@ impl<N: Network> CallStack<N> {
             }
             CallStack::Evaluate => bail!("No requests on the stack when in `evaluate` mode"),
             CallStack::Execute(authorization, ..) => authorization.next(),
+        }
+    }
+
+    /// Peeks at the next request from the stack.
+    pub fn peek(&mut self) -> Result<Request<N>> {
+        match self {
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..) => {
+                requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
+            }
+            CallStack::Evaluate => bail!("No requests on the stack when in `evaluate` mode"),
+            CallStack::Execute(authorization, ..) => authorization.peek_next(),
         }
     }
 }

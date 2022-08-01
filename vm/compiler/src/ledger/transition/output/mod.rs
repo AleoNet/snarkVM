@@ -64,11 +64,11 @@ impl<N: Network> Output<N> {
         }
     }
 
-    /// Returns the record, commitment, and nonce, if the output is a record.
+    /// Returns the commitment and record, if the output is a record.
     #[allow(clippy::type_complexity)]
-    pub const fn record(&self) -> Option<(&Field<N>, (&Record<N, Ciphertext<N>>, &Group<N>))> {
+    pub const fn record(&self) -> Option<(&Field<N>, &Record<N, Ciphertext<N>>)> {
         match self {
-            Output::Record(commitment, nonce, _, Some(record)) => Some((commitment, (record, nonce))),
+            Output::Record(commitment, _, _, Some(record)) => Some((commitment, record)),
             _ => None,
         }
     }

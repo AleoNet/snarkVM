@@ -27,6 +27,7 @@ impl<N: Network> Stack<N> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
@@ -38,6 +39,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition view key, as a circuit.
+        registers.set_tvk_circuit(tvk);
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -112,15 +115,19 @@ impl<N: Network> Stack<N> {
         if num_inputs != console_request.inputs().len() {
             bail!("Expected {num_inputs} inputs, found {}", console_request.inputs().len())
         }
+        // Retrieve the input types.
+        let input_types = function.input_types();
+        // Retrieve the output types.
+        let output_types = function.output_types();
 
         // Ensure the inputs match their expected types.
-        console_request.inputs().iter().zip_eq(&function.input_types()).try_for_each(|(input, input_type)| {
+        console_request.inputs().iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
             // Ensure the input matches the input type in the function.
             self.matches_value_type(input, input_type)
         })?;
 
         // Ensure the request is well-formed.
-        ensure!(console_request.verify(&function.input_types()), "Request is invalid");
+        ensure!(console_request.verify(&input_types), "Request is invalid");
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
@@ -132,7 +139,12 @@ impl<N: Network> Stack<N> {
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
-        A::assert(request.verify(&function.input_types(), &tpk));
+        A::assert(request.verify(&input_types, &tpk));
+
+        // Set the transition view key.
+        registers.set_tvk(*console_request.tvk());
+        // Set the transition view key, as a circuit.
+        registers.set_tvk_circuit(request.tvk().clone());
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Request");
@@ -177,10 +189,10 @@ impl<N: Network> Stack<N> {
         }
 
         // Load the outputs.
-        let outputs = function
-            .outputs()
+        let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
+        let outputs = output_registers
             .iter()
-            .map(|output| registers.load_circuit(self, &Operand::Register(output.register().clone())))
+            .map(|register| registers.load_circuit(self, &Operand::Register(register.clone())))
             .collect::<Result<Vec<_>>>()?;
 
         #[cfg(debug_assertions)]
@@ -198,7 +210,8 @@ impl<N: Network> Stack<N> {
             num_inputs,
             request.tvk(),
             outputs,
-            &function.output_types(),
+            &output_types,
+            output_registers,
         );
 
         #[cfg(debug_assertions)]
@@ -278,7 +291,7 @@ impl<N: Network> Stack<N> {
         let response = response.eject_value();
 
         // Ensure the outputs matches the expected value types.
-        response.outputs().iter().zip_eq(&function.output_types()).try_for_each(|(output, output_type)| {
+        response.outputs().iter().zip_eq(&output_types).try_for_each(|(output, output_type)| {
             // Ensure the output matches its expected type.
             self.matches_value_type(output, output_type)
         })?;
@@ -323,7 +336,8 @@ impl<N: Network> Stack<N> {
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, &function.output_types(), proof, *fee)?;
+            let transition =
+                Transition::from(&console_request, &response, &output_types, output_registers, proof, *fee)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }

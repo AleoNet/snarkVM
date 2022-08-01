@@ -502,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_blocks() {
+    fn test_next_block() {
         let rng = &mut test_crypto_rng();
 
         // Sample a private key.
@@ -516,8 +516,8 @@ mod tests {
         assert_eq!(ledger.latest_hash(), genesis.hash());
 
         // Add a transaction to the memory pool.
-        let new_transaction = sample_execution_transaction();
-        ledger.add_to_memory_pool(new_transaction).unwrap();
+        let transaction = sample_execution_transaction();
+        ledger.add_to_memory_pool(transaction).unwrap();
 
         // Propose the next block.
         let next_block = ledger.propose_next_block(&private_key, rng).unwrap();

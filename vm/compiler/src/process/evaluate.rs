@@ -30,7 +30,7 @@ impl<N: Network> Process<N> {
         // Prepare the stack.
         let stack = self.get_stack(program.id())?;
         // Evaluate the function.
-        let outputs = stack.evaluate_function::<A>(&function, request.inputs())?;
+        let outputs = stack.evaluate_function::<A>(&function, request.inputs(), *request.tvk())?;
         // Compute the response.
         let response = Response::new(program.id(), request.inputs().len(), request.tvk(), outputs, &output_types)?;
 

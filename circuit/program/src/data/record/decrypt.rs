@@ -18,9 +18,9 @@ use super::*;
 
 impl<A: Aleo> Record<A, Ciphertext<A>> {
     /// Decrypts `self` into a plaintext record using the given view key & nonce.
-    pub fn decrypt(&self, view_key: &ViewKey<A>, nonce: &Group<A>) -> Record<A, Plaintext<A>> {
+    pub fn decrypt(&self, view_key: &ViewKey<A>) -> Record<A, Plaintext<A>> {
         // Compute the record view key.
-        let record_view_key = (&**view_key * nonce).to_x_coordinate();
+        let record_view_key = (&**view_key * &self.nonce).to_x_coordinate();
         // Decrypt the record.
         self.decrypt_symmetric(record_view_key)
     }
@@ -85,7 +85,7 @@ impl<A: Aleo> Record<A, Ciphertext<A>> {
         }
 
         // Return the decrypted record.
-        Record { owner, gates, data: decrypted_data }
+        Record { owner, gates, data: decrypted_data, nonce: self.nonce.clone() }
     }
 }
 
@@ -106,6 +106,7 @@ mod tests {
         gates: Balance<A, Plaintext<A>>,
     ) -> Result<()> {
         // Prepare the record.
+        let randomizer = Scalar::new(Mode::Private, Uniform::rand(&mut test_rng()));
         let record = Record {
             owner,
             gates,
@@ -128,14 +129,13 @@ mod tests {
                 ]
                 .into_iter(),
             ),
+            nonce: A::g_scalar_multiply(&randomizer),
         };
 
         // Encrypt the record.
-        let randomizer = Scalar::new(Mode::Private, Uniform::rand(&mut test_rng()));
         let ciphertext = record.encrypt(&randomizer);
         // Decrypt the record.
-        let nonce = A::g_scalar_multiply(&randomizer);
-        assert_eq!(record.eject(), ciphertext.decrypt(view_key, &nonce).eject());
+        assert_eq!(record.eject(), ciphertext.decrypt(view_key).eject());
         Ok(())
     }
 

@@ -18,29 +18,19 @@ use super::*;
 
 impl<N: Network> Record<N, Plaintext<N>> {
     /// Returns the record commitment.
-    pub fn to_commitment(
-        &self,
-        program_id: &ProgramID<N>,
-        record_name: &Identifier<N>,
-        randomizer: &Scalar<N>,
-    ) -> Result<Field<N>> {
-        // Construct the commitment input as `(program_id || record_name || record)`.
+    pub fn to_commitment(&self, program_id: &ProgramID<N>, record_name: &Identifier<N>) -> Result<Field<N>> {
+        // Construct the input as `(program_id || record_name || record)`.
         let mut input = program_id.to_bits_le();
         input.extend(record_name.to_bits_le());
         input.extend(self.to_bits_le());
-        // Compute the BHP commitment of the program record.
-        N::commit_bhp1024(&input, randomizer)
+        // Compute the BHP hash of the program record.
+        N::hash_bhp1024(&input)
     }
 }
 
 impl<N: Network> Record<N, Ciphertext<N>> {
     /// Returns the record commitment.
-    pub fn to_commitment(
-        &self,
-        _program_id: &ProgramID<N>,
-        _record_name: &Identifier<N>,
-        _randomizer: &Scalar<N>,
-    ) -> Result<Field<N>> {
+    pub fn to_commitment(&self, _program_id: &ProgramID<N>, _record_name: &Identifier<N>) -> Result<Field<N>> {
         bail!("Illegal operation: Record::to_commitment() cannot be invoked on the `Ciphertext` variant.")
     }
 }

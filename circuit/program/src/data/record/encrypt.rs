@@ -19,6 +19,8 @@ use super::*;
 impl<A: Aleo> Record<A, Plaintext<A>> {
     /// Encrypts `self` for the record owner under the given randomizer.
     pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A, Ciphertext<A>> {
+        // Ensure the randomizer corresponds to the record nonce.
+        A::assert_eq(&self.nonce, A::g_scalar_multiply(randomizer));
         // Compute the record view key.
         let record_view_key = ((*self.owner).to_group() * randomizer).to_x_coordinate();
         // Encrypt the record.
@@ -85,6 +87,6 @@ impl<A: Aleo> Record<A, Plaintext<A>> {
         }
 
         // Return the encrypted record.
-        Record { owner, gates, data: encrypted_data }
+        Record { owner, gates, data: encrypted_data, nonce: self.nonce.clone() }
     }
 }

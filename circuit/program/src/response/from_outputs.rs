@@ -17,21 +17,23 @@
 use super::*;
 
 impl<A: Aleo> Response<A> {
-    /// Initializes a response, given the number of inputs, caller, tvk, outputs, and output types.
+    /// Initializes a response, given the number of inputs, caller, tvk, outputs, output types, and output registers.
     pub fn from_outputs(
         program_id: &ProgramID<A>,
         num_inputs: usize,
         tvk: &Field<A>,
         outputs: Vec<Value<A>>,
         output_types: &[console::ValueType<A::Network>], // Note: Console type
+        output_registers: &[console::Register<A::Network>], // Note: Console type
     ) -> Self {
         // Compute the output IDs.
         let output_ids = outputs
             .iter()
             .zip_eq(output_types)
+            .zip_eq(output_registers)
             .enumerate()
-            .map(|(index, (output, output_types))| {
-                match output_types {
+            .map(|(index, ((output, output_type), output_register))| {
+                match output_type {
                     // For a constant output, compute the hash of the output.
                     console::ValueType::Constant(..) => {
                         // Hash the output to a field element.
@@ -80,14 +82,13 @@ impl<A: Aleo> Response<A> {
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
                         };
 
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(program_id, &Identifier::constant(*record_name));
+
                         // Prepare the index as a constant field element.
-                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        let output_index = Field::constant(console::Field::from_u64(output_register.locator()));
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
-                        // Compute the record commitment.
-                        let commitment =
-                            record.to_commitment(program_id, &Identifier::constant(*record_name), &randomizer);
-
                         // Compute the record nonce.
                         let nonce = A::g_scalar_multiply(&randomizer);
 
@@ -162,6 +163,15 @@ mod tests {
                 console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
+            // Construct the output registers.
+            let output_registers = vec![
+                console::Register::Locator(5),
+                console::Register::Locator(6),
+                console::Register::Locator(7),
+                console::Register::Locator(8),
+                console::Register::Locator(9),
+            ];
+
             // Sample a `tvk`.
             let tvk = Uniform::rand(rng);
 
@@ -179,7 +189,7 @@ mod tests {
 
             Circuit::scope(format!("Response {i}"), || {
                 // Compute the response using outputs (circuit).
-                let candidate = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
+                let candidate = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types, &output_registers);
                 assert_eq!(response, candidate.eject_value());
                 match mode.is_constant() {
                     true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),

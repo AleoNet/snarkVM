@@ -17,10 +17,10 @@
 use super::*;
 
 impl<N: Network> Record<N, Ciphertext<N>> {
-    /// Decrypts `self` into plaintext using the given view key & nonce.
-    pub fn decrypt(&self, view_key: &ViewKey<N>, nonce: &Group<N>) -> Result<Record<N, Plaintext<N>>> {
+    /// Decrypts `self` into plaintext using the given view key.
+    pub fn decrypt(&self, view_key: &ViewKey<N>) -> Result<Record<N, Plaintext<N>>> {
         // Compute the record view key.
-        let record_view_key = (*nonce * **view_key).to_x_coordinate();
+        let record_view_key = (self.nonce * **view_key).to_x_coordinate();
         // Decrypt the record.
         self.decrypt_symmetric(&record_view_key)
     }
@@ -93,7 +93,7 @@ impl<N: Network> Record<N, Ciphertext<N>> {
         }
 
         // Return the decrypted record.
-        Ok(Record { owner, gates, data: decrypted_data })
+        Self::from_plaintext(owner, gates, decrypted_data, self.nonce)
     }
 }
 
@@ -115,6 +115,7 @@ mod tests {
         gates: Balance<N, Plaintext<N>>,
     ) -> Result<()> {
         // Prepare the record.
+        let randomizer = Scalar::rand(&mut test_rng());
         let record = Record {
             owner,
             gates,
@@ -131,13 +132,12 @@ mod tests {
                 ]
                 .into_iter(),
             ),
+            nonce: N::g_scalar_multiply(&randomizer),
         };
         // Encrypt the record.
-        let randomizer = Scalar::rand(&mut test_rng());
         let ciphertext = record.encrypt(randomizer)?;
         // Decrypt the record.
-        let nonce = N::g_scalar_multiply(&randomizer);
-        assert_eq!(record, ciphertext.decrypt(&view_key, &nonce)?);
+        assert_eq!(record, ciphertext.decrypt(&view_key)?);
         Ok(())
     }
 
