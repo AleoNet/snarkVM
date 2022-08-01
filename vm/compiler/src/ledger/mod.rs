@@ -300,7 +300,7 @@ impl<
             for origin in transactions.transitions().flat_map(|transition| transition.origins()) {
                 // Check that the commitment exists in the ledger.
                 if let Some(commitment) = origin.commitment() {
-                    if !self.contains_commitment(&commitment) {
+                    if !self.contains_commitment(commitment) {
                         bail!("The origin commitment {} does not exist in the ledger", commitment)
                     }
                 }
