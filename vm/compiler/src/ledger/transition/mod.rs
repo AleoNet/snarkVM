@@ -307,4 +307,9 @@ impl<N: Network> Transition<N> {
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.outputs.iter().flat_map(Output::nonce)
     }
+
+    /// Returns an iterator over the origins, for inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
+        self.inputs.iter().flat_map(Input::origin)
+    }
 }

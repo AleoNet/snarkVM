@@ -34,6 +34,24 @@ pub enum Origin<N: Network> {
     StateRoot(N::StateRoot),
 }
 
+impl<N: Network> Origin<N> {
+    /// Returns the commitment, if the origin is a commitment.
+    pub const fn commitment(&self) -> Option<&Field<N>> {
+        match self {
+            Self::Commitment(commitment) => Some(commitment),
+            _ => None,
+        }
+    }
+
+    /// Returns the state root, if the origin is a commitment.
+    pub const fn state_root(&self) -> Option<&N::StateRoot> {
+        match self {
+            Self::StateRoot(state_root) => Some(state_root),
+            _ => None,
+        }
+    }
+}
+
 /// The transition input.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Input<N: Network> {
@@ -76,6 +94,14 @@ impl<N: Network> Input<N> {
     pub const fn serial_number(&self) -> Option<&Field<N>> {
         match self {
             Input::Record(serial_number, ..) => Some(serial_number),
+            _ => None,
+        }
+    }
+
+    /// Returns the origin, if the input is a record.
+    pub const fn origin(&self) -> Option<&Origin<N>> {
+        match self {
+            Input::Record(_, origin) => Some(origin),
             _ => None,
         }
     }
