@@ -37,10 +37,7 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::{
-    ledger::map::Map,
-    process::{Deployment, Execution},
-};
+use crate::process::{Deployment, Execution};
 use console::{
     account::{PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
