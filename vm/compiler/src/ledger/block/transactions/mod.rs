@@ -212,6 +212,11 @@ impl<N: Network> Transactions<N> {
     // ) -> impl Iterator<Item = Record<N>> + 'a {
     //     self.transactions.iter().flat_map(move |transaction| transaction.to_decrypted_records(decryption_key))
     // }
+
+    /// Consumes `Transactions` to return the underlying collection.
+    pub fn into_inner(self) -> IndexMap<N::TransactionID, Transaction<N>> {
+        self.transactions
+    }
 }
 
 impl<N: Network> Deref for Transactions<N> {
