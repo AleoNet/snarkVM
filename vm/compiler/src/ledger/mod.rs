@@ -294,6 +294,24 @@ impl<
         //     ));
         // }
 
+        // TODO (raychu86): Ensure that the origins exist in the ledger or have valid state
+        // Ensure that the origin are valid.
+        for transactions in block.transactions().values().filter(|tx| matches!(tx, Transaction::Execute(_, _, _))) {
+            for origin in transactions.transitions().flat_map(|transition| transition.origins()) {
+                // Check that the commitment exists in the ledger.
+                if let Some(commitment) = origin.commitment() {
+                    if !self.contains_commitment(&commitment) {
+                        bail!("The origin commitment {} does not exist in the ledger", commitment)
+                    }
+                }
+
+                // Check that the state root is a valid past or current state root.
+                if let Some(_state_root) = origin.state_root() {
+                    todo!()
+                }
+            }
+        }
+
         // Ensure the ledger does not already contain a given transition public keys.
         for tpk in block.transition_public_keys() {
             if self.contains_transition_public_key(tpk) {
