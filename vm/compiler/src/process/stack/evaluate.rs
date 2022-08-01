@@ -146,7 +146,7 @@ impl<N: Network> Stack<N> {
             request.tvk(),
             outputs,
             &function.output_types(),
-            &output_registers,
+            output_registers,
         )
     }
 }

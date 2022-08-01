@@ -531,13 +531,7 @@ function hello_world:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(
-                &caller_private_key,
-                program.id(),
-                function_name,
-                &[input_a.clone(), input_b.clone()],
-                rng,
-            )
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input_a, input_b], rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
@@ -663,7 +657,7 @@ function compute:
 
         // Authorize the function call.
         let authorization = process
-            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2.clone()], rng)
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
         let request = authorization.peek_next().unwrap();
