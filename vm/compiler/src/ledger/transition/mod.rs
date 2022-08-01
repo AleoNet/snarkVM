@@ -185,7 +185,7 @@ impl<N: Network> Transition<N> {
                         // Return the private output.
                         Ok(Output::Private(*output_hash, Some(ciphertext)))
                     }
-                    (OutputID::Record(commitment, nonce, checksum), Value::Record(record)) => {
+                    (OutputID::Record(commitment, checksum), Value::Record(record)) => {
                         // Retrieve the record name.
                         let record_name = match output_type {
                             ValueType::Record(record_name) => record_name,
@@ -211,7 +211,7 @@ impl<N: Network> Transition<N> {
                         ensure!(*checksum == ciphertext_checksum, "The output record ciphertext checksum is incorrect");
 
                         // Return the record output.
-                        Ok(Output::Record(*commitment, *nonce, *checksum, Some(record_ciphertext)))
+                        Ok(Output::Record(*commitment, *checksum, Some(record_ciphertext)))
                     }
                     (OutputID::ExternalRecord(commitment), Value::Record(record)) => {
                         // Construct the (console) output index as a field element.

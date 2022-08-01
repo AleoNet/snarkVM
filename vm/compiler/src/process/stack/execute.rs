@@ -29,6 +29,9 @@ impl<N: Network> Stack<N> {
         call_stack: CallStack<N>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
+        // Ensure the call stack is not `Evaluate`.
+        ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
+
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -88,14 +91,15 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        call_stack: CallStack<N>,
+        mut call_stack: CallStack<N>,
         rng: &mut R,
     ) -> Result<Response<N>> {
+        // Ensure the call stack is not `Evaluate`.
+        ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
+
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // Clone the call stack.
-        let mut call_stack = call_stack;
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
 

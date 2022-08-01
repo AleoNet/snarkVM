@@ -308,10 +308,11 @@ mod tests {
             let function_name = console::Identifier::from_str("transfer")?;
 
             // Prepare a record belonging to the address.
-            let record_string =
-                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
+            let record_string = format!(
+                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+            );
 
-            // Construct four inputs.
+            // Construct the inputs.
             let input_constant =
                 console::Value::<<Circuit as Environment>::Network>::from_str("{ token_amount: 9876543210u128 }")
                     .unwrap();
@@ -360,16 +361,16 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 40000, 0, 15100, 15100)
+        check_verify(Mode::Constant, 41000, 0, 16100, 16100)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 35303, 0, 31033, 31078)
+        check_verify(Mode::Public, 34817, 0, 30393, 30439)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 35303, 0, 31033, 31078)
+        check_verify(Mode::Private, 34817, 0, 30393, 30439)
     }
 }

@@ -744,28 +744,43 @@ function swap:
             Value::Plaintext(Plaintext::from_str("3field").unwrap()),
         ];
 
-        // Retrieve the function from the program.
-        let function = program.get_function(&function_name).unwrap();
-
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
+        // Compute the authorization.
+        let authorization = {
+            // Initialize an RNG.
+            let rng = &mut test_crypto_rng();
+
+            // Initialize caller private key.
+            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+            // Authorize the function call.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &inputs, rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+            authorization
+        };
+
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
-        // Sample a random transition view key.
-        let tvk = Uniform::rand(&mut test_crypto_rng());
+        // Declare the expected output.
+        let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
 
         // Run the function.
-        let expected = Value::Plaintext(Plaintext::<CurrentNetwork>::from_str("5field").unwrap());
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs, tvk).unwrap();
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &inputs, tvk).unwrap();
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -797,27 +812,40 @@ function compute:
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
-        // Retrieve the function from the program.
-        let function = program.get_function(&function_name).unwrap();
-
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
+        // Compute the authorization.
+        let authorization = {
+            // Initialize an RNG.
+            let rng = &mut test_crypto_rng();
+
+            // Initialize caller private key.
+            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+            // Authorize the function call.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+            authorization
+        };
+
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
-        // Sample a random transition view key.
-        let tvk = Uniform::rand(&mut test_crypto_rng());
-
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()], tvk).unwrap();
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input], tvk).unwrap();
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -850,27 +878,40 @@ function compute:
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
-        // Retrieve the function from the program.
-        let function = program.get_function(&function_name).unwrap();
-
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
+        // Compute the authorization.
+        let authorization = {
+            // Initialize an RNG.
+            let rng = &mut test_crypto_rng();
+
+            // Initialize caller private key.
+            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+            // Authorize the function call.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+            authorization
+        };
+
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
-        // Sample a random transition view key.
-        let tvk = Uniform::rand(&mut test_crypto_rng());
-
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()], tvk).unwrap();
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input], tvk).unwrap();
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }
@@ -916,9 +957,6 @@ function compute:
         let r3 = Value::Plaintext(Plaintext::from_str("11field").unwrap());
         let r4 = Value::Plaintext(Plaintext::from_str("8field").unwrap());
 
-        // Retrieve the function from the program.
-        let function = program.get_function(&function_name).unwrap();
-
         {
             // Construct the process.
             let mut process = Process::<CurrentNetwork>::new().unwrap();
@@ -933,21 +971,43 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
+        // Compute the authorization.
+        let authorization = {
+            // Initialize an RNG.
+            let rng = &mut test_crypto_rng();
+
+            // Initialize caller private key.
+            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+            // Authorize the function call.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(
+                    &caller_private_key,
+                    program.id(),
+                    function_name,
+                    &[r0.clone(), r1.clone()],
+                    rng,
+                )
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+            authorization
+        };
+
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
-        // Sample a random transition view key.
-        let tvk = Uniform::rand(&mut test_crypto_rng());
-
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()], tvk).unwrap();
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
         assert_eq!(r4, candidate[2]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[r0.clone(), r1.clone()], tvk).unwrap();
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
         assert_eq!(r3, candidate[1]);
@@ -973,8 +1033,9 @@ function compute:
 
         // Re-run to ensure state continues to work.
         let execution = Arc::new(RwLock::new(Execution::new()));
-        let response =
-            stack.execute_function::<CurrentAleo, _>(CallStack::Execute(authorization, execution), rng).unwrap();
+        let response = stack
+            .execute_function::<CurrentAleo, _>(CallStack::execute(authorization, execution).unwrap(), rng)
+            .unwrap();
         let candidate = response.outputs();
         assert_eq!(3, candidate.len());
         assert_eq!(r2, candidate[0]);
@@ -1010,27 +1071,40 @@ function compute:
         // Declare the expected output value.
         let expected = Value::Record(input_record);
 
-        // Retrieve the function from the program.
-        let function = program.get_function(&function_name).unwrap();
-
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
+        // Compute the authorization.
+        let authorization = {
+            // Initialize an RNG.
+            let rng = &mut test_crypto_rng();
+
+            // Initialize caller private key.
+            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+            // Authorize the function call.
+            let authorization = process
+                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+                .unwrap();
+            assert_eq!(authorization.len(), 1);
+            authorization
+        };
+
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
 
-        // Sample a random transition view key.
-        let tvk = Uniform::rand(&mut test_crypto_rng());
-
         // Compute the output value.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input.clone()], tvk).unwrap();
+        let response =
+            stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization.replicate()).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
 
         // Re-run to ensure state continues to work.
-        let candidate = stack.evaluate_function::<CurrentAleo>(&function, &[input], tvk).unwrap();
+        let response = stack.evaluate_function::<CurrentAleo>(CallStack::evaluate(authorization).unwrap()).unwrap();
+        let candidate = response.outputs();
         assert_eq!(1, candidate.len());
         assert_eq!(expected, candidate[0]);
     }

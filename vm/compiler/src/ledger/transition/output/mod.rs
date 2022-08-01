@@ -35,8 +35,8 @@ pub enum Output<N: Network> {
     Public(Field<N>, Option<Plaintext<N>>),
     /// The ciphertext hash and (optional) ciphertext.
     Private(Field<N>, Option<Ciphertext<N>>),
-    /// The commitment, nonce, checksum, and (optional) record ciphertext.
-    Record(Field<N>, Group<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
+    /// The commitment, checksum, and (optional) record ciphertext.
+    Record(Field<N>, Field<N>, Option<Record<N, Ciphertext<N>>>),
     /// The output commitment of the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
 }
@@ -48,7 +48,7 @@ impl<N: Network> Output<N> {
             Output::Constant(_, _) => 0,
             Output::Public(_, _) => 1,
             Output::Private(_, _) => 2,
-            Output::Record(_, _, _, _) => 3,
+            Output::Record(_, _, _) => 3,
             Output::ExternalRecord(_) => 4,
         }
     }
@@ -68,7 +68,7 @@ impl<N: Network> Output<N> {
     #[allow(clippy::type_complexity)]
     pub const fn record(&self) -> Option<(&Field<N>, &Record<N, Ciphertext<N>>)> {
         match self {
-            Output::Record(commitment, _, _, Some(record)) => Some((commitment, record)),
+            Output::Record(commitment, _, Some(record)) => Some((commitment, record)),
             _ => None,
         }
     }
@@ -84,7 +84,7 @@ impl<N: Network> Output<N> {
     /// Returns the nonce, if the output is a record.
     pub const fn nonce(&self) -> Option<&Group<N>> {
         match self {
-            Output::Record(_, nonce, ..) => Some(nonce),
+            Output::Record(_, _, Some(record)) => Some(record.nonce()),
             _ => None,
         }
     }
@@ -92,7 +92,7 @@ impl<N: Network> Output<N> {
     /// Returns the checksum, if the output is a record.
     pub const fn checksum(&self) -> Option<&Field<N>> {
         match self {
-            Output::Record(_, _, checksum, ..) => Some(checksum),
+            Output::Record(_, checksum, ..) => Some(checksum),
             _ => None,
         }
     }
@@ -101,11 +101,6 @@ impl<N: Network> Output<N> {
     pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
         // Append the output ID.
         [**self.id()].into_iter()
-            // Append the nonce if it exists.
-            .chain(self.nonce().map(|nonce| {
-                let (x, y) = nonce.to_xy_coordinate();
-                [*x, *y]
-            }).into_iter().flatten())
             // Append the checksum if it exists.
             .chain([self.checksum().map(|sum| **sum)].into_iter().flatten())
     }
@@ -127,7 +122,7 @@ impl<N: Network> Output<N> {
                 Ok(candidate_hash) => Ok(hash == &candidate_hash),
                 Err(error) => Err(error),
             },
-            Output::Record(_, _, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
+            Output::Record(_, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
                 Ok(candidate_hash) => Ok(checksum == &candidate_hash),
                 Err(error) => Err(error),
             },

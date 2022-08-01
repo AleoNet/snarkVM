@@ -26,6 +26,7 @@ impl<N: Network> Stack<N> {
         &self,
         closure: &Closure<N>,
         inputs: &[Value<N>],
+        call_stack: CallStack<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
@@ -34,8 +35,7 @@ impl<N: Network> Stack<N> {
         }
 
         // Initialize the registers.
-        let mut registers =
-            Registers::<N, A>::new(CallStack::Evaluate, self.get_register_types(closure.name())?.clone());
+        let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(closure.name())?.clone());
         // Set the transition view key.
         registers.set_tvk(tvk);
 
@@ -67,12 +67,33 @@ impl<N: Network> Stack<N> {
     /// # Errors
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate_function<A: circuit::Aleo<Network = N>>(
-        &self,
-        function: &Function<N>,
-        inputs: &[Value<N>],
-        tvk: Field<N>,
-    ) -> Result<Vec<Value<N>>> {
+    pub fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
+        // Retrieve the next request, based on the call stack mode.
+        let (call_stack, request) = match &call_stack {
+            CallStack::Evaluate(authorization) => {
+                let request = authorization.next()?;
+                (call_stack, request)
+            }
+            CallStack::Execute(authorization, ..) => {
+                let request = authorization.peek_next()?;
+                (call_stack.replicate(), request)
+            }
+            _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
+        };
+
+        // Ensure the network ID matches.
+        ensure!(
+            **request.network_id() == N::ID,
+            "Network ID mismatch. Expected {}, but found {}",
+            N::ID,
+            request.network_id()
+        );
+
+        // Retrieve the function, inputs, and transition view key.
+        let function = self.program.get_function(request.function_name())?;
+        let inputs = request.inputs();
+        let tvk = *request.tvk();
+
         // Ensure the number of inputs matches.
         if function.inputs().len() != inputs.len() {
             bail!(
@@ -85,10 +106,12 @@ impl<N: Network> Stack<N> {
         }
 
         // Initialize the registers.
-        let mut registers =
-            Registers::<N, A>::new(CallStack::Evaluate, self.get_register_types(function.name())?.clone());
+        let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(function.name())?.clone());
         // Set the transition view key.
         registers.set_tvk(tvk);
+
+        // Ensure the request is well-formed.
+        ensure!(request.verify(&function.input_types()), "Request is invalid");
 
         // Store the inputs.
         function.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -104,12 +127,26 @@ impl<N: Network> Stack<N> {
             }
         }
 
-        // Load the outputs.
-        let outputs = function.outputs().iter().map(|output| {
-            // Retrieve the stack value from the register.
-            registers.load(self, &Operand::Register(output.register().clone()))
-        });
+        // Retrieve the output registers.
+        let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
 
-        outputs.collect()
+        // Load the outputs.
+        let outputs = output_registers
+            .iter()
+            .map(|register| {
+                // Retrieve the stack value from the register.
+                registers.load(self, &Operand::Register(register.clone()))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Compute the response.
+        Response::new(
+            self.program.id(),
+            request.inputs().len(),
+            request.tvk(),
+            outputs,
+            &function.output_types(),
+            &output_registers,
+        )
     }
 }

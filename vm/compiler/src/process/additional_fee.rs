@@ -55,7 +55,7 @@ impl<N: Network> Process<N> {
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
         // Execute the circuit.
-        let response = stack.execute_function::<A, R>(CallStack::Execute(authorization, execution.clone()), rng)?;
+        let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
         // Extract the execution.
         let execution = execution.read().clone();
         // Ensure the execution contains 1 transition.

@@ -89,8 +89,6 @@ impl<A: Aleo> Response<A> {
                         let output_index = Field::constant(console::Field::from_u64(output_register.locator()));
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
-                        // Compute the record nonce.
-                        let nonce = A::g_scalar_multiply(&randomizer);
 
                         // Encrypt the record, using the randomizer.
                         let encrypted_record = record.encrypt(&randomizer);
@@ -98,7 +96,7 @@ impl<A: Aleo> Response<A> {
                         let checksum = A::hash_bhp1024(&encrypted_record.to_bits_le());
 
                         // Return the output ID.
-                        OutputID::record(commitment, nonce, checksum)
+                        OutputID::record(commitment, checksum)
                     }
                     // For an external record output, compute the commitment (using `tvk`) of the output.
                     console::ValueType::ExternalRecord(..) => {
@@ -140,7 +138,16 @@ mod tests {
         let rng = &mut test_crypto_rng();
 
         for i in 0..ITERATIONS {
-            // Construct four outputs.
+            // Sample a `tvk`.
+            let tvk = Uniform::rand(rng);
+
+            // Compute the nonce.
+            use console::Network;
+            let index = console::Field::from_u64(8);
+            let randomizer = <Circuit as Environment>::Network::hash_to_scalar_psd2(&[tvk, index]).unwrap();
+            let nonce = <Circuit as Environment>::Network::g_scalar_multiply(&randomizer);
+
+            // Construct the outputs.
             let output_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
@@ -150,8 +157,8 @@ mod tests {
             let output_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
-            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str(&format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}")).unwrap());
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
             let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
@@ -172,14 +179,12 @@ mod tests {
                 console::Register::Locator(9),
             ];
 
-            // Sample a `tvk`.
-            let tvk = Uniform::rand(rng);
-
             // Construct a program ID.
             let program_id = console::ProgramID::from_str("test.aleo")?;
 
             // Construct the response.
-            let response = console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types)?;
+            let response =
+                console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types, &output_registers)?;
             // assert!(response.verify());
 
             // Inject the program ID, `tvk`, and outputs.
@@ -206,16 +211,16 @@ mod tests {
 
     #[test]
     fn test_from_outputs_constant() -> Result<()> {
-        check_from_outputs(Mode::Constant, 23500, 7, 8400, 8400)
+        check_from_outputs(Mode::Constant, 23500, 5, 10500, 10500)
     }
 
     #[test]
     fn test_from_outputs_public() -> Result<()> {
-        check_from_outputs(Mode::Public, 21353, 7, 15777, 15795)
+        check_from_outputs(Mode::Public, 20880, 5, 16762, 16782)
     }
 
     #[test]
     fn test_from_outputs_private() -> Result<()> {
-        check_from_outputs(Mode::Private, 21353, 7, 15777, 15795)
+        check_from_outputs(Mode::Private, 20880, 5, 16762, 16782)
     }
 }
