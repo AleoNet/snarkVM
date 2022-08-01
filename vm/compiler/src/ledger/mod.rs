@@ -509,10 +509,7 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{
-        test_helpers::CurrentLedger,
-        vm::test_helpers::{sample_deployment_transaction, sample_execution_transaction},
-    };
+    use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_deployment_transaction};
     use console::network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
@@ -548,7 +545,7 @@ mod tests {
         assert_eq!(ledger.latest_hash(), genesis.hash());
 
         // Add a transaction to the memory pool.
-        let new_transaction = sample_execution_transaction();
+        let new_transaction = sample_deployment_transaction();
         ledger.add_to_memory_pool(new_transaction).unwrap();
 
         // Propose the next block.
