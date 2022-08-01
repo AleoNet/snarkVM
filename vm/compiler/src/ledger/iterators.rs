@@ -21,8 +21,9 @@ impl<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
 {
     /// Returns an iterator over all transactions.
     pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
@@ -70,7 +71,7 @@ impl<
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.values().flat_map(Transactions::nonces)
     }
 }

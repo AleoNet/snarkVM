@@ -32,9 +32,10 @@ impl<N: Network> FromBytes for Block<N> {
         let previous_hash = FromBytes::read_le(&mut reader)?;
         let header = FromBytes::read_le(&mut reader)?;
         let transactions = FromBytes::read_le(&mut reader)?;
+        let signature = FromBytes::read_le(&mut reader)?;
 
         // Construct the block.
-        let block = Self::from(previous_hash, header, transactions).map_err(|e| error(e.to_string()))?;
+        let block = Self::from(previous_hash, header, transactions, signature).map_err(|e| error(e.to_string()))?;
         // Ensure the block hash matches.
         match block_hash == block.hash() {
             true => Ok(block),
@@ -54,7 +55,8 @@ impl<N: Network> ToBytes for Block<N> {
         self.block_hash.write_le(&mut writer)?;
         self.previous_hash.write_le(&mut writer)?;
         self.header.write_le(&mut writer)?;
-        self.transactions.write_le(&mut writer)
+        self.transactions.write_le(&mut writer)?;
+        self.signature.write_le(&mut writer)
     }
 }
 

@@ -16,7 +16,7 @@
 
 use super::*;
 
-static SIGNATURE_PREFIX: &str = "signature";
+static SIGNATURE_PREFIX: &str = "sign";
 
 impl<N: Network> Parser for Signature<N> {
     /// Parses a string into an signature.

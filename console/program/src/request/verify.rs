@@ -118,10 +118,6 @@ impl<N: Network> Request<N> {
                     }
                     // A record input is computed to its serial number.
                     InputID::Record(commitment, gamma, serial_number) => {
-                        // Prepare the index as a constant field element.
-                        let index = Field::from_u16(index as u16);
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -135,7 +131,7 @@ impl<N: Network> Request<N> {
                             _ => bail!("Expected a record type at input {index}"),
                         };
                         // Compute the record commitment.
-                        let candidate_cm = record.to_commitment(&self.program_id, record_name, &randomizer)?;
+                        let candidate_cm = record.to_commitment(&self.program_id, record_name)?;
                         // Ensure the commitment matches.
                         ensure!(*commitment == candidate_cm, "Expected a record input with the same commitment");
                         // Ensure the record belongs to the caller.
@@ -144,13 +140,6 @@ impl<N: Network> Request<N> {
                         if !(**record.gates()).to_bits_le()[52..].iter().all(|bit| !bit) {
                             bail!("Input record contains an invalid Aleo balance (in gates): {}", record.gates());
                         }
-
-                        // Compute the generator `H` as `HashToGroup(commitment)`.
-                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
-                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
-                        let h_r = (*gamma * challenge) + (h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
-                        message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
 
                         // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
                         let sn_nonce = N::hash_to_scalar_psd2(&[
@@ -162,6 +151,13 @@ impl<N: Network> Request<N> {
                             N::commit_bhp512(&(N::serial_number_domain(), *commitment).to_bits_le(), &sn_nonce)?;
                         // Ensure the serial number matches.
                         ensure!(*serial_number == candidate_sn, "Expected a record input with the same serial number");
+
+                        // Compute the generator `H` as `HashToGroup(commitment)`.
+                        let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
+                        // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
+                        let h_r = (*gamma * challenge) + (h * response);
+                        // Add `H`, `r * H`, and `gamma` to the message.
+                        message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {
@@ -215,8 +211,9 @@ mod tests {
             let function_name = Identifier::from_str("transfer").unwrap();
 
             // Prepare a record belonging to the address.
-            let record_string =
-                format!("{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private }}");
+            let record_string = format!(
+                "{{ owner: {address}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public }}"
+            );
 
             // Construct four inputs.
             let input_constant = Value::from_str("{ token_amount: 9876543210u128 }").unwrap();

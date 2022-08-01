@@ -42,16 +42,27 @@ pub struct Transactions<N: Network> {
     transactions: IndexMap<N::TransactionID, Transaction<N>>,
 }
 
+impl<N: Network> FromIterator<Transaction<N>> for Transactions<N> {
+    /// Initializes from an iterator of transactions.
+    fn from_iter<T: IntoIterator<Item = Transaction<N>>>(iter: T) -> Self {
+        Self { transactions: iter.into_iter().map(|transaction| (transaction.id(), transaction)).collect() }
+    }
+}
+
+impl<'a, N: Network> FromIterator<&'a Transaction<N>> for Transactions<N> {
+    /// Initializes from an iterator of transactions.
+    fn from_iter<T: IntoIterator<Item = &'a Transaction<N>>>(iter: T) -> Self {
+        Self::from_iter(iter.into_iter().cloned())
+    }
+}
+
 impl<N: Network> Transactions<N> {
     /// The maximum number of transactions allowed in a block.
     const MAX_TRANSACTIONS: usize = usize::pow(2, TRANSACTIONS_DEPTH as u32);
 
     /// Initializes from a given transactions list.
-    pub fn from(transactions: &[Transaction<N>]) -> Result<Self> {
-        // Construct the transactions.
-        let transactions = transactions.iter().cloned().map(|transaction| (transaction.id(), transaction)).collect();
-        // Return the transactions.
-        Ok(Self { transactions })
+    pub fn from(transactions: &[Transaction<N>]) -> Self {
+        Self::from_iter(transactions.iter())
     }
 
     /// Returns `true` if the transactions are well-formed.
@@ -134,7 +145,7 @@ impl<N: Network> Transactions<N> {
     /// Returns an iterator over all transactions in `self` that are deployments.
     pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
         self.transactions.values().filter_map(|transaction| match transaction {
-            Transaction::Deploy(_, deployment) => Some(deployment),
+            Transaction::Deploy(_, deployment, _) => Some(deployment),
             _ => None,
         })
     }
@@ -142,7 +153,7 @@ impl<N: Network> Transactions<N> {
     /// Returns an iterator over all transactions in `self` that are executions.
     pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
         self.transactions.values().filter_map(|transaction| match transaction {
-            Transaction::Execute(_, execution) => Some(execution),
+            Transaction::Execute(_, execution, _) => Some(execution),
             _ => None,
         })
     }
@@ -173,7 +184,7 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.values().flat_map(Transaction::nonces)
     }
 
@@ -222,7 +233,7 @@ mod tests {
         // Retrieve a transaction.
         let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
         // Duplicate the transaction.
-        let transactions = Transactions::from(&[transaction.clone(), transaction]).unwrap();
+        let transactions = Transactions::from(&[transaction.clone(), transaction]);
         // Ensure the `Transactions` struct only has one instance of the transaction.
         assert_eq!(transactions.len(), 1);
         assert!(!has_duplicates(transactions.transaction_ids()));

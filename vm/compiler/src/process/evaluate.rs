@@ -19,21 +19,29 @@ use super::*;
 impl<N: Network> Process<N> {
     /// Evaluates a program function on the given request.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, request: &Request<N>) -> Result<Response<N>> {
-        // Retrieve the program, function, and input types.
-        let (program, function, input_types, output_types) =
-            self.get_function_info(request.program_id(), request.function_name())?;
-
-        // Ensure the request is well-formed.
-        ensure!(request.verify(&input_types), "Request is invalid");
-
+    pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, authorization: Authorization<N>) -> Result<Response<N>> {
+        // Retrieve the main request (without popping it).
+        let request = authorization.peek_next()?;
         // Prepare the stack.
-        let stack = self.get_stack(program.id())?;
-        // Evaluate the function.
-        let outputs = stack.evaluate_function::<A>(&function, request.inputs())?;
-        // Compute the response.
-        let response = Response::new(program.id(), request.inputs().len(), request.tvk(), outputs, &output_types)?;
+        let stack = self.get_stack(request.program_id())?;
 
+        // Ensure the network ID matches.
+        ensure!(
+            **request.network_id() == N::ID,
+            "Network ID mismatch. Expected {}, but found {}",
+            N::ID,
+            request.network_id()
+        );
+        // Ensure that the function exists.
+        if !stack.program().contains_function(request.function_name()) {
+            bail!("Function '{}' does not exist.", request.function_name())
+        }
+
+        println!("{}", format!(" • Evaluating '{}/{}'...", request.program_id(), request.function_name()).dimmed());
+
+        // Evaluate the function.
+        let response = stack.evaluate_function::<A>(CallStack::evaluate(authorization)?)?;
+        // Return the response.
         Ok(response)
     }
 }

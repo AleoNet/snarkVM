@@ -77,7 +77,7 @@ impl<A: Aleo> Response<A> {
                         // Return the output ID.
                         Ok((OutputID::private(output_hash), output))
                     }
-                    // For a record output, compute the record commitment, and encrypt the record (using `tvk`).
+                    // For a record output, compute the record commitment.
                     console::ValueType::Record(record_name) => {
                         // Inject the output as `Mode::Private`.
                         let output = Value::new(Mode::Private, output.clone());
@@ -88,17 +88,11 @@ impl<A: Aleo> Response<A> {
                             // Ensure the output is a record.
                             Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
                         };
-
-                        // Prepare the index as a constant field element.
-                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
                         // Compute the record commitment.
-                        let commitment =
-                            record.to_commitment(program_id, &Identifier::constant(*record_name), &randomizer);
+                        let commitment = record.to_commitment(program_id, &Identifier::constant(*record_name));
 
                         // Return the output ID.
-                        // Note: Because this is a callback, the output ID is **only** the record commitment.
+                        // Note: Because this is a callback, the output ID is an **external record** ID.
                         Ok((OutputID::external_record(commitment), output))
                     }
                     // For an external record output, compute the commitment (using `tvk`) of the output.
@@ -152,7 +146,16 @@ mod tests {
         let rng = &mut test_crypto_rng();
 
         for i in 0..ITERATIONS {
-            // Construct four outputs.
+            // Sample a `tvk`.
+            let tvk = Uniform::rand(rng);
+
+            // Compute the nonce.
+            use console::Network;
+            let index = console::Field::from_u64(8);
+            let randomizer = <Circuit as Environment>::Network::hash_to_scalar_psd2(&[tvk, index]).unwrap();
+            let nonce = <Circuit as Environment>::Network::g_scalar_multiply(&randomizer);
+
+            // Construct the outputs.
             let output_constant = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
@@ -162,8 +165,8 @@ mod tests {
             let output_private = console::Value::<<Circuit as Environment>::Network>::Plaintext(
                 console::Plaintext::from_str("{ token_amount: 9876543210u128 }").unwrap(),
             );
-            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
-            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }").unwrap());
+            let output_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str(&format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}")).unwrap());
+            let output_external_record = console::Value::<<Circuit as Environment>::Network>::Record(console::Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
             let outputs = vec![output_constant, output_public, output_private, output_record, output_external_record];
 
             // Construct the output types.
@@ -175,14 +178,21 @@ mod tests {
                 console::ValueType::from_str("token.aleo/token.record").unwrap(),
             ];
 
-            // Sample a `tvk`.
-            let tvk = Uniform::rand(rng);
+            // Construct the output registers.
+            let output_registers = vec![
+                console::Register::Locator(5),
+                console::Register::Locator(6),
+                console::Register::Locator(7),
+                console::Register::Locator(8),
+                console::Register::Locator(9),
+            ];
 
             // Construct a program ID.
             let program_id = console::ProgramID::from_str("test.aleo")?;
 
             // Construct the response.
-            let response = console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types)?;
+            let response =
+                console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types, &output_registers)?;
             // assert!(response.verify());
 
             // Inject the program ID and `tvk`.
@@ -206,7 +216,7 @@ mod tests {
 
             // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, response.outputs().to_vec());
-            let candidate_b = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types);
+            let candidate_b = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types, &output_registers);
             assert_eq!(response, candidate_b.eject_value());
 
             Circuit::reset();
@@ -219,16 +229,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 19500, 4, 5050, 5050)
+        check_from_callback(Mode::Constant, 19000, 4, 6000, 6000)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 19310, 4, 8962, 8970)
+        check_from_callback(Mode::Public, 18828, 4, 8327, 8334)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 19310, 4, 8962, 8970)
+        check_from_callback(Mode::Private, 18828, 4, 8327, 8334)
     }
 }

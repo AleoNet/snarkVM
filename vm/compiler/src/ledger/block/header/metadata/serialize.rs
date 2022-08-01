@@ -16,31 +16,42 @@
 
 use super::*;
 
-impl<N: Network> Serialize for Transactions<N> {
-    /// Serializes the transactions to a JSON-string or buffer.
+impl<N: Network> Serialize for Metadata<N> {
+    /// Serializes the metadata to a JSON-string or buffer.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transactions = serializer.serialize_struct("Transactions", 1)?;
-                transactions.serialize_field("transactions", &self.transactions.values().collect::<Vec<_>>())?;
-                transactions.end()
+                let mut metadata = serializer.serialize_struct("Certificate", 6)?;
+                metadata.serialize_field("network", &self.network)?;
+                metadata.serialize_field("round", &self.round)?;
+                metadata.serialize_field("height", &self.height)?;
+                metadata.serialize_field("coinbase_target", &self.coinbase_target)?;
+                metadata.serialize_field("proof_target", &self.proof_target)?;
+                metadata.serialize_field("timestamp", &self.timestamp)?;
+                metadata.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
 
-impl<'de, N: Network> Deserialize<'de> for Transactions<N> {
-    /// Deserializes the transactions from a JSON-string or buffer.
+impl<'de, N: Network> Deserialize<'de> for Metadata<N> {
+    /// Deserializes the metadata from a JSON-string or buffer.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => {
-                let transactions = serde_json::Value::deserialize(deserializer)?;
-                let transactions: Vec<_> =
-                    serde_json::from_value(transactions["transactions"].clone()).map_err(de::Error::custom)?;
-                Ok(Self::from(&transactions))
+                let metadata = serde_json::Value::deserialize(deserializer)?;
+                Ok(Self::new(
+                    serde_json::from_value(metadata["network"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["round"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["height"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["coinbase_target"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["proof_target"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(metadata["timestamp"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)?)
             }
-            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transactions"),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "metadata"),
         }
     }
 }
@@ -51,13 +62,13 @@ mod tests {
 
     #[test]
     fn test_serde_json() -> Result<()> {
-        for expected in [crate::ledger::vm::test_helpers::sample_genesis_block().transactions().clone()].into_iter() {
+        for expected in [*crate::ledger::vm::test_helpers::sample_genesis_block().metadata()].into_iter() {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected)?;
 
             // Deserialize
-            assert_eq!(expected, Transactions::from_str(expected_string)?);
+            assert_eq!(expected, Metadata::from_str(expected_string)?);
             assert_eq!(expected, serde_json::from_str(&candidate_string)?);
         }
         Ok(())
@@ -65,14 +76,14 @@ mod tests {
 
     #[test]
     fn test_bincode() -> Result<()> {
-        for expected in [crate::ledger::vm::test_helpers::sample_genesis_block().transactions().clone()].into_iter() {
+        for expected in [*crate::ledger::vm::test_helpers::sample_genesis_block().metadata()].into_iter() {
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;
             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
 
             // Deserialize
-            assert_eq!(expected, Transactions::read_le(&expected_bytes[..])?);
+            assert_eq!(expected, Metadata::read_le(&expected_bytes[..])?);
             assert_eq!(expected, bincode::deserialize(&expected_bytes_with_size_encoding[..])?);
         }
         Ok(())

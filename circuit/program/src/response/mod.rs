@@ -31,8 +31,8 @@ pub enum OutputID<A: Aleo> {
     Public(Field<A>),
     /// The ciphertext hash of the private output.
     Private(Field<A>),
-    /// The `(commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<A>, Field<A>, Field<A>),
+    /// The `(commitment, checksum)` tuple of the record output.
+    Record(Field<A>, Field<A>),
     /// The commitment of the external record output.
     ExternalRecord(Field<A>),
 }
@@ -50,12 +50,10 @@ impl<A: Aleo> Inject for OutputID<A> {
             console::OutputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the ciphertext hash as `Mode::Public`.
             console::OutputID::Private(field) => Self::Private(Field::new(Mode::Public, field)),
-            // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
-            console::OutputID::Record(commitment, nonce, checksum) => Self::Record(
-                Field::new(Mode::Public, commitment),
-                Field::new(Mode::Public, nonce),
-                Field::new(Mode::Public, checksum),
-            ),
+            // Inject the expected commitment and checksum as `Mode::Public`.
+            console::OutputID::Record(commitment, checksum) => {
+                Self::Record(Field::new(Mode::Public, commitment), Field::new(Mode::Public, checksum))
+            }
             // Inject the expected commitment as `Mode::Public`.
             console::OutputID::ExternalRecord(commitment) => Self::ExternalRecord(Field::new(Mode::Public, commitment)),
         }
@@ -94,17 +92,15 @@ impl<A: Aleo> OutputID<A> {
     }
 
     /// Initializes a record output ID.
-    fn record(expected_commitment: Field<A>, expected_nonce: Field<A>, expected_checksum: Field<A>) -> Self {
-        // Inject the expected commitment, nonce, and checksum as `Mode::Public`.
+    fn record(expected_commitment: Field<A>, expected_checksum: Field<A>) -> Self {
+        // Inject the expected commitment and checksum as `Mode::Public`.
         let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
-        let output_nonce = Field::new(Mode::Public, expected_nonce.eject_value());
         let output_checksum = Field::new(Mode::Public, expected_checksum.eject_value());
-        // Ensure the injected commitment, nonce, and checksum match the given commitment, nonce, and checksum.
+        // Ensure the injected commitment and checksum match the given commitment and checksum.
         A::assert_eq(&output_commitment, expected_commitment);
-        A::assert_eq(&output_nonce, expected_nonce);
         A::assert_eq(&output_checksum, expected_checksum);
         // Return the output ID.
-        Self::Record(output_commitment, output_nonce, output_checksum)
+        Self::Record(output_commitment, output_checksum)
     }
 
     /// Initializes an external record output ID.
@@ -128,9 +124,7 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Constant(field) => field.eject_mode(),
             Self::Public(field) => field.eject_mode(),
             Self::Private(field) => field.eject_mode(),
-            Self::Record(commitment, nonce, checksum) => {
-                Mode::combine(commitment.eject_mode(), [nonce.eject_mode(), checksum.eject_mode()])
-            }
+            Self::Record(commitment, checksum) => Mode::combine(commitment.eject_mode(), [checksum.eject_mode()]),
             Self::ExternalRecord(commitment) => commitment.eject_mode(),
         }
     }
@@ -141,8 +135,8 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Constant(field) => console::OutputID::Constant(field.eject_value()),
             Self::Public(field) => console::OutputID::Public(field.eject_value()),
             Self::Private(field) => console::OutputID::Private(field.eject_value()),
-            Self::Record(commitment, nonce, checksum) => {
-                console::OutputID::Record(commitment.eject_value(), nonce.eject_value(), checksum.eject_value())
+            Self::Record(commitment, checksum) => {
+                console::OutputID::Record(commitment.eject_value(), checksum.eject_value())
             }
             Self::ExternalRecord(commitment) => console::OutputID::ExternalRecord(commitment.eject_value()),
         }

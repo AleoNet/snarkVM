@@ -51,7 +51,6 @@ impl<N: Network> FromBytes for Output<N> {
             }
             3 => {
                 let commitment = FromBytes::read_le(&mut reader)?;
-                let nonce = FromBytes::read_le(&mut reader)?;
                 let checksum = FromBytes::read_le(&mut reader)?;
                 let record_ciphertext_exists: bool = FromBytes::read_le(&mut reader)?;
                 let record_ciphertext = match record_ciphertext_exists {
@@ -59,7 +58,7 @@ impl<N: Network> FromBytes for Output<N> {
                     false => None,
                 };
 
-                Self::Record(commitment, nonce, checksum, record_ciphertext)
+                Self::Record(commitment, checksum, record_ciphertext)
             }
             4 => {
                 let commitment = FromBytes::read_le(&mut reader)?;
@@ -108,10 +107,9 @@ impl<N: Network> ToBytes for Output<N> {
                     None => false.write_le(&mut writer),
                 }
             }
-            Self::Record(commitment, nonce, checksum, record_ciphertext) => {
+            Self::Record(commitment, checksum, record_ciphertext) => {
                 (3 as Variant).write_le(&mut writer)?;
                 commitment.write_le(&mut writer)?;
-                nonce.write_le(&mut writer)?;
                 checksum.write_le(&mut writer)?;
                 match record_ciphertext {
                     Some(record) => {
@@ -172,12 +170,7 @@ mod tests {
 
             // Record
             // TODO (raychu86): Add serialization test for output with record ciphertext.
-            check_bytes(Output::<CurrentNetwork>::Record(
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-                Uniform::rand(rng),
-                None,
-            ))?;
+            check_bytes(Output::<CurrentNetwork>::Record(Uniform::rand(rng), Uniform::rand(rng), None))?;
 
             // ExternalRecord
             check_bytes(Output::<CurrentNetwork>::ExternalRecord(Uniform::rand(rng)))?;

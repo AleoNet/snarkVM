@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod metadata;
+pub use metadata::*;
+
 mod leaf;
 pub use leaf::*;
 
@@ -32,50 +35,6 @@ use console::{
     types::Field,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Metadata {
-    /// The network ID of the block.
-    network: u16,
-    /// The height of this block - 4 bytes.
-    height: u32,
-    /// The round that produced this block - 8 bytes.
-    round: u64,
-    /// The coinbase target for this block - 8 bytes.
-    coinbase_target: u64,
-    /// The proof target for this block - 8 bytes.
-    proof_target: u64,
-    /// The Unix timestamp (UTC) for this block - 8 bytes.
-    timestamp: i64,
-}
-
-impl ToBits for Metadata {
-    /// Returns the little-endian bits of the metadata.
-    fn to_bits_le(&self) -> Vec<bool> {
-        vec![
-            self.network.to_bits_le(),         // 2 bytes
-            self.height.to_bits_le(),          // 4 bytes
-            self.round.to_bits_le(),           // 8 bytes
-            self.coinbase_target.to_bits_le(), // 8 bytes
-            self.proof_target.to_bits_le(),    // 8 bytes
-            self.timestamp.to_bits_le(),       // 8 bytes
-        ]
-        .concat()
-    }
-
-    /// Returns the big-endian bits of the metadata.
-    fn to_bits_be(&self) -> Vec<bool> {
-        vec![
-            self.network.to_bits_be(),         // 2 bytes
-            self.height.to_bits_be(),          // 4 bytes
-            self.round.to_bits_be(),           // 8 bytes
-            self.coinbase_target.to_bits_be(), // 8 bytes
-            self.proof_target.to_bits_be(),    // 8 bytes
-            self.timestamp.to_bits_be(),       // 8 bytes
-        ]
-        .concat()
-    }
-}
-
 /// The header for the block contains metadata that uniquely identifies the block.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Header<N: Network> {
@@ -83,29 +42,15 @@ pub struct Header<N: Network> {
     previous_state_root: Field<N>,
     /// The Merkle root representing the transactions in the block.
     transactions_root: Field<N>,
-    /// The block header metadata.
-    metadata: Metadata,
+    /// The metadata of the block.
+    metadata: Metadata<N>,
 }
 
 impl<N: Network> Header<N> {
     /// Initializes a new block header with the given inputs.
-    #[allow(clippy::too_many_arguments)]
-    pub fn from(
-        previous_state_root: Field<N>,
-        transactions_root: Field<N>,
-        network: u16,
-        height: u32,
-        round: u64,
-        coinbase_target: u64,
-        proof_target: u64,
-        timestamp: i64,
-    ) -> Result<Self> {
+    pub fn from(previous_state_root: Field<N>, transactions_root: Field<N>, metadata: Metadata<N>) -> Result<Self> {
         // Construct a new block header.
-        let header = Self {
-            previous_state_root,
-            transactions_root,
-            metadata: Metadata { network, height, round, coinbase_target, proof_target, timestamp },
-        };
+        let header = Self { previous_state_root, transactions_root, metadata };
         // Ensure the header is valid.
         match header.verify() {
             true => Ok(header),
@@ -115,25 +60,15 @@ impl<N: Network> Header<N> {
 
     /// Returns `true` if the block header is well-formed.
     pub fn verify(&self) -> bool {
-        match self.metadata.height == 0u32 {
+        match self.height() == 0u32 {
             true => self.is_genesis(),
             false => {
                 // Ensure the previous ledger root is nonzero.
                 self.previous_state_root != Field::zero()
                     // Ensure the transactions root is nonzero.
                     && self.transactions_root != Field::zero()
-                    // Ensure the network ID is correct.
-                    && self.metadata.network == N::ID
-                    // Ensure the height is nonzero.
-                    && self.metadata.height != 0u32
-                    // Ensure the round is nonzero.
-                    && self.metadata.round != 0u64
-                    // Ensure the coinbase target is not u64::MAX.
-                    && self.metadata.coinbase_target != u64::MAX
-                    // Ensure the proof target is not u64::MAX.
-                    && self.metadata.proof_target != u64::MAX
-                    // Ensure the timestamp in the block is nonzero.
-                    && self.metadata.timestamp != 0i64
+                    // Ensure the metadata is valid.
+                    && self.metadata.verify()
             }
         }
     }
@@ -148,38 +83,38 @@ impl<N: Network> Header<N> {
         &self.transactions_root
     }
 
-    /// Returns the metadata of the block header.
-    pub const fn metadata(&self) -> &Metadata {
+    /// Returns the metadata in the block header.
+    pub const fn metadata(&self) -> &Metadata<N> {
         &self.metadata
     }
 
     /// Returns the network ID of the block.
     pub const fn network(&self) -> u16 {
-        self.metadata.network
-    }
-
-    /// Returns the height of the block.
-    pub const fn height(&self) -> u32 {
-        self.metadata.height
+        self.metadata.network()
     }
 
     /// Returns the round number of the block.
     pub const fn round(&self) -> u64 {
-        self.metadata.round
+        self.metadata.round()
+    }
+
+    /// Returns the height of the block.
+    pub const fn height(&self) -> u32 {
+        self.metadata.height()
     }
 
     /// Returns the coinbase target for this block.
     pub const fn coinbase_target(&self) -> u64 {
-        self.metadata.coinbase_target
+        self.metadata.coinbase_target()
     }
 
     /// Returns the proof target for this block.
     pub const fn proof_target(&self) -> u64 {
-        self.metadata.proof_target
+        self.metadata.proof_target()
     }
 
     /// Returns the Unix timestamp (UTC) for this block.
     pub const fn timestamp(&self) -> i64 {
-        self.metadata.timestamp
+        self.metadata.timestamp()
     }
 }

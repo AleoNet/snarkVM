@@ -37,14 +37,12 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::{
-    ledger::map::Map,
-    process::{Deployment, Execution},
-};
+use crate::process::{Deployment, Execution};
 use console::{
+    account::{PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::ProgramID,
+    program::{Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
@@ -61,26 +59,40 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
+pub enum OutputRecordsFilter<N: Network> {
+    /// Returns all output records associated with the account.
+    All,
+    /// Returns only output records associated with the account that are **spent**.
+    Spent(PrivateKey<N>),
+    /// Returns only output records associated with the account that are **not spent**.
+    Unspent(PrivateKey<N>),
+}
+
 #[derive(Clone)]
 pub struct Ledger<
     N: Network,
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
 > {
-    /// The current block height.
-    current_height: u32,
     /// The current block hash.
     current_hash: N::BlockHash,
+    /// The current block height.
+    current_height: u32,
+    /// The current round number.
+    current_round: u64,
     /// The current block tree.
     block_tree: BlockTree<N>,
-    /// The chain of previous block hashes.
+    /// The map of previous block hashes.
     previous_hashes: PreviousHashesMap,
-    /// The chain of block headers.
+    /// The map of block headers.
     headers: HeadersMap,
-    /// The chain of block transactions.
+    /// The map of block transactions.
     transactions: TransactionsMap,
+    /// The map of block signatures.
+    signatures: SignatureMap,
     /// The mapping of program IDs to their deployment.
     programs: ProgramsMap,
     /// The memory pool of unconfirmed transactions.
@@ -94,8 +106,9 @@ impl<
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
     ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
 {
     /// Initializes a new instance of `Blocks` with the genesis block.
     pub fn new() -> Result<Self> {
@@ -103,45 +116,88 @@ impl<
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
         // Construct the blocks.
         Ok(Self {
-            current_height: genesis.height(),
             current_hash: genesis.hash(),
+            current_height: genesis.height(),
+            current_round: genesis.round(),
             block_tree: N::merkle_tree_bhp(&[genesis.hash().to_bits_le()])?,
             previous_hashes: [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
             headers: [(genesis.height(), *genesis.header())].into_iter().collect(),
             transactions: [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
+            signatures: [(genesis.height(), *genesis.signature())].into_iter().collect(),
             programs: genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
             memory_pool: Default::default(),
         })
     }
 
-    /// Returns a proposal block constructed with the transactions in the mempool.
-    pub fn propose_block(&self, transactions: Transactions<N>) -> Result<Block<N>> {
-        // Fetch the latest block hash
-        let latest_block_hash = self.latest_hash();
+    /// Appends the given transaction to the memory pool.
+    pub fn add_to_memory_pool(&mut self, transaction: Transaction<N>) -> Result<()> {
+        // Ensure the transaction does not already exist.
+        if self.memory_pool.contains_key(&transaction.id()) {
+            bail!("Transaction '{}' already exists in the memory pool.", transaction.id());
+        }
 
-        // Construct the block header.
-        let latest_state_root = self.latest_state_root();
-        let transactions_root = transactions.to_root()?;
-        let network = N::ID;
-        let height = self.latest_height() + 1;
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in transaction.transition_public_keys() {
+            if self.contains_transition_public_key(tpk) {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given serial numbers.
+        for serial_number in transaction.serial_numbers() {
+            if self.contains_serial_number(serial_number) {
+                bail!("Serial number '{serial_number}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given commitments.
+        for commitment in transaction.commitments() {
+            if self.contains_commitment(commitment) {
+                bail!("Commitment '{commitment}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given nonces.
+        for nonce in transaction.nonces() {
+            if self.contains_nonce(nonce) {
+                bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        // Insert the transaction to the memory pool.
+        self.memory_pool.insert(transaction.id(), transaction);
+        Ok(())
+    }
+
+    /// Returns a candidate for the next block in the ledger.
+    pub fn propose_next_block<R: Rng + CryptoRng>(&self, private_key: &PrivateKey<N>, rng: &mut R) -> Result<Block<N>> {
+        // Construct the transactions for the block.
+        let transactions = self.memory_pool.values().collect::<Transactions<N>>();
+
+        // Fetch the latest block and state root.
+        let block = self.latest_block()?;
+        let state_root = self.latest_state_root();
+
         // TODO (raychu86): Establish the correct round, coinbase target, and proof target.
-        let round = 1;
-        let coinbase_target = 0;
-        let proof_target = 0;
-        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        let header = Header::from(
-            *latest_state_root,
-            transactions_root,
-            network,
-            height,
+        let round = block.round() + 1;
+        let coinbase_target = u64::MAX;
+        let proof_target = u64::MAX;
+
+        // Construct the certificate.
+        let certificate = Metadata::new(
+            N::ID,
             round,
+            block.height() + 1,
             coinbase_target,
             proof_target,
-            timestamp,
+            OffsetDateTime::now_utc().unix_timestamp(),
         )?;
 
+        // Construct the header.
+        let header = Header::from(*state_root, transactions.to_root()?, certificate)?;
+
         // Construct the new block.
-        let block = Block::from(latest_block_hash, header, transactions)?;
+        let block = Block::new(private_key, block.hash(), header, transactions, rng)?;
 
         // TODO (raychu86): Ensure the block is valid.
         // // Ensure the block itself is valid.
@@ -152,25 +208,15 @@ impl<
         Ok(block)
     }
 
-    /// Adds the given block as the next block in the chain.
-    pub fn add_next(&mut self, block: &Block<N>) -> Result<()> {
+    /// Checks the given block is valid next block.
+    pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
         // TODO (raychu86): Add deployed programs to the ledger.
 
-        // TODO (raychu86): Validate the block using a valid VM.
+        // // TODO (raychu86): Validate the block using a valid VM.
         // // Ensure the block itself is valid.
-        // if !block.is_valid(vm) {
-        //     bail!("The given block is invalid"));
+        // if !block.verify(vm) {
+        //     bail!("The given block is invalid")
         // }
-
-        // Ensure the next block height is correct.
-        if self.latest_height() != 0 && self.latest_height() + 1 != block.height() {
-            bail!("The given block has an incorrect block height")
-        }
-
-        // Ensure the block height does not already exist.
-        if self.contains_height(block.height())? {
-            bail!("Block height '{}' already exists in the ledger", block.height())
-        }
 
         // Ensure the previous block hash is correct.
         if self.current_hash != block.previous_hash() {
@@ -182,6 +228,22 @@ impl<
             bail!("Block hash '{}' already exists in the ledger", block.hash())
         }
 
+        // Ensure the next block height is correct.
+        if self.latest_height() != 0 && self.latest_height() + 1 != block.height() {
+            bail!("The given block has an incorrect block height")
+        }
+
+        // Ensure the block height does not already exist.
+        if self.contains_height(block.height())? {
+            bail!("Block height '{}' already exists in the ledger", block.height())
+        }
+
+        // TODO (raychu86): Ensure the next round number includes timeouts.
+        // Ensure the next round is correct.
+        if self.latest_round() != 0 && self.latest_round() + 1 /*+ block.number_of_aborts()*/ != block.round() {
+            bail!("The given block has an incorrect round number")
+        }
+
         // TODO (raychu86): Ensure the next block timestamp is the median of proposed blocks.
 
         // Ensure the next block timestamp is after the current block timestamp.
@@ -191,61 +253,89 @@ impl<
 
         // TODO (raychu86): Add proof and coinbase target verification.
 
-        for (_, transaction) in block.transactions().iter() {
+        for transaction_id in block.transaction_ids() {
             // Ensure the transaction in the block do not already exist.
-            if self.contains_transaction(transaction) {
-                bail!("Transaction '{transaction}' already exists in the ledger")
+            if self.contains_transaction_id(transaction_id) {
+                bail!("Transaction '{transaction_id}' already exists in the ledger")
             }
-            // TODO (raychu86): Ensure the transaction in the block references a valid past or current ledger root.
-            // if !self.contains_state_root(&transaction.state_root()) {
-            //     bail!(
-            //         "The given transaction references a non-existent state root {}",
-            //         &transaction.state_root()
-            //     ));
-            // }
         }
 
+        // TODO (raychu86): Ensure the transaction in the block references a valid past or current ledger root.
+        // if !self.contains_state_root(&transaction.state_root()) {
+        //     bail!(
+        //         "The given transaction references a non-existent state root {}",
+        //         &transaction.state_root()
+        //     ));
+        // }
+
         // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in block.transactions().transition_public_keys() {
+        for tpk in block.transition_public_keys() {
             if self.contains_transition_public_key(tpk) {
                 bail!("Transition public key '{tpk}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given serial numbers.
-        for serial_number in block.transactions().serial_numbers() {
+        for serial_number in block.serial_numbers() {
             if self.contains_serial_number(serial_number) {
                 bail!("Serial number '{serial_number}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given commitments.
-        for commitment in block.transactions().commitments() {
+        for commitment in block.commitments() {
             if self.contains_commitment(commitment) {
                 bail!("Commitment '{commitment}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given nonces.
-        for nonce in block.transactions().nonces() {
+        for nonce in block.nonces() {
             if self.contains_nonce(nonce) {
                 bail!("Nonce '{nonce}' already exists in the ledger")
             }
         }
 
+        let latest_height = self.latest_height();
+        let credits_program_id = ProgramID::from_str("credits.aleo")?;
+        let credits_genesis = Identifier::from_str("genesis")?;
+
+        for transition in block.transitions() {
+            if latest_height > 0 {
+                // Ensure the genesis function is not called.
+                if *transition.program_id() == credits_program_id && *transition.function_name() == credits_genesis {
+                    bail!("The genesis function cannot be called.")
+                }
+                // Ensure the transition fee is not negative.
+                if *transition.fee() < 0i64 {
+                    bail!("The transition fee cannot be negative.")
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Adds the given block as the next block in the chain.
+    pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
+        // Ensure the given block is a valid next block.
+        self.check_next_block(block)?;
+
+        /* ATOMIC CODE SECTION */
+
         // Add the block to the ledger. This code section executes atomically.
         {
-            /* ATOMIC CODE SECTION */
-
             let mut ledger = self.clone();
 
             // Update the blocks.
-            ledger.current_height = block.height();
             ledger.current_hash = block.hash();
+            ledger.current_height = block.height();
+            ledger.current_round = block.round();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
             ledger.previous_hashes.insert::<u32>(block.height(), block.previous_hash())?;
             ledger.headers.insert::<u32>(block.height(), *block.header())?;
             ledger.transactions.insert::<u32>(block.height(), block.transactions().clone())?;
+            ledger.signatures.insert::<u32>(block.height(), *block.signature())?;
 
             // Update the map of deployed programs.
             for (program_id, deployment) in block.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())) {
@@ -381,6 +471,7 @@ pub(crate) mod test_helpers {
         MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>,
         MemoryMap<u32, Header<CurrentNetwork>>,
         MemoryMap<u32, Transactions<CurrentNetwork>>,
+        MemoryMap<u32, Signature<CurrentNetwork>>,
         MemoryMap<ProgramID<CurrentNetwork>, Deployment<CurrentNetwork>>,
     >;
 }
@@ -389,6 +480,9 @@ pub(crate) mod test_helpers {
 mod tests {
     use super::*;
     use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_execution_transaction};
+    use console::network::Testnet3;
+
+    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_state_path() {
@@ -405,7 +499,12 @@ mod tests {
     }
 
     #[test]
-    fn test_new_blocks() {
+    fn test_next_block() {
+        let rng = &mut test_crypto_rng();
+
+        // Sample a private key.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
         // Initialize the ledger with the genesis block.
         let mut ledger = CurrentLedger::new().unwrap();
         // Retrieve the genesis block.
@@ -413,14 +512,17 @@ mod tests {
         assert_eq!(ledger.latest_height(), 0);
         assert_eq!(ledger.latest_hash(), genesis.hash());
 
-        // Construct a new block.
-        let new_transaction = sample_execution_transaction();
-        let transactions = Transactions::from(&[new_transaction]).unwrap();
+        // Add a transaction to the memory pool.
+        let transaction = sample_execution_transaction();
+        ledger.add_to_memory_pool(transaction).unwrap();
 
-        let new_block = ledger.propose_block(transactions).unwrap();
-        ledger.add_next(&new_block).unwrap();
+        // Propose the next block.
+        let next_block = ledger.propose_next_block(&private_key, rng).unwrap();
+
+        // Construct a next block.
+        ledger.add_next_block(&next_block).unwrap();
 
         assert_eq!(ledger.latest_height(), 1);
-        assert_eq!(ledger.latest_hash(), new_block.hash());
+        assert_eq!(ledger.latest_hash(), next_block.hash());
     }
 }

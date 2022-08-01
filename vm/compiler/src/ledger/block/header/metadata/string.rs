@@ -16,21 +16,25 @@
 
 use super::*;
 
-impl<A: Aleo> Record<A, Plaintext<A>> {
-    /// Returns the record commitment.
-    pub fn to_commitment(&self, program_id: &ProgramID<A>, record_name: &Identifier<A>) -> Field<A> {
-        // Construct the input as `(program_id || record_name || record)`.
-        let mut input = program_id.to_bits_le();
-        input.extend(record_name.to_bits_le());
-        input.extend(self.to_bits_le());
-        // Compute the BHP hash of the program record.
-        A::hash_bhp1024(&input)
+impl<N: Network> FromStr for Metadata<N> {
+    type Err = Error;
+
+    /// Initializes the metadata from a JSON-string.
+    fn from_str(metadata: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(metadata)?)
     }
 }
 
-impl<A: Aleo> Record<A, Ciphertext<A>> {
-    /// Returns the record commitment.
-    pub fn to_commitment(&self, _program_id: &ProgramID<A>, _record_name: &Identifier<A>) -> Field<A> {
-        A::halt("Illegal operation: Record::to_commitment() cannot be invoked on the `Ciphertext` variant.")
+impl<N: Network> Debug for Metadata<N> {
+    /// Prints the metadata as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Metadata<N> {
+    /// Displays the metadata as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }
 }

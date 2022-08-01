@@ -39,6 +39,8 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
             // Add the entry.
             data.insert(identifier, entry);
         }
+        // Read the nonce.
+        let nonce = Group::read_le(&mut reader)?;
 
         // Prepare the reserved entry names.
         let reserved = [
@@ -46,7 +48,7 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
             Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
         ];
         // Ensure the entries has no duplicate names.
-        if has_duplicates(data.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
+        if has_duplicates(data.keys().chain(reserved.iter())) {
             return Err(error("Duplicate entry type found in record"));
         }
         // Ensure the number of entries is within `N::MAX_DATA_ENTRIES`.
@@ -54,7 +56,7 @@ impl<N: Network, Private: Visibility> FromBytes for Record<N, Private> {
             return Err(error("Failed to parse record: too many entries"));
         }
 
-        Ok(Self { owner, gates, data })
+        Ok(Self { owner, gates, data, nonce })
     }
 }
 
@@ -78,7 +80,8 @@ impl<N: Network, Private: Visibility> ToBytes for Record<N, Private> {
             // Write the bytes.
             bytes.write_le(&mut writer)?;
         }
-        Ok(())
+        // Write the nonce.
+        self.nonce.write_le(&mut writer)
     }
 }
 
@@ -93,7 +96,7 @@ mod tests {
     fn test_bytes() -> Result<()> {
         // Construct a new record.
         let expected = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private }",
+            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }",
         )?;
 
         // Check the byte representation.

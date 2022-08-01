@@ -26,20 +26,48 @@ mod string;
 
 use crate::{
     ledger::{vm::VM, Transition},
-    process::{Deployment, Execution},
+    process::{Authorization, Deployment, Execution},
+    program::Program,
 };
 use console::{
+    account::PrivateKey,
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
+    program::{Identifier, Plaintext, ProgramID, Record, Value},
     types::{Field, Group},
 };
+
+/// An additional fee to be included in the transaction.
+pub type AdditionalFee<N> = Transition<N>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Transaction<N: Network> {
     /// The transaction deployment publishes an Aleo program to the network.
-    Deploy(N::TransactionID, Deployment<N>),
+    Deploy(N::TransactionID, Deployment<N>, AdditionalFee<N>),
     /// The transaction execution represents a call to an Aleo program.
-    Execute(N::TransactionID, Execution<N>),
+    Execute(N::TransactionID, Execution<N>, Option<AdditionalFee<N>>),
+}
+
+impl<N: Network> Transaction<N> {
+    /// Initializes a new deployment transaction.
+    pub fn from_deployment(deployment: Deployment<N>, additional_fee: AdditionalFee<N>) -> Result<Self> {
+        // Ensure the transaction is not empty.
+        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
+        // Compute the transaction ID.
+        let id = *Self::deployment_tree(&deployment, &additional_fee)?.root();
+        // Construct the deployment transaction.
+        Ok(Self::Deploy(id.into(), deployment, additional_fee))
+    }
+
+    /// Initializes a new execution transaction.
+    pub fn from_execution(execution: Execution<N>, additional_fee: Option<AdditionalFee<N>>) -> Result<Self> {
+        // Ensure the transaction is not empty.
+        ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
+        // Compute the transaction ID.
+        let id = *Self::execution_tree(&execution, &additional_fee)?.root();
+        // Construct the execution transaction.
+        Ok(Self::Execute(id.into(), execution, additional_fee))
+    }
 }
 
 impl<N: Network> Transaction<N> {
@@ -47,23 +75,68 @@ impl<N: Network> Transaction<N> {
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
     /// Initializes a new deployment transaction.
-    pub fn deploy(deployment: Deployment<N>) -> Result<Self> {
-        // Ensure the transaction is not empty.
-        ensure!(!deployment.program().functions().is_empty(), "Attempted to create an empty transaction deployment");
-        // Compute the transaction ID.
-        let id = *Self::deployment_tree(&deployment)?.root();
-        // Construct the deployment transaction.
-        Ok(Self::Deploy(id.into(), deployment))
+    pub fn deploy<R: Rng + CryptoRng>(
+        vm: &VM<N>,
+        private_key: &PrivateKey<N>,
+        program: &Program<N>,
+        (credits, additional_fee_in_gates): (Record<N, Plaintext<N>>, u64),
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Compute the deployment.
+        let deployment = vm.deploy(program, rng)?;
+        // Compute the additional fee.
+        let (_, additional_fee) = vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?;
+        // Initialize the transaction.
+        Self::from_deployment(deployment, additional_fee)
+    }
+
+    /// Initializes a new execution transaction from an authorization.
+    pub fn execute_authorization<R: Rng + CryptoRng>(
+        vm: &VM<N>,
+        authorization: Authorization<N>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Compute the execution.
+        let (_, execution) = vm.execute(authorization, rng)?;
+        // Initialize the transaction.
+        Self::from_execution(execution, None)
+    }
+
+    /// Initializes a new execution transaction from an authorization and additional fee.
+    pub fn execute_authorization_with_additional_fee<R: Rng + CryptoRng>(
+        vm: &VM<N>,
+        private_key: &PrivateKey<N>,
+        authorization: Authorization<N>,
+        additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Compute the execution.
+        let (_, execution) = vm.execute(authorization, rng)?;
+        // Compute the additional fee, if it is present.
+        let additional_fee = match additional_fee {
+            Some((credits, additional_fee_in_gates)) => {
+                Some(vm.execute_additional_fee(private_key, credits, additional_fee_in_gates, rng)?.1)
+            }
+            None => None,
+        };
+        // Initialize the transaction.
+        Self::from_execution(execution, additional_fee)
     }
 
     /// Initializes a new execution transaction.
-    pub fn execute(execution: Execution<N>) -> Result<Self> {
-        // Ensure the transaction is not empty.
-        ensure!(!execution.is_empty(), "Attempted to create an empty transaction execution");
-        // Compute the transaction ID.
-        let id = *Self::execution_tree(&execution)?.root();
-        // Construct the execution transaction.
-        Ok(Self::Execute(id.into(), execution))
+    pub fn execute<R: Rng + CryptoRng>(
+        vm: &VM<N>,
+        private_key: &PrivateKey<N>,
+        program_id: &ProgramID<N>,
+        function_name: Identifier<N>,
+        inputs: &[Value<N>],
+        additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Compute the authorization.
+        let authorization = vm.authorize(private_key, program_id, function_name, inputs, rng)?;
+        // Initialize the transaction.
+        Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, rng)
     }
 
     /// Returns `true` if the transaction is well-formed.
@@ -84,7 +157,7 @@ impl<N: Network> Transaction<N> {
         };
 
         match self {
-            Transaction::Deploy(_, deployment) => {
+            Transaction::Deploy(_, deployment, additional_fee) => {
                 // Check the deployment size.
                 if let Err(error) = Self::check_deployment_size(deployment) {
                     warn!("Invalid transaction (deployment): {error}");
@@ -92,15 +165,26 @@ impl<N: Network> Transaction<N> {
                 }
                 // Verify the deployment.
                 vm.verify_deployment(deployment)
+                    // Verify the additional fee.
+                    && vm.verify_additional_fee(additional_fee)
             }
-            Transaction::Execute(_, execution) => {
+            Transaction::Execute(_, execution, additional_fee) => {
                 // Check the deployment size.
                 if let Err(error) = Self::check_execution_size(execution) {
                     warn!("Invalid transaction (execution): {error}");
                     return false;
                 }
+
+                // Verify the additional fee, if it exists.
+                let check_additional_fee = match additional_fee {
+                    Some(additional_fee) => vm.verify_additional_fee(additional_fee),
+                    None => true,
+                };
+
                 // Verify the execution.
                 vm.verify_execution(execution)
+                    // Verify the additional fee.
+                    && check_additional_fee
             }
         }
     }
@@ -118,48 +202,35 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over all executed transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
-            Self::Deploy(..) => [].iter(),
-            Self::Execute(.., execution) => execution.iter(),
+            Self::Deploy(_, _, additional_fee) => [].iter().chain([Some(additional_fee)].into_iter().flatten()),
+            Self::Execute(_, execution, additional_fee) => {
+                execution.iter().chain([additional_fee.as_ref()].into_iter().flatten())
+            }
         }
     }
 
-    /// Returns an iterator over the transition IDs, for all executed transitions.
+    /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        match self {
-            Self::Deploy(..) => [].iter().map(Transition::id),
-            Self::Execute(.., execution) => execution.iter().map(Transition::id),
-        }
+        self.transitions().map(Transition::id)
     }
 
-    /// Returns an iterator over the transition public keys, for all executed transitions.
+    /// Returns an iterator over the transition public keys, for all transitions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        match self {
-            Self::Deploy(..) => [].iter().map(Transition::tpk),
-            Self::Execute(.., execution) => execution.iter().map(Transition::tpk),
-        }
+        self.transitions().map(Transition::tpk)
     }
 
-    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        match self {
-            Self::Deploy(..) => [].iter().flat_map(Transition::serial_numbers),
-            Self::Execute(.., execution) => execution.iter().flat_map(Transition::serial_numbers),
-        }
+        self.transitions().flat_map(Transition::serial_numbers)
     }
 
-    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
+    /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        match self {
-            Self::Deploy(..) => [].iter().flat_map(Transition::commitments),
-            Self::Execute(.., execution) => execution.iter().flat_map(Transition::commitments),
-        }
+        self.transitions().flat_map(Transition::commitments)
     }
 
-    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        match self {
-            Self::Deploy(..) => [].iter().flat_map(Transition::nonces),
-            Self::Execute(.., execution) => execution.iter().flat_map(Transition::nonces),
-        }
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+        self.transitions().flat_map(Transition::nonces)
     }
 }

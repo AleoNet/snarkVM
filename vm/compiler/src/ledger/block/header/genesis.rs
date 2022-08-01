@@ -22,24 +22,10 @@ impl<N: Network> Header<N> {
         // Prepare a genesis block header.
         let previous_state_root = Field::zero();
         let transactions_root = transactions.to_root()?;
-        let network = N::ID;
-        let height = 0;
-        let round = 0;
-        let coinbase_target = u64::MAX;
-        let proof_target = u64::MAX;
-        let timestamp = 0;
+        let metadata = Metadata::genesis()?;
 
         // Return the genesis block header.
-        Self::from(
-            previous_state_root,
-            transactions_root,
-            network,
-            height,
-            round,
-            coinbase_target,
-            proof_target,
-            timestamp,
-        )
+        Self::from(previous_state_root, transactions_root, metadata)
     }
 
     /// Returns `true` if the block header is a genesis block header.
@@ -48,18 +34,8 @@ impl<N: Network> Header<N> {
         self.previous_state_root == Field::zero()
             // Ensure the transactions root is nonzero.
             && self.transactions_root != Field::zero()
-            // Ensure the network ID is correct.
-            && self.metadata.network == N::ID
-            // Ensure the height in the genesis block is 0.
-            && self.metadata.height == 0u32
-            // Ensure the round in the genesis block is 0.
-            && self.metadata.round == 0u64
-            // Ensure the coinbase target in the genesis block is u64::MAX.
-            && self.metadata.coinbase_target == u64::MAX
-            // Ensure the proof target in the genesis block is u64::MAX.
-            && self.metadata.proof_target == u64::MAX
-            // Ensure the timestamp in the genesis block is 0.
-            && self.metadata.timestamp == 0i64
+            // Ensure the metadata is a genesis metadata.
+            && self.metadata.is_genesis()
     }
 }
 
@@ -77,8 +53,8 @@ mod tests {
         (Field::<N>::size_in_bytes() * 2)
             // Metadata size.
             + 2 + 4 + 8 + 8 + 8 + 8
-            // Add an additional 2 bytes for versioning.
-            + 2
+            // Add an additional 4 bytes for versioning.
+            + 2 + 2
     }
 
     #[test]

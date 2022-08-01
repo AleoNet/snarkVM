@@ -17,7 +17,7 @@
 use super::*;
 
 impl<N: Network> Parser for Record<N, Plaintext<N>> {
-    /// Parses a string as a record: `{ owner: address, gates: u64, identifier_0: entry_0, ..., identifier_n: entry_n }`.
+    /// Parses a string as a record: `{ owner: address, gates: u64, identifier_0: entry_0, ..., identifier_n: entry_n, _nonce: field }`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         /// Parses a sanitized pair: `identifier: entry`.
@@ -72,36 +72,50 @@ impl<N: Network> Parser for Record<N, Plaintext<N>> {
             map(pair(U64::parse, tag(".private")), |(gates, _)| Balance::Private(Plaintext::from(Literal::U64(gates)))),
         ))(string)?;
         // Parse the "," from the string.
-        let (string, has_entries) = opt(tag(","))(string)?;
+        let (string, _) = tag(",")(string)?;
 
         // Parse the entries.
-        let (string, entries) = if has_entries.is_some() {
-            map_res(separated_list0(tag(","), parse_pair), |entries: Vec<_>| {
-                // Prepare the reserved entry names.
-                let reserved = [
-                    Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
-                    Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
-                ];
-                // Ensure the entries has no duplicate names.
-                if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
-                    return Err(error("Duplicate entry type found in record"));
-                }
-                // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
-                match entries.len() <= N::MAX_DATA_ENTRIES {
-                    true => Ok(entries),
-                    false => Err(error(format!("Found a record that exceeds size ({})", entries.len()))),
-                }
-            })(string)?
-        } else {
-            (string, Vec::new())
+        let (string, entries) = map_res(separated_list0(tag(","), parse_pair), |entries: Vec<_>| {
+            // Prepare the reserved entry names.
+            let reserved = [
+                Identifier::from_str("owner").map_err(|e| error(e.to_string()))?,
+                Identifier::from_str("gates").map_err(|e| error(e.to_string()))?,
+            ];
+            // Ensure the entries has no duplicate names.
+            if has_duplicates(entries.iter().map(|(identifier, _)| identifier).chain(reserved.iter())) {
+                return Err(error("Duplicate entry type found in record"));
+            }
+            // Ensure the number of interfaces is within `N::MAX_DATA_ENTRIES`.
+            match entries.len() <= N::MAX_DATA_ENTRIES {
+                true => Ok(entries),
+                false => Err(error(format!("Found a record that exceeds size ({})", entries.len()))),
+            }
+        })(string)?;
+
+        // If there are entries, then parse the "," from the string.
+        let string = match !entries.is_empty() {
+            // Parse the "," from the string.
+            true => tag(",")(string)?.0,
+            false => string,
         };
+
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the "_nonce" tag from the string.
+        let (string, _) = tag("_nonce")(string)?;
+        // Parse the ":" from the string.
+        let (string, _) = tag(":")(string)?;
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the nonce from the string.
+        let (string, (nonce, _)) = pair(Group::parse, tag(".public"))(string)?;
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the '}' from the string.
         let (string, _) = tag("}")(string)?;
         // Output the record.
-        Ok((string, Record { owner, gates, data: IndexMap::from_iter(entries.into_iter()) }))
+        Ok((string, Record { owner, gates, data: IndexMap::from_iter(entries.into_iter()), nonce }))
     }
 }
 
@@ -147,14 +161,9 @@ impl<N: Network> Record<N, Plaintext<N>> {
         // Print the owner with a comma.
         write!(f, "\n{:indent$}owner: {},", "", self.owner, indent = (depth + 1) * INDENT)?;
         // Print the gates with a comma.
-        match self.data.is_empty() {
-            // If the record data is empty, print the gates without a comma.
-            true => write!(f, "\n{:indent$}gates: {}", "", self.gates, indent = (depth + 1) * INDENT)?,
-            // If the record data is not empty, print the gates with a comma.
-            false => write!(f, "\n{:indent$}gates: {},", "", self.gates, indent = (depth + 1) * INDENT)?,
-        }
-        // Print the data without a comma.
-        for (i, (identifier, entry)) in self.data.iter().enumerate() {
+        write!(f, "\n{:indent$}gates: {},", "", self.gates, indent = (depth + 1) * INDENT)?;
+        // Print the data with a comma.
+        for (identifier, entry) in self.data.iter() {
             // Print the identifier.
             write!(f, "\n{:indent$}{identifier}: ", "", indent = (depth + 1) * INDENT)?;
             // Print the entry.
@@ -168,11 +177,11 @@ impl<N: Network> Record<N, Plaintext<N>> {
                 | Entry::Public(Plaintext::Interface(..))
                 | Entry::Private(Plaintext::Interface(..)) => entry.fmt_internal(f, depth + 1)?,
             }
-            // Print the comma, if this is not the last entry.
-            if i != self.data.len() - 1 {
-                write!(f, ",")?;
-            }
+            // Print the comma.
+            write!(f, ",")?;
         }
+        // Print the nonce without a comma.
+        write!(f, "\n{:indent$}_nonce: {}.public", "", self.nonce, indent = (depth + 1) * INDENT)?;
         // Print the closing brace.
         write!(f, "\n{:indent$}}}", "", indent = depth * INDENT)
     }
@@ -190,10 +199,10 @@ mod tests {
         // Sanity check.
         let expected = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private,
-  gates: 99u64.public
+  gates: 99u64.public,
+  _nonce: 0group.public
 }";
-        let given =
-            "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 99u64.public }";
+        let given = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 99u64.public, _nonce: 0group.public }";
         let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(given)?;
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
@@ -206,9 +215,10 @@ mod tests {
         let expected = r"{
   owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public,
   gates: 99u64.private,
-  foo: 5u8.constant
+  foo: 5u8.constant,
+  _nonce: 0group.public
 }";
-        let given = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, gates: 99u64.private, foo: 5u8.constant }";
+        let given = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, gates: 99u64.private, foo: 5u8.constant, _nonce: 0group.public }";
         let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(given)?;
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
         assert_eq!(expected, candidate.to_string());
@@ -236,7 +246,8 @@ mod tests {
   },
   xyzzy: {
     thud: 12u8.public
-  }
+  },
+  _nonce: 2293253577170800572742339369209137467208538700597121244293392265726446806023group.public
 }";
         let (remainder, candidate) = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::parse(expected)?;
         println!("\nExpected: {expected}\n\nFound: {candidate}\n");
@@ -249,7 +260,11 @@ mod tests {
     #[test]
     fn test_parse_fails() -> Result<()> {
         // Missing owner.
-        let expected = "{ gates: 99u64.private, foo: 5u8.private }";
+        let expected = "{ gates: 99u64.private, foo: 5u8.private, _nonce: 0group.public }";
+        assert!(Plaintext::<CurrentNetwork>::parse(expected).is_err());
+
+        // Missing nonce.
+        let expected = "{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public, gates: 99u64.private, foo: 5u8.private }";
         assert!(Plaintext::<CurrentNetwork>::parse(expected).is_err());
 
         Ok(())

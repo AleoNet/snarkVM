@@ -27,7 +27,11 @@ impl<N: Network> Stack<N> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
+        // Ensure the call stack is not `Evaluate`.
+        ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
+
         // Ensure the number of inputs matches the number of input statements.
         if closure.inputs().len() != inputs.len() {
             bail!("Expected {} inputs, found {}", closure.inputs().len(), inputs.len())
@@ -38,6 +42,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition view key, as a circuit.
+        registers.set_tvk_circuit(tvk);
 
         // Store the inputs.
         closure.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
@@ -85,14 +91,15 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn execute_function<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        call_stack: CallStack<N>,
+        mut call_stack: CallStack<N>,
         rng: &mut R,
     ) -> Result<Response<N>> {
+        // Ensure the call stack is not `Evaluate`.
+        ensure!(!matches!(call_stack, CallStack::Evaluate(..)), "Illegal operation: cannot evaluate in execute mode");
+
         // Ensure the circuit environment is clean.
         A::reset();
 
-        // Clone the call stack.
-        let mut call_stack = call_stack;
         // Retrieve the next request.
         let console_request = call_stack.pop()?;
 
@@ -104,8 +111,6 @@ impl<N: Network> Stack<N> {
             console_request.network_id()
         );
 
-        // Retrieve the program ID.
-        let program_id = *console_request.program_id();
         // Retrieve the function from the program.
         let function = self.program.get_function(console_request.function_name())?;
         // Retrieve the number of inputs.
@@ -114,15 +119,19 @@ impl<N: Network> Stack<N> {
         if num_inputs != console_request.inputs().len() {
             bail!("Expected {num_inputs} inputs, found {}", console_request.inputs().len())
         }
+        // Retrieve the input types.
+        let input_types = function.input_types();
+        // Retrieve the output types.
+        let output_types = function.output_types();
 
         // Ensure the inputs match their expected types.
-        console_request.inputs().iter().zip_eq(&function.input_types()).try_for_each(|(input, input_type)| {
+        console_request.inputs().iter().zip_eq(&input_types).try_for_each(|(input, input_type)| {
             // Ensure the input matches the input type in the function.
             self.matches_value_type(input, input_type)
         })?;
 
         // Ensure the request is well-formed.
-        ensure!(console_request.verify(&function.input_types()), "Request is invalid");
+        ensure!(console_request.verify(&input_types), "Request is invalid");
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(function.name())?.clone());
@@ -134,7 +143,12 @@ impl<N: Network> Stack<N> {
         // Inject the request as `Mode::Private`.
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
-        A::assert(request.verify(&function.input_types(), &tpk));
+        A::assert(request.verify(&input_types, &tpk));
+
+        // Set the transition view key.
+        registers.set_tvk(*console_request.tvk());
+        // Set the transition view key, as a circuit.
+        registers.set_tvk_circuit(request.tvk().clone());
 
         #[cfg(debug_assertions)]
         Self::log_circuit::<A, _>("Request");
@@ -179,10 +193,10 @@ impl<N: Network> Stack<N> {
         }
 
         // Load the outputs.
-        let outputs = function
-            .outputs()
+        let output_registers = &function.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
+        let outputs = output_registers
             .iter()
-            .map(|output| registers.load_circuit(self, &Operand::Register(output.register().clone())))
+            .map(|register| registers.load_circuit(self, &Operand::Register(register.clone())))
             .collect::<Result<Vec<_>>>()?;
 
         #[cfg(debug_assertions)]
@@ -200,7 +214,8 @@ impl<N: Network> Stack<N> {
             num_inputs,
             request.tvk(),
             outputs,
-            &function.output_types(),
+            &output_types,
+            output_registers,
         );
 
         #[cfg(debug_assertions)]
@@ -249,7 +264,7 @@ impl<N: Network> Stack<N> {
         }
 
         // If the program and function is not a coinbase function, then ensure the i64 gates is positive.
-        if !Program::is_coinbase(&program_id, function.name()) {
+        if !Program::is_coinbase(self.program.id(), function.name()) {
             use circuit::MSB;
 
             // Ensure the i64 gates MSB is false.
@@ -280,15 +295,21 @@ impl<N: Network> Stack<N> {
         let response = response.eject_value();
 
         // Ensure the outputs matches the expected value types.
-        response.outputs().iter().zip_eq(&function.output_types()).try_for_each(|(output, output_type)| {
+        response.outputs().iter().zip_eq(&output_types).try_for_each(|(output, output_type)| {
             // Ensure the output matches its expected type.
             self.matches_value_type(output, output_type)
         })?;
 
         // If the circuit is in `Execute` mode, then ensure the circuit is satisfied.
         if let CallStack::Execute(..) = registers.call_stack() {
-            // If the circuit is not satisfied, then throw an error.
-            ensure!(A::is_satisfied(), "'{program_id}/{}' is not satisfied on the given inputs.", function.name());
+            // If the circuit is empty or not satisfied, then throw an error.
+            ensure!(
+                A::num_constraints() > 0 && A::is_satisfied(),
+                "'{}/{}' is not satisfied on the given inputs ({} constraints).",
+                self.program.id(),
+                function.name(),
+                A::num_constraints()
+            );
         }
 
         // Eject the circuit assignment and reset the circuit.
@@ -299,9 +320,9 @@ impl<N: Network> Stack<N> {
             || matches!(registers.call_stack(), CallStack::Execute(..))
         {
             // If the proving key does not exist, then synthesize it.
-            if !self.circuit_keys.contains_proving_key(&program_id, function.name()) {
+            if !self.contains_proving_key(function.name()) {
                 // Add the circuit key to the mapping.
-                self.circuit_keys.insert_from_assignment(&program_id, function.name(), &assignment)?;
+                self.synthesize_from_assignment(function.name(), &assignment)?;
             }
         }
 
@@ -312,15 +333,15 @@ impl<N: Network> Stack<N> {
         }
         // If the circuit is in `Execute` mode, then execute the circuit into a transition.
         else if let CallStack::Execute(_, ref execution) = registers.call_stack() {
-            // #[cfg(debug_assertions)]
             registers.ensure_console_and_circuit_registers_match()?;
 
             // Retrieve the proving key.
-            let proving_key = self.circuit_keys.get_proving_key(&program_id, function.name())?;
+            let proving_key = self.get_proving_key(function.name())?;
             // Execute the circuit.
             let proof = proving_key.prove(function.name(), &assignment, rng)?;
             // Construct the transition.
-            let transition = Transition::from(&console_request, &response, &function.output_types(), proof, *fee)?;
+            let transition =
+                Transition::from(&console_request, &response, &output_types, output_registers, proof, *fee)?;
             // Add the transition to the execution.
             execution.write().push(transition);
         }
@@ -330,6 +351,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Prints the current state of the circuit.
+    #[cfg(debug_assertions)]
     fn log_circuit<A: circuit::Aleo<Network = N>, S: Into<String>>(scope: S) {
         use colored::Colorize;
 

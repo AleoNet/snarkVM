@@ -26,12 +26,11 @@ mod serialize;
 mod string;
 
 use crate::{
-    ledger::{vm::VM, Transition},
+    ledger::{vm::VM, Transaction, Transition},
     process::{Deployment, Execution},
-    Program,
 };
 use console::{
-    account::{Address, PrivateKey},
+    account::{Address, PrivateKey, Signature},
     network::prelude::*,
     program::Value,
     types::{Field, Group},
@@ -43,22 +42,54 @@ pub struct Block<N: Network> {
     block_hash: N::BlockHash,
     /// The hash of the previous block.
     previous_hash: N::BlockHash,
-    /// The header of the block.
+    /// The header of this block.
     header: Header<N>,
-    /// The transactions in the block.
+    /// The transactions in this block.
     transactions: Transactions<N>,
+    /// The signature for this block.
+    signature: Signature<N>,
 }
 
 impl<N: Network> Block<N> {
     /// Initializes a new block from a given previous hash, header, and transactions list.
-    pub fn from(previous_hash: N::BlockHash, header: Header<N>, transactions: Transactions<N>) -> Result<Self> {
+    pub fn new<R: Rng + CryptoRng>(
+        private_key: &PrivateKey<N>,
+        previous_hash: N::BlockHash,
+        header: Header<N>,
+        transactions: Transactions<N>,
+        rng: &mut R,
+    ) -> Result<Self> {
         // Ensure the block is not empty.
         ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
         // Compute the block hash.
-        let block_hash =
-            N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?.into();
+        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        // Sign the block hash.
+        let signature = private_key.sign(&[block_hash], rng)?;
+        // Derive the signer address.
+        let address = Address::try_from(private_key)?;
+        // Ensure the signature is valid.
+        ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
         // Construct the block.
-        Ok(Self { block_hash, previous_hash, header, transactions })
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature })
+    }
+
+    /// Initializes a new block from a given previous hash, header, and transactions list.
+    pub fn from(
+        previous_hash: N::BlockHash,
+        header: Header<N>,
+        transactions: Transactions<N>,
+        signature: Signature<N>,
+    ) -> Result<Self> {
+        // Ensure the block is not empty.
+        ensure!(!transactions.is_empty(), "Cannot create block with no transactions");
+        // Compute the block hash.
+        let block_hash = N::hash_bhp1024(&[previous_hash.to_bits_le(), header.to_root()?.to_bits_le()].concat())?;
+        // Derive the signer address.
+        let address = signature.to_address();
+        // Ensure the signature is valid.
+        ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
+        // Construct the block.
+        Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature })
     }
 
     /// Returns `true` if the block is well-formed.
@@ -89,15 +120,29 @@ impl<N: Network> Block<N> {
             Ok(candidate_hash) => {
                 // Ensure the block hash matches the one in the block.
                 if candidate_hash != *self.block_hash {
-                    warn!("Block ({}) has an incorrect block hash.", self.block_hash);
+                    warn!("Block {} ({}) has an incorrect block hash.", self.height(), self.block_hash);
                     return false;
                 }
             }
             Err(error) => {
-                warn!("Unable to compute block hash for block ({}): {error}", self.block_hash);
+                warn!("Unable to compute block hash for block {} ({}): {error}", self.height(), self.block_hash);
                 return false;
             }
         };
+
+        // TODO (howardwu): TRIAL - Update this to the validator set.
+        // Ensure the block is signed by an authorized validator.
+        let signer = self.signature.to_address();
+        if signer.to_string() != "aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8" {
+            warn!("Block {} ({}) is signed by an unauthorized validator: {}", self.height(), self.block_hash, signer);
+            return false;
+        }
+
+        // Check the signature.
+        if !self.signature.verify(&signer, &[*self.block_hash]) {
+            warn!("Invalid signature for block {} ({})", self.height(), self.block_hash);
+            return false;
+        }
 
         // Compute the transactions root.
         match self.transactions.to_root() {
@@ -105,7 +150,8 @@ impl<N: Network> Block<N> {
             Ok(root) => {
                 if &root != self.header.transactions_root() {
                     warn!(
-                        "Block ({}) has an incorrect transactions root: expected {}",
+                        "Block {} ({}) has an incorrect transactions root: expected {}",
+                        self.height(),
                         self.block_hash,
                         self.header.transactions_root()
                     );
@@ -138,6 +184,11 @@ impl<N: Network> Block<N> {
     pub const fn previous_hash(&self) -> N::BlockHash {
         self.previous_hash
     }
+
+    /// Returns the signature.
+    pub const fn signature(&self) -> &Signature<N> {
+        &self.signature
+    }
 }
 
 impl<N: Network> Block<N> {
@@ -156,17 +207,22 @@ impl<N: Network> Block<N> {
         self.header.transactions_root()
     }
 
-    /// Returns the network ID of the block.
+    /// Returns the metadata in the block header.
+    pub const fn metadata(&self) -> &Metadata<N> {
+        self.header.metadata()
+    }
+
+    /// Returns the network ID of this block.
     pub const fn network(&self) -> u16 {
         self.header.network()
     }
 
-    /// Returns the height of the block.
+    /// Returns the height of this block.
     pub const fn height(&self) -> u32 {
         self.header.height()
     }
 
-    /// Returns the round number of the block.
+    /// Returns the round number of this block.
     pub const fn round(&self) -> u64 {
         self.header.round()
     }
@@ -188,7 +244,7 @@ impl<N: Network> Block<N> {
 }
 
 impl<N: Network> Block<N> {
-    /// Returns the transactions in the block.
+    /// Returns the transactions in this block.
     pub const fn transactions(&self) -> &Transactions<N> {
         &self.transactions
     }
@@ -234,7 +290,7 @@ impl<N: Network> Block<N> {
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.nonces()
     }
 }

@@ -17,40 +17,6 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
-    /// Deploys the program with the given program ID, as a deployment.
-    #[inline]
-    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Deployment<N>> {
-        // Ensure the program contains functions.
-        ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
-
-        // Initialize a mapping for the bundle.
-        let mut bundle = IndexMap::with_capacity(self.program.functions().len());
-
-        for function_name in self.program.functions().keys() {
-            // If the proving and verifying key do not exist, synthesize it.
-            if !self.circuit_keys.contains_proving_key(self.program.id(), function_name)
-                || !self.circuit_keys.contains_verifying_key(self.program.id(), function_name)
-            {
-                // Synthesize the proving and verifying key.
-                self.synthesize_key::<A, R>(function_name, rng)?;
-            }
-
-            // Retrieve the proving key.
-            let proving_key = self.get_proving_key(function_name)?;
-            // Retrieve the verifying key.
-            let verifying_key = self.get_verifying_key(function_name)?;
-
-            // Certify the circuit.
-            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
-
-            // Add the verifying key and certificate to the bundle.
-            bundle.insert(*function_name, (verifying_key, certificate));
-        }
-
-        // Return the deployment.
-        Ok(Deployment::new(N::EDITION, self.program.clone(), bundle))
-    }
-
     /// Checks each function in the program on the given verifying key and certificate.
     #[inline]
     pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(

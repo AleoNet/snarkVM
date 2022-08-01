@@ -23,9 +23,7 @@ use crate::{
     Authorization,
     CallOperator,
     Certificate,
-    CircuitKeys,
     Closure,
-    Deployment,
     Execution,
     Function,
     Instruction,
@@ -37,6 +35,7 @@ use crate::{
     RegisterTypes,
     Registers,
     Transition,
+    UniversalSRS,
     VerifyingKey,
 };
 use console::{
@@ -61,8 +60,8 @@ use console::{
         Response,
         Value,
         ValueType,
-        U64,
     },
+    types::{Field, Group, U64},
 };
 
 use indexmap::IndexMap;
@@ -76,18 +75,51 @@ pub enum CallStack<N: Network> {
     Authorize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     Synthesize(Vec<Request<N>>, PrivateKey<N>, Authorization<N>),
     CheckDeployment(Vec<Request<N>>, PrivateKey<N>, Assignments<N>),
-    Evaluate,
+    Evaluate(Authorization<N>),
     Execute(Authorization<N>, Arc<RwLock<Execution<N>>>),
 }
 
 impl<N: Network> CallStack<N> {
+    /// Initializes a call stack as `Evaluate`.
+    pub fn evaluate(authorization: Authorization<N>) -> Result<Self> {
+        Ok(CallStack::Evaluate(authorization))
+    }
+
+    /// Initializes a call stack as `Execute`.
+    pub fn execute(authorization: Authorization<N>, execution: Arc<RwLock<Execution<N>>>) -> Result<Self> {
+        Ok(CallStack::Execute(authorization, execution))
+    }
+}
+
+impl<N: Network> CallStack<N> {
+    /// Returns a new and independent replica of the call stack.
+    pub fn replicate(&self) -> Self {
+        match self {
+            CallStack::Authorize(requests, private_key, authorization) => {
+                CallStack::Authorize(requests.clone(), *private_key, authorization.replicate())
+            }
+            CallStack::Synthesize(requests, private_key, authorization) => {
+                CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
+            }
+            CallStack::CheckDeployment(requests, private_key, assignments) => CallStack::CheckDeployment(
+                requests.clone(),
+                *private_key,
+                Arc::new(RwLock::new(assignments.read().clone())),
+            ),
+            CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),
+            CallStack::Execute(authorization, execution) => {
+                CallStack::Execute(authorization.replicate(), Arc::new(RwLock::new(execution.read().clone())))
+            }
+        }
+    }
+
     /// Pushes the request to the stack.
     pub fn push(&mut self, request: Request<N>) -> Result<()> {
         match self {
             CallStack::Authorize(requests, ..) => requests.push(request),
             CallStack::Synthesize(requests, ..) => requests.push(request),
             CallStack::CheckDeployment(requests, ..) => requests.push(request),
-            CallStack::Evaluate => (),
+            CallStack::Evaluate(authorization) => authorization.push(request),
             CallStack::Execute(authorization, ..) => authorization.push(request),
         }
         Ok(())
@@ -101,8 +133,21 @@ impl<N: Network> CallStack<N> {
             | CallStack::CheckDeployment(requests, ..) => {
                 requests.pop().ok_or_else(|| anyhow!("No more requests on the stack"))
             }
-            CallStack::Evaluate => bail!("No requests on the stack when in `evaluate` mode"),
+            CallStack::Evaluate(authorization) => authorization.next(),
             CallStack::Execute(authorization, ..) => authorization.next(),
+        }
+    }
+
+    /// Peeks at the next request from the stack.
+    pub fn peek(&mut self) -> Result<Request<N>> {
+        match self {
+            CallStack::Authorize(requests, ..)
+            | CallStack::Synthesize(requests, ..)
+            | CallStack::CheckDeployment(requests, ..) => {
+                requests.last().cloned().ok_or_else(|| anyhow!("No more requests on the stack"))
+            }
+            CallStack::Evaluate(authorization) => authorization.peek_next(),
+            CallStack::Execute(authorization, ..) => authorization.peek_next(),
         }
     }
 }
@@ -115,16 +160,22 @@ pub struct Stack<N: Network> {
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
     program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
-    /// The mapping of `(program ID, function name)` to `(proving_key, verifying_key)`.
-    circuit_keys: CircuitKeys<N>,
+    /// The universal SRS.
+    universal_srs: Arc<UniversalSRS<N>>,
+    /// The mapping of function name to proving key.
+    proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
+    /// The mapping of function name to verifying key.
+    verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
 }
 
 impl<N: Network> Stack<N> {
-    /// Initializes a new stack, given the program and register types.
+    /// Initializes a new stack, if it does not already exist, given the process and the program.
     #[inline]
     pub fn new(process: &Process<N>, program: &Program<N>) -> Result<Self> {
         // Retrieve the program ID.
         let program_id = program.id();
+        // Ensure the program does not already exist in the process.
+        ensure!(!process.contains_program(program_id), "Program '{program_id}' already exists");
         // Ensure the program network-level domain (NLD) is correct.
         ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
@@ -133,36 +184,33 @@ impl<N: Network> Stack<N> {
         // Construct the stack for the program.
         let mut stack = Self {
             program: program.clone(),
-            external_stacks: IndexMap::new(),
-            program_types: IndexMap::new(),
-            circuit_keys: process.circuit_keys().clone(),
+            external_stacks: Default::default(),
+            program_types: Default::default(),
+            universal_srs: process.universal_srs().clone(),
+            proving_keys: Default::default(),
+            verifying_keys: Default::default(),
         };
 
         // Add all of the imports into the stack.
         for import in program.imports().keys() {
             // Ensure the program imports all exist in the process already.
-            ensure!(
-                process.contains_program(import),
-                "Cannot add program '{program_id}' because its import '{import}' must be added first"
-            );
+            if !process.contains_program(import) {
+                bail!("Cannot add program '{program_id}' because its import '{import}' must be added first")
+            }
             // Retrieve the external stack for the import program ID.
             let external_stack = process.get_stack(import)?;
             // Add the external stack to the stack.
-            stack.add_external_stack(external_stack.clone())?;
+            stack.insert_external_stack(external_stack.clone())?;
         }
         // Add the program closures to the stack.
         for closure in program.closures().values() {
-            // Compute the register types.
-            let register_types = stack.process_closure(closure)?;
-            // Add the register types to the stack.
-            stack.add_closure_types(closure.name(), register_types)?;
+            // Add the closure to the stack.
+            stack.insert_closure(closure)?;
         }
         // Add the program functions to the stack.
         for function in program.functions().values() {
-            // Compute the register types.
-            let register_types = stack.process_function(function)?;
-            // Add the register types to the stack.
-            stack.add_function_types(function.name(), register_types)?;
+            // Add the function to the stack.
+            stack.insert_function(function)?;
         }
         // Return the stack.
         Ok(stack)
@@ -219,6 +267,7 @@ impl<N: Network> Stack<N> {
     }
 
     /// Returns the function with the given function name.
+    #[inline]
     pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
         self.program.get_function(function_name)
     }
@@ -226,11 +275,9 @@ impl<N: Network> Stack<N> {
     /// Returns the expected number of calls for the given function name.
     #[inline]
     pub fn get_number_of_calls(&self, function_name: &Identifier<N>) -> Result<usize> {
-        // Retrieve the function.
-        let function = self.get_function(function_name)?;
         // Determine the number of calls for this function (including the function itself).
         let mut num_calls = 1;
-        for instruction in function.instructions() {
+        for instruction in self.get_function(function_name)?.instructions() {
             if let Instruction::Call(call) = instruction {
                 // Determine if this is a function call.
                 if call.is_function_call(self)? {
@@ -254,18 +301,60 @@ impl<N: Network> Stack<N> {
         self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
     }
 
+    /// Returns `true` if the proving key for the given function name exists.
+    #[inline]
+    pub fn contains_proving_key(&self, function_name: &Identifier<N>) -> bool {
+        self.proving_keys.read().contains_key(function_name)
+    }
+
+    /// Returns `true` if the verifying key for the given function name exists.
+    #[inline]
+    pub fn contains_verifying_key(&self, function_name: &Identifier<N>) -> bool {
+        self.verifying_keys.read().contains_key(function_name)
+    }
+
     /// Returns the proving key for the given function name.
     #[inline]
     pub fn get_proving_key(&self, function_name: &Identifier<N>) -> Result<ProvingKey<N>> {
         // Return the proving key, if it exists.
-        self.circuit_keys.get_proving_key(self.program_id(), function_name)
+        match self.proving_keys.read().get(function_name) {
+            Some(proving_key) => Ok(proving_key.clone()),
+            None => bail!("Proving key not found for: {}/{function_name}", self.program.id()),
+        }
     }
 
     /// Returns the verifying key for the given function name.
     #[inline]
     pub fn get_verifying_key(&self, function_name: &Identifier<N>) -> Result<VerifyingKey<N>> {
         // Return the verifying key, if it exists.
-        self.circuit_keys.get_verifying_key(self.program_id(), function_name)
+        match self.verifying_keys.read().get(function_name) {
+            Some(verifying_key) => Ok(verifying_key.clone()),
+            None => bail!("Verifying key not found for: {}/{function_name}", self.program.id()),
+        }
+    }
+
+    /// Inserts the given proving key for the given function name.
+    #[inline]
+    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) {
+        self.proving_keys.write().insert(*function_name, proving_key);
+    }
+
+    /// Inserts the given verifying key for the given function name.
+    #[inline]
+    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) {
+        self.verifying_keys.write().insert(*function_name, verifying_key);
+    }
+
+    /// Removes the proving key for the given function name.
+    #[inline]
+    pub fn remove_proving_key(&self, function_name: &Identifier<N>) {
+        self.proving_keys.write().remove(function_name);
+    }
+
+    /// Removes the verifying key for the given function name.
+    #[inline]
+    pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
+        self.verifying_keys.write().remove(function_name);
     }
 }
 

@@ -32,6 +32,7 @@ use console::{
         Value,
         ValueType,
     },
+    types::Field,
 };
 
 use indexmap::IndexMap;
@@ -179,8 +180,15 @@ impl<N: Network> Cast<N> {
                     };
                 }
 
+                // Prepare the index as a field element.
+                let index = Field::from_u64(self.destination.locator());
+                // Compute the randomizer as `HashToScalar(tvk || index)`.
+                let randomizer = N::hash_to_scalar_psd2(&[registers.tvk()?, index])?;
+                // Compute the nonce from the randomizer.
+                let nonce = N::g_scalar_multiply(&randomizer);
+
                 // Construct the record.
-                let record = Record::from_plaintext(owner, gates, entries)?;
+                let record = Record::<N, Plaintext<N>>::from_plaintext(owner, gates, entries, nonce)?;
                 // Store the record.
                 registers.store(stack, &self.destination, Value::Record(record))
             }
@@ -315,8 +323,15 @@ impl<N: Network> Cast<N> {
                     };
                 }
 
+                // Prepare the index as a constant field element.
+                let index = circuit::Field::constant(Field::from_u64(self.destination.locator()));
+                // Compute the randomizer as `HashToScalar(tvk || index)`.
+                let randomizer = A::hash_to_scalar_psd2(&[registers.tvk_circuit()?, index]);
+                // Compute the nonce from the randomizer.
+                let nonce = A::g_scalar_multiply(&randomizer);
+
                 // Construct the record.
-                let record = circuit::program::Record::from_plaintext(owner, gates, entries)?;
+                let record = circuit::Record::<A, circuit::Plaintext<A>>::from_plaintext(owner, gates, entries, nonce)?;
                 // Store the record.
                 registers.store_circuit(stack, &self.destination, circuit::Value::Record(record))
             }

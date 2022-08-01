@@ -27,6 +27,8 @@ pub mod cli;
 pub mod file;
 pub mod package;
 
+pub use snarkvm_compiler as compiler;
+
 #[cfg(feature = "algorithms")]
 pub use snarkvm_algorithms as algorithms;
 #[cfg(feature = "circuit")]
@@ -45,8 +47,6 @@ pub use snarkvm_parameters as parameters;
 pub use snarkvm_r1cs as r1cs;
 #[cfg(feature = "utilities")]
 pub use snarkvm_utilities as utilities;
-
-pub use snarkvm_compiler as compiler;
 
 pub mod errors {
     #[cfg(feature = "algorithms")]
@@ -71,7 +71,7 @@ pub mod traits {
 }
 
 pub mod prelude {
-    pub use crate::{errors::*, traits::*};
+    pub use crate::{compiler::*, errors::*, traits::*};
 
     #[cfg(feature = "algorithms")]
     pub use crate::algorithms::prelude::*;

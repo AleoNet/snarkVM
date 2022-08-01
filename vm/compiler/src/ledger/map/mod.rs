@@ -65,7 +65,7 @@ pub trait MapReader<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&self, key: &Q) -> Result<Option<&V>>
+    fn get<Q>(&'a self, key: &Q) -> Result<Option<&V>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;

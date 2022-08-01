@@ -72,8 +72,8 @@ impl<N: Network> Signature<N> {
     }
 
     /// Returns the signer address.
-    pub fn signer(&self) -> Result<Address<N>> {
-        Address::try_from(self.compute_key)
+    pub fn to_address(&self) -> Address<N> {
+        self.compute_key.to_address()
     }
 }
 

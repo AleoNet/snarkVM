@@ -24,6 +24,11 @@ impl<N: Network> Stack<N> {
         function_name: &Identifier<N>,
         rng: &mut R,
     ) -> Result<()> {
+        // If the proving and verifying key already exist, skip the synthesis for this function.
+        if self.contains_proving_key(function_name) && self.contains_verifying_key(function_name) {
+            return Ok(());
+        }
+
         // Retrieve the program ID.
         let program_id = self.program.id();
         // Retrieve the function input types.
@@ -55,6 +60,32 @@ impl<N: Network> Stack<N> {
         let call_stack = CallStack::Synthesize(vec![request], burner_private_key, authorization);
         // Synthesize the circuit.
         let _response = self.execute_function::<A, R>(call_stack, rng)?;
+
+        // Ensure the proving key exists.
+        ensure!(self.contains_proving_key(function_name), "Function '{function_name}' is missing a proving key.");
+        // Ensure the verifying key exists.
+        ensure!(self.contains_verifying_key(function_name), "Function '{function_name}' is missing a verifying key.");
+        Ok(())
+    }
+
+    /// Synthesizes and stores the `(proving_key, verifying_key)` for the given function name and assignment.
+    #[inline]
+    pub fn synthesize_from_assignment(
+        &self,
+        function_name: &Identifier<N>,
+        assignment: &circuit::Assignment<N::Field>,
+    ) -> Result<()> {
+        // If the proving and verifying key already exist, skip the synthesis for this function.
+        if self.contains_proving_key(function_name) && self.contains_verifying_key(function_name) {
+            return Ok(());
+        }
+
+        // Synthesize the proving and verifying key.
+        let (proving_key, verifying_key) = self.universal_srs.to_circuit_key(function_name, assignment)?;
+        // Insert the proving key.
+        self.insert_proving_key(function_name, proving_key);
+        // Insert the verifying key.
+        self.insert_verifying_key(function_name, verifying_key);
         Ok(())
     }
 }

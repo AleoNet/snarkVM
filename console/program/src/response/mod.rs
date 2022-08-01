@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ProgramID, Value, ValueType};
+use crate::{ProgramID, Register, Value, ValueType};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -26,8 +26,8 @@ pub enum OutputID<N: Network> {
     Public(Field<N>),
     /// The ciphertext hash of the private output.
     Private(Field<N>),
-    /// The `(commitment, nonce, checksum)` tuple of the record output.
-    Record(Field<N>, Field<N>, Field<N>),
+    /// The `(commitment, checksum)` tuple of the record output.
+    Record(Field<N>, Field<N>),
     /// The commitment of the external record output.
     ExternalRecord(Field<N>),
 }
@@ -55,13 +55,15 @@ impl<N: Network> Response<N> {
         tvk: &Field<N>,
         outputs: Vec<Value<N>>,
         output_types: &[ValueType<N>],
+        output_registers: &[Register<N>],
     ) -> Result<Self> {
         // Compute the output IDs.
         let output_ids = outputs
             .iter()
             .zip_eq(output_types)
+            .zip_eq(output_registers)
             .enumerate()
-            .map(|(index, (output, output_type))| {
+            .map(|(index, ((output, output_type), output_register))| {
                 match output_type {
                     // For a constant output, compute the hash of the output.
                     ValueType::Constant(..) => {
@@ -109,15 +111,13 @@ impl<N: Network> Response<N> {
                             Value::Plaintext(..) => bail!("Expected a record output, found a plaintext output"),
                         };
 
+                        // Compute the record commitment.
+                        let commitment = record.to_commitment(program_id, record_name)?;
+
                         // Construct the (console) output index as a field element.
-                        let index = Field::from_u16((num_inputs + index) as u16);
+                        let index = Field::from_u64(output_register.locator());
                         // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
                         let randomizer = N::hash_to_scalar_psd2(&[*tvk, index])?;
-                        // Compute the record commitment.
-                        let commitment = record.to_commitment(program_id, record_name, &randomizer)?;
-
-                        // Compute the record nonce.
-                        let nonce = N::g_scalar_multiply(&randomizer).to_x_coordinate();
 
                         // Encrypt the record, using the randomizer.
                         let encrypted_record = record.encrypt(randomizer)?;
@@ -125,7 +125,7 @@ impl<N: Network> Response<N> {
                         let checksum = N::hash_bhp1024(&encrypted_record.to_bits_le())?;
 
                         // Return the output ID.
-                        Ok(OutputID::Record(commitment, nonce, checksum))
+                        Ok(OutputID::Record(commitment, checksum))
                     }
                     // For a locator output, compute the commitment (using `tvk`) of the output.
                     ValueType::ExternalRecord(..) => {

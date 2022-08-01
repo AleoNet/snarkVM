@@ -16,35 +16,44 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Transactions<N> {
-    /// Reads the transactions from buffer.
+impl<N: Network> FromBytes for Metadata<N> {
+    /// Reads the metadata from the buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the version.
         let version = u16::read_le(&mut reader)?;
         // Ensure the version is valid.
         if version != 0 {
-            return Err(error("Invalid header version"));
+            return Err(error("Invalid metadata version"));
         }
-        // Read the number of transactions.
-        let num_txs: u32 = FromBytes::read_le(&mut reader)?;
-        // Read the transactions.
-        let transactions = (0..num_txs).map(|_| FromBytes::read_le(&mut reader)).collect::<Result<Vec<_>, _>>()?;
-        // Return the transactions.
-        Ok(Self::from(&transactions))
+
+        // Read from the buffer.
+        let network = u16::read_le(&mut reader)?;
+        let round = u64::read_le(&mut reader)?;
+        let height = u32::read_le(&mut reader)?;
+        let coinbase_target = u64::read_le(&mut reader)?;
+        let proof_target = u64::read_le(&mut reader)?;
+        let timestamp = i64::read_le(&mut reader)?;
+
+        // Construct the metadata.
+        Self::new(network, round, height, coinbase_target, proof_target, timestamp).map_err(|e| error(e.to_string()))
     }
 }
 
-impl<N: Network> ToBytes for Transactions<N> {
-    /// Writes the transactions to a buffer.
+impl<N: Network> ToBytes for Metadata<N> {
+    /// Writes the metadata to the buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the version.
         0u16.write_le(&mut writer)?;
-        // Write the number of transactions.
-        (self.transactions.len() as u32).write_le(&mut writer)?;
-        // Write the transactions.
-        self.transactions.values().try_for_each(|transaction| transaction.write_le(&mut writer))
+
+        // Write to the buffer.
+        self.network.write_le(&mut writer)?;
+        self.round.write_le(&mut writer)?;
+        self.height.write_le(&mut writer)?;
+        self.coinbase_target.write_le(&mut writer)?;
+        self.proof_target.write_le(&mut writer)?;
+        self.timestamp.write_le(&mut writer)
     }
 }
 
@@ -57,11 +66,11 @@ mod tests {
 
     #[test]
     fn test_bytes() -> Result<()> {
-        for expected in [crate::ledger::vm::test_helpers::sample_genesis_block().transactions().clone()].into_iter() {
+        for expected in [*crate::ledger::vm::test_helpers::sample_genesis_block().metadata()].into_iter() {
             // Check the byte representation.
             let expected_bytes = expected.to_bytes_le()?;
-            assert_eq!(expected, Transactions::read_le(&expected_bytes[..])?);
-            assert!(Transactions::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
+            assert_eq!(expected, Metadata::read_le(&expected_bytes[..])?);
+            assert!(Metadata::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
         Ok(())
     }

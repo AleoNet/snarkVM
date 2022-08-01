@@ -21,11 +21,12 @@ impl<N: Network> Serialize for Block<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut block = serializer.serialize_struct("Block", 4)?;
+                let mut block = serializer.serialize_struct("Block", 5)?;
                 block.serialize_field("block_hash", &self.block_hash)?;
                 block.serialize_field("previous_hash", &self.previous_hash)?;
                 block.serialize_field("header", &self.header)?;
                 block.serialize_field("transactions", &self.transactions)?;
+                block.serialize_field("signature", &self.signature)?;
                 block.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -47,6 +48,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
                     serde_json::from_value(block["previous_hash"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["header"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(block["transactions"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(block["signature"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?;
 
@@ -71,7 +73,6 @@ mod tests {
             // Serialize
             let expected_string = &expected.to_string();
             let candidate_string = serde_json::to_string(&expected)?;
-            assert_eq!(2824880, candidate_string.len(), "Update me if serialization has changed");
 
             // Deserialize
             assert_eq!(expected, Block::from_str(expected_string)?);
@@ -87,7 +88,6 @@ mod tests {
             let expected_bytes = expected.to_bytes_le()?;
             let expected_bytes_with_size_encoding = bincode::serialize(&expected)?;
             assert_eq!(&expected_bytes[..], &expected_bytes_with_size_encoding[8..]);
-            assert_eq!(1764683, expected_bytes.len(), "Update me if serialization has changed");
 
             // Deserialize
             assert_eq!(expected, Block::read_le(&expected_bytes[..])?);

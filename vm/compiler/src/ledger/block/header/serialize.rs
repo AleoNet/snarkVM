@@ -21,15 +21,10 @@ impl<N: Network> Serialize for Header<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut header = serializer.serialize_struct("BlockHeader", 8)?;
+                let mut header = serializer.serialize_struct("Header", 3)?;
                 header.serialize_field("previous_state_root", &self.previous_state_root)?;
                 header.serialize_field("transactions_root", &self.transactions_root)?;
-                header.serialize_field("network", &self.metadata.network)?;
-                header.serialize_field("height", &self.metadata.height)?;
-                header.serialize_field("round", &self.metadata.round)?;
-                header.serialize_field("coinbase_target", &self.metadata.coinbase_target)?;
-                header.serialize_field("proof_target", &self.metadata.proof_target)?;
-                header.serialize_field("timestamp", &self.metadata.timestamp)?;
+                header.serialize_field("metadata", &self.metadata)?;
                 header.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -46,12 +41,7 @@ impl<'de, N: Network> Deserialize<'de> for Header<N> {
                 Ok(Self::from(
                     serde_json::from_value(header["previous_state_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["transactions_root"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["network"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["height"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["round"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["coinbase_target"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["proof_target"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["timestamp"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)?)
             }

@@ -73,15 +73,22 @@ impl<A: Aleo> StatePath<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{state_path::circuit::StatePath as StatePathCircuit, test_helpers::CurrentLedger};
-    use circuit::{environment::Inject, network::AleoV0, Mode};
+    use crate::{
+        ledger::{state_path::circuit::StatePath as StatePathCircuit, test_helpers::CurrentLedger},
+        UniversalSRS,
+    };
+    use circuit::{
+        environment::{Circuit, Inject},
+        network::AleoV0,
+        Mode,
+    };
+    use console::{network::Testnet3, program::Identifier};
+    use snarkvm_utilities::rand::test_crypto_rng;
 
     type CurrentAleo = AleoV0;
+    type CurrentNetwork = Testnet3;
 
-    #[test]
-    fn test_state_path_verify() {
-        // Initialize a new ledger.
-        let ledger = CurrentLedger::new().unwrap();
+    fn construct_state_path_circuit(ledger: &CurrentLedger, mode: Mode) {
         // Retrieve the genesis block.
         let genesis = ledger.get_block(0).unwrap();
 
@@ -91,10 +98,71 @@ mod tests {
         let native_state_path = ledger.to_state_path(commitment).unwrap();
 
         // Construct the circuit state path
-        let circuit_state_path = StatePathCircuit::<CurrentAleo>::new(Mode::Public, native_state_path);
-        // Ensure the circuit state path is valid.
+        let circuit_state_path = StatePathCircuit::<CurrentAleo>::new(mode, native_state_path);
+
         let is_valid = circuit_state_path.verify();
         assert!(is_valid.eject_value());
         assert!(CurrentAleo::is_satisfied());
+    }
+
+    #[test]
+    fn test_state_path_verify() {
+        // Initialize a new ledger.
+        let ledger = CurrentLedger::new().unwrap();
+
+        construct_state_path_circuit(&ledger, Mode::Public);
+    }
+
+    fn test_state_path_verify_num_constraints(mode: Mode, batch_size: usize) {
+        let rng = &mut test_crypto_rng();
+
+        // Initialize a new ledger.
+        let ledger = CurrentLedger::new().unwrap();
+
+        // Construct the assignments.
+        let mut assignments = Vec::with_capacity(batch_size);
+        for _ in 0..batch_size {
+            construct_state_path_circuit(&ledger, mode);
+            let assignment = CurrentAleo::eject_assignment_and_reset();
+            Circuit::reset();
+
+            assignments.push(assignment);
+        }
+
+        // Construct the proving and verifying keys.
+        let universal_srs = UniversalSRS::<CurrentNetwork>::load().unwrap();
+        let function_name =
+            Identifier::<CurrentNetwork>::try_from(format!("state_paths_{batch_size}").as_str()).unwrap();
+        let (proving_key, verifying_key) = universal_srs.to_circuit_key(&function_name, &assignments[0]).unwrap();
+
+        // Generate the batch proof.
+        let batch_proof = proving_key.prove_batch(&function_name, &assignments, rng).unwrap();
+
+        // Verify the batch proof.
+        let one = <Circuit as Environment>::BaseField::one();
+        let batch_verify =
+            verifying_key.verify_batch(&function_name, vec![vec![one].as_slice(); batch_size].as_slice(), &batch_proof);
+
+        assert!(batch_verify);
+    }
+
+    #[test]
+    fn test_state_path_batch_1() {
+        test_state_path_verify_num_constraints(Mode::Private, 1);
+    }
+
+    #[test]
+    fn test_state_path_batch_2() {
+        test_state_path_verify_num_constraints(Mode::Private, 2);
+    }
+
+    #[test]
+    fn test_state_path_batch_4() {
+        test_state_path_verify_num_constraints(Mode::Private, 4);
+    }
+
+    #[test]
+    fn test_state_path_batch_8() {
+        test_state_path_verify_num_constraints(Mode::Private, 8);
     }
 }
