@@ -29,7 +29,7 @@ jobs:
     # - name: Run clippy
     #   run: cargo clippy  -- -D warnings
     - name: Coverage
-      run: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin
+      run: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin cargo tarpaulin -t 1800
     # - name: Upload coverage to codecov.io
     #   uses: codecov/codecov-action@v2
     #   with:
