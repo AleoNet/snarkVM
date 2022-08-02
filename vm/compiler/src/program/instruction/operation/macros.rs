@@ -760,7 +760,7 @@ mod tests {
                                 shift_exceeds_bitwidth |= ((*b as u32) >= $input_a::<CurrentNetwork>::size_in_bits() as u32);
                             };
                             ("ensure divide by zero halts") => {
-                                should_succeed &= (*b) != 0;
+                                should_succeed &= (*b) != *$input_b::<CurrentNetwork>::zero();
                                 // This indicator is later used in the for-loops below.
                                 is_division_operator |= true;
                             };
