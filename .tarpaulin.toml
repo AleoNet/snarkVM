@@ -1,0 +1,4 @@
+[cleopatra_cairo]
+[report]
+output-dir = "target/tarpaulin"
+out = ["Html", "Xml"]
