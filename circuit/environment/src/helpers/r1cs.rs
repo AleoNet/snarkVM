@@ -88,6 +88,14 @@ impl<F: PrimeField> R1CS<F> {
         self.counter.add_constraint(constraint);
     }
 
+    /// Adds one constraint enforcing that a row comprising of A, B and C exists
+    /// in the specified lookup table.
+    pub(crate) fn enforce_lookup(&mut self, constraint: Constraint<F>) {
+        self.gates += constraint.num_gates();
+        self.constraints.push(constraint.clone());
+        self.counter.add_constraint(constraint);
+    }
+
     /// Returns `true` if all constraints in the environment are satisfied.
     pub(crate) fn is_satisfied(&self) -> bool {
         self.constraints.iter().all(|constraint| constraint.is_satisfied())

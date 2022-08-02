@@ -25,3 +25,6 @@ pub use pedersen_compressed::*;
 
 pub mod poseidon;
 pub use poseidon::*;
+
+pub mod sinsemilla;
+pub use sinsemilla::*;

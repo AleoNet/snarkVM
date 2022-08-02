@@ -21,6 +21,11 @@ path = "../../fields"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-r1cs]
+path = "../../r1cs"
+version = "0.7.5"
+default-features = false
+
 [dev-dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"

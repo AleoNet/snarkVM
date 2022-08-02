@@ -14,23 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::LookupTable;
-use snarkvm_fields::Field;
-use std::collections::HashSet;
+use super::*;
 
-pub type ConstraintIndex = usize;
+impl<E: Lookup + Environment, const NUM_WINDOWS: u8> Hash for Sinsemilla<E, NUM_WINDOWS> {
+    type Input = Boolean<E>;
+    type Output = Field<E>;
 
-pub struct LookupConstraints<F: Field> {
-    pub table: LookupTable<F>,
-    pub indices: HashSet<ConstraintIndex>,
-}
-
-impl<F: Field> LookupConstraints<F> {
-    pub fn new(table: LookupTable<F>) -> Self {
-        Self { table, indices: HashSet::new() }
-    }
-
-    pub fn insert(&mut self, index: ConstraintIndex) -> bool {
-        self.indices.insert(index)
+    fn hash(&self, input: &[Self::Input]) -> Self::Output {
+        self.hash_uncompressed(input).to_x_coordinate()
     }
 }

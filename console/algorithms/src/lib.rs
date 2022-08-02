@@ -33,3 +33,6 @@ pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
 
 mod poseidon;
 pub use poseidon::{Poseidon, Poseidon2, Poseidon4, Poseidon8};
+
+mod sinsemilla;
+pub use sinsemilla::{Sinsemilla, Sinsemilla1024, Sinsemilla256, Sinsemilla512, Sinsemilla768, SINSEMILLA_WINDOW_SIZE};

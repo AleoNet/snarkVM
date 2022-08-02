@@ -31,3 +31,6 @@ pub use poseidon::*;
 
 pub mod traits;
 pub use traits::*;
+
+pub mod sinsemilla;
+pub use sinsemilla::*;

@@ -14,23 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::LookupTable;
-use snarkvm_fields::Field;
-use std::collections::HashSet;
-
-pub type ConstraintIndex = usize;
-
-pub struct LookupConstraints<F: Field> {
-    pub table: LookupTable<F>,
-    pub indices: HashSet<ConstraintIndex>,
-}
-
-impl<F: Field> LookupConstraints<F> {
-    pub fn new(table: LookupTable<F>) -> Self {
-        Self { table, indices: HashSet::new() }
-    }
-
-    pub fn insert(&mut self, index: ConstraintIndex) -> bool {
-        self.indices.insert(index)
-    }
+/// This is an error that could occur during circuit construction contexts.
+#[derive(Debug, Error)]
+pub enum EnvironmentError {
+    /// During synthesis, we attempted to lookup a variable without a lookup table
+    /// being present in the constraint system.
+    #[error("Lookup table missing")]
+    LookupTableMissing,
+    /// During synthesis, we attempted to lookup a variable without this variable
+    /// being present in the lookup table.
+    #[error("Lookup value missing")]
+    LookupValueMissing,
 }
