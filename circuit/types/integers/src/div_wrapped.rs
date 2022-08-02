@@ -61,18 +61,12 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     /// Divides `self` by `other`, via witnesses, returning the quotient and remainder.
-    /// Note that this method should only be used when 2 * I::BITS < E::BaseField::size_in_data_bits().
+    /// This method does not check that `other` is non-zero.
+    /// This method should only be used when 2 * I::BITS < E::BaseField::size_in_data_bits().
     pub(super) fn unsigned_division_via_witness(&self, other: &Self) -> (Self, Self) {
         // Eject the dividend and divisor, to compute the quotient as a witness.
         let dividend_value = self.eject_value();
-        // TODO (howardwu): This bandaid was added on June 19, 2022 to prevent a panic when the divisor is 0.
-        // let divisor_value = match other.eject_value().is_zero() {
-        //     true => match self.eject_value().is_zero() {
-        //         true => console::Integer::one(),
-        //         false => console::Integer::zero(),
-        //     },
-        //     false => other.eject_value(),
-        // };
+        // Note: This band-aid was added to prevent a panic when the divisor is 0.
         let divisor_value = match other.eject_value().is_zero() {
             true => console::Integer::one(),
             false => other.eject_value(),
