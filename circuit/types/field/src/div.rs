@@ -74,8 +74,9 @@ impl<E: Environment> DivAssign<&Self> for Field<E> {
 
                 // Construct the quotient as a witness.
                 let quotient = witness!(|self, other| {
-                    // Note: This is a band-aid to ensure that we do not take the inverse of zero.
-                    if other.is_zero() { self } else { self / other }
+                    // Note: This band-aid was added to prevent a panic when `other` is zero.
+                    let other = if other.is_zero() { console::Field::one() } else { other };
+                    self / other
                 });
 
                 // Ensure the quotient is correct by enforcing:
