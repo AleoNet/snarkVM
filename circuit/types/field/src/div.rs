@@ -63,6 +63,7 @@ impl<E: Environment> DivAssign<&Self> for Field<E> {
             true if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
             // If `other` is a constant and non-zero, we can perform the multiplication and inversion
             // without paying for any private variables or constraints.
+            // TODO: Can the case where self is constant and other is not constant be optimized in the same way?
             true => {
                 *self *= other.inverse();
             }
