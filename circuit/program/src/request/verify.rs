@@ -361,6 +361,7 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
+        // Note that these bounds are determined experimentally.
         check_verify(Mode::Constant, 41000, 0, 16064, 16153)
     }
 
