@@ -138,8 +138,33 @@ impl<
         programs: ProgramsMap,
     ) -> Result<Self> {
         // TODO (raychu86): Handle this in a more efficient manner.
+
+        let mut previous_hashes = previous_hashes;
+        let mut headers = headers;
+        let mut transactions = transactions;
+        let mut signatures = signatures;
+        let mut programs = programs;
+
         // Fetch the current round and height.
-        let current_header: Header<N> = *headers.values().last().ok_or_else(|| anyhow!("Missing headers"))?;
+        let current_header = match headers.values().last() {
+            Some(header) => *header,
+            None => {
+                // Inject the genesis block.
+                let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+
+                previous_hashes.insert(genesis.height(), genesis.previous_hash())?;
+                headers.insert(genesis.height(), *genesis.header())?;
+                transactions.insert(genesis.height(), genesis.transactions().clone())?;
+                signatures.insert(genesis.height(), *genesis.signature())?;
+
+                for (program_id, deploy) in genesis.deployments().map(|deploy| (*deploy.program().id(), deploy)) {
+                    programs.insert(program_id, deploy.clone())?;
+                }
+
+                *genesis.header()
+            }
+        };
+
         let current_round = current_header.round();
         let current_height = current_header.height();
 
@@ -537,6 +562,20 @@ mod tests {
             [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
             [(genesis.height(), *genesis.signature())].into_iter().collect(),
             genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
+        )
+        .unwrap();
+
+        assert_eq!(ledger.latest_hash(), genesis.hash());
+        assert_eq!(ledger.latest_height(), genesis.height());
+        assert_eq!(ledger.latest_round(), genesis.round());
+
+        // Load the ledger without the genesis_block.
+        let ledger = CurrentLedger::load(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
         )
         .unwrap();
 
