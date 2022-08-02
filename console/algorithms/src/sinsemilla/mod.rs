@@ -21,16 +21,16 @@ use crate::Blake2Xs;
 use snarkvm_console_types::prelude::*;
 use snarkvm_utilities::BigInteger;
 
-pub const SINSEMILLA_WINDOW_SIZE: usize = 10;
+pub const SINSEMILLA_WINDOW_SIZE: usize = 14;
 
 /// Sinsemilla256 is a collision-resistant hash function that takes up to a 256-bit input.
-pub type Sinsemilla256<E> = Sinsemilla<E, 26>;
+pub type Sinsemilla256<E> = Sinsemilla<E, 19>;
 /// Sinsemilla512 is a collision-resistant hash function that takes up to a 512-bit input.
-pub type Sinsemilla512<E> = Sinsemilla<E, 52>;
+pub type Sinsemilla512<E> = Sinsemilla<E, 37>;
 /// Sinsemilla768 is a collision-resistant hash function that takes up to a 768-bit input.
-pub type Sinsemilla768<E> = Sinsemilla<E, 77>;
+pub type Sinsemilla768<E> = Sinsemilla<E, 55>;
 /// Sinsemilla1024 is a collision-resistant hash function that takes up to a 1024-bit input.
-pub type Sinsemilla1024<E> = Sinsemilla<E, 103>;
+pub type Sinsemilla1024<E> = Sinsemilla<E, 74>;
 
 /// Sinsemilla is a collision-resistant hash function that takes a fixed-length input.
 /// The Sinsemilla hash function does *not* behave like a random oracle, see Poseidon for one.

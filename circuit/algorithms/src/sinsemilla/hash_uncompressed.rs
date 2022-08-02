@@ -90,18 +90,18 @@ mod tests {
     #[test]
     fn test_hash_uncompressed_constant() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<103>(Mode::Constant);
+        check_hash_uncompressed::<74>(Mode::Constant);
     }
 
     #[test]
     fn test_hash_uncompressed_public() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<103>(Mode::Public);
+        check_hash_uncompressed::<74>(Mode::Public);
     }
 
     #[test]
     fn test_hash_uncompressed_private() {
         // Set the number of windows, and modulate the window size.
-        check_hash_uncompressed::<103>(Mode::Private);
+        check_hash_uncompressed::<74>(Mode::Private);
     }
 }

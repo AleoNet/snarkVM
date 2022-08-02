@@ -76,7 +76,6 @@ mod tests {
 
     #[test]
     fn test_setup_constant() {
-        // Set the number of windows, and modulate the window size.
         check_setup::<10>(4, 0, 0, 0);
     }
 }
