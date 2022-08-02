@@ -49,21 +49,6 @@ impl<
         }
     }
 
-    /// Returns the current height of the ledger.
-    pub fn get_current_height(&self) -> u32 {
-        self.current_height
-    }
-
-    /// Returns the current round of the ledger.
-    pub fn get_current_round(&self) -> u64 {
-        self.current_round
-    }
-
-    /// Returns the current round of the ledger.
-    pub fn get_current_hash(&self) -> &N::BlockHash {
-        &self.current_hash
-    }
-
     /// Returns the previous block hash for the given block height.
     pub fn get_previous_hash(&self, height: u32) -> Result<N::BlockHash> {
         match self.previous_hashes.get(&height)? {
