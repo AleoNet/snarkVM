@@ -129,6 +129,46 @@ impl<
         })
     }
 
+    /// Load the ledger from the given maps.
+    pub fn load(
+        previous_hashes: PreviousHashesMap,
+        headers: HeadersMap,
+        transactions: TransactionsMap,
+        signatures: SignatureMap,
+        programs: ProgramsMap,
+    ) -> Result<Self> {
+        // TODO (raychu86): Handle this in a more efficient manner.
+        // Fetch the current round and height.
+        let current_header: Header<N> = *headers.values().last().ok_or_else(|| anyhow!("Missing headers"))?;
+        let current_round = current_header.round();
+        let current_height = current_header.height();
+
+        // Generate the block tree.
+        let leaves: Vec<Vec<bool>> = previous_hashes.values().map(|hash| (*hash).to_bits_le()).collect();
+        let block_tree = N::merkle_tree_bhp(&leaves)?;
+
+        // Construct the ledger.
+        let mut ledger = Self {
+            current_hash: Default::default(),
+            current_height,
+            current_round,
+            block_tree,
+            previous_hashes,
+            headers,
+            transactions,
+            signatures,
+            programs,
+            memory_pool: Default::default(),
+        };
+
+        // Set the current block hash.
+        ledger.current_hash = ledger.get_block(ledger.current_height)?.hash();
+
+        // TODO (raychu86): Enforce that the genesis exists.
+
+        Ok(ledger)
+    }
+
     /// Appends the given transaction to the memory pool.
     pub fn add_to_memory_pool(&mut self, transaction: Transaction<N>) -> Result<()> {
         // Ensure the transaction does not already exist.
@@ -484,6 +524,26 @@ mod tests {
     use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_load_ledger() {
+        // Load the genesis block.
+        let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+
+        // Load the ledger with the genesis block.
+        let ledger = CurrentLedger::load(
+            [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
+            [(genesis.height(), *genesis.header())].into_iter().collect(),
+            [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
+            [(genesis.height(), *genesis.signature())].into_iter().collect(),
+            genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
+        )
+        .unwrap();
+
+        assert_eq!(ledger.latest_hash(), genesis.hash());
+        assert_eq!(ledger.latest_height(), genesis.height());
+        assert_eq!(ledger.latest_round(), genesis.round());
+    }
 
     #[test]
     fn test_state_path() {
