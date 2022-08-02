@@ -73,8 +73,25 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Consumes `self` and returns the commitment and record, if the output is a record.
+    #[allow(clippy::type_complexity)]
+    pub fn into_record(self) -> Option<(Field<N>, Record<N, Ciphertext<N>>)> {
+        match self {
+            Output::Record(commitment, _, Some(record)) => Some((commitment, record)),
+            _ => None,
+        }
+    }
+
     /// Returns the commitment, if the output is a record.
     pub const fn commitment(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(commitment, ..) => Some(commitment),
+            _ => None,
+        }
+    }
+
+    /// Consumes `self`, returning the commitment, if the output is a record.
+    pub fn into_commitment(self) -> Option<Field<N>> {
         match self {
             Output::Record(commitment, ..) => Some(commitment),
             _ => None,
@@ -85,6 +102,14 @@ impl<N: Network> Output<N> {
     pub const fn nonce(&self) -> Option<&Group<N>> {
         match self {
             Output::Record(_, _, Some(record)) => Some(record.nonce()),
+            _ => None,
+        }
+    }
+
+    /// Consumes `self`, returning the nonce, if the output is a record.
+    pub fn into_nonce(self) -> Option<Group<N>> {
+        match self {
+            Output::Record(_, _, Some(record)) => Some(*record.nonce()),
             _ => None,
         }
     }

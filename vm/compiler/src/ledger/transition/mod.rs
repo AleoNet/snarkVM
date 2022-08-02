@@ -248,6 +248,11 @@ impl<N: Network> Transition<N> {
         &self.id
     }
 
+    /// Consumes `self`, returning the transition ID.
+    pub fn into_id(self) -> N::TransitionID {
+        self.id
+    }
+
     /// Returns the program ID.
     pub const fn program_id(&self) -> &ProgramID<N> {
         &self.program_id
@@ -283,6 +288,11 @@ impl<N: Network> Transition<N> {
         self.outputs.iter().flat_map(Output::record)
     }
 
+    /// Consumes `self` and returns the output records as a tuple comprised of `(commitment, record)`.
+    pub fn into_output_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+        self.outputs.into_iter().flat_map(Output::into_record)
+    }
+
     /// Returns the proof.
     pub const fn proof(&self) -> &Proof<N> {
         &self.proof
@@ -291,6 +301,11 @@ impl<N: Network> Transition<N> {
     /// Returns the transition public key.
     pub const fn tpk(&self) -> &Group<N> {
         &self.tpk
+    }
+
+    /// Consumes `self`, returning the transition public key.
+    pub fn into_tpk(self) -> Group<N> {
+        self.tpk
     }
 
     /// Returns the transition commitment.
@@ -315,13 +330,28 @@ impl<N: Network> Transition<N> {
         self.inputs.iter().flat_map(Input::serial_number)
     }
 
+    /// Returns a consuming iterator over the serial numbers, for inputs that are records.
+    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
+        self.inputs.into_iter().flat_map(Input::into_serial_number)
+    }
+
     /// Returns an iterator over the commitments, for outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.outputs.iter().flat_map(Output::commitment)
     }
 
+    /// Returns a consuming iterator over the commitments, for outputs that are records.
+    pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
+        self.outputs.into_iter().flat_map(Output::into_commitment)
+    }
+
     /// Returns an iterator over the nonces, for outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.outputs.iter().flat_map(Output::nonce)
+    }
+
+    /// Returns a consuming iterator over the nonces, for outputs that are records.
+    pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
+        self.outputs.into_iter().flat_map(Output::into_nonce)
     }
 }

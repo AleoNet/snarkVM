@@ -80,6 +80,14 @@ impl<N: Network> Input<N> {
         }
     }
 
+    /// Consumes `self`, returning the serial number, if the input is a record.
+    pub fn into_serial_number(self) -> Option<Field<N>> {
+        match self {
+            Input::Record(serial_number, ..) => Some(serial_number),
+            _ => None,
+        }
+    }
+
     /// Returns the origin, if the input is a record.
     pub const fn origin(&self) -> Option<&Origin<N>> {
         match self {

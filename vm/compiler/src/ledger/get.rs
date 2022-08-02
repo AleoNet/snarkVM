@@ -16,6 +16,31 @@
 
 use super::*;
 
+// A wrapper object able to contain and iterate over two `Cow` pair iterators of different types.
+enum IterWrap<'a, T: 'a + Clone, U: 'a + Clone, I1: Iterator<Item = (&'a T, &'a U)>, I2: Iterator<Item = (T, U)>> {
+    Borrowed(I1),
+    Owned(I2),
+}
+
+impl<'a, T: 'a + Clone, U: 'a + Clone, I1: Iterator<Item = (&'a T, &'a U)>, I2: Iterator<Item = (T, U)>> Iterator
+    for IterWrap<'a, T, U, I1, I2>
+{
+    type Item = (Cow<'a, T>, Cow<'a, U>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Borrowed(iter) => {
+                let (a, b) = iter.next()?;
+                Some((Cow::Borrowed(a), Cow::Borrowed(b)))
+            }
+            Self::Owned(iter) => {
+                let (a, b) = iter.next()?;
+                Some((Cow::Owned(a), Cow::Owned(b)))
+            }
+        }
+    }
+}
+
 use std::borrow::Cow;
 
 impl<
@@ -91,12 +116,8 @@ impl<
 
         self.transitions()
             .flat_map(|ts| match ts {
-                Cow::Borrowed(tn) => Transition::output_records(tn)
-                    .map(|(f, r)| (Cow::Borrowed(f), Cow::Borrowed(r)))
-                    .collect::<Vec<_>>(),
-                Cow::Owned(tn) => Transition::output_records(&tn)
-                    .map(|(f, r)| (Cow::Owned(f.to_owned()), Cow::Owned(r.to_owned())))
-                    .collect::<Vec<_>>(),
+                Cow::Borrowed(ts) => IterWrap::Borrowed(Transition::output_records(ts)),
+                Cow::Owned(ts) => IterWrap::Owned(Transition::into_output_records(ts)),
             })
             .flat_map(move |(commitment, record)| {
                 // A helper method to derive the serial number from the private key and commitment.

@@ -72,6 +72,11 @@ impl<N: Network> Execution<N> {
     pub fn pop(&mut self) -> Result<Transition<N>> {
         self.transitions.pop().ok_or_else(|| anyhow!("No more transitions in the execution"))
     }
+
+    /// Returns a consuming iterator over the underlying transitions.
+    pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
+        self.transitions.into_iter()
+    }
 }
 
 impl<N: Network> Deref for Execution<N> {
