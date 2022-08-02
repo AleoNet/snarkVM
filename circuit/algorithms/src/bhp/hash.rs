@@ -78,11 +78,11 @@ mod tests {
 
     #[test]
     fn test_hash_public() -> Result<()> {
-        check_hash::<32, 48>(Mode::Public, 542, 0, 8592, 8593)
+        check_hash::<32, 48>(Mode::Public, 542, 0, 8662, 8733)
     }
 
     #[test]
     fn test_hash_private() -> Result<()> {
-        check_hash::<32, 48>(Mode::Private, 542, 0, 8592, 8593)
+        check_hash::<32, 48>(Mode::Private, 542, 0, 8662, 8733)
     }
 }

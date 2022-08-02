@@ -140,7 +140,10 @@ impl<E: Environment> Div<Field<E>> for Field<E> {
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: Field<E>) -> Self::Output {
-        Field::new(self.field / other.field)
+        match other.is_zero() {
+            true => E::halt(format!("Field division by zero: {self} / {other}")),
+            false => Field::new(self.field / other.field),
+        }
     }
 }
 
@@ -150,7 +153,10 @@ impl<E: Environment> Div<&Field<E>> for Field<E> {
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: &Field<E>) -> Self::Output {
-        Field::new(self.field / other.field)
+        match other.is_zero() {
+            true => E::halt(format!("Field division by zero: {self} / {other}")),
+            false => Field::new(self.field / other.field),
+        }
     }
 }
 
@@ -158,7 +164,10 @@ impl<E: Environment> DivAssign<Field<E>> for Field<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: Field<E>) {
-        self.field /= other.field;
+        match other.is_zero() {
+            true => E::halt(format!("Field division by zero: {self} / {other}")),
+            false => self.field /= other.field,
+        }
     }
 }
 
@@ -166,7 +175,10 @@ impl<E: Environment> DivAssign<&Field<E>> for Field<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: &Field<E>) {
-        self.field /= other.field;
+        match other.is_zero() {
+            true => E::halt(format!("Field division by zero: {self} / {other}")),
+            false => self.field /= other.field,
+        }
     }
 }
 

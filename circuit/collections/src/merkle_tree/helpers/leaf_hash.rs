@@ -101,12 +101,12 @@ mod tests {
 
     #[test]
     fn test_hash_leaf_bhp1024_public() -> Result<()> {
-        check_hash_leaf!(BHP1024, Public, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Public, 1024, (429, 0, 1772, 1786))
     }
 
     #[test]
     fn test_hash_leaf_bhp1024_private() -> Result<()> {
-        check_hash_leaf!(BHP1024, Private, 1024, (429, 0, 1758, 1758))
+        check_hash_leaf!(BHP1024, Private, 1024, (429, 0, 1772, 1786))
     }
 
     #[test]
