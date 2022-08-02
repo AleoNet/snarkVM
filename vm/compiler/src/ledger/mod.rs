@@ -146,8 +146,8 @@ impl<
         let mut programs = programs;
 
         // Fetch the current round and height.
-        let current_header = match headers.values().last() {
-            Some(header) => *header,
+        let current_header = match headers.iter().max_by(|a, b| a.0.cmp(&b.0)) {
+            Some((_, header)) => *header,
             None => {
                 // Inject the genesis block.
                 let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
