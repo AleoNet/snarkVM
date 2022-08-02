@@ -16,6 +16,8 @@
 
 use super::*;
 
+use std::borrow::Cow;
+
 impl<
     N: Network,
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
@@ -29,7 +31,7 @@ impl<
         Block::from(
             self.get_previous_hash(height)?,
             *self.get_header(height)?,
-            self.get_transactions(height)?.clone(),
+            self.get_transactions(height)?.into_owned(),
             *self.get_signature(height)?,
         )
     }
@@ -55,7 +57,7 @@ impl<
     }
 
     /// Returns the block header for the given block height.
-    pub fn get_header(&self, height: u32) -> Result<&Header<N>> {
+    pub fn get_header(&self, height: u32) -> Result<Cow<'_, Header<N>>> {
         match self.headers.get(&height)? {
             Some(header) => Ok(header),
             None => bail!("Missing block header for block {height}"),
@@ -63,7 +65,7 @@ impl<
     }
 
     /// Returns the block transactions for the given block height.
-    pub fn get_transactions(&self, height: u32) -> Result<&Transactions<N>> {
+    pub fn get_transactions(&self, height: u32) -> Result<Cow<'_, Transactions<N>>> {
         match self.transactions.get(&height)? {
             Some(transactions) => Ok(transactions),
             None => bail!("Missing block transactions for block {height}"),
@@ -71,7 +73,7 @@ impl<
     }
 
     /// Returns the block signature for the given block height.
-    pub fn get_signature(&self, height: u32) -> Result<&Signature<N>> {
+    pub fn get_signature(&self, height: u32) -> Result<Cow<'_, Signature<N>>> {
         match self.signatures.get(&height)? {
             Some(signature) => Ok(signature),
             None => bail!("Missing signature for block {height}"),
@@ -87,65 +89,76 @@ impl<
         // Derive the address from the view key.
         let address = view_key.to_address();
 
-        self.transitions().flat_map(Transition::output_records).flat_map(move |(commitment, record)| {
-            // A helper method to derive the serial number from the private key and commitment.
-            let serial_number = |private_key: PrivateKey<N>, commitment: Field<N>| -> Result<Field<N>> {
-                // Compute the generator `H` as `HashToGroup(commitment)`.
-                let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
-                // Compute `gamma` as `sk_sig * H`.
-                let gamma = h * private_key.sk_sig();
-                // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
-                let sn_nonce =
-                    N::hash_to_scalar_psd2(&[N::serial_number_domain(), gamma.mul_by_cofactor().to_x_coordinate()])?;
-                // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
-                N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)
-            };
+        self.transitions()
+            .flat_map(|ts| match ts {
+                Cow::Borrowed(tn) => Transition::output_records(tn)
+                    .map(|(f, r)| (Cow::Borrowed(f), Cow::Borrowed(r)))
+                    .collect::<Vec<_>>(),
+                Cow::Owned(tn) => Transition::output_records(&tn)
+                    .map(|(f, r)| (Cow::Owned(f.to_owned()), Cow::Owned(r.to_owned())))
+                    .collect::<Vec<_>>(),
+            })
+            .flat_map(move |(commitment, record)| {
+                // A helper method to derive the serial number from the private key and commitment.
+                let serial_number = |private_key: PrivateKey<N>, commitment: Field<N>| -> Result<Field<N>> {
+                    // Compute the generator `H` as `HashToGroup(commitment)`.
+                    let h = N::hash_to_group_psd2(&[N::serial_number_domain(), commitment])?;
+                    // Compute `gamma` as `sk_sig * H`.
+                    let gamma = h * private_key.sk_sig();
+                    // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
+                    let sn_nonce = N::hash_to_scalar_psd2(&[
+                        N::serial_number_domain(),
+                        gamma.mul_by_cofactor().to_x_coordinate(),
+                    ])?;
+                    // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
+                    N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)
+                };
 
-            // Determine whether to decrypt this output record (or not), based on the filter.
-            let commitment = match filter {
-                OutputRecordsFilter::All => *commitment,
-                OutputRecordsFilter::Spent(private_key) => {
-                    // Derive the serial number.
-                    match serial_number(private_key, *commitment) {
-                        // Determine if the output record is spent.
-                        Ok(serial_number) => match self.contains_serial_number(&serial_number) {
-                            true => *commitment,
-                            false => return None,
-                        },
-                        Err(e) => {
-                            warn!("Failed to derive serial number for output record: {e}");
-                            return None;
+                // Determine whether to decrypt this output record (or not), based on the filter.
+                let commitment = match filter {
+                    OutputRecordsFilter::All => *commitment,
+                    OutputRecordsFilter::Spent(private_key) => {
+                        // Derive the serial number.
+                        match serial_number(private_key, *commitment) {
+                            // Determine if the output record is spent.
+                            Ok(serial_number) => match self.contains_serial_number(&serial_number) {
+                                true => *commitment,
+                                false => return None,
+                            },
+                            Err(e) => {
+                                warn!("Failed to derive serial number for output record: {e}");
+                                return None;
+                            }
                         }
                     }
-                }
-                OutputRecordsFilter::Unspent(private_key) => {
-                    // Derive the serial number.
-                    match serial_number(private_key, *commitment) {
-                        // Determine if the output record is spent.
-                        Ok(serial_number) => match self.contains_serial_number(&serial_number) {
-                            true => return None,
-                            false => *commitment,
-                        },
-                        Err(e) => {
-                            warn!("Failed to derive serial number for output record: {e}");
-                            return None;
+                    OutputRecordsFilter::Unspent(private_key) => {
+                        // Derive the serial number.
+                        match serial_number(private_key, *commitment) {
+                            // Determine if the output record is spent.
+                            Ok(serial_number) => match self.contains_serial_number(&serial_number) {
+                                true => return None,
+                                false => *commitment,
+                            },
+                            Err(e) => {
+                                warn!("Failed to derive serial number for output record: {e}");
+                                return None;
+                            }
                         }
                     }
-                }
-            };
+                };
 
-            // Decrypt the record.
-            match record.is_owner(&address, view_key) {
-                true => match record.decrypt(view_key) {
-                    Ok(record) => Some((commitment, record)),
-                    Err(e) => {
-                        warn!("Failed to decrypt output record: {e}");
-                        None
-                    }
-                },
-                false => None,
-            }
-        })
+                // Decrypt the record.
+                match record.is_owner(&address, view_key) {
+                    true => match record.decrypt(view_key) {
+                        Ok(record) => Some((commitment, record)),
+                        Err(e) => {
+                            warn!("Failed to decrypt output record: {e}");
+                            None
+                        }
+                    },
+                    false => None,
+                }
+            })
     }
 }
 

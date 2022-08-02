@@ -27,7 +27,7 @@ impl<
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
         state_root == self.latest_state_root()
-            || self.headers.values().map(Header::previous_state_root).any(|root| root == state_root)
+            || self.headers.values().any(|h| Header::previous_state_root(&h) == state_root)
     }
 
     /// Returns `true` if the given block hash exists.

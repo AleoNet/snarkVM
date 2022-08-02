@@ -16,6 +16,8 @@
 
 use super::*;
 
+use std::borrow::Cow;
+
 impl<
     N: Network,
     PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
@@ -65,7 +67,7 @@ impl<
     }
 
     /// Returns the latest block transactions.
-    pub fn latest_transactions(&self) -> Result<&Transactions<N>> {
+    pub fn latest_transactions(&self) -> Result<Cow<'_, Transactions<N>>> {
         self.get_transactions(self.current_height)
     }
 }

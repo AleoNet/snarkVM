@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ledger::map::{Map, MapReader};
+use crate::ledger::map::{
+    iterators::{Iter, Keys, Values},
+    Map,
+    MapReader,
+};
 use console::network::prelude::*;
 
 use core::{borrow::Borrow, hash::Hash};
-use std::collections::hash_map::{HashMap, Iter, Keys, Values};
+use std::{borrow::Cow, collections::hash_map::HashMap};
 
 #[derive(Clone)]
 pub struct MemoryMap<
@@ -48,10 +52,7 @@ impl<
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert<Q>(&mut self, key: K, value: V) -> Result<()>
-    where
-        Q: PartialEq + Eq + Hash + Serialize,
-    {
+    fn insert(&mut self, key: K, value: V) -> Result<()> {
         self.map.insert(key, value);
 
         Ok(())
@@ -95,33 +96,33 @@ impl<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&'a self, key: &Q) -> Result<Option<&V>>
+    fn get<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.get(key))
+        Ok(self.map.get(key).map(Cow::Borrowed))
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
-        self.map.iter()
+        Iter::new(self.map.iter())
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
     fn keys(&'a self) -> Self::Keys {
-        self.map.keys()
+        Keys::new(self.iter())
     }
 
     ///
     /// Returns an iterator over each value in the map.
     ///
     fn values(&'a self) -> Self::Values {
-        self.map.values()
+        Values::new(self.iter())
     }
 }
 

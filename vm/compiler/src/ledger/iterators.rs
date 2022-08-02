@@ -15,6 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use std::borrow::Cow;
+
+macro_rules! tx_components {
+    ($self:expr, $component:ident) => {
+        $self.transactions.values().flat_map(|ts| match ts {
+            Cow::Borrowed(ts) => Transactions::$component(ts).map(Cow::Borrowed).collect::<Vec<_>>(),
+            Cow::Owned(ts) => Transactions::$component(&ts).map(|t| Cow::Owned(t.to_owned())).collect::<Vec<_>>(),
+        })
+    };
+}
 
 impl<
     N: Network,
@@ -25,52 +35,52 @@ impl<
 > Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
 {
     /// Returns an iterator over all transactions.
-    pub fn transactions(&self) -> impl '_ + Iterator<Item = &Transaction<N>> {
-        self.transactions.values().flat_map(Transactions::transactions)
+    pub fn transactions(&self) -> impl '_ + Iterator<Item = Cow<'_, Transaction<N>>> {
+        tx_components!(self, transactions)
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
-    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = &N::TransactionID> {
-        self.transactions.values().flat_map(Transactions::transaction_ids)
+    pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        tx_components!(self, transaction_ids)
     }
 
     /// Returns an iterator over all transactions in `self` that are deployments.
-    pub fn deployments(&self) -> impl '_ + Iterator<Item = &Deployment<N>> {
-        self.transactions.values().flat_map(Transactions::deployments)
+    pub fn deployments(&self) -> impl '_ + Iterator<Item = Cow<'_, Deployment<N>>> {
+        tx_components!(self, deployments)
     }
 
     /// Returns an iterator over all transactions in `self` that are executions.
-    pub fn executions(&self) -> impl '_ + Iterator<Item = &Execution<N>> {
-        self.transactions.values().flat_map(Transactions::executions)
+    pub fn executions(&self) -> impl '_ + Iterator<Item = Cow<'_, Execution<N>>> {
+        tx_components!(self, executions)
     }
 
     /// Returns an iterator over all executed transitions.
-    pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
-        self.transactions.values().flat_map(Transactions::transitions)
+    pub fn transitions(&self) -> impl '_ + Iterator<Item = Cow<'_, Transition<N>>> {
+        tx_components!(self, transitions)
     }
 
     /// Returns an iterator over the transition IDs, for all executed transitions.
-    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.transactions.values().flat_map(Transactions::transition_ids)
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
+        tx_components!(self, transition_ids)
     }
 
     /// Returns an iterator over the transition public keys, for all executed transactions.
-    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transactions.values().flat_map(Transactions::transition_public_keys)
+    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
+        tx_components!(self, transition_public_keys)
     }
 
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
-    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.values().flat_map(Transactions::serial_numbers)
+    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        tx_components!(self, serial_numbers)
     }
 
     /// Returns an iterator over the commitments, for all executed transition outputs that are records.
-    pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transactions.values().flat_map(Transactions::commitments)
+    pub fn commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        tx_components!(self, commitments)
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
-    pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transactions.values().flat_map(Transactions::nonces)
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
+        tx_components!(self, nonces)
     }
 }

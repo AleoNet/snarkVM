@@ -150,8 +150,8 @@ impl<
         vm.synthesize_credit_program_keys::<::circuit::AleoV0, _>(&mut snarkvm_utilities::test_crypto_rng_fixed())?;
 
         // Process all the deployment transactions that exist in the ledger.
-        for deployment_transaction in self.transactions().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _))) {
-            vm.on_deploy(deployment_transaction)?;
+        for deployment_transaction in self.transactions().filter(|tx| matches!(**tx, Transaction::Deploy(_, _, _))) {
+            vm.on_deploy(&*deployment_transaction)?;
         }
 
         Ok(vm)
@@ -376,10 +376,10 @@ impl<
             ledger.current_height = block.height();
             ledger.current_round = block.round();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-            ledger.previous_hashes.insert::<u32>(block.height(), block.previous_hash())?;
-            ledger.headers.insert::<u32>(block.height(), *block.header())?;
-            ledger.transactions.insert::<u32>(block.height(), block.transactions().clone())?;
-            ledger.signatures.insert::<u32>(block.height(), *block.signature())?;
+            ledger.previous_hashes.insert(block.height(), block.previous_hash())?;
+            ledger.headers.insert(block.height(), *block.header())?;
+            ledger.transactions.insert(block.height(), block.transactions().clone())?;
+            ledger.signatures.insert(block.height(), *block.signature())?;
 
             // Load the VM with deployment functions in the block.
             for deployment_transaction in
@@ -410,15 +410,16 @@ impl<
         let transaction = self
             .transactions
             .iter()
-            .flat_map(|(_, transactions)| &**transactions)
-            .filter(|(_, transaction)| transaction.commitments().contains(&commitment))
-            .collect::<Vec<_>>();
+            .filter(|(_, transactions)| transactions.commitments().contains(&commitment))
+            .map(|(_, transactions)| transactions.into_owned())
+            .flat_map(|transactions| transactions.into_inner())
+            .collect::<Vec<(N::TransactionID, Transaction<N>)>>();
 
         if transaction.len() != 1 {
             bail!("Multiple transactions associated with commitment {}", commitment.to_string())
         }
 
-        let (transaction_id, transaction) = transaction[0];
+        let (transaction_id, transaction) = &transaction[0];
 
         // Find the block height that contains the record transaction id.
         let block_height = self
