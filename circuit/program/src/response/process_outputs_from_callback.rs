@@ -229,16 +229,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 19000, 4, 6000, 6000)
+        check_from_callback(Mode::Constant, 19000, 4, 6016, 6058)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 18828, 4, 8327, 8334)
+        check_from_callback(Mode::Public, 18828, 4, 8363, 8406)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 18828, 4, 8327, 8334)
+        check_from_callback(Mode::Private, 18828, 4, 8363, 8406)
     }
 }

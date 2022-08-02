@@ -139,7 +139,7 @@ pub type Div<N> = BinaryLiteral<N, DivOperation<N>>;
 
 crate::operation!(
     pub struct DivOperation<core::ops::Div, core::ops::Div, div, "div"> {
-        (Field, Field) => Field("ensure divide by zero halts"),
+        (Field, Field) => Field ("ensure divide by zero halts"),
         (I8, I8) => I8 ("ensure overflows halt", "ensure divide by zero halts"),
         (I16, I16) => I16 ("ensure overflows halt", "ensure divide by zero halts"),
         (I32, I32) => I32 ("ensure overflows halt", "ensure divide by zero halts"),

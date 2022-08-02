@@ -216,11 +216,11 @@ mod tests {
 
     #[test]
     fn test_from_outputs_public() -> Result<()> {
-        check_from_outputs(Mode::Public, 20880, 5, 16762, 16782)
+        check_from_outputs(Mode::Public, 20880, 5, 16822, 16902)
     }
 
     #[test]
     fn test_from_outputs_private() -> Result<()> {
-        check_from_outputs(Mode::Private, 20880, 5, 16762, 16782)
+        check_from_outputs(Mode::Private, 20880, 5, 16822, 16902)
     }
 }

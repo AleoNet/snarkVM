@@ -140,11 +140,11 @@ mod tests {
 
     #[test]
     fn test_encode_public() {
-        check_encode(Mode::Public, 263, 0, 371, 380);
+        check_encode(Mode::Public, 263, 0, 377, 392);
     }
 
     #[test]
     fn test_encode_private() {
-        check_encode(Mode::Private, 263, 0, 371, 380);
+        check_encode(Mode::Private, 263, 0, 377, 392);
     }
 }

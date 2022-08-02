@@ -91,12 +91,12 @@ mod tests {
 
     #[test]
     fn test_poseidon2_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Public, 2, (529, 0, 1018, 1036))
+        check_hash_to_group!(Poseidon2, Public, 2, (529, 0, 1030, 1060))
     }
 
     #[test]
     fn test_poseidon2_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon2, Private, 2, (529, 0, 1018, 1036))
+        check_hash_to_group!(Poseidon2, Private, 2, (529, 0, 1030, 1060))
     }
 
     #[test]
@@ -106,12 +106,12 @@ mod tests {
 
     #[test]
     fn test_poseidon4_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Public, 2, (529, 0, 1088, 1106))
+        check_hash_to_group!(Poseidon4, Public, 2, (529, 0, 1100, 1130))
     }
 
     #[test]
     fn test_poseidon4_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon4, Private, 2, (529, 0, 1088, 1106))
+        check_hash_to_group!(Poseidon4, Private, 2, (529, 0, 1100, 1130))
     }
 
     #[test]
@@ -121,11 +121,11 @@ mod tests {
 
     #[test]
     fn test_poseidon8_hash_to_group_public() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Public, 2, (529, 0, 1228, 1246))
+        check_hash_to_group!(Poseidon8, Public, 2, (529, 0, 1240, 1270))
     }
 
     #[test]
     fn test_poseidon8_hash_to_group_private() -> Result<()> {
-        check_hash_to_group!(Poseidon8, Private, 2, (529, 0, 1228, 1246))
+        check_hash_to_group!(Poseidon8, Private, 2, (529, 0, 1240, 1270))
     }
 }

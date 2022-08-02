@@ -93,11 +93,11 @@ mod tests {
 
     #[test]
     fn test_commit_uncompressed_public() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10349, 10351)
+        check_commit_uncompressed::<32, 48>(Mode::Public, 1044, 0, 10419, 10491)
     }
 
     #[test]
     fn test_commit_uncompressed_private() -> Result<()> {
-        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10349, 10351)
+        check_commit_uncompressed::<32, 48>(Mode::Private, 1044, 0, 10419, 10491)
     }
 }
