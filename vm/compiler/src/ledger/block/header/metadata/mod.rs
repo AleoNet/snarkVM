@@ -56,14 +56,14 @@ impl<N: Network> Metadata<N> {
         // Construct a new metadata.
         let metadata = Self { network, round, height, coinbase_target, proof_target, timestamp, _phantom: PhantomData };
         // Ensure the header is valid.
-        match metadata.verify() {
+        match metadata.is_valid() {
             true => Ok(metadata),
             false => bail!("Invalid block metadata: {:?}", metadata),
         }
     }
 
     /// Returns `true` if the block header is well-formed.
-    pub fn verify(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         match self.height == 0u32 {
             true => self.is_genesis(),
             false => {
