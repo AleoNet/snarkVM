@@ -139,7 +139,7 @@ impl<
         };
 
         // Add the genesis block.
-        ledger.add_next_block(&genesis)?;
+        ledger.add_next_block(genesis)?;
 
         // Return the ledger.
         Ok(ledger)
@@ -494,14 +494,12 @@ pub(crate) mod test_helpers {
 
     pub(crate) fn sample_genesis_private_key() -> PrivateKey<CurrentNetwork> {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize the RNG.
-                let rng = &mut test_crypto_rng_fixed();
-                // Initialize a new caller.
-                PrivateKey::<CurrentNetwork>::new(rng).unwrap()
-            })
-            .clone()
+        *INSTANCE.get_or_init(|| {
+            // Initialize the RNG.
+            let rng = &mut test_crypto_rng_fixed();
+            // Initialize a new caller.
+            PrivateKey::<CurrentNetwork>::new(rng).unwrap()
+        })
     }
 
     pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {

@@ -885,7 +885,7 @@ function compute:
             "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
-        let input = Value::<CurrentNetwork>::Record(input_record.clone());
+        let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());

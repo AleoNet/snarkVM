@@ -554,7 +554,7 @@ function compute:
                         &[
                             Value::<CurrentNetwork>::Record(record),
                             Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
-                            Value::<CurrentNetwork>::from_str(&format!("1u64")).unwrap(),
+                            Value::<CurrentNetwork>::from_str(&"1u64".to_string()).unwrap(),
                         ],
                         rng,
                     )
