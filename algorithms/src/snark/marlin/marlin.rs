@@ -577,7 +577,6 @@ where
         if public_inputs.is_empty() {
             return Err(SNARKError::EmptyBatch);
         }
-        let verifier_time = start_timer!(|| "Marlin::Verify");
 
         let comms = &proof.commitments;
         let proof_has_correct_zk_mode = if MM::ZK {
@@ -594,6 +593,7 @@ where
         }
 
         let batch_size = public_inputs.len();
+        let verifier_time = start_timer!(|| format!("Marlin::Verify with batch size {batch_size}"));
 
         let first_round_info = AHPForR1CS::<E::Fr, MM>::first_round_polynomial_info(batch_size);
         let mut first_commitments = comms
@@ -621,6 +621,7 @@ where
             LabeledCommitment::new_with_info(&second_round_info["g_1"], comms.g_1),
             LabeledCommitment::new_with_info(&second_round_info["h_1"], comms.h_1),
         ];
+
         let third_round_info =
             AHPForR1CS::<E::Fr, MM>::third_round_polynomial_info(&circuit_verifying_key.circuit_info);
         let third_commitments = [
@@ -628,6 +629,7 @@ where
             LabeledCommitment::new_with_info(&third_round_info["g_b"], comms.g_b),
             LabeledCommitment::new_with_info(&third_round_info["g_c"], comms.g_c),
         ];
+
         let fourth_round_info = AHPForR1CS::<E::Fr, MM>::fourth_round_polynomial_info();
         let fourth_commitments = [LabeledCommitment::new_with_info(&fourth_round_info["h_2"], comms.h_2)];
 
@@ -656,27 +658,37 @@ where
 
         // --------------------------------------------------------------------
         // First round
+        let first_round_time = start_timer!(|| format!("First round"));
         Self::absorb_labeled(&first_commitments, &mut sponge);
         let (_, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_first_round(circuit_verifying_key.circuit_info, batch_size, &mut sponge)?;
+        end_timer!(first_round_time);
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Second round
+        let second_round_time = start_timer!(|| format!("Second round"));
         Self::absorb_labeled(&second_commitments, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_second_round(verifier_state, &mut sponge)?;
+        end_timer!(second_round_time);
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
+        let third_round_time = start_timer!(|| format!("Third round"));
+
         Self::absorb_labeled_with_msg(&third_commitments, &proof.msg, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
+        end_timer!(third_round_time);
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Fourth round
+        let fourth_round_time = start_timer!(|| format!("Fourth round"));
+
         Self::absorb_labeled(&fourth_commitments, &mut sponge);
         let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
+        end_timer!(fourth_round_time);
         // --------------------------------------------------------------------
 
         // Collect degree bounds for commitments. Indexed polynomials have *no*
@@ -695,7 +707,9 @@ where
             .chain(fourth_commitments)
             .collect();
 
+        let query_set_time = start_timer!(|| format!("Constructing query set"));
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
+        end_timer!(query_set_time);
 
         sponge.absorb_nonnative_field_elements(proof.evaluations.to_field_elements(), OptimizationType::Weight);
 
@@ -710,13 +724,16 @@ where
             }
         }
 
+        let lc_time = start_timer!(|| format!("Constructing linear combinations"));
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &evaluations,
             &proof.msg,
             &verifier_state,
         )?;
+        end_timer!(lc_time);
 
+        let pc_time = start_timer!(|| format!("Checking linear combinations with PC"));
         let evaluations_are_correct = SonicKZG10::<E, FS>::check_combinations(
             &circuit_verifying_key.verifier_key,
             lc_s.values(),
@@ -726,13 +743,14 @@ where
             &proof.pc_proof,
             &mut sponge,
         )?;
+        end_timer!(pc_time);
 
         if !evaluations_are_correct {
             #[cfg(debug_assertions)]
-            eprintln!("SonicKZG10::<E, FS>::Check failed");
+            eprintln!("SonicKZG10::Check failed");
         }
         end_timer!(verifier_time, || format!(
-            " SonicKZG10::<E, FS>::Check for AHP Verifier linear equations: {}",
+            " SonicKZG10::Check for AHP Verifier linear equations: {}",
             evaluations_are_correct & proof_has_correct_zk_mode
         ));
         Ok(evaluations_are_correct & proof_has_correct_zk_mode)

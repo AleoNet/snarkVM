@@ -680,11 +680,8 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
-
-            if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(randomizer);
-            }
+            let coeff = randomizer.unwrap_or(E::Fr::one()) * curr_challenge;
+            let comm_with_challenge: E::G1Projective = comm.0.mul(coeff);
 
             // Accumulate values in the BTreeMap
             *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
