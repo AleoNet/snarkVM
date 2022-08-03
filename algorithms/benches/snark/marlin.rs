@@ -98,7 +98,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     }
 }
 
-fn snark_prove_vk(c: &mut Criterion) {
+fn snark_vk_prove(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
@@ -113,13 +113,13 @@ fn snark_prove_vk(c: &mut Criterion) {
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-        c.bench_function(&format!("snark_prove_vk_{size}"), move |b| {
+        c.bench_function(&format!("snark_vk_prove_{size}"), move |b| {
             b.iter(|| MarlinInst::prove_vk(&vk, &pk).unwrap())
         });
     }
 }
 
-fn snark_verify_vk(c: &mut Criterion) {
+fn snark_vk_verify(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let x = Fr::rand(rng);
@@ -135,7 +135,7 @@ fn snark_verify_vk(c: &mut Criterion) {
         let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         let certificate = MarlinInst::prove_vk(&vk, &pk).unwrap();
 
-        c.bench_function(&format!("snark_verify_vk_{size}"), move |b| {
+        c.bench_function(&format!("snark_vk_verify_{size}"), move |b| {
             b.iter(|| MarlinInst::verify_vk(&circuit, &vk, &certificate).unwrap())
         });
     }
@@ -169,18 +169,18 @@ fn snark_verify(c: &mut Criterion) {
     let mut z = x;
     z.mul_assign(&y);
 
-    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 100000, 1000000).unwrap();
+    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
     let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
 
-    let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+    let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-    let proof = MarlinInst::prove(&params.0, &circuit, rng).unwrap();
+    let proof = MarlinInst::prove(&pk, &circuit, rng).unwrap();
 
     c.bench_function("snark_verify", move |b| {
         b.iter(|| {
-            let verification = MarlinInst::verify(&params.1, [z], &proof).unwrap();
+            let verification = MarlinInst::verify(&vk, [z], &proof).unwrap();
             assert!(verification);
         })
     });
@@ -189,7 +189,7 @@ fn snark_verify(c: &mut Criterion) {
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove_vk, snark_verify_vk, snark_prove, snark_verify,
+    targets = snark_universal_setup, snark_circuit_setup, snark_vk_prove, snark_vk_verify, snark_prove, snark_verify,
 }
 
 criterion_main!(marlin_snark);

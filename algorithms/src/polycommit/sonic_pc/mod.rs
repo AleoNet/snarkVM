@@ -16,6 +16,7 @@
 
 use crate::{
     fft::DensePolynomial,
+    msm::variable_base::VariableBase,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
     snark::marlin::{params::OptimizationType, FiatShamirRng},
 };
@@ -425,11 +426,13 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut combined_witness = E::G1Projective::zero();
         let mut combined_adjusted_witness = E::G1Projective::zero();
 
+        let sponge_timer = start_timer!(|| "Sponge");
         let mut batch_kzg_check_fs_rng = S::new();
-        batch_kzg_check_fs_rng
-            .absorb_nonnative_field_elements(query_set.iter().map(|(_, (_, q))| *q), OptimizationType::Weight);
+        let unique_queries = query_set.iter().map(|(_, (_, q))| *q).collect::<BTreeSet<_>>();
+        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(unique_queries, OptimizationType::Weight);
         batch_kzg_check_fs_rng.absorb_nonnative_field_elements(values.values().copied(), OptimizationType::Weight);
         proof.absorb_into_sponge(&mut batch_kzg_check_fs_rng)?;
+        end_timer!(sponge_timer);
 
         for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
@@ -635,15 +638,8 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     fn combine_commitments<'a>(
         coeffs_and_comms: impl IntoIterator<Item = (E::Fr, &'a Commitment<E>)>,
     ) -> E::G1Projective {
-        let mut combined_comm = E::G1Projective::zero();
-        for (coeff, comm) in coeffs_and_comms {
-            if coeff.is_one() {
-                combined_comm.add_assign_mixed(&comm.0);
-            } else {
-                combined_comm += &comm.0.mul(coeff);
-            }
-        }
-        combined_comm
+        let (scalars, bases): (Vec<_>, Vec<_>) = coeffs_and_comms.into_iter().map(|(f, c)| (f.into(), c.0)).unzip();
+        VariableBase::msm(&bases, &scalars)
     }
 
     fn normalize_commitments(commitments: Vec<E::G1Projective>) -> impl Iterator<Item = Commitment<E>> {
@@ -672,6 +668,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip_eq(values) {
+            let acc_timer = start_timer!(|| format!("Accumulating {}", labeled_comm.label()));
             let curr_challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
 
             combined_values += &(value * curr_challenge);
@@ -680,27 +677,29 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let coeff = randomizer.unwrap_or(E::Fr::one()) * curr_challenge;
+            let coeff = randomizer.unwrap_or_else(E::Fr::one) * curr_challenge;
             let comm_with_challenge: E::G1Projective = comm.0.mul(coeff);
 
             // Accumulate values in the BTreeMap
             *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
+            end_timer!(acc_timer);
         }
 
         // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut adjusted_witness = vk.vk.g.mul(combined_values) - proof.w.mul(point);
+        let mut bases = vec![vk.vk.g, -proof.w];
+        let mut coeffs = vec![combined_values, point];
         if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.vk.gamma_g.mul(random_v);
+            bases.push(vk.vk.gamma_g);
+            coeffs.push(random_v);
         }
-
-        let (witness, adjusted_witness) = if let Some(randomizer) = randomizer {
-            (proof.w.mul(randomizer), adjusted_witness.mul(randomizer))
+        *combined_witness += if let Some(randomizer) = randomizer {
+            coeffs.iter_mut().for_each(|c| *c *= randomizer);
+            proof.w.mul(randomizer)
         } else {
-            (proof.w.to_projective(), adjusted_witness)
+            proof.w.to_projective()
         };
-
-        *combined_witness += witness;
-        *combined_adjusted_witness += adjusted_witness;
+        let coeffs = coeffs.into_iter().map(|c| c.into()).collect::<Vec<_>>();
+        *combined_adjusted_witness += VariableBase::msm(&bases, &coeffs);
         end_timer!(acc_time);
     }
 

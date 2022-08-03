@@ -183,16 +183,20 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
     fn absorb_labeled(comms: &[LabeledCommitment<Commitment<E>>], sponge: &mut FS) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
-        Self::absorb(&commitments, sponge)
+        Self::absorb(&commitments, sponge);
     }
 
     fn absorb(commitments: &[Commitment<E>], sponge: &mut FS) {
+        let sponge_time = start_timer!(|| "Absorbing commitments");
         sponge.absorb_native_field_elements(commitments);
+        end_timer!(sponge_time);
     }
 
     fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
+        let sponge_time = start_timer!(|| "Absorbing commitments and message");
         Self::absorb(commitments, sponge);
         sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
+        end_timer!(sponge_time);
     }
 }
 
