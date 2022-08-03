@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 19000, 4, 6046, 6088)
+        check_from_callback(Mode::Constant, 19000, 4, 6200, 6200)
     }
 
     #[test]
