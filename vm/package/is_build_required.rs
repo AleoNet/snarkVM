@@ -39,34 +39,32 @@ impl<N: Network> Package<N> {
             Err(_) => return true,
         };
 
-        // Initialize a boolean indicator if we need to build the circuit.
-        let mut is_complete = true;
-
         // Check if the program ID in the manifest matches the program ID in the AVM file.
-        if avm_file.program().id() == &self.program_id {
-            // Retrieve the main program.
-            let program = self.program();
+        if avm_file.program().id() != &self.program_id {
+            return true;
+        }
 
-            // Check if the program matches.
-            if avm_file.program() == program {
-                // Next, check if the prover and verifier exist for each function.
-                for function_name in program.functions().keys() {
-                    // Check if the prover file exists.
-                    if !ProverFile::exists_at(&build_directory, function_name) {
-                        // If not, we need to build the circuit.
-                        is_complete = false;
-                        break;
-                    }
-                    // Check if the verifier file exists.
-                    if !VerifierFile::exists_at(&build_directory, function_name) {
-                        // If not, we need to build the circuit.
-                        is_complete = false;
-                        break;
-                    }
-                }
+        // Check if the main program matches.
+        let program = self.program();
+        if avm_file.program() != program {
+            return true;
+        }
+
+        // Next, check if the prover and verifier exist for each function.
+        for function_name in program.functions().keys() {
+            // Check if the prover file exists.
+            if !ProverFile::exists_at(&build_directory, function_name) {
+                // If not, we need to build the circuit.
+                return true;
+            }
+            // Check if the verifier file exists.
+            if !VerifierFile::exists_at(&build_directory, function_name) {
+                // If not, we need to build the circuit.
+                return true;
             }
         }
 
-        !is_complete
+        // Package hasn't changed, no need to build
+        return false;
     }
 }
