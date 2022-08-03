@@ -48,8 +48,8 @@ impl<N: Network> Stack<N> {
                     .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
 
                 // Insert the proving and verifying key.
-                self.insert_proving_key(function_name, ProvingKey::from_bytes_le(&proving_key)?);
-                self.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(&verifying_key)?);
+                self.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?);
+                self.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?);
             }
         }
         Ok(())
