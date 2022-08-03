@@ -575,6 +575,7 @@ mod tests {
         account::{Address, PrivateKey},
         network::Testnet3,
         program::{Locator, Plaintext, Record, Value, ValueType},
+        types::Field,
     };
 
     use parking_lot::RwLock;
@@ -1080,9 +1081,7 @@ function compute:
             "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
         ))
         .unwrap();
-        let input = Value::<CurrentNetwork>::Record(input_record.clone());
-        // Declare the expected output value.
-        let expected = Value::Record(input_record);
+        let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
@@ -1094,6 +1093,17 @@ function compute:
             .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
             .unwrap();
         assert_eq!(authorization.len(), 1);
+        let request = authorization.peek_next().unwrap();
+
+        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(1)]).unwrap();
+        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
+
+        // Declare the expected output value.
+        let expected = Value::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
+        ))
+        .unwrap();
 
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
