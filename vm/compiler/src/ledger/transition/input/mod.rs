@@ -80,6 +80,14 @@ impl<N: Network> Input<N> {
         }
     }
 
+    /// Returns the origin, if the input is a record.
+    pub const fn origin(&self) -> Option<&Origin<N>> {
+        match self {
+            Input::Record(_, origin) => Some(origin),
+            _ => None,
+        }
+    }
+
     /// Returns the public verifier inputs for the proof.
     pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
         [self.id()].into_iter().map(|id| **id)

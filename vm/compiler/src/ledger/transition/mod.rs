@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod input;
+pub use input::Origin;
 use input::*;
 
 mod leaf;
@@ -293,6 +294,11 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
+    /// Returns an iterator over the origins, for inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
+        self.inputs.iter().flat_map(Input::origin)
+    }
+
     /// Returns an iterator over the serial numbers, for inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.inputs.iter().flat_map(Input::serial_number)

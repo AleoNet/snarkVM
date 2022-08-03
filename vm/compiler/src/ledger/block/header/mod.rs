@@ -52,14 +52,14 @@ impl<N: Network> Header<N> {
         // Construct a new block header.
         let header = Self { previous_state_root, transactions_root, metadata };
         // Ensure the header is valid.
-        match header.verify() {
+        match header.is_valid() {
             true => Ok(header),
             false => bail!("Invalid block header: {:?}", header),
         }
     }
 
     /// Returns `true` if the block header is well-formed.
-    pub fn verify(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         match self.height() == 0u32 {
             true => self.is_genesis(),
             false => {
@@ -68,7 +68,7 @@ impl<N: Network> Header<N> {
                     // Ensure the transactions root is nonzero.
                     && self.transactions_root != Field::zero()
                     // Ensure the metadata is valid.
-                    && self.metadata.verify()
+                    && self.metadata.is_valid()
             }
         }
     }

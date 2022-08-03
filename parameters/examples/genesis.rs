@@ -29,7 +29,7 @@ pub fn generate<N: Network>(private_key: PrivateKey<N>) -> Result<Vec<u8>> {
     let mut vm = VM::<N>::new()?;
     // Create a genesis block.
     let genesis_block = Block::genesis(&mut vm, &private_key, &mut thread_rng())?;
-    // assert!(genesis_block.verify(&VM::<N>::new()?));
+    assert!(genesis_block.verify(&VM::<N>::new()?));
     assert!(genesis_block.is_genesis());
     assert!(genesis_block.header().is_genesis());
 

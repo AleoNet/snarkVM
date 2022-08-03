@@ -3,8 +3,7 @@
 **/target
 **/.DS_Store
 **storage_db
-**inner.proving*
-**outer.proving*
-**posw.proving*
+**/*.prover.*
+**/*.verifier.*
 **universal.srs.*.*
 !**universal.srs.*.metadata

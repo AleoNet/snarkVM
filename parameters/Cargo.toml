@@ -45,6 +45,9 @@ optional = true
 [dependencies.hex]
 version = "0.4.3"
 
+[dependencies.indexmap]
+version = "1.9"
+
 [dependencies.itertools]
 version = "0.10.3"
 

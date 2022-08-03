@@ -25,7 +25,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    ledger::{vm::VM, Transition},
+    ledger::{vm::VM, Origin, Transition},
     process::{Authorization, Deployment, Execution},
     program::Program,
 };
@@ -138,56 +138,6 @@ impl<N: Network> Transaction<N> {
         // Initialize the transaction.
         Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, rng)
     }
-
-    /// Returns `true` if the transaction is well-formed.
-    pub fn verify(&self, vm: &VM<N>) -> bool {
-        // Compute the Merkle root of the transaction.
-        match self.to_root() {
-            // Ensure the transaction ID is correct.
-            Ok(root) => {
-                if *self.id() != root {
-                    warn!("Incorrect transaction ID ({})", self.id());
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the transaction: {error}\n{self}");
-                return false;
-            }
-        };
-
-        match self {
-            Transaction::Deploy(_, deployment, additional_fee) => {
-                // Check the deployment size.
-                if let Err(error) = Self::check_deployment_size(deployment) {
-                    warn!("Invalid transaction (deployment): {error}");
-                    return false;
-                }
-                // Verify the deployment.
-                vm.verify_deployment(deployment)
-                    // Verify the additional fee.
-                    && vm.verify_additional_fee(additional_fee)
-            }
-            Transaction::Execute(_, execution, additional_fee) => {
-                // Check the deployment size.
-                if let Err(error) = Self::check_execution_size(execution) {
-                    warn!("Invalid transaction (execution): {error}");
-                    return false;
-                }
-
-                // Verify the additional fee, if it exists.
-                let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => vm.verify_additional_fee(additional_fee),
-                    None => true,
-                };
-
-                // Verify the execution.
-                vm.verify_execution(execution)
-                    // Verify the additional fee.
-                    && check_additional_fee
-            }
-        }
-    }
 }
 
 impl<N: Network> Transaction<N> {
@@ -219,6 +169,11 @@ impl<N: Network> Transaction<N> {
         self.transitions().map(Transition::tpk)
     }
 
+    /// Returns an iterator over the origins, for all transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
+        self.transitions().flat_map(Transition::origins)
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().flat_map(Transition::serial_numbers)
@@ -232,5 +187,10 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transitions().flat_map(Transition::nonces)
+    }
+
+    /// Returns an iterator over the fees, for all transitions.
+    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
+        self.transitions().map(Transition::fee)
     }
 }

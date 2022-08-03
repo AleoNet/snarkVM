@@ -572,9 +572,10 @@ mod tests {
     use crate::{CallStack, Execution, Process};
     use circuit::network::AleoV0;
     use console::{
-        account::PrivateKey,
+        account::{Address, PrivateKey},
         network::Testnet3,
         program::{Locator, Plaintext, Record, Value, ValueType},
+        types::Field,
     };
 
     use parking_lot::RwLock;
@@ -872,9 +873,21 @@ function compute:
 
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Initialize caller private key.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
         // Declare the input value.
-        let input =
-            Value::<CurrentNetwork>::Record(Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap());
+        let input_record = Record::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
+        let input = Value::<CurrentNetwork>::Record(input_record);
+
         // Declare the expected output value.
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
@@ -883,21 +896,11 @@ function compute:
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Compute the authorization.
-        let authorization = {
-            // Initialize an RNG.
-            let rng = &mut test_crypto_rng();
-
-            // Initialize caller private key.
-            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-
-            // Authorize the function call.
-            let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
-                .unwrap();
-            assert_eq!(authorization.len(), 1);
-            authorization
-        };
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
 
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
@@ -1065,32 +1068,42 @@ function compute:
 
         // Declare the function name.
         let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Initialize caller private key.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
         // Declare the input value.
-        let input_record = Record::from_str("{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }").unwrap();
-        let input = Value::<CurrentNetwork>::Record(input_record.clone());
-        // Declare the expected output value.
-        let expected = Value::Record(input_record);
+        let input_record = Record::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: 0group.public }}"
+        ))
+        .unwrap();
+        let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Construct the process.
         let mut process = Process::<CurrentNetwork>::new().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
-        // Compute the authorization.
-        let authorization = {
-            // Initialize an RNG.
-            let rng = &mut test_crypto_rng();
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.peek_next().unwrap();
 
-            // Initialize caller private key.
-            let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(1)]).unwrap();
+        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
 
-            // Authorize the function call.
-            let authorization = process
-                .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
-                .unwrap();
-            assert_eq!(authorization.len(), 1);
-            authorization
-        };
+        // Declare the expected output value.
+        let expected = Value::from_str(&format!(
+            "{{ owner: {caller}.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"
+        ))
+        .unwrap();
 
         // Retrieve the stack.
         let stack = process.get_stack(program.id()).unwrap();
