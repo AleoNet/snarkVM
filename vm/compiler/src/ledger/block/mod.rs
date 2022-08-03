@@ -26,15 +26,18 @@ mod serialize;
 mod string;
 
 use crate::{
-    ledger::{vm::VM, Transaction, Transition},
+    ledger::{vm::VM, Origin, Transaction, Transition},
     process::{Deployment, Execution},
 };
 use console::{
     account::{Address, PrivateKey, Signature},
     network::prelude::*,
-    program::Value,
+    program::{Identifier, ProgramID, Value},
     types::{Field, Group},
 };
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -94,6 +97,8 @@ impl<N: Network> Block<N> {
 
     /// Returns `true` if the block is well-formed.
     pub fn verify(&self, vm: &VM<N>) -> bool {
+        //** Header **//
+
         // If the block is the genesis block, check that it is valid.
         if self.header.height() == 0 && !self.is_genesis() {
             warn!("Invalid genesis block");
@@ -101,10 +106,12 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the block header is valid.
-        if !self.header.verify() {
+        if !self.header.is_valid() {
             warn!("Invalid block header: {:?}", self.header);
             return false;
         }
+
+        //** Block Hash **//
 
         // Compute the Merkle root of the block header.
         let header_root = match self.header.to_root() {
@@ -130,10 +137,12 @@ impl<N: Network> Block<N> {
             }
         };
 
+        //** Signature **//
+
         // TODO (howardwu): TRIAL - Update this to the validator set.
         // Ensure the block is signed by an authorized validator.
         let signer = self.signature.to_address();
-        if signer.to_string() != "aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8" {
+        if !cfg!(test) && signer.to_string() != "aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8" {
             warn!("Block {} ({}) is signed by an unauthorized validator: {}", self.height(), self.block_hash, signer);
             return false;
         }
@@ -143,6 +152,8 @@ impl<N: Network> Block<N> {
             warn!("Invalid signature for block {} ({})", self.height(), self.block_hash);
             return false;
         }
+
+        //** Transactions **//
 
         // Compute the transactions root.
         match self.transactions.to_root() {
@@ -164,10 +175,45 @@ impl<N: Network> Block<N> {
             }
         };
 
-        // Ensure the transactions are valid.
-        if !self.transactions.verify(vm) {
-            warn!("Block contains invalid transactions: {:?}", self);
+        // Ensure the transactions list is not empty.
+        if self.transactions.is_empty() {
+            warn!("Cannot validate an empty transactions list");
             return false;
+        }
+
+        // Ensure the number of transactions is within the allowed range.
+        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
+            warn!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+            return false;
+        }
+
+        // Ensure each transaction is well-formed.
+        if !self.transactions.par_iter().all(|(_, transaction)| vm.verify(transaction)) {
+            warn!("Invalid transaction found in the transactions list");
+            return false;
+        }
+
+        //** Fees **//
+
+        // Prepare the block height, credits program ID, and genesis function name.
+        let height = self.height();
+        let credits_program_id = ProgramID::from_str("credits.aleo").expect("Failed to parse the credits program ID");
+        let credits_genesis = Identifier::from_str("genesis").expect("Failed to parse the genesis function name");
+
+        // Ensure the fee is correct for each transition.
+        for transition in self.transitions() {
+            if height > 0 {
+                // Ensure the genesis function is not called.
+                if *transition.program_id() == credits_program_id && *transition.function_name() == credits_genesis {
+                    warn!("The genesis function cannot be called.");
+                    return false;
+                }
+                // Ensure the transition fee is not negative.
+                if transition.fee().is_negative() {
+                    warn!("The transition fee cannot be negative.");
+                    return false;
+                }
+            }
         }
 
         true
@@ -264,33 +310,43 @@ impl<N: Network> Block<N> {
         self.transactions.executions()
     }
 
-    /// Returns an iterator over all executed transitions.
+    /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         self.transactions.transitions()
     }
 
-    /// Returns an iterator over the transition IDs, for all executed transitions.
+    /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
         self.transactions.transition_ids()
     }
 
-    /// Returns an iterator over the transition public keys, for all executed transactions.
+    /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.transition_public_keys()
     }
 
-    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
+    /// Returns an iterator over the origins, for all transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
+        self.transactions.origins()
+    }
+
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.serial_numbers()
     }
 
-    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
+    /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.commitments()
     }
 
-    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transactions.nonces()
+    }
+
+    /// Returns an iterator over the fees, for all transitions.
+    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
+        self.transactions.fees()
     }
 }

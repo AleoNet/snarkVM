@@ -22,8 +22,7 @@ impl<
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
     SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
 {
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {

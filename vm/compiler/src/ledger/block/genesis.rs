@@ -63,7 +63,7 @@ impl<N: Network> Block<N> {
 mod tests {
     #[test]
     fn test_genesis() {
-        let block = crate::ledger::vm::test_helpers::sample_genesis_block();
+        let block = crate::ledger::test_helpers::sample_genesis_block();
         // println!("{}", serde_json::to_string_pretty(&block).unwrap());
         assert!(block.is_genesis());
     }

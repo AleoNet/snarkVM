@@ -24,8 +24,7 @@ impl<
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
     SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
 {
     /// Returns the block for the given block height.
     pub fn get_block(&self, height: u32) -> Result<Block<N>> {
