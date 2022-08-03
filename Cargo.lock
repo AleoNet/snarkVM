@@ -2501,6 +2501,7 @@ dependencies = [
  "cfg-if",
  "curl",
  "hex",
+ "indexmap",
  "itertools",
  "lazy_static",
  "parking_lot 0.11.2",

@@ -212,6 +212,8 @@ impl<N: Network> Stack<N> {
             // Add the function to the stack.
             stack.insert_function(function)?;
         }
+        // Load the credits program.
+        stack.load_credits_program()?;
         // Return the stack.
         Ok(stack)
     }

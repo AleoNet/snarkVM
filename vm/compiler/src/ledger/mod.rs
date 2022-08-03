@@ -37,7 +37,10 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::process::{Deployment, Execution};
+use crate::{
+    ledger::Origin,
+    process::{Deployment, Execution},
+};
 use console::{
     account::{PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
@@ -94,7 +97,6 @@ pub struct Ledger<
     signatures: SignatureMap,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
-
     /// The VM state.
     vm: VM<N>,
     // /// The mapping of program IDs to their global state.
@@ -117,13 +119,10 @@ impl<
         // Load the VM with deployment functions.
         let mut vm = VM::<N>::new()?;
         for deployment_transaction in
-            genesis.transactions().values().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _)))
+            genesis.transactions().values().filter(|transaction| matches!(transaction, Transaction::Deploy(..)))
         {
             vm.on_deploy(deployment_transaction)?;
         }
-
-        // Synthesize the credit program keys.
-        vm.synthesize_credit_program_keys::<::circuit::AleoV0, _>(&mut snarkvm_utilities::test_crypto_rng_fixed())?;
 
         // Construct the blocks.
         Ok(Self {
@@ -140,21 +139,9 @@ impl<
         })
     }
 
-    /// Initialize a VM from the stored transactions.
-    pub fn load_vm(&mut self) -> Result<VM<N>> {
-        //
-        // TODO (howardwu): SYNTHESIZE THE CREDITS PROGRAM PKS and VKS ON PROCESS INITIALIZATION.
-        //
-        let mut vm = VM::<N>::new()?;
-        // Synthesize the credit program keys.
-        vm.synthesize_credit_program_keys::<::circuit::AleoV0, _>(&mut snarkvm_utilities::test_crypto_rng_fixed())?;
-
-        // Process all the deployment transactions that exist in the ledger.
-        for deployment_transaction in self.transactions().filter(|tx| matches!(**tx, Transaction::Deploy(_, _, _))) {
-            vm.on_deploy(&*deployment_transaction)?;
-        }
-
-        Ok(vm)
+    /// Returns the VM.
+    pub fn vm(&self) -> &VM<N> {
+        &self.vm
     }
 
     /// Appends the given transaction to the memory pool.
@@ -294,20 +281,19 @@ impl<
         //     ));
         // }
 
-        // TODO (raychu86): Ensure that the origins exist in the ledger or have valid state
         // Ensure that the origin are valid.
-        for transactions in block.transactions().values().filter(|tx| matches!(tx, Transaction::Execute(_, _, _))) {
-            for origin in transactions.transitions().flat_map(|transition| transition.origins()) {
+        for origin in block.transitions().flat_map(Transition::origins) {
+            match origin {
                 // Check that the commitment exists in the ledger.
-                if let Some(commitment) = origin.commitment() {
+                Origin::Commitment(commitment) => {
                     if !self.contains_commitment(commitment) {
-                        bail!("The origin commitment {} does not exist in the ledger", commitment)
+                        bail!("The given transaction references a non-existent commitment {}", &commitment)
                     }
                 }
-
-                // Check that the state root is a valid past or current state root.
-                if let Some(_state_root) = origin.state_root() {
-                    todo!()
+                // TODO (raychu86): Ensure that the state root exists in the ledger.
+                // Check that the state root is an existing state root.
+                Origin::StateRoot(_state_root) => {
+                    bail!("State roots are currently not supported (yet)")
                 }
             }
         }
@@ -381,12 +367,13 @@ impl<
             ledger.transactions.insert(block.height(), block.transactions().clone())?;
             ledger.signatures.insert(block.height(), *block.signature())?;
 
-            // Load the VM with deployment functions in the block.
-            for deployment_transaction in
-                block.transactions().values().filter(|tx| matches!(tx, Transaction::Deploy(_, _, _)))
-            {
-                self.vm.on_deploy(deployment_transaction)?;
-            }
+            // TODO (howardwu): This logic was introduced without being atomic. Split into check on deploy first in VM.
+            // // Load the VM with deployment functions in the block.
+            // for deployment_transaction in
+            //     block.transactions().values().filter(|transaction| matches!(transaction, Transaction::Deploy(..)))
+            // {
+            //     self.vm.on_deploy(deployment_transaction)?;
+            // }
 
             // Clear the memory pool of these transactions.
             for transaction_id in block.transaction_ids() {
@@ -525,7 +512,10 @@ pub(crate) mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::{test_helpers::CurrentLedger, vm::test_helpers::sample_deployment_transaction};
+    use crate::ledger::{
+        test_helpers::CurrentLedger,
+        vm::test_helpers::{sample_deployment_transaction, sample_execution_transaction},
+    };
     use console::network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
@@ -561,8 +551,8 @@ mod tests {
         assert_eq!(ledger.latest_hash(), genesis.hash());
 
         // Add a transaction to the memory pool.
-        let new_transaction = sample_deployment_transaction();
-        ledger.add_to_memory_pool(new_transaction).unwrap();
+        let transaction = sample_execution_transaction();
+        ledger.add_to_memory_pool(transaction).unwrap();
 
         // Propose the next block.
         let next_block = ledger.propose_next_block(&private_key, rng).unwrap();
@@ -594,11 +584,7 @@ mod tests {
         // Construct a next block.
         ledger.add_next_block(&next_block).unwrap();
 
-        // Construct a new ledger from the ledger transactions.
-        let mut vm = ledger.load_vm().unwrap();
-
         // Ensure that the VM can't redeploy the same program.
-        assert!(vm.on_deploy(&deployment_transaction).is_err());
         assert!(ledger.vm.on_deploy(&deployment_transaction).is_err());
     }
 }

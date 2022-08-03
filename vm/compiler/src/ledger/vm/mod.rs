@@ -94,18 +94,6 @@ impl<N: Network> VM<N> {
         Ok(Self { process: Arc::new(RwLock::new(Process::new()?)), _phantom: PhantomData })
     }
 
-    /// Synthesizes the proving and verifying key for the given credit program.
-    #[inline]
-    pub fn synthesize_credit_program_keys<
-        A: circuit::Aleo<Network = console::network::Testnet3>,
-        R: Rng + CryptoRng,
-    >(
-        &self,
-        rng: &mut R,
-    ) -> Result<()> {
-        self.process.write().synthesize_credit_program_keys::<A, R>(rng)
-    }
-
     /// Deploys a program with the given program ID.
     #[inline]
     pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {
@@ -358,7 +346,6 @@ pub(crate) mod test_helpers {
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
-    type CurrentAleo = circuit::AleoV0;
 
     pub(crate) fn sample_program() -> Program<CurrentNetwork> {
         static INSTANCE: OnceCell<Program<CurrentNetwork>> = OnceCell::new();
@@ -396,13 +383,8 @@ function compute:
         static INSTANCE: OnceCell<VM<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                let rng = &mut test_crypto_rng_fixed();
-
                 // Initialize a new VM.
-                let vm = VM::<CurrentNetwork>::new().unwrap();
-                vm.synthesize_credit_program_keys::<CurrentAleo, _>(rng).unwrap();
-
-                vm
+                VM::<CurrentNetwork>::new().unwrap()
             })
             .clone()
     }
@@ -514,10 +496,9 @@ function compute:
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use snarkvm_utilities::test_crypto_rng;
 
-    use crate::ledger::vm::test_helpers::{sample_deployment_transaction, sample_vm};
+    use crate::ledger::vm::test_helpers::{sample_deployment_transaction, sample_program, sample_vm};
 
     #[test]
     fn test_vm_deploy() {
@@ -525,17 +506,10 @@ mod tests {
         let vm = sample_vm();
 
         // Fetch the program from the deployment.
-        let deployment = if let Transaction::Deploy(_, deployment, _) = sample_deployment_transaction() {
-            Some(deployment)
-        } else {
-            None
-        }
-        .unwrap();
-
-        let program = deployment.program();
+        let program = sample_program();
 
         // Deploy the program.
-        let deployment = vm.deploy(program, rng).unwrap();
+        let deployment = vm.deploy(&program, rng).unwrap();
 
         // Ensure the deployment is valid.
         assert!(vm.verify_deployment(&deployment));

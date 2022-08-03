@@ -70,25 +70,6 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
-    /// Synthesizes the proving and verifying key for the given credit program.
-    #[inline]
-    pub fn synthesize_credit_program_keys<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        rng: &mut R,
-    ) -> Result<()> {
-        //
-        // TODO (howardwu): SYNTHESIZE THE CREDITS PROGRAM PKS and VKS ON PROCESS INITIALIZATION.
-        //
-        let credits_program = Program::<N>::credits()?;
-        let credits_program_id = credits_program.id();
-        // Synthesize the 'credits.aleo' function keys.
-        for (function_id, _) in credits_program.functions().iter() {
-            self.synthesize_key::<A, _>(credits_program_id, function_id, rng)?;
-        }
-
-        Ok(())
-    }
-
     /// Adds a new program to the process.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
