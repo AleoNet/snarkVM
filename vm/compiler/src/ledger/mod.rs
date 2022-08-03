@@ -156,7 +156,6 @@ impl<
         headers: HeadersMap,
         transactions: TransactionsMap,
         signatures: SignatureMap,
-        programs: ProgramsMap,
     ) -> Result<Self> {
         // TODO (raychu86): Handle this in a more efficient manner.
 
@@ -164,7 +163,7 @@ impl<
         let mut headers = headers;
         let mut transactions = transactions;
         let mut signatures = signatures;
-        let mut programs = programs;
+        let mut vm = VM::<N>::new()?;
 
         // Fetch the current round and height.
         let current_header = match headers.iter().max_by(|a, b| a.0.cmp(&b.0)) {
@@ -178,13 +177,16 @@ impl<
                 transactions.insert(genesis.height(), genesis.transactions().clone())?;
                 signatures.insert(genesis.height(), *genesis.signature())?;
 
-                for (program_id, deploy) in genesis.deployments().map(|deploy| (*deploy.program().id(), deploy)) {
-                    programs.insert(program_id, deploy.clone())?;
-                }
-
                 *genesis.header()
             }
         };
+
+        // Inject the programs into the VM.
+        for transactions in transactions.values() {
+            for transaction in transactions.transactions() {
+                vm.finalize(transaction)?;
+            }
+        }
 
         let current_round = current_header.round();
         let current_height = current_header.height();
@@ -203,7 +205,7 @@ impl<
             headers,
             transactions,
             signatures,
-            programs,
+            vm,
             memory_pool: Default::default(),
         };
 
@@ -613,8 +615,17 @@ mod tests {
 
     #[test]
     fn test_load_ledger() {
-        // Load the genesis block.
-        let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+        // Load the ledger without the genesis_block.
+        let ledger =
+            CurrentLedger::load(Default::default(), Default::default(), Default::default(), Default::default())
+                .unwrap();
+
+        // Retrieve the genesis block.
+        let genesis = ledger.get_block(0).unwrap();
+
+        assert_eq!(ledger.latest_hash(), genesis.hash());
+        assert_eq!(ledger.latest_height(), genesis.height());
+        assert_eq!(ledger.latest_round(), genesis.round());
 
         // Load the ledger with the genesis block.
         let ledger = CurrentLedger::load(
@@ -622,21 +633,6 @@ mod tests {
             [(genesis.height(), *genesis.header())].into_iter().collect(),
             [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
             [(genesis.height(), *genesis.signature())].into_iter().collect(),
-            genesis.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())).collect(),
-        )
-        .unwrap();
-
-        assert_eq!(ledger.latest_hash(), genesis.hash());
-        assert_eq!(ledger.latest_height(), genesis.height());
-        assert_eq!(ledger.latest_round(), genesis.round());
-
-        // Load the ledger without the genesis_block.
-        let ledger = CurrentLedger::load(
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
         )
         .unwrap();
 
