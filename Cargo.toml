@@ -65,7 +65,8 @@ members = [
   "utilities",
   "utilities/derives",
   "vm/compiler",
-  "wasm"
+  "wasm",
+  "fuzz"
 ]
 
 [lib]

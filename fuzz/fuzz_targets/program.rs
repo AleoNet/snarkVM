@@ -17,7 +17,9 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 
-use snarkvm::{compiler::Program, console::network::Testnet3, prelude::test_crypto_rng, VM};
+use snarkvm::{compiler::Program, console::network::Testnet3, prelude::test_crypto_rng};
+use snarkvm::prelude::VM;
+use digest::Mac;
 
 type CurrentNetwork = Testnet3;
 
@@ -28,9 +30,9 @@ fuzz_target!(|program: Program<CurrentNetwork>| {
         let rng = &mut test_crypto_rng();
 
         // Deploy.
-        if let Ok(transaction) = vm.deploy(&program, rng) {
+        if let Ok(deployment) = vm.deploy(&program, rng) {
             // Verify.
-            vm.verify(&transaction);
+            vm.verify_deployment(&deployment);
         }
     }
 });
