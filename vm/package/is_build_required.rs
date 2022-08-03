@@ -65,6 +65,6 @@ impl<N: Network> Package<N> {
         }
 
         // Package hasn't changed, no need to build
-        return false;
+        false
     }
 }
