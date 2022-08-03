@@ -118,7 +118,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
-        self.transactions.values().flat_map(Transaction::transitions)
+        self.transactions().flat_map(Transaction::transitions)
     }
 
     /// Returns a consuming iterator over all transitions.
@@ -128,7 +128,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = &N::TransitionID> {
-        self.transactions.values().flat_map(Transaction::transition_ids)
+        self.transactions().flat_map(Transaction::transition_ids)
     }
 
     /// Returns a consuming iterator over the transition IDs, for all transitions.
@@ -138,7 +138,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transactions.values().flat_map(Transaction::transition_public_keys)
+        self.transactions().flat_map(Transaction::transition_public_keys)
     }
 
     /// Returns a consuming iterator over the transition public keys, for all transactions.
