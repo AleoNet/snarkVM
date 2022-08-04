@@ -14,11 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod contains;
+pub use contains::*;
+
+// mod get;
+// pub use get::*;
+//
+// mod iterators;
+// pub use iterators::*;
+
 use crate::{
     ledger::{Block, Deployment, Header, Origin, Transaction, Transition},
     memory_map::MemoryMap,
     Map,
-    MapReader,
 };
 
 use console::{
