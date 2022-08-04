@@ -41,6 +41,7 @@ impl<N: Network> Process<N> {
             bail!("Function '{}' does not exist.", request.function_name())
         }
 
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executing '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
