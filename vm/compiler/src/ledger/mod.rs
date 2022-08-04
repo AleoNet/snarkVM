@@ -39,6 +39,7 @@ mod latest;
 
 use crate::{
     ledger::Origin,
+    memory_map::MemoryMap,
     process::{Deployment, Execution},
 };
 use console::{
@@ -53,6 +54,9 @@ use snarkvm_parameters::testnet3::GenesisBytes;
 use anyhow::Result;
 use indexmap::IndexMap;
 use time::OffsetDateTime;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// The depth of the Merkle tree for the blocks.
 const BLOCKS_DEPTH: u8 = 32;
@@ -103,13 +107,14 @@ pub struct Ledger<
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
-impl<
-    N: Network,
-    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
-    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
-    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
+impl<N: Network>
+    Ledger<
+        N,
+        MemoryMap<u32, N::BlockHash>,
+        MemoryMap<u32, Header<N>>,
+        MemoryMap<u32, Transactions<N>>,
+        MemoryMap<u32, Signature<N>>,
+    >
 {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new() -> Result<Self> {
@@ -142,6 +147,93 @@ impl<
         ledger.add_next_block(genesis)?;
 
         // Return the ledger.
+        Ok(ledger)
+    }
+}
+
+impl<
+    N: Network,
+    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
+    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
+    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
+    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
+{
+    /// Initializes a new instance of `Ledger` from the given maps.
+    pub fn from_maps(
+        previous_hashes: PreviousHashesMap,
+        headers: HeadersMap,
+        transactions: TransactionsMap,
+        signatures: SignatureMap,
+    ) -> Result<Self> {
+        // Initialize a new VM.
+        let vm = VM::<N>::new()?;
+
+        // Initialize the ledger.
+        let mut ledger = Self {
+            current_hash: Default::default(),
+            current_height: 0,
+            current_round: 0,
+            block_tree: N::merkle_tree_bhp(&[])?,
+            previous_hashes,
+            headers,
+            transactions,
+            signatures,
+            vm,
+            memory_pool: Default::default(),
+        };
+
+        // Fetch the latest height.
+        let latest_height = match ledger.previous_hashes.keys().max() {
+            Some(height) => *height,
+            // If there are no previous hashes, add the genesis block.
+            None => {
+                // Load the genesis block.
+                let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+
+                // Add the genesis block.
+                ledger.previous_hashes.insert(genesis.height(), genesis.previous_hash())?;
+                ledger.headers.insert(genesis.height(), *genesis.header())?;
+                ledger.transactions.insert(genesis.height(), genesis.transactions().clone())?;
+                ledger.signatures.insert(genesis.height(), *genesis.signature())?;
+
+                // Return the genesis height.
+                genesis.height()
+            }
+        };
+
+        // Fetch the latest block.
+        let block = ledger.get_block(latest_height)?;
+
+        // Set the current hash, height, and round.
+        ledger.current_hash = block.hash();
+        ledger.current_height = block.height();
+        ledger.current_round = block.round();
+
+        // Generate the block tree.
+        ledger.block_tree = N::merkle_tree_bhp(
+            &ledger
+                .previous_hashes
+                .values()
+                .skip(1)
+                .map(|hash| (*hash).to_bits_le())
+                .chain([(*ledger.current_hash).to_bits_le()].into_iter())
+                .collect::<Vec<_>>(),
+        )?;
+
+        // Load each transaction into the VM.
+        for transactions in ledger.transactions.values() {
+            for transaction in transactions.transactions() {
+                ledger.vm.finalize(transaction)?;
+            }
+        }
+
+        // Safety check the existence of every block.
+        (0..=ledger.latest_height()).into_par_iter().try_for_each(|height| {
+            ledger.get_block(height)?;
+            Ok::<_, Error>(())
+        })?;
+
         Ok(ledger)
     }
 
@@ -542,9 +634,53 @@ pub(crate) mod test_helpers {
 mod tests {
     use super::*;
     use crate::ledger::test_helpers::CurrentLedger;
+    use console::network::Testnet3;
     use snarkvm_utilities::test_crypto_rng;
 
     use tracing_test::traced_test;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_from_genesis() {
+        // Load the genesis block.
+        let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+
+        // Initialize a ledger with the genesis block.
+        let ledger = CurrentLedger::from_genesis(&genesis).unwrap();
+        assert_eq!(ledger.latest_hash(), genesis.hash());
+        assert_eq!(ledger.latest_height(), genesis.height());
+        assert_eq!(ledger.latest_round(), genesis.round());
+        assert_eq!(ledger.latest_block().unwrap(), genesis);
+    }
+
+    #[test]
+    fn test_from_maps() {
+        // Load the genesis block.
+        let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+
+        // Initialize a ledger without the genesis block.
+        let ledger =
+            CurrentLedger::from_maps(Default::default(), Default::default(), Default::default(), Default::default())
+                .unwrap();
+        assert_eq!(ledger.latest_hash(), genesis.hash());
+        assert_eq!(ledger.latest_height(), genesis.height());
+        assert_eq!(ledger.latest_round(), genesis.round());
+        assert_eq!(ledger.latest_block().unwrap(), genesis);
+
+        // Initialize the ledger with the genesis block.
+        let ledger = CurrentLedger::from_maps(
+            [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
+            [(genesis.height(), *genesis.header())].into_iter().collect(),
+            [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
+            [(genesis.height(), *genesis.signature())].into_iter().collect(),
+        )
+        .unwrap();
+        assert_eq!(ledger.latest_hash(), genesis.hash());
+        assert_eq!(ledger.latest_height(), genesis.height());
+        assert_eq!(ledger.latest_round(), genesis.round());
+        assert_eq!(ledger.latest_block().unwrap(), genesis);
+    }
 
     #[test]
     fn test_state_path() {

@@ -25,9 +25,9 @@ use std::borrow::Cow;
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
-    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Clone,
-    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a> + Clone,
->: Clone + MapReader<'a, K, V> + FromIterator<(K, V)>
+    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
+>: Clone + MapReader<'a, K, V> + FromIterator<(K, V)> + Sync
 {
     ///
     /// Inserts the given key-value pair into the map.
@@ -46,8 +46,8 @@ pub trait Map<
 /// A trait representing map-like storage operations with read-only capabilities.
 pub trait MapReader<
     'a,
-    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Clone,
-    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a> + Clone,
+    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
 >
 {
     type Iterator: Iterator<Item = (Cow<'a, K>, Cow<'a, V>)>;

@@ -33,8 +33,8 @@ pub struct MemoryMap<
 }
 
 impl<
-    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
+    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > FromIterator<(K, V)> for MemoryMap<K, V>
 {
     /// Initializes a new `MemoryMap` from the given iterator.
@@ -45,8 +45,8 @@ impl<
 
 impl<
     'a,
-    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
-    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
+    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
@@ -74,8 +74,8 @@ impl<
 
 impl<
     'a,
-    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
-    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
+    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > MapReader<'a, K, V> for MemoryMap<K, V>
 {
     type Iterator = Iter<'a, K, V>;
@@ -127,8 +127,8 @@ impl<
 }
 
 impl<
-    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
+    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > Default for MemoryMap<K, V>
 {
     fn default() -> Self {
