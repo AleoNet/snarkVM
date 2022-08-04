@@ -58,8 +58,8 @@ impl_remote!(TrialSRS, "https://vm.aleo.org/srs/trial", "resources/", "universal
 
 macro_rules! impl_remote_keys {
     ($pname: ident, $vname: ident, $fname: tt) => {
-        impl_remote!($pname, "https://vm.aleo.org/testnet3/key/", "resources/", $fname, "prover");
-        impl_remote!($vname, "https://vm.aleo.org/testnet3/key/", "resources/", $fname, "verifier");
+        impl_remote!($pname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "prover");
+        impl_remote!($vname, "https://vm.aleo.org/testnet3/key", "resources/", $fname, "verifier");
     };
 }
 
