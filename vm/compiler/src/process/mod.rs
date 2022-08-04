@@ -46,10 +46,12 @@ use console::{
     types::{I64, U64},
 };
 
-use colored::Colorize;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+
+#[cfg(feature = "aleo-cli")]
+use colored::Colorize;
 
 pub struct Process<N: Network> {
     /// The universal SRS.

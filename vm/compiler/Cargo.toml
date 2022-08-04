@@ -96,3 +96,6 @@ version = "0.2"
 [features]
 default = ["parallel"]
 parallel = ["rayon", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]
+# Toggles CLI logging.
+aleo-cli = []
+

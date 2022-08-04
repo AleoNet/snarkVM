@@ -50,6 +50,7 @@ impl<N: Network> Process<N> {
         // Prepare the stack.
         let stack = self.get_stack(request.program_id())?;
 
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
