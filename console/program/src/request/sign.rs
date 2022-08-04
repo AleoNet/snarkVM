@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Request<N> {
     /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, input IDs\])
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
@@ -184,7 +184,7 @@ impl<N: Network> Request<N> {
             }
         }
 
-        // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, input IDs])`.
+        // Compute `challenge` as `HashToScalar(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
         let challenge = N::hash_to_scalar_psd8(&preimage)?;
         // Compute `response` as `r - challenge * sk_sig`.
         let response = r - challenge * sk_sig;
