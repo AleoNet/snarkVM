@@ -296,7 +296,8 @@ jobs:
   compiler:
     docker:
       - image: cimg/rust:1.62
-    resource_class: 2xlarge
+    resource_class: xlarge
+    parallelism: 50
     steps:
       - run_serial:
           workspace_member: vm/compiler
