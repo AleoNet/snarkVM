@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{batch_inversion, PoseidonGrainLFSR, PrimeField};
+use crate::{serial_batch_inversion_and_mul, PoseidonGrainLFSR, PrimeField};
 use aleo_std::{end_timer, start_timer};
 use itertools::Itertools;
 
@@ -84,7 +84,7 @@ pub trait PoseidonDefaultField {
                     *e = *x + y;
                 }
             }
-            batch_inversion(&mut mds_flattened);
+            serial_batch_inversion_and_mul(&mut mds_flattened, &F::one());
             let mds = mds_flattened.chunks(RATE + 1).map(|row| row.to_vec()).collect();
             end_timer!(mds_time);
 
