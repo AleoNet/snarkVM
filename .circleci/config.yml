@@ -296,9 +296,10 @@ jobs:
   compiler:
     docker:
       - image: cimg/rust:1.62
-    resource_class: 4xlarge
+    resource_class: 2xlarge
+    parallelism: 2
     steps:
-      - run_serial:
+      - run_parallel:
           workspace_member: vm/compiler
           cache_key: snarkvm-compiler-cache
 
