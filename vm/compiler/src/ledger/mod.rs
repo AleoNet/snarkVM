@@ -23,6 +23,9 @@ pub use map::*;
 mod state_path;
 pub use state_path::*;
 
+mod store;
+pub use store::*;
+
 mod transaction;
 pub use transaction::*;
 
