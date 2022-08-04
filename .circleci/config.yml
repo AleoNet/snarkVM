@@ -299,7 +299,7 @@ jobs:
     resource_class: xlarge
     parallelism: 50
     steps:
-      - run_serial:
+      - run_parallel:
           workspace_member: vm/compiler
           cache_key: snarkvm-compiler-cache
 
