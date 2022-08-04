@@ -411,6 +411,11 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         Commitment<E>: 'a,
     {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect();
+        let batch_check_time = start_timer!(|| format!(
+            "Checking {} commitments at query set of size {}",
+            commitments.len(),
+            query_set.len(),
+        ));
         let mut query_to_labels_map = BTreeMap::new();
 
         for (label, (point_name, point)) in query_set.iter() {
@@ -427,11 +432,23 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut combined_adjusted_witness = E::G1Projective::zero();
 
         let sponge_timer = start_timer!(|| "Sponge");
+        let sponge_init_timer = start_timer!(|| "Sponge::init");
         let mut batch_kzg_check_fs_rng = S::new();
+        end_timer!(sponge_init_timer);
+
+        let absorb_queries_time = start_timer!(|| "Absorbing queries");
         let unique_queries = query_set.iter().map(|(_, (_, q))| *q).collect::<BTreeSet<_>>();
         batch_kzg_check_fs_rng.absorb_nonnative_field_elements(unique_queries, OptimizationType::Weight);
+        end_timer!(absorb_queries_time);
+
+        let absorb_values_time = start_timer!(|| "Absorbing evaluations");
         batch_kzg_check_fs_rng.absorb_nonnative_field_elements(values.values().copied(), OptimizationType::Weight);
+        end_timer!(absorb_values_time);
+
+        let absorb_proof_time = start_timer!(|| "Absorbing proof");
         proof.absorb_into_sponge(&mut batch_kzg_check_fs_rng)?;
+        end_timer!(absorb_proof_time);
+
         end_timer!(sponge_timer);
 
         for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
@@ -465,7 +482,9 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             randomizer = batch_kzg_check_fs_rng.squeeze_short_nonnative_field_element()?;
         }
 
-        Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk)
+        let result = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
+        end_timer!(batch_check_time);
+        result
     }
 
     pub fn open_combinations<'a>(
@@ -758,7 +777,7 @@ mod tests {
 
     use rand::distributions::Distribution;
 
-    type Sponge = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type Sponge = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>;
     type PC_Bls12_377 = SonicKZG10<Bls12_377, Sponge>;
 
     #[test]

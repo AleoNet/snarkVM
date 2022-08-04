@@ -68,9 +68,9 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 mod marlin {
     use super::*;
     use crate::snark::marlin::{
-        fiat_shamir::FiatShamirChaChaRng,
         AHPForR1CS,
         CircuitVerifyingKey,
+        FiatShamirAlgebraicSpongeRng,
         MarlinHidingMode,
         MarlinNonHidingMode,
         MarlinSNARK,
@@ -78,13 +78,13 @@ mod marlin {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{test_crypto_rng, Uniform};
 
-    use blake2::Blake2s256;
     use core::ops::MulAssign;
 
-    type MarlinSonicInst = MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, [Fr]>;
+    type MarlinSonicInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
-    type MarlinSonicPoswInst =
-        MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinNonHidingMode, [Fr]>;
+    type MarlinSonicPoswInst = MarlinSNARK<Bls12_377, FS, MarlinNonHidingMode, [Fr]>;
+
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, crate::crypto_hash::PoseidonSponge<Fq, 2, 1>>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
@@ -318,7 +318,7 @@ mod marlin_recursion {
     use std::str::FromStr;
 
     type MarlinInst =
-        MarlinSNARK<Bls12_377, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>, MarlinHidingMode, [Fr]>;
+        MarlinSNARK<Bls12_377, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>, MarlinHidingMode, [Fr]>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_crypto_rng();

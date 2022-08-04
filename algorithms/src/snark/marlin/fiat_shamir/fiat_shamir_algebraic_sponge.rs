@@ -33,7 +33,7 @@ use smallvec::SmallVec;
 pub struct FiatShamirAlgebraicSpongeRng<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    S: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSponge<BaseField, 2>,
 > {
     /// The algebraic sponge.
     pub(super) s: S,
@@ -46,7 +46,7 @@ impl<TargetField, BaseField, S> FiatShamirRng<TargetField, BaseField>
 where
     TargetField: PrimeField,
     BaseField: PrimeField,
-    S: DefaultCapacityAlgebraicSponge<BaseField, 6>,
+    S: DefaultCapacityAlgebraicSponge<BaseField, 2>,
 {
     type Parameters = S::Parameters;
 
@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>>
+impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 2>>
     FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions), both of which are P::BaseField.

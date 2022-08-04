@@ -229,7 +229,7 @@ mod tests {
 
         type MarlinInst = MarlinSNARK<
             Bls12_377,
-            FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
+            FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>,
             MarlinHidingMode,
             [Fr],
         >;

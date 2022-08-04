@@ -303,6 +303,16 @@ pub fn field_test<F: Field>(a: F, b: F) {
     // (a - b)^2 = (-(b - a))^2
     assert_eq!((a - b).square(), (-(b - a)).square());
 
+    for len in 0..10 {
+        let mut a = Vec::new();
+        let mut b = Vec::new();
+        for _ in 0..len {
+            a.push(F::rand(&mut test_rng()));
+            b.push(F::rand(&mut test_rng()));
+            assert_eq!(F::sum_of_products(a.iter(), b.iter()), a.iter().zip(b.iter()).map(|(x, y)| *x * y).sum());
+        }
+    }
+
     let mut rng = test_rng();
     random_negation_tests::<F, _>(&mut rng);
     random_addition_tests::<F, _>(&mut rng);

@@ -31,7 +31,7 @@ use criterion::Criterion;
 use rand::{self, thread_rng};
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
-type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>;
 
 #[derive(Copy, Clone)]
 pub struct Benchmark<F: Field> {

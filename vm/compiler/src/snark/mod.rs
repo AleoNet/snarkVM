@@ -24,7 +24,7 @@ use std::sync::Arc;
 
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 type Fr<N> = <N as Environment>::Field;
-type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
+type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 2, 1>>;
 type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, marlin::MarlinHidingMode, [Fr<N>]>;
 
 mod certificate;

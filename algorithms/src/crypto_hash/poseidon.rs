@@ -37,7 +37,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> Default for State<
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAPACITY> {
     /// Returns an immutable iterator over the state.
-    pub fn iter(&self) -> impl Iterator<Item = &F> {
+    pub fn iter(&self) -> impl Iterator<Item = &F> + Clone {
         self.capacity_state.iter().chain(self.rate_state.iter())
     }
 
@@ -190,14 +190,13 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
     #[inline]
     fn apply_s_box(&mut self, is_full_round: bool) {
-        // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
+            // Full rounds apply the S Box (x^alpha) to every element of state
             for elem in self.state.iter_mut() {
                 *elem = elem.pow(&[self.parameters.alpha]);
             }
-        }
-        // Partial rounds apply the S Box (x^alpha) to just the first element of state
-        else {
+        } else {
+            // Partial rounds apply the S Box (x^alpha) to just the first element of state
             self.state[0] = self.state[0].pow(&[self.parameters.alpha]);
         }
     }
@@ -206,7 +205,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     fn apply_mds(&mut self) {
         let mut new_state = State::default();
         new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
-            *new_elem = self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| mds_elem * state_elem).sum::<F>();
+            *new_elem = F::sum_of_products(self.state.iter(), mds_row.iter());
         });
         self.state = new_state;
     }
