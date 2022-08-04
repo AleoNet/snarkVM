@@ -180,7 +180,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     for command in commands {
         println!("{command}");
     }
-    println!("");
+    println!();
 
     Ok(())
 }

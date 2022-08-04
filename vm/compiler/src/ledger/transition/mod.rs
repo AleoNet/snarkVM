@@ -75,6 +75,7 @@ pub struct Transition<N: Network> {
 
 impl<N: Network> Transition<N> {
     /// Initializes a new transition.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         program_id: ProgramID<N>,
         function_name: Identifier<N>,
