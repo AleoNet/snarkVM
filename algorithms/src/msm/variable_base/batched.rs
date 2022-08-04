@@ -378,7 +378,7 @@ pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField
             }
             for (base, bits) in bases.iter().zip(&mut bits) {
                 if let Some(true) = bits.next() {
-                    sum.add_assign_mixed(&base);
+                    sum.add_assign_mixed(base);
                     encountered_one = true;
                 }
             }

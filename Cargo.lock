@@ -2512,8 +2512,10 @@ dependencies = [
 name = "snarkvm-fields"
 version = "0.7.5"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "derivative",
+ "itertools",
  "num-traits",
  "rand",
  "rayon",
