@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network> Request<N> {
     /// Returns the request for a given private key, program ID, function name, inputs, input types, and RNG, where:
-    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
+    ///     challenge := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, input IDs\])
     ///     response := r - challenge * sk_sig
     pub fn sign<R: Rng + CryptoRng>(
         private_key: &PrivateKey<N>,
@@ -59,6 +59,8 @@ impl<N: Network> Request<N> {
         let caller = Address::try_from(compute_key)?;
         // Compute the transition view key `tvk` as `r * caller`.
         let tvk = (*caller * r).to_x_coordinate();
+        // Compute the transition commitment `tcm` as `Hash(tvk)`.
+        let tcm = N::hash_psd2(&[tvk])?;
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = N::hash_bhp1024(
@@ -73,10 +75,10 @@ impl<N: Network> Request<N> {
             .collect::<Vec<_>>(),
         )?;
 
-        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, function ID, input IDs])`.
+        // Construct the hash input as `(r * G, pk_sig, pr_sig, caller, [tvk, tcm, function ID, input IDs])`.
         let mut preimage = Vec::with_capacity(5 + 2 * inputs.len());
         preimage.extend([g_r, pk_sig, pr_sig, *caller].map(|point| point.to_x_coordinate()));
-        preimage.extend([tvk, function_id]);
+        preimage.extend([tvk, tcm, function_id]);
 
         // Initialize a vector to store the input IDs.
         let mut input_ids = Vec::with_capacity(inputs.len());
@@ -197,6 +199,7 @@ impl<N: Network> Request<N> {
             signature: Signature::from((challenge, response, compute_key)),
             tvk,
             tsk: r,
+            tcm,
         })
     }
 }

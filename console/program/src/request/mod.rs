@@ -48,6 +48,8 @@ pub struct Request<N: Network> {
     tvk: Field<N>,
     /// The transition secret key.
     tsk: Scalar<N>,
+    /// The transition commitment.
+    tcm: Field<N>,
 }
 
 impl<N: Network>
@@ -61,11 +63,12 @@ impl<N: Network>
         Signature<N>,
         Field<N>,
         Scalar<N>,
+        Field<N>,
     )> for Request<N>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk): (
+        (caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk, tcm): (
             Address<N>,
             U16<N>,
             ProgramID<N>,
@@ -75,13 +78,14 @@ impl<N: Network>
             Signature<N>,
             Field<N>,
             Scalar<N>,
+            Field<N>,
         ),
     ) -> Self {
         // Ensure the network ID is correct.
         if *network_id != N::ID {
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
-            Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk }
+            Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk, tcm }
         }
     }
 }
@@ -142,6 +146,11 @@ impl<N: Network> Request<N> {
     /// Returns the transition secret key `tsk`.
     pub const fn tsk(&self) -> &Scalar<N> {
         &self.tsk
+    }
+
+    /// Returns the transition commitment `tcm`.
+    pub const fn tcm(&self) -> &Field<N> {
+        &self.tcm
     }
 }
 

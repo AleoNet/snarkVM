@@ -129,10 +129,13 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize an RNG.
     let rng = &mut snarkvm_utilities::test_crypto_rng_fixed();
     // Initialize the process.
-    let process = Process::new()?;
+    let process = Process::setup()?;
     // Initialize the program.
     let program = Program::<N>::credits()?;
     let program_id = program.id();
+
+    // Initialize a vector for the commands.
+    let mut commands = vec![];
 
     // Synthesize the 'credits.aleo' function keys.
     for (function_name, _) in program.functions().iter() {
@@ -159,7 +162,25 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
         write_metadata(&format!("{function_name}.metadata"), &metadata)?;
         write_remote(&format!("{function_name}.prover"), &proving_key_checksum, &proving_key_bytes)?;
         write_remote(&format!("{function_name}.verifier"), &verifying_key_checksum, &verifying_key_bytes)?;
+
+        commands.push(format!(
+            "snarkup upload \"{}\"",
+            versioned_filename(&format!("{function_name}.prover"), &proving_key_checksum)
+        ));
+        commands.push(format!(
+            "snarkup upload \"{}\"",
+            versioned_filename(&format!("{function_name}.verifier"), &verifying_key_checksum)
+        ));
     }
+
+    // Print the commands.
+    println!("\nNow, run the following commands:\n");
+    println!("snarkup remove provers");
+    println!("snarkup remove verifiers");
+    for command in commands {
+        println!("{command}");
+    }
+    println!("");
 
     Ok(())
 }

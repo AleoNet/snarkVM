@@ -21,7 +21,7 @@ impl<A: Aleo> Request<A> {
     /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
@@ -36,9 +36,10 @@ impl<A: Aleo> Request<A> {
             .collect::<Vec<_>>(),
         );
 
-        // Construct the signature message as `[tvk, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + 2 * self.input_ids.len());
         message.push(self.tvk.clone());
+        message.push(self.tcm.clone());
         message.push(function_id);
 
         // Retrieve the challenge from the signature.
@@ -151,6 +152,8 @@ impl<A: Aleo> Request<A> {
             let candidate_tpk = A::g_scalar_multiply(&self.tsk);
             // Compute the transition view key `tvk` as `tsk * caller`.
             let tvk = (self.caller.to_group() * &self.tsk).to_x_coordinate();
+            // Compute the transition commitment as `Hash(tvk)`.
+            let tcm = A::hash_psd2(&[tvk.clone()]);
 
             // Ensure the computed transition public key matches the expected transition public key.
             tpk.is_equal(&candidate_tpk)
@@ -158,6 +161,8 @@ impl<A: Aleo> Request<A> {
                 & tpk.is_equal(&self.to_tpk())
                 // Ensure the computed transition view key matches.
                 & tvk.is_equal(&self.tvk)
+                // Ensure the computed transition commitment matches.
+                & tcm.is_equal(&self.tcm)
         };
 
         // Verify the signature.
@@ -367,11 +372,11 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 34817, 0, 30447, 30547)
+        check_verify(Mode::Public, 34818, 0, 30715, 30816)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 34817, 0, 30447, 30547)
+        check_verify(Mode::Private, 34818, 0, 30715, 30816)
     }
 }

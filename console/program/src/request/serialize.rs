@@ -31,6 +31,7 @@ impl<N: Network> Serialize for Request<N> {
                 transition.serialize_field("signature", &self.signature)?;
                 transition.serialize_field("tvk", &self.tvk)?;
                 transition.serialize_field("tsk", &self.tsk)?;
+                transition.serialize_field("tcm", &self.tcm)?;
                 transition.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -65,6 +66,8 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                     serde_json::from_value(request["tvk"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the `tsk`.
                     serde_json::from_value(request["tsk"].clone()).map_err(de::Error::custom)?,
+                    // Retrieve the `tcm`.
+                    serde_json::from_value(request["tcm"].clone()).map_err(de::Error::custom)?,
                 )))
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "request"),
