@@ -38,12 +38,15 @@ impl<N: Network> VerifyingKey<N> {
     pub fn verify(&self, function_name: &Identifier<N>, inputs: &[N::Field], proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
         match Marlin::<N>::verify_batch(self, std::slice::from_ref(&inputs), proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                let elapsed = timer.elapsed().as_millis();
-                #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                {
+                    let elapsed = timer.elapsed().as_millis();
+                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                }
+
                 is_valid
             }
             Err(error) => {
@@ -58,12 +61,15 @@ impl<N: Network> VerifyingKey<N> {
     pub fn verify_batch(&self, function_name: &Identifier<N>, inputs: &[&[N::Field]], proof: &Proof<N>) -> bool {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
         match Marlin::<N>::verify_batch(self, inputs, proof) {
             Ok(is_valid) => {
                 #[cfg(feature = "aleo-cli")]
-                let elapsed = timer.elapsed().as_millis();
-                #[cfg(feature = "aleo-cli")]
-                println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                {
+                    let elapsed = timer.elapsed().as_millis();
+                    println!("{}", format!(" • Verified '{function_name}' (in {} ms)", elapsed).dimmed());
+                }
+
                 is_valid
             }
             Err(error) => {

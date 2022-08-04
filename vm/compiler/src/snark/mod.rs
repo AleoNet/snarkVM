@@ -14,13 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(unused_variables)]
+
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
 use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
-use colored::Colorize;
 use std::sync::Arc;
+
+#[cfg(feature = "aleo-cli")]
+use colored::Colorize;
 
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 type Fr<N> = <N as Environment>::Field;

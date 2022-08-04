@@ -27,9 +27,12 @@ impl<N: Network> UniversalSRS<N> {
     pub fn load() -> Result<Self> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
         let universal_srs = Self::read_le(&*snarkvm_parameters::testnet3::TrialSRS::load_bytes()?)?;
+
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
+
         Ok(universal_srs)
     }
 
@@ -41,7 +44,9 @@ impl<N: Network> UniversalSRS<N> {
     ) -> Result<(ProvingKey<N>, VerifyingKey<N>)> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
         let (proving_key, verifying_key) = Marlin::<N>::circuit_setup(self, assignment)?;
+
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Built '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
