@@ -746,7 +746,7 @@ function swap:
         ];
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -814,7 +814,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -892,7 +892,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -962,7 +962,7 @@ function compute:
 
         {
             // Construct the process.
-            let mut process = Process::<CurrentNetwork>::new().unwrap();
+            let mut process = Process::<CurrentNetwork>::load().unwrap();
             // Add the program to the process.
             process.add_program(&program).unwrap();
             // Check that the circuit key can be synthesized.
@@ -970,7 +970,7 @@ function compute:
         }
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -1084,7 +1084,7 @@ function compute:
         let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 

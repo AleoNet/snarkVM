@@ -91,7 +91,7 @@ impl<N: Network> VM<N> {
     /// Initializes a new VM.
     #[inline]
     pub fn new() -> Result<Self> {
-        Ok(Self { process: Arc::new(RwLock::new(Process::new()?)), _phantom: PhantomData })
+        Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), _phantom: PhantomData })
     }
 
     /// Deploys a program with the given program ID.

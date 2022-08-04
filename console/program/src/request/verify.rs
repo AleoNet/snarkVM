@@ -20,9 +20,9 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, input IDs\])
     pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
-        // Verify the transition public key and transition view key are well-formed.
+        // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
             // Compute the transition public key `tpk` as `tsk * G`.
             let tpk = N::g_scalar_multiply(&self.tsk);
@@ -38,6 +38,21 @@ impl<N: Network> Request<N> {
             if tvk != self.tvk {
                 eprintln!("Invalid transition view key in request.");
                 return false;
+            }
+
+            // Compute the transition commitment `tcm` as `Hash(tvk)`.
+            match N::hash_psd2(&[tvk]) {
+                Ok(tcm) => {
+                    // Ensure the computed transition commitment matches.
+                    if tcm != self.tcm {
+                        eprintln!("Invalid transition commitment in request.");
+                        return false;
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Failed to compute transition commitment in request verification: {error}");
+                    return false;
+                }
             }
         }
 
@@ -60,9 +75,10 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Construct the signature message as `[tvk, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + self.input_ids.len());
         message.push(self.tvk);
+        message.push(self.tcm);
         message.push(function_id);
 
         // Retrieve the challenge from the signature.

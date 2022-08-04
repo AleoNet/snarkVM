@@ -117,7 +117,7 @@ impl<N: Network> Process<N> {
             let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinate();
 
             // Construct the public inputs to verify the proof.
-            let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
+            let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
             // Extend the inputs with the input IDs.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 

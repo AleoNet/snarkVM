@@ -130,6 +130,8 @@ pub struct Request<A: Aleo> {
     tvk: Field<A>,
     /// The transition secret key.
     tsk: Scalar<A>,
+    /// The transition commitment.
+    tcm: Field<A>,
 }
 
 #[cfg(console)]
@@ -138,6 +140,9 @@ impl<A: Aleo> Inject for Request<A> {
 
     /// Initializes the request from the given mode and console request.
     fn new(mode: Mode, request: Self::Primitive) -> Self {
+        // Inject the transition commitment `tcm` as `Mode::Public`.
+        let tcm = Field::new(Mode::Public, *request.tcm());
+
         // Inject the inputs.
         let inputs = match request
             .input_ids()
@@ -208,6 +213,7 @@ impl<A: Aleo> Inject for Request<A> {
             signature: Signature::new(mode, *request.signature()),
             tvk: Field::new(mode, *request.tvk()),
             tsk: Scalar::new(mode, *request.tsk()),
+            tcm,
         }
     }
 }
@@ -257,6 +263,11 @@ impl<A: Aleo> Request<A> {
     pub const fn tsk(&self) -> &Scalar<A> {
         &self.tsk
     }
+
+    /// Returns the transition commitment.
+    pub const fn tcm(&self) -> &Field<A> {
+        &self.tcm
+    }
 }
 
 #[cfg(console)]
@@ -274,6 +285,7 @@ impl<A: Aleo> Eject for Request<A> {
             self.signature.eject_mode(),
             self.tvk.eject_mode(),
             self.tsk.eject_mode(),
+            self.tcm.eject_mode(),
         ])
     }
 
@@ -289,6 +301,7 @@ impl<A: Aleo> Eject for Request<A> {
             self.signature.eject_value(),
             self.tvk.eject_value(),
             self.tsk.eject_value(),
+            self.tcm.eject_value(),
         ))
     }
 }
