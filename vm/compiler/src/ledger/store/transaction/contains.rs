@@ -24,7 +24,7 @@ impl<
     PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
     NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
 >
     TransactionStore<
@@ -72,6 +72,11 @@ impl<
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
         self.commitments.contains_key(commitment)
+    }
+
+    /// Returns `true` if the given origin exists.
+    pub fn contains_origin(&self, origin: &Origin<N>) -> Result<bool> {
+        self.origins.contains_key(origin)
     }
 
     /// Returns `true` if the given nonce exists.

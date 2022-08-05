@@ -24,7 +24,7 @@ mod iterators;
 pub use iterators::*;
 
 use crate::{
-    ledger::{Block, Deployment, Header, Origin, Transaction, Transition},
+    ledger::{Deployment, Origin, Transaction, Transition},
     memory_map::MemoryMap,
     Map,
 };
@@ -48,7 +48,7 @@ pub struct TransactionStore<
     PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
     NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
 > {
     /// The map of program deployments.
@@ -80,7 +80,7 @@ impl<N: Network>
         MemoryMap<Group<N>, N::TransitionID>,
         MemoryMap<Field<N>, N::TransitionID>,
         MemoryMap<Field<N>, N::TransitionID>,
-        MemoryMap<Field<N>, N::TransitionID>,
+        MemoryMap<Origin<N>, N::TransitionID>,
         MemoryMap<Group<N>, N::TransitionID>,
     >
 {
@@ -101,16 +101,16 @@ impl<N: Network>
 }
 
 impl<
-    N: Network,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
+        N: Network,
+        DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
+        ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
+        TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
+        PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+        SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+        CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+        OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
+        NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+    >
     TransactionStore<
         N,
         DeploymentsMap,

@@ -26,7 +26,7 @@ impl<
     PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
     NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
 >
     TransactionStore<
@@ -83,6 +83,11 @@ impl<
     /// Returns an iterator over the commitments, for all executed transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.commitments.keys()
+    }
+
+    /// Returns an iterator over the origins, for all executed transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
+        self.origins.keys()
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.
