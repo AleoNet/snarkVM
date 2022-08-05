@@ -74,6 +74,13 @@ impl<N: Network> Execution<N> {
     }
 }
 
+impl<N: Network> Execution<N> {
+    /// Returns a consuming iterator over the underlying transitions.
+    pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
+        self.transitions.into_iter()
+    }
+}
+
 impl<N: Network> Deref for Execution<N> {
     type Target = [Transition<N>];
 

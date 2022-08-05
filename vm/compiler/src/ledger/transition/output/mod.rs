@@ -73,8 +73,25 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Consumes `self` and returns the commitment and record, if the output is a record.
+    #[allow(clippy::type_complexity)]
+    pub fn into_record(self) -> Option<(Field<N>, Record<N, Ciphertext<N>>)> {
+        match self {
+            Output::Record(commitment, _, Some(record)) => Some((commitment, record)),
+            _ => None,
+        }
+    }
+
     /// Returns the commitment, if the output is a record.
     pub const fn commitment(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(commitment, ..) => Some(commitment),
+            _ => None,
+        }
+    }
+
+    /// Returns the commitment, if the output is a record, and consumes `self`.
+    pub fn into_commitment(self) -> Option<Field<N>> {
         match self {
             Output::Record(commitment, ..) => Some(commitment),
             _ => None,
@@ -89,8 +106,24 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Returns the nonce, if the output is a record, and consumes `self`.
+    pub fn into_nonce(self) -> Option<Group<N>> {
+        match self {
+            Output::Record(_, _, Some(record)) => Some(record.into_nonce()),
+            _ => None,
+        }
+    }
+
     /// Returns the checksum, if the output is a record.
     pub const fn checksum(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(_, checksum, ..) => Some(checksum),
+            _ => None,
+        }
+    }
+
+    /// Returns the checksum, if the output is a record, and consumes `self`.
+    pub fn into_checksum(self) -> Option<Field<N>> {
         match self {
             Output::Record(_, checksum, ..) => Some(checksum),
             _ => None,
