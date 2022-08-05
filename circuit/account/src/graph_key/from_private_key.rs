@@ -20,7 +20,7 @@ impl<A: Aleo> GraphKey<A> {
     /// Returns the account graph key for this account private key.
     pub fn from_private_key(private_key: &PrivateKey<A>) -> Self {
         // Compute sk_tag := T^sk_sig.
-        let sk_tag = A::t_scalar_multiply(&private_key.sk_sig());
+        let sk_tag = A::t_scalar_multiply(private_key.sk_sig());
         // Output the graph key.
         Self { sk_tag }
     }

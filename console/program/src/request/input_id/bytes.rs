@@ -36,9 +36,11 @@ impl<N: Network> FromBytes for InputID<N> {
                 // Read the gamma value.
                 let gamma = Group::read_le(&mut reader)?;
                 // Read the serial number.
-                let serial = Field::read_le(&mut reader)?;
+                let serial_number = Field::read_le(&mut reader)?;
+                // Read the tag value.
+                let tag = Field::read_le(&mut reader)?;
                 // Return the record input.
-                Ok(Self::Record(commitment, gamma, serial))
+                Ok(Self::Record(commitment, gamma, serial_number, tag))
             }
             // External record input.
             4 => Ok(Self::ExternalRecord(Field::read_le(&mut reader)?)),
@@ -74,7 +76,7 @@ impl<N: Network> ToBytes for InputID<N> {
                 value.write_le(&mut writer)
             }
             // Record input.
-            Self::Record(commitment, gamma, serial) => {
+            Self::Record(commitment, gamma, serial_number, tag) => {
                 // Write the variant.
                 3u8.write_le(&mut writer)?;
                 // Write the commitment.
@@ -82,7 +84,9 @@ impl<N: Network> ToBytes for InputID<N> {
                 // Write the gamma value.
                 gamma.write_le(&mut writer)?;
                 // Write the serial number.
-                serial.write_le(&mut writer)
+                serial_number.write_le(&mut writer)?;
+                // Write the tag value.
+                tag.write_le(&mut writer)
             }
             // External record input.
             Self::ExternalRecord(value) => {

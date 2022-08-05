@@ -89,7 +89,7 @@ impl<A: Aleo> Request<A> {
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(commitment, gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number, tag) => {
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -118,13 +118,20 @@ impl<A: Aleo> Request<A> {
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
                         let h_r = (gamma * challenge) + (&h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
+
+                        // Compute the tag as `Hash(sk_tag, commitment)`.
+                        let candidate_tag = A::hash_psd2(&[self.sk_tag.clone(), candidate_commitment.clone()]);
+
+                        // Add (`H`, `r * H`, `gamma`, `tag`) to the message.
                         message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
+                        message.push(candidate_tag.clone());
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the candidate commitment matches the expected commitment.
                             & commitment.is_equal(&candidate_commitment)
+                            // Ensure the candidate tag matches the expected tag.
+                            & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(&self.caller)
                             // Ensure the record gates is less than or equal to 2^52.
@@ -200,6 +207,7 @@ impl<A: Aleo> Request<A> {
         input_types: &[console::ValueType<A::Network>],
         caller: &Address<A>,
         program_id: &ProgramID<A>,
+        sk_tag: &Field<A>,
         tvk: &Field<A>,
     ) -> Boolean<A> {
         input_ids
@@ -235,7 +243,7 @@ impl<A: Aleo> Request<A> {
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(commitment, gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number, tag) => {
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -260,10 +268,15 @@ impl<A: Aleo> Request<A> {
                         let candidate_serial_number =
                             A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
 
+                        // Compute the tag as `Hash(sk_tag, commitment)`.
+                        let candidate_tag = A::hash_psd2(&[sk_tag.clone(), candidate_commitment.clone()]);
+
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the candidate commitment matches the expected commitment.
                             & commitment.is_equal(&candidate_commitment)
+                            // Ensure the candidate tag matches the expected tag.
+                            & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(caller)
                             // Ensure the record gates is less than or equal to 2^52.
@@ -357,6 +370,19 @@ mod tests {
                     false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
                 }
             });
+
+            Circuit::scope(format!("Request {i}"), || {
+                let candidate = Request::check_input_ids(
+                    request.input_ids(),
+                    request.inputs(),
+                    &input_types,
+                    request.caller(),
+                    request.program_id(),
+                    request.sk_tag(),
+                    request.tvk(),
+                );
+                assert!(candidate.eject_value());
+            });
             Circuit::reset();
         }
         Ok(())
@@ -367,16 +393,16 @@ mod tests {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
         // These bounds are determined experimentally.
-        check_verify(Mode::Constant, 41000, 0, 16064, 16153)
+        check_verify(Mode::Constant, 40000, 0, 16300, 16400)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 34818, 0, 30715, 30816)
+        check_verify(Mode::Public, 34819, 0, 30988, 31090)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 34818, 0, 30715, 30816)
+        check_verify(Mode::Private, 34819, 0, 30988, 31090)
     }
 }

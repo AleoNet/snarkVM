@@ -41,6 +41,8 @@ impl<N: Network> Request<N> {
 
         // Retrieve `sk_sig`.
         let sk_sig = private_key.sk_sig();
+        // Derive `sk_tag` from the graph key.
+        let sk_tag = GraphKey::try_from(private_key)?.sk_tag().to_x_coordinate();
         // Derive the compute key.
         let compute_key = ComputeKey::try_from(private_key)?;
         // Retrieve `pk_sig`.
@@ -152,8 +154,6 @@ impl<N: Network> Request<N> {
                     let h_r = h * r;
                     // Compute `gamma` as `sk_sig * H`.
                     let gamma = h * sk_sig;
-                    // Add `H`, `r * H`, and `gamma` to the preimage.
-                    preimage.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));
 
                     // Compute `sn_nonce` as `Hash(COFACTOR * gamma)`.
                     let sn_nonce = N::hash_to_scalar_psd2(&[
@@ -163,8 +163,16 @@ impl<N: Network> Request<N> {
                     // Compute `serial_number` as `Commit(commitment, sn_nonce)`.
                     let serial_number =
                         N::commit_bhp512(&(N::serial_number_domain(), commitment).to_bits_le(), &sn_nonce)?;
-                    // Add gamma and the serial number to the inputs.
-                    input_ids.push(InputID::Record(commitment, gamma, serial_number));
+
+                    // Compute the tag as `Hash(sk_tag || commitment)`.
+                    let tag = N::hash_psd2(&[sk_tag, commitment])?;
+
+                    // Add (`H`, `r * H`, `gamma`, `tag`) to the preimage.
+                    preimage.extend([h, h_r, gamma].iter().map(|point| point.to_x_coordinate()));
+                    preimage.push(tag);
+
+                    // Add the input ID.
+                    input_ids.push(InputID::Record(commitment, gamma, serial_number, tag));
                 }
                 // An external record input is committed (using `tvk`) to a field element.
                 ValueType::ExternalRecord(..) => {
@@ -197,6 +205,7 @@ impl<N: Network> Request<N> {
             input_ids,
             inputs: inputs.to_vec(),
             signature: Signature::from((challenge, response, compute_key)),
+            sk_tag,
             tvk,
             tsk: r,
             tcm,

@@ -24,7 +24,7 @@ mod string;
 mod verify;
 
 use crate::{Identifier, ProgramID, Value, ValueType};
-use snarkvm_console_account::{Address, ComputeKey, PrivateKey, Signature};
+use snarkvm_console_account::{Address, ComputeKey, GraphKey, PrivateKey, Signature};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
@@ -44,6 +44,8 @@ pub struct Request<N: Network> {
     inputs: Vec<Value<N>>,
     /// The signature for the transition.
     signature: Signature<N>,
+    /// The tag secret key.
+    sk_tag: Field<N>,
     /// The transition view key.
     tvk: Field<N>,
     /// The transition secret key.
@@ -62,13 +64,14 @@ impl<N: Network>
         Vec<Value<N>>,
         Signature<N>,
         Field<N>,
+        Field<N>,
         Scalar<N>,
         Field<N>,
     )> for Request<N>
 {
     /// Note: See `Request::sign` to create the request. This method is used to eject from a circuit.
     fn from(
-        (caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk, tcm): (
+        (caller, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm): (
             Address<N>,
             U16<N>,
             ProgramID<N>,
@@ -76,6 +79,7 @@ impl<N: Network>
             Vec<InputID<N>>,
             Vec<Value<N>>,
             Signature<N>,
+            Field<N>,
             Field<N>,
             Scalar<N>,
             Field<N>,
@@ -85,7 +89,7 @@ impl<N: Network>
         if *network_id != N::ID {
             N::halt(format!("Invalid network ID. Expected {}, found {}", N::ID, *network_id))
         } else {
-            Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk, tcm }
+            Self { caller, network_id, program_id, function_name, input_ids, inputs, signature, sk_tag, tvk, tsk, tcm }
         }
     }
 }
@@ -124,6 +128,11 @@ impl<N: Network> Request<N> {
     /// Returns the signature for the transition.
     pub const fn signature(&self) -> &Signature<N> {
         &self.signature
+    }
+
+    /// Returns the tag secret key `sk_tag`.
+    pub const fn sk_tag(&self) -> &Field<N> {
+        &self.sk_tag
     }
 
     /// Returns the transition view key `tvk`.
