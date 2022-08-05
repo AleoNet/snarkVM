@@ -64,6 +64,16 @@ impl<
         self.transition_public_keys.contains_key(tpk)
     }
 
+    /// Returns `true` if the given origin exists.
+    pub fn contains_origin(&self, origin: &Origin<N>) -> Result<bool> {
+        self.origins.contains_key(origin)
+    }
+
+    // /// Returns `true` if the given tag exists.
+    // pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
+    //     self.tags.contains_key(tag)
+    // }
+
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
         self.serial_numbers.contains_key(serial_number)
@@ -72,11 +82,6 @@ impl<
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
         self.commitments.contains_key(commitment)
-    }
-
-    /// Returns `true` if the given origin exists.
-    pub fn contains_origin(&self, origin: &Origin<N>) -> Result<bool> {
-        self.origins.contains_key(origin)
     }
 
     /// Returns `true` if the given nonce exists.

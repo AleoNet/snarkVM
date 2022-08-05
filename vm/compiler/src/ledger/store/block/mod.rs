@@ -64,6 +64,24 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
+pub trait BlockStorage<N: Network> {
+    type HashesMap: for<'a> Map<'a, u32, N::BlockHash>;
+    type HeadersMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
+    type SignaturesMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+    type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
+}
+
+pub trait TransactionStorage<N: Network> {
+    type DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>;
+    type ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    type TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
+    type TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
+    type SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
+    type CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
+    type OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>;
+    type NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
+}
+
 #[derive(Clone)]
 pub struct BlockStore<
     N: Network,
