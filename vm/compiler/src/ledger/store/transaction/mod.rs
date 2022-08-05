@@ -19,9 +19,9 @@ pub use contains::*;
 
 // mod get;
 // pub use get::*;
-//
-// mod iterators;
-// pub use iterators::*;
+
+mod iterators;
+pub use iterators::*;
 
 use crate::{
     ledger::{Block, Deployment, Header, Origin, Transaction, Transition},
