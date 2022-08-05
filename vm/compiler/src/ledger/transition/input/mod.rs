@@ -43,8 +43,8 @@ pub enum Input<N: Network> {
     Public(Field<N>, Option<Plaintext<N>>),
     /// The ciphertext hash and (optional) ciphertext.
     Private(Field<N>, Option<Ciphertext<N>>),
-    /// The serial number and the origin of the record.
-    Record(Field<N>, Origin<N>),
+    /// The serial number, tag, and the origin of the record.
+    Record(Field<N>, Field<N>, Origin<N>),
     /// The input commitment to the external record. Note: This is **not** the record commitment.
     ExternalRecord(Field<N>),
 }
@@ -80,17 +80,25 @@ impl<N: Network> Input<N> {
         }
     }
 
+    /// Returns the tag, if the input is a record.
+    pub const fn tag(&self) -> Option<&Field<N>> {
+        match self {
+            Input::Record(_, tag, _) => Some(tag),
+            _ => None,
+        }
+    }
+
     /// Returns the origin, if the input is a record.
     pub const fn origin(&self) -> Option<&Origin<N>> {
         match self {
-            Input::Record(_, origin) => Some(origin),
+            Input::Record(_, _, origin) => Some(origin),
             _ => None,
         }
     }
 
     /// Returns the public verifier inputs for the proof.
     pub fn verifier_inputs(&self) -> impl '_ + Iterator<Item = N::Field> {
-        [self.id()].into_iter().map(|id| **id)
+        [Some(self.id()), self.tag()].into_iter().flatten().map(|id| **id)
     }
 
     /// Returns `true` if the input is well-formed.

@@ -54,32 +54,37 @@ impl<
         transaction_iterator!(self, executions)
     }
 
-    /// Returns an iterator over all executed transitions.
+    /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = Cow<'_, Transition<N>>> {
         transaction_iterator!(self, transitions)
     }
 
-    /// Returns an iterator over the transition IDs, for all executed transitions.
+    /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
         transaction_iterator!(self, transition_ids)
     }
 
-    /// Returns an iterator over the transition public keys, for all executed transactions.
+    /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
         transaction_iterator!(self, transition_public_keys)
     }
 
-    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        transaction_iterator!(self, tags)
+    }
+
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         transaction_iterator!(self, serial_numbers)
     }
 
-    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
+    /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         transaction_iterator!(self, commitments)
     }
 
-    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
         transaction_iterator!(self, nonces)
     }

@@ -39,12 +39,13 @@ impl<N: Network> Serialize for InputID<N> {
                     input.serialize_field("id", &id)?;
                     input.end()
                 }
-                Self::Record(commitment, gamma, serial_number) => {
-                    let mut input = serializer.serialize_struct("InputID", 4)?;
+                Self::Record(commitment, gamma, serial_number, tag) => {
+                    let mut input = serializer.serialize_struct("InputID", 5)?;
                     input.serialize_field("type", "record")?;
                     input.serialize_field("commitment", &commitment)?;
                     input.serialize_field("gamma", &gamma)?;
                     input.serialize_field("serial_number", &serial_number)?;
+                    input.serialize_field("tag", &tag)?;
                     input.end()
                 }
                 Self::ExternalRecord(id) => {
@@ -81,6 +82,7 @@ impl<'de, N: Network> Deserialize<'de> for InputID<N> {
                         serde_json::from_value(input["commitment"].clone()).map_err(de::Error::custom)?,
                         serde_json::from_value(input["gamma"].clone()).map_err(de::Error::custom)?,
                         serde_json::from_value(input["serial_number"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
                     ),
                     Some("external_record") => {
                         InputID::ExternalRecord(serde_json::from_value(input["id"].clone()).map_err(de::Error::custom)?)
@@ -106,7 +108,7 @@ mod tests {
         "{\"type\":\"constant\",\"id\":\"5field\"}",
         "{\"type\":\"public\",\"id\":\"0field\"}",
         "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"commitment\":\"123123field\",\"serial_number\":\"123456789field\",\"gamma\":\"0group\"}",
+        "{\"type\":\"record\",\"commitment\":\"123123field\",\"tag\":\"0field\",\"serial_number\":\"123456789field\",\"gamma\":\"0group\"}",
         "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
     ];
 

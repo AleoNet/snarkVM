@@ -174,6 +174,11 @@ impl<N: Network> Transaction<N> {
         self.transitions().flat_map(Transition::origins)
     }
 
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().flat_map(Transition::tags)
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().flat_map(Transition::serial_numbers)

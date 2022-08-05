@@ -31,6 +31,8 @@ use snarkvm_console_algorithms::{
 lazy_static! {
     /// The group bases for the Aleo signature and encryption schemes.
     pub static ref GENERATOR_G: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoAccountEncryptionAndSignatureScheme0");
+    /// The group bases for the Aleo tag scheme.
+    pub static ref GENERATOR_T: Vec<Group<Testnet3>> = Testnet3::new_bases("AleoRecordTagScheme0");
 
     /// The balance commitment domain as a constant field element.
     pub static ref BCM_DOMAIN: Field<Testnet3> = Field::<Testnet3>::new_domain_separator("AleoBalanceCommitment0");
@@ -144,14 +146,31 @@ impl Network for Testnet3 {
         *SERIAL_NUMBER_DOMAIN
     }
 
-    /// Returns the powers of G.
+    /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>> {
         &GENERATOR_G
     }
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the powers of `T`.
+    fn t_powers() -> &'static Vec<Group<Self>> {
+        &GENERATOR_T
+    }
+
+    /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
         GENERATOR_G
+            .iter()
+            .zip_eq(&scalar.to_bits_le())
+            .filter_map(|(base, bit)| match bit {
+                true => Some(base),
+                false => None,
+            })
+            .sum()
+    }
+
+    /// Returns the scalar multiplication on the generator `T` (for tags).
+    fn t_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
+        GENERATOR_T
             .iter()
             .zip_eq(&scalar.to_bits_le())
             .filter_map(|(base, bit)| match bit {

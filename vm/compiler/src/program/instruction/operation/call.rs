@@ -370,6 +370,8 @@ impl<N: Network> Call<N> {
 
             // Inject the `caller` (from the request) as `Mode::Private`.
             let caller = circuit::Address::new(circuit::Mode::Private, *request.caller());
+            // Inject the `sk_tag` (from the request) as `Mode::Private`.
+            let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
             let tvk = circuit::Field::new(circuit::Mode::Private, *request.tvk());
             // Inject the input IDs (from the request) as `Mode::Public`.
@@ -385,6 +387,7 @@ impl<N: Network> Call<N> {
                 &function.input_types(),
                 &caller,
                 &program_id,
+                &sk_tag,
                 &tvk,
             ));
 

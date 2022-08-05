@@ -17,20 +17,25 @@
 mod bytes;
 mod serialize;
 mod string;
+mod try_from;
 
-use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
+#[cfg(feature = "private_key")]
+use crate::PrivateKey;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum InputID<N: Network> {
-    /// The hash of the constant input.
-    Constant(Field<N>),
-    /// The hash of the public input.
-    Public(Field<N>),
-    /// The ciphertext hash of the private input.
-    Private(Field<N>),
-    /// The commitment, gamma, serial number, and tag of the record input.
-    Record(Field<N>, Group<N>, Field<N>, Field<N>),
-    /// The commitment of the external record input.
-    ExternalRecord(Field<N>),
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{Field, Group};
+
+use base58::{FromBase58, ToBase58};
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct GraphKey<N: Network> {
+    /// The graph key `sk_tag` := T^sk_sig.
+    sk_tag: Group<N>,
+}
+
+impl<N: Network> GraphKey<N> {
+    /// Returns the graph key.
+    pub const fn sk_tag(&self) -> Group<N> {
+        self.sk_tag
+    }
 }

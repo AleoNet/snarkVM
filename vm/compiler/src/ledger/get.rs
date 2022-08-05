@@ -99,6 +99,11 @@ impl<
                     .collect::<Vec<_>>(),
             })
             .flat_map(move |(commitment, record)| {
+                // A helper method to derive the tag from the `sk_tag` and commitment.
+                let tag = |sk_tag: Field<N>, commitment: Field<N>| -> Result<Field<N>> {
+                    N::hash_psd2(&[sk_tag, commitment])
+                };
+
                 // A helper method to derive the serial number from the private key and commitment.
                 let serial_number = |private_key: PrivateKey<N>, commitment: Field<N>| -> Result<Field<N>> {
                     // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -117,7 +122,7 @@ impl<
                 // Determine whether to decrypt this output record (or not), based on the filter.
                 let commitment = match filter {
                     OutputRecordsFilter::All => *commitment,
-                    OutputRecordsFilter::Spent(private_key) => {
+                    OutputRecordsFilter::AllSpent(private_key) => {
                         // Derive the serial number.
                         match serial_number(private_key, *commitment) {
                             // Determine if the output record is spent.
@@ -126,12 +131,12 @@ impl<
                                 false => return None,
                             },
                             Err(e) => {
-                                warn!("Failed to derive serial number for output record: {e}");
+                                warn!("Failed to derive serial number for output record '{commitment}': {e}");
                                 return None;
                             }
                         }
                     }
-                    OutputRecordsFilter::Unspent(private_key) => {
+                    OutputRecordsFilter::AllUnspent(private_key) => {
                         // Derive the serial number.
                         match serial_number(private_key, *commitment) {
                             // Determine if the output record is spent.
@@ -140,7 +145,39 @@ impl<
                                 false => *commitment,
                             },
                             Err(e) => {
-                                warn!("Failed to derive serial number for output record: {e}");
+                                warn!("Failed to derive serial number for output record '{commitment}': {e}");
+                                return None;
+                            }
+                        }
+                    }
+                    OutputRecordsFilter::Spent(graph_key) => {
+                        // Compute the `sk_tag` from the graph key.
+                        let sk_tag = graph_key.sk_tag().to_x_coordinate();
+                        // Derive the serial number.
+                        match tag(sk_tag, *commitment) {
+                            // Determine if the output record is spent.
+                            Ok(tag) => match self.contains_tag(&tag) {
+                                true => *commitment,
+                                false => return None,
+                            },
+                            Err(e) => {
+                                warn!("Failed to derive the tag for output record '{commitment}': {e}");
+                                return None;
+                            }
+                        }
+                    }
+                    OutputRecordsFilter::Unspent(graph_key) => {
+                        // Compute the `sk_tag` from the graph key.
+                        let sk_tag = graph_key.sk_tag().to_x_coordinate();
+                        // Derive the serial number.
+                        match tag(sk_tag, *commitment) {
+                            // Determine if the output record is spent.
+                            Ok(tag) => match self.contains_tag(&tag) {
+                                true => return None,
+                                false => *commitment,
+                            },
+                            Err(e) => {
+                                warn!("Failed to derive the tag for output record '{commitment}': {e}");
                                 return None;
                             }
                         }

@@ -68,6 +68,11 @@ impl<
         self.transition_public_keys().contains(tpk)
     }
 
+    /// Returns `true` if the given tag exists.
+    pub fn contains_tag(&self, tag: &Field<N>) -> bool {
+        self.tags().contains(tag)
+    }
+
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
         self.serial_numbers().contains(serial_number)

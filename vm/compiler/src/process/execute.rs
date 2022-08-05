@@ -141,7 +141,7 @@ impl<N: Network> Process<N> {
                 // to order them in the order they were defined in the function.
                 for transition in (*queue).iter().rev().take(num_function_calls).rev() {
                     // Extend the inputs with the input and output IDs of the external call.
-                    inputs.extend(transition.input_ids().map(|id| **id));
+                    inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
                     inputs.extend(transition.output_ids().map(|id| **id));
                 }
             }

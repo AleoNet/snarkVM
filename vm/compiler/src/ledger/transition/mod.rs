@@ -141,8 +141,8 @@ impl<N: Network> Transition<N> {
                         // Return the private input.
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
-                    (InputID::Record(commitment, _, serial_number), Value::Record(..)) => {
-                        Ok(Input::Record(*serial_number, Origin::Commitment(*commitment)))
+                    (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
+                        Ok(Input::Record(*serial_number, *tag, Origin::Commitment(*commitment)))
                     }
                     (InputID::ExternalRecord(input_commitment), Value::Record(..)) => {
                         Ok(Input::ExternalRecord(*input_commitment))
@@ -308,6 +308,11 @@ impl<N: Network> Transition<N> {
     /// Returns an iterator over the origins, for inputs that are records.
     pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
         self.inputs.iter().flat_map(Input::origin)
+    }
+
+    /// Returns an iterator over the tags, for inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().flat_map(Input::tag)
     }
 
     /// Returns an iterator over the serial numbers, for inputs that are records.
