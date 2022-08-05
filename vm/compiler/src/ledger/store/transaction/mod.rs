@@ -17,8 +17,8 @@
 mod contains;
 pub use contains::*;
 
-// mod get;
-// pub use get::*;
+mod get;
+pub use get::*;
 
 mod iterators;
 pub use iterators::*;
@@ -101,16 +101,16 @@ impl<N: Network>
 }
 
 impl<
-        N: Network,
-        DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-        ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-        TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-        PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-        SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-        CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-        OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-        NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    >
+    N: Network,
+    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
+    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
+    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
+    PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
+    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
+    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+>
     TransactionStore<
         N,
         DeploymentsMap,
