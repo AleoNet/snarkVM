@@ -20,14 +20,25 @@ pub use contains::*;
 mod get;
 pub use get::*;
 
-// mod iterators;
-// pub use iterators::*;
+mod iterators;
+pub use iterators::*;
 
 mod latest;
 pub use latest::*;
 
 use crate::{
-    ledger::{store::TransactionStore, Block, Deployment, Header, Origin, Signature, StatePath, Transition},
+    ledger::{
+        store::TransactionStore,
+        Block,
+        Deployment,
+        Header,
+        HeaderLeaf,
+        Origin,
+        Signature,
+        StatePath,
+        Transaction,
+        Transition,
+    },
     memory_map::MemoryMap,
     Map,
 };
@@ -84,7 +95,7 @@ pub struct BlockStore<
     /// The map of block signatures.
     signatures: SignaturesMap,
     /// The map of block transactions.
-    block_transactions: TransactionsMap,
+    transactions: TransactionsMap,
     /// The store of transaction state.
     transaction_store: TransactionStore<
         N,
@@ -134,7 +145,7 @@ impl<N: Network>
             block_tree: N::merkle_tree_bhp(&[])?,
             hashes: [].into_iter().collect(),
             headers: [].into_iter().collect(),
-            block_transactions: [].into_iter().collect(),
+            transactions: [].into_iter().collect(),
             signatures: [].into_iter().collect(),
             transaction_store: TransactionStore::new(),
         };
@@ -183,7 +194,7 @@ impl<
         hashes: HashesMap,
         headers: HeadersMap,
         signatures: SignaturesMap,
-        block_transactions: TransactionsMap,
+        transactions: TransactionsMap,
         deployments: DeploymentsMap,
         executions: ExecutionsMap,
         transitions: TransitionsMap,
@@ -201,7 +212,7 @@ impl<
             block_tree: N::merkle_tree_bhp(&[])?,
             hashes,
             headers,
-            block_transactions,
+            transactions,
             signatures,
             transaction_store: TransactionStore::from_maps(
                 deployments,
@@ -227,7 +238,7 @@ impl<
                 block_store.hashes.insert(genesis.height(), genesis.hash())?;
                 block_store.headers.insert(genesis.hash(), *genesis.header())?;
                 block_store
-                    .block_transactions
+                    .transactions
                     .insert(genesis.hash(), genesis.transactions().iter().map(|(_, tx)| tx.id()).collect())?;
                 block_store.signatures.insert(genesis.hash(), *genesis.signature())?;
 
@@ -321,7 +332,7 @@ impl<
             block_store.headers.insert(block.hash(), *block.header())?;
             block_store.signatures.insert(block.hash(), *block.signature())?;
             block_store
-                .block_transactions
+                .transactions
                 .insert(block.hash(), block.transactions().iter().map(|(_, tx)| tx.id()).collect())?;
 
             for (_, transaction) in block.transactions().iter() {
@@ -336,7 +347,7 @@ impl<
                 hashes: block_store.hashes,
                 headers: block_store.headers,
                 signatures: block_store.signatures,
-                block_transactions: block_store.block_transactions,
+                transactions: block_store.transactions,
                 transaction_store: block_store.transaction_store,
             };
         }
@@ -384,16 +395,7 @@ impl<
     //     let block_header = self.get_header(block_height)?;
     //
     //     // Find the transition that contains the record commitment.
-    //     let transition = transaction
-    //         .transitions()
-    //         .filter(|transition| transition.commitments().contains(&commitment))
-    //         .collect::<Vec<_>>();
-    //
-    //     if transition.len() != 1 {
-    //         bail!("Multiple transitions associated with commitment {}", commitment.to_string())
-    //     }
-    //
-    //     let transition = transition[0];
+    //     let transition = *self.transaction_store.get_transition_id_from_commitment(commitment)?;
     //     let transition_id = transition.id();
     //
     //     // Construct the transition path and transaction leaf.
