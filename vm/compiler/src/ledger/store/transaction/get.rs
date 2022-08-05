@@ -79,6 +79,15 @@ impl<
         }
     }
 
+    // TODO (raychu86): Rename this.
+    /// Returns the transactions for the given commitment.
+    pub fn get_transition_id_from_commitment(&self, commitment: N::TransitionID) -> Result<Cow<'_, N::TransitionID>> {
+        match self.commitments.get(&commitment)? {
+            Some(transition_id) => Ok(transition_id),
+            None => bail!("Missing commitment {commitment}"),
+        }
+    }
+
     /// Returns the output records that belong to the given view key.
     pub fn get_output_records<'a>(
         &'a self,

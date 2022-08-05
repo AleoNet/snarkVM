@@ -54,7 +54,7 @@ impl<
         })
     }
 
-    // TODO (raychu86): Impelement iterators for executions.
+    // TODO (raychu86): Implement iterators for executions.
     // /// Returns an iterator over all transactions in `self` that are executions.
     // pub fn executions(&self) -> impl '_ + Iterator<Item = Cow<'_, Execution<N>>> {
     //
