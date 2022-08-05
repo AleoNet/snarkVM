@@ -45,8 +45,11 @@ pub trait Aleo: Environment {
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns the scalar multiplication on the generator `T` (for tags).
+    fn t_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;

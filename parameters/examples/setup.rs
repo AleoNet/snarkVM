@@ -176,7 +176,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Print the commands.
     println!("\nNow, run the following commands:\n");
     println!("snarkup remove provers");
-    println!("snarkup remove verifiers");
+    println!("snarkup remove verifiers\n");
     for command in commands {
         println!("{command}");
     }

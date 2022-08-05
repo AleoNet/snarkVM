@@ -44,6 +44,8 @@ impl<N: Network> FromBytes for Request<N> {
 
         // Read the signature.
         let signature = FromBytes::read_le(&mut reader)?;
+        // Read the tag secret key.
+        let sk_tag = FromBytes::read_le(&mut reader)?;
         // Read the transition view key.
         let tvk = FromBytes::read_le(&mut reader)?;
         // Read the transition secret key.
@@ -51,7 +53,19 @@ impl<N: Network> FromBytes for Request<N> {
         // Read the transition commitment.
         let tcm = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from((caller, network_id, program_id, function_name, input_ids, inputs, signature, tvk, tsk, tcm)))
+        Ok(Self::from((
+            caller,
+            network_id,
+            program_id,
+            function_name,
+            input_ids,
+            inputs,
+            signature,
+            sk_tag,
+            tvk,
+            tsk,
+            tcm,
+        )))
     }
 }
 
@@ -87,6 +101,8 @@ impl<N: Network> ToBytes for Request<N> {
 
         // Write the signature.
         self.signature.write_le(&mut writer)?;
+        // Write the tag secret key.
+        self.sk_tag.write_le(&mut writer)?;
         // Write the transition view key.
         self.tvk.write_le(&mut writer)?;
         // Write the transition secret key.

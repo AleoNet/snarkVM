@@ -108,3 +108,25 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
         &self.nonce
     }
 }
+
+impl<N: Network, Private: Visibility> Record<N, Private> {
+    /// Returns the owner of the program record, and consumes `self`.
+    pub fn into_owner(self) -> Owner<N, Private> {
+        self.owner
+    }
+
+    /// Returns the gates of the program record, and consumes `self`.
+    pub fn into_gates(self) -> Balance<N, Private> {
+        self.gates
+    }
+
+    /// Returns the program data, and consumes `self`.
+    pub fn into_data(self) -> IndexMap<Identifier<N>, Entry<N, Private>> {
+        self.data
+    }
+
+    /// Returns the nonce of the program record, and consumes `self`.
+    pub fn into_nonce(self) -> Group<N> {
+        self.nonce
+    }
+}

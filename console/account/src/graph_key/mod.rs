@@ -14,45 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod algorithms;
-pub use algorithms::*;
+mod bytes;
+mod serialize;
+mod string;
+mod try_from;
 
-pub mod arithmetic;
-pub use arithmetic::*;
+#[cfg(feature = "private_key")]
+use crate::PrivateKey;
 
-pub mod bitwise;
-pub use bitwise::*;
+use snarkvm_console_network::prelude::*;
+use snarkvm_console_types::{Field, Group};
 
-pub mod from_bits;
-pub use from_bits::*;
+use base58::{FromBase58, ToBase58};
 
-pub mod from_field;
-pub use from_field::*;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct GraphKey<N: Network> {
+    /// The graph key `sk_tag` := T^sk_sig.
+    sk_tag: Group<N>,
+}
 
-pub mod parse;
-pub use parse::*;
-
-pub mod string;
-pub use string::string_parser;
-
-pub mod to_bits;
-pub use to_bits::*;
-
-pub mod to_field;
-pub use to_field::*;
-
-pub mod type_name;
-pub use type_name::*;
-
-pub mod types;
-pub use types::*;
-
-pub mod visibility;
-pub use visibility::*;
-
-pub mod integers {
-    pub use super::{
-        integer_type::{CheckedPow, CheckedShl, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
-        magnitude::Magnitude,
-    };
+impl<N: Network> GraphKey<N> {
+    /// Returns the graph key.
+    pub const fn sk_tag(&self) -> Group<N> {
+        self.sk_tag
+    }
 }

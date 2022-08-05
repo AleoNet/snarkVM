@@ -141,8 +141,8 @@ impl<N: Network> Transition<N> {
                         // Return the private input.
                         Ok(Input::Private(*input_hash, Some(ciphertext)))
                     }
-                    (InputID::Record(commitment, _, serial_number), Value::Record(..)) => {
-                        Ok(Input::Record(*serial_number, Origin::Commitment(*commitment)))
+                    (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
+                        Ok(Input::Record(*serial_number, *tag, Origin::Commitment(*commitment)))
                     }
                     (InputID::ExternalRecord(input_commitment), Value::Record(..)) => {
                         Ok(Input::ExternalRecord(*input_commitment))
@@ -242,7 +242,9 @@ impl<N: Network> Transition<N> {
         // Return the transition.
         Self::new(program_id, function_name, inputs, outputs, proof, tpk, tcm, fee)
     }
+}
 
+impl<N: Network> Transition<N> {
     /// Returns the transition ID.
     pub const fn id(&self) -> &N::TransitionID {
         &self.id
@@ -278,11 +280,6 @@ impl<N: Network> Transition<N> {
         self.outputs.iter().map(Output::id)
     }
 
-    /// Returns the output records as a tuple comprised of `(commitment, record)`.
-    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
-        self.outputs.iter().flat_map(Output::record)
-    }
-
     /// Returns the proof.
     pub const fn proof(&self) -> &Proof<N> {
         &self.proof
@@ -310,6 +307,11 @@ impl<N: Network> Transition<N> {
         self.inputs.iter().flat_map(Input::origin)
     }
 
+    /// Returns an iterator over the tags, for inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().flat_map(Input::tag)
+    }
+
     /// Returns an iterator over the serial numbers, for inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.inputs.iter().flat_map(Input::serial_number)
@@ -323,5 +325,52 @@ impl<N: Network> Transition<N> {
     /// Returns an iterator over the nonces, for outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.outputs.iter().flat_map(Output::nonce)
+    }
+
+    /// Returns an iterator over the output records, as a tuple of `(commitment, record)`.
+    pub fn output_records(&self) -> impl '_ + Iterator<Item = (&Field<N>, &Record<N, Ciphertext<N>>)> {
+        self.outputs.iter().flat_map(Output::record)
+    }
+}
+
+impl<N: Network> Transition<N> {
+    /// Returns the transition ID, and consumes `self`.
+    pub fn into_id(self) -> N::TransitionID {
+        self.id
+    }
+
+    /// Returns the transition public key, and consumes `self`.
+    pub fn into_tpk(self) -> Group<N> {
+        self.tpk
+    }
+
+    /// Returns a consuming iterator over the origins, for inputs that are records.
+    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
+        self.inputs.into_iter().flat_map(Input::into_origin)
+    }
+
+    /// Returns a consuming iterator over the tags, for inputs that are records.
+    pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
+        self.inputs.into_iter().flat_map(Input::into_tag)
+    }
+
+    /// Returns a consuming iterator over the serial numbers, for inputs that are records.
+    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
+        self.inputs.into_iter().flat_map(Input::into_serial_number)
+    }
+
+    /// Returns a consuming iterator over the commitments, for outputs that are records.
+    pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
+        self.outputs.into_iter().flat_map(Output::into_commitment)
+    }
+
+    /// Returns a consuming iterator over the nonces, for outputs that are records.
+    pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
+        self.outputs.into_iter().flat_map(Output::into_nonce)
+    }
+
+    /// Returns a consuming iterator over the output records, as a tuple of `(commitment, record)`.
+    pub fn into_output_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
+        self.outputs.into_iter().flat_map(Output::into_record)
     }
 }

@@ -29,6 +29,7 @@ impl<N: Network> Serialize for Request<N> {
                 transition.serialize_field("input_ids", &self.input_ids)?;
                 transition.serialize_field("inputs", &self.inputs)?;
                 transition.serialize_field("signature", &self.signature)?;
+                transition.serialize_field("sk_tag", &self.sk_tag)?;
                 transition.serialize_field("tvk", &self.tvk)?;
                 transition.serialize_field("tsk", &self.tsk)?;
                 transition.serialize_field("tcm", &self.tcm)?;
@@ -62,6 +63,8 @@ impl<'de, N: Network> Deserialize<'de> for Request<N> {
                     serde_json::from_value(request["inputs"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the signature.
                     serde_json::from_value(request["signature"].clone()).map_err(de::Error::custom)?,
+                    // Retrieve the `sk_tag`.
+                    serde_json::from_value(request["sk_tag"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the `tvk`.
                     serde_json::from_value(request["tvk"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the `tsk`.

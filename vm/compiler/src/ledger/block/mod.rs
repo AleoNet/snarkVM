@@ -330,6 +330,11 @@ impl<N: Network> Block<N> {
         self.transactions.origins()
     }
 
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.tags()
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transactions.serial_numbers()

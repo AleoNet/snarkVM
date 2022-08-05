@@ -49,8 +49,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given record matches the layout of the external record type.
-    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
-    /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_external_record(&self, record: &Record<N, Plaintext<N>>, locator: &Locator<N>) -> Result<()> {
         // Retrieve the record name.
         let record_name = locator.resource();
@@ -73,8 +71,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
-    /// for record data does **not** matter, as long as all defined members are present.
     pub fn matches_record(&self, record: &Record<N, Plaintext<N>>, record_name: &Identifier<N>) -> Result<()> {
         // Ensure the record name is valid.
         ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
@@ -94,7 +90,6 @@ impl<N: Network> Stack<N> {
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
-    /// Note: Ordering does **not** matter, as long as all defined members are present.
     pub fn matches_plaintext(&self, plaintext: &Plaintext<N>, plaintext_type: &PlaintextType<N>) -> Result<()> {
         self.matches_plaintext_internal(plaintext, plaintext_type, 0)
     }
@@ -102,8 +97,6 @@ impl<N: Network> Stack<N> {
 
 impl<N: Network> Stack<N> {
     /// Checks that the given record matches the layout of the record type.
-    /// Note: Ordering for `owner` and `gates` **does** matter, however ordering
-    /// for record data does **not** matter, as long as all defined members are present.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn matches_record_internal(
@@ -117,16 +110,8 @@ impl<N: Network> Stack<N> {
 
         // Retrieve the record name.
         let record_name = record_type.name();
-
-        // Ensure the number of record members does not exceed the maximum.
-        let num_members = record.data().len();
-        ensure!(num_members <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
-
-        // Ensure the number of interface members match.
-        let num_expected_members = record_type.entries().len();
-        if num_expected_members != num_members {
-            bail!("'{record_name}' expected {num_expected_members} members, found {num_members} members")
-        }
+        // Ensure the record name is valid.
+        ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Ensure the visibility of the record owner matches the visibility in the record type.
         ensure!(
@@ -148,20 +133,30 @@ impl<N: Network> Stack<N> {
             "Visibility of record entry 'gates' does not match"
         );
 
-        // Ensure the record data matches the defined type.
-        // Note: Ordering does **not** matter, as long as all defined members are present.
-        for (expected_name, expected_type) in record_type.entries() {
-            match record.data().iter().find(|(name, _)| *name == expected_name) {
-                // Ensure the member type matches.
-                Some((member_name, member_entry)) => {
-                    // Ensure the member name is valid.
-                    ensure!(!Program::is_reserved_keyword(member_name), "Entry name '{member_name}' is reserved");
-                    // Ensure the member value matches (recursive call).
-                    self.matches_entry_internal(member_entry, expected_type, depth + 1)?
-                }
-                None => bail!("'{record_name}' is missing entry '{expected_name}'"),
-            }
+        // Ensure the number of record entries does not exceed the maximum.
+        let num_entries = record.data().len();
+        ensure!(num_entries <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
+
+        // Ensure the number of record entries match.
+        let expected_num_entries = record_type.entries().len();
+        if expected_num_entries != num_entries {
+            bail!("'{record_name}' expected {expected_num_entries} entries, found {num_entries} entries")
         }
+
+        // Ensure the record data match, in the same order.
+        for (i, ((expected_name, expected_type), (entry_name, entry))) in
+            record_type.entries().iter().zip_eq(record.data().iter()).enumerate()
+        {
+            // Ensure the entry name matches.
+            if expected_name != entry_name {
+                bail!("Entry '{i}' in '{record_name}' is incorrect: expected '{expected_name}', found '{entry_name}'")
+            }
+            // Ensure the entry name is valid.
+            ensure!(!Program::is_reserved_keyword(entry_name), "Entry name '{entry_name}' is reserved");
+            // Ensure the entry matches (recursive call).
+            self.matches_entry_internal(record_name, entry_name, entry, expected_type, depth + 1)?;
+        }
+
         Ok(())
     }
 
@@ -170,6 +165,8 @@ impl<N: Network> Stack<N> {
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn matches_entry_internal(
         &self,
+        record_name: &Identifier<N>,
+        entry_name: &Identifier<N>,
         entry: &Entry<N, Plaintext<N>>,
         entry_type: &EntryType<N>,
         depth: usize,
@@ -178,14 +175,18 @@ impl<N: Network> Stack<N> {
             (Entry::Constant(plaintext), EntryType::Constant(plaintext_type))
             | (Entry::Public(plaintext), EntryType::Public(plaintext_type))
             | (Entry::Private(plaintext), EntryType::Private(plaintext_type)) => {
-                self.matches_plaintext_internal(plaintext, plaintext_type, depth)
+                match self.matches_plaintext_internal(plaintext, plaintext_type, depth) {
+                    Ok(()) => Ok(()),
+                    Err(error) => bail!("Invalid record entry '{record_name}.{entry_name}': {error}"),
+                }
             }
-            _ => bail!("Invalid entry: function expected '{entry_type}'"),
+            _ => bail!(
+                "Type mismatch in record entry '{record_name}.{entry_name}':\n'{entry}'\n does not match\n'{entry_type}'"
+            ),
         }
     }
 
     /// Checks that the given plaintext matches the layout of the plaintext type.
-    /// Note: Ordering does **not** matter, as long as all defined members are present.
     ///
     /// This method enforces `N::MAX_DATA_DEPTH` and `N::MAX_DATA_ENTRIES` limits.
     fn matches_plaintext_internal(
@@ -241,25 +242,27 @@ impl<N: Network> Stack<N> {
                 );
 
                 // Ensure the number of interface members match.
-                let num_expected_members = interface.members().len();
-                if num_expected_members != num_members {
-                    bail!("'{interface_name}' expected {num_expected_members} members, found {num_members} members")
+                let expected_num_members = interface.members().len();
+                if expected_num_members != num_members {
+                    bail!("'{interface_name}' expected {expected_num_members} members, found {num_members} members")
                 }
 
-                // Ensure the interface members match.
-                // Note: Ordering does **not** matter, as long as all defined members are present.
-                for (expected_name, expected_type) in interface.members() {
-                    match members.iter().find(|(name, _)| *name == expected_name) {
-                        // Ensure the member type matches.
-                        Some((member_name, member_plaintext)) => {
-                            // Ensure the member name is valid.
-                            ensure!(!Program::is_reserved_keyword(member_name), "Member '{member_name}' is reserved");
-                            // Ensure the member plaintext matches (recursive call).
-                            self.matches_plaintext_internal(member_plaintext, expected_type, depth + 1)?
-                        }
-                        None => bail!("'{interface_name}' is missing member '{expected_name}'"),
+                // Ensure the interface members match, in the same order.
+                for (i, ((expected_name, expected_type), (member_name, member))) in
+                    interface.members().iter().zip_eq(members.iter()).enumerate()
+                {
+                    // Ensure the member name matches.
+                    if expected_name != member_name {
+                        bail!(
+                            "Member '{i}' in '{interface_name}' is incorrect: expected '{expected_name}', found '{member_name}'"
+                        )
                     }
+                    // Ensure the member name is valid.
+                    ensure!(!Program::is_reserved_keyword(member_name), "Member name '{member_name}' is reserved");
+                    // Ensure the member plaintext matches (recursive call).
+                    self.matches_plaintext_internal(member, expected_type, depth + 1)?;
                 }
+
                 Ok(())
             }
         }

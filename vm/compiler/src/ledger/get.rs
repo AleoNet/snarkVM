@@ -86,19 +86,51 @@ impl<
         view_key: &'a ViewKey<N>,
         filter: OutputRecordsFilter<N>,
     ) -> impl '_ + Iterator<Item = (Field<N>, Record<N, Plaintext<N>>)> {
+        /// A wrapper enum able to contain and iterate over two `Cow` pair iterators of different types.
+        enum CowTupleIter<
+            'a,
+            T1: 'a + Clone,
+            T2: 'a + Clone,
+            I1: Iterator<Item = (&'a T1, &'a T2)>,
+            I2: Iterator<Item = (T1, T2)>,
+        > {
+            Borrowed(I1),
+            Owned(I2),
+        }
+
+        impl<'a, T1: 'a + Clone, T2: 'a + Clone, I1: Iterator<Item = (&'a T1, &'a T2)>, I2: Iterator<Item = (T1, T2)>>
+            Iterator for CowTupleIter<'a, T1, T2, I1, I2>
+        {
+            type Item = (Cow<'a, T1>, Cow<'a, T2>);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self {
+                    Self::Borrowed(iter) => {
+                        let (a, b) = iter.next()?;
+                        Some((Cow::Borrowed(a), Cow::Borrowed(b)))
+                    }
+                    Self::Owned(iter) => {
+                        let (a, b) = iter.next()?;
+                        Some((Cow::Owned(a), Cow::Owned(b)))
+                    }
+                }
+            }
+        }
+
         // Derive the address from the view key.
         let address = view_key.to_address();
 
         self.transitions()
-            .flat_map(|ts| match ts {
-                Cow::Borrowed(tn) => Transition::output_records(tn)
-                    .map(|(f, r)| (Cow::Borrowed(f), Cow::Borrowed(r)))
-                    .collect::<Vec<_>>(),
-                Cow::Owned(tn) => Transition::output_records(&tn)
-                    .map(|(f, r)| (Cow::Owned(f.to_owned()), Cow::Owned(r.to_owned())))
-                    .collect::<Vec<_>>(),
+            .flat_map(|transition| match transition {
+                Cow::Borrowed(transition) => CowTupleIter::Borrowed(transition.output_records()),
+                Cow::Owned(transition) => CowTupleIter::Owned(transition.into_output_records()),
             })
             .flat_map(move |(commitment, record)| {
+                // A helper method to derive the tag from the `sk_tag` and commitment.
+                let tag = |sk_tag: Field<N>, commitment: Field<N>| -> Result<Field<N>> {
+                    N::hash_psd2(&[sk_tag, commitment])
+                };
+
                 // A helper method to derive the serial number from the private key and commitment.
                 let serial_number = |private_key: PrivateKey<N>, commitment: Field<N>| -> Result<Field<N>> {
                     // Compute the generator `H` as `HashToGroup(commitment)`.
@@ -117,7 +149,7 @@ impl<
                 // Determine whether to decrypt this output record (or not), based on the filter.
                 let commitment = match filter {
                     OutputRecordsFilter::All => *commitment,
-                    OutputRecordsFilter::Spent(private_key) => {
+                    OutputRecordsFilter::AllSpent(private_key) => {
                         // Derive the serial number.
                         match serial_number(private_key, *commitment) {
                             // Determine if the output record is spent.
@@ -126,12 +158,12 @@ impl<
                                 false => return None,
                             },
                             Err(e) => {
-                                warn!("Failed to derive serial number for output record: {e}");
+                                warn!("Failed to derive serial number for output record '{commitment}': {e}");
                                 return None;
                             }
                         }
                     }
-                    OutputRecordsFilter::Unspent(private_key) => {
+                    OutputRecordsFilter::AllUnspent(private_key) => {
                         // Derive the serial number.
                         match serial_number(private_key, *commitment) {
                             // Determine if the output record is spent.
@@ -140,7 +172,39 @@ impl<
                                 false => *commitment,
                             },
                             Err(e) => {
-                                warn!("Failed to derive serial number for output record: {e}");
+                                warn!("Failed to derive serial number for output record '{commitment}': {e}");
+                                return None;
+                            }
+                        }
+                    }
+                    OutputRecordsFilter::Spent(graph_key) => {
+                        // Compute the `sk_tag` from the graph key.
+                        let sk_tag = graph_key.sk_tag().to_x_coordinate();
+                        // Derive the serial number.
+                        match tag(sk_tag, *commitment) {
+                            // Determine if the output record is spent.
+                            Ok(tag) => match self.contains_tag(&tag) {
+                                true => *commitment,
+                                false => return None,
+                            },
+                            Err(e) => {
+                                warn!("Failed to derive the tag for output record '{commitment}': {e}");
+                                return None;
+                            }
+                        }
+                    }
+                    OutputRecordsFilter::Unspent(graph_key) => {
+                        // Compute the `sk_tag` from the graph key.
+                        let sk_tag = graph_key.sk_tag().to_x_coordinate();
+                        // Derive the serial number.
+                        match tag(sk_tag, *commitment) {
+                            // Determine if the output record is spent.
+                            Ok(tag) => match self.contains_tag(&tag) {
+                                true => return None,
+                                false => *commitment,
+                            },
+                            Err(e) => {
+                                warn!("Failed to derive the tag for output record '{commitment}': {e}");
                                 return None;
                             }
                         }

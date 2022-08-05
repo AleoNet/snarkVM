@@ -46,7 +46,7 @@ use crate::{
     process::{Deployment, Execution},
 };
 use console::{
-    account::{PrivateKey, Signature, ViewKey},
+    account::{GraphKey, PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
     program::{Plaintext, Record},
@@ -72,10 +72,14 @@ pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 pub enum OutputRecordsFilter<N: Network> {
     /// Returns all output records associated with the account.
     All,
-    /// Returns only output records associated with the account that are **spent**.
-    Spent(PrivateKey<N>),
-    /// Returns only output records associated with the account that are **not spent**.
-    Unspent(PrivateKey<N>),
+    /// Returns all output records associated with the account that are **spent**.
+    AllSpent(PrivateKey<N>),
+    /// Returns all output records associated with the account that are **not spent**.
+    AllUnspent(PrivateKey<N>),
+    /// Returns only output records associated with the account that are **spent** with the given graph key.
+    Spent(GraphKey<N>),
+    /// Returns only output records associated with the account that are **not spent** with the given graph key.
+    Unspent(GraphKey<N>),
 }
 
 #[derive(Clone)]

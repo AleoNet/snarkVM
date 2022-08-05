@@ -49,6 +49,8 @@ type E = Circuit;
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
+    /// The group bases for the Aleo tag scheme.
+    static GENERATOR_T: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::t_powers().to_vec());
 
     /// The balance commitment domain as a constant field element.
     static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
@@ -122,10 +124,20 @@ impl Aleo for AleoV0 {
         SERIAL_NUMBER_DOMAIN.with(|domain| domain.clone())
     }
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the scalar multiplication on the generator `G`.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
         GENERATOR_G.with(|bases| {
+            bases
+                .iter()
+                .zip_eq(&scalar.to_bits_le())
+                .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
+        })
+    }
+
+    /// Returns the scalar multiplication on the generator `T` (for tags).
+    fn t_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
+        GENERATOR_T.with(|bases| {
             bases
                 .iter()
                 .zip_eq(&scalar.to_bits_le())
