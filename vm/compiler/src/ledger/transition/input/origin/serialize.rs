@@ -48,24 +48,15 @@ impl<'de, N: Network> Deserialize<'de> for Origin<N> {
                 let origin = serde_json::Value::deserialize(deserializer)?;
 
                 // Recover the origin.
-                let origin = match origin["type"].as_str() {
-                    Some("commitment") => Self::Commitment(
-                        serde_json::from_value(origin["commitment"].clone()).map_err(de::Error::custom)?,
-                    ),
-                    Some("state_root") => match origin["state_root"].as_str() {
-                        Some(state_root) => Origin::StateRoot(N::StateRoot::from_str(state_root).map_err(|_| {
-                            de::Error::custom("Failed to deserialize the state root of a transition origin")
-                        })?),
-                        _ => {
-                            return Err(de::Error::custom(
-                                "Failed to deserialize the state root of a transition origin",
-                            ));
-                        }
-                    },
-                    _ => return Err(de::Error::custom("Invalid transition origin type")),
-                };
-
-                Ok(origin)
+                if let Some(commitment) = origin["commitment"].as_str() {
+                    Ok(Origin::Commitment(Field::<N>::from_str(commitment).map_err(de::Error::custom)?))
+                } else if let Some(state_root) = origin["state_root"].as_str() {
+                    Ok(Origin::StateRoot(N::StateRoot::from_str(state_root).map_err(|_| {
+                        de::Error::custom("Failed to deserialize the state root of a transition input record")
+                    })?))
+                } else {
+                    Err(de::Error::custom("Invalid transition input record origin"))
+                }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition origin"),
         }

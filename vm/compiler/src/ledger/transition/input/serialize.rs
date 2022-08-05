@@ -53,10 +53,7 @@ impl<N: Network> Serialize for Input<N> {
                     input.serialize_field("type", "record")?;
                     input.serialize_field("id", &id)?;
                     input.serialize_field("tag", &tag)?;
-                    match origin {
-                        Origin::Commitment(commitment) => input.serialize_field("commitment", &commitment)?,
-                        Origin::StateRoot(root) => input.serialize_field("state_root", &root)?,
-                    };
+                    input.serialize_field("origin", &origin)?;
                     input.end()
                 }
                 Self::ExternalRecord(id) => {
@@ -95,27 +92,11 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                         Some(value) => Some(Ciphertext::<N>::from_str(value).map_err(de::Error::custom)?),
                         None => None,
                     }),
-                    Some("record") => {
-                        if let Some(commitment) = input["commitment"].as_str() {
-                            Input::Record(
-                                id,
-                                serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
-                                Origin::Commitment(Field::<N>::from_str(commitment).map_err(de::Error::custom)?),
-                            )
-                        } else if let Some(state_root) = input["state_root"].as_str() {
-                            Input::Record(
-                                id,
-                                serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
-                                Origin::StateRoot(N::StateRoot::from_str(state_root).map_err(|_| {
-                                    de::Error::custom(
-                                        "Failed to deserialize the state root of a transition input record",
-                                    )
-                                })?),
-                            )
-                        } else {
-                            return Err(de::Error::custom("Invalid transition input record origin"));
-                        }
-                    }
+                    Some("record") => Input::Record(
+                        id,
+                        serde_json::from_value(input["tag"].clone()).map_err(de::Error::custom)?,
+                        serde_json::from_value(input["origin"].clone()).map_err(de::Error::custom)?,
+                    ),
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
                 };
@@ -144,8 +125,8 @@ mod tests {
         "{\"type\":\"constant\",\"id\":\"5field\"}",
         "{\"type\":\"public\",\"id\":\"0field\"}",
         "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\",\"tag\":\"10field\",\"commitment\":\"123456789field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\",\"tag\":\"230field\",\"state_root\":\"ar1zhx4kpcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvehdvs\"}",
+        "{\"type\":\"record\",\"id\":\"123456789field\",\"tag\":\"10field\",\"origin\":{\"commitment\":\"123456789field\"}}",
+        "{\"type\":\"record\",\"id\":\"123456789field\",\"tag\":\"230field\",\"origin\":{\"state_root\":\"ar1zhx4kpcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvehdvs\"}}",
         "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
     ];
 
