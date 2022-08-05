@@ -110,11 +110,17 @@ pub trait Network:
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
 
-    /// Returns the powers of G.
+    /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the powers of `T`.
+    fn t_powers() -> &'static Vec<Group<Self>>;
+
+    /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns the scalar multiplication on the generator `T` (for tags).
+    fn t_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
