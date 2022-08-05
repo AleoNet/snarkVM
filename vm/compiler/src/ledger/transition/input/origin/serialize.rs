@@ -22,14 +22,12 @@ impl<N: Network> Serialize for Origin<N> {
         match serializer.is_human_readable() {
             true => match self {
                 Self::Commitment(commitment) => {
-                    let mut origin = serializer.serialize_struct("Origin", 2)?;
-                    origin.serialize_field("type", "commitment")?;
+                    let mut origin = serializer.serialize_struct("Origin", 1)?;
                     origin.serialize_field("commitment", &commitment)?;
                     origin.end()
                 }
                 Self::StateRoot(state_root) => {
-                    let mut origin = serializer.serialize_struct("Origin", 2)?;
-                    origin.serialize_field("type", "state_root")?;
+                    let mut origin = serializer.serialize_struct("Origin", 1)?;
                     origin.serialize_field("state_root", &state_root)?;
                     origin.end()
                 }
@@ -72,8 +70,8 @@ mod tests {
 
     /// Add test cases here to be checked for serialization.
     const TEST_CASES: &[&str] = &[
-        "{\"type\":\"commitment\",\"commitment\":\"5field\"}",
-        "{\"type\":\"state_root\", \"state_root\":\"ar1zhx4kpcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvehdvs\"}",
+        "{\"commitment\":\"5field\"}",
+        "{\"state_root\":\"ar1zhx4kpcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvehdvs\"}",
     ];
 
     fn check_serde_json<
