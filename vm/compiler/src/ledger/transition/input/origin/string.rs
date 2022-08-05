@@ -19,21 +19,21 @@ use super::*;
 impl<N: Network> FromStr for Origin<N> {
     type Err = Error;
 
-    /// Initializes the input from a JSON-string.
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(serde_json::from_str(input)?)
+    /// Initializes the origin from a JSON-string.
+    fn from_str(origin: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(origin)?)
     }
 }
 
 impl<N: Network> Debug for Origin<N> {
-    /// Prints the input as a JSON-string.
+    /// Prints the origin as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
 impl<N: Network> Display for Origin<N> {
-    /// Displays the input as a JSON-string.
+    /// Displays the origin as a JSON-string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
     }

@@ -22,16 +22,16 @@ impl<N: Network> Serialize for Origin<N> {
         match serializer.is_human_readable() {
             true => match self {
                 Self::Commitment(commitment) => {
-                    let mut input = serializer.serialize_struct("Origin", 2)?;
-                    input.serialize_field("type", "commitment")?;
-                    input.serialize_field("commitment", &commitment)?;
-                    input.end()
+                    let mut origin = serializer.serialize_struct("Origin", 2)?;
+                    origin.serialize_field("type", "commitment")?;
+                    origin.serialize_field("commitment", &commitment)?;
+                    origin.end()
                 }
                 Self::StateRoot(state_root) => {
-                    let mut input = serializer.serialize_struct("Origin", 2)?;
-                    input.serialize_field("type", "state_root")?;
-                    input.serialize_field("state_root", &state_root)?;
-                    input.end()
+                    let mut origin = serializer.serialize_struct("Origin", 2)?;
+                    origin.serialize_field("type", "state_root")?;
+                    origin.serialize_field("state_root", &state_root)?;
+                    origin.end()
                 }
             },
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -54,7 +54,7 @@ impl<'de, N: Network> Deserialize<'de> for Origin<N> {
                     ),
                     Some("state_root") => match origin["state_root"].as_str() {
                         Some(state_root) => Origin::StateRoot(N::StateRoot::from_str(state_root).map_err(|_| {
-                            de::Error::custom("Failed to deserialize the state root of a transition input record")
+                            de::Error::custom("Failed to deserialize the state root of a transition origin")
                         })?),
                         _ => {
                             return Err(de::Error::custom(

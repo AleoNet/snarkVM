@@ -17,10 +17,10 @@
 use super::*;
 
 impl<N: Network> FromBytes for Origin<N> {
-    /// Reads the input from a buffer.
+    /// Reads the origin from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = Variant::read_le(&mut reader)?;
-        let literal = match variant {
+        let origin = match variant {
             0 => {
                 let commitment: Field<N> = FromBytes::read_le(&mut reader)?;
 
@@ -33,12 +33,12 @@ impl<N: Network> FromBytes for Origin<N> {
             }
             2.. => return Err(error(format!("Failed to decode transition origin variant {variant}"))),
         };
-        Ok(literal)
+        Ok(origin)
     }
 }
 
 impl<N: Network> ToBytes for Origin<N> {
-    /// Writes the input to a buffer.
+    /// Writes the origin to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Commitment(commitment) => {
