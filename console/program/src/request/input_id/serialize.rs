@@ -40,7 +40,7 @@ impl<N: Network> Serialize for InputID<N> {
                     input.end()
                 }
                 Self::Record(commitment, gamma, serial_number) => {
-                    let mut input = serializer.serialize_struct("InputID", 3)?;
+                    let mut input = serializer.serialize_struct("InputID", 4)?;
                     input.serialize_field("type", "record")?;
                     input.serialize_field("commitment", &commitment)?;
                     input.serialize_field("gamma", &gamma)?;

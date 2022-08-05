@@ -23,15 +23,30 @@ impl<N: Network> RegisterTypes<N> {
         if operands.is_empty() {
             bail!("Casting to an interface requires at least one operand")
         }
+
+        // Retrieve the interface name.
+        let interface_name = interface.name();
+        // Ensure the interface name is valid.
+        ensure!(!Program::is_reserved_keyword(interface_name), "Interface name '{interface_name}' is reserved");
+
+        // Ensure the number of interface members does not exceed the maximum.
+        let num_members = operands.len();
+        ensure!(num_members <= N::MAX_DATA_ENTRIES, "'{interface_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
+
+        // Ensure the number of interface members match.
+        let expected_num_members = interface.members().len();
+        if expected_num_members != num_members {
+            bail!("'{interface_name}' expected {expected_num_members} members, found {num_members} members")
+        }
+
         // Ensure the operand types match the interface.
-        for (operand, (_, member_type)) in operands.iter().zip(interface.members()) {
+        for (operand, (member_name, member_type)) in operands.iter().zip_eq(interface.members()) {
             match operand {
                 // Ensure the literal type matches the member type.
                 Operand::Literal(literal) => {
                     ensure!(
                         PlaintextType::Literal(literal.to_type()) == *member_type,
-                        "Interface '{}' expects {member_type}, operand is '{literal}'.",
-                        interface.name()
+                        "Interface member '{interface_name}.{member_name}' expects a {member_type}, but found '{literal}' in the operand.",
                     )
                 }
                 // Ensure the register type matches the member type.
@@ -46,8 +61,7 @@ impl<N: Network> RegisterTypes<N> {
                     // Ensure the register type matches the member type.
                     ensure!(
                         register_type == RegisterType::Plaintext(*member_type),
-                        "Interface '{}' expects {member_type}, operand is '{register_type}'.",
-                        interface.name()
+                        "Interface member '{interface_name}.{member_name}' expects {member_type}, but found '{register_type}' in the operand '{register}'.",
                     )
                 }
             }
@@ -63,6 +77,11 @@ impl<N: Network> RegisterTypes<N> {
         if operands.len() < 2 {
             bail!("Casting to a record requires at least two operands")
         }
+
+        // Retrieve the record name.
+        let record_name = record_type.name();
+        // Ensure the record name is valid.
+        ensure!(!Program::is_reserved_keyword(record_name), "Record name '{record_name}' is reserved");
 
         // Ensure the first input type is an address.
         match &operands[0] {
@@ -102,8 +121,18 @@ impl<N: Network> RegisterTypes<N> {
             }
         }
 
+        // Ensure the number of record entries does not exceed the maximum.
+        let num_entries = operands.len() - 2; // Minus 2 to factor for `record.owner` and `record.gates`.
+        ensure!(num_entries <= N::MAX_DATA_ENTRIES, "'{record_name}' cannot exceed {} entries", N::MAX_DATA_ENTRIES);
+
+        // Ensure the number of record entries match.
+        let expected_num_entries = record_type.entries().len();
+        if expected_num_entries != num_entries {
+            bail!("'{record_name}' expected {expected_num_entries} entries, found {num_entries} entries")
+        }
+
         // Ensure the operand types match the record entry types.
-        for (operand, (_, entry_type)) in operands.iter().skip(2).zip(record_type.entries()) {
+        for (operand, (_, entry_type)) in operands.iter().skip(2).zip_eq(record_type.entries()) {
             match entry_type {
                 EntryType::Constant(plaintext_type)
                 | EntryType::Public(plaintext_type)
