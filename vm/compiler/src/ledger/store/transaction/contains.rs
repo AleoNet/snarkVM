@@ -21,7 +21,7 @@ impl<
     DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
     ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
     TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
@@ -32,7 +32,7 @@ impl<
         DeploymentsMap,
         ExecutionsMap,
         TransitionsMap,
-        PublicKeysMap,
+        TransitionPublicKeysMap,
         SerialNumbersMap,
         CommitmentsMap,
         OriginsMap,
@@ -61,7 +61,7 @@ impl<
 
     /// Returns `true` if the given transition public key exists.
     pub fn contains_transition_public_key(&self, tpk: &Group<N>) -> Result<bool> {
-        self.public_keys.contains_key(tpk)
+        self.transition_public_keys.contains_key(tpk)
     }
 
     /// Returns `true` if the given serial number exists.

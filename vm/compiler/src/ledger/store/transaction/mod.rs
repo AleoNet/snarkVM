@@ -38,14 +38,14 @@ use anyhow::Result;
 use std::marker::PhantomData;
 
 /// The transaction state stored in a ledger.
-/// `PublicKeysMap`, `SerialNumbersMap`, `CommitmentsMap`, `OriginsMap`, and `NonceMap` store redundant data for faster lookup.
+/// `TransitionPublicKeysMap`, `SerialNumbersMap`, `CommitmentsMap`, `OriginsMap`, and `NonceMap` store redundant data for faster lookup.
 #[derive(Clone)]
 pub struct TransactionStore<
     N: Network,
     DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
     ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
     TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
@@ -58,7 +58,7 @@ pub struct TransactionStore<
     /// The map of transitions.
     transitions: TransitionsMap,
     /// The map of serial numbers.
-    public_keys: PublicKeysMap,
+    transition_public_keys: TransitionPublicKeysMap,
     /// The map of serial numbers.
     serial_numbers: SerialNumbersMap,
     /// The map of commitments.
@@ -90,7 +90,7 @@ impl<N: Network>
             deployments: Default::default(),
             executions: Default::default(),
             transitions: Default::default(),
-            public_keys: Default::default(),
+            transition_public_keys: Default::default(),
             serial_numbers: Default::default(),
             commitments: Default::default(),
             origins: Default::default(),
@@ -105,7 +105,7 @@ impl<
     DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
     ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
     TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
@@ -116,7 +116,7 @@ impl<
         DeploymentsMap,
         ExecutionsMap,
         TransitionsMap,
-        PublicKeysMap,
+        TransitionPublicKeysMap,
         SerialNumbersMap,
         CommitmentsMap,
         OriginsMap,
@@ -128,7 +128,7 @@ impl<
         deployments: DeploymentsMap,
         executions: ExecutionsMap,
         transitions: TransitionsMap,
-        public_keys: PublicKeysMap,
+        transition_public_keys: TransitionPublicKeysMap,
         serial_numbers: SerialNumbersMap,
         commitments: CommitmentsMap,
         origins: OriginsMap,
@@ -138,7 +138,7 @@ impl<
             deployments,
             executions,
             transitions,
-            public_keys,
+            transition_public_keys,
             serial_numbers,
             commitments,
             origins,
@@ -228,7 +228,7 @@ impl<
                 transaction_store.transitions.insert(*transition_id, transition.clone())?;
 
                 // Insert the transition public key.
-                transaction_store.public_keys.insert(*transition.tpk(), *transition_id)?;
+                transaction_store.transition_public_keys.insert(*transition.tpk(), *transition_id)?;
 
                 // Insert the serial numbers.
                 for serial_number in transition.serial_numbers() {
@@ -269,7 +269,7 @@ impl<
                 deployments: transaction_store.deployments,
                 executions: transaction_store.executions,
                 transitions: transaction_store.transitions,
-                public_keys: transaction_store.public_keys,
+                transition_public_keys: transaction_store.transition_public_keys,
                 serial_numbers: transaction_store.serial_numbers,
                 commitments: transaction_store.commitments,
                 origins: transaction_store.origins,

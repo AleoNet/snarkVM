@@ -23,7 +23,7 @@ impl<
     DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
     ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
     TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    PublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
+    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
@@ -34,7 +34,7 @@ impl<
         DeploymentsMap,
         ExecutionsMap,
         TransitionsMap,
-        PublicKeysMap,
+        TransitionPublicKeysMap,
         SerialNumbersMap,
         CommitmentsMap,
         OriginsMap,
@@ -72,7 +72,7 @@ impl<
 
     /// Returns an iterator over the transition public keys, for all executed transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
-        self.public_keys.keys()
+        self.transition_public_keys.keys()
     }
 
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
