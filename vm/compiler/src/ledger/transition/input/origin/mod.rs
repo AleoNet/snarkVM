@@ -22,7 +22,7 @@ use console::{network::prelude::*, types::Field};
 
 type Variant = u16;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Origin<N: Network> {
     /// The origin is a commitment.
     Commitment(Field<N>),
