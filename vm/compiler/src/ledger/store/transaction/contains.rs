@@ -46,7 +46,7 @@ impl<
 
     /// Returns `true` if the given transaction ID exists.
     pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
-        self.deployments.contains_key(&transaction_id).or(self.executions.contains_key(&transaction_id))
+        self.deployments.contains_key(transaction_id).or_else(|_| self.executions.contains_key(transaction_id))
     }
 
     /// Returns `true` if the given transition exists.

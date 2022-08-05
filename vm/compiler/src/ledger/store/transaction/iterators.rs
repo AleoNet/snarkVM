@@ -50,7 +50,7 @@ impl<
     pub fn deployments(&self) -> impl '_ + Iterator<Item = Cow<'_, Deployment<N>>> {
         self.deployments.values().map(|tx| match tx {
             Cow::Borrowed((deployment, _)) => Cow::Borrowed(deployment),
-            Cow::Owned((deployment, _)) => Cow::Owned(deployment.to_owned()),
+            Cow::Owned((deployment, _)) => Cow::Owned(deployment),
         })
     }
 
