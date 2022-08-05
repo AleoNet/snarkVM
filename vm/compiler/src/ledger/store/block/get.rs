@@ -29,7 +29,7 @@ impl<
     DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
     ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
     TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>, // TODO (raychu86) Change to TransitionTransitionPublicKeysMap
+    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
     SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
     OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
@@ -61,6 +61,11 @@ impl<
         )
     }
 
+    /// Returns the block for the given block hash.
+    pub fn get_block_from_hash(&self, hash: N::BlockHash) -> Result<Block<N>> {
+        self.get_block(self.get_block_height(hash)?)
+    }
+
     /// Returns the block hash for the given block height.
     pub fn get_hash(&self, height: u32) -> Result<N::BlockHash> {
         match height.cmp(&self.current_height) {
@@ -78,6 +83,14 @@ impl<
         match height {
             0 => Ok(N::BlockHash::default()),
             height => self.get_hash(height.saturating_sub(1)),
+        }
+    }
+
+    /// Returns the block height for the given block hash.
+    pub fn get_block_height(&self, hash: N::BlockHash) -> Result<u32> {
+        match self.headers.get(&hash)? {
+            Some(header) => Ok(header.metadata().height()),
+            None => bail!("Missing block header for block hash {hash}"),
         }
     }
 
