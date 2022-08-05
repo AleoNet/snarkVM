@@ -729,29 +729,7 @@ mod tests {
                             ("ensure shifting past boundary halts") => {
                                 match *<$operation as $crate::Operation<_, _, _, 2>>::OPCODE {
                                     // Note that this case needs special handling, since the desired behavior of `checked_shl` deviates from Rust semantics.
-                                    "shl" => {
-                                        // Instantiate two as a constant.
-                                        let zero = $input_a::<CurrentNetwork>::zero();
-                                        let two = $input_a::<CurrentNetwork>::one() + $input_a::one();
-                                        should_succeed &= match *a < *zero {
-                                            // For positive values, perform a checked exponentiation and multiplication.
-                                            false => (*two).checked_pow(*b as u32).and_then(|x| (*a).checked_mul(x)).is_some(),
-                                            true => {
-                                                // Compute a wrapping exponentiation.
-                                                let factor = (*two).wrapping_pow(*b as u32);
-                                                match factor.cmp(&0) {
-                                                    // If `factor` is equal to zero, the exponentiation above overflowed.
-                                                    Ordering::Equal => false,
-                                                    // If `factor` is less than zero, then `b` is equal to 1 - bitwidth(a).
-                                                    // In this case, negate `a` to balance signs.
-                                                    Ordering::Less => (a.wrapping_neg()).checked_mul(factor).is_some(),
-                                                    // If `factor` is greater than zero, then the above exponentiation did not overflow
-                                                    // Then, perform a checked multiplication.
-                                                    Ordering::Greater => (*a).checked_mul(factor).is_some(),
-                                                }
-                                            }
-                                        };
-                                    }
+                                    "shl" => should_succeed &= console::prelude::traits::integers::CheckedShl::checked_shl(&*a, &(*b as u32)).is_some(),
                                     "shr" => should_succeed &= (*a).checked_shr(*b as u32).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::Operation<_, _, _, 2>>::OPCODE),
                                 }
