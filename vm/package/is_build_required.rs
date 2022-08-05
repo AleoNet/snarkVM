@@ -39,34 +39,156 @@ impl<N: Network> Package<N> {
             Err(_) => return true,
         };
 
-        // Initialize a boolean indicator if we need to build the circuit.
-        let mut is_complete = true;
-
         // Check if the program ID in the manifest matches the program ID in the AVM file.
-        if avm_file.program().id() == &self.program_id {
-            // Retrieve the main program.
-            let program = self.program();
+        if avm_file.program().id() != &self.program_id {
+            return true;
+        }
 
-            // Check if the program matches.
-            if avm_file.program() == program {
-                // Next, check if the prover and verifier exist for each function.
-                for function_name in program.functions().keys() {
-                    // Check if the prover file exists.
-                    if !ProverFile::exists_at(&build_directory, function_name) {
-                        // If not, we need to build the circuit.
-                        is_complete = false;
-                        break;
-                    }
-                    // Check if the verifier file exists.
-                    if !VerifierFile::exists_at(&build_directory, function_name) {
-                        // If not, we need to build the circuit.
-                        is_complete = false;
-                        break;
-                    }
-                }
+        // Check if the main program matches.
+        let program = self.program();
+        if avm_file.program() != program {
+            return true;
+        }
+
+        // Next, check if the prover and verifier exist for each function.
+        for function_name in program.functions().keys() {
+            // Check if the prover file exists.
+            if !ProverFile::exists_at(&build_directory, function_name) {
+                // If not, we need to build the circuit.
+                return true;
+            }
+            // Check if the verifier file exists.
+            if !VerifierFile::exists_at(&build_directory, function_name) {
+                // If not, we need to build the circuit.
+                return true;
             }
         }
 
-        !is_complete
+        // Package hasn't changed, no need to build
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_console::network::Testnet3;
+    use std::{fs::File, io::Write};
+
+    type CurrentNetwork = Testnet3;
+    type Aleo = crate::circuit::AleoV0;
+
+    fn temp_dir() -> PathBuf {
+        tempfile::tempdir().expect("Failed to open temporary directory").into_path()
+    }
+
+    fn initialize_unbuilt_package(valid: bool) -> Package<Testnet3> {
+        // Initialize a temporary directory.
+        let directory = temp_dir();
+
+        let program_id = ProgramID::<CurrentNetwork>::from_str("token.aleo").unwrap();
+
+        let program_string = match valid {
+            true => program_with_id("token.aleo"),
+            false => program_with_id("invalid_id.aleo"),
+        };
+
+        // Write the program string to a file in the temporary directory.
+        let path = directory.join("main.aleo");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(program_string.as_bytes()).unwrap();
+
+        // Create the manifest file.
+        let _manifest_file = Manifest::create(&directory, &program_id).unwrap();
+
+        // Create the build directory.
+        let build_directory = directory.join("build");
+        std::fs::create_dir_all(&build_directory).unwrap();
+
+        // Open the package at the temporary directory.
+        Package::<Testnet3>::open(&directory).unwrap()
+    }
+
+    fn program_with_id(id: &str) -> String {
+        format!(
+            r"program {};
+
+record token:
+    owner as address.private;
+    gates as u64.private;
+    token_amount as u64.private;
+
+function compute:
+    input r0 as token.record;
+    add.w r0.token_amount r0.token_amount into r1;
+    output r1 as u64.private;",
+            id
+        )
+        .to_string()
+    }
+
+    #[test]
+    fn test_build_is_required_for_new_package() {
+        let package = initialize_unbuilt_package(true);
+        assert!(package.is_build_required::<Aleo>());
+    }
+
+    #[test]
+    fn test_build_is_required_when_avm_file_does_not_exist() {
+        let package = initialize_unbuilt_package(true);
+        assert!(package.build_directory().exists());
+        assert!(!AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
+        assert!(package.is_build_required::<Aleo>());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_fail_when_avm_and_package_program_ids_do_not_match() {
+        let package = initialize_unbuilt_package(false);
+        assert!(AVMFile::<CurrentNetwork>::create(&package.build_directory(), package.program().clone(), true).is_ok());
+        let avm_file = AVMFile::open(&package.build_directory(), &package.program_id, true).unwrap();
+
+        assert!(package.build_directory().exists());
+        assert!(AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
+        assert_eq!(avm_file.program().id(), &package.program_id);
+
+        assert!(package.is_build_required::<Aleo>());
+    }
+
+    #[test]
+    fn test_build_is_required_when_prover_and_verifier_files_do_not_exist() {
+        let package = initialize_unbuilt_package(true);
+        assert!(package.build_directory().exists());
+
+        assert!(!AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
+        assert!(AVMFile::<CurrentNetwork>::create(&package.build_directory(), package.program().clone(), true).is_ok());
+        assert!(AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
+
+        let avm_file = AVMFile::open(&package.build_directory(), &package.program_id, true).unwrap();
+        assert_eq!(avm_file.program().id(), &package.program_id);
+        assert_eq!(avm_file.program(), package.program());
+
+        assert!(package
+            .program()
+            .functions()
+            .keys()
+            .filter(|k| {
+                ProverFile::exists_at(&package.build_directory(), k)
+                    || VerifierFile::exists_at(&package.build_directory(), k)
+            })
+            .peekable()
+            .peek()
+            .is_none());
+
+        assert!(package.is_build_required::<Aleo>());
+    }
+
+    #[test]
+    fn test_already_built_package_does_not_require_building() {
+        let package = initialize_unbuilt_package(true);
+        assert!(package.is_build_required::<Aleo>());
+
+        package.build::<Aleo>(Some(String::from("https://vm.aleo.org/testnet3/build"))).unwrap();
+        assert!(!package.is_build_required::<Aleo>());
     }
 }
