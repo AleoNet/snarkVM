@@ -18,29 +18,7 @@ use super::*;
 
 use std::borrow::Cow;
 
-impl<
-    N: Network,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
-    TransactionStore<
-        N,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >
-{
+impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns an iterator over the transaction IDs, for all transitions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.deployments.keys().chain(self.executions.keys())
@@ -75,6 +53,11 @@ impl<
         self.transition_public_keys.keys()
     }
 
+    /// Returns an iterator over the origins, for all executed transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
+        self.origins.keys()
+    }
+
     /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.serial_numbers.keys()
@@ -83,11 +66,6 @@ impl<
     /// Returns an iterator over the commitments, for all executed transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.commitments.keys()
-    }
-
-    /// Returns an iterator over the origins, for all executed transition inputs that are records.
-    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
-        self.origins.keys()
     }
 
     /// Returns an iterator over the nonces, for all executed transition outputs that are records.

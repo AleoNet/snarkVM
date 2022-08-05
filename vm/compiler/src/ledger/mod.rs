@@ -17,7 +17,7 @@
 mod block;
 pub use block::*;
 
-mod map;
+pub mod map;
 pub use map::*;
 
 mod state_path;

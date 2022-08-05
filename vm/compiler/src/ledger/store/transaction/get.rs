@@ -22,29 +22,7 @@ use crate::Execution;
 use core::borrow::Borrow;
 use std::borrow::Cow;
 
-impl<
-    N: Network,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
-    TransactionStore<
-        N,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >
-{
+impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the transaction for the given transaction id.
     pub fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
         if let Some(value) = self.deployments.get(&transaction_id)? {

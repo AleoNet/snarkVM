@@ -23,10 +23,12 @@ pub use get::*;
 mod iterators;
 pub use iterators::*;
 
-use crate::{
-    ledger::{Deployment, Origin, Transaction, Transition},
-    memory_map::MemoryMap,
-    Map,
+use crate::ledger::{
+    map::{memory_map::MemoryMap, Map, MapReader},
+    Deployment,
+    Origin,
+    Transaction,
+    Transition,
 };
 
 use console::{
@@ -35,55 +37,58 @@ use console::{
 };
 
 use anyhow::Result;
-use std::marker::PhantomData;
+
+/// A trait for transaction storage.
+pub trait TransactionStorage<N: Network>: Clone {
+    type DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>;
+    type ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    type TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
+    type TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
+    type SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
+    type CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
+    type OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>;
+    type NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
+}
+
+/// An in-memory transaction storage.
+#[derive(Clone)]
+pub struct TransactionMemory<N: Network>(core::marker::PhantomData<N>);
+
+#[rustfmt::skip]
+impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
+    type DeploymentsMap = MemoryMap<N::TransactionID, (Deployment<N>, N::TransitionID)>;
+    type ExecutionsMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    type TransitionsMap = MemoryMap<N::TransitionID, Transition<N>>;
+    type TransitionPublicKeysMap = MemoryMap<Group<N>, N::TransitionID>;
+    type SerialNumbersMap = MemoryMap<Field<N>, N::TransitionID>;
+    type CommitmentsMap = MemoryMap<Field<N>, N::TransitionID>;
+    type OriginsMap = MemoryMap<Origin<N>, N::TransitionID>;
+    type NonceMap = MemoryMap<Group<N>, N::TransitionID>;
+}
 
 /// The transaction state stored in a ledger.
 /// `TransitionPublicKeysMap`, `SerialNumbersMap`, `CommitmentsMap`, `OriginsMap`, and `NonceMap` store redundant data for faster lookup.
 #[derive(Clone)]
-pub struct TransactionStore<
-    N: Network,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-> {
+pub struct TransactionStore<N: Network, T: TransactionStorage<N>> {
     /// The map of program deployments.
-    deployments: DeploymentsMap,
+    deployments: T::DeploymentsMap,
     /// The map of program executions.
-    executions: ExecutionsMap,
+    executions: T::ExecutionsMap,
     /// The map of transitions.
-    transitions: TransitionsMap,
+    transitions: T::TransitionsMap,
     /// The map of serial numbers.
-    transition_public_keys: TransitionPublicKeysMap,
-    /// The map of serial numbers.
-    serial_numbers: SerialNumbersMap,
-    /// The map of commitments.
-    commitments: CommitmentsMap,
+    transition_public_keys: T::TransitionPublicKeysMap,
     /// The map of origins.
-    origins: OriginsMap,
+    origins: T::OriginsMap,
+    /// The map of serial numbers.
+    serial_numbers: T::SerialNumbersMap,
+    /// The map of commitments.
+    commitments: T::CommitmentsMap,
     /// The map of nonces.
-    nonces: NonceMap,
-    /// PhantomData.
-    _network: PhantomData<N>,
+    nonces: T::NonceMap,
 }
 
-impl<N: Network>
-    TransactionStore<
-        N,
-        MemoryMap<N::TransactionID, (Deployment<N>, N::TransitionID)>,
-        MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-        MemoryMap<N::TransitionID, Transition<N>>,
-        MemoryMap<Group<N>, N::TransitionID>,
-        MemoryMap<Field<N>, N::TransitionID>,
-        MemoryMap<Field<N>, N::TransitionID>,
-        MemoryMap<Origin<N>, N::TransitionID>,
-        MemoryMap<Group<N>, N::TransitionID>,
-    >
-{
+impl<N: Network> TransactionStore<N, TransactionMemory<N>> {
     /// Initializes a new instance of `TransactionStore`.
     pub fn new() -> Self {
         Self {
@@ -91,59 +96,35 @@ impl<N: Network>
             executions: Default::default(),
             transitions: Default::default(),
             transition_public_keys: Default::default(),
+            origins: Default::default(),
             serial_numbers: Default::default(),
             commitments: Default::default(),
-            origins: Default::default(),
             nonces: Default::default(),
-            _network: PhantomData,
         }
     }
 }
 
-impl<
-    N: Network,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
-    TransactionStore<
-        N,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >
-{
+impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Initializes a new instance of `TransactionStore` from the given maps.
     pub fn from_maps(
-        deployments: DeploymentsMap,
-        executions: ExecutionsMap,
-        transitions: TransitionsMap,
-        transition_public_keys: TransitionPublicKeysMap,
-        serial_numbers: SerialNumbersMap,
-        commitments: CommitmentsMap,
-        origins: OriginsMap,
-        nonces: NonceMap,
+        deployments: T::DeploymentsMap,
+        executions: T::ExecutionsMap,
+        transitions: T::TransitionsMap,
+        transition_public_keys: T::TransitionPublicKeysMap,
+        origins: T::OriginsMap,
+        serial_numbers: T::SerialNumbersMap,
+        commitments: T::CommitmentsMap,
+        nonces: T::NonceMap,
     ) -> Result<Self> {
         let transaction_store = Self {
             deployments,
             executions,
             transitions,
             transition_public_keys,
+            origins,
             serial_numbers,
             commitments,
-            origins,
             nonces,
-            _network: PhantomData,
         };
 
         // TODO (raychu86): Enforce that all the transaction state is valid.
@@ -270,11 +251,10 @@ impl<
                 executions: transaction_store.executions,
                 transitions: transaction_store.transitions,
                 transition_public_keys: transaction_store.transition_public_keys,
+                origins: transaction_store.origins,
                 serial_numbers: transaction_store.serial_numbers,
                 commitments: transaction_store.commitments,
-                origins: transaction_store.origins,
                 nonces: transaction_store.nonces,
-                _network: PhantomData,
             };
         }
 

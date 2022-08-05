@@ -16,29 +16,7 @@
 
 use super::*;
 
-impl<
-    N: Network,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
-    TransactionStore<
-        N,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >
-{
+impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns `true` if the given transaction exists.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> Result<bool> {
         self.contains_transaction_id(&transaction.id())

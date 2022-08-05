@@ -26,21 +26,18 @@ pub use iterators::*;
 mod latest;
 pub use latest::*;
 
-use crate::{
-    ledger::{
-        store::TransactionStore,
-        Block,
-        Deployment,
-        Header,
-        HeaderLeaf,
-        Origin,
-        Signature,
-        StatePath,
-        Transaction,
-        Transition,
-    },
-    memory_map::MemoryMap,
-    Map,
+use crate::ledger::{
+    map::{memory_map::MemoryMap, Map, MapReader},
+    store::{TransactionMemory, TransactionStorage, TransactionStore},
+    Block,
+    Deployment,
+    Header,
+    HeaderLeaf,
+    Origin,
+    Signature,
+    StatePath,
+    Transaction,
+    Transition,
 };
 
 use console::{
@@ -64,40 +61,28 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
-pub trait BlockStorage<N: Network> {
+/// A trait for block storage.
+pub trait BlockStorage<N: Network>: Clone {
     type HashesMap: for<'a> Map<'a, u32, N::BlockHash>;
     type HeadersMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
     type SignaturesMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
 }
 
-pub trait TransactionStorage<N: Network> {
-    type DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>;
-    type ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
-    type TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
-    type TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
-    type SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-    type CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-    type OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>;
-    type NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
+/// An in-memory block storage.
+#[derive(Clone)]
+pub struct BlockMemory<N: Network>(core::marker::PhantomData<N>);
+
+#[rustfmt::skip]
+impl<N: Network> BlockStorage<N> for BlockMemory<N> {
+    type HashesMap = MemoryMap<u32, N::BlockHash>;
+    type HeadersMap = MemoryMap<N::BlockHash, Header<N>>;
+    type SignaturesMap = MemoryMap<N::BlockHash, Signature<N>>;
+    type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
 }
 
 #[derive(Clone)]
-pub struct BlockStore<
-    N: Network,
-    HashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, N::BlockHash, Header<N>>,
-    SignaturesMap: for<'a> Map<'a, N::BlockHash, Signature<N>>,
-    TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-> {
+pub struct BlockStore<N: Network, B: BlockStorage<N>, T: TransactionStorage<N>> {
     /// The current block hash.
     current_hash: N::BlockHash,
     /// The current block height.
@@ -107,44 +92,18 @@ pub struct BlockStore<
     /// The current block tree.
     block_tree: BlockTree<N>,
     /// The map of block hashes.
-    hashes: HashesMap,
+    hashes: B::HashesMap,
     /// The map of block headers.
-    headers: HeadersMap,
+    headers: B::HeadersMap,
     /// The map of block signatures.
-    signatures: SignaturesMap,
+    signatures: B::SignaturesMap,
     /// The map of block transactions.
-    transactions: TransactionsMap,
+    transactions: B::TransactionsMap,
     /// The store of transaction state.
-    transaction_store: TransactionStore<
-        N,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >,
+    transaction_store: TransactionStore<N, T>,
 }
 
-impl<N: Network>
-    BlockStore<
-        N,
-        MemoryMap<u32, N::BlockHash>,
-        MemoryMap<N::BlockHash, Header<N>>,
-        MemoryMap<N::BlockHash, Signature<N>>,
-        MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
-        MemoryMap<N::TransactionID, (Deployment<N>, N::TransitionID)>,
-        MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-        MemoryMap<N::TransitionID, Transition<N>>,
-        MemoryMap<Group<N>, N::TransitionID>,
-        MemoryMap<Field<N>, N::TransitionID>,
-        MemoryMap<Field<N>, N::TransitionID>,
-        MemoryMap<Origin<N>, N::TransitionID>,
-        MemoryMap<Group<N>, N::TransitionID>,
-    >
-{
+impl<N: Network> BlockStore<N, BlockMemory<N>, TransactionMemory<N>> {
     /// Initializes a new instance of `BlockStore` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
@@ -176,51 +135,21 @@ impl<N: Network>
     }
 }
 
-impl<
-    N: Network,
-    HashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, N::BlockHash, Header<N>>,
-    SignaturesMap: for<'a> Map<'a, N::BlockHash, Signature<N>>,
-    TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
-    BlockStore<
-        N,
-        HashesMap,
-        HeadersMap,
-        SignaturesMap,
-        TransactionsMap,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >
-{
+impl<N: Network, B: BlockStorage<N>, T: TransactionStorage<N>> BlockStore<N, B, T> {
     /// Initializes a new instance of `Ledger` from the given maps.
     pub fn from_maps(
-        hashes: HashesMap,
-        headers: HeadersMap,
-        signatures: SignaturesMap,
-        transactions: TransactionsMap,
-        deployments: DeploymentsMap,
-        executions: ExecutionsMap,
-        transitions: TransitionsMap,
-        transition_public_keys: TransitionPublicKeysMap,
-        serial_numbers: SerialNumbersMap,
-        commitments: CommitmentsMap,
-        origins: OriginsMap,
-        nonce: NonceMap,
+        hashes: B::HashesMap,
+        headers: B::HeadersMap,
+        signatures: B::SignaturesMap,
+        transactions: B::TransactionsMap,
+        deployments: T::DeploymentsMap,
+        executions: T::ExecutionsMap,
+        transitions: T::TransitionsMap,
+        transition_public_keys: T::TransitionPublicKeysMap,
+        origins: T::OriginsMap,
+        serial_numbers: T::SerialNumbersMap,
+        commitments: T::CommitmentsMap,
+        nonce: T::NonceMap,
     ) -> Result<Self> {
         // Initialize the ledger.
         let mut block_store = Self {
@@ -237,9 +166,9 @@ impl<
                 executions,
                 transitions,
                 transition_public_keys,
+                origins,
                 serial_numbers,
                 commitments,
-                origins,
                 nonce,
             )?,
         };

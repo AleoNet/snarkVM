@@ -18,37 +18,7 @@ use super::*;
 
 use std::borrow::Cow;
 
-impl<
-    N: Network,
-    HashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, N::BlockHash, Header<N>>,
-    SignaturesMap: for<'a> Map<'a, N::BlockHash, Signature<N>>,
-    TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>,
-    DeploymentsMap: for<'a> Map<'a, N::TransactionID, (Deployment<N>, N::TransitionID)>,
-    ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
-    TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>,
-    TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
-    SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>,
-    OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>,
-    NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>,
->
-    BlockStore<
-        N,
-        HashesMap,
-        HeadersMap,
-        SignaturesMap,
-        TransactionsMap,
-        DeploymentsMap,
-        ExecutionsMap,
-        TransitionsMap,
-        TransitionPublicKeysMap,
-        SerialNumbersMap,
-        CommitmentsMap,
-        OriginsMap,
-        NonceMap,
-    >
-{
+impl<N: Network, B: BlockStorage<N>, T: TransactionStorage<N>> BlockStore<N, B, T> {
     /// Returns an iterator over all transactions.
     pub fn transactions(&self) -> impl '_ + Iterator<Item = Cow<'_, Transaction<N>>> {
         // TODO (raychu86): Make this utilized borrows and handle unwraps.
