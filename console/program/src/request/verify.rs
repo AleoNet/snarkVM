@@ -20,7 +20,7 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
         // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
