@@ -72,10 +72,18 @@ impl<N: Network> Input<N> {
         }
     }
 
-    /// Returns the serial number, if the input is a record.
-    pub const fn serial_number(&self) -> Option<&Field<N>> {
+    /// Returns the origin, if the input is a record.
+    pub const fn origin(&self) -> Option<&Origin<N>> {
         match self {
-            Input::Record(serial_number, ..) => Some(serial_number),
+            Input::Record(_, _, origin) => Some(origin),
+            _ => None,
+        }
+    }
+
+    /// Returns the origin, if the input is a record, and consumes `self`.
+    pub fn into_origin(self) -> Option<Origin<N>> {
+        match self {
+            Input::Record(_, _, origin) => Some(origin),
             _ => None,
         }
     }
@@ -88,10 +96,26 @@ impl<N: Network> Input<N> {
         }
     }
 
-    /// Returns the origin, if the input is a record.
-    pub const fn origin(&self) -> Option<&Origin<N>> {
+    /// Returns the tag, if the input is a record, and consumes `self`.
+    pub fn into_tag(self) -> Option<Field<N>> {
         match self {
-            Input::Record(_, _, origin) => Some(origin),
+            Input::Record(_, tag, _) => Some(tag),
+            _ => None,
+        }
+    }
+
+    /// Returns the serial number, if the input is a record.
+    pub const fn serial_number(&self) -> Option<&Field<N>> {
+        match self {
+            Input::Record(serial_number, ..) => Some(serial_number),
+            _ => None,
+        }
+    }
+
+    /// Returns the serial number, if the input is a record, and consumes `self`.
+    pub fn into_serial_number(self) -> Option<Field<N>> {
+        match self {
+            Input::Record(serial_number, ..) => Some(serial_number),
             _ => None,
         }
     }

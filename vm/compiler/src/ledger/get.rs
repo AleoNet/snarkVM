@@ -86,17 +86,44 @@ impl<
         view_key: &'a ViewKey<N>,
         filter: OutputRecordsFilter<N>,
     ) -> impl '_ + Iterator<Item = (Field<N>, Record<N, Plaintext<N>>)> {
+        /// A wrapper enum able to contain and iterate over two `Cow` pair iterators of different types.
+        enum CowTupleIter<
+            'a,
+            T1: 'a + Clone,
+            T2: 'a + Clone,
+            I1: Iterator<Item = (&'a T1, &'a T2)>,
+            I2: Iterator<Item = (T1, T2)>,
+        > {
+            Borrowed(I1),
+            Owned(I2),
+        }
+
+        impl<'a, T1: 'a + Clone, T2: 'a + Clone, I1: Iterator<Item = (&'a T1, &'a T2)>, I2: Iterator<Item = (T1, T2)>>
+            Iterator for CowTupleIter<'a, T1, T2, I1, I2>
+        {
+            type Item = (Cow<'a, T1>, Cow<'a, T2>);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self {
+                    Self::Borrowed(iter) => {
+                        let (a, b) = iter.next()?;
+                        Some((Cow::Borrowed(a), Cow::Borrowed(b)))
+                    }
+                    Self::Owned(iter) => {
+                        let (a, b) = iter.next()?;
+                        Some((Cow::Owned(a), Cow::Owned(b)))
+                    }
+                }
+            }
+        }
+
         // Derive the address from the view key.
         let address = view_key.to_address();
 
         self.transitions()
-            .flat_map(|ts| match ts {
-                Cow::Borrowed(tn) => Transition::output_records(tn)
-                    .map(|(f, r)| (Cow::Borrowed(f), Cow::Borrowed(r)))
-                    .collect::<Vec<_>>(),
-                Cow::Owned(tn) => Transition::output_records(&tn)
-                    .map(|(f, r)| (Cow::Owned(f.to_owned()), Cow::Owned(r.to_owned())))
-                    .collect::<Vec<_>>(),
+            .flat_map(|transition| match transition {
+                Cow::Borrowed(transition) => CowTupleIter::Borrowed(transition.output_records()),
+                Cow::Owned(transition) => CowTupleIter::Owned(transition.into_output_records()),
             })
             .flat_map(move |(commitment, record)| {
                 // A helper method to derive the tag from the `sk_tag` and commitment.
