@@ -16,8 +16,6 @@
 
 use super::*;
 
-use crate::ledger::Transaction;
-
 impl<
     N: Network,
     HashesMap: for<'a> Map<'a, u32, N::BlockHash>,

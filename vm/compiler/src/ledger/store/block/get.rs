@@ -91,7 +91,7 @@ impl<
 
     /// Returns the block transactions for the given block height.
     pub fn get_transactions(&self, height: u32) -> Result<Cow<'_, Transactions<N>>> {
-        match self.block_transactions.get(&*self.get_hash(height)?)? {
+        match self.transactions.get(&*self.get_hash(height)?)? {
             Some(transaction_ids) => transaction_ids
                 .iter()
                 .map(|transaction_id| self.transaction_store.get_transaction(*transaction_id))
@@ -107,6 +107,16 @@ impl<
             Some(signature) => Ok(signature),
             None => bail!("Missing signature for block {height}"),
         }
+    }
+
+    /// Returns the transaction for the given transaction id.
+    pub fn get_transaction(&self, transaction_id: N::TransactionID) -> Result<Transaction<N>> {
+        self.transaction_store.get_transaction(transaction_id)
+    }
+
+    /// Returns the transactions for the given transition id.
+    pub fn get_transition(&self, transition_id: N::TransitionID) -> Result<Cow<'_, Transition<N>>> {
+        self.transaction_store.get_transition(transition_id)
     }
 
     /// Returns the output records that belong to the given view key.
