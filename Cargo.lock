@@ -2711,6 +2711,7 @@ dependencies = [
  "arbitrary",
  "digest 0.10.3",
  "libfuzzer-sys",
+ "once_cell",
  "snarkvm",
 ]
 
