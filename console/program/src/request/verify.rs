@@ -20,9 +20,9 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request is valid, and `false` otherwise.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[ValueType<N>]) -> bool {
-        // Verify the transition public key and transition view key are well-formed.
+        // Verify the transition public key, transition view key, and transition commitment are well-formed.
         {
             // Compute the transition public key `tpk` as `tsk * G`.
             let tpk = N::g_scalar_multiply(&self.tsk);
@@ -39,7 +39,27 @@ impl<N: Network> Request<N> {
                 eprintln!("Invalid transition view key in request.");
                 return false;
             }
+
+            // Compute the transition commitment `tcm` as `Hash(tvk)`.
+            match N::hash_psd2(&[tvk]) {
+                Ok(tcm) => {
+                    // Ensure the computed transition commitment matches.
+                    if tcm != self.tcm {
+                        eprintln!("Invalid transition commitment in request.");
+                        return false;
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Failed to compute transition commitment in request verification: {error}");
+                    return false;
+                }
+            }
         }
+
+        // Retrieve the challenge from the signature.
+        let challenge = self.signature.challenge();
+        // Retrieve the response from the signature.
+        let response = self.signature.response();
 
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = match N::hash_bhp1024(
@@ -60,15 +80,11 @@ impl<N: Network> Request<N> {
             }
         };
 
-        // Construct the signature message as `[tvk, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + self.input_ids.len());
         message.push(self.tvk);
+        message.push(self.tcm);
         message.push(function_id);
-
-        // Retrieve the challenge from the signature.
-        let challenge = self.signature.challenge();
-        // Retrieve the response from the signature.
-        let response = self.signature.response();
 
         if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
             |(index, ((input_id, input), input_type))| {
@@ -117,7 +133,7 @@ impl<N: Network> Request<N> {
                         message.push(candidate_hash);
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(commitment, gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number, tag) => {
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -156,8 +172,15 @@ impl<N: Network> Request<N> {
                         let h = N::hash_to_group_psd2(&[N::serial_number_domain(), *commitment])?;
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
                         let h_r = (*gamma * challenge) + (h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
+
+                        // Compute the tag as `Hash(sk_tag || commitment)`.
+                        let candidate_tag = N::hash_psd2(&[self.sk_tag, *commitment])?;
+                        // Ensure the tag matches.
+                        ensure!(*tag == candidate_tag, "Expected a record input with the same tag");
+
+                        // Add (`H`, `r * H`, `gamma`, `tag`) to the message.
                         message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
+                        message.push(*tag);
                     }
                     // An external record input is committed (using `tvk`) to a field element.
                     InputID::ExternalRecord(input_commitment) => {

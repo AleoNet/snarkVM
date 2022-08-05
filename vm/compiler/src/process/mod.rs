@@ -46,10 +46,12 @@ use console::{
     types::{I64, U64},
 };
 
-use colored::Colorize;
 use indexmap::IndexMap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+
+#[cfg(feature = "aleo-cli")]
+use colored::Colorize;
 
 pub struct Process<N: Network> {
     /// The universal SRS.
@@ -61,11 +63,30 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn new() -> Result<Self> {
+    pub fn setup() -> Result<Self> {
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
         // Add the 'credits.aleo' program to the process.
         process.add_program(&Program::credits()?)?;
+        // Return the process.
+        Ok(process)
+    }
+
+    /// Initializes a new process.
+    #[inline]
+    pub fn load() -> Result<Self> {
+        // Initialize the process.
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+        // Compute the 'credits.aleo' program stack.
+        let mut stack = Stack::new(&process, &program)?;
+        // Load the 'credits.aleo' program.
+        stack.load_credits_program()?;
+        // Add the stack to the process.
+        process.stacks.insert(*program.id(), stack);
+
         // Return the process.
         Ok(process)
     }
@@ -256,7 +277,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new().unwrap();
+                let mut process = Process::<CurrentNetwork>::load().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
 
@@ -299,7 +320,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::new().unwrap();
+                let mut process = Process::<CurrentNetwork>::load().unwrap();
                 // Add the program to the process.
                 process.add_program(&program).unwrap();
                 // Authorize the function call.
@@ -365,7 +386,7 @@ mod tests {
         let r1 = Value::<CurrentNetwork>::from_str("1_100_000_000_000_000_u64").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -451,7 +472,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/genesis' is not satisfied on the given inputs (26780 constraints).")
+            format!("'token.aleo/genesis' is not satisfied on the given inputs (27632 constraints).")
         );
     }
 
@@ -474,7 +495,7 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
@@ -512,7 +533,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -629,14 +650,14 @@ function compute:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 
@@ -742,7 +763,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::new().unwrap();
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
         // Add the program to the process.
         process.add_program(&program0).unwrap();
 

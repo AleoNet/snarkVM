@@ -29,6 +29,7 @@ impl<N: Network> Serialize for Transition<N> {
                 transition.serialize_field("outputs", &self.outputs)?;
                 transition.serialize_field("proof", &self.proof)?;
                 transition.serialize_field("tpk", &self.tpk)?;
+                transition.serialize_field("tcm", &self.tcm)?;
                 transition.serialize_field("fee", &self.fee)?;
                 transition.end()
             }
@@ -60,8 +61,10 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     serde_json::from_value(transition["outputs"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the proof.
                     serde_json::from_value(transition["proof"].clone()).map_err(de::Error::custom)?,
-                    // Retrieve the TPK.
+                    // Retrieve the `tpk`.
                     serde_json::from_value(transition["tpk"].clone()).map_err(de::Error::custom)?,
+                    // Retrieve the `tcm`.
+                    serde_json::from_value(transition["tcm"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the fee.
                     serde_json::from_value(transition["fee"].clone()).map_err(de::Error::custom)?,
                 )

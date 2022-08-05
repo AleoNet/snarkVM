@@ -17,12 +17,31 @@
 use super::*;
 use std::borrow::Cow;
 
-macro_rules! tx_components {
-    ($self:expr, $component:ident) => {
-        $self.transactions.values().flat_map(|ts| match ts {
-            Cow::Borrowed(ts) => Transactions::$component(ts).map(Cow::Borrowed).collect::<Vec<_>>(),
-            Cow::Owned(ts) => Transactions::$component(&ts).map(|t| Cow::Owned(t.to_owned())).collect::<Vec<_>>(),
-        })
+/// A wrapper enum able to contain and iterate over two `Cow` iterators of different types.
+enum CowIter<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> {
+    Borrowed(I1),
+    Owned(I2),
+}
+
+impl<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> Iterator for CowIter<'a, T, I1, I2> {
+    type Item = Cow<'a, T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Borrowed(iter) => Some(Cow::Borrowed(iter.next()?)),
+            Self::Owned(iter) => Some(Cow::Owned(iter.next()?)),
+        }
+    }
+}
+
+macro_rules! transactions_iterator {
+    ($self:expr, $method:ident) => {
+        paste::paste! {
+            $self.transactions.values().flat_map(|tx| match tx {
+                Cow::Borrowed(tx) => CowIter::Borrowed(Transactions::$method(tx)),
+                Cow::Owned(tx) => CowIter::Owned(Transactions::[<into_ $method>](tx)),
+            })
+        }
     };
 }
 
@@ -32,56 +51,60 @@ impl<
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
     SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
 {
     /// Returns an iterator over all transactions.
     pub fn transactions(&self) -> impl '_ + Iterator<Item = Cow<'_, Transaction<N>>> {
-        tx_components!(self, transactions)
+        transactions_iterator!(self, transactions)
     }
 
     /// Returns an iterator over the transaction IDs, for all transactions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
-        tx_components!(self, transaction_ids)
+        transactions_iterator!(self, transaction_ids)
     }
 
     /// Returns an iterator over all transactions in `self` that are deployments.
     pub fn deployments(&self) -> impl '_ + Iterator<Item = Cow<'_, Deployment<N>>> {
-        tx_components!(self, deployments)
+        transactions_iterator!(self, deployments)
     }
 
     /// Returns an iterator over all transactions in `self` that are executions.
     pub fn executions(&self) -> impl '_ + Iterator<Item = Cow<'_, Execution<N>>> {
-        tx_components!(self, executions)
+        transactions_iterator!(self, executions)
     }
 
-    /// Returns an iterator over all executed transitions.
+    /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = Cow<'_, Transition<N>>> {
-        tx_components!(self, transitions)
+        transactions_iterator!(self, transitions)
     }
 
-    /// Returns an iterator over the transition IDs, for all executed transitions.
+    /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
-        tx_components!(self, transition_ids)
+        transactions_iterator!(self, transition_ids)
     }
 
-    /// Returns an iterator over the transition public keys, for all executed transactions.
+    /// Returns an iterator over the transition public keys, for all transactions.
     pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
-        tx_components!(self, transition_public_keys)
+        transactions_iterator!(self, transition_public_keys)
     }
 
-    /// Returns an iterator over the serial numbers, for all executed transition inputs that are records.
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        transactions_iterator!(self, tags)
+    }
+
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        tx_components!(self, serial_numbers)
+        transactions_iterator!(self, serial_numbers)
     }
 
-    /// Returns an iterator over the commitments, for all executed transition outputs that are records.
+    /// Returns an iterator over the commitments, for all transition outputs that are records.
     pub fn commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        tx_components!(self, commitments)
+        transactions_iterator!(self, commitments)
     }
 
-    /// Returns an iterator over the nonces, for all executed transition outputs that are records.
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
-        tx_components!(self, nonces)
+        transactions_iterator!(self, nonces)
     }
 }

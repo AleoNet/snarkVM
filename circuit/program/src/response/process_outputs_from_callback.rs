@@ -226,19 +226,20 @@ mod tests {
 
     // Note: These counts are correct. At this (high) level of a program, we override the default mode in many cases,
     // based on the user-defined visibility in the types. Thus, we have nonzero public, private, and constraint values.
+    // These bounds are determined experimentally.
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 19000, 4, 6000, 6000)
+        check_from_callback(Mode::Constant, 19000, 4, 6200, 6200)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 18828, 4, 8327, 8334)
+        check_from_callback(Mode::Public, 18828, 4, 8363, 8406)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 18828, 4, 8327, 8334)
+        check_from_callback(Mode::Private, 18828, 4, 8363, 8406)
     }
 }

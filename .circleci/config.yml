@@ -268,7 +268,7 @@ jobs:
     docker:
       - image: cimg/rust:1.62
     resource_class: xlarge
-    parallelism: 20 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
+    parallelism: 50 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
       - run_parallel:
           workspace_member: circuit/types/integers
@@ -292,6 +292,16 @@ jobs:
       - run_serial:
           workspace_member: circuit/types/string
           cache_key: snarkvm-circuit-types-string-cache
+
+  compiler:
+    docker:
+      - image: cimg/rust:1.62
+    resource_class: 2xlarge
+    parallelism: 4
+    steps:
+      - run_parallel:
+          workspace_member: vm/compiler
+          cache_key: snarkvm-compiler-cache
 
   console:
     docker:
@@ -571,6 +581,7 @@ workflows:
       - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
+      - compiler
       - console
       - console-account
       - console-algorithms
@@ -609,5 +620,6 @@ workflows:
                 fields,
                 parameters,
                 r1cs,
-                utilities
+                utilities,
+                vm/compiler
               ]

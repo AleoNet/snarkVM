@@ -41,6 +41,7 @@ impl<N: Network> Process<N> {
             bail!("Function '{}' does not exist.", request.function_name())
         }
 
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executing '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
@@ -116,7 +117,7 @@ impl<N: Network> Process<N> {
             let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinate();
 
             // Construct the public inputs to verify the proof.
-            let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
+            let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
             // Extend the inputs with the input IDs.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 
@@ -140,7 +141,7 @@ impl<N: Network> Process<N> {
                 // to order them in the order they were defined in the function.
                 for transition in (*queue).iter().rev().take(num_function_calls).rev() {
                     // Extend the inputs with the input and output IDs of the external call.
-                    inputs.extend(transition.input_ids().map(|id| **id));
+                    inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
                     inputs.extend(transition.output_ids().map(|id| **id));
                 }
             }

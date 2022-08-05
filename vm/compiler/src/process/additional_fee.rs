@@ -50,6 +50,7 @@ impl<N: Network> Process<N> {
         // Prepare the stack.
         let stack = self.get_stack(request.program_id())?;
 
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Calling '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
@@ -102,7 +103,7 @@ impl<N: Network> Process<N> {
         let (tpk_x, tpk_y) = additional_fee.tpk().to_xy_coordinate();
 
         // Construct the public inputs to verify the proof.
-        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y];
+        let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **additional_fee.tcm()];
         // Extend the inputs with the input IDs.
         inputs.extend(additional_fee.inputs().iter().flat_map(|input| input.verifier_inputs()));
         // Extend the inputs with the output IDs.

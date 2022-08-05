@@ -22,8 +22,7 @@ impl<
     HeadersMap: for<'a> Map<'a, u32, Header<N>>,
     TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
     SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-    ProgramsMap: for<'a> Map<'a, ProgramID<N>, Deployment<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap, ProgramsMap>
+> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
 {
     /// Returns `true` if the given state root exists.
     pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
@@ -67,6 +66,11 @@ impl<
     /// Returns `true` if the given transition public key exists.
     pub fn contains_transition_public_key(&self, tpk: &Group<N>) -> bool {
         self.transition_public_keys().contains(tpk)
+    }
+
+    /// Returns `true` if the given tag exists.
+    pub fn contains_tag(&self, tag: &Field<N>) -> bool {
+        self.tags().contains(tag)
     }
 
     /// Returns `true` if the given serial number exists.

@@ -91,7 +91,32 @@ impl<N: Network> VM<N> {
     /// Initializes a new VM.
     #[inline]
     pub fn new() -> Result<Self> {
-        Ok(Self { process: Arc::new(RwLock::new(Process::new()?)), _phantom: PhantomData })
+        Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), _phantom: PhantomData })
+    }
+
+    /// Deploys a program with the given program ID.
+    #[inline]
+    pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                let task = || {
+                    // Prepare the program ID.
+                    let program_id = cast_ref!(&program_id as ProgramID<$network>);
+                    // Return `true` if the program ID exists.
+                    Ok($process.contains_program(program_id))
+                };
+                task()
+            }};
+        }
+        // Process the logic.
+        match process!(self, logic) {
+            Ok(contains_program) => contains_program,
+            Err(error) => {
+                warn!("Failed to check if program exists: {error}");
+                false
+            }
+        }
     }
 
     /// Deploys a program with the given program ID.
@@ -114,38 +139,6 @@ impl<N: Network> VM<N> {
         }
         // Process the logic.
         process!(self, logic)
-    }
-
-    /// Adds a new program to the VM.
-    pub fn on_deploy(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction is a deployment.
-        ensure!(matches!(transaction, Transaction::Deploy(..)), "Invalid transaction type: expected a deployment");
-        // Ensure the transaction is valid.
-        ensure!(transaction.verify(self), "Invalid transaction: failed to verify");
-
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the transaction.
-                let transaction = cast_ref!(&transaction as Transaction<$network>);
-                // Deploy the program.
-                if let Transaction::Deploy(_, deployment, _) = transaction {
-                    // Add the program.
-                    $process.add_program(deployment.program())?;
-                    // Insert the verifying keys.
-                    for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-                        $process.insert_verifying_key(
-                            deployment.program().id(),
-                            function_name,
-                            verifying_key.clone(),
-                        )?;
-                    }
-                }
-                Ok(())
-            }};
-        }
-        // Process the logic.
-        process_mut!(self, logic)
     }
 
     /// Authorizes a call to the program function for the given inputs.
@@ -245,9 +238,90 @@ impl<N: Network> VM<N> {
         process!(self, logic)
     }
 
+    /// Verifies the transaction in the VM.
+    #[inline]
+    pub fn verify(&self, transaction: &Transaction<N>) -> bool {
+        // Compute the Merkle root of the transaction.
+        match transaction.to_root() {
+            // Ensure the transaction ID is correct.
+            Ok(root) => {
+                if *transaction.id() != root {
+                    warn!("Incorrect transaction ID ({})", transaction.id());
+                    return false;
+                }
+            }
+            Err(error) => {
+                warn!("Failed to compute the Merkle root of the transaction: {error}\n{transaction}");
+                return false;
+            }
+        };
+
+        // Ensure there are no duplicate transition IDs.
+        if has_duplicates(transaction.transition_ids()) {
+            warn!("Found duplicate transition in the transactions list");
+            return false;
+        }
+
+        // Ensure there are no duplicate transition public keys.
+        if has_duplicates(transaction.transition_public_keys()) {
+            warn!("Found duplicate transition public keys in the transactions list");
+            return false;
+        }
+
+        // Ensure there are no duplicate serial numbers.
+        if has_duplicates(transaction.serial_numbers()) {
+            warn!("Found duplicate serial numbers in the transactions list");
+            return false;
+        }
+
+        // Ensure there are no duplicate commitments.
+        if has_duplicates(transaction.commitments()) {
+            warn!("Found duplicate commitments in the transactions list");
+            return false;
+        }
+
+        // Ensure there are no duplicate nonces.
+        if has_duplicates(transaction.nonces()) {
+            warn!("Found duplicate nonces in the transactions list");
+            return false;
+        }
+
+        match transaction {
+            Transaction::Deploy(_, deployment, additional_fee) => {
+                // Check the deployment size.
+                if let Err(error) = Transaction::check_deployment_size(deployment) {
+                    warn!("Invalid transaction size (deployment): {error}");
+                    return false;
+                }
+                // Verify the deployment.
+                self.verify_deployment(deployment)
+                    // Verify the additional fee.
+                    && self.verify_additional_fee(additional_fee)
+            }
+            Transaction::Execute(_, execution, additional_fee) => {
+                // Check the deployment size.
+                if let Err(error) = Transaction::check_execution_size(execution) {
+                    warn!("Invalid transaction size (execution): {error}");
+                    return false;
+                }
+
+                // Verify the additional fee, if it exists.
+                let check_additional_fee = match additional_fee {
+                    Some(additional_fee) => self.verify_additional_fee(additional_fee),
+                    None => true,
+                };
+
+                // Verify the execution.
+                self.verify_execution(execution)
+                    // Verify the additional fee.
+                    && check_additional_fee
+            }
+        }
+    }
+
     /// Verifies the given deployment.
     #[inline]
-    pub fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
+    fn verify_deployment(&self, deployment: &Deployment<N>) -> bool {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -267,7 +341,6 @@ impl<N: Network> VM<N> {
         match process!(self, logic) {
             Ok(()) => true,
             Err(error) => {
-                eprintln!("Deployment verification failed: {error}");
                 warn!("Deployment verification failed: {error}");
                 false
             }
@@ -276,7 +349,7 @@ impl<N: Network> VM<N> {
 
     /// Verifies the given execution.
     #[inline]
-    pub fn verify_execution(&self, execution: &Execution<N>) -> bool {
+    fn verify_execution(&self, execution: &Execution<N>) -> bool {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -294,7 +367,6 @@ impl<N: Network> VM<N> {
         match process!(self, logic) {
             Ok(()) => true,
             Err(error) => {
-                eprintln!("Execution verification failed: {error}");
                 warn!("Execution verification failed: {error}");
                 false
             }
@@ -303,7 +375,7 @@ impl<N: Network> VM<N> {
 
     /// Verifies the given additional fee.
     #[inline]
-    pub fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> bool {
+    fn verify_additional_fee(&self, additional_fee: &AdditionalFee<N>) -> bool {
         // Compute the core logic.
         macro_rules! logic {
             ($process:expr, $network:path, $aleo:path) => {{
@@ -321,27 +393,56 @@ impl<N: Network> VM<N> {
         match process!(self, logic) {
             Ok(()) => true,
             Err(error) => {
-                eprintln!("Additional fee verification failed: {error}");
                 warn!("Additional fee verification failed: {error}");
                 false
             }
         }
+    }
+
+    /// Finalizes the transaction into the VM.
+    /// This method assumes the given transaction **is valid**.
+    #[inline]
+    pub fn finalize(&mut self, transaction: &Transaction<N>) -> Result<()> {
+        // Ensure the transaction is valid.
+        ensure!(self.verify(transaction), "Invalid transaction: failed to verify");
+        // Finalize the transaction.
+        match transaction {
+            Transaction::Deploy(_, deployment, _) => self.finalize_deployment(deployment),
+            Transaction::Execute(_, _execution, _) => Ok(()), // self.finalize_execution(execution),
+        }
+    }
+
+    /// Adds the newly-deployed program into the VM.
+    #[inline]
+    fn finalize_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Prepare the deployment.
+                let deployment = cast_ref!(&deployment as Deployment<$network>);
+                // Add the program.
+                $process.add_program(deployment.program())?;
+                // Insert the verifying keys.
+                for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
+                    $process.insert_verifying_key(deployment.program().id(), function_name, verifying_key.clone())?;
+                }
+                Ok(())
+            }};
+        }
+        // Process the logic.
+        process_mut!(self, logic)
     }
 }
 
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{
-        ledger::{Block, Transition},
-        program::Program,
-    };
+    use crate::{program::Program, OutputRecordsFilter};
     use console::{
-        account::{Address, PrivateKey},
+        account::{Address, ViewKey},
         network::Testnet3,
         program::{Identifier, Value},
     };
-    use snarkvm_utilities::test_crypto_rng_fixed;
 
     use once_cell::sync::OnceCell;
 
@@ -379,41 +480,39 @@ function compute:
             .clone()
     }
 
-    pub(crate) fn sample_vm() -> VM<CurrentNetwork> {
-        static INSTANCE: OnceCell<VM<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize a new VM.
-                VM::<CurrentNetwork>::new().unwrap()
-            })
-            .clone()
-    }
-
     pub(crate) fn sample_deployment_transaction() -> Transaction<CurrentNetwork> {
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                // Initialize the VM.
-                let vm = sample_vm();
                 // Initialize the program.
                 let program = sample_program();
 
-                // Initialize the RNG.
-                let rng = &mut test_crypto_rng();
                 // Initialize a new caller.
-                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-                let address = Address::try_from(&caller_private_key).unwrap();
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key();
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+
+                // Initialize the ledger.
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+
+                // Fetch the unspent records.
+                let records = ledger
+                    .get_output_records(&caller_view_key, OutputRecordsFilter::AllUnspent(caller_private_key))
+                    .filter(|(_, record)| !record.gates().is_zero())
+                    .collect::<indexmap::IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+
                 // Prepare the additional fee.
-                let credits = Record::from_str(&format!(
-                    "{{ owner: {address}.private, gates: 10u64.private, _nonce: 0group.public }}"
-                ))
-                .unwrap();
+                let credits = records.values().next().unwrap().clone();
                 let additional_fee = (credits, 10);
 
+                // Initialize the RNG.
+                let rng = &mut test_crypto_rng();
+                // Initialize the VM.
+                let vm = VM::<CurrentNetwork>::new().unwrap();
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
                 // Verify.
-                assert!(transaction.verify(&vm));
+                assert!(vm.verify(&transaction));
                 // Return the transaction.
                 transaction
             })
@@ -424,32 +523,38 @@ function compute:
         static INSTANCE: OnceCell<Transaction<CurrentNetwork>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
-                // Initialize the VM.
-                let mut vm = sample_vm();
-                // Deploy the program.
-                let transaction = sample_deployment_transaction();
-                // On Deploy.
-                vm.on_deploy(&transaction).unwrap();
+                // Initialize a new caller.
+                let caller_private_key = crate::ledger::test_helpers::sample_genesis_private_key();
+                let caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+                let address = Address::try_from(&caller_private_key).unwrap();
+
+                // Initialize the ledger.
+                let ledger = crate::ledger::test_helpers::sample_genesis_ledger();
+
+                // Fetch the unspent records.
+                let records = ledger
+                    .get_output_records(&caller_view_key, OutputRecordsFilter::AllUnspent(caller_private_key))
+                    .filter(|(_, record)| !record.gates().is_zero())
+                    .collect::<indexmap::IndexMap<_, _>>();
+                trace!("Unspent Records:\n{:#?}", records);
+                // Select a record to spend.
+                let record = records.values().next().unwrap().clone();
 
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
-                // Initialize a new caller.
-                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-                let address = Address::try_from(&caller_private_key).unwrap();
+                // Initialize the VM.
+                let vm = VM::<CurrentNetwork>::new().unwrap();
+
                 // Authorize.
                 let authorization = vm
                     .authorize(
                         &caller_private_key,
-                        &ProgramID::from_str("testing.aleo").unwrap(),
-                        Identifier::from_str("compute").unwrap(),
+                        &ProgramID::from_str("credits.aleo").unwrap(),
+                        Identifier::from_str("transfer").unwrap(),
                         &[
-                            Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
-                            Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
-                            Value::<CurrentNetwork>::from_str("{ amount: 9876543210u128 }").unwrap(),
-                            Value::<CurrentNetwork>::from_str(&format!(
-                                "{{ owner: {address}.private, gates: 5u64.private, amount: 100u64.private, _nonce: 0group.public }}"
-                            ))
-                            .unwrap(),
+                            Value::<CurrentNetwork>::Record(record),
+                            Value::<CurrentNetwork>::from_str(&address.to_string()).unwrap(),
+                            Value::<CurrentNetwork>::from_str("1u64").unwrap(),
                         ],
                         rng,
                     )
@@ -459,36 +564,84 @@ function compute:
                 // Execute.
                 let transaction = Transaction::execute_authorization(&vm, authorization, rng).unwrap();
                 // Verify.
-                assert!(transaction.verify(&vm));
+                assert!(vm.verify(&transaction));
                 // Return the transaction.
                 transaction
             })
             .clone()
     }
+}
 
-    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
-        static INSTANCE: OnceCell<Block<CurrentNetwork>> = OnceCell::new();
-        INSTANCE
-            .get_or_init(|| {
-                // Initialize the VM.
-                let mut vm = VM::<CurrentNetwork>::new().unwrap();
-                // Initialize the RNG.
-                let rng = &mut test_crypto_rng_fixed();
-                // Initialize a new caller.
-                let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
-                // Return the block.
-                Block::genesis(&mut vm, &caller_private_key, rng).unwrap()
-            })
-            .clone()
+#[cfg(test)]
+mod tests {
+    use crate::{ledger::vm::test_helpers::sample_program, VM};
+    use console::network::Testnet3;
+    use snarkvm_utilities::test_crypto_rng;
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_verify() {
+        let vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
+        // Ensure the transaction verifies.
+        assert!(vm.verify(&deployment_transaction));
+
+        // Fetch a execution transaction.
+        let execution_transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        // Ensure the transaction verifies.
+        assert!(vm.verify(&execution_transaction));
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn sample_transition() -> Transition<CurrentNetwork> {
-        // Retrieve the transaction.
-        let transaction = sample_execution_transaction();
-        // Retrieve the transitions.
-        let mut transitions = transaction.transitions();
-        // Return a transition.
-        transitions.next().cloned().unwrap()
+    #[test]
+    fn test_verify_deployment() {
+        let rng = &mut test_crypto_rng();
+        let vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Fetch the program from the deployment.
+        let program = sample_program();
+
+        // Deploy the program.
+        let deployment = vm.deploy(&program, rng).unwrap();
+
+        // Ensure the deployment is valid.
+        assert!(vm.verify_deployment(&deployment));
+    }
+
+    #[test]
+    fn test_finalize() {
+        let mut vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Fetch a deployment transaction.
+        let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
+
+        // Finalize the transaction.
+        vm.finalize(&deployment_transaction).unwrap();
+
+        // Ensure the VM can't redeploy the same transaction.
+        assert!(vm.finalize(&deployment_transaction).is_err());
+    }
+
+    #[test]
+    fn test_finalize_deployment() {
+        let rng = &mut test_crypto_rng();
+        let mut vm = VM::<CurrentNetwork>::new().unwrap();
+
+        // Fetch the program from the deployment.
+        let program = sample_program();
+
+        // Deploy the program.
+        let deployment = vm.deploy(&program, rng).unwrap();
+
+        // Ensure the program does not exists.
+        assert!(!vm.contains_program(program.id()));
+
+        // Finalize the deployment.
+        vm.finalize_deployment(&deployment).unwrap();
+
+        // Ensure the program exists.
+        assert!(vm.contains_program(program.id()));
     }
 }

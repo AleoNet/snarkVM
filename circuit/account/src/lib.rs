@@ -23,6 +23,9 @@ use snarkvm_circuit_network::AleoV0 as Circuit;
 pub mod compute_key;
 pub use compute_key::*;
 
+pub mod graph_key;
+pub use graph_key::*;
+
 pub mod private_key;
 pub use private_key::*;
 

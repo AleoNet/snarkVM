@@ -44,11 +44,12 @@ impl<N: Network> FromBytes for Transition<N> {
 
         let proof = FromBytes::read_le(&mut reader)?;
         let tpk = FromBytes::read_le(&mut reader)?;
+        let tcm = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
 
         // Construct the candidate transition.
-        let transition =
-            Self::new(program_id, function_name, inputs, outputs, proof, tpk, fee).map_err(|e| error(e.to_string()))?;
+        let transition = Self::new(program_id, function_name, inputs, outputs, proof, tpk, tcm, fee)
+            .map_err(|e| error(e.to_string()))?;
         // Ensure the transition ID matches the expected ID.
         match transition_id == *transition.id() {
             true => Ok(transition),
@@ -75,6 +76,7 @@ impl<N: Network> ToBytes for Transition<N> {
 
         self.proof.write_le(&mut writer)?;
         self.tpk.write_le(&mut writer)?;
+        self.tcm.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)
     }
 }

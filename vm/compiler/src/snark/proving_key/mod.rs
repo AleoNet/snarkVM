@@ -39,8 +39,12 @@ impl<N: Network> ProvingKey<N> {
         assignment: &circuit::Assignment<N::Field>,
         rng: &mut R,
     ) -> Result<Proof<N>> {
+        #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
         let proof = Proof::new(Marlin::<N>::prove_batch(self, std::slice::from_ref(assignment), rng)?);
+
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(proof)
     }
@@ -52,8 +56,12 @@ impl<N: Network> ProvingKey<N> {
         assignments: &[circuit::Assignment<N::Field>],
         rng: &mut R,
     ) -> Result<Proof<N>> {
+        #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
         let batch_proof = Proof::new(Marlin::<N>::prove_batch(self, assignments, rng)?);
+
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executed '{function_name}' (in {} ms)", timer.elapsed().as_millis()).dimmed());
         Ok(batch_proof)
     }

@@ -62,7 +62,7 @@ mod tests {
         // Prepare the expected size.
         let expected_size = get_expected_size::<CurrentNetwork>();
         // Prepare the genesis block header.
-        let genesis_header = *crate::ledger::vm::test_helpers::sample_genesis_block().header();
+        let genesis_header = *crate::ledger::test_helpers::sample_genesis_block().header();
         // Ensure the size of the genesis block header is correct.
         assert_eq!(expected_size, genesis_header.to_bytes_le().unwrap().len());
     }
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn test_genesis_header() {
         // Prepare the genesis block header.
-        let header = *crate::ledger::vm::test_helpers::sample_genesis_block().header();
+        let header = *crate::ledger::test_helpers::sample_genesis_block().header();
         // Ensure the block header is a genesis block header.
         assert!(header.is_genesis());
 

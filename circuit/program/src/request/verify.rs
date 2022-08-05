@@ -21,7 +21,7 @@ impl<A: Aleo> Request<A> {
     /// and the signature is valid.
     ///
     /// Verifies (challenge == challenge') && (address == address') && (serial_numbers == serial_numbers') where:
-    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, function ID, input IDs\])
+    ///     challenge' := HashToScalar(r * G, pk_sig, pr_sig, caller, \[tvk, tcm, function ID, input IDs\])
     pub fn verify(&self, input_types: &[console::ValueType<A::Network>], tpk: &Group<A>) -> Boolean<A> {
         // Compute the function ID as `Hash(network_id, program_id, function_name)`.
         let function_id = A::hash_bhp1024(
@@ -36,9 +36,10 @@ impl<A: Aleo> Request<A> {
             .collect::<Vec<_>>(),
         );
 
-        // Construct the signature message as `[tvk, function ID, input IDs]`.
+        // Construct the signature message as `[tvk, tcm, function ID, input IDs]`.
         let mut message = Vec::with_capacity(1 + 2 * self.input_ids.len());
         message.push(self.tvk.clone());
+        message.push(self.tcm.clone());
         message.push(function_id);
 
         // Retrieve the challenge from the signature.
@@ -88,7 +89,7 @@ impl<A: Aleo> Request<A> {
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(commitment, gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number, tag) => {
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -117,13 +118,20 @@ impl<A: Aleo> Request<A> {
                         let h = A::hash_to_group_psd2(&[A::serial_number_domain(), candidate_commitment.clone()]);
                         // Compute `h_r` as `(challenge * gamma) + (response * H)`, equivalent to `r * H`.
                         let h_r = (gamma * challenge) + (&h * response);
-                        // Add `H`, `r * H`, and `gamma` to the message.
+
+                        // Compute the tag as `Hash(sk_tag, commitment)`.
+                        let candidate_tag = A::hash_psd2(&[self.sk_tag.clone(), candidate_commitment.clone()]);
+
+                        // Add (`H`, `r * H`, `gamma`, `tag`) to the message.
                         message.extend([h, h_r, gamma.clone()].iter().map(|point| point.to_x_coordinate()));
+                        message.push(candidate_tag.clone());
 
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the candidate commitment matches the expected commitment.
                             & commitment.is_equal(&candidate_commitment)
+                            // Ensure the candidate tag matches the expected tag.
+                            & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(&self.caller)
                             // Ensure the record gates is less than or equal to 2^52.
@@ -151,6 +159,8 @@ impl<A: Aleo> Request<A> {
             let candidate_tpk = A::g_scalar_multiply(&self.tsk);
             // Compute the transition view key `tvk` as `tsk * caller`.
             let tvk = (self.caller.to_group() * &self.tsk).to_x_coordinate();
+            // Compute the transition commitment as `Hash(tvk)`.
+            let tcm = A::hash_psd2(&[tvk.clone()]);
 
             // Ensure the computed transition public key matches the expected transition public key.
             tpk.is_equal(&candidate_tpk)
@@ -158,6 +168,8 @@ impl<A: Aleo> Request<A> {
                 & tpk.is_equal(&self.to_tpk())
                 // Ensure the computed transition view key matches.
                 & tvk.is_equal(&self.tvk)
+                // Ensure the computed transition commitment matches.
+                & tcm.is_equal(&self.tcm)
         };
 
         // Verify the signature.
@@ -195,6 +207,7 @@ impl<A: Aleo> Request<A> {
         input_types: &[console::ValueType<A::Network>],
         caller: &Address<A>,
         program_id: &ProgramID<A>,
+        sk_tag: &Field<A>,
         tvk: &Field<A>,
     ) -> Boolean<A> {
         input_ids
@@ -230,7 +243,7 @@ impl<A: Aleo> Request<A> {
                         input_hash.is_equal(&A::hash_bhp1024(&ciphertext.to_bits_le()))
                     }
                     // A record input is computed to its serial number.
-                    InputID::Record(commitment, gamma, serial_number) => {
+                    InputID::Record(commitment, gamma, serial_number, tag) => {
                         // Retrieve the record.
                         let record = match &input {
                             Value::Record(record) => record,
@@ -255,10 +268,15 @@ impl<A: Aleo> Request<A> {
                         let candidate_serial_number =
                             A::commit_bhp512(&(A::serial_number_domain(), candidate_commitment.clone()).to_bits_le(), &sn_nonce);
 
+                        // Compute the tag as `Hash(sk_tag, commitment)`.
+                        let candidate_tag = A::hash_psd2(&[sk_tag.clone(), candidate_commitment.clone()]);
+
                         // Ensure the candidate serial number matches the expected serial number.
                         serial_number.is_equal(&candidate_serial_number)
                             // Ensure the candidate commitment matches the expected commitment.
                             & commitment.is_equal(&candidate_commitment)
+                            // Ensure the candidate tag matches the expected tag.
+                            & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
                             & record.owner().is_equal(caller)
                             // Ensure the record gates is less than or equal to 2^52.
@@ -352,6 +370,19 @@ mod tests {
                     false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
                 }
             });
+
+            Circuit::scope(format!("Request {i}"), || {
+                let candidate = Request::check_input_ids(
+                    request.input_ids(),
+                    request.inputs(),
+                    &input_types,
+                    request.caller(),
+                    request.program_id(),
+                    request.sk_tag(),
+                    request.tvk(),
+                );
+                assert!(candidate.eject_value());
+            });
             Circuit::reset();
         }
         Ok(())
@@ -361,16 +392,17 @@ mod tests {
     fn test_sign_and_verify_constant() -> Result<()> {
         // Note: This is correct. At this (high) level of a program, we override the default mode in the `Record` case,
         // based on the user-defined visibility in the record type. Thus, we have nonzero private and constraint values.
-        check_verify(Mode::Constant, 41000, 0, 16100, 16100)
+        // These bounds are determined experimentally.
+        check_verify(Mode::Constant, 40000, 0, 16400, 16400)
     }
 
     #[test]
     fn test_sign_and_verify_public() -> Result<()> {
-        check_verify(Mode::Public, 34817, 0, 30393, 30439)
+        check_verify(Mode::Public, 34819, 0, 30988, 31090)
     }
 
     #[test]
     fn test_sign_and_verify_private() -> Result<()> {
-        check_verify(Mode::Private, 34817, 0, 30393, 30439)
+        check_verify(Mode::Private, 34819, 0, 30988, 31090)
     }
 }

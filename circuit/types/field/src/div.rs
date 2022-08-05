@@ -58,23 +58,35 @@ impl<E: Environment> DivAssign<Self> for Field<E> {
 
 impl<E: Environment> DivAssign<&Self> for Field<E> {
     fn div_assign(&mut self, other: &Self) {
-        // If `other` is a constant, we can perform the multiplication and inversion
-        // without paying for any private variables or constraints.
-        if other.is_constant() {
-            *self *= other.inverse();
-        }
-        // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
-        // and ensuring that `quotient * other == self`.
-        else {
-            // Construct the quotient as a witness.
-            let quotient = witness!(|self, other| self / other);
+        match other.is_constant() {
+            // If `other` is a constant and zero, halt since the inverse of zero is undefined.
+            true if other.eject_value().is_zero() => E::halt("Attempted to divide by zero."),
+            // If `other` is a constant and non-zero, we can perform the multiplication and inversion
+            // without paying for any private variables or constraints.
+            // TODO: Can the case where self is constant and other is not constant be optimized in the same way?
+            true => {
+                *self *= other.inverse();
+            }
+            // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
+            // and ensuring that `quotient * other == self`.
+            false => {
+                // Enforce that `other` is not zero.
+                E::assert(!other.is_zero());
 
-            // Ensure the quotient is correct by enforcing:
-            // `quotient * other == self`.
-            E::enforce(|| (&quotient, other, &*self));
+                // Construct the quotient as a witness.
+                let quotient = witness!(|self, other| {
+                    // Note: This band-aid was added to prevent a panic when `other` is zero.
+                    let other = if other.is_zero() { console::Field::one() } else { other };
+                    self / other
+                });
 
-            // Assign the quotient to `self`.
-            *self = quotient;
+                // Ensure the quotient is correct by enforcing:
+                // `quotient * other == self`.
+                E::enforce(|| (&quotient, other, &*self));
+
+                // Assign the quotient to `self`.
+                *self = quotient;
+            }
         }
     }
 }
@@ -85,8 +97,7 @@ impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> 
     fn count(case: &Self::Case) -> Count {
         match case {
             (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
-            (Mode::Constant, _) => Count::is(0, 0, 1, 1),
-            (_, _) => Count::is(0, 0, 1, 1),
+            (_, _) => Count::is(0, 0, 3, 5),
         }
     }
 }
@@ -112,37 +123,80 @@ impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuit_environment::Circuit;
+    use snarkvm_circuit_environment::{assert_count_fails, Circuit};
 
     const ITERATIONS: u64 = 1000;
 
     fn check_div(
         name: &str,
-        expected: &console::Field<<Circuit as Environment>::Network>,
-        a: &Field<Circuit>,
-        b: &Field<Circuit>,
+        first: &console::Field<<Circuit as Environment>::Network>,
+        second: &console::Field<<Circuit as Environment>::Network>,
+        mode_a: Mode,
+        mode_b: Mode,
     ) {
-        Circuit::scope(name, || {
-            let candidate = a / b;
-            assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
-            assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
-        });
+        let a = &Field::<Circuit>::new(mode_a, *first);
+        let b = &Field::<Circuit>::new(mode_b, *second);
+
+        match second.is_zero() {
+            true => match mode_b.is_constant() {
+                true => {
+                    let result = std::panic::catch_unwind(|| Field::div(a.clone(), b));
+                    assert!(result.is_err());
+                }
+                false => {
+                    Circuit::scope(name, || {
+                        let _ = a / b;
+                        assert_count_fails!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+                    });
+                }
+            },
+            false => {
+                let expected = *first / *second;
+                Circuit::scope(name, || {
+                    let candidate = a / b;
+                    assert_eq!(expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
+                    assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+                    assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
+                });
+            }
+        }
     }
 
     fn check_div_assign(
         name: &str,
-        expected: &console::Field<<Circuit as Environment>::Network>,
-        a: &Field<Circuit>,
-        b: &Field<Circuit>,
+        first: &console::Field<<Circuit as Environment>::Network>,
+        second: &console::Field<<Circuit as Environment>::Network>,
+        mode_a: Mode,
+        mode_b: Mode,
     ) {
-        Circuit::scope(name, || {
-            let mut candidate = a.clone();
-            candidate /= b;
-            assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
-            assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
-        });
+        let a = &Field::<Circuit>::new(mode_a, *first);
+        let b = &Field::<Circuit>::new(mode_b, *second);
+
+        match second.is_zero() {
+            true => match mode_b.is_constant() {
+                true => {
+                    let result = std::panic::catch_unwind(|| Field::div_assign(&mut a.clone(), b));
+                    assert!(result.is_err());
+                }
+                false => {
+                    Circuit::scope(name, || {
+                        let mut candidate = a.clone();
+                        candidate /= b;
+                        assert_count_fails!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+                    });
+                }
+            },
+            false => {
+                let expected = *first / *second;
+                Circuit::scope(name, || {
+                    let mut candidate = a.clone();
+                    candidate /= b;
+                    assert_eq!(expected, candidate.eject_value(), "({} /= {})", a.eject_value(), b.eject_value());
+                    assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+                    assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
+                });
+            }
+        }
     }
 
     fn run_test(mode_a: Mode, mode_b: Mode) {
@@ -150,21 +204,24 @@ mod tests {
             let first = Uniform::rand(&mut test_rng());
             let second = Uniform::rand(&mut test_rng());
 
-            let expected = first / second;
-            let a = Field::<Circuit>::new(mode_a, first);
-            let b = Field::<Circuit>::new(mode_b, second);
-
             let name = format!("Div: a / b {}", i);
-            check_div(&name, &expected, &a, &b);
+            check_div(&name, &first, &second, mode_a, mode_b);
             let name = format!("DivAssign: a / b {}", i);
-            check_div_assign(&name, &expected, &a, &b);
+            check_div_assign(&name, &first, &second, mode_a, mode_b);
 
             // Check division by one.
-            let one = Field::<Circuit>::new(mode_b, console::Field::<<Circuit as Environment>::Network>::one());
+            let one = console::Field::<<Circuit as Environment>::Network>::one();
             let name = format!("Div By One {}", i);
-            check_div(&name, &first, &a, &one);
+            check_div(&name, &first, &one, mode_a, mode_b);
             let name = format!("DivAssign By One {}", i);
-            check_div_assign(&name, &first, &a, &one);
+            check_div_assign(&name, &first, &one, mode_a, mode_b);
+
+            // Check division by zero.
+            let zero = console::Field::<<Circuit as Environment>::Network>::zero();
+            let name = format!("Div By Zero {}", i);
+            check_div(&name, &first, &zero, mode_a, mode_b);
+            let name = format!("DivAssign By Zero {}", i);
+            check_div_assign(&name, &first, &zero, mode_a, mode_b);
         }
     }
 
@@ -225,12 +282,14 @@ mod tests {
             std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Constant, one) / Field::new(Mode::Constant, zero));
         assert!(result.is_err()); // Probe further for specific error type here, if desired
 
-        let result =
-            std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Public, one) / Field::new(Mode::Public, zero));
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
+        Circuit::scope("Public Div by Zero", || {
+            let _ = Field::<Circuit>::new(Mode::Public, one) / Field::new(Mode::Public, zero);
+            assert!(!Circuit::is_satisfied_in_scope());
+        });
 
-        let result =
-            std::panic::catch_unwind(|| Field::<Circuit>::new(Mode::Private, one) / Field::new(Mode::Private, zero));
-        assert!(result.is_err()); // Probe further for specific error type here, if desired
+        Circuit::scope("Private Div by Zero", || {
+            let _ = Field::<Circuit>::new(Mode::Private, one) / Field::new(Mode::Private, zero);
+            assert!(!Circuit::is_satisfied_in_scope());
+        });
     }
 }

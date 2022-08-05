@@ -229,6 +229,10 @@ mod tests {
             // Check that shift left by two is computed correctly.
             let name = format!("Quadruple: {} << {} {}", mode_a, mode_b, i);
             check_shl::<I, M>(&name, first, console::Integer::one() + console::Integer::one(), mode_a, mode_b);
+
+            // Check that zero shifted left by `second` is computed correctly.
+            let name = format!("Zero: {} << {} {}", mode_a, mode_b, i);
+            check_shl::<I, M>(&name, console::Integer::zero(), second, mode_a, mode_b);
         }
     }
 

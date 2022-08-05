@@ -25,7 +25,7 @@ mod serialize;
 mod string;
 
 use crate::{
-    ledger::{vm::VM, Transition},
+    ledger::{vm::VM, Origin, Transition},
     process::{Authorization, Deployment, Execution},
     program::Program,
 };
@@ -138,56 +138,6 @@ impl<N: Network> Transaction<N> {
         // Initialize the transaction.
         Self::execute_authorization_with_additional_fee(vm, private_key, authorization, additional_fee, rng)
     }
-
-    /// Returns `true` if the transaction is well-formed.
-    pub fn verify(&self, vm: &VM<N>) -> bool {
-        // Compute the Merkle root of the transaction.
-        match self.to_root() {
-            // Ensure the transaction ID is correct.
-            Ok(root) => {
-                if *self.id() != root {
-                    warn!("Incorrect transaction ID ({})", self.id());
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the transaction: {error}\n{self}");
-                return false;
-            }
-        };
-
-        match self {
-            Transaction::Deploy(_, deployment, additional_fee) => {
-                // Check the deployment size.
-                if let Err(error) = Self::check_deployment_size(deployment) {
-                    warn!("Invalid transaction (deployment): {error}");
-                    return false;
-                }
-                // Verify the deployment.
-                vm.verify_deployment(deployment)
-                    // Verify the additional fee.
-                    && vm.verify_additional_fee(additional_fee)
-            }
-            Transaction::Execute(_, execution, additional_fee) => {
-                // Check the deployment size.
-                if let Err(error) = Self::check_execution_size(execution) {
-                    warn!("Invalid transaction (execution): {error}");
-                    return false;
-                }
-
-                // Verify the additional fee, if it exists.
-                let check_additional_fee = match additional_fee {
-                    Some(additional_fee) => vm.verify_additional_fee(additional_fee),
-                    None => true,
-                };
-
-                // Verify the execution.
-                vm.verify_execution(execution)
-                    // Verify the additional fee.
-                    && check_additional_fee
-            }
-        }
-    }
 }
 
 impl<N: Network> Transaction<N> {
@@ -199,7 +149,7 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns an iterator over all executed transitions.
+    /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
             Self::Deploy(_, _, additional_fee) => [].iter().chain([Some(additional_fee)].into_iter().flatten()),
@@ -219,6 +169,16 @@ impl<N: Network> Transaction<N> {
         self.transitions().map(Transition::tpk)
     }
 
+    /// Returns an iterator over the origins, for all transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
+        self.transitions().flat_map(Transition::origins)
+    }
+
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().flat_map(Transition::tags)
+    }
+
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.
     pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
         self.transitions().flat_map(Transition::serial_numbers)
@@ -232,5 +192,73 @@ impl<N: Network> Transaction<N> {
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = &Group<N>> {
         self.transitions().flat_map(Transition::nonces)
+    }
+
+    /// Returns an iterator over the fees, for all transitions.
+    pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
+        self.transitions().map(Transition::fee)
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns a consuming iterator over all transitions.
+    pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
+        enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
+            Deploy(I1),
+            Execute(I2),
+        }
+
+        impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
+            type Item = T;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self {
+                    Self::Deploy(iter) => iter.next(),
+                    Self::Execute(iter) => iter.next(),
+                }
+            }
+        }
+
+        match self {
+            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
+            Self::Execute(_, execution, additional_fee) => {
+                IterWrap::Execute(execution.into_transitions().chain(additional_fee))
+            }
+        }
+    }
+
+    /// Returns a consuming iterator over the transition IDs, for all transitions.
+    pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
+        self.into_transitions().map(Transition::into_id)
+    }
+
+    /// Returns a consuming iterator over the transition public keys, for all transitions.
+    pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
+        self.into_transitions().map(Transition::into_tpk)
+    }
+
+    /// Returns a consuming iterator over the origins, for all transition inputs that are records.
+    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
+        self.into_transitions().flat_map(Transition::into_origins)
+    }
+
+    /// Returns a consuming iterator over the tags, for all transition inputs that are records.
+    pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
+        self.into_transitions().flat_map(Transition::into_tags)
+    }
+
+    /// Returns a consuming iterator over the serial numbers, for all transition inputs that are records.
+    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
+        self.into_transitions().flat_map(Transition::into_serial_numbers)
+    }
+
+    /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
+    pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
+        self.into_transitions().flat_map(Transition::into_commitments)
+    }
+
+    /// Returns a consuming iterator over the nonces, for all transition outputs that are records.
+    pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
+        self.into_transitions().flat_map(Transition::into_nonces)
     }
 }
