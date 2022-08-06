@@ -292,6 +292,22 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns the transition ID that contains the given `input ID` or `output ID`.
+    pub fn find_transition_id(&self, id: &Field<N>) -> Result<N::TransitionID> {
+        // Start by checking the output IDs (which is the more likely case).
+        if let Some(transition_id) = self.outputs.find_transition_id(id)? {
+            return Ok(transition_id);
+        }
+        // Then check the input IDs.
+        if let Some(transition_id) = self.inputs.find_transition_id(id)? {
+            return Ok(transition_id);
+        }
+        // Throw an error.
+        bail!("Failed to find the transition ID for the given input or output ID '{id}'")
+    }
+}
+
+impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns the transition for the given `transition ID`.
     pub fn get_transition(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
         self.storage.get(transition_id)

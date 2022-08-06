@@ -30,8 +30,10 @@ use std::borrow::Cow;
 
 /// A trait for transition output storage.
 pub trait OutputStorage<N: Network>: Clone {
-    /// The mapping of `transition ID` to `output ID`.
+    /// The mapping of `transition ID` to `output IDs`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
+    /// The mapping of `output ID` to `transition ID`.
+    type ReverseIDMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
     type ConstantMap: for<'a> Map<'a, Field<N>, Option<Plaintext<N>>>;
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
@@ -45,6 +47,8 @@ pub trait OutputStorage<N: Network>: Clone {
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap;
     /// Returns the constant map.
     fn constant_map(&self) -> &Self::ConstantMap;
     /// Returns the public map.
@@ -55,6 +59,15 @@ pub trait OutputStorage<N: Network>: Clone {
     fn record_map(&self) -> &Self::RecordMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
+
+    /// Returns the transition ID that contains the given `output ID`.
+    fn find_transition_id(&self, output_id: &Field<N>) -> Result<Option<N::TransitionID>> {
+        match self.reverse_id_map().get(output_id)? {
+            Some(Cow::Borrowed(transition_id)) => Ok(Some(transition_id.clone())),
+            Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
+            None => Ok(None),
+        }
+    }
 
     /// Returns the output IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
@@ -117,7 +130,13 @@ pub trait OutputStorage<N: Network>: Clone {
     /// Stores the given `(transition ID, output)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
         // Store the output IDs.
-        self.id_map().insert(transition_id, outputs.iter().map(Output::id).cloned().collect())?;
+        self.id_map().insert(transition_id, outputs.iter().map(Output::id).copied().collect())?;
+        // Store the reverse output IDs.
+        outputs
+            .iter()
+            .map(Output::id)
+            .copied()
+            .try_for_each(|output_id| self.reverse_id_map().insert(output_id, transition_id))?;
 
         // Store the outputs.
         for output in outputs {
@@ -145,6 +164,8 @@ pub trait OutputStorage<N: Network>: Clone {
 
         // Remove the output IDs.
         self.id_map().remove(transition_id)?;
+        // Remove the reverse output IDs.
+        output_ids.iter().try_for_each(|output_id| self.reverse_id_map().remove(output_id))?;
 
         // Remove the outputs.
         for output_id in output_ids {
@@ -162,8 +183,10 @@ pub trait OutputStorage<N: Network>: Clone {
 /// An in-memory transition output storage.
 #[derive(Clone, Default)]
 pub struct OutputMemory<N: Network> {
-    /// The mapping of `transition ID` to `output ID`.
+    /// The mapping of `transition ID` to `output IDs`.
     id_map: MemoryMap<N::TransitionID, Vec<Field<N>>>,
+    /// The mapping of `output ID` to `transition ID`.
+    reverse_id_map: MemoryMap<Field<N>, N::TransitionID>,
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
     constant: MemoryMap<Field<N>, Option<Plaintext<N>>>,
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
@@ -181,6 +204,7 @@ impl<N: Network> OutputMemory<N> {
     pub fn new() -> Self {
         Self {
             id_map: Default::default(),
+            reverse_id_map: Default::default(),
             constant: Default::default(),
             public: Default::default(),
             private: Default::default(),
@@ -193,6 +217,7 @@ impl<N: Network> OutputMemory<N> {
 #[rustfmt::skip]
 impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;
+    type ReverseIDMap = MemoryMap<Field<N>, N::TransitionID>;
     type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
@@ -202,6 +227,11 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
         &self.id_map
+    }
+
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
+        &self.reverse_id_map
     }
 
     /// Returns the constant map.
@@ -299,6 +329,13 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
             Ok(None) => bail!("Record '{commitment}' not found"),
             Err(e) => Err(e),
         }
+    }
+}
+
+impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
+    /// Returns the transition ID that contains the given `output ID`.
+    pub fn find_transition_id(&self, output_id: &Field<N>) -> Result<Option<N::TransitionID>> {
+        self.storage.find_transition_id(output_id)
     }
 }
 
@@ -437,6 +474,37 @@ mod tests {
             // Retrieve the transition output.
             let candidate = output_store.get(&transition_id).unwrap();
             assert!(candidate.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_find_transition_id() {
+        // Sample the transition outputs.
+        for (transition_id, output) in crate::ledger::transition::output::test_helpers::sample_outputs() {
+            // Initialize a new output store.
+            let output_store = OutputMemory::new();
+
+            // Ensure the transition output does not exist.
+            let candidate = output_store.get(&transition_id).unwrap();
+            assert!(candidate.is_empty());
+
+            // Ensure the transition ID is not found.
+            let candidate = output_store.find_transition_id(output.id()).unwrap();
+            assert!(candidate.is_none());
+
+            // Insert the transition output.
+            output_store.insert(transition_id, &[output.clone()]).unwrap();
+
+            // Find the transition ID.
+            let candidate = output_store.find_transition_id(output.id()).unwrap();
+            assert_eq!(Some(transition_id), candidate);
+
+            // Remove the transition output.
+            output_store.remove(&transition_id).unwrap();
+
+            // Ensure the transition ID is not found.
+            let candidate = output_store.find_transition_id(output.id()).unwrap();
+            assert!(candidate.is_none());
         }
     }
 }

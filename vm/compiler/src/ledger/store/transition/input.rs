@@ -30,8 +30,10 @@ use std::borrow::Cow;
 
 /// A trait for transition input storage.
 pub trait InputStorage<N: Network>: Clone {
-    /// The mapping of `transition ID` to `input ID`.
+    /// The mapping of `transition ID` to `input IDs`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
+    /// The mapping of `input ID` to `transition ID`.
+    type ReverseIDMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
     type ConstantMap: for<'a> Map<'a, Field<N>, Option<Plaintext<N>>>;
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
@@ -45,6 +47,8 @@ pub trait InputStorage<N: Network>: Clone {
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap;
     /// Returns the constant map.
     fn constant_map(&self) -> &Self::ConstantMap;
     /// Returns the public map.
@@ -55,6 +59,15 @@ pub trait InputStorage<N: Network>: Clone {
     fn record_map(&self) -> &Self::RecordMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
+
+    /// Returns the transition ID that contains the given `input ID`.
+    fn find_transition_id(&self, input_id: &Field<N>) -> Result<Option<N::TransitionID>> {
+        match self.reverse_id_map().get(input_id)? {
+            Some(Cow::Borrowed(transition_id)) => Ok(Some(transition_id.clone())),
+            Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
+            None => Ok(None),
+        }
+    }
 
     /// Returns the input IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
@@ -117,7 +130,13 @@ pub trait InputStorage<N: Network>: Clone {
     /// Stores the given `(transition ID, input)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
         // Store the input IDs.
-        self.id_map().insert(transition_id, inputs.iter().map(Input::id).cloned().collect())?;
+        self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
+        // Store the reverse input IDs.
+        inputs
+            .iter()
+            .map(Input::id)
+            .copied()
+            .try_for_each(|input_id| self.reverse_id_map().insert(input_id, transition_id))?;
 
         // Store the inputs.
         for input in inputs {
@@ -145,6 +164,8 @@ pub trait InputStorage<N: Network>: Clone {
 
         // Remove the input IDs.
         self.id_map().remove(&transition_id)?;
+        // Remove the reverse input IDs.
+        input_ids.iter().try_for_each(|input_id| self.reverse_id_map().remove(input_id))?;
 
         // Remove the inputs.
         for input_id in input_ids {
@@ -162,8 +183,10 @@ pub trait InputStorage<N: Network>: Clone {
 /// An in-memory transition input storage.
 #[derive(Clone, Default)]
 pub struct InputMemory<N: Network> {
-    /// The mapping of `transition ID` to `input ID`.
+    /// The mapping of `transition ID` to `input IDs`.
     id_map: MemoryMap<N::TransitionID, Vec<Field<N>>>,
+    /// The mapping of `input ID` to `transition ID`.
+    reverse_id_map: MemoryMap<Field<N>, N::TransitionID>,
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
     constant: MemoryMap<Field<N>, Option<Plaintext<N>>>,
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
@@ -181,6 +204,7 @@ impl<N: Network> InputMemory<N> {
     pub fn new() -> Self {
         Self {
             id_map: MemoryMap::default(),
+            reverse_id_map: MemoryMap::default(),
             constant: MemoryMap::default(),
             public: MemoryMap::default(),
             private: MemoryMap::default(),
@@ -193,6 +217,7 @@ impl<N: Network> InputMemory<N> {
 #[rustfmt::skip]
 impl<N: Network> InputStorage<N> for InputMemory<N> {
     type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;
+    type ReverseIDMap = MemoryMap<Field<N>, N::TransitionID>;
     type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
@@ -202,6 +227,11 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
         &self.id_map
+    }
+
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
+        &self.reverse_id_map
     }
 
     /// Returns the constant map.
@@ -283,6 +313,13 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Returns the inputs for the given `transition ID`.
     pub fn get_inputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Input<N>>> {
         self.storage.get(transition_id)
+    }
+}
+
+impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
+    /// Returns the transition ID that contains the given `input ID`.
+    pub fn find_transition_id(&self, input_id: &Field<N>) -> Result<Option<N::TransitionID>> {
+        self.storage.find_transition_id(input_id)
     }
 }
 
@@ -411,6 +448,37 @@ mod tests {
             // Retrieve the transition input.
             let candidate = input_store.get(&transition_id).unwrap();
             assert!(candidate.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_find_transition_id() {
+        // Sample the transition inputs.
+        for (transition_id, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
+            // Initialize a new input store.
+            let input_store = InputMemory::new();
+
+            // Ensure the transition input does not exist.
+            let candidate = input_store.get(&transition_id).unwrap();
+            assert!(candidate.is_empty());
+
+            // Ensure the transition ID is not found.
+            let candidate = input_store.find_transition_id(input.id()).unwrap();
+            assert!(candidate.is_none());
+
+            // Insert the transition input.
+            input_store.insert(transition_id, &[input.clone()]).unwrap();
+
+            // Find the transition ID.
+            let candidate = input_store.find_transition_id(input.id()).unwrap();
+            assert_eq!(Some(transition_id), candidate);
+
+            // Remove the transition input.
+            input_store.remove(&transition_id).unwrap();
+
+            // Ensure the transition ID is not found.
+            let candidate = input_store.find_transition_id(input.id()).unwrap();
+            assert!(candidate.is_none());
         }
     }
 }

@@ -36,9 +36,6 @@ pub trait TransactionStorage<N: Network>: Clone {
     type ExecutionsMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
     type TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
     type TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
-    type SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-    type CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-    type OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>;
     type NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
 }
 
@@ -52,14 +49,10 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type ExecutionsMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
     type TransitionsMap = MemoryMap<N::TransitionID, Transition<N>>;
     type TransitionPublicKeysMap = MemoryMap<Group<N>, N::TransitionID>;
-    type SerialNumbersMap = MemoryMap<Field<N>, N::TransitionID>;
-    type CommitmentsMap = MemoryMap<Field<N>, N::TransitionID>;
-    type OriginsMap = MemoryMap<Origin<N>, N::TransitionID>;
     type NonceMap = MemoryMap<Group<N>, N::TransitionID>;
 }
 
 /// The transaction state stored in a ledger.
-/// `TransitionPublicKeysMap`, `SerialNumbersMap`, `CommitmentsMap`, `OriginsMap`, and `NonceMap` store redundant data for faster lookup.
 #[derive(Clone)]
 pub struct TransactionStore<N: Network, T: TransactionStorage<N>> {
     /// The map of program deployments.
@@ -291,13 +284,4 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
             None => bail!("Missing transition with id {transition_id}"),
         }
     }
-
-    // // TODO (raychu86): Rename this.
-    // /// Returns the transactions for the given commitment.
-    // pub fn get_transition_id_from_commitment(&self, commitment: N::TransitionID) -> Result<Cow<'_, N::TransitionID>> {
-    //     match self.commitments.get(&commitment)? {
-    //         Some(transition_id) => Ok(transition_id),
-    //         None => bail!("Missing commitment {commitment}"),
-    //     }
-    // }
 }
