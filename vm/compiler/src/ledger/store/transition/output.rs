@@ -21,7 +21,7 @@ use crate::ledger::{
 use console::{
     network::prelude::*,
     program::{Ciphertext, Plaintext, Record},
-    types::Field,
+    types::{Field, Group},
 };
 
 use anyhow::Result;
@@ -346,6 +346,15 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
         })
     }
 
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
+        self.record.values().flat_map(|output| match output {
+            Cow::Borrowed((_, Some(record))) => Some(Cow::Borrowed(record.nonce())),
+            Cow::Owned((_, Some(record))) => Some(Cow::Owned(record.into_nonce())),
+            _ => None,
+        })
+    }
+
     /// Returns an iterator over the records, for all transition outputs that are records.
     pub fn records(&self) -> impl '_ + Iterator<Item = Cow<'_, Record<N, Ciphertext<N>>>> {
         self.record.values().flat_map(|output| match output {
@@ -365,6 +374,11 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Returns `true` if the given checksum exists.
     pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
         self.checksums().contains(checksum)
+    }
+
+    /// Returns `true` if the given nonce exists.
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
+        self.nonces().contains(nonce)
     }
 
     /// Returns `true` if the given record exists.

@@ -398,6 +398,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.outputs.checksums()
     }
 
+    /// Returns an iterator over the nonces, for all transition outputs that are records.
+    pub fn nonces(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
+        self.outputs.nonces()
+    }
+
     /// Returns an iterator over the records, for all transition outputs that are records.
     pub fn records(&self) -> impl '_ + Iterator<Item = Cow<'_, Record<N, Ciphertext<N>>>> {
         self.outputs.records()
@@ -430,6 +435,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns `true` if the given checksum exists.
     pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
         self.outputs.contains_checksum(checksum)
+    }
+
+    /// Returns `true` if the given nonce exists.
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
+        self.outputs.contains_nonce(nonce)
     }
 
     /// Returns `true` if the given record exists.
