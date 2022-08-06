@@ -43,31 +43,133 @@ pub trait OutputStorage<N: Network> {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Returns the ID map.
-    fn id_map(&self) -> Result<Self::IDMap>;
+    fn id_map(&self) -> &Self::IDMap;
     /// Returns the constant map.
-    fn constant_map(&self) -> Result<Self::ConstantMap>;
+    fn constant_map(&self) -> &Self::ConstantMap;
     /// Returns the public map.
-    fn public_map(&self) -> Result<Self::PublicMap>;
+    fn public_map(&self) -> &Self::PublicMap;
     /// Returns the private map.
-    fn private_map(&self) -> Result<Self::PrivateMap>;
+    fn private_map(&self) -> &Self::PrivateMap;
     /// Returns the record map.
-    fn record_map(&self) -> Result<Self::RecordMap>;
+    fn record_map(&self) -> &Self::RecordMap;
     /// Returns the external record map.
-    fn external_record_map(&self) -> Result<Self::ExternalRecordMap>;
+    fn external_record_map(&self) -> &Self::ExternalRecordMap;
 
-    /// Opens the transition output store.
-    fn open(&self) -> Result<OutputStore<N, Self>>
-    where
-        Self: Sized,
-    {
-        Ok(OutputStore::new(
-            self.id_map()?,
-            self.constant_map()?,
-            self.public_map()?,
-            self.private_map()?,
-            self.record_map()?,
-            self.external_record_map()?,
-        ))
+    /// Returns the ID map.
+    fn id_map_mut(&mut self) -> &mut Self::IDMap;
+    /// Returns the constant map.
+    fn constant_map_mut(&mut self) -> &mut Self::ConstantMap;
+    /// Returns the public map.
+    fn public_map_mut(&mut self) -> &mut Self::PublicMap;
+    /// Returns the private map.
+    fn private_map_mut(&mut self) -> &mut Self::PrivateMap;
+    /// Returns the record map.
+    fn record_map_mut(&mut self) -> &mut Self::RecordMap;
+    /// Returns the external record map.
+    fn external_record_map_mut(&mut self) -> &mut Self::ExternalRecordMap;
+
+    /// Returns the output IDs for the given `transition ID`.
+    fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        // Retrieve the output IDs.
+        match self.id_map().get(&transition_id)? {
+            Some(Cow::Borrowed(outputs)) => Ok(outputs.to_vec()),
+            Some(Cow::Owned(outputs)) => Ok(outputs),
+            None => Ok(vec![]),
+        }
+    }
+
+    /// Returns the output for the given `transition ID`.
+    fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
+        // Constructs the output given the output ID and output value.
+        macro_rules! into_output {
+            (Output::Record($output_id:ident, $output:expr)) => {
+                match $output {
+                    Cow::Borrowed((checksum, opt_record)) => Output::Record($output_id, *checksum, opt_record.clone()),
+                    Cow::Owned((checksum, opt_record)) => Output::Record($output_id, checksum, opt_record),
+                }
+            };
+            (Output::$Variant:ident($output_id:ident, $output:expr)) => {
+                match $output {
+                    Cow::Borrowed(output) => Output::$Variant($output_id, output.clone()),
+                    Cow::Owned(output) => Output::$Variant($output_id, output),
+                }
+            };
+        }
+
+        // A helper function to construct the output given the output ID.
+        let construct_output = |output_id| {
+            let constant = self.constant_map().get(&output_id)?;
+            let public = self.public_map().get(&output_id)?;
+            let private = self.private_map().get(&output_id)?;
+            let record = self.record_map().get(&output_id)?;
+            let external_record = self.external_record_map().get(&output_id)?;
+
+            // Retrieve the output.
+            let output = match (constant, public, private, record, external_record) {
+                (Some(constant), None, None, None, None) => into_output!(Output::Constant(output_id, constant)),
+                (None, Some(public), None, None, None) => into_output!(Output::Public(output_id, public)),
+                (None, None, Some(private), None, None) => into_output!(Output::Private(output_id, private)),
+                (None, None, None, Some(record), None) => into_output!(Output::Record(output_id, record)),
+                (None, None, None, None, Some(_)) => Output::ExternalRecord(output_id),
+                (None, None, None, None, None) => bail!("Missing output '{output_id}' in transition '{transition_id}'"),
+                _ => bail!("Found multiple outputs for the output ID '{output_id}' in transition '{transition_id}'"),
+            };
+
+            Ok(output)
+        };
+
+        // Retrieve the output IDs.
+        match self.id_map().get(&transition_id)? {
+            Some(Cow::Borrowed(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
+            Some(Cow::Owned(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
+            None => Ok(vec![]),
+        }
+    }
+
+    /// Stores the given `(transition ID, output)` pair into storage.
+    fn insert(&mut self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
+        // Store the output IDs.
+        self.id_map_mut().insert(transition_id, outputs.iter().map(Output::id).cloned().collect())?;
+
+        // Store the outputs.
+        for output in outputs {
+            match output {
+                Output::Constant(output_id, constant) => {
+                    self.constant_map_mut().insert(*output_id, constant.clone())?
+                }
+                Output::Public(output_id, public) => self.public_map_mut().insert(*output_id, public.clone())?,
+                Output::Private(output_id, private) => self.private_map_mut().insert(*output_id, private.clone())?,
+                Output::Record(commitment, checksum, optional_record) => {
+                    self.record_map_mut().insert(*commitment, (*checksum, optional_record.clone()))?
+                }
+                Output::ExternalRecord(output_id) => self.external_record_map_mut().insert(*output_id, ())?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Removes the output for the given `transition ID`.
+    fn remove(&mut self, transition_id: &N::TransitionID) -> Result<()> {
+        // Retrieve the output IDs.
+        let output_ids: Vec<_> = match self.id_map().get(&transition_id)? {
+            Some(Cow::Borrowed(ids)) => ids.iter().cloned().collect(),
+            Some(Cow::Owned(ids)) => ids.into_iter().collect(),
+            None => return Ok(()),
+        };
+
+        // Remove the output IDs.
+        self.id_map_mut().remove(&transition_id)?;
+
+        // Remove the outputs.
+        for output_id in output_ids {
+            self.constant_map_mut().remove(&output_id)?;
+            self.public_map_mut().remove(&output_id)?;
+            self.private_map_mut().remove(&output_id)?;
+            self.record_map_mut().remove(&output_id)?;
+            self.external_record_map_mut().remove(&output_id)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -112,176 +214,122 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Returns the ID map.
-    fn id_map(&self) -> Result<Self::IDMap> {
-        Ok(self.id_map.clone())
+    fn id_map(&self) -> &Self::IDMap {
+        &self.id_map
     }
 
     /// Returns the constant map.
-    fn constant_map(&self) -> Result<Self::ConstantMap> {
-        Ok(self.constant.clone())
+    fn constant_map(&self) -> &Self::ConstantMap {
+        &self.constant
     }
 
     /// Returns the public map.
-    fn public_map(&self) -> Result<Self::PublicMap> {
-        Ok(self.public.clone())
+    fn public_map(&self) -> &Self::PublicMap {
+        &self.public
     }
 
     /// Returns the private map.
-    fn private_map(&self) -> Result<Self::PrivateMap> {
-        Ok(self.private.clone())
+    fn private_map(&self) -> &Self::PrivateMap {
+        &self.private
     }
 
     /// Returns the record map.
-    fn record_map(&self) -> Result<Self::RecordMap> {
-        Ok(self.record.clone())
+    fn record_map(&self) -> &Self::RecordMap {
+        &self.record
     }
 
     /// Returns the external record map.
-    fn external_record_map(&self) -> Result<Self::ExternalRecordMap> {
-        Ok(self.external_record.clone())
+    fn external_record_map(&self) -> &Self::ExternalRecordMap {
+        &self.external_record
+    }
+
+    /* Mutable */
+
+    /// Returns the ID map.
+    fn id_map_mut(&mut self) -> &mut Self::IDMap {
+        &mut self.id_map
+    }
+
+    /// Returns the constant map.
+    fn constant_map_mut(&mut self) -> &mut Self::ConstantMap {
+        &mut self.constant
+    }
+
+    /// Returns the public map.
+    fn public_map_mut(&mut self) -> &mut Self::PublicMap {
+        &mut self.public
+    }
+
+    /// Returns the private map.
+    fn private_map_mut(&mut self) -> &mut Self::PrivateMap {
+        &mut self.private
+    }
+
+    /// Returns the record map.
+    fn record_map_mut(&mut self) -> &mut Self::RecordMap {
+        &mut self.record
+    }
+
+    /// Returns the external record map.
+    fn external_record_map_mut(&mut self) -> &mut Self::ExternalRecordMap {
+        &mut self.external_record
     }
 }
 
 /// A transition output storage.
-pub struct OutputStore<N: Network, I: OutputStorage<N>> {
+pub struct OutputStore<N: Network, O: OutputStorage<N>> {
     /// The map of `transition ID` to `[output ID]`.
-    output_ids: I::IDMap,
+    output_ids: O::IDMap,
     /// The map of constant outputs.
-    constant: I::ConstantMap,
+    constant: O::ConstantMap,
     /// The map of public outputs.
-    public: I::PublicMap,
+    public: O::PublicMap,
     /// The map of private outputs.
-    private: I::PrivateMap,
+    private: O::PrivateMap,
     /// The map of record outputs.
-    record: I::RecordMap,
+    record: O::RecordMap,
     /// The map of external record outputs.
-    external_record: I::ExternalRecordMap,
+    external_record: O::ExternalRecordMap,
+    /// The output storage.
+    storage: O,
 }
 
-impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
-    /// Initializes a new output store from the given maps.
-    pub fn new(
-        output_ids: I::IDMap,
-        constant: I::ConstantMap,
-        public: I::PublicMap,
-        private: I::PrivateMap,
-        record: I::RecordMap,
-        external_record: I::ExternalRecordMap,
-    ) -> Self {
-        Self { output_ids, constant, public, private, record, external_record }
-    }
-
-    /// Initializes a new output store from the given output storage.
-    pub fn from(storage: I) -> Result<Self> {
-        storage.open()
-    }
-}
-
-impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
-    /// Returns the output IDs for the given `transition ID`.
-    pub fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
-        // Retrieve the output IDs.
-        match self.output_ids.get(&transition_id)? {
-            Some(Cow::Borrowed(outputs)) => Ok(outputs.to_vec()),
-            Some(Cow::Owned(outputs)) => Ok(outputs),
-            None => Ok(vec![]),
+impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
+    /// Initializes a new output store.
+    pub fn new(storage: O) -> Self {
+        Self {
+            output_ids: storage.id_map().clone(),
+            constant: storage.constant_map().clone(),
+            public: storage.public_map().clone(),
+            private: storage.private_map().clone(),
+            record: storage.record_map().clone(),
+            external_record: storage.external_record_map().clone(),
+            storage,
         }
+    }
+
+    /// Returns the output IDs for the given `transition ID`.
+    fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        self.storage.get_ids(transition_id)
     }
 
     /// Returns the output for the given `transition ID`.
-    pub fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
-        // Constructs the output given the output ID and output value.
-        macro_rules! into_output {
-            (Output::Record($output_id:ident, $output:expr)) => {
-                match $output {
-                    Cow::Borrowed((checksum, opt_record)) => Output::Record($output_id, *checksum, opt_record.clone()),
-                    Cow::Owned((checksum, opt_record)) => Output::Record($output_id, checksum, opt_record),
-                }
-            };
-            (Output::$Variant:ident($output_id:ident, $output:expr)) => {
-                match $output {
-                    Cow::Borrowed(output) => Output::$Variant($output_id, output.clone()),
-                    Cow::Owned(output) => Output::$Variant($output_id, output),
-                }
-            };
-        }
-
-        // A helper function to construct the output given the output ID.
-        let construct_output = |output_id| {
-            let constant = self.constant.get(&output_id)?;
-            let public = self.public.get(&output_id)?;
-            let private = self.private.get(&output_id)?;
-            let record = self.record.get(&output_id)?;
-            let external_record = self.external_record.get(&output_id)?;
-
-            // Retrieve the output.
-            let output = match (constant, public, private, record, external_record) {
-                (Some(constant), None, None, None, None) => into_output!(Output::Constant(output_id, constant)),
-                (None, Some(public), None, None, None) => into_output!(Output::Public(output_id, public)),
-                (None, None, Some(private), None, None) => into_output!(Output::Private(output_id, private)),
-                (None, None, None, Some(record), None) => into_output!(Output::Record(output_id, record)),
-                (None, None, None, None, Some(_)) => Output::ExternalRecord(output_id),
-                (None, None, None, None, None) => bail!("Missing output '{output_id}' in transition '{transition_id}'"),
-                _ => bail!("Found multiple outputs for the output ID '{output_id}' in transition '{transition_id}'"),
-            };
-
-            Ok(output)
-        };
-
-        // Retrieve the output IDs.
-        match self.output_ids.get(&transition_id)? {
-            Some(Cow::Borrowed(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
-            Some(Cow::Owned(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
-            None => Ok(vec![]),
-        }
+    fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
+        self.storage.get(transition_id)
     }
 
     /// Stores the given `(transition ID, output)` pair into storage.
-    pub fn insert(&mut self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
-        // Store the output IDs.
-        self.output_ids.insert(transition_id, outputs.iter().map(Output::id).cloned().collect())?;
-
-        // Store the outputs.
-        for output in outputs {
-            match output {
-                Output::Constant(output_id, constant) => self.constant.insert(*output_id, constant.clone())?,
-                Output::Public(output_id, public) => self.public.insert(*output_id, public.clone())?,
-                Output::Private(output_id, private) => self.private.insert(*output_id, private.clone())?,
-                Output::Record(commitment, checksum, optional_record) => {
-                    self.record.insert(*commitment, (*checksum, optional_record.clone()))?
-                }
-                Output::ExternalRecord(output_id) => self.external_record.insert(*output_id, ())?,
-            }
-        }
-        Ok(())
+    fn insert(&mut self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
+        self.storage.insert(transition_id, outputs)
     }
 
     /// Removes the output for the given `transition ID`.
-    pub fn remove(&mut self, transition_id: &N::TransitionID) -> Result<()> {
-        // A helper function to remove the output given the output ID.
-        let mut remove_output = |output_id| {
-            self.constant.remove(output_id)?;
-            self.public.remove(output_id)?;
-            self.private.remove(output_id)?;
-            self.record.remove(output_id)?;
-            self.external_record.remove(output_id)?;
-            Ok::<_, Error>(())
-        };
-
-        // Remove the outputs.
-        match self.output_ids.get(&transition_id)? {
-            Some(Cow::Borrowed(ids)) => ids.iter().try_for_each(|output_id| remove_output(output_id))?,
-            Some(Cow::Owned(ids)) => ids.iter().try_for_each(|output_id| remove_output(output_id))?,
-            None => return Ok(()),
-        };
-
-        // Remove the output IDs.
-        self.output_ids.remove(&transition_id)?;
-        Ok(())
+    fn remove(&mut self, transition_id: &N::TransitionID) -> Result<()> {
+        self.storage.remove(transition_id)
     }
 }
 
-impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
+impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Returns an iterator over the constant output IDs, for all transition outputs that are constant.
     pub fn constant_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.constant.keys()
@@ -354,7 +402,7 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
     }
 }
 
-impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
+impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Returns `true` if the given commitment exists.
     pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
         self.commitments().contains(commitment)
@@ -380,7 +428,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in crate::ledger::transition::output::test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let mut output_store = OutputMemory::new().open().unwrap();
+            let mut output_store = OutputMemory::new();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();

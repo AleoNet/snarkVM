@@ -36,6 +36,16 @@ pub struct MemoryMap<
 impl<
     K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+> Default for MemoryMap<K, V>
+{
+    fn default() -> Self {
+        Self { map: Default::default() }
+    }
+}
+
+impl<
+    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > FromIterator<(K, V)> for MemoryMap<K, V>
 {
     /// Initializes a new `MemoryMap` from the given iterator.
@@ -124,15 +134,5 @@ impl<
     ///
     fn values(&'a self) -> Self::Values {
         Values::new(self.iter())
-    }
-}
-
-impl<
-    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
-> Default for MemoryMap<K, V>
-{
-    fn default() -> Self {
-        Self { map: Default::default() }
     }
 }

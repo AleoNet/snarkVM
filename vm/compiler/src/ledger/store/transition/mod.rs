@@ -41,9 +41,9 @@ pub trait TransitionStorage<N: Network> {
     /// The transition program IDs and function names.
     type LocatorMap: for<'a> Map<'a, N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     /// The transition inputs.
-    type InputMap: InputStorage<N>;
+    type InputStorage: InputStorage<N>;
     /// The transition outputs.
-    type OutputMap: OutputStorage<N>;
+    type OutputStorage: OutputStorage<N>;
     /// The transition proofs.
     type ProofMap: for<'a> Map<'a, N::TransitionID, Proof<N>>;
     /// The transition public keys.
@@ -54,46 +54,30 @@ pub trait TransitionStorage<N: Network> {
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
     /// Returns the transition program IDs and function names.
-    fn locator_map(&self) -> Result<Self::LocatorMap>;
-    /// Returns the transition inputs.
-    fn input_map(&self) -> Result<Self::InputMap>;
-    /// Returns the transition outputs.
-    fn output_map(&self) -> Result<Self::OutputMap>;
+    fn locator_map(&self) -> &Self::LocatorMap;
+    /// Returns the transition input store.
+    fn input_store(&self) -> &InputStore<N, Self::InputStorage>;
+    /// Returns the transition output store.
+    fn output_store(&self) -> &OutputStore<N, Self::OutputStorage>;
     /// Returns the transition proofs.
-    fn proof_map(&self) -> Result<Self::ProofMap>;
+    fn proof_map(&self) -> &Self::ProofMap;
     /// Returns the transition public keys.
-    fn tpk_map(&self) -> Result<Self::TPKMap>;
+    fn tpk_map(&self) -> &Self::TPKMap;
     /// Returns the transition commitments.
-    fn tcm_map(&self) -> Result<Self::TCMMap>;
+    fn tcm_map(&self) -> &Self::TCMMap;
     /// Returns the transition fees.
-    fn fee_map(&self) -> Result<Self::FeeMap>;
-
-    /// Opens the transition store.
-    fn open(&self) -> Result<TransitionStore<N, Self>>
-    where
-        Self: Sized,
-    {
-        Ok(TransitionStore::new(
-            self.locator_map()?,
-            self.input_map()?,
-            self.output_map()?,
-            self.proof_map()?,
-            self.tpk_map()?,
-            self.tcm_map()?,
-            self.fee_map()?,
-        ))
-    }
+    fn fee_map(&self) -> &Self::FeeMap;
 }
 
 /// An in-memory transition input storage.
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct TransitionMemory<N: Network> {
     /// The transition program IDs and function names.
     locator_map: MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>,
-    /// The transition inputs.
-    input_map: InputMemory<N>,
-    /// The transition outputs.
-    output_map: OutputMemory<N>,
+    /// The transition input store.
+    input_store: InputStore<N, InputMemory<N>>,
+    /// The transition output store.
+    output_store: OutputStore<N, OutputMemory<N>>,
     /// The transition proofs.
     proof_map: MemoryMap<N::TransitionID, Proof<N>>,
     /// The transition public keys.
@@ -109,8 +93,8 @@ impl<N: Network> TransitionMemory<N> {
     pub fn new() -> Self {
         Self {
             locator_map: MemoryMap::default(),
-            input_map: InputMemory::new(),
-            output_map: OutputMemory::new(),
+            input_store: InputStore::new(InputMemory::new()),
+            output_store: OutputStore::new(OutputMemory::new()),
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
@@ -122,46 +106,46 @@ impl<N: Network> TransitionMemory<N> {
 #[rustfmt::skip]
 impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
-    type InputMap = InputMemory<N>;
-    type OutputMap = OutputMemory<N>;
+    type InputStorage = InputMemory<N>;
+    type OutputStorage = OutputMemory<N>;
     type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
     type FeeMap = MemoryMap<N::TransitionID, i64>;
 
     /// Returns the transition program IDs and function names.
-    fn locator_map(&self) -> Result<Self::LocatorMap> {
-        Ok(self.locator_map.clone())
+    fn locator_map(&self) -> &Self::LocatorMap {
+        &self.locator_map
     }
 
-    /// Returns the transition inputs.
-    fn input_map(&self) -> Result<Self::InputMap> {
-        Ok(self.input_map.clone())
+    /// Returns the transition input store.
+    fn input_store(&self) -> &InputStore<N, Self::InputStorage> {
+        &self.input_store
     }
 
-    /// Returns the transition outputs.
-    fn output_map(&self) -> Result<Self::OutputMap> {
-        Ok(self.output_map.clone())
+    /// Returns the transition output store.
+    fn output_store(&self) -> &OutputStore<N, Self::OutputStorage> {
+        &self.output_store
     }
 
     /// Returns the transition proofs.
-    fn proof_map(&self) -> Result<Self::ProofMap> {
-        Ok(self.proof_map.clone())
+    fn proof_map(&self) -> &Self::ProofMap {
+        &self.proof_map
     }
 
     /// Returns the transition public keys.
-    fn tpk_map(&self) -> Result<Self::TPKMap> {
-        Ok(self.tpk_map.clone())
+    fn tpk_map(&self) -> &Self::TPKMap {
+        &self.tpk_map
     }
 
     /// Returns the transition commitments.
-    fn tcm_map(&self) -> Result<Self::TCMMap> {
-        Ok(self.tcm_map.clone())
+    fn tcm_map(&self) -> &Self::TCMMap {
+        &self.tcm_map
     }
 
     /// Returns the transition fees.
-    fn fee_map(&self) -> Result<Self::FeeMap> {
-        Ok(self.fee_map.clone())
+    fn fee_map(&self) -> &Self::FeeMap {
+        &self.fee_map
     }
 }
 
@@ -169,9 +153,9 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     /// The map of transition program IDs and function names.
     locator: T::LocatorMap,
     /// The map of transition inputs.
-    inputs: T::InputMap,
+    inputs: InputStore<N, T::InputStorage>,
     /// The map of transition outputs.
-    outputs: T::OutputMap,
+    outputs: OutputStore<N, T::OutputStorage>,
     /// The map of transition proofs.
     proof: T::ProofMap,
     /// The map of transition public keys.
@@ -180,26 +164,24 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     tcm: T::TCMMap,
     /// The map of transition fees.
     fee: T::FeeMap,
+    /// The transition storage.
+    storage: T,
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-    /// Initializes a new transition store from the given maps.
-    pub fn new(
-        locator: T::LocatorMap,
-        inputs: T::InputMap,
-        outputs: T::OutputMap,
-        proof: T::ProofMap,
-        tpk: T::TPKMap,
-        tcm: T::TCMMap,
-        fee: T::FeeMap,
-    ) -> Self {
-        Self { locator, inputs, outputs, proof, tpk, tcm, fee }
-    }
-
-    /// Initializes a new transition store from the given transition storage.
-    pub fn from(storage: T) -> Result<Self> {
-        storage.open()
-    }
+    // /// Initializes a new transition store.
+    // pub fn new(storage: T) -> Self {
+    //     Self {
+    //         locator: storage.locator_map().clone(),
+    //         inputs: storage.input_store().clone(),
+    //         outputs: storage.output_store().clone(),
+    //         proof: storage.proof_map().clone(),
+    //         tpk: storage.tpk_map().clone(),
+    //         tcm: storage.tcm_map().clone(),
+    //         fee: storage.fee_map().clone(),
+    //         storage,
+    //     }
+    // }
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
