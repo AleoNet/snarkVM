@@ -114,7 +114,7 @@ pub trait InputStorage<N: Network>: Clone {
     }
 
     /// Stores the given `(transition ID, input)` pair into storage.
-    fn insert(&mut self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
+    fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
         // Store the input IDs.
         self.id_map().insert(transition_id, inputs.iter().map(Input::id).cloned().collect())?;
 
@@ -134,7 +134,7 @@ pub trait InputStorage<N: Network>: Clone {
     }
 
     /// Removes the input for the given `transition ID`.
-    fn remove(&mut self, transition_id: &N::TransitionID) -> Result<()> {
+    fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         // Retrieve the input IDs.
         let input_ids: Vec<_> = match self.id_map().get(&transition_id)? {
             Some(Cow::Borrowed(ids)) => ids.iter().cloned().collect(),
@@ -263,22 +263,22 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     }
 
     /// Returns the input IDs for the given `transition ID`.
-    fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+    pub fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
         self.storage.get_ids(transition_id)
     }
 
     /// Returns the input for the given `transition ID`.
-    fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Input<N>>> {
+    pub fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Input<N>>> {
         self.storage.get(transition_id)
     }
 
     /// Stores the given `(transition ID, input)` pair into storage.
-    fn insert(&mut self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
+    pub fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
         self.storage.insert(transition_id, inputs)
     }
 
     /// Removes the input for the given `transition ID`.
-    fn remove(&mut self, transition_id: &N::TransitionID) -> Result<()> {
+    pub fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         self.storage.remove(transition_id)
     }
 }
@@ -305,7 +305,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     }
 
     /// Returns an iterator over the external record input IDs, for all transition inputs that are external records.
-    pub fn external_record_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+    pub fn external_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.private.keys()
     }
 }
@@ -381,7 +381,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let mut input_store = InputMemory::new();
+            let input_store = InputMemory::new();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();

@@ -23,13 +23,15 @@ pub use output::*;
 use crate::{
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
+        Origin,
         Transition,
     },
     snark::Proof,
+    unwrap_cow,
 };
 use console::{
     network::prelude::*,
-    program::{Identifier, ProgramID},
+    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 
@@ -37,7 +39,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition input storage.
-pub trait TransitionStorage<N: Network> {
+pub trait TransitionStorage<N: Network>: Clone {
     /// The transition program IDs and function names.
     type LocatorMap: for<'a> Map<'a, N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     /// The transition inputs.
@@ -67,6 +69,91 @@ pub trait TransitionStorage<N: Network> {
     fn tcm_map(&self) -> &Self::TCMMap;
     /// Returns the transition fees.
     fn fee_map(&self) -> &Self::FeeMap;
+
+    /// Returns the transition for the given `transition ID`.
+    fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
+        // Retrieve the program ID and function name.
+        let (program_id, function_name) = match self.locator_map().get(transition_id)? {
+            Some(locator) => unwrap_cow!(locator),
+            None => return Ok(None),
+        };
+        // Retrieve the inputs.
+        let inputs = self.input_store().get(transition_id)?;
+        // Retrieve the outputs.
+        let outputs = self.output_store().get(transition_id)?;
+        // Retrieve the proof.
+        let proof = self.proof_map().get(transition_id)?;
+        // Retrieve `tpk`.
+        let tpk = self.tpk_map().get(transition_id)?;
+        // Retrieve `tcm`.
+        let tcm = self.tcm_map().get(transition_id)?;
+        // Retrieve the fee.
+        let fee = self.fee_map().get(transition_id)?;
+
+        match (proof, tpk, tcm, fee) {
+            (Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
+                // Construct the transition.
+                let transition = Transition::new(
+                    program_id,
+                    function_name,
+                    inputs,
+                    outputs,
+                    unwrap_cow!(proof),
+                    unwrap_cow!(tpk),
+                    unwrap_cow!(tcm),
+                    unwrap_cow!(fee),
+                )?;
+                // Ensure the transition ID matches.
+                match transition.id() == transition_id {
+                    true => Ok(Some(transition)),
+                    false => bail!("Mismatch in the transition ID '{transition_id}'"),
+                }
+            }
+            _ => bail!("Transition '{transition_id}' is missing some data (possible corruption)"),
+        }
+    }
+
+    /// Stores the given `transition` into storage.
+    fn insert(&self, transition: Transition<N>) -> Result<()> {
+        // Retrieve the transition ID.
+        let transition_id = *transition.id();
+        // Store the program ID and function name.
+        self.locator_map().insert(transition_id, (*transition.program_id(), *transition.function_name()))?;
+        // Store the inputs.
+        self.input_store().insert(transition_id, transition.inputs())?;
+        // Store the outputs.
+        self.output_store().insert(transition_id, transition.outputs())?;
+        // Store the proof.
+        self.proof_map().insert(transition_id, transition.proof().clone())?;
+        // Store `tpk`.
+        self.tpk_map().insert(transition_id, *transition.tpk())?;
+        // Store `tcm`.
+        self.tcm_map().insert(transition_id, *transition.tcm())?;
+        // Store the fee.
+        self.fee_map().insert(transition_id, *transition.fee())?;
+
+        Ok(())
+    }
+
+    /// Removes the input for the given `transition ID`.
+    fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
+        // Remove the program ID and function name.
+        self.locator_map().remove(transition_id)?;
+        // Remove the inputs.
+        self.input_store().remove(transition_id)?;
+        // Remove the outputs.
+        self.output_store().remove(transition_id)?;
+        // Remove the proof.
+        self.proof_map().remove(transition_id)?;
+        // Remove `tpk`.
+        self.tpk_map().remove(transition_id)?;
+        // Remove `tcm`.
+        self.tcm_map().remove(transition_id)?;
+        // Remove the fee.
+        self.fee_map().remove(transition_id)?;
+
+        Ok(())
+    }
 }
 
 /// An in-memory transition input storage.
@@ -193,24 +280,194 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-    // /// Returns the transition for the given `transition ID`.
-    // pub fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
-    //     // Retrieve the program ID and function name.
-    //     let (program_id, function_name) = self
-    //         .locator
-    //         .get(transition_id)?
-    //         .ok_or_else(|| anyhow!("Missing the program ID and function name for transition '{transition}'"))?;
-    //     // Retrieve the inputs.
-    //     let inputs = self.inputs.get(transition_id)?;
-    // }
+    /// Returns the transition for the given `transition ID`.
+    pub fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
+        self.storage.get(transition_id)
+    }
 
-    //     /// Stores the given `(transition ID, transition)` pair into storage.
-    //     pub fn insert(&mut self, transition_id: N::TransitionID, transition: Transition<N>) -> Result<()> {
-    //     }
-    //
-    //     /// Removes the input for the given `transition ID`.
-    //     pub fn remove(&mut self, transition_id: &N::TransitionID) -> Result<()> {
-    //
-    //         Ok(())
-    //     }
+    /// Stores the given `transition` into storage.
+    pub fn insert(&self, transition: Transition<N>) -> Result<()> {
+        self.storage.insert(transition)
+    }
+
+    /// Removes the input for the given `transition ID`.
+    pub fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
+        self.storage.remove(transition_id)
+    }
+}
+
+impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns an iterator over the constant input IDs, for all transition inputs that are constant.
+    pub fn constant_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.constant_input_ids()
+    }
+
+    /// Returns an iterator over the public input IDs, for all transition inputs that are public.
+    pub fn public_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.public_input_ids()
+    }
+
+    /// Returns an iterator over the private input IDs, for all transition inputs that are private.
+    pub fn private_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.private_input_ids()
+    }
+
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
+    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.serial_numbers()
+    }
+
+    /// Returns an iterator over the external record input IDs, for all transition inputs that are external records.
+    pub fn external_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.external_input_ids()
+    }
+
+    /* Output */
+
+    /// Returns an iterator over the constant output IDs, for all transition outputs that are constant.
+    pub fn constant_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.constant_output_ids()
+    }
+
+    /// Returns an iterator over the public output IDs, for all transition outputs that are public.
+    pub fn public_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.public_output_ids()
+    }
+
+    /// Returns an iterator over the private output IDs, for all transition outputs that are private.
+    pub fn private_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.private_output_ids()
+    }
+
+    /// Returns an iterator over the commitments, for all transition outputs that are records.
+    pub fn commitments(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.commitments()
+    }
+
+    /// Returns an iterator over the external record output IDs, for all transition outputs that are external records.
+    pub fn external_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.external_output_ids()
+    }
+}
+
+impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns an iterator over the constant inputs, for all transitions.
+    pub fn constant_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
+        self.inputs.constant_inputs()
+    }
+
+    /// Returns an iterator over the constant inputs, for all transitions.
+    pub fn public_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
+        self.inputs.public_inputs()
+    }
+
+    /// Returns an iterator over the private inputs, for all transitions.
+    pub fn private_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Ciphertext<N>>> {
+        self.inputs.private_inputs()
+    }
+
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.tags()
+    }
+
+    /// Returns an iterator over the origins, for all transition inputs that are records.
+    pub fn origins(&self) -> impl '_ + Iterator<Item = Cow<'_, Origin<N>>> {
+        self.inputs.origins()
+    }
+
+    /* Output */
+
+    /// Returns an iterator over the constant outputs, for all transitions.
+    pub fn constant_outputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
+        self.outputs.constant_outputs()
+    }
+
+    /// Returns an iterator over the constant outputs, for all transitions.
+    pub fn public_outputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
+        self.outputs.public_outputs()
+    }
+
+    /// Returns an iterator over the private outputs, for all transitions.
+    pub fn private_outputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Ciphertext<N>>> {
+        self.outputs.private_outputs()
+    }
+
+    /// Returns an iterator over the checksums, for all transition outputs that are records.
+    pub fn checksums(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.checksums()
+    }
+
+    /// Returns an iterator over the records, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = Cow<'_, Record<N, Ciphertext<N>>>> {
+        self.outputs.records()
+    }
+}
+
+impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+        self.inputs.contains_serial_number(serial_number)
+    }
+
+    /// Returns `true` if the given tag exists.
+    pub fn contains_tag(&self, tag: &Field<N>) -> bool {
+        self.inputs.contains_tag(tag)
+    }
+
+    /// Returns `true` if the given origin exists.
+    pub fn contains_origin(&self, origin: &Origin<N>) -> bool {
+        self.inputs.contains_origin(origin)
+    }
+
+    /* Output */
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+        self.outputs.contains_commitment(commitment)
+    }
+
+    /// Returns `true` if the given checksum exists.
+    pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
+        self.outputs.contains_checksum(checksum)
+    }
+
+    /// Returns `true` if the given record exists.
+    pub fn contains_record(&self, record: &Record<N, Ciphertext<N>>) -> bool {
+        self.outputs.contains_record(record)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_insert_get_remove() {
+        // Sample a transition.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transition = transaction.transitions().next().unwrap();
+        let transition_id = *transition.id();
+
+        // Initialize a new transition store.
+        let transition_store = TransitionMemory::new();
+
+        // Ensure the transition does not exist.
+        let candidate = transition_store.get(&transition_id).unwrap();
+        assert_eq!(None, candidate);
+
+        // Insert the transition.
+        transition_store.insert(transition.clone()).unwrap();
+
+        // Retrieve the transition.
+        let candidate = transition_store.get(&transition_id).unwrap();
+        assert_eq!(Some(transition.clone()), candidate);
+
+        // Remove the transition.
+        transition_store.remove(&transition_id).unwrap();
+
+        // Retrieve the transition.
+        let candidate = transition_store.get(&transition_id).unwrap();
+        assert_eq!(None, candidate);
+    }
 }
