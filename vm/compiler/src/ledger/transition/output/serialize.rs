@@ -125,9 +125,6 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::network::Testnet3;
-
-    type CurrentNetwork = Testnet3;
 
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,

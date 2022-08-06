@@ -130,14 +130,9 @@ impl<N: Network> ToBytes for Output<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use console::{
-        network::Testnet3,
-        program::{Ciphertext, Plaintext},
-    };
+    use console::network::Testnet3;
 
     type CurrentNetwork = Testnet3;
-
-    const ITERATIONS: u32 = 1000;
 
     #[test]
     fn test_bytes() {

@@ -205,6 +205,7 @@ pub(crate) mod test_helpers {
             &format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"),
         ).unwrap();
         let record_ciphertext = record.encrypt(randomizer).unwrap();
+        let record_checksum = CurrentNetwork::hash_bhp1024(&record_ciphertext.to_bits_le()).unwrap();
 
         vec![
             (transition_id, input),
@@ -215,7 +216,7 @@ pub(crate) mod test_helpers {
             (Uniform::rand(rng), Output::Private(Uniform::rand(rng), None)),
             (Uniform::rand(rng), Output::Private(ciphertext_hash, Some(ciphertext))),
             (Uniform::rand(rng), Output::Record(Uniform::rand(rng), Uniform::rand(rng), None)),
-            (Uniform::rand(rng), Output::Record(Uniform::rand(rng), Uniform::rand(rng), Some(record_ciphertext))),
+            (Uniform::rand(rng), Output::Record(Uniform::rand(rng), record_checksum, Some(record_ciphertext))),
             (Uniform::rand(rng), Output::ExternalRecord(Uniform::rand(rng))),
         ]
     }
