@@ -20,16 +20,17 @@ use crate::ledger::map::{
     MapReader,
 };
 use console::network::prelude::*;
+use indexmap::IndexMap;
 
 use core::{borrow::Borrow, hash::Hash};
-use std::{borrow::Cow, collections::hash_map::HashMap};
+use std::borrow::Cow;
 
 #[derive(Clone)]
 pub struct MemoryMap<
     K: PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
     V: PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
 > {
-    pub(super) map: HashMap<K, V>,
+    pub(super) map: IndexMap<K, V>,
 }
 
 impl<
@@ -39,7 +40,7 @@ impl<
 {
     /// Initializes a new `MemoryMap` from the given iterator.
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Self { map: HashMap::from_iter(iter) }
+        Self { map: IndexMap::from_iter(iter) }
     }
 }
 
@@ -132,6 +133,6 @@ impl<
 > Default for MemoryMap<K, V>
 {
     fn default() -> Self {
-        Self { map: HashMap::new() }
+        Self { map: Default::default() }
     }
 }

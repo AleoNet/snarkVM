@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{borrow::Cow, collections::hash_map};
+use indexmap::map;
+
+use std::borrow::Cow;
 
 /// An iterator over all key-value pairs in a MemoryMap.
 pub struct Iter<'a, K: 'a + Clone, V: 'a + Clone> {
-    pub(crate) inner: hash_map::Iter<'a, K, V>,
+    pub(crate) inner: map::Iter<'a, K, V>,
 }
 
 impl<'a, K: 'a + Clone, V: 'a + Clone> Iter<'a, K, V> {
     #[inline]
-    pub(crate) fn new(inner: hash_map::Iter<'a, K, V>) -> Self {
+    pub(crate) fn new(inner: map::Iter<'a, K, V>) -> Self {
         Self { inner }
     }
 }
