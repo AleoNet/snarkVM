@@ -21,7 +21,7 @@ mod get;
 pub use get::*;
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapReader},
+    map::{memory_map::MemoryMap, Map, MapRead},
     Block,
     Header,
     Signature,

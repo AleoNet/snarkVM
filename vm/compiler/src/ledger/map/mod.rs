@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod iterators;
 pub mod memory_map;
 
 use console::network::prelude::*;
@@ -25,28 +24,28 @@ use std::borrow::Cow;
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
-    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
-    V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
->: Clone + MapReader<'a, K, V> + FromIterator<(K, V)> + Sync
+    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Send + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Send + Sync,
+>: Clone + MapRead<'a, K, V> + FromIterator<(K, V)> + Sync
 {
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert(&mut self, key: K, value: V) -> Result<()>;
+    fn insert(&self, key: K, value: V) -> Result<()>;
 
     ///
     /// Removes the key-value pair for the given key from the map.
     ///
-    fn remove<Q>(&mut self, key: &Q) -> Result<()>
+    fn remove<Q>(&self, key: &Q) -> Result<()>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.
-pub trait MapReader<
+pub trait MapRead<
     'a,
-    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
+    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Sync,
 >
 {

@@ -22,7 +22,7 @@ pub use output::*;
 
 use crate::{
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapReader},
+        map::{memory_map::MemoryMap, Map, MapRead},
         Transition,
     },
     snark::Proof,
@@ -70,7 +70,7 @@ pub trait TransitionStorage<N: Network> {
 }
 
 /// An in-memory transition input storage.
-// #[derive(Clone)]
+#[derive(Clone)]
 pub struct TransitionMemory<N: Network> {
     /// The transition program IDs and function names.
     locator_map: MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>,
@@ -149,6 +149,8 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     }
 }
 
+/// The transition store.
+#[derive(Clone)]
 pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     /// The map of transition program IDs and function names.
     locator: T::LocatorMap,
@@ -169,19 +171,19 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-    // /// Initializes a new transition store.
-    // pub fn new(storage: T) -> Self {
-    //     Self {
-    //         locator: storage.locator_map().clone(),
-    //         inputs: storage.input_store().clone(),
-    //         outputs: storage.output_store().clone(),
-    //         proof: storage.proof_map().clone(),
-    //         tpk: storage.tpk_map().clone(),
-    //         tcm: storage.tcm_map().clone(),
-    //         fee: storage.fee_map().clone(),
-    //         storage,
-    //     }
-    // }
+    /// Initializes a new transition store.
+    pub fn new(storage: T) -> Self {
+        Self {
+            locator: storage.locator_map().clone(),
+            inputs: (*storage.input_store()).clone(),
+            outputs: (*storage.output_store()).clone(),
+            proof: storage.proof_map().clone(),
+            tpk: storage.tpk_map().clone(),
+            tcm: storage.tcm_map().clone(),
+            fee: storage.fee_map().clone(),
+            storage,
+        }
+    }
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {

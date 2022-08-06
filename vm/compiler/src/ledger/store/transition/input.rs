@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapReader},
+    map::{memory_map::MemoryMap, Map, MapRead},
     transition::{Input, Origin},
 };
 use console::{
@@ -28,7 +28,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition input storage.
-pub trait InputStorage<N: Network> {
+pub trait InputStorage<N: Network>: Clone {
     /// The mapping of `transition ID` to `input ID`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
@@ -54,19 +54,6 @@ pub trait InputStorage<N: Network> {
     fn record_map(&self) -> &Self::RecordMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
-
-    /// Returns the ID map.
-    fn id_map_mut(&mut self) -> &mut Self::IDMap;
-    /// Returns the constant map.
-    fn constant_map_mut(&mut self) -> &mut Self::ConstantMap;
-    /// Returns the public map.
-    fn public_map_mut(&mut self) -> &mut Self::PublicMap;
-    /// Returns the private map.
-    fn private_map_mut(&mut self) -> &mut Self::PrivateMap;
-    /// Returns the record map.
-    fn record_map_mut(&mut self) -> &mut Self::RecordMap;
-    /// Returns the external record map.
-    fn external_record_map_mut(&mut self) -> &mut Self::ExternalRecordMap;
 
     /// Returns the input IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
@@ -129,18 +116,18 @@ pub trait InputStorage<N: Network> {
     /// Stores the given `(transition ID, input)` pair into storage.
     fn insert(&mut self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
         // Store the input IDs.
-        self.id_map_mut().insert(transition_id, inputs.iter().map(Input::id).cloned().collect())?;
+        self.id_map().insert(transition_id, inputs.iter().map(Input::id).cloned().collect())?;
 
         // Store the inputs.
         for input in inputs {
             match input {
-                Input::Constant(input_id, constant) => self.constant_map_mut().insert(*input_id, constant.clone())?,
-                Input::Public(input_id, public) => self.public_map_mut().insert(*input_id, public.clone())?,
-                Input::Private(input_id, private) => self.private_map_mut().insert(*input_id, private.clone())?,
+                Input::Constant(input_id, constant) => self.constant_map().insert(*input_id, constant.clone())?,
+                Input::Public(input_id, public) => self.public_map().insert(*input_id, public.clone())?,
+                Input::Private(input_id, private) => self.private_map().insert(*input_id, private.clone())?,
                 Input::Record(commitment, checksum, optional_record) => {
-                    self.record_map_mut().insert(*commitment, (*checksum, optional_record.clone()))?
+                    self.record_map().insert(*commitment, (*checksum, optional_record.clone()))?
                 }
-                Input::ExternalRecord(input_id) => self.external_record_map_mut().insert(*input_id, ())?,
+                Input::ExternalRecord(input_id) => self.external_record_map().insert(*input_id, ())?,
             }
         }
         Ok(())
@@ -156,15 +143,15 @@ pub trait InputStorage<N: Network> {
         };
 
         // Remove the input IDs.
-        self.id_map_mut().remove(&transition_id)?;
+        self.id_map().remove(&transition_id)?;
 
         // Remove the inputs.
         for input_id in input_ids {
-            self.constant_map_mut().remove(&input_id)?;
-            self.public_map_mut().remove(&input_id)?;
-            self.private_map_mut().remove(&input_id)?;
-            self.record_map_mut().remove(&input_id)?;
-            self.external_record_map_mut().remove(&input_id)?;
+            self.constant_map().remove(&input_id)?;
+            self.public_map().remove(&input_id)?;
+            self.private_map().remove(&input_id)?;
+            self.record_map().remove(&input_id)?;
+            self.external_record_map().remove(&input_id)?;
         }
 
         Ok(())
@@ -240,41 +227,10 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
     }
-
-    /* Mutable */
-
-    /// Returns the ID map.
-    fn id_map_mut(&mut self) -> &mut Self::IDMap {
-        &mut self.id_map
-    }
-
-    /// Returns the constant map.
-    fn constant_map_mut(&mut self) -> &mut Self::ConstantMap {
-        &mut self.constant
-    }
-
-    /// Returns the public map.
-    fn public_map_mut(&mut self) -> &mut Self::PublicMap {
-        &mut self.public
-    }
-
-    /// Returns the private map.
-    fn private_map_mut(&mut self) -> &mut Self::PrivateMap {
-        &mut self.private
-    }
-
-    /// Returns the record map.
-    fn record_map_mut(&mut self) -> &mut Self::RecordMap {
-        &mut self.record
-    }
-
-    /// Returns the external record map.
-    fn external_record_map_mut(&mut self) -> &mut Self::ExternalRecordMap {
-        &mut self.external_record
-    }
 }
 
-/// A transition input storage.
+/// The transition input store.
+#[derive(Clone)]
 pub struct InputStore<N: Network, I: InputStorage<N>> {
     /// The map of `transition ID` to `[input ID]`.
     input_ids: I::IDMap,

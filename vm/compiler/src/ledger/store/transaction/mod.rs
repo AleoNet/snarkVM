@@ -24,7 +24,7 @@ mod iterators;
 pub use iterators::*;
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapReader},
+    map::{memory_map::MemoryMap, Map, MapRead},
     Deployment,
     Origin,
     Transaction,

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapReader},
+    map::{memory_map::MemoryMap, Map, MapRead},
     transition::Output,
 };
 use console::{
@@ -28,7 +28,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition output storage.
-pub trait OutputStorage<N: Network> {
+pub trait OutputStorage<N: Network>: Clone {
     /// The mapping of `transition ID` to `output ID`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
     /// The mapping of `plaintext hash` to `(optional) plaintext`.
@@ -54,19 +54,6 @@ pub trait OutputStorage<N: Network> {
     fn record_map(&self) -> &Self::RecordMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
-
-    /// Returns the ID map.
-    fn id_map_mut(&mut self) -> &mut Self::IDMap;
-    /// Returns the constant map.
-    fn constant_map_mut(&mut self) -> &mut Self::ConstantMap;
-    /// Returns the public map.
-    fn public_map_mut(&mut self) -> &mut Self::PublicMap;
-    /// Returns the private map.
-    fn private_map_mut(&mut self) -> &mut Self::PrivateMap;
-    /// Returns the record map.
-    fn record_map_mut(&mut self) -> &mut Self::RecordMap;
-    /// Returns the external record map.
-    fn external_record_map_mut(&mut self) -> &mut Self::ExternalRecordMap;
 
     /// Returns the output IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
@@ -129,20 +116,18 @@ pub trait OutputStorage<N: Network> {
     /// Stores the given `(transition ID, output)` pair into storage.
     fn insert(&mut self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
         // Store the output IDs.
-        self.id_map_mut().insert(transition_id, outputs.iter().map(Output::id).cloned().collect())?;
+        self.id_map().insert(transition_id, outputs.iter().map(Output::id).cloned().collect())?;
 
         // Store the outputs.
         for output in outputs {
             match output {
-                Output::Constant(output_id, constant) => {
-                    self.constant_map_mut().insert(*output_id, constant.clone())?
-                }
-                Output::Public(output_id, public) => self.public_map_mut().insert(*output_id, public.clone())?,
-                Output::Private(output_id, private) => self.private_map_mut().insert(*output_id, private.clone())?,
+                Output::Constant(output_id, constant) => self.constant_map().insert(*output_id, constant.clone())?,
+                Output::Public(output_id, public) => self.public_map().insert(*output_id, public.clone())?,
+                Output::Private(output_id, private) => self.private_map().insert(*output_id, private.clone())?,
                 Output::Record(commitment, checksum, optional_record) => {
-                    self.record_map_mut().insert(*commitment, (*checksum, optional_record.clone()))?
+                    self.record_map().insert(*commitment, (*checksum, optional_record.clone()))?
                 }
-                Output::ExternalRecord(output_id) => self.external_record_map_mut().insert(*output_id, ())?,
+                Output::ExternalRecord(output_id) => self.external_record_map().insert(*output_id, ())?,
             }
         }
         Ok(())
@@ -158,15 +143,15 @@ pub trait OutputStorage<N: Network> {
         };
 
         // Remove the output IDs.
-        self.id_map_mut().remove(&transition_id)?;
+        self.id_map().remove(&transition_id)?;
 
         // Remove the outputs.
         for output_id in output_ids {
-            self.constant_map_mut().remove(&output_id)?;
-            self.public_map_mut().remove(&output_id)?;
-            self.private_map_mut().remove(&output_id)?;
-            self.record_map_mut().remove(&output_id)?;
-            self.external_record_map_mut().remove(&output_id)?;
+            self.constant_map().remove(&output_id)?;
+            self.public_map().remove(&output_id)?;
+            self.private_map().remove(&output_id)?;
+            self.record_map().remove(&output_id)?;
+            self.external_record_map().remove(&output_id)?;
         }
 
         Ok(())
@@ -194,12 +179,12 @@ impl<N: Network> OutputMemory<N> {
     /// Creates a new in-memory transition output storage.
     pub fn new() -> Self {
         Self {
-            id_map: MemoryMap::default(),
-            constant: MemoryMap::default(),
-            public: MemoryMap::default(),
-            private: MemoryMap::default(),
-            record: MemoryMap::default(),
-            external_record: MemoryMap::default(),
+            id_map: Default::default(),
+            constant: Default::default(),
+            public: Default::default(),
+            private: Default::default(),
+            record: Default::default(),
+            external_record: Default::default(),
         }
     }
 }
@@ -242,41 +227,10 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
     }
-
-    /* Mutable */
-
-    /// Returns the ID map.
-    fn id_map_mut(&mut self) -> &mut Self::IDMap {
-        &mut self.id_map
-    }
-
-    /// Returns the constant map.
-    fn constant_map_mut(&mut self) -> &mut Self::ConstantMap {
-        &mut self.constant
-    }
-
-    /// Returns the public map.
-    fn public_map_mut(&mut self) -> &mut Self::PublicMap {
-        &mut self.public
-    }
-
-    /// Returns the private map.
-    fn private_map_mut(&mut self) -> &mut Self::PrivateMap {
-        &mut self.private
-    }
-
-    /// Returns the record map.
-    fn record_map_mut(&mut self) -> &mut Self::RecordMap {
-        &mut self.record
-    }
-
-    /// Returns the external record map.
-    fn external_record_map_mut(&mut self) -> &mut Self::ExternalRecordMap {
-        &mut self.external_record
-    }
 }
 
-/// A transition output storage.
+/// The transition output store.
+#[derive(Clone)]
 pub struct OutputStore<N: Network, O: OutputStorage<N>> {
     /// The map of `transition ID` to `[output ID]`.
     output_ids: O::IDMap,
