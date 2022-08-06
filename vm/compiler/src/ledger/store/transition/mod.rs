@@ -23,7 +23,9 @@ pub use output::*;
 use crate::{
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
+        Input,
         Origin,
+        Output,
         Transition,
     },
     snark::Proof,
@@ -78,9 +80,9 @@ pub trait TransitionStorage<N: Network>: Clone {
             None => return Ok(None),
         };
         // Retrieve the inputs.
-        let inputs = self.input_store().get(transition_id)?;
+        let inputs = self.input_store().get_inputs(transition_id)?;
         // Retrieve the outputs.
-        let outputs = self.output_store().get(transition_id)?;
+        let outputs = self.output_store().get_outputs(transition_id)?;
         // Retrieve the proof.
         let proof = self.proof_map().get(transition_id)?;
         // Retrieve `tpk`.
@@ -277,13 +279,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             storage,
         }
     }
-}
-
-impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-    /// Returns the transition for the given `transition ID`.
-    pub fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
-        self.storage.get(transition_id)
-    }
 
     /// Stores the given `transition` into storage.
     pub fn insert(&self, transition: Transition<N>) -> Result<()> {
@@ -297,6 +292,49 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns the transition for the given `transition ID`.
+    pub fn get_transition(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
+        self.storage.get(transition_id)
+    }
+
+    /// Returns the input IDs for the given `transition ID`.
+    pub fn get_input_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        self.inputs.get_input_ids(transition_id)
+    }
+
+    /// Returns the inputs for the given `transition ID`.
+    pub fn get_inputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Input<N>>> {
+        self.inputs.get_inputs(transition_id)
+    }
+
+    /// Returns the output IDs for the given `transition ID`.
+    pub fn get_output_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        self.outputs.get_output_ids(transition_id)
+    }
+
+    /// Returns the outputs for the given `transition ID`.
+    pub fn get_outputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
+        self.outputs.get_outputs(transition_id)
+    }
+
+    /// Returns the record for the given `commitment`.
+    ///
+    /// If the record exists, `Ok(Some(record))` is returned.
+    /// If the record was purged, `Ok(None)` is returned.
+    /// If the record does not exist, `Err(error)` is returned.
+    pub fn get_record(&self, commitment: &Field<N>) -> Result<Option<Record<N, Ciphertext<N>>>> {
+        self.outputs.get_record(commitment)
+    }
+}
+
+impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns an iterator over the transition IDs, for all transitions.
+    pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
+        self.fee.keys()
+    }
+
+    /* Input */
+
     /// Returns an iterator over the constant input IDs, for all transition inputs that are constant.
     pub fn constant_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.inputs.constant_input_ids()
@@ -351,6 +389,8 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /* Input */
+
     /// Returns an iterator over the constant inputs, for all transitions.
     pub fn constant_inputs(&self) -> impl '_ + Iterator<Item = Cow<'_, Plaintext<N>>> {
         self.inputs.constant_inputs()
@@ -407,9 +447,38 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     pub fn records(&self) -> impl '_ + Iterator<Item = Cow<'_, Record<N, Ciphertext<N>>>> {
         self.outputs.records()
     }
+
+    /* Everything Else */
+
+    /// Returns an iterator over the proofs, for all transitions.
+    pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Proof<N>>> {
+        self.proof.values()
+    }
+
+    /// Returns an iterator over the transition public keys, for all transitions.
+    pub fn tpks(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
+        self.tpk.values()
+    }
+
+    /// Returns an iterator over the transition commitments, for all transitions.
+    pub fn tcms(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.tcm.values()
+    }
+
+    /// Returns an iterator over the transition fees, for all transitions.
+    pub fn fees(&self) -> impl '_ + Iterator<Item = Cow<'_, i64>> {
+        self.fee.values()
+    }
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns `true` if the given transition ID exists.
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
+        self.transition_ids().contains(transition_id)
+    }
+
+    /* Input */
+
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
         self.inputs.contains_serial_number(serial_number)
@@ -440,11 +509,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns `true` if the given nonce exists.
     pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
         self.outputs.contains_nonce(nonce)
-    }
-
-    /// Returns `true` if the given record exists.
-    pub fn contains_record(&self, record: &Record<N, Ciphertext<N>>) -> bool {
-        self.outputs.contains_record(record)
     }
 }
 

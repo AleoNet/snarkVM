@@ -16,6 +16,7 @@
 
 use crate::ledger::{
     map::{memory_map::MemoryMap, Map, MapRead},
+    store::CowIter,
     transition::{Input, Origin},
 };
 use console::{
@@ -58,7 +59,7 @@ pub trait InputStorage<N: Network>: Clone {
     /// Returns the input IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
         // Retrieve the input IDs.
-        match self.id_map().get(&transition_id)? {
+        match self.id_map().get(transition_id)? {
             Some(Cow::Borrowed(inputs)) => Ok(inputs.to_vec()),
             Some(Cow::Owned(inputs)) => Ok(inputs),
             None => Ok(vec![]),
@@ -106,7 +107,7 @@ pub trait InputStorage<N: Network>: Clone {
         };
 
         // Retrieve the input IDs.
-        match self.id_map().get(&transition_id)? {
+        match self.id_map().get(transition_id)? {
             Some(Cow::Borrowed(ids)) => ids.iter().map(|input_id| construct_input(*input_id)).collect(),
             Some(Cow::Owned(ids)) => ids.iter().map(|input_id| construct_input(*input_id)).collect(),
             None => Ok(vec![]),
@@ -136,8 +137,8 @@ pub trait InputStorage<N: Network>: Clone {
     /// Removes the input for the given `transition ID`.
     fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         // Retrieve the input IDs.
-        let input_ids: Vec<_> = match self.id_map().get(&transition_id)? {
-            Some(Cow::Borrowed(ids)) => ids.iter().cloned().collect(),
+        let input_ids: Vec<_> = match self.id_map().get(transition_id)? {
+            Some(Cow::Borrowed(ids)) => ids.to_vec(),
             Some(Cow::Owned(ids)) => ids.into_iter().collect(),
             None => return Ok(()),
         };
@@ -262,16 +263,6 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
         }
     }
 
-    /// Returns the input IDs for the given `transition ID`.
-    pub fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
-        self.storage.get_ids(transition_id)
-    }
-
-    /// Returns the input for the given `transition ID`.
-    pub fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Input<N>>> {
-        self.storage.get(transition_id)
-    }
-
     /// Stores the given `(transition ID, input)` pair into storage.
     pub fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
         self.storage.insert(transition_id, inputs)
@@ -284,6 +275,26 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 }
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
+    /// Returns the input IDs for the given `transition ID`.
+    pub fn get_input_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        self.storage.get_ids(transition_id)
+    }
+
+    /// Returns the inputs for the given `transition ID`.
+    pub fn get_inputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Input<N>>> {
+        self.storage.get(transition_id)
+    }
+}
+
+impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
+    /// Returns an iterator over the input IDs, for all transition inputs.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.input_ids.values().flat_map(|ids| match ids {
+            Cow::Borrowed(ids) => CowIter::Borrowed(ids.iter()),
+            Cow::Owned(ids) => CowIter::Owned(ids.into_iter()),
+        })
+    }
+
     /// Returns an iterator over the constant input IDs, for all transition inputs that are constant.
     pub fn constant_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.constant.keys()

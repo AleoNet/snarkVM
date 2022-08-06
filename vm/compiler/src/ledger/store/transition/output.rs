@@ -16,6 +16,7 @@
 
 use crate::ledger::{
     map::{memory_map::MemoryMap, Map, MapRead},
+    store::CowIter,
     transition::Output,
 };
 use console::{
@@ -58,7 +59,7 @@ pub trait OutputStorage<N: Network>: Clone {
     /// Returns the output IDs for the given `transition ID`.
     fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
         // Retrieve the output IDs.
-        match self.id_map().get(&transition_id)? {
+        match self.id_map().get(transition_id)? {
             Some(Cow::Borrowed(outputs)) => Ok(outputs.to_vec()),
             Some(Cow::Owned(outputs)) => Ok(outputs),
             None => Ok(vec![]),
@@ -106,7 +107,7 @@ pub trait OutputStorage<N: Network>: Clone {
         };
 
         // Retrieve the output IDs.
-        match self.id_map().get(&transition_id)? {
+        match self.id_map().get(transition_id)? {
             Some(Cow::Borrowed(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
             Some(Cow::Owned(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
             None => Ok(vec![]),
@@ -136,14 +137,14 @@ pub trait OutputStorage<N: Network>: Clone {
     /// Removes the output for the given `transition ID`.
     fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         // Retrieve the output IDs.
-        let output_ids: Vec<_> = match self.id_map().get(&transition_id)? {
-            Some(Cow::Borrowed(ids)) => ids.iter().cloned().collect(),
+        let output_ids: Vec<_> = match self.id_map().get(transition_id)? {
+            Some(Cow::Borrowed(ids)) => ids.to_vec(),
             Some(Cow::Owned(ids)) => ids.into_iter().collect(),
             None => return Ok(()),
         };
 
         // Remove the output IDs.
-        self.id_map().remove(&transition_id)?;
+        self.id_map().remove(transition_id)?;
 
         // Remove the outputs.
         for output_id in output_ids {
@@ -262,16 +263,6 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
         }
     }
 
-    /// Returns the output IDs for the given `transition ID`.
-    pub fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
-        self.storage.get_ids(transition_id)
-    }
-
-    /// Returns the output for the given `transition ID`.
-    pub fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
-        self.storage.get(transition_id)
-    }
-
     /// Stores the given `(transition ID, output)` pair into storage.
     pub fn insert(&self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
         self.storage.insert(transition_id, outputs)
@@ -284,6 +275,42 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
 }
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
+    /// Returns the output IDs for the given `transition ID`.
+    pub fn get_output_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        self.storage.get_ids(transition_id)
+    }
+
+    /// Returns the outputs for the given `transition ID`.
+    pub fn get_outputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
+        self.storage.get(transition_id)
+    }
+
+    /// Returns the record for the given `commitment`.
+    ///
+    /// If the record exists, `Ok(Some(record))` is returned.
+    /// If the record was purged, `Ok(None)` is returned.
+    /// If the record does not exist, `Err(error)` is returned.
+    pub fn get_record(&self, commitment: &Field<N>) -> Result<Option<Record<N, Ciphertext<N>>>> {
+        match self.record.get(commitment) {
+            Ok(Some(Cow::Borrowed((_, Some(record))))) => Ok(Some((*record).clone())),
+            Ok(Some(Cow::Owned((_, Some(record))))) => Ok(Some(record)),
+            Ok(Some(Cow::Borrowed((_, None)))) => Ok(None),
+            Ok(Some(Cow::Owned((_, None)))) => Ok(None),
+            Ok(None) => bail!("Record '{commitment}' not found"),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
+    /// Returns an iterator over the output IDs, for all transition outputs.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.output_ids.values().flat_map(|ids| match ids {
+            Cow::Borrowed(ids) => CowIter::Borrowed(ids.iter()),
+            Cow::Owned(ids) => CowIter::Owned(ids.into_iter()),
+        })
+    }
+
     /// Returns an iterator over the constant output IDs, for all transition outputs that are constant.
     pub fn constant_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.constant.keys()
@@ -379,11 +406,6 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Returns `true` if the given nonce exists.
     pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
         self.nonces().contains(nonce)
-    }
-
-    /// Returns `true` if the given record exists.
-    pub fn contains_record(&self, record: &Record<N, Ciphertext<N>>) -> bool {
-        self.records().contains(record)
     }
 }
 
