@@ -205,7 +205,12 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     // /// Returns the transition for the given `transition ID`.
     // pub fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
-    //     let (program_id, function_name) = self.locator.get(transition_id)?.ok_or_else(|| anyhow!("Missing the program ID and function name for transition '{transition}'"))?;
+    //     // Retrieve the program ID and function name.
+    //     let (program_id, function_name) = self
+    //         .locator
+    //         .get(transition_id)?
+    //         .ok_or_else(|| anyhow!("Missing the program ID and function name for transition '{transition}'"))?;
+    //     // Retrieve the inputs.
     //     let inputs = self.inputs.get(transition_id)?;
     // }
 

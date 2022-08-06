@@ -373,13 +373,6 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::Transition;
-    use console::{
-        network::Testnet3,
-        program::{Ciphertext, Literal, Plaintext},
-    };
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_insert_get_remove() {

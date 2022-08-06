@@ -16,8 +16,7 @@
 
 use crate::ledger::{
     map::{memory_map::MemoryMap, Map, MapReader},
-    store::CowIter,
-    transition::{Origin, Output},
+    transition::Output,
 };
 use console::{
     network::prelude::*,
@@ -375,13 +374,6 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::Transition;
-    use console::{
-        network::Testnet3,
-        program::{Ciphertext, Literal, Plaintext},
-    };
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_insert_get_remove() {
