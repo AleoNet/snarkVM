@@ -149,3 +149,49 @@ impl<N: Network> Input<N> {
         }
     }
 }
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use console::{network::Testnet3, program::Literal};
+
+    type CurrentNetwork = Testnet3;
+
+    /// Sample the transition inputs.
+    pub(crate) fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<CurrentNetwork>)> {
+        // Sample a transition.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transition = transaction.transitions().next().unwrap();
+
+        // Retrieve the transition ID and input.
+        let transition_id = *transition.id();
+        let input = transition.inputs().iter().next().unwrap().clone();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Sample a random plaintext.
+        let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
+        let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
+        // Sample a random ciphertext.
+        let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+        let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
+        // Sample a random origin (commitment).
+        let origin_commitment = Origin::Commitment(Uniform::rand(rng));
+        // Sample a random origin (state root).
+        let origin_state_root = Origin::StateRoot(Uniform::rand(rng));
+
+        vec![
+            (transition_id, input),
+            (Uniform::rand(rng), Input::Constant(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Input::Constant(plaintext_hash, Some(plaintext.clone()))),
+            (Uniform::rand(rng), Input::Public(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Input::Public(plaintext_hash, Some(plaintext))),
+            (Uniform::rand(rng), Input::Private(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Input::Private(ciphertext_hash, Some(ciphertext))),
+            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng), origin_commitment)),
+            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng), origin_state_root)),
+            (Uniform::rand(rng), Input::ExternalRecord(Uniform::rand(rng))),
+        ]
+    }
+}

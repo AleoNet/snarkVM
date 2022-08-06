@@ -139,42 +139,13 @@ mod tests {
 
     const ITERATIONS: u32 = 1000;
 
-    fn check_bytes(expected: Output<CurrentNetwork>) -> Result<()> {
-        // Check the byte representation.
-        let expected_bytes = expected.to_bytes_le()?;
-        assert!(expected == Output::read_le(&expected_bytes[..])?);
-        Ok(())
-    }
-
     #[test]
-    fn test_bytes() -> Result<()> {
-        let rng = &mut test_rng();
-
-        for _ in 0..ITERATIONS {
-            let plaintext = Plaintext::<CurrentNetwork>::from_str("true")?;
-            let ciphertext =
-                Ciphertext::<CurrentNetwork>::try_from((0..100).map(|_| Uniform::rand(rng)).collect::<Vec<_>>())
-                    .unwrap();
-
-            // Constant
-            check_bytes(Output::<CurrentNetwork>::Constant(Uniform::rand(rng), Some(plaintext.clone())))?;
-            check_bytes(Output::<CurrentNetwork>::Constant(Uniform::rand(rng), None))?;
-
-            // Public
-            check_bytes(Output::<CurrentNetwork>::Public(Uniform::rand(rng), Some(plaintext.clone())))?;
-            check_bytes(Output::<CurrentNetwork>::Public(Uniform::rand(rng), None))?;
-
-            // Private
-            check_bytes(Output::<CurrentNetwork>::Private(Uniform::rand(rng), Some(ciphertext)))?;
-            check_bytes(Output::<CurrentNetwork>::Private(Uniform::rand(rng), None))?;
-
-            // Record
-            // TODO (raychu86): Add serialization test for output with record ciphertext.
-            check_bytes(Output::<CurrentNetwork>::Record(Uniform::rand(rng), Uniform::rand(rng), None))?;
-
-            // ExternalRecord
-            check_bytes(Output::<CurrentNetwork>::ExternalRecord(Uniform::rand(rng)))?;
+    fn test_bytes() {
+        for (_, expected) in crate::ledger::transition::output::test_helpers::sample_outputs() {
+            // Check the byte representation.
+            let expected_bytes = expected.to_bytes_le().unwrap();
+            assert_eq!(expected, Output::read_le(&expected_bytes[..]).unwrap());
+            assert!(Output::<CurrentNetwork>::read_le(&expected_bytes[1..]).is_err());
         }
-        Ok(())
     }
 }

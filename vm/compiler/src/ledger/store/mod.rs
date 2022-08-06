@@ -22,3 +22,24 @@ pub use transaction::*;
 
 mod transition;
 pub use transition::*;
+
+use std::borrow::Cow;
+
+/// A wrapper enum able to contain and iterate over two `Cow` iterators of different types.
+enum CowIter<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> {
+    Borrowed(I1),
+    Owned(I2),
+    None,
+}
+
+impl<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> Iterator for CowIter<'a, T, I1, I2> {
+    type Item = Cow<'a, T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Borrowed(iter) => Some(Cow::Borrowed(iter.next()?)),
+            Self::Owned(iter) => Some(Cow::Owned(iter.next()?)),
+            Self::None => None,
+        }
+    }
+}

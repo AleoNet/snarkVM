@@ -129,15 +129,6 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &[
-        "{\"type\":\"constant\",\"id\":\"5field\"}",
-        "{\"type\":\"public\",\"id\":\"0field\"}",
-        "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\", \"nonce\":\"0group\", \"checksum\":\"123456789field\"}",
-        "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
-    ];
-
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
     >(
@@ -173,15 +164,15 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        for case in TEST_CASES.iter() {
-            check_serde_json(Output::<CurrentNetwork>::from_str(case).unwrap());
+        for (_, expected) in crate::ledger::transition::output::test_helpers::sample_outputs() {
+            check_serde_json(expected);
         }
     }
 
     #[test]
     fn test_bincode() {
-        for case in TEST_CASES.iter() {
-            check_bincode(Output::<CurrentNetwork>::from_str(case).unwrap());
+        for (_, expected) in crate::ledger::transition::output::test_helpers::sample_outputs() {
+            check_bincode(expected);
         }
     }
 }

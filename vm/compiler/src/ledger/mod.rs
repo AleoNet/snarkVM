@@ -29,7 +29,7 @@ pub use store::*;
 mod transaction;
 pub use transaction::*;
 
-mod transition;
+pub mod transition;
 pub use transition::*;
 
 mod vm;

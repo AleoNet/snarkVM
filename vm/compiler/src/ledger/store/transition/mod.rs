@@ -14,111 +14,44 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod input;
+use input::*;
+
+mod output;
+use output::*;
+
 // use crate::ledger::{
 //     map::{memory_map::MemoryMap, Map, MapReader},
-//     Deployment,
-//     Origin,
 //     Transition,
 // };
-//
-// use console::{
-//     network::prelude::*,
-//     types::{Field, Group},
-// };
+// use console::network::prelude::*;
 //
 // use anyhow::Result;
+// use std::borrow::Cow;
 //
-// /// A trait for transition storage.
-// pub trait TransitionStorage<N: Network>: Clone {
-//     type DeploymentsMap: for<'a> Map<'a, N::TransitionID, (Deployment<N>, N::TransitionID)>;
-//     type ExecutionsMap: for<'a> Map<'a, N::TransitionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
-//     type TransitionsMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
-//     type TransitionPublicKeysMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
-//     type SerialNumbersMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-//     type CommitmentsMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
-//     type OriginsMap: for<'a> Map<'a, Origin<N>, N::TransitionID>;
-//     type NonceMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
+// /// A trait for transition input storage.
+// pub trait TransitionStorage<N: Network> {
+//     /// The plaintext hash and (optional) plaintext.
+//     type ConstantMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
+//     /// The plaintext hash and (optional) plaintext.
+//     type PublicMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
+//     /// The ciphertext hash and (optional) ciphertext.
+//     type PrivateMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
+//     /// The serial number, tag, and the origin of the record.
+//     type RecordMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
+//     /// The input commitment to the external record. Note: This is **not** the record commitment.
+//     type ExternalRecordMap: for<'a> Map<'a, N::TransitionID, Transition<N>>;
 // }
 //
-// /// An in-memory transition storage.
+// /// An in-memory transition input storage.
 // #[derive(Clone)]
 // pub struct TransitionMemory<N: Network>(core::marker::PhantomData<N>);
 //
 // #[rustfmt::skip]
 // impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
-//     type DeploymentsMap = MemoryMap<N::TransitionID, (Deployment<N>, N::TransitionID)>;
-//     type ExecutionsMap = MemoryMap<N::TransitionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
-//     type TransitionsMap = MemoryMap<N::TransitionID, Transition<N>>;
-//     type TransitionPublicKeysMap = MemoryMap<Group<N>, N::TransitionID>;
-//     type SerialNumbersMap = MemoryMap<Field<N>, N::TransitionID>;
-//     type CommitmentsMap = MemoryMap<Field<N>, N::TransitionID>;
-//     type OriginsMap = MemoryMap<Origin<N>, N::TransitionID>;
-//     type NonceMap = MemoryMap<Group<N>, N::TransitionID>;
-// }
-//
-// /// The transition state stored in a ledger.
-// /// `TransitionPublicKeysMap`, `SerialNumbersMap`, `CommitmentsMap`, `OriginsMap`, and `NonceMap` store redundant data for faster lookup.
-// #[derive(Clone)]
-// pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
-//     /// The map of program deployments.
-//     deployments: T::DeploymentsMap,
-//     /// The map of program executions.
-//     executions: T::ExecutionsMap,
-//     /// The map of transitions.
-//     transitions: T::TransitionsMap,
-//     /// The map of serial numbers.
-//     transition_public_keys: T::TransitionPublicKeysMap,
-//     /// The map of origins.
-//     origins: T::OriginsMap,
-//     /// The map of serial numbers.
-//     serial_numbers: T::SerialNumbersMap,
-//     /// The map of commitments.
-//     commitments: T::CommitmentsMap,
-//     /// The map of nonces.
-//     nonces: T::NonceMap,
-// }
-//
-// impl<N: Network> TransitionStore<N, TransitionMemory<N>> {
-//     /// Initializes a new instance of `TransitionStore`.
-//     pub fn new() -> Self {
-//         Self {
-//             deployments: Default::default(),
-//             executions: Default::default(),
-//             transitions: Default::default(),
-//             transition_public_keys: Default::default(),
-//             origins: Default::default(),
-//             serial_numbers: Default::default(),
-//             commitments: Default::default(),
-//             nonces: Default::default(),
-//         }
-//     }
-// }
-//
-// impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-//     /// Initializes a new instance of `TransitionStore` from the given maps.
-//     pub fn from_maps(
-//         deployments: T::DeploymentsMap,
-//         executions: T::ExecutionsMap,
-//         transitions: T::TransitionsMap,
-//         transition_public_keys: T::TransitionPublicKeysMap,
-//         origins: T::OriginsMap,
-//         serial_numbers: T::SerialNumbersMap,
-//         commitments: T::CommitmentsMap,
-//         nonces: T::NonceMap,
-//     ) -> Result<Self> {
-//         let transition_store = Self {
-//             deployments,
-//             executions,
-//             transitions,
-//             transition_public_keys,
-//             origins,
-//             serial_numbers,
-//             commitments,
-//             nonces,
-//         };
-//
-//         // TODO (raychu86): Enforce that all the transition state is valid.
-//
-//         Ok(transition_store)
-//     }
+//     type ConstantMap = MemoryMap<N::TransitionID, Transition<N>>;
+//     type PublicMap = MemoryMap<N::TransitionID, Transition<N>>;
+//     type PrivateMap = MemoryMap<N::TransitionID, Transition<N>>;
+//     type RecordMap = MemoryMap<N::TransitionID, Transition<N>>;
+//     type ExternalRecordMap = MemoryMap<N::TransitionID, Transition<N>>;
 // }

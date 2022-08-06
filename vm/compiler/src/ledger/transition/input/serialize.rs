@@ -120,16 +120,6 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    /// Add test cases here to be checked for serialization.
-    const TEST_CASES: &[&str] = &[
-        "{\"type\":\"constant\",\"id\":\"5field\"}",
-        "{\"type\":\"public\",\"id\":\"0field\"}",
-        "{\"type\":\"private\",\"id\":\"123field\"}",
-        "{\"type\":\"record\",\"id\":\"123456789field\",\"tag\":\"10field\",\"origin\":{\"commitment\":\"123456789field\"}}",
-        "{\"type\":\"record\",\"id\":\"123456789field\",\"tag\":\"230field\",\"origin\":{\"state_root\":\"ar1zhx4kpcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvehdvs\"}}",
-        "{\"type\":\"external_record\",\"id\":\"123456789field\"}",
-    ];
-
     fn check_serde_json<
         T: Serialize + for<'a> Deserialize<'a> + Debug + Display + PartialEq + Eq + FromStr + ToBytes + FromBytes,
     >(
@@ -165,15 +155,15 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        for case in TEST_CASES.iter() {
-            check_serde_json(Input::<CurrentNetwork>::from_str(case).unwrap());
+        for (_, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
+            check_serde_json(input);
         }
     }
 
     #[test]
     fn test_bincode() {
-        for case in TEST_CASES.iter() {
-            check_bincode(Input::<CurrentNetwork>::from_str(case).unwrap());
+        for (_, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
+            check_bincode(input);
         }
     }
 }
