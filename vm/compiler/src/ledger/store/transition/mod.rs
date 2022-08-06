@@ -103,6 +103,12 @@ impl<N: Network> TransitionMemory<N> {
     }
 }
 
+impl<N: Network> Default for TransitionMemory<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[rustfmt::skip]
 impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
