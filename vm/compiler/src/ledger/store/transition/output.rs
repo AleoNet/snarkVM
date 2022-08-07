@@ -140,14 +140,14 @@ pub trait OutputStorage<N: Network>: Clone {
 
         // Store the outputs.
         for output in outputs {
-            match output {
-                Output::Constant(output_id, constant) => self.constant_map().insert(*output_id, constant.clone())?,
-                Output::Public(output_id, public) => self.public_map().insert(*output_id, public.clone())?,
-                Output::Private(output_id, private) => self.private_map().insert(*output_id, private.clone())?,
+            match output.clone() {
+                Output::Constant(output_id, constant) => self.constant_map().insert(output_id, constant)?,
+                Output::Public(output_id, public) => self.public_map().insert(output_id, public)?,
+                Output::Private(output_id, private) => self.private_map().insert(output_id, private)?,
                 Output::Record(commitment, checksum, optional_record) => {
-                    self.record_map().insert(*commitment, (*checksum, optional_record.clone()))?
+                    self.record_map().insert(commitment, (checksum, optional_record))?
                 }
-                Output::ExternalRecord(output_id) => self.external_record_map().insert(*output_id, ())?,
+                Output::ExternalRecord(output_id) => self.external_record_map().insert(output_id, ())?,
             }
         }
         Ok(())
