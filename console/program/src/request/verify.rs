@@ -98,7 +98,7 @@ impl<N: Network> Request<N> {
                         let index = Field::from_u16(index as u16);
                         // Construct the preimage as `(input || tcm || index)`.
                         let mut preimage = input.to_fields()?;
-                        preimage.push(self.tcm.clone());
+                        preimage.push(self.tcm);
                         preimage.push(index);
                         // Hash the input to a field element.
                         let candidate_hash = N::hash_psd8(&preimage)?;
@@ -117,7 +117,7 @@ impl<N: Network> Request<N> {
                         let index = Field::from_u16(index as u16);
                         // Construct the preimage as `(input || tcm || index)`.
                         let mut preimage = input.to_fields()?;
-                        preimage.push(self.tcm.clone());
+                        preimage.push(self.tcm);
                         preimage.push(index);
                         // Hash the input to a field element.
                         let candidate_hash = N::hash_psd8(&preimage)?;
@@ -209,7 +209,7 @@ impl<N: Network> Request<N> {
                         let index = Field::from_u16(index as u16);
                         // Construct the preimage as `(input || tvk || index)`.
                         let mut preimage = input.to_fields()?;
-                        preimage.push(self.tvk.clone());
+                        preimage.push(self.tvk);
                         preimage.push(index);
                         // Hash the input to a field element.
                         let candidate_hash = N::hash_psd8(&preimage)?;

@@ -75,7 +75,7 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16((num_inputs + index) as u16);
                         // Construct the preimage as `(output || tcm || index)`.
                         let mut preimage = output.to_fields()?;
-                        preimage.push(tcm.clone());
+                        preimage.push(*tcm);
                         preimage.push(index);
                         // Hash the output to a field element.
                         let output_hash = N::hash_psd8(&preimage)?;
@@ -92,7 +92,7 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16((num_inputs + index) as u16);
                         // Construct the preimage as `(output || tcm || index)`.
                         let mut preimage = output.to_fields()?;
-                        preimage.push(tcm.clone());
+                        preimage.push(*tcm);
                         preimage.push(index);
                         // Hash the output to a field element.
                         let output_hash = N::hash_psd8(&preimage)?;
@@ -153,7 +153,7 @@ impl<N: Network> Response<N> {
                         let index = Field::from_u16((num_inputs + index) as u16);
                         // Construct the preimage as `(output || tvk || index)`.
                         let mut preimage = output.to_fields()?;
-                        preimage.push(tvk.clone());
+                        preimage.push(*tvk);
                         preimage.push(index);
                         // Hash the output to a field element.
                         let output_hash = N::hash_psd8(&preimage)?;
