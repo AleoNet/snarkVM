@@ -63,7 +63,7 @@ pub trait InputStorage<N: Network>: Clone {
     /// Returns the transition ID that contains the given `input ID`.
     fn find_transition_id(&self, input_id: &Field<N>) -> Result<Option<N::TransitionID>> {
         match self.reverse_id_map().get(input_id)? {
-            Some(Cow::Borrowed(transition_id)) => Ok(Some(transition_id.clone())),
+            Some(Cow::Borrowed(transition_id)) => Ok(Some(*transition_id)),
             Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
             None => Ok(None),
         }
@@ -85,8 +85,8 @@ pub trait InputStorage<N: Network>: Clone {
         macro_rules! into_input {
             (Input::Record($input_id:ident, $input:expr)) => {
                 match $input {
-                    Cow::Borrowed((checksum, opt_record)) => Input::Record($input_id, *checksum, opt_record.clone()),
-                    Cow::Owned((checksum, opt_record)) => Input::Record($input_id, checksum, opt_record),
+                    Cow::Borrowed((tag, origin)) => Input::Record($input_id, *tag, *origin),
+                    Cow::Owned((tag, origin)) => Input::Record($input_id, tag, origin),
                 }
             };
             (Input::$Variant:ident($input_id:ident, $input:expr)) => {
@@ -140,14 +140,12 @@ pub trait InputStorage<N: Network>: Clone {
 
         // Store the inputs.
         for input in inputs {
-            match input {
-                Input::Constant(input_id, constant) => self.constant_map().insert(*input_id, constant.clone())?,
-                Input::Public(input_id, public) => self.public_map().insert(*input_id, public.clone())?,
-                Input::Private(input_id, private) => self.private_map().insert(*input_id, private.clone())?,
-                Input::Record(commitment, checksum, optional_record) => {
-                    self.record_map().insert(*commitment, (*checksum, optional_record.clone()))?
-                }
-                Input::ExternalRecord(input_id) => self.external_record_map().insert(*input_id, ())?,
+            match input.clone() {
+                Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
+                Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
+                Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
+                Input::Record(serial_number, tag, origin) => self.record_map().insert(serial_number, (tag, origin))?,
+                Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
             }
         }
         Ok(())
@@ -163,7 +161,7 @@ pub trait InputStorage<N: Network>: Clone {
         };
 
         // Remove the input IDs.
-        self.id_map().remove(&transition_id)?;
+        self.id_map().remove(transition_id)?;
         // Remove the reverse input IDs.
         input_ids.iter().try_for_each(|input_id| self.reverse_id_map().remove(input_id))?;
 

@@ -63,7 +63,7 @@ pub trait OutputStorage<N: Network>: Clone {
     /// Returns the transition ID that contains the given `output ID`.
     fn find_transition_id(&self, output_id: &Field<N>) -> Result<Option<N::TransitionID>> {
         match self.reverse_id_map().get(output_id)? {
-            Some(Cow::Borrowed(transition_id)) => Ok(Some(transition_id.clone())),
+            Some(Cow::Borrowed(transition_id)) => Ok(Some(*transition_id)),
             Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
             None => Ok(None),
         }
@@ -182,6 +182,7 @@ pub trait OutputStorage<N: Network>: Clone {
 
 /// An in-memory transition output storage.
 #[derive(Clone, Default)]
+#[allow(clippy::type_complexity)]
 pub struct OutputMemory<N: Network> {
     /// The mapping of `transition ID` to `output IDs`.
     id_map: MemoryMap<N::TransitionID, Vec<Field<N>>>,
