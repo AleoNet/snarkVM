@@ -219,17 +219,19 @@ impl<N: Network> Transition<N> {
                         // Return the record output.
                         Ok(Output::Record(*commitment, *checksum, Some(record_ciphertext)))
                     }
-                    (OutputID::ExternalRecord(commitment), Value::Record(record)) => {
+                    (OutputID::ExternalRecord(hash), Value::Record(record)) => {
                         // Construct the (console) output index as a field element.
                         let index = Field::from_u16((num_inputs + index) as u16);
-                        // Compute the output randomizer as `HashToScalar(tvk || index)`.
-                        let output_randomizer = N::hash_to_scalar_psd2(&[*request.tvk(), index])?;
-                        // Commit the output to a field element.
-                        let candidate_cm = N::commit_bhp1024(&record.to_bits_le(), &output_randomizer)?;
-                        // Ensure the commitment matches.
-                        ensure!(*commitment == candidate_cm, "The output commitment is incorrect");
+                        // Construct the preimage as `(output || tvk || index)`.
+                        let mut preimage = record.to_fields()?;
+                        preimage.push(*request.tvk());
+                        preimage.push(index);
+                        // Hash the output to a field element.
+                        let candidate_hash = N::hash_psd8(&preimage)?;
+                        // Ensure the hash matches.
+                        ensure!(*hash == candidate_hash, "The output external hash is incorrect");
                         // Return the record output.
-                        Ok(Output::ExternalRecord(*commitment))
+                        Ok(Output::ExternalRecord(*hash))
                     }
                     _ => bail!("Malformed response output: {:?}, {output}", output_id),
                 }

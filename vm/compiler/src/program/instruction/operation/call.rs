@@ -373,7 +373,7 @@ impl<N: Network> Call<N> {
             // Inject the `sk_tag` (from the request) as `Mode::Private`.
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
-            let tvk = circuit::Field::new(circuit::Mode::Private, *request.tcm());
+            let tvk = circuit::Field::new(circuit::Mode::Private, *request.tvk());
             // Inject the `tcm` (from the request) as `Mode::Private`.
             let tcm = circuit::Field::new(circuit::Mode::Private, *request.tcm());
             // Inject the input IDs (from the request) as `Mode::Public`.
