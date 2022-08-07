@@ -14,19 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod deployment;
-pub use deployment::*;
+use super::*;
 
-use crate::{
-    cow_to_cloned,
-    cow_to_copied,
-    ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
-        store::{TransitionStorage, TransitionStore},
-        Origin,
-        Transaction,
-        Transition,
-    },
+use crate::{cow_to_copied, cow_to_cloned};
+use crate::ledger::{
+    map::{memory_map::MemoryMap, Map, MapRead},
+    Origin,
+    Transaction,
+    Transition,
+    store::{TransitionStore, TransitionStorage},
 };
 use console::{
     network::prelude::*,
@@ -37,129 +33,122 @@ use console::{
 use anyhow::Result;
 use std::borrow::Cow;
 
-pub enum TransactionType<N: Network> {
-    /// A transaction that is a deployment, contains `program ID`.
-    Deploy(ProgramID<N>),
-    /// A transaction that is an execution, contains `([transition ID], additional fee ID)`.
-    Execute(Vec<N::TransitionID>, N::TransitionID),
+/// A trait for transaction storage.
+pub trait TransactionStorage<N: Network>: Clone {
+    /// The mapping of `transaction ID` to `transaction type`.
+    type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType<N>>;
+    /// The mapping of `transition ID` to `transaction ID`.
+    type ReverseIDMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
+    /// The deployment storage.
+    type DeploymentStorage: DeploymentStorage<N>;
+    /// The transition storage.
+    type TransitionStorage: TransitionStorage<N>;
+
+    /// Returns the ID map.
+    fn id_map(&self) -> &Self::IDMap;
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap;
+    /// Returns the deployment store.
+    fn deployment_store(&self) -> &DeploymentStore<N, Self::DeploymentStorage>;
+    /// Returns the transition store.
+    fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
+
+    /// Returns the transaction ID that contains the given `transition ID`.
+    fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.reverse_id_map().get(transition_id)
+    }
+
+    /// Returns the transaction ID that contains the given `program ID`.
+    fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.deployment_store().find_transaction_id(program_id)
+    }
+
+    /// Returns the transaction for the given `transaction ID`.
+    fn get(&self, transaction_id: &N::TransactionID) -> Result<Transaction<N>> {
+        // Retrieve the transaction type.
+        let transaction_type = match self.id_map().get(transaction_id)? {
+            Some(transaction_type) => cow_to_copied!(transaction_type),
+            None => bail!("Failed to get the type for transaction '{transaction_id}'"),
+        };
+        // Retrieve the transaction.
+        match transaction_type {
+            // Return the deployment transaction.
+            TransactionType::Deploy(program_id) => self.deployment_store().get_transaction(&program_id),
+            // Return the execution transaction.
+            TransactionType::Execute(transition_ids, additional_fee_id) => {
+                // Initialize a vector for the transitions.
+                let mut transitions = Vec::new();
+                // Retrieve the transitions.
+                for transition_id in &transition_ids {
+                    match self.transition_store().get_transition(transition_id)? {
+                        Some(transition) => transitions.push(transition),
+                        None => bail!("Failed to get transition '{transition_id}' for transaction '{transaction_id}'"),
+                    };
+                }
+                // Retrieve the additional fee.
+                let additional_fee = self.transition_store().get(additional_fee_id)?;
+                // Create the transaction.
+                Ok(Transaction::from_execution(transitions, additional_fee))
+            }
+        }
+    }
+
+    /// Stores the given `deployment transaction` pair into storage.
+    fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
+        // Ensure the transaction is a deployment.
+        let (transaction_id, deployment, additional_fee) = match transaction {
+            Transaction::Deploy(transaction_id, deployment, additional_fee) => {
+                (transaction_id, deployment, additional_fee)
+            }
+            Transaction::Execute(..) => {
+                bail!("Attempted to insert non-deployment transaction into deployment storage.")
+            }
+        };
+
+        // Retrieve the program.
+        let program = deployment.program();
+        // Retrieve the program ID.
+        let program_id = *program.id();
+
+        // Ensure the number of functions matches the number of verifying keys.
+        if program.functions().len() != deployment.verifying_keys().len() {
+            bail!("Transaction has an incorrect number of verifying keys, according to the program.");
+        }
+        // Ensure the deployment contains the correct functions.
+        for function in program.functions() {
+            if !deployment.verifying_keys().contains(function.name()) {
+                bail!("Transaction is missing a verifying key for function '{}'.", function.name());
+            }
+        }
+
+        // Store the program ID.
+        self.id_map().insert(transaction_id, program_id)?;
+        // Store the reverse program ID.
+        self.reverse_id_map().insert(program_id, transaction_id)?;
+
+        // Store the additional fee.
+        self.additional_fee_map().insert(program_id, additional_fee.clone())?;
+
+        Ok(())
+    }
+
+    /// Removes the deployment for the given `transaction ID`.
+    fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
+        // Retrieve the program ID.
+        let program_id = self.get_program_id(transaction_id)?;
+        // Retrieve the program.
+        let program = self.program_map().get(&program_id)?;
+
+        // Remove the program ID.
+        self.id_map().remove(transaction_id)?;
+        // Remove the reverse program ID.
+        self.reverse_id_map().remove(&program_id)?;
+        // Remove the additional fee.
+        self.additional_fee_map().remove(&program_id)?;
+
+        Ok(())
+    }
 }
-//
-// /// A trait for transaction storage.
-// pub trait TransactionStorage<N: Network>: Clone {
-//     /// The mapping of `transaction ID` to `transaction type`.
-//     type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType<N>>;
-//     /// The mapping of `transition ID` to `transaction ID`.
-//     type ReverseIDMap: for<'a> Map<'a, N::TransitionID, N::TransactionID>;
-//     /// The deployment storage.
-//     type DeploymentStorage: DeploymentStorage<N>;
-//     /// The transition storage.
-//     type TransitionStorage: TransitionStorage<N>;
-//
-//     /// Returns the ID map.
-//     fn id_map(&self) -> &Self::IDMap;
-//     /// Returns the reverse ID map.
-//     fn reverse_id_map(&self) -> &Self::ReverseIDMap;
-//     /// Returns the deployment store.
-//     fn deployment_store(&self) -> &DeploymentStore<N, Self::DeploymentStorage>;
-//     /// Returns the transition store.
-//     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage>;
-//
-//     /// Returns the transaction ID that contains the given `transition ID`.
-//     fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-//         self.reverse_id_map().get(transition_id)
-//     }
-//
-//     /// Returns the transaction ID that contains the given `program ID`.
-//     fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-//         self.deployment_store().find_transaction_id(program_id)
-//     }
-//
-//     /// Returns the transaction for the given `transaction ID`.
-//     fn get(&self, transaction_id: &N::TransactionID) -> Result<Transaction<N>> {
-//         // Retrieve the transaction type.
-//         let transaction_type = match self.id_map().get(transaction_id)? {
-//             Some(transaction_type) => cow_to_copied!(transaction_type),
-//             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
-//         };
-//         // Retrieve the transaction.
-//         match transaction_type {
-//             // Return the deployment transaction.
-//             TransactionType::Deploy(program_id) => self.deployment_store().get_transaction(&program_id),
-//             // Return the execution transaction.
-//             TransactionType::Execute(transition_ids, additional_fee_id) => {
-//                 // Initialize a vector for the transitions.
-//                 let mut transitions = Vec::new();
-//                 // Retrieve the transitions.
-//                 for transition_id in &transition_ids {
-//                     match self.transition_store().get_transition(transition_id)? {
-//                         Some(transition) => transitions.push(transition),
-//                         None => bail!("Failed to get transition '{transition_id}' for transaction '{transaction_id}'"),
-//                     };
-//                 }
-//                 // Retrieve the additional fee.
-//                 let additional_fee = self.transition_store().get(additional_fee_id)?;
-//                 // Create the transaction.
-//                 Ok(Transaction::from_execution(transitions, additional_fee))
-//             }
-//         }
-//     }
-//
-//     /// Stores the given `deployment transaction` pair into storage.
-//     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
-//         // Ensure the transaction is a deployment.
-//         let (transaction_id, deployment, additional_fee) = match transaction {
-//             Transaction::Deploy(transaction_id, deployment, additional_fee) => {
-//                 (transaction_id, deployment, additional_fee)
-//             }
-//             Transaction::Execute(..) => {
-//                 bail!("Attempted to insert non-deployment transaction into deployment storage.")
-//             }
-//         };
-//
-//         // Retrieve the program.
-//         let program = deployment.program();
-//         // Retrieve the program ID.
-//         let program_id = *program.id();
-//
-//         // Ensure the number of functions matches the number of verifying keys.
-//         if program.functions().len() != deployment.verifying_keys().len() {
-//             bail!("Transaction has an incorrect number of verifying keys, according to the program.");
-//         }
-//         // Ensure the deployment contains the correct functions.
-//         for function in program.functions() {
-//             if !deployment.verifying_keys().contains(function.name()) {
-//                 bail!("Transaction is missing a verifying key for function '{}'.", function.name());
-//             }
-//         }
-//
-//         // Store the program ID.
-//         self.id_map().insert(transaction_id, program_id)?;
-//         // Store the reverse program ID.
-//         self.reverse_id_map().insert(program_id, transaction_id)?;
-//
-//         // Store the additional fee.
-//         self.additional_fee_map().insert(program_id, additional_fee.clone())?;
-//
-//         Ok(())
-//     }
-//
-//     /// Removes the deployment for the given `transaction ID`.
-//     fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
-//         // Retrieve the program ID.
-//         let program_id = self.get_program_id(transaction_id)?;
-//         // Retrieve the program.
-//         let program = self.program_map().get(&program_id)?;
-//
-//         // Remove the program ID.
-//         self.id_map().remove(transaction_id)?;
-//         // Remove the reverse program ID.
-//         self.reverse_id_map().remove(&program_id)?;
-//         // Remove the additional fee.
-//         self.additional_fee_map().remove(&program_id)?;
-//
-//         Ok(())
-//     }
-// }
 
 // /// An in-memory transaction storage.
 // #[derive(Clone, Default)]
