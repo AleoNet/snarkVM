@@ -17,6 +17,9 @@
 mod deployment;
 pub use deployment::*;
 
+mod execution;
+pub use execution::*;
+
 use crate::{
     cow_to_cloned,
     cow_to_copied,
@@ -37,13 +40,13 @@ use console::{
 use anyhow::Result;
 use std::borrow::Cow;
 
-pub enum TransactionType<N: Network> {
-    /// A transaction that is a deployment, contains `program ID`.
-    Deploy(ProgramID<N>),
-    /// A transaction that is an execution, contains `([transition ID], additional fee ID)`.
-    Execute(Vec<N::TransitionID>, N::TransitionID),
+pub enum TransactionType {
+    /// A transaction that is a deployment.
+    Deploy,
+    /// A transaction that is an execution.
+    Execute,
 }
-//
+
 // /// A trait for transaction storage.
 // pub trait TransactionStorage<N: Network>: Clone {
 //     /// The mapping of `transaction ID` to `transaction type`.

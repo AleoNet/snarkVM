@@ -286,7 +286,7 @@ pub trait DeploymentStorage<N: Network>: Clone {
         Ok(())
     }
 
-    /// Removes the deployment for the given `transaction ID`.
+    /// Removes the deployment transaction for the given `transaction ID`.
     fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         // Retrieve the program ID.
         let program_id = match self.get_program_id(transaction_id)? {
