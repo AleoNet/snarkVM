@@ -412,6 +412,64 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
+    /// Returns `true` if the given transition ID exists.
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> Result<bool> {
+        self.locator.contains_key(transition_id)
+    }
+
+    /* Input */
+
+    /// Returns `true` if the given input ID exists.
+    pub fn contains_input_id(&self, input_id: &Field<N>) -> Result<bool> {
+        self.inputs.contains_input_id(input_id)
+    }
+
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
+        self.inputs.contains_serial_number(serial_number)
+    }
+
+    /// Returns `true` if the given tag exists.
+    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
+        self.inputs.contains_tag(tag)
+    }
+
+    /* Output */
+
+    /// Returns `true` if the given output ID exists.
+    pub fn contains_output_id(&self, output_id: &Field<N>) -> Result<bool> {
+        self.outputs.contains_output_id(output_id)
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
+        self.outputs.contains_commitment(commitment)
+    }
+
+    /// Returns `true` if the given checksum exists.
+    pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
+        self.outputs.contains_checksum(checksum)
+    }
+
+    /// Returns `true` if the given nonce exists.
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
+        self.outputs.contains_nonce(nonce)
+    }
+
+    /* Metadata */
+
+    /// Returns `true` if the given transition public key exists.
+    pub fn contains_tpk(&self, tpk: &Group<N>) -> Result<bool> {
+        self.reverse_tpk.contains_key(tpk)
+    }
+
+    /// Returns `true` if the given transition commitment exists.
+    pub fn contains_tcm(&self, tcm: &Field<N>) -> Result<bool> {
+        self.reverse_tcm.contains_key(tcm)
+    }
+}
+
+impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns an iterator over the transition IDs, for all transitions.
     pub fn transition_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransitionID>> {
         self.fee.keys()
@@ -552,54 +610,6 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns an iterator over the transition fees, for all transitions.
     pub fn fees(&self) -> impl '_ + Iterator<Item = Cow<'_, i64>> {
         self.fee.values()
-    }
-}
-
-impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-    /// Returns `true` if the given transition ID exists.
-    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> Result<bool> {
-        self.locator.contains_key(transition_id)
-    }
-
-    /* Input */
-
-    /// Returns `true` if the given serial number exists.
-    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
-        self.inputs.contains_serial_number(serial_number)
-    }
-
-    /// Returns `true` if the given tag exists.
-    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
-        self.inputs.contains_tag(tag)
-    }
-
-    /* Output */
-
-    /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
-        self.outputs.contains_commitment(commitment)
-    }
-
-    /// Returns `true` if the given checksum exists.
-    pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
-        self.outputs.contains_checksum(checksum)
-    }
-
-    /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
-        self.outputs.contains_nonce(nonce)
-    }
-
-    /* Metadata */
-
-    /// Returns `true` if the given transition public key exists.
-    pub fn contains_tpk(&self, tpk: &Group<N>) -> Result<bool> {
-        self.reverse_tpk.contains_key(tpk)
-    }
-
-    /// Returns `true` if the given transition commitment exists.
-    pub fn contains_tcm(&self, tcm: &Field<N>) -> Result<bool> {
-        self.reverse_tcm.contains_key(tcm)
     }
 }
 

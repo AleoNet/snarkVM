@@ -23,31 +23,12 @@ pub use transaction::*;
 mod transition;
 pub use transition::*;
 
-use std::borrow::Cow;
-
-/// A wrapper enum able to contain and iterate over two `Cow` iterators of different types.
-enum CowIter<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> {
-    Borrowed(I1),
-    Owned(I2),
-}
-
-impl<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> Iterator for CowIter<'a, T, I1, I2> {
-    type Item = Cow<'a, T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Borrowed(iter) => Some(Cow::Borrowed(iter.next()?)),
-            Self::Owned(iter) => Some(Cow::Owned(iter.next()?)),
-        }
-    }
-}
-
 #[macro_export]
 macro_rules! cow_to_copied {
     ($cow:expr) => {
         match $cow {
-            Cow::Borrowed(inner) => *inner,
-            Cow::Owned(inner) => inner,
+            std::borrow::Cow::Borrowed(inner) => *inner,
+            std::borrow::Cow::Owned(inner) => inner,
         }
     };
 }
@@ -56,8 +37,8 @@ macro_rules! cow_to_copied {
 macro_rules! cow_to_cloned {
     ($cow:expr) => {
         match $cow {
-            Cow::Borrowed(inner) => (*inner).clone(),
-            Cow::Owned(inner) => inner,
+            std::borrow::Cow::Borrowed(inner) => (*inner).clone(),
+            std::borrow::Cow::Owned(inner) => inner,
         }
     };
 }

@@ -32,6 +32,7 @@ use console::{
 };
 
 use anyhow::Result;
+use core::marker::PhantomData;
 use indexmap::IndexMap;
 use std::borrow::Cow;
 
@@ -427,34 +428,16 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
 /// The deployment store.
 #[derive(Clone)]
 pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
-    /// The map of `transaction ID` to `program ID`.
-    program_ids: D::IDMap,
-    /// The edition map.
-    edition: D::EditionMap,
-    /// The program map.
-    program: D::ProgramMap,
-    /// The verifying keys map.
-    verifying_keys: D::VerifyingKeyMap,
-    /// The certificates map.
-    certificates: D::CertificateMap,
-    /// The additional fee map.
-    additional_fee: D::AdditionalFeeMap,
     /// The deployment storage.
     storage: D,
+    /// PhantomData.
+    _phantom: PhantomData<N>,
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Initializes a new deployment store.
     pub fn new(storage: D) -> Self {
-        Self {
-            program_ids: storage.id_map().clone(),
-            edition: storage.edition_map().clone(),
-            program: storage.program_map().clone(),
-            verifying_keys: storage.verifying_key_map().clone(),
-            certificates: storage.certificate_map().clone(),
-            additional_fee: storage.additional_fee_map().clone(),
-            storage,
-        }
+        Self { storage, _phantom: PhantomData }
     }
 
     /// Stores the given `deployment transaction` into storage.
@@ -526,9 +509,16 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
+    /// Returns `true` if the given program ID exists.
+    pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
+        self.storage.edition_map().contains_key(program_id)
+    }
+}
+
+impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Returns an iterator over the program IDs, for all deployments.
     pub fn program_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, ProgramID<N>>> {
-        self.program_ids.values().map(|id| match id {
+        self.storage.id_map().values().map(|id| match id {
             Cow::Borrowed(id) => Cow::Borrowed(id),
             Cow::Owned(id) => Cow::Owned(id),
         })
@@ -536,7 +526,7 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 
     /// Returns an iterator over the programs, for all deployments.
     pub fn programs(&self) -> impl '_ + Iterator<Item = Cow<'_, Program<N>>> {
-        self.program.values().map(|program| match program {
+        self.storage.program_map().values().map(|program| match program {
             Cow::Borrowed(program) => Cow::Borrowed(program),
             Cow::Owned(program) => Cow::Owned(program),
         })
@@ -546,21 +536,14 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     pub fn verifying_keys(
         &self,
     ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, VerifyingKey<N>>)> {
-        self.verifying_keys.iter()
+        self.storage.verifying_key_map().iter()
     }
 
     /// Returns an iterator over the `((program ID, function name, edition), certificate)`, for all deployments.
     pub fn certificates(
         &self,
     ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, Certificate<N>>)> {
-        self.certificates.iter()
-    }
-}
-
-impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
-    /// Returns `true` if the given program ID exists.
-    pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
-        self.edition.contains_key(program_id)
+        self.storage.certificate_map().iter()
     }
 }
 

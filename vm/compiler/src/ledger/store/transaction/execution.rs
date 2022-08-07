@@ -29,7 +29,7 @@ use crate::{
 use console::network::prelude::*;
 
 use anyhow::Result;
-use std::borrow::Cow;
+use core::marker::PhantomData;
 
 /// A trait for execution storage.
 pub trait ExecutionStorage<N: Network>: Clone {
@@ -274,18 +274,16 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
 /// The execution store.
 #[derive(Clone)]
 pub struct ExecutionStore<N: Network, D: ExecutionStorage<N>> {
-    /// The map of `transaction ID` to `([transition ID], (optional) transition ID)`.
-    transition_ids: D::IDMap,
-    /// The edition map.
-    edition: D::EditionMap,
     /// The execution storage.
     storage: D,
+    /// PhantomData.
+    _phantom: PhantomData<N>,
 }
 
 impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
     /// Initializes a new execution store.
     pub fn new(storage: D) -> Self {
-        Self { transition_ids: storage.id_map().clone(), edition: storage.edition_map().clone(), storage }
+        Self { storage, _phantom: PhantomData }
     }
 
     /// Stores the given `execution transaction` into storage.
@@ -312,7 +310,7 @@ impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
 
     /// Returns the edition for the given `transaction ID`.
     pub fn get_edition(&self, transaction_id: &N::TransactionID) -> Result<Option<u16>> {
-        match self.edition.get(transaction_id)? {
+        match self.storage.edition_map().get(transaction_id)? {
             Some(edition) => Ok(Some(cow_to_copied!(edition))),
             None => Ok(None),
         }

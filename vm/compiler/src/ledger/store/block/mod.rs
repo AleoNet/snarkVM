@@ -14,80 +14,394 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod contains;
-pub use contains::*;
-
-mod get;
-pub use get::*;
-
-use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead},
-    Block,
-    Header,
-    Signature,
+use crate::{
+    cow_to_cloned,
+    cow_to_copied,
+    ledger::{
+        map::{memory_map::MemoryMap, Map, MapRead},
+        store::{TransactionMemory, TransactionStorage, TransactionStore},
+        Block,
+        Header,
+        Signature,
+        Transactions,
+    },
 };
 use console::network::prelude::*;
-use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
-use std::borrow::Cow;
+use core::marker::PhantomData;
+
+macro_rules! bail_with_block {
+    ($message:expr, $self:ident, $hash:expr) => {{
+        let message = format!($message);
+        anyhow::bail!("{message} for block '{:?}' ('{}')", $self.get_block_height(&$hash)?, $hash);
+    }};
+}
 
 /// A trait for block storage.
 pub trait BlockStorage<N: Network>: Clone {
-    type HashesMap: for<'a> Map<'a, u32, N::BlockHash>;
-    type HeadersMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
+    /// The mapping of `block height` to `block hash`.
+    type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
+    /// The mapping of `block hash` to `block height`.
+    type ReverseIDMap: for<'a> Map<'a, N::BlockHash, u32>;
+    /// The mapping of `block hash` to `block header`.
+    type HeaderMap: for<'a> Map<'a, N::BlockHash, Header<N>>;
+    /// The mapping of `block hash` to `[transaction ID]`.
     type TransactionsMap: for<'a> Map<'a, N::BlockHash, Vec<N::TransactionID>>;
-    type SignaturesMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+    /// The mapping of `transaction ID` to `block hash`.
+    type ReverseTransactionsMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
+    /// The transaction storage.
+    type TransactionStorage: TransactionStorage<N>;
+    /// The mapping of `block hash` to `block signature`.
+    type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+
+    /// Returns the ID map.
+    fn id_map(&self) -> &Self::IDMap;
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap;
+    /// Returns the header map.
+    fn header_map(&self) -> &Self::HeaderMap;
+    /// Returns the transactions map.
+    fn transactions_map(&self) -> &Self::TransactionsMap;
+    /// Returns the reverse transactions map.
+    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap;
+    /// Returns the transaction store.
+    fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
+    /// Returns the signature map.
+    fn signature_map(&self) -> &Self::SignatureMap;
+
+    /// Returns the block hash that contains the given `transaction ID`.
+    fn find_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
+        match self.reverse_transactions_map().get(transaction_id)? {
+            Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the previous block hash of the given `block height`.
+    fn get_previous_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
+        match height.is_zero() {
+            true => Ok(Some(N::BlockHash::default())),
+            false => match self.id_map().get(&height)? {
+                Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+                None => Ok(None),
+            },
+        }
+    }
+
+    /// Returns the block hash for the given `block height`.
+    fn get_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
+        match self.id_map().get(&height)? {
+            Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the block height for the given `block hash`.
+    fn get_block_height(&self, block_hash: &N::BlockHash) -> Result<Option<u32>> {
+        match self.reverse_id_map().get(block_hash)? {
+            Some(height) => Ok(Some(cow_to_copied!(height))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the block header for the given `block hash`.
+    fn get_block_header(&self, block_hash: &N::BlockHash) -> Result<Option<Header<N>>> {
+        match self.header_map().get(block_hash)? {
+            Some(header) => Ok(Some(cow_to_cloned!(header))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the block transactions for the given `block hash`.
+    fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
+        // Retrieve the transaction IDs.
+        let transaction_ids = match self.transactions_map().get(block_hash)? {
+            Some(transaction_ids) => cow_to_cloned!(transaction_ids),
+            None => return Ok(None),
+        };
+        // Retrieve the transactions.
+        let transactions = transaction_ids
+            .iter()
+            .map(|transaction_id| match self.transaction_store().get_transaction(transaction_id) {
+                Ok(Some(transaction)) => Ok(transaction),
+                Ok(None) => bail_with_block!("Missing transaction '{transaction_id}'", self, block_hash),
+                Err(err) => Err(err),
+            })
+            .collect::<Result<Vec<_>>>()?;
+        // Return the transactions.
+        Ok(Some(Transactions::from(&transactions)))
+    }
+
+    /// Returns the block signature for the given `block hash`.
+    fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
+        match self.signature_map().get(block_hash)? {
+            Some(signature) => Ok(Some(cow_to_cloned!(signature))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the block for the given `block hash`.
+    fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
+        // Retrieve the block height.
+        let height = match self.get_block_height(block_hash)? {
+            Some(height) => height,
+            None => return Ok(None),
+        };
+
+        // Retrieve the block header.
+        let header = match self.get_block_header(block_hash)? {
+            Some(header) => header,
+            None => bail!("Missing block header for block {height} ('{block_hash}')"),
+        };
+        // Ensure the block height matches.
+        if header.height() != height {
+            bail!("Mismatching block height for block {height} ('{block_hash}')")
+        }
+
+        // Retrieve the previous block hash.
+        let previous_hash = match self.get_previous_block_hash(height)? {
+            Some(previous_block_hash) => previous_block_hash,
+            None => bail!("Missing previous block hash for block {height} ('{block_hash}')"),
+        };
+        // Retrieve the block transactions.
+        let transactions = match self.get_block_transactions(block_hash)? {
+            Some(transactions) => transactions,
+            None => bail!("Missing transactions for block {height} ('{block_hash}')"),
+        };
+        // Retrieve the block signature.
+        let signature = match self.get_block_signature(block_hash)? {
+            Some(signature) => signature,
+            None => bail!("Missing signature for block {height} ('{block_hash}')"),
+        };
+
+        // Return the block.
+        Ok(Some(Block::from(previous_hash, header, transactions, signature)?))
+    }
+
+    /// Stores the given `block` into storage.
+    fn insert(&self, block: &Block<N>) -> Result<()> {
+        // Store the block hash.
+        self.id_map().insert(block.height(), block.hash())?;
+        // Store the block height.
+        self.reverse_id_map().insert(block.hash(), block.height())?;
+        // Store the block header.
+        self.header_map().insert(block.hash(), block.header().clone())?;
+
+        // Store the transaction IDs.
+        self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
+
+        // Store the block transactions.
+        for transaction in block.transactions().values() {
+            // Store the reverse transaction ID.
+            self.reverse_transactions_map().insert(transaction.id(), block.hash())?;
+            // Store the transaction.
+            self.transaction_store().insert(transaction)?;
+        }
+
+        // Store the block signature.
+        self.signature_map().insert(block.hash(), block.signature().clone())?;
+
+        Ok(())
+    }
+
+    /// Removes the block for the given `block hash`.
+    fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
+        // Retrieve the block height.
+        let height = match self.get_block_height(block_hash)? {
+            Some(height) => height,
+            None => bail!("Failed to remove block: missing block height for block hash '{block_hash}'"),
+        };
+        // Retrieve the transaction IDs.
+        let transaction_ids = match self.transactions_map().get(block_hash)? {
+            Some(transaction_ids) => cow_to_cloned!(transaction_ids),
+            None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
+        };
+
+        // Remove the block hash.
+        self.id_map().remove(&height)?;
+        // Remove the block height.
+        self.reverse_id_map().remove(block_hash)?;
+        // Remove the block header.
+        self.header_map().remove(block_hash)?;
+
+        // Remove the transaction IDs.
+        self.transactions_map().remove(block_hash)?;
+
+        // Remove the block transactions.
+        for transaction_id in transaction_ids {
+            // Remove the reverse transaction ID.
+            self.reverse_transactions_map().remove(&transaction_id)?;
+            // Remove the transaction.
+            self.transaction_store().remove(&transaction_id)?;
+        }
+
+        // Remove the block signature.
+        self.signature_map().remove(block_hash)?;
+
+        Ok(())
+    }
 }
 
 /// An in-memory block storage.
 #[derive(Clone)]
-pub struct BlockMemory<N: Network>(core::marker::PhantomData<N>);
+pub struct BlockMemory<N: Network> {
+    /// The mapping of `block height` to `block hash`.
+    id_map: MemoryMap<u32, N::BlockHash>,
+    /// The mapping of `block hash` to `block height`.
+    reverse_id_map: MemoryMap<N::BlockHash, u32>,
+    /// The header map.
+    header_map: MemoryMap<N::BlockHash, Header<N>>,
+    /// The transactions map.
+    transactions_map: MemoryMap<N::BlockHash, Vec<N::TransactionID>>,
+    /// The reverse transactions map.
+    reverse_transactions_map: MemoryMap<N::TransactionID, N::BlockHash>,
+    /// The transaction store.
+    transaction_store: TransactionStore<N, TransactionMemory<N>>,
+    /// The signature map.
+    signature_map: MemoryMap<N::BlockHash, Signature<N>>,
+}
+
+impl<N: Network> BlockMemory<N> {
+    /// Creates a new in-memory block storage.
+    pub fn new(transaction_store: TransactionStore<N, TransactionMemory<N>>) -> Self {
+        Self {
+            id_map: MemoryMap::default(),
+            reverse_id_map: MemoryMap::default(),
+            header_map: MemoryMap::default(),
+            transactions_map: MemoryMap::default(),
+            reverse_transactions_map: MemoryMap::default(),
+            transaction_store,
+            signature_map: MemoryMap::default(),
+        }
+    }
+}
 
 #[rustfmt::skip]
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
-    type HashesMap = MemoryMap<u32, N::BlockHash>;
-    type HeadersMap = MemoryMap<N::BlockHash, Header<N>>;
+    type IDMap = MemoryMap<u32, N::BlockHash>;
+    type ReverseIDMap = MemoryMap<N::BlockHash, u32>;
+    type HeaderMap = MemoryMap<N::BlockHash, Header<N>>;
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
-    type SignaturesMap = MemoryMap<N::BlockHash, Signature<N>>;
+    type ReverseTransactionsMap = MemoryMap<N::TransactionID, N::BlockHash>;
+    type TransactionStorage = TransactionMemory<N>;
+    type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
+
+    /// Returns the ID map.
+    fn id_map(&self) -> &Self::IDMap {
+        &self.id_map
+    }
+
+    /// Returns the reverse ID map.
+    fn reverse_id_map(&self) -> &Self::ReverseIDMap {
+        &self.reverse_id_map
+    }
+
+    /// Returns the header map.
+    fn header_map(&self) -> &Self::HeaderMap {
+        &self.header_map
+    }
+
+    /// Returns the transactions map.
+    fn transactions_map(&self) -> &Self::TransactionsMap {
+        &self.transactions_map
+    }
+
+    /// Returns the reverse transactions map.
+    fn reverse_transactions_map(&self) -> &Self::ReverseTransactionsMap {
+        &self.reverse_transactions_map
+    }
+
+    /// Returns the transaction store.
+    fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage> {
+        &self.transaction_store
+    }
+
+    /// Returns the signature map.
+    fn signature_map(&self) -> &Self::SignatureMap {
+        &self.signature_map
+    }
 }
 
+/// The block store.
 #[derive(Clone)]
 pub struct BlockStore<N: Network, B: BlockStorage<N>> {
-    /// The map of block hashes.
-    hashes: B::HashesMap,
-    /// The map of block headers.
-    headers: B::HeadersMap,
-    /// The map of block transactions.
-    transactions: B::TransactionsMap,
-    /// The map of block signatures.
-    signatures: B::SignaturesMap,
+    /// The block storage.
+    storage: B,
+    /// PhantomData.
+    _phantom: PhantomData<N>,
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
-    /// Initializes a new instance of `BlockStore` from the given maps.
-    pub fn from_maps(
-        hashes: B::HashesMap,
-        headers: B::HeadersMap,
-        transactions: B::TransactionsMap,
-        signatures: B::SignaturesMap,
-    ) -> Result<Self> {
-        // Initialize the ledger.
-        let mut store = Self { hashes, headers, transactions, signatures };
+    /// Initializes a new block store.
+    pub fn new(storage: B) -> Self {
+        Self { storage, _phantom: PhantomData }
+    }
 
-        // If there are no blocks, add the genesis block.
-        if let None = store.hashes.keys().max() {
-            // Load the genesis block.
-            let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+    /// Stores the given `block` into storage.
+    pub fn insert(&self, block: &Block<N>) -> Result<()> {
+        self.storage.insert(block)
+    }
 
-            // Add the genesis block.
-            store.hashes.insert(genesis.height(), genesis.hash())?;
-            store.headers.insert(genesis.hash(), *genesis.header())?;
-            store.transactions.insert(genesis.hash(), genesis.transaction_ids().cloned().collect())?;
-            store.signatures.insert(genesis.hash(), *genesis.signature())?;
-        }
+    /// Removes the block for the given `block hash`.
+    pub fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
+        self.storage.remove(block_hash)
+    }
+}
 
-        Ok(store)
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the previous block hash of the given `block height`.
+    pub fn get_previous_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
+        self.storage.get_previous_block_hash(height)
+    }
+
+    /// Returns the block hash for the given `block height`.
+    pub fn get_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
+        self.storage.get_block_hash(height)
+    }
+
+    /// Returns the block height for the given `block hash`.
+    pub fn get_block_height(&self, block_hash: &N::BlockHash) -> Result<Option<u32>> {
+        self.storage.get_block_height(block_hash)
+    }
+
+    /// Returns the block header for the given `block hash`.
+    pub fn get_block_header(&self, block_hash: &N::BlockHash) -> Result<Option<Header<N>>> {
+        self.storage.get_block_header(block_hash)
+    }
+
+    /// Returns the block transactions for the given `block hash`.
+    pub fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
+        self.storage.get_block_transactions(block_hash)
+    }
+
+    /// Returns the block signature for the given `block hash`.
+    pub fn get_block_signature(&self, block_hash: &N::BlockHash) -> Result<Option<Signature<N>>> {
+        self.storage.get_block_signature(block_hash)
+    }
+
+    /// Returns the block for the given `block hash`.
+    pub fn get_block(&self, block_hash: &N::BlockHash) -> Result<Option<Block<N>>> {
+        self.storage.get_block(block_hash)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns the block hash that contains the given `transaction ID`.
+    pub fn find_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
+        self.storage.find_transaction_id(transaction_id)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns `true` if the given block height exists.
+    pub fn contains_block_height(&self, height: u32) -> Result<bool> {
+        self.storage.id_map().contains_key(&height)
+    }
+
+    /// Returns `true` if the given block hash exists.
+    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
+        self.storage.reverse_id_map().contains_key(block_hash)
     }
 }
 

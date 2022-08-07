@@ -16,7 +16,6 @@
 
 use crate::ledger::{
     map::{memory_map::MemoryMap, Map, MapRead},
-    store::CowIter,
     transition::{Input, Origin},
 };
 use console::{
@@ -283,8 +282,6 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
 /// The transition input store.
 #[derive(Clone)]
 pub struct InputStore<N: Network, I: InputStorage<N>> {
-    /// The map of `transition ID` to `[input ID]`.
-    input_ids: I::IDMap,
     /// The map of constant inputs.
     constant: I::ConstantMap,
     /// The map of public inputs.
@@ -305,7 +302,6 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Initializes a new input store.
     pub fn new(storage: I) -> Self {
         Self {
-            input_ids: storage.id_map().clone(),
             constant: storage.constant_map().clone(),
             public: storage.public_map().clone(),
             private: storage.private_map().clone(),
@@ -347,12 +343,26 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 }
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
+    /// Returns `true` if the given input ID exists.
+    pub fn contains_input_id(&self, input_id: &Field<N>) -> Result<bool> {
+        self.storage.reverse_id_map().contains_key(input_id)
+    }
+
+    /// Returns `true` if the given serial number exists.
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
+        self.record.contains_key(serial_number)
+    }
+
+    /// Returns `true` if the given tag exists.
+    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
+        self.record_tag.contains_key(tag)
+    }
+}
+
+impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Returns an iterator over the input IDs, for all transition inputs.
     pub fn input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.input_ids.values().flat_map(|ids| match ids {
-            Cow::Borrowed(ids) => CowIter::Borrowed(ids.iter()),
-            Cow::Owned(ids) => CowIter::Owned(ids.into_iter()),
-        })
+        self.storage.reverse_id_map().keys()
     }
 
     /// Returns an iterator over the constant input IDs, for all transition inputs that are constant.
@@ -420,18 +430,6 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
             Cow::Borrowed((_, origin)) => Cow::Borrowed(origin),
             Cow::Owned((_, origin)) => Cow::Owned(origin),
         })
-    }
-}
-
-impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
-    /// Returns `true` if the given serial number exists.
-    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
-        self.record.contains_key(serial_number)
-    }
-
-    /// Returns `true` if the given tag exists.
-    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
-        self.record_tag.contains_key(tag)
     }
 }
 

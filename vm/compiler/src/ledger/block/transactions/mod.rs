@@ -39,6 +39,13 @@ pub struct Transactions<N: Network> {
     transactions: IndexMap<N::TransactionID, Transaction<N>>,
 }
 
+impl<N: Network> Transactions<N> {
+    /// Initializes from a given transactions list.
+    pub fn from(transactions: &[Transaction<N>]) -> Self {
+        Self::from_iter(transactions.iter())
+    }
+}
+
 impl<N: Network> FromIterator<Transaction<N>> for Transactions<N> {
     /// Initializes from an iterator of transactions.
     fn from_iter<T: IntoIterator<Item = Transaction<N>>>(iter: T) -> Self {
@@ -50,13 +57,6 @@ impl<'a, N: Network> FromIterator<&'a Transaction<N>> for Transactions<N> {
     /// Initializes from an iterator of transactions.
     fn from_iter<T: IntoIterator<Item = &'a Transaction<N>>>(iter: T) -> Self {
         Self::from_iter(iter.into_iter().cloned())
-    }
-}
-
-impl<N: Network> Transactions<N> {
-    /// Initializes from a given transactions list.
-    pub fn from(transactions: &[Transaction<N>]) -> Self {
-        Self::from_iter(transactions.iter())
     }
 }
 

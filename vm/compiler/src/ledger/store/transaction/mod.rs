@@ -79,7 +79,7 @@ pub trait TransactionStorage<N: Network>: Clone {
         // Retrieve the transaction type.
         let transaction_type = match self.id_map().get(transaction_id)? {
             Some(transaction_type) => cow_to_copied!(transaction_type),
-            None => bail!("Failed to get the type for transaction '{transaction_id}'"),
+            None => return Ok(None),
         };
         // Retrieve the transaction.
         match transaction_type {
@@ -181,7 +181,7 @@ pub struct TransactionStore<N: Network, T: TransactionStorage<N>> {
 }
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
-    /// Initializes a new execution store.
+    /// Initializes a new transaction store.
     pub fn new(storage: T) -> Self {
         Self { transaction_ids: storage.id_map().clone(), storage }
     }
@@ -304,6 +304,30 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 }
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
+    /// Returns the transaction ID that contains the given `transition ID`.
+    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.storage.execution_store().find_transaction_id(transition_id)
+    }
+
+    /// Returns the transaction ID that contains the given `program ID`.
+    pub fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.storage.deployment_store().find_transaction_id(program_id)
+    }
+}
+
+impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
+    /// Returns `true` if the given transaction ID exists.
+    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
+        self.transaction_ids.contains_key(transaction_id)
+    }
+
+    /// Returns `true` if the given program ID exists.
+    pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
+        self.storage.deployment_store().contains_program_id(program_id)
+    }
+}
+
+impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns an iterator over the transaction IDs, for all transitions in `self`.
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.transaction_ids.keys()
@@ -334,14 +358,94 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     }
 }
 
-impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
-    /// Returns `true` if the given transaction ID exists.
-    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
-        self.transaction_ids.contains_key(transaction_id)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ledger::store::{TransitionMemory, TransitionStore};
+
+    #[test]
+    fn test_insert_get_remove() {
+        // Sample the transactions.
+        for transaction in [
+            crate::ledger::vm::test_helpers::sample_deployment_transaction(),
+            crate::ledger::vm::test_helpers::sample_execution_transaction(),
+        ] {
+            let transaction_id = transaction.id();
+
+            // Initialize a new transition store.
+            let transition_store = TransitionStore::new(TransitionMemory::new());
+            // Initialize a new deployment store.
+            let deployment_store = DeploymentStore::new(DeploymentMemory::new(transition_store.clone()));
+            // Initialize a new execution store.
+            let execution_store = ExecutionStore::new(ExecutionMemory::new(transition_store));
+
+            // Initialize a new transaction store.
+            let transaction_store = TransactionStore::new(TransactionMemory::new(deployment_store, execution_store));
+
+            // Ensure the transaction does not exist.
+            let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+
+            // Insert the transaction.
+            transaction_store.insert(&transaction).unwrap();
+
+            // Retrieve the transaction.
+            let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(Some(transaction), candidate);
+
+            // Remove the transaction.
+            transaction_store.remove(&transaction_id).unwrap();
+
+            // Ensure the transaction does not exist.
+            let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 
-    /// Returns `true` if the given program ID exists.
-    pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
-        self.storage.deployment_store().contains_program_id(program_id)
+    #[test]
+    fn test_find_transaction_id() {
+        // Sample the execution transaction.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transaction_id = transaction.id();
+        let transition_ids = match transaction {
+            Transaction::Execute(_, ref execution, _) => {
+                execution.clone().into_transitions().map(|transition| *transition.id()).collect::<Vec<_>>()
+            }
+            _ => panic!("Incorrect transaction type"),
+        };
+
+        // Initialize a new transition store.
+        let transition_store = TransitionStore::new(TransitionMemory::new());
+        // Initialize a new deployment store.
+        let deployment_store = DeploymentStore::new(DeploymentMemory::new(transition_store.clone()));
+        // Initialize a new execution store.
+        let execution_store = ExecutionStore::new(ExecutionMemory::new(transition_store));
+
+        // Initialize a new transaction store.
+        let transaction_store = TransactionStore::new(TransactionMemory::new(deployment_store, execution_store));
+
+        // Ensure the execution transaction does not exist.
+        let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
+        assert_eq!(None, candidate);
+
+        for transition_id in transition_ids {
+            // Ensure the transaction ID is not found.
+            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            assert_eq!(None, candidate);
+
+            // Insert the transaction.
+            transaction_store.insert(&transaction).unwrap();
+
+            // Find the transaction ID.
+            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            assert_eq!(Some(transaction_id), candidate);
+
+            // Remove the transaction.
+            transaction_store.remove(&transaction_id).unwrap();
+
+            // Ensure the transaction ID is not found.
+            let candidate = transaction_store.find_transaction_id(&transition_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 }

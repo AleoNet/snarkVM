@@ -16,7 +16,6 @@
 
 use crate::ledger::{
     map::{memory_map::MemoryMap, Map, MapRead},
-    store::CowIter,
     transition::Output,
 };
 use console::{
@@ -288,8 +287,6 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
 /// The transition output store.
 #[derive(Clone)]
 pub struct OutputStore<N: Network, O: OutputStorage<N>> {
-    /// The map of `transition ID` to `[output ID]`.
-    output_ids: O::IDMap,
     /// The map of constant outputs.
     constant: O::ConstantMap,
     /// The map of public outputs.
@@ -310,7 +307,6 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Initializes a new output store.
     pub fn new(storage: O) -> Self {
         Self {
-            output_ids: storage.id_map().clone(),
             constant: storage.constant_map().clone(),
             public: storage.public_map().clone(),
             private: storage.private_map().clone(),
@@ -368,12 +364,31 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
 }
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
+    /// Returns `true` if the given output ID exists.
+    pub fn contains_output_id(&self, output_id: &Field<N>) -> Result<bool> {
+        self.storage.reverse_id_map().contains_key(output_id)
+    }
+
+    /// Returns `true` if the given commitment exists.
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
+        self.record.contains_key(commitment)
+    }
+
+    /// Returns `true` if the given checksum exists.
+    pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
+        self.checksums().contains(checksum)
+    }
+
+    /// Returns `true` if the given nonce exists.
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
+        self.record_nonce.contains_key(nonce)
+    }
+}
+
+impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Returns an iterator over the output IDs, for all transition outputs.
     pub fn output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.output_ids.values().flat_map(|ids| match ids {
-            Cow::Borrowed(ids) => CowIter::Borrowed(ids.iter()),
-            Cow::Owned(ids) => CowIter::Owned(ids.into_iter()),
-        })
+        self.storage.reverse_id_map().keys()
     }
 
     /// Returns an iterator over the constant output IDs, for all transition outputs that are constant.
@@ -450,23 +465,6 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
             Cow::Owned((_, Some(record))) => Some(Cow::Owned(record)),
             _ => None,
         })
-    }
-}
-
-impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
-    /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
-        self.record.contains_key(commitment)
-    }
-
-    /// Returns `true` if the given checksum exists.
-    pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
-        self.checksums().contains(checksum)
-    }
-
-    /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
-        self.record_nonce.contains_key(nonce)
     }
 }
 
