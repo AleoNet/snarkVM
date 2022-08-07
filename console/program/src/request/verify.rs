@@ -89,25 +89,41 @@ impl<N: Network> Request<N> {
         if let Err(error) = self.input_ids.iter().zip_eq(&self.inputs).zip_eq(input_types).enumerate().try_for_each(
             |(index, ((input_id, input), input_type))| {
                 match input_id {
-                    // A constant input is hashed to a field element.
+                    // A constant input is hashed (using `tcm`) to a field element.
                     InputID::Constant(input_hash) => {
                         // Ensure the input is a plaintext.
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
+
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(input || tcm || index)`.
+                        let mut preimage = input.to_fields()?;
+                        preimage.push(self.tcm.clone());
+                        preimage.push(index);
                         // Hash the input to a field element.
-                        let candidate_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        let candidate_hash = N::hash_psd8(&preimage)?;
                         // Ensure the input hash matches.
                         ensure!(*input_hash == candidate_hash, "Expected a constant input with the same hash");
+
                         // Add the input hash to the message.
                         message.push(candidate_hash);
                     }
-                    // A public input is hashed to a field element.
+                    // A public input is hashed (using `tcm`) to a field element.
                     InputID::Public(input_hash) => {
                         // Ensure the input is a plaintext.
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
+
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(input || tcm || index)`.
+                        let mut preimage = input.to_fields()?;
+                        preimage.push(self.tcm.clone());
+                        preimage.push(index);
                         // Hash the input to a field element.
-                        let candidate_hash = N::hash_bhp1024(&input.to_bits_le())?;
+                        let candidate_hash = N::hash_psd8(&preimage)?;
                         // Ensure the input hash matches.
                         ensure!(*input_hash == candidate_hash, "Expected a public input with the same hash");
+
                         // Add the input hash to the message.
                         message.push(candidate_hash);
                     }
@@ -115,7 +131,8 @@ impl<N: Network> Request<N> {
                     InputID::Private(input_hash) => {
                         // Ensure the input is a plaintext.
                         ensure!(matches!(input, Value::Plaintext(..)), "Expected a plaintext input");
-                        // Prepare the index as a constant field element.
+
+                        // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
                         // Compute the input view key as `Hash(tvk || index)`.
                         let input_view_key = N::hash_psd2(&[self.tvk, index])?;
@@ -126,9 +143,10 @@ impl<N: Network> Request<N> {
                             Value::Record(..) => bail!("Expected a plaintext input, found a record input"),
                         };
                         // Hash the ciphertext to a field element.
-                        let candidate_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        let candidate_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the input hash matches.
                         ensure!(*input_hash == candidate_hash, "Expected a private input with the same commitment");
+
                         // Add the input hash to the message.
                         message.push(candidate_hash);
                     }
@@ -182,20 +200,24 @@ impl<N: Network> Request<N> {
                         message.extend([h, h_r, *gamma].iter().map(|point| point.to_x_coordinate()));
                         message.push(*tag);
                     }
-                    // An external record input is committed (using `tvk`) to a field element.
-                    InputID::ExternalRecord(input_commitment) => {
+                    // An external record input is hashed (using `tvk`) to a field element.
+                    InputID::ExternalRecord(input_hash) => {
                         // Ensure the input is a record.
                         ensure!(matches!(input, Value::Record(..)), "Expected a record input");
+
                         // Construct the (console) input index as a field element.
                         let index = Field::from_u16(index as u16);
-                        // Compute the input randomizer as `HashToScalar(tvk || index)`.
-                        let input_randomizer = N::hash_to_scalar_psd2(&[self.tvk, index])?;
-                        // Commit to the input to a field element.
-                        let candidate_cm = N::commit_bhp1024(&input.to_bits_le(), &input_randomizer)?;
-                        // Ensure the input commitment matches.
-                        ensure!(*input_commitment == candidate_cm, "Expected a locator input with the same commitment");
-                        // Add the input commitment to the message.
-                        message.push(candidate_cm);
+                        // Construct the preimage as `(input || tvk || index)`.
+                        let mut preimage = input.to_fields()?;
+                        preimage.push(self.tvk.clone());
+                        preimage.push(index);
+                        // Hash the input to a field element.
+                        let candidate_hash = N::hash_psd8(&preimage)?;
+                        // Ensure the input hash matches.
+                        ensure!(*input_hash == candidate_hash, "Expected a locator input with the same hash");
+
+                        // Add the input hash to the message.
+                        message.push(candidate_hash);
                     }
                 }
                 Ok(())

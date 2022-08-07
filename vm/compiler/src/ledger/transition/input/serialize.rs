@@ -100,13 +100,8 @@ impl<'de, N: Network> Deserialize<'de> for Input<N> {
                     Some("external_record") => Input::ExternalRecord(id),
                     _ => return Err(de::Error::custom("Invalid transition input type")),
                 };
-
-                // Ensure the input is well-formed.
-                match input.verify() {
-                    true => Ok(input),
-                    false => Err(error("Transition input verification failed, possible data corruption"))
-                        .map_err(de::Error::custom),
-                }
+                // Return the input.
+                Ok(input)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition input"),
         }

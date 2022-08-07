@@ -122,25 +122,59 @@ impl<N: Network> Input<N> {
 
     /// Returns `true` if the input is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
-        let result = match self {
-            Input::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Input::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Input::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
+        let result = || match self {
+            Input::Constant(hash, Some(input)) => {
+                match input.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(input || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(tcm.clone());
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Input::Public(hash, Some(input)) => {
+                match input.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(input || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(tcm.clone());
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Input::Private(hash, Some(value)) => {
+                match value.to_fields() {
+                    // Ensure the hash matches.
+                    Ok(fields) => match N::hash_psd8(&fields) {
+                        Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                        Err(error) => Err(error),
+                    },
+                    Err(error) => Err(error),
+                }
+            }
             _ => Ok(true),
         };
 
-        match result {
+        match result() {
             Ok(is_hash_valid) => is_hash_valid,
             Err(error) => {
                 eprintln!("{error}");

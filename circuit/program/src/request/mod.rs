@@ -34,7 +34,7 @@ pub enum InputID<A: Aleo> {
     Private(Field<A>),
     /// The `(commitment, gamma, serial_number, tag)` tuple of the record input.
     Record(Field<A>, Group<A>, Field<A>, Field<A>),
-    /// The commitment of the external record input.
+    /// The hash of the external record input.
     ExternalRecord(Field<A>),
 }
 
@@ -45,8 +45,8 @@ impl<A: Aleo> Inject for InputID<A> {
     /// Initializes the input ID from the given mode and console input ID.
     fn new(_: Mode, input: Self::Primitive) -> Self {
         match input {
-            // Inject the expected hash as `Mode::Constant`.
-            console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
+            // Inject the expected hash as `Mode::Public`.
+            console::InputID::Constant(field) => Self::Constant(Field::new(Mode::Public, field)),
             // Inject the expected hash as `Mode::Public`.
             console::InputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the ciphertext hash as `Mode::Public`.

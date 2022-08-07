@@ -110,12 +110,8 @@ impl<'de, N: Network> Deserialize<'de> for Output<N> {
                     _ => return Err(de::Error::custom("Invalid output type")),
                 };
 
-                // Ensure the output is well-formed.
-                match output.verify() {
-                    true => Ok(output),
-                    false => Err(error("Transition output verification failed, possible data corruption"))
-                        .map_err(de::Error::custom),
-                }
+                // Return the output.
+                Ok(output)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition output"),
         }

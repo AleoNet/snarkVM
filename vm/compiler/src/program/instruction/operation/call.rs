@@ -373,7 +373,9 @@ impl<N: Network> Call<N> {
             // Inject the `sk_tag` (from the request) as `Mode::Private`.
             let sk_tag = circuit::Field::new(circuit::Mode::Private, *request.sk_tag());
             // Inject the `tvk` (from the request) as `Mode::Private`.
-            let tvk = circuit::Field::new(circuit::Mode::Private, *request.tvk());
+            let tvk = circuit::Field::new(circuit::Mode::Private, *request.tcm());
+            // Inject the `tcm` (from the request) as `Mode::Private`.
+            let tcm = circuit::Field::new(circuit::Mode::Private, *request.tcm());
             // Inject the input IDs (from the request) as `Mode::Public`.
             let input_ids = request
                 .input_ids()
@@ -389,6 +391,7 @@ impl<N: Network> Call<N> {
                 &program_id,
                 &sk_tag,
                 &tvk,
+                &tcm,
             ));
 
             // Inject the outputs as `Mode::Private` (with the output IDs as `Mode::Public`).
@@ -396,6 +399,7 @@ impl<N: Network> Call<N> {
                 &program_id,
                 num_inputs,
                 &tvk,
+                &tcm,
                 response.outputs().to_vec(),
                 &function.output_types(),
             );

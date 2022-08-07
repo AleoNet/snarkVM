@@ -99,11 +99,17 @@ impl<N: Network> Process<N> {
             ensure!(transition.outputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of outputs");
 
             // Ensure each input is valid.
-            if transition.inputs().iter().any(|input| !input.verify()) {
+            if transition.inputs().iter().enumerate().any(|(index, input)| !input.verify(transition.tcm(), index)) {
                 bail!("Failed to verify a transition input")
             }
             // Ensure each output is valid.
-            if transition.outputs().iter().any(|output| !output.verify()) {
+            let num_inputs = transition.inputs().len();
+            if transition
+                .outputs()
+                .iter()
+                .enumerate()
+                .any(|(index, output)| !output.verify(transition.tcm(), num_inputs + index))
+            {
                 bail!("Failed to verify a transition output")
             }
 

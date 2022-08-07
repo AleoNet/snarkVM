@@ -113,20 +113,22 @@ impl<N: Network> Transition<N> {
                 // Construct the transition input.
                 match (input_id, input) {
                     (InputID::Constant(input_hash), Value::Plaintext(plaintext)) => {
-                        // Compute the plaintext hash.
-                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
-                        // Ensure the plaintext hash matches.
-                        ensure!(*input_hash == plaintext_hash, "The constant input plaintext hash is incorrect");
-                        // Return the constant input.
-                        Ok(Input::Constant(*input_hash, Some(plaintext.clone())))
+                        // Construct the constant input.
+                        let input = Input::Constant(*input_hash, Some(plaintext.clone()));
+                        // Ensure the input is valid.
+                        match input.verify(request.tcm(), index) {
+                            true => Ok(input),
+                            false => bail!("Malformed constant transition input: '{input}'"),
+                        }
                     }
                     (InputID::Public(input_hash), Value::Plaintext(plaintext)) => {
-                        // Compute the plaintext hash.
-                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
-                        // Ensure the plaintext hash matches.
-                        ensure!(*input_hash == plaintext_hash, "The public input plaintext hash is incorrect");
-                        // Return the public input.
-                        Ok(Input::Public(*input_hash, Some(plaintext.clone())))
+                        // Construct the public input.
+                        let input = Input::Public(*input_hash, Some(plaintext.clone()));
+                        // Ensure the input is valid.
+                        match input.verify(request.tcm(), index) {
+                            true => Ok(input),
+                            false => bail!("Malformed public transition input: '{input}'"),
+                        }
                     }
                     (InputID::Private(input_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) input index as a field element.
@@ -134,7 +136,7 @@ impl<N: Network> Transition<N> {
                         // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
                         let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
                         // Compute the ciphertext hash.
-                        let ciphertext_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        let ciphertext_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the ciphertext hash matches.
                         ensure!(*input_hash == ciphertext_hash, "The input ciphertext hash is incorrect");
                         // Return the private input.
@@ -143,9 +145,7 @@ impl<N: Network> Transition<N> {
                     (InputID::Record(commitment, _, serial_number, tag), Value::Record(..)) => {
                         Ok(Input::Record(*serial_number, *tag, Origin::Commitment(*commitment)))
                     }
-                    (InputID::ExternalRecord(input_commitment), Value::Record(..)) => {
-                        Ok(Input::ExternalRecord(*input_commitment))
-                    }
+                    (InputID::ExternalRecord(input_hash), Value::Record(..)) => Ok(Input::ExternalRecord(*input_hash)),
                     _ => bail!("Malformed request input: {:?}, {input}", input_id),
                 }
             })
@@ -162,20 +162,22 @@ impl<N: Network> Transition<N> {
                 // Construct the transition output.
                 match (output_id, output) {
                     (OutputID::Constant(output_hash), Value::Plaintext(plaintext)) => {
-                        // Compute the plaintext hash.
-                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
-                        // Ensure the plaintext hash matches.
-                        ensure!(*output_hash == plaintext_hash, "The constant output plaintext hash is incorrect");
-                        // Return the constant output.
-                        Ok(Output::Constant(*output_hash, Some(plaintext.clone())))
+                        // Construct the constant output.
+                        let output = Output::Constant(*output_hash, Some(plaintext.clone()));
+                        // Ensure the output is valid.
+                        match output.verify(request.tcm(), num_inputs + index) {
+                            true => Ok(output),
+                            false => bail!("Malformed constant transition output: '{output}'"),
+                        }
                     }
                     (OutputID::Public(output_hash), Value::Plaintext(plaintext)) => {
-                        // Compute the plaintext hash.
-                        let plaintext_hash = N::hash_bhp1024(&plaintext.to_bits_le())?;
-                        // Ensure the plaintext hash matches.
-                        ensure!(*output_hash == plaintext_hash, "The public output plaintext hash is incorrect");
-                        // Return the public output.
-                        Ok(Output::Public(*output_hash, Some(plaintext.clone())))
+                        // Construct the public output.
+                        let output = Output::Public(*output_hash, Some(plaintext.clone()));
+                        // Ensure the output is valid.
+                        match output.verify(request.tcm(), num_inputs + index) {
+                            true => Ok(output),
+                            false => bail!("Malformed public transition output: '{output}'"),
+                        }
                     }
                     (OutputID::Private(output_hash), Value::Plaintext(plaintext)) => {
                         // Construct the (console) output index as a field element.
@@ -183,7 +185,7 @@ impl<N: Network> Transition<N> {
                         // Compute the ciphertext, with the input view key as `Hash(tvk || index)`.
                         let ciphertext = plaintext.encrypt_symmetric(N::hash_psd2(&[*request.tvk(), index])?)?;
                         // Compute the ciphertext hash.
-                        let ciphertext_hash = N::hash_bhp1024(&ciphertext.to_bits_le())?;
+                        let ciphertext_hash = N::hash_psd8(&ciphertext.to_fields()?)?;
                         // Ensure the ciphertext hash matches.
                         ensure!(*output_hash == ciphertext_hash, "The output ciphertext hash is incorrect");
                         // Return the private output.

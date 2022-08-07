@@ -140,21 +140,55 @@ impl<N: Network> Output<N> {
 
     /// Returns `true` if the output is well-formed.
     /// If the optional value exists, this method checks that it hashes to the output ID.
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
         let result = match self {
-            Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
+            Output::Constant(hash, Some(output)) => {
+                match output.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(output || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(tcm.clone());
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Output::Public(hash, Some(output)) => {
+                match output.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(output || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(tcm.clone());
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Output::Private(hash, Some(value)) => {
+                match value.to_fields() {
+                    // Ensure the hash matches.
+                    Ok(fields) => match N::hash_psd8(&fields) {
+                        Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                        Err(error) => Err(error),
+                    },
+                    Err(error) => Err(error),
+                }
+            }
             Output::Record(_, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
                 Ok(candidate_hash) => Ok(checksum == &candidate_hash),
                 Err(error) => Err(error),
