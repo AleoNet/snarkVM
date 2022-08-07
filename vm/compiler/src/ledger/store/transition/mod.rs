@@ -534,30 +534,83 @@ mod tests {
 
     #[test]
     fn test_insert_get_remove() {
-        // Sample a transition.
+        // Sample the transitions.
         let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
-        let transition = transaction.transitions().next().unwrap();
-        let transition_id = *transition.id();
+        let transitions = transaction
+            .transitions()
+            .chain([crate::process::test_helpers::sample_transition()].iter())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        // Ensure there is at least 2 transition.
+        println!("\n\nNumber of transitions: {}\n", transitions.len());
+        assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
 
         // Initialize a new transition store.
         let transition_store = TransitionMemory::new();
 
-        // Ensure the transition does not exist.
-        let candidate = transition_store.get(&transition_id).unwrap();
-        assert_eq!(None, candidate);
+        // Test each transition in isolation.
+        for transition in transitions.iter() {
+            // Retrieve the transition ID.
+            let transition_id = *transition.id();
 
-        // Insert the transition.
-        transition_store.insert(transition.clone()).unwrap();
+            // Ensure the transition does not exist.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(None, candidate);
 
-        // Retrieve the transition.
-        let candidate = transition_store.get(&transition_id).unwrap();
-        assert_eq!(Some(transition.clone()), candidate);
+            // Insert the transition.
+            transition_store.insert(transition.clone()).unwrap();
 
-        // Remove the transition.
-        transition_store.remove(&transition_id).unwrap();
+            // Retrieve the transition.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(Some(transition.clone()), candidate);
 
-        // Retrieve the transition.
-        let candidate = transition_store.get(&transition_id).unwrap();
-        assert_eq!(None, candidate);
+            // Remove the transition.
+            transition_store.remove(&transition_id).unwrap();
+
+            // Retrieve the transition.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(None, candidate);
+        }
+
+        // Insert every transition.
+        for transition in transitions.iter() {
+            // Retrieve the transition ID.
+            let transition_id = *transition.id();
+
+            // Ensure the transition does not exist.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(None, candidate);
+
+            // Insert the transition.
+            transition_store.insert(transition.clone()).unwrap();
+
+            // Ensure the transition exists.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(Some(transition.clone()), candidate);
+        }
+
+        // Get every transition (in reverse).
+        for transition in transitions.iter().rev() {
+            // Retrieve the transition ID.
+            let transition_id = *transition.id();
+
+            // Retrieve the transition.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(Some(transition.clone()), candidate);
+        }
+
+        // Remove every transition (in reverse).
+        for transition in transitions.iter().rev() {
+            // Retrieve the transition ID.
+            let transition_id = *transition.id();
+
+            // Remove the transition.
+            transition_store.remove(&transition_id).unwrap();
+
+            // Ensure the transition does not exist.
+            let candidate = transition_store.get(&transition_id).unwrap();
+            assert_eq!(None, candidate);
+        }
     }
 }
