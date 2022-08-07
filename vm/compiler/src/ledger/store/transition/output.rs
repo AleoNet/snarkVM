@@ -42,6 +42,8 @@ pub trait OutputStorage<N: Network>: Clone {
     type PrivateMap: for<'a> Map<'a, Field<N>, Option<Ciphertext<N>>>;
     /// The mapping of `commitment` to `(checksum, (optional) record ciphertext)`.
     type RecordMap: for<'a> Map<'a, Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
+    /// The mapping of `record nonce` to `commitment`.
+    type RecordNonceMap: for<'a> Map<'a, Group<N>, Field<N>>;
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
@@ -57,6 +59,8 @@ pub trait OutputStorage<N: Network>: Clone {
     fn private_map(&self) -> &Self::PrivateMap;
     /// Returns the record map.
     fn record_map(&self) -> &Self::RecordMap;
+    /// Returns the record nonce map.
+    fn record_nonce_map(&self) -> &Self::RecordNonceMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
 
@@ -131,20 +135,22 @@ pub trait OutputStorage<N: Network>: Clone {
     fn insert(&self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
         // Store the output IDs.
         self.id_map().insert(transition_id, outputs.iter().map(Output::id).copied().collect())?;
-        // Store the reverse output IDs.
-        outputs
-            .iter()
-            .map(Output::id)
-            .copied()
-            .try_for_each(|output_id| self.reverse_id_map().insert(output_id, transition_id))?;
 
         // Store the outputs.
         for output in outputs {
+            // Store the reverse output ID.
+            self.reverse_id_map().insert(*output.id(), transition_id)?;
+            // Store the output.
             match output.clone() {
                 Output::Constant(output_id, constant) => self.constant_map().insert(output_id, constant)?,
                 Output::Public(output_id, public) => self.public_map().insert(output_id, public)?,
                 Output::Private(output_id, private) => self.private_map().insert(output_id, private)?,
                 Output::Record(commitment, checksum, optional_record) => {
+                    // If the optional record exists, insert the record nonce.
+                    if let Some(record) = &optional_record {
+                        self.record_nonce_map().insert(*record.nonce(), commitment)?;
+                    }
+                    // Insert the record entry.
                     self.record_map().insert(commitment, (checksum, optional_record))?
                 }
                 Output::ExternalRecord(output_id) => self.external_record_map().insert(output_id, ())?,
@@ -164,11 +170,20 @@ pub trait OutputStorage<N: Network>: Clone {
 
         // Remove the output IDs.
         self.id_map().remove(transition_id)?;
-        // Remove the reverse output IDs.
-        output_ids.iter().try_for_each(|output_id| self.reverse_id_map().remove(output_id))?;
 
         // Remove the outputs.
         for output_id in output_ids {
+            // Remove the reverse output ID.
+            self.reverse_id_map().remove(&output_id)?;
+
+            // If the output is a record, remove the record nonce.
+            if let Some(record) = self.record_map().get(&output_id)? {
+                if let Some(record) = &record.1 {
+                    self.record_nonce_map().remove(record.nonce())?;
+                }
+            }
+
+            // Remove the output.
             self.constant_map().remove(&output_id)?;
             self.public_map().remove(&output_id)?;
             self.private_map().remove(&output_id)?;
@@ -196,6 +211,8 @@ pub struct OutputMemory<N: Network> {
     private: MemoryMap<Field<N>, Option<Ciphertext<N>>>,
     /// The mapping of `commitment` to `(checksum, (optional) record ciphertext)`.
     record: MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>,
+    /// The mapping of `record nonce` to `commitment`.
+    record_nonce: MemoryMap<Group<N>, Field<N>>,
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
 }
@@ -210,6 +227,7 @@ impl<N: Network> OutputMemory<N> {
             public: Default::default(),
             private: Default::default(),
             record: Default::default(),
+            record_nonce: Default::default(),
             external_record: Default::default(),
         }
     }
@@ -223,6 +241,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
     type RecordMap = MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
+    type RecordNonceMap = MemoryMap<Group<N>, Field<N>>;
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Returns the ID map.
@@ -255,6 +274,11 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
         &self.record
     }
 
+    /// Returns the record nonce map.
+    fn record_nonce_map(&self) -> &Self::RecordNonceMap {
+        &self.record_nonce
+    }
+
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
@@ -274,6 +298,8 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
     private: O::PrivateMap,
     /// The map of record outputs.
     record: O::RecordMap,
+    /// The map of record nonces.
+    record_nonce: O::RecordNonceMap,
     /// The map of external record outputs.
     external_record: O::ExternalRecordMap,
     /// The output storage.
@@ -289,6 +315,7 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
             public: storage.public_map().clone(),
             private: storage.private_map().clone(),
             record: storage.record_map().clone(),
+            record_nonce: storage.record_nonce_map().clone(),
             external_record: storage.external_record_map().clone(),
             storage,
         }
@@ -413,11 +440,7 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
 
     /// Returns an iterator over the nonces, for all transition outputs that are records.
     pub fn nonces(&self) -> impl '_ + Iterator<Item = Cow<'_, Group<N>>> {
-        self.record.values().flat_map(|output| match output {
-            Cow::Borrowed((_, Some(record))) => Some(Cow::Borrowed(record.nonce())),
-            Cow::Owned((_, Some(record))) => Some(Cow::Owned(record.into_nonce())),
-            _ => None,
-        })
+        self.record_nonce.keys()
     }
 
     /// Returns an iterator over the records, for all transition outputs that are records.
@@ -442,8 +465,8 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     }
 
     /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
-        self.nonces().contains(nonce)
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
+        self.record_nonce.contains_key(nonce)
     }
 }
 

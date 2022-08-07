@@ -22,6 +22,7 @@ pub use output::*;
 
 use crate::{
     cow_to_cloned,
+    cow_to_copied,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
         Input,
@@ -52,8 +53,12 @@ pub trait TransitionStorage<N: Network>: Clone {
     type ProofMap: for<'a> Map<'a, N::TransitionID, Proof<N>>;
     /// The transition public keys.
     type TPKMap: for<'a> Map<'a, N::TransitionID, Group<N>>;
+    /// The mapping of `transition public key` to `transition ID`.
+    type ReverseTPKMap: for<'a> Map<'a, Group<N>, N::TransitionID>;
     /// The transition commitments.
     type TCMMap: for<'a> Map<'a, N::TransitionID, Field<N>>;
+    /// The mapping of `transition commitment` to `transition ID`.
+    type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
     /// The transition fees.
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
@@ -67,8 +72,12 @@ pub trait TransitionStorage<N: Network>: Clone {
     fn proof_map(&self) -> &Self::ProofMap;
     /// Returns the transition public keys.
     fn tpk_map(&self) -> &Self::TPKMap;
+    /// Returns the reverse `tpk` map.
+    fn reverse_tpk_map(&self) -> &Self::ReverseTPKMap;
     /// Returns the transition commitments.
     fn tcm_map(&self) -> &Self::TCMMap;
+    /// Returns the reverse `tcm` map.
+    fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
     /// Returns the transition fees.
     fn fee_map(&self) -> &Self::FeeMap;
 
@@ -129,8 +138,12 @@ pub trait TransitionStorage<N: Network>: Clone {
         self.proof_map().insert(transition_id, transition.proof().clone())?;
         // Store `tpk`.
         self.tpk_map().insert(transition_id, *transition.tpk())?;
+        // Store the reverse `tpk` entry.
+        self.reverse_tpk_map().insert(*transition.tpk(), transition_id)?;
         // Store `tcm`.
         self.tcm_map().insert(transition_id, *transition.tcm())?;
+        // Store the reverse `tcm` entry.
+        self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
         // Store the fee.
         self.fee_map().insert(transition_id, *transition.fee())?;
 
@@ -139,6 +152,17 @@ pub trait TransitionStorage<N: Network>: Clone {
 
     /// Removes the input for the given `transition ID`.
     fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
+        // Retrieve the `tpk`.
+        let tpk = match self.tpk_map().get(transition_id)? {
+            Some(tpk) => cow_to_copied!(tpk),
+            None => return Ok(()),
+        };
+        // Retrieve the `tcm`.
+        let tcm = match self.tcm_map().get(transition_id)? {
+            Some(tcm) => cow_to_copied!(tcm),
+            None => return Ok(()),
+        };
+
         // Remove the program ID and function name.
         self.locator_map().remove(transition_id)?;
         // Remove the inputs.
@@ -149,8 +173,12 @@ pub trait TransitionStorage<N: Network>: Clone {
         self.proof_map().remove(transition_id)?;
         // Remove `tpk`.
         self.tpk_map().remove(transition_id)?;
+        // Remove the reverse `tpk` entry.
+        self.reverse_tpk_map().remove(&tpk)?;
         // Remove `tcm`.
         self.tcm_map().remove(transition_id)?;
+        // Remove the reverse `tcm` entry.
+        self.reverse_tcm_map().remove(&tcm)?;
         // Remove the fee.
         self.fee_map().remove(transition_id)?;
 
@@ -171,8 +199,12 @@ pub struct TransitionMemory<N: Network> {
     proof_map: MemoryMap<N::TransitionID, Proof<N>>,
     /// The transition public keys.
     tpk_map: MemoryMap<N::TransitionID, Group<N>>,
+    /// The reverse `tpk` map.
+    reverse_tpk_map: MemoryMap<Group<N>, N::TransitionID>,
     /// The transition commitments.
     tcm_map: MemoryMap<N::TransitionID, Field<N>>,
+    /// The reverse `tcm` map.
+    reverse_tcm_map: MemoryMap<Field<N>, N::TransitionID>,
     /// The transition fees.
     fee_map: MemoryMap<N::TransitionID, i64>,
 }
@@ -186,7 +218,9 @@ impl<N: Network> TransitionMemory<N> {
             output_store: OutputStore::new(OutputMemory::new()),
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
+            reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
+            reverse_tcm_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
         }
     }
@@ -205,7 +239,9 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type OutputStorage = OutputMemory<N>;
     type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
+    type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
+    type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
     type FeeMap = MemoryMap<N::TransitionID, i64>;
 
     /// Returns the transition program IDs and function names.
@@ -233,9 +269,19 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
         &self.tpk_map
     }
 
+    /// Returns the reverse `tpk` map.
+    fn reverse_tpk_map(&self) -> &Self::ReverseTPKMap {
+        &self.reverse_tpk_map
+    }
+
     /// Returns the transition commitments.
     fn tcm_map(&self) -> &Self::TCMMap {
         &self.tcm_map
+    }
+
+    /// Returns the reverse `tcm` map.
+    fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap {
+        &self.reverse_tcm_map
     }
 
     /// Returns the transition fees.
@@ -257,8 +303,12 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     proof: T::ProofMap,
     /// The map of transition public keys.
     tpk: T::TPKMap,
+    /// The reverse `tpk` map.
+    reverse_tpk: T::ReverseTPKMap,
     /// The map of transition commitments.
     tcm: T::TCMMap,
+    /// The reverse `tcm` map.
+    reverse_tcm: T::ReverseTCMMap,
     /// The map of transition fees.
     fee: T::FeeMap,
     /// The transition storage.
@@ -274,7 +324,9 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             outputs: (*storage.output_store()).clone(),
             proof: storage.proof_map().clone(),
             tpk: storage.tpk_map().clone(),
+            reverse_tpk: storage.reverse_tpk_map().clone(),
             tcm: storage.tcm_map().clone(),
+            reverse_tcm: storage.reverse_tcm_map().clone(),
             fee: storage.fee_map().clone(),
             storage,
         }
@@ -517,7 +569,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     /// Returns `true` if the given tag exists.
-    pub fn contains_tag(&self, tag: &Field<N>) -> bool {
+    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
         self.inputs.contains_tag(tag)
     }
 
@@ -534,20 +586,20 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
         self.outputs.contains_nonce(nonce)
     }
 
     /* Metadata */
 
     /// Returns `true` if the given transition public key exists.
-    pub fn contains_tpk(&self, tpk: &Group<N>) -> bool {
-        self.tpks().contains(tpk)
+    pub fn contains_tpk(&self, tpk: &Group<N>) -> Result<bool> {
+        self.reverse_tpk.contains_key(tpk)
     }
 
     /// Returns `true` if the given transition commitment exists.
-    pub fn contains_tcm(&self, tcm: &Field<N>) -> bool {
-        self.tcms().contains(tcm)
+    pub fn contains_tcm(&self, tcm: &Field<N>) -> Result<bool> {
+        self.reverse_tcm.contains_key(tcm)
     }
 }
 

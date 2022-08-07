@@ -42,6 +42,8 @@ pub trait InputStorage<N: Network>: Clone {
     type PrivateMap: for<'a> Map<'a, Field<N>, Option<Ciphertext<N>>>;
     /// The mapping of `serial number` to `(tag, origin)`.
     type RecordMap: for<'a> Map<'a, Field<N>, (Field<N>, Origin<N>)>;
+    /// The mapping of `tag` to `serial number`.
+    type RecordTagMap: for<'a> Map<'a, Field<N>, Field<N>>;
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
@@ -57,6 +59,8 @@ pub trait InputStorage<N: Network>: Clone {
     fn private_map(&self) -> &Self::PrivateMap;
     /// Returns the record map.
     fn record_map(&self) -> &Self::RecordMap;
+    /// Returns the record tag map.
+    fn record_tag_map(&self) -> &Self::RecordTagMap;
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
 
@@ -131,20 +135,22 @@ pub trait InputStorage<N: Network>: Clone {
     fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
         // Store the input IDs.
         self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
-        // Store the reverse input IDs.
-        inputs
-            .iter()
-            .map(Input::id)
-            .copied()
-            .try_for_each(|input_id| self.reverse_id_map().insert(input_id, transition_id))?;
 
         // Store the inputs.
         for input in inputs {
+            // Store the reverse input ID.
+            self.reverse_id_map().insert(*input.id(), transition_id)?;
+            // Store the input.
             match input.clone() {
                 Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
                 Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
                 Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
-                Input::Record(serial_number, tag, origin) => self.record_map().insert(serial_number, (tag, origin))?,
+                Input::Record(serial_number, tag, origin) => {
+                    // Store the record tag.
+                    self.record_tag_map().insert(tag, serial_number)?;
+                    // Store the record.
+                    self.record_map().insert(serial_number, (tag, origin))?
+                }
                 Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
             }
         }
@@ -162,11 +168,18 @@ pub trait InputStorage<N: Network>: Clone {
 
         // Remove the input IDs.
         self.id_map().remove(transition_id)?;
-        // Remove the reverse input IDs.
-        input_ids.iter().try_for_each(|input_id| self.reverse_id_map().remove(input_id))?;
 
         // Remove the inputs.
         for input_id in input_ids {
+            // Remove the reverse input ID.
+            self.reverse_id_map().remove(&input_id)?;
+
+            // If the input is a record, remove the record tag.
+            if let Some(record) = self.record_map().get(&input_id)? {
+                self.record_tag_map().remove(&record.0)?;
+            }
+
+            // Remove the input.
             self.constant_map().remove(&input_id)?;
             self.public_map().remove(&input_id)?;
             self.private_map().remove(&input_id)?;
@@ -193,6 +206,8 @@ pub struct InputMemory<N: Network> {
     private: MemoryMap<Field<N>, Option<Ciphertext<N>>>,
     /// The mapping of `serial number` to `(tag, origin)`.
     record: MemoryMap<Field<N>, (Field<N>, Origin<N>)>,
+    /// The mapping of `record tag` to `serial number`.
+    record_tag: MemoryMap<Field<N>, Field<N>>,
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
 }
@@ -207,6 +222,7 @@ impl<N: Network> InputMemory<N> {
             public: MemoryMap::default(),
             private: MemoryMap::default(),
             record: MemoryMap::default(),
+            record_tag: MemoryMap::default(),
             external_record: MemoryMap::default(),
         }
     }
@@ -220,6 +236,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
     type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
     type RecordMap = MemoryMap<Field<N>, (Field<N>, Origin<N>)>;
+    type RecordTagMap = MemoryMap<Field<N>, Field<N>>;
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Returns the ID map.
@@ -252,6 +269,11 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
         &self.record
     }
 
+    /// Returns the record tag map.
+    fn record_tag_map(&self) -> &Self::RecordTagMap {
+        &self.record_tag
+    }
+
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap {
         &self.external_record
@@ -271,6 +293,8 @@ pub struct InputStore<N: Network, I: InputStorage<N>> {
     private: I::PrivateMap,
     /// The map of record inputs.
     record: I::RecordMap,
+    /// The map of record tags.
+    record_tag: I::RecordTagMap,
     /// The map of external record inputs.
     external_record: I::ExternalRecordMap,
     /// The input storage.
@@ -286,6 +310,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
             public: storage.public_map().clone(),
             private: storage.private_map().clone(),
             record: storage.record_map().clone(),
+            record_tag: storage.record_tag_map().clone(),
             external_record: storage.external_record_map().clone(),
             storage,
         }
@@ -386,10 +411,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
     pub fn tags(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.record.values().map(|input| match input {
-            Cow::Borrowed((tag, _)) => Cow::Borrowed(tag),
-            Cow::Owned((tag, _)) => Cow::Owned(tag),
-        })
+        self.record_tag.keys()
     }
 
     /// Returns an iterator over the origins, for all transition inputs that are records.
@@ -408,8 +430,8 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     }
 
     /// Returns `true` if the given tag exists.
-    pub fn contains_tag(&self, tag: &Field<N>) -> bool {
-        self.tags().contains(tag)
+    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
+        self.record_tag.contains_key(tag)
     }
 }
 
