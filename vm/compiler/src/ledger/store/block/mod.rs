@@ -186,7 +186,7 @@ pub trait BlockStorage<N: Network>: Clone {
         // Store the block height.
         self.reverse_id_map().insert(block.hash(), block.height())?;
         // Store the block header.
-        self.header_map().insert(block.hash(), block.header().clone())?;
+        self.header_map().insert(block.hash(), *block.header())?;
 
         // Store the transaction IDs.
         self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
@@ -200,7 +200,7 @@ pub trait BlockStorage<N: Network>: Clone {
         }
 
         // Store the block signature.
-        self.signature_map().insert(block.hash(), block.signature().clone())?;
+        self.signature_map().insert(block.hash(), *block.signature())?;
 
         Ok(())
     }

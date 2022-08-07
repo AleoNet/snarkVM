@@ -156,10 +156,7 @@ pub trait ExecutionStorage<N: Network>: Clone {
         // Retrieve the transition IDs.
         let transition_ids = transitions.iter().map(Transition::id).copied().collect();
         // Retrieve the optional additional fee ID.
-        let optional_additional_fee_id = match optional_additional_fee {
-            Some(additional_fee) => Some(*additional_fee.id()),
-            None => None,
-        };
+        let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
 
         // Store the transition IDs.
         self.id_map().insert(*transaction_id, (transition_ids, optional_additional_fee_id))?;
@@ -220,6 +217,7 @@ pub trait ExecutionStorage<N: Network>: Clone {
 
 /// An in-memory execution storage.
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct ExecutionMemory<N: Network> {
     /// The ID map.
     id_map: MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>,
