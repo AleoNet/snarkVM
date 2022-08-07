@@ -458,11 +458,11 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
         self.record_nonce.keys()
     }
 
-    /// Returns an iterator over the records, for all transition outputs that are records.
-    pub fn records(&self) -> impl '_ + Iterator<Item = Cow<'_, Record<N, Ciphertext<N>>>> {
-        self.record.values().flat_map(|output| match output {
-            Cow::Borrowed((_, Some(record))) => Some(Cow::Borrowed(record)),
-            Cow::Owned((_, Some(record))) => Some(Cow::Owned(record)),
+    /// Returns an iterator over the `(commitment, record)` pairs, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = (Cow<'_, Field<N>>, Cow<'_, Record<N, Ciphertext<N>>>)> {
+        self.record.iter().flat_map(|(commitment, output)| match output {
+            Cow::Borrowed((_, Some(record))) => Some((commitment, Cow::Borrowed(record))),
+            Cow::Owned((_, Some(record))) => Some((commitment, Cow::Owned(record))),
             _ => None,
         })
     }

@@ -19,7 +19,14 @@ use crate::{
     cow_to_copied,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
-        store::{TransactionMemory, TransactionStorage, TransactionStore},
+        store::{
+            TransactionMemory,
+            TransactionStorage,
+            TransactionStore,
+            TransitionMemory,
+            TransitionStorage,
+            TransitionStore,
+        },
         Block,
         Header,
         Signature,
@@ -30,6 +37,7 @@ use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
+use std::borrow::Cow;
 
 macro_rules! bail_with_block {
     ($message:expr, $self:ident, $hash:expr) => {{
@@ -51,7 +59,9 @@ pub trait BlockStorage<N: Network>: Clone {
     /// The mapping of `transaction ID` to `block hash`.
     type ReverseTransactionsMap: for<'a> Map<'a, N::TransactionID, N::BlockHash>;
     /// The transaction storage.
-    type TransactionStorage: TransactionStorage<N>;
+    type TransactionStorage: TransactionStorage<N, TransitionStorage = Self::TransitionStorage>;
+    /// The transition storage.
+    type TransitionStorage: TransitionStorage<N>;
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
 
@@ -71,7 +81,7 @@ pub trait BlockStorage<N: Network>: Clone {
     fn signature_map(&self) -> &Self::SignatureMap;
 
     /// Returns the block hash that contains the given `transaction ID`.
-    fn find_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
+    fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
         match self.reverse_transactions_map().get(transaction_id)? {
             Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
             None => Ok(None),
@@ -82,7 +92,7 @@ pub trait BlockStorage<N: Network>: Clone {
     fn get_previous_block_hash(&self, height: u32) -> Result<Option<N::BlockHash>> {
         match height.is_zero() {
             true => Ok(Some(N::BlockHash::default())),
-            false => match self.id_map().get(&height)? {
+            false => match self.id_map().get(&(height - 1))? {
                 Some(block_hash) => Ok(Some(cow_to_copied!(block_hash))),
                 None => Ok(None),
             },
@@ -117,7 +127,7 @@ pub trait BlockStorage<N: Network>: Clone {
     fn get_block_transactions(&self, block_hash: &N::BlockHash) -> Result<Option<Transactions<N>>> {
         // Retrieve the transaction IDs.
         let transaction_ids = match self.transactions_map().get(block_hash)? {
-            Some(transaction_ids) => cow_to_cloned!(transaction_ids),
+            Some(transaction_ids) => transaction_ids,
             None => return Ok(None),
         };
         // Retrieve the transactions.
@@ -214,7 +224,7 @@ pub trait BlockStorage<N: Network>: Clone {
         };
         // Retrieve the transaction IDs.
         let transaction_ids = match self.transactions_map().get(block_hash)? {
-            Some(transaction_ids) => cow_to_cloned!(transaction_ids),
+            Some(transaction_ids) => transaction_ids,
             None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
         };
 
@@ -229,11 +239,11 @@ pub trait BlockStorage<N: Network>: Clone {
         self.transactions_map().remove(block_hash)?;
 
         // Remove the block transactions.
-        for transaction_id in transaction_ids {
+        for transaction_id in transaction_ids.iter() {
             // Remove the reverse transaction ID.
-            self.reverse_transactions_map().remove(&transaction_id)?;
+            self.reverse_transactions_map().remove(transaction_id)?;
             // Remove the transaction.
-            self.transaction_store().remove(&transaction_id)?;
+            self.transaction_store().remove(transaction_id)?;
         }
 
         // Remove the block signature.
@@ -285,6 +295,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransactionsMap = MemoryMap<N::BlockHash, Vec<N::TransactionID>>;
     type ReverseTransactionsMap = MemoryMap<N::TransactionID, N::BlockHash>;
     type TransactionStorage = TransactionMemory<N>;
+    type TransitionStorage = TransitionMemory<N>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Returns the ID map.
@@ -347,6 +358,16 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     pub fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
         self.storage.remove(block_hash)
     }
+
+    /// Returns the transaction store.
+    pub fn transaction_store(&self) -> &TransactionStore<N, B::TransactionStorage> {
+        &self.storage.transaction_store()
+    }
+
+    /// Returns the transition store.
+    pub fn transition_store(&self) -> &TransitionStore<N, B::TransitionStorage> {
+        &self.storage.transaction_store().transition_store()
+    }
 }
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
@@ -388,8 +409,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the block hash that contains the given `transaction ID`.
-    pub fn find_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
-        self.storage.find_transaction_id(transaction_id)
+    pub fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
+        self.storage.find_block_hash(transaction_id)
     }
 }
 
@@ -402,6 +423,18 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns `true` if the given block hash exists.
     pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
         self.storage.reverse_id_map().contains_key(block_hash)
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Returns an iterator over the block heights, for all blocks in `self`.
+    pub fn heights(&self) -> impl '_ + Iterator<Item = Cow<'_, u32>> {
+        self.storage.id_map().keys()
+    }
+
+    /// Returns an iterator over the block hashes, for all blocks in `self`.
+    pub fn hashes(&self) -> impl '_ + Iterator<Item = Cow<'_, N::BlockHash>> {
+        self.storage.reverse_id_map().keys()
     }
 }
 

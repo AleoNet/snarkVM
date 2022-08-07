@@ -24,6 +24,7 @@ use crate::{
     cow_to_copied,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
+        store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
     },
@@ -53,9 +54,11 @@ pub trait TransactionStorage<N: Network>: Clone {
     /// The mapping of `transaction ID` to `transaction type`.
     type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType>;
     /// The deployment storage.
-    type DeploymentStorage: DeploymentStorage<N>;
+    type DeploymentStorage: DeploymentStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The execution storage.
-    type ExecutionStorage: ExecutionStorage<N>;
+    type ExecutionStorage: ExecutionStorage<N, TransitionStorage = Self::TransitionStorage>;
+    /// The transition storage.
+    type TransitionStorage: TransitionStorage<N>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -154,6 +157,7 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, TransactionType>;
     type DeploymentStorage = DeploymentMemory<N>;
     type ExecutionStorage = ExecutionMemory<N>;
+    type TransitionStorage = TransitionMemory<N>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
@@ -194,6 +198,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Removes the transaction for the given `transaction ID`.
     pub fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         self.storage.remove(transaction_id)
+    }
+
+    /// Returns the transition store.
+    pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
+        &self.storage.execution_store().transition_store()
     }
 }
 

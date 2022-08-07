@@ -268,19 +268,9 @@ impl<N: Network> Transition<N> {
         &self.inputs
     }
 
-    /// Returns the input IDs.
-    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.inputs.iter().map(Input::id)
-    }
-
     /// Return the outputs.
     pub fn outputs(&self) -> &[Output<N>] {
         &self.outputs
-    }
-
-    /// Returns the output IDs.
-    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.outputs.iter().map(Output::id)
     }
 
     /// Returns the proof.
@@ -305,6 +295,18 @@ impl<N: Network> Transition<N> {
 }
 
 impl<N: Network> Transition<N> {
+    /* Input */
+
+    /// Returns the input IDs.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().map(Input::id)
+    }
+
+    /// Returns an iterator over the serial numbers, for inputs that are records.
+    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.inputs.iter().flat_map(Input::serial_number)
+    }
+
     /// Returns an iterator over the origins, for inputs that are records.
     pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
         self.inputs.iter().flat_map(Input::origin)
@@ -315,9 +317,11 @@ impl<N: Network> Transition<N> {
         self.inputs.iter().flat_map(Input::tag)
     }
 
-    /// Returns an iterator over the serial numbers, for inputs that are records.
-    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.inputs.iter().flat_map(Input::serial_number)
+    /* Output */
+
+    /// Returns the output IDs.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.outputs.iter().map(Output::id)
     }
 
     /// Returns an iterator over the commitments, for outputs that are records.
@@ -342,14 +346,11 @@ impl<N: Network> Transition<N> {
         self.id
     }
 
-    /// Returns the transition public key, and consumes `self`.
-    pub fn into_tpk(self) -> Group<N> {
-        self.tpk
-    }
+    /* Input */
 
-    /// Returns a consuming iterator over the origins, for inputs that are records.
-    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
-        self.inputs.into_iter().flat_map(Input::into_origin)
+    /// Returns a consuming iterator over the serial numbers, for inputs that are records.
+    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
+        self.inputs.into_iter().flat_map(Input::into_serial_number)
     }
 
     /// Returns a consuming iterator over the tags, for inputs that are records.
@@ -357,10 +358,12 @@ impl<N: Network> Transition<N> {
         self.inputs.into_iter().flat_map(Input::into_tag)
     }
 
-    /// Returns a consuming iterator over the serial numbers, for inputs that are records.
-    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
-        self.inputs.into_iter().flat_map(Input::into_serial_number)
+    /// Returns a consuming iterator over the origins, for inputs that are records.
+    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
+        self.inputs.into_iter().flat_map(Input::into_origin)
     }
+
+    /* Output */
 
     /// Returns a consuming iterator over the commitments, for outputs that are records.
     pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
@@ -375,5 +378,10 @@ impl<N: Network> Transition<N> {
     /// Returns a consuming iterator over the output records, as a tuple of `(commitment, record)`.
     pub fn into_output_records(self) -> impl Iterator<Item = (Field<N>, Record<N, Ciphertext<N>>)> {
         self.outputs.into_iter().flat_map(Output::into_record)
+    }
+
+    /// Returns the transition public key, and consumes `self`.
+    pub fn into_tpk(self) -> Group<N> {
+        self.tpk
     }
 }

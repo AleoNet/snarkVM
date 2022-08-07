@@ -477,6 +477,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
     /* Input */
 
+    /// Returns an iterator over the input IDs, for all transition inputs.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.inputs.input_ids()
+    }
+
     /// Returns an iterator over the constant input IDs, for all transition inputs that are constant.
     pub fn constant_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
         self.inputs.constant_input_ids()
@@ -503,6 +508,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     /* Output */
+
+    /// Returns an iterator over the output IDs, for all transition outputs.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
+        self.outputs.output_ids()
+    }
 
     /// Returns an iterator over the constant output IDs, for all transition outputs that are constant.
     pub fn constant_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
@@ -585,8 +595,8 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.outputs.nonces()
     }
 
-    /// Returns an iterator over the records, for all transition outputs that are records.
-    pub fn records(&self) -> impl '_ + Iterator<Item = Cow<'_, Record<N, Ciphertext<N>>>> {
+    /// Returns an iterator over the `(commitment, record)` pairs, for all transition outputs that are records.
+    pub fn records(&self) -> impl '_ + Iterator<Item = (Cow<'_, Field<N>>, Cow<'_, Record<N, Ciphertext<N>>>)> {
         self.outputs.records()
     }
 

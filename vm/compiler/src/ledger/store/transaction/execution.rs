@@ -293,6 +293,11 @@ impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
     pub fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         self.storage.remove(transaction_id)
     }
+
+    /// Returns the transition store.
+    pub fn transition_store(&self) -> &TransitionStore<N, D::TransitionStorage> {
+        self.storage.transition_store()
+    }
 }
 
 impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
