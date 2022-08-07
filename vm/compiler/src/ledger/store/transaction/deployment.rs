@@ -19,7 +19,7 @@ use crate::{
     cow_to_copied,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
-        store::{CowIter, TransitionMemory, TransitionStorage, TransitionStore},
+        store::{TransitionMemory, TransitionStorage, TransitionStore},
         transaction::{AdditionalFee, Transaction},
     },
     process::Deployment,
@@ -29,7 +29,6 @@ use crate::{
 use console::{
     network::prelude::*,
     program::{Identifier, ProgramID},
-    types::Field,
 };
 
 use anyhow::Result;

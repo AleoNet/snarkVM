@@ -29,7 +29,6 @@ use std::borrow::Cow;
 enum CowIter<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> {
     Borrowed(I1),
     Owned(I2),
-    None,
 }
 
 impl<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> Iterator for CowIter<'a, T, I1, I2> {
@@ -39,7 +38,6 @@ impl<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> Iter
         match self {
             Self::Borrowed(iter) => Some(Cow::Borrowed(iter.next()?)),
             Self::Owned(iter) => Some(Cow::Owned(iter.next()?)),
-            Self::None => None,
         }
     }
 }

@@ -371,7 +371,7 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
 
     /// Returns an iterator over the external record output IDs, for all transition outputs that are external records.
     pub fn external_output_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.private.keys()
+        self.external_record.keys()
     }
 }
 

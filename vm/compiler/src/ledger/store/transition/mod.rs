@@ -313,6 +313,22 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.storage.get(transition_id)
     }
 
+    /// Returns the program ID for the given `transition ID`.
+    pub fn get_program_id(&self, transition_id: &N::TransitionID) -> Result<Option<ProgramID<N>>> {
+        Ok(self.locator.get(transition_id)?.map(|locator| match locator {
+            Cow::Borrowed((program_id, _)) => *program_id,
+            Cow::Owned((program_id, _)) => program_id,
+        }))
+    }
+
+    /// Returns the function name for the given `transition ID`.
+    pub fn get_function_name(&self, transition_id: &N::TransitionID) -> Result<Option<Identifier<N>>> {
+        Ok(self.locator.get(transition_id)?.map(|locator| match locator {
+            Cow::Borrowed((_, function_name)) => *function_name,
+            Cow::Owned((_, function_name)) => function_name,
+        }))
+    }
+
     /// Returns the input IDs for the given `transition ID`.
     pub fn get_input_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
         self.inputs.get_input_ids(transition_id)
@@ -525,6 +541,18 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns `true` if the given nonce exists.
     pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
         self.outputs.contains_nonce(nonce)
+    }
+
+    /* Everything Else */
+
+    /// Returns `true` if the given transition public key exists.
+    pub fn contains_tpk(&self, tpk: &Group<N>) -> bool {
+        self.tpks().contains(tpk)
+    }
+
+    /// Returns `true` if the given transition commitment exists.
+    pub fn contains_tcm(&self, tcm: &Field<N>) -> bool {
+        self.tcms().contains(tcm)
     }
 }
 

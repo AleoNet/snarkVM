@@ -352,7 +352,7 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
 
     /// Returns an iterator over the external record input IDs, for all transition inputs that are external records.
     pub fn external_input_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, Field<N>>> {
-        self.private.keys()
+        self.external_record.keys()
     }
 }
 

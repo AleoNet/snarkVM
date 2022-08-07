@@ -14,25 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-
 use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
-        Origin,
+        AdditionalFee,
         Transaction,
         Transition,
     },
     process::Execution,
 };
-use console::{
-    network::prelude::*,
-    program::ProgramID,
-    types::{Field, Group},
-};
+use console::network::prelude::*;
 
 use anyhow::Result;
 use std::borrow::Cow;
@@ -274,6 +268,82 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     /// Returns the transition store.
     fn transition_store(&self) -> &TransitionStore<N, Self::TransitionStorage> {
         &self.transition_store
+    }
+}
+
+/// The execution store.
+#[derive(Clone)]
+pub struct ExecutionStore<N: Network, D: ExecutionStorage<N>> {
+    /// The map of `transaction ID` to `([transition ID], (optional) transition ID)`.
+    transition_ids: D::IDMap,
+    /// The edition map.
+    edition: D::EditionMap,
+    /// The execution storage.
+    storage: D,
+}
+
+impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
+    /// Initializes a new execution store.
+    pub fn new(storage: D) -> Self {
+        Self { transition_ids: storage.id_map().clone(), edition: storage.edition_map().clone(), storage }
+    }
+
+    /// Stores the given `execution transaction` into storage.
+    pub fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
+        self.storage.insert(transaction)
+    }
+
+    /// Removes the transaction for the given `transaction ID`.
+    pub fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
+        self.storage.remove(transaction_id)
+    }
+}
+
+impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
+    /// Returns the transaction for the given `transaction ID`.
+    pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        self.storage.get_transaction(transaction_id)
+    }
+
+    /// Returns the execution for the given `transaction ID`.
+    pub fn get_execution(&self, transaction_id: &N::TransactionID) -> Result<Option<Execution<N>>> {
+        self.storage.get_execution(transaction_id)
+    }
+
+    /// Returns the edition for the given `transaction ID`.
+    pub fn get_edition(&self, transaction_id: &N::TransactionID) -> Result<Option<u16>> {
+        match self.edition.get(transaction_id)? {
+            Some(edition) => Ok(Some(cow_to_copied!(edition))),
+            None => Ok(None),
+        }
+    }
+
+    /// Returns the additional fee for the given `transaction ID`.
+    pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<AdditionalFee<N>>> {
+        // Retrieve the optional additional fee ID.
+        let (_, optional_additional_fee_id) = match self.storage.id_map().get(transaction_id)? {
+            Some(ids) => cow_to_cloned!(ids),
+            None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
+        };
+
+        // Construct the additional fee.
+        match optional_additional_fee_id {
+            Some(additional_fee_id) => {
+                // Retrieve the additional fee.
+                match self.storage.transition_store().get_transition(&additional_fee_id)? {
+                    Some(additional_fee) => Ok(Some(additional_fee)),
+                    None => bail!("Failed to get the additional fee for transaction '{transaction_id}'"),
+                }
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
+    /// Returns the transaction ID that executed the given `transition ID`.
+    pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.storage.find_transaction_id(transition_id)
     }
 }
 
