@@ -21,6 +21,7 @@ mod output;
 pub use output::*;
 
 use crate::{
+    cow_to_cloned,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
         Input,
@@ -29,7 +30,6 @@ use crate::{
         Transition,
     },
     snark::Proof,
-    unwrap_cow,
 };
 use console::{
     network::prelude::*,
@@ -40,7 +40,7 @@ use console::{
 use anyhow::Result;
 use std::borrow::Cow;
 
-/// A trait for transition input storage.
+/// A trait for transition storage.
 pub trait TransitionStorage<N: Network>: Clone {
     /// The transition program IDs and function names.
     type LocatorMap: for<'a> Map<'a, N::TransitionID, (ProgramID<N>, Identifier<N>)>;
@@ -76,7 +76,7 @@ pub trait TransitionStorage<N: Network>: Clone {
     fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
         // Retrieve the program ID and function name.
         let (program_id, function_name) = match self.locator_map().get(transition_id)? {
-            Some(locator) => unwrap_cow!(locator),
+            Some(locator) => cow_to_cloned!(locator),
             None => return Ok(None),
         };
         // Retrieve the inputs.
@@ -100,10 +100,10 @@ pub trait TransitionStorage<N: Network>: Clone {
                     function_name,
                     inputs,
                     outputs,
-                    unwrap_cow!(proof),
-                    unwrap_cow!(tpk),
-                    unwrap_cow!(tcm),
-                    unwrap_cow!(fee),
+                    cow_to_cloned!(proof),
+                    cow_to_cloned!(tpk),
+                    cow_to_cloned!(tcm),
+                    cow_to_cloned!(fee),
                 )?;
                 // Ensure the transition ID matches.
                 match transition.id() == transition_id {
@@ -158,7 +158,7 @@ pub trait TransitionStorage<N: Network>: Clone {
     }
 }
 
-/// An in-memory transition input storage.
+/// An in-memory transition storage.
 #[derive(Clone)]
 pub struct TransitionMemory<N: Network> {
     /// The transition program IDs and function names.

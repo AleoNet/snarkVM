@@ -45,7 +45,17 @@ impl<'a, T: 'a + Clone, I1: Iterator<Item = &'a T>, I2: Iterator<Item = T>> Iter
 }
 
 #[macro_export]
-macro_rules! unwrap_cow {
+macro_rules! cow_to_copied {
+    ($cow:expr) => {
+        match $cow {
+            Cow::Borrowed(inner) => *inner,
+            Cow::Owned(inner) => inner,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! cow_to_cloned {
     ($cow:expr) => {
         match $cow {
             Cow::Borrowed(inner) => (*inner).clone(),
