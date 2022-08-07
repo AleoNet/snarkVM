@@ -432,8 +432,8 @@ impl<N: Network, I: OutputStorage<N>> OutputStore<N, I> {
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
-        self.commitments().contains(commitment)
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
+        self.record.contains_key(commitment)
     }
 
     /// Returns `true` if the given checksum exists.

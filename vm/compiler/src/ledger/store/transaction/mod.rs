@@ -28,8 +28,13 @@ use crate::{
         Transaction,
     },
     process::{Deployment, Execution},
+    program::Program,
+    snark::{Certificate, VerifyingKey},
 };
-use console::{network::prelude::*, program::ProgramID};
+use console::{
+    network::prelude::*,
+    program::{Identifier, ProgramID},
+};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -253,6 +258,34 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
         }
     }
 
+    /// Returns the program ID for the given `transaction ID`.
+    pub fn get_program_id(&self, transaction_id: &N::TransactionID) -> Result<Option<ProgramID<N>>> {
+        self.storage.deployment_store().get_program_id(transaction_id)
+    }
+
+    /// Returns the program for the given `program ID`.
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<Option<Program<N>>> {
+        self.storage.deployment_store().get_program(program_id)
+    }
+
+    /// Returns the verifying key for the given `(program ID, function name)`.
+    pub fn get_verifying_key(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+    ) -> Result<Option<VerifyingKey<N>>> {
+        self.storage.deployment_store().get_verifying_key(program_id, function_name)
+    }
+
+    /// Returns the certificate for the given `(program ID, function name)`.
+    pub fn get_certificate(
+        &self,
+        program_id: &ProgramID<N>,
+        function_name: &Identifier<N>,
+    ) -> Result<Option<Certificate<N>>> {
+        self.storage.deployment_store().get_certificate(program_id, function_name)
+    }
+
     /// Returns the additional fee for the given `transaction ID`.
     pub fn get_additional_fee(&self, transaction_id: &N::TransactionID) -> Result<Option<AdditionalFee<N>>> {
         // Retrieve the transaction type.
@@ -275,11 +308,40 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     pub fn transaction_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
         self.transaction_ids.keys()
     }
+
+    /// Returns an iterator over the program IDs, for all deployments.
+    pub fn program_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, ProgramID<N>>> {
+        self.storage.deployment_store().program_ids()
+    }
+
+    /// Returns an iterator over the programs, for all deployments.
+    pub fn programs(&self) -> impl '_ + Iterator<Item = Cow<'_, Program<N>>> {
+        self.storage.deployment_store().programs()
+    }
+
+    /// Returns an iterator over the `((program ID, function name, edition), verifying key)`, for all deployments.
+    pub fn verifying_keys(
+        &self,
+    ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, VerifyingKey<N>>)> {
+        self.storage.deployment_store().verifying_keys()
+    }
+
+    /// Returns an iterator over the `((program ID, function name, edition), certificate)`, for all deployments.
+    pub fn certificates(
+        &self,
+    ) -> impl '_ + Iterator<Item = (Cow<'_, (ProgramID<N>, Identifier<N>, u16)>, Cow<'_, Certificate<N>>)> {
+        self.storage.deployment_store().certificates()
+    }
 }
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns `true` if the given transaction ID exists.
     pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
         self.transaction_ids.contains_key(transaction_id)
+    }
+
+    /// Returns `true` if the given program ID exists.
+    pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
+        self.storage.deployment_store().contains_program_id(program_id)
     }
 }

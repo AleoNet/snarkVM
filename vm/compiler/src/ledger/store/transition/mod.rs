@@ -480,7 +480,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.outputs.records()
     }
 
-    /* Everything Else */
+    /* Metadata */
 
     /// Returns an iterator over the proofs, for all transitions.
     pub fn proofs(&self) -> impl '_ + Iterator<Item = Cow<'_, Proof<N>>> {
@@ -505,14 +505,14 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns `true` if the given transition ID exists.
-    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
-        self.transition_ids().contains(transition_id)
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> Result<bool> {
+        self.locator.contains_key(transition_id)
     }
 
     /* Input */
 
     /// Returns `true` if the given serial number exists.
-    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
         self.inputs.contains_serial_number(serial_number)
     }
 
@@ -521,15 +521,10 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.inputs.contains_tag(tag)
     }
 
-    /// Returns `true` if the given origin exists.
-    pub fn contains_origin(&self, origin: &Origin<N>) -> bool {
-        self.inputs.contains_origin(origin)
-    }
-
     /* Output */
 
     /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
         self.outputs.contains_commitment(commitment)
     }
 
@@ -543,7 +538,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
         self.outputs.contains_nonce(nonce)
     }
 
-    /* Everything Else */
+    /* Metadata */
 
     /// Returns `true` if the given transition public key exists.
     pub fn contains_tpk(&self, tpk: &Group<N>) -> bool {
