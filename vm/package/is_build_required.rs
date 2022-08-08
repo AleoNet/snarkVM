@@ -77,7 +77,7 @@ mod tests {
         tempfile::tempdir().expect("Failed to open temporary directory").into_path()
     }
 
-    fn initialize_unbuilt_package(valid: bool) -> Package<Testnet3> {
+    fn initialize_unbuilt_package(valid: bool) -> Result<Package<Testnet3>> {
         // Initialize a temporary directory.
         let directory = temp_dir();
 
@@ -101,7 +101,7 @@ mod tests {
         std::fs::create_dir_all(&build_directory).unwrap();
 
         // Open the package at the temporary directory.
-        Package::<Testnet3>::open(&directory).unwrap()
+        Package::<Testnet3>::open(&directory)
     }
 
     fn program_with_id(id: &str) -> String {
@@ -124,13 +124,13 @@ function compute:
 
     #[test]
     fn test_build_is_required_for_new_package() {
-        let package = initialize_unbuilt_package(true);
+        let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.is_build_required::<Aleo>());
     }
 
     #[test]
     fn test_build_is_required_when_avm_file_does_not_exist() {
-        let package = initialize_unbuilt_package(true);
+        let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.build_directory().exists());
         assert!(!AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
         assert!(package.is_build_required::<Aleo>());
@@ -140,19 +140,12 @@ function compute:
     #[should_panic]
     fn test_fail_when_avm_and_package_program_ids_do_not_match() {
         let package = initialize_unbuilt_package(false);
-        assert!(AVMFile::<CurrentNetwork>::create(&package.build_directory(), package.program().clone(), true).is_ok());
-        let avm_file = AVMFile::open(&package.build_directory(), &package.program_id, true).unwrap();
-
-        assert!(package.build_directory().exists());
-        assert!(AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
-        assert_eq!(avm_file.program().id(), &package.program_id);
-
-        assert!(package.is_build_required::<Aleo>());
+        assert!(package.is_err());
     }
 
     #[test]
     fn test_build_is_required_when_prover_and_verifier_files_do_not_exist() {
-        let package = initialize_unbuilt_package(true);
+        let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.build_directory().exists());
 
         assert!(!AVMFile::<CurrentNetwork>::main_exists_at(&package.build_directory()));
@@ -180,7 +173,7 @@ function compute:
 
     #[test]
     fn test_already_built_package_does_not_require_building() {
-        let package = initialize_unbuilt_package(true);
+        let package = initialize_unbuilt_package(true).unwrap();
         assert!(package.is_build_required::<Aleo>());
 
         package.build::<Aleo>(None).unwrap();
