@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod harness;
+
 use snarkvm::{compiler::Program, console::network::Testnet3, prelude::test_crypto_rng};
 use snarkvm::prelude::{PrivateKey, VM};
 use std::sync::Once;
@@ -22,35 +24,3 @@ use snarkvm::circuit;
 use snarkvm::circuit::Mode;
 use crate::circuit::{AleoV0, Inject};
 
-static INSTANCE: OnceCell<VM<FuzzNetwork>> = OnceCell::new();
-pub type FuzzNetwork = Testnet3;
-
-pub fn init_vm() -> &'static VM<FuzzNetwork> {
-    INSTANCE.get_or_init(|| VM::<FuzzNetwork>::new().unwrap())
-}
-
-pub fn fuzz_program(program: Program<FuzzNetwork>) {
-    let vm = init_vm();
-
-    // Initialize the RNG.
-    let rng = &mut test_crypto_rng();
-
-    //let private_key = circuit::PrivateKey::<AleoV0>::new(Mode::Private, pkey);
-
-    // Deploy.
-/*    if let Ok(deployment) = vm.deploy(&program, rng) {
-        vm.verify_deployment(&deployment);
-    }
-*/
-    // Execute
-/*    if let Some(f) = program.functions().first() {
-        // Initialize the private key.
-        let pkey = PrivateKey::new(rng).unwrap();
-
-        if let Ok(auth) = vm.authorize(&pkey, program.id(), f.0.clone(), &[], rng) {
-            vm.execute(auth, rng); // ignore unwrap
-        } else {
-            // ignore
-        }
-    }*/
-}

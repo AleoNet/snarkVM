@@ -17,7 +17,7 @@
 use std::{env, fs};
 use clap::StructOpt;
 use snarkvm::prelude::{Parser, Program};
-use snarkvm_fuzz::FuzzNetwork;
+use snarkvm_fuzz::harness::FuzzNetwork;
 
 #[derive(Debug, StructOpt)]
 pub struct SeedCli {

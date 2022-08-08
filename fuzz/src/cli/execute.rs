@@ -18,7 +18,7 @@ use std::{env, fs};
 use std::path::PathBuf;
 use clap::{Args, StructOpt};
 use snarkvm::prelude::{Parser, Program};
-use snarkvm_fuzz::FuzzNetwork;
+use snarkvm_fuzz::harness::harness;
 
 #[derive(Debug, Args)]
 pub struct ExecuteCli {
@@ -30,7 +30,7 @@ impl ExecuteCli {
     pub fn run(self) {
         for path in self.input {
             let result = fs::read_to_string(path).unwrap();
-            let program = Program::<FuzzNetwork>::parse(&result).unwrap();
+            harness(result.as_bytes());
         }
     }
 }

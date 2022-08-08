@@ -17,7 +17,8 @@
 
 use clap::{self, StructOpt, Subcommand};
 use core::time::Duration;
-use std::{env, net::SocketAddr, path::PathBuf};
+use std::{env, net::SocketAddr, panic, path::PathBuf};
+use std::process::abort;
 use arbitrary::{Arbitrary, Unstructured};
 
 use libafl::{
@@ -46,10 +47,10 @@ use libafl::{
     state::{HasCorpus, HasMetadata, StdState},
     Error,
 };
-use snarkvm_fuzz::{FuzzNetwork, fuzz_program, init_vm};
 
 use libafl_targets::{EDGES_MAP, MAX_EDGES_NUM};
-use snarkvm::prelude::{Parser, Program};
+use snarkvm::prelude::{Environment, Parser, Program};
+use snarkvm_fuzz::harness::{harness, init_vm};
 use crate::cli::{Cli, Commands};
 
 /// Parse a millis string to a [`Duration`]. Used for arg parsing.
@@ -111,7 +112,7 @@ pub struct FuzzCli {
     long,
     help = "Set the exeucution timeout in milliseconds, default is 10000",
     name = "TIMEOUT",
-    default_value = "100000"
+    default_value = "10000"
     )]
     timeout: Duration,
     /*
@@ -211,22 +212,7 @@ impl FuzzCli {
             let mut harness = |input: &BytesInput| {
                 let target = input.target_bytes();
                 let buf = target.as_slice();
-
-
-                if let Ok(s) =  std::str::from_utf8(buf) {
-                    if let Ok((s, program)) = Program::<FuzzNetwork>::parse(&s) {
-                        fuzz_program(program);
-                    }
-                }
-
-                /*            let mut unstructured = Unstructured::new(buf);
-
-                            if let Ok(program) = Program::<CurrentNetwork>::arbitrary(&mut unstructured) {
-
-                            } else {
-
-                            }*/
-
+                harness(buf);
                 // Not sure whether we can skip here somehow
                 ExitKind::Ok
             };
