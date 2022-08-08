@@ -41,10 +41,10 @@ pub fn fuzz_program(program: Program<CurrentNetwork>) {
     //let private_key = circuit::PrivateKey::<AleoV0>::new(Mode::Private, pkey);
 
     // Deploy.
-    if let Ok(deployment) = vm.deploy(&program, rng) {
+/*    if let Ok(deployment) = vm.deploy(&program, rng) {
         vm.verify_deployment(&deployment);
     }
-
+*/
     // Execute
 /*    if let Some(f) = program.functions().first() {
         // Initialize the private key.
