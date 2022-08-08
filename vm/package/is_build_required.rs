@@ -39,11 +39,6 @@ impl<N: Network> Package<N> {
             Err(_) => return true,
         };
 
-        // Check if the program ID in the manifest matches the program ID in the AVM file.
-        if avm_file.program().id() != &self.program_id {
-            return true;
-        }
-
         // Check if the main program matches.
         let program = self.program();
         if avm_file.program() != program {
@@ -188,7 +183,7 @@ function compute:
         let package = initialize_unbuilt_package(true);
         assert!(package.is_build_required::<Aleo>());
 
-        package.build::<Aleo>(Some(String::from("https://vm.aleo.org/testnet3/build"))).unwrap();
+        package.build::<Aleo>(None).unwrap();
         assert!(!package.is_build_required::<Aleo>());
     }
 }
