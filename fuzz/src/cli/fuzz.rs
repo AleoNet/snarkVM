@@ -47,6 +47,7 @@ use libafl::{
     state::{HasCorpus, HasMetadata, StdState},
     Error,
 };
+use libafl::corpus::ondisk::OnDiskMetadataFormat;
 
 use libafl_targets::{EDGES_MAP, MAX_EDGES_NUM};
 use snarkvm::prelude::{Environment, Parser, Program};
@@ -112,7 +113,7 @@ pub struct FuzzCli {
     long,
     help = "Set the exeucution timeout in milliseconds, default is 10000",
     name = "TIMEOUT",
-    default_value = "10000"
+    default_value = "20000"
     )]
     timeout: Duration,
     /*
@@ -130,8 +131,7 @@ pub struct FuzzCli {
 }
 
 impl FuzzCli {
-
-    pub(crate) fn fuzz(self) {
+    pub fn fuzz(self) {
         // Registry the metadata types used in this fuzzer
         // Needed only on no_std
         //RegistryBuilder::register::<Tokens>();
@@ -168,11 +168,11 @@ impl FuzzCli {
             // Feedback to rate the interestingness of an input
             // This one is composed by two Feedbacks in OR
             let mut feedback = feedback_or!(
-            // New maximization map feedback linked to the edges observer and the feedback state
-            MaxMapFeedback::new_tracking(&edges_observer, true, false),
-            // Time feedback, this one does not need a feedback state
-            TimeFeedback::new_with_observer(&time_observer)
-        );
+                // New maximization map feedback linked to the edges observer and the feedback state
+                MaxMapFeedback::new_tracking(&edges_observer, true, false),
+                // Time feedback, this one does not need a feedback state
+                TimeFeedback::new_with_observer(&time_observer)
+            );
 
             // A feedback to choose if an input is a solution or not
             let mut objective = feedback_or_fast!(CrashFeedback::new(), TimeoutFeedback::new());
@@ -186,7 +186,10 @@ impl FuzzCli {
                     InMemoryCorpus::new(),
                     // Corpus in which we store solutions (crashes in this example),
                     // on disk so the user can get them after stopping the fuzzer
-                    OnDiskCorpus::new(&self.output).unwrap(),
+                    OnDiskCorpus::new_save_meta(
+                        self.output.clone(),
+                        Some(OnDiskMetadataFormat::JsonPretty),
+                    ).unwrap(),
                     // States of the feedbacks.
                     // The feedbacks can report the data that should persist in the State.
                     &mut feedback,
@@ -237,6 +240,9 @@ impl FuzzCli {
                     .unwrap_or_else(|_| panic!("Failed to load initial corpus at {:?}", &self.input));
                 println!("We imported {} inputs from disk.", state.corpus().count());
             }
+
+            // LibAFL has a panic hook. We are allowing some panics though.
+            panic::set_hook(Box::new(|panic_info| {}));
 
             fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut restarting_mgr)?;
             Ok(())

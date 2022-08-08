@@ -31,6 +31,7 @@ impl ExecuteCli {
         for path in self.input {
             let result = fs::read_to_string(path).unwrap();
             harness(result.as_bytes());
+            println!("Execution finished");
         }
     }
 }
