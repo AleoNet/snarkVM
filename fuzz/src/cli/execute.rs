@@ -14,15 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-
-
-#![no_main]
-use libfuzzer_sys::fuzz_target;
-
-use snarkvm_fuzz::fuzz_program;
+use std::{env, fs};
+use std::path::PathBuf;
+use clap::StructOpt;
+use snarkvm::prelude::{Parser, Program};
 use snarkvm_fuzz::FuzzNetwork;
-use snarkvm::prelude::Program;
 
-fuzz_target!(|program: Program<FuzzNetwork>| {
-    fuzz_program(program);
-});
+#[derive(Debug, StructOpt)]
+pub struct ExecuteCli {
+    #[clap(
+    parse(try_from_str),
+    short,
+    long,
+    help = "Inputs to run",
+    name = "INPUT"
+    )]
+    input: Vec<PathBuf>,
+}
+
+impl ExecuteCli {
+    pub fn run(self) {
+        for path in self.input {
+            let result = fs::read_to_string(path).unwrap();
+            let program = Program::<FuzzNetwork>::parse(&result).unwrap();
+        }
+    }
+}

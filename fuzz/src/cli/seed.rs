@@ -15,24 +15,31 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use std::{env, fs};
+use clap::StructOpt;
 use snarkvm::prelude::{Parser, Program};
-use crate::CurrentNetwork;
+use snarkvm_fuzz::FuzzNetwork;
 
-pub fn seed() {
-    let current_dir = env::current_dir().unwrap();
+#[derive(Debug, StructOpt)]
+pub struct SeedCli {
+
+}
+
+impl SeedCli {
+    pub fn run(self) {
+        let current_dir = env::current_dir().unwrap();
 
 
-    for entry in fs::read_dir(current_dir.join("afl/seeds")).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
+        for entry in fs::read_dir(current_dir.join("afl/seeds")).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
 
-        if path.is_file() {
-            let result = fs::read_to_string(path).unwrap();
-            let program = Program::<CurrentNetwork>::parse(&result).unwrap();
+            if path.is_file() {
+                let result = fs::read_to_string(path).unwrap();
+                let program = Program::<FuzzNetwork>::parse(&result).unwrap();
+
+            }
+
 
         }
-
-
     }
-
 }

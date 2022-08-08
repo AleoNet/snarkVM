@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-
-mod seed;
-
 use snarkvm::{compiler::Program, console::network::Testnet3, prelude::test_crypto_rng};
 use snarkvm::prelude::{PrivateKey, VM};
 use std::sync::Once;
@@ -25,14 +22,14 @@ use snarkvm::circuit;
 use snarkvm::circuit::Mode;
 use crate::circuit::{AleoV0, Inject};
 
-static INSTANCE: OnceCell<VM<CurrentNetwork>> = OnceCell::new();
-pub type CurrentNetwork = Testnet3;
+static INSTANCE: OnceCell<VM<FuzzNetwork>> = OnceCell::new();
+pub type FuzzNetwork = Testnet3;
 
-pub fn init_vm() -> &'static VM<CurrentNetwork> {
-    INSTANCE.get_or_init(|| VM::<CurrentNetwork>::new().unwrap())
+pub fn init_vm() -> &'static VM<FuzzNetwork> {
+    INSTANCE.get_or_init(|| VM::<FuzzNetwork>::new().unwrap())
 }
 
-pub fn fuzz_program(program: Program<CurrentNetwork>) {
+pub fn fuzz_program(program: Program<FuzzNetwork>) {
     let vm = init_vm();
 
     // Initialize the RNG.
