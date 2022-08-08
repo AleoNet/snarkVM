@@ -16,19 +16,13 @@
 
 use std::{env, fs};
 use std::path::PathBuf;
-use clap::StructOpt;
+use clap::{Args, StructOpt};
 use snarkvm::prelude::{Parser, Program};
 use snarkvm_fuzz::FuzzNetwork;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct ExecuteCli {
-    #[clap(
-    parse(try_from_str),
-    short,
-    long,
-    help = "Inputs to run",
-    name = "INPUT"
-    )]
+    #[clap(parse(try_from_str), help = "Inputs to run", name = "INPUT")]
     input: Vec<PathBuf>,
 }
 

@@ -49,10 +49,10 @@ impl Cli {
                 cli.fuzz()
             }
             Commands::Seed(cli) => {
-
+                cli.run();
             }
             Commands::Execute(execute) => {
-
+                execute.run();
             }
         }
     }
