@@ -119,7 +119,6 @@ function compute:
     output r1 as u64.private;",
             id
         )
-        .to_string()
     }
 
     #[test]
@@ -155,17 +154,19 @@ function compute:
         assert_eq!(avm_file.program().id(), &package.program_id);
         assert_eq!(avm_file.program(), package.program());
 
-        assert!(package
-            .program()
-            .functions()
-            .keys()
-            .filter(|k| {
-                ProverFile::exists_at(&package.build_directory(), k)
-                    || VerifierFile::exists_at(&package.build_directory(), k)
-            })
-            .peekable()
-            .peek()
-            .is_none());
+        assert!(
+            package
+                .program()
+                .functions()
+                .keys()
+                .filter(|k| {
+                    ProverFile::exists_at(&package.build_directory(), k)
+                        || VerifierFile::exists_at(&package.build_directory(), k)
+                })
+                .peekable()
+                .peek()
+                .is_none()
+        );
 
         assert!(package.is_build_required::<Aleo>());
     }
