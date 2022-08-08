@@ -137,7 +137,6 @@ function compute:
     }
 
     #[test]
-    #[should_panic]
     fn test_fail_when_avm_and_package_program_ids_do_not_match() {
         let package = initialize_unbuilt_package(false);
         assert!(package.is_err());
