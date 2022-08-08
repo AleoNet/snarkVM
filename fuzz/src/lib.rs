@@ -46,7 +46,7 @@ pub fn fuzz_program(program: Program<CurrentNetwork>) {
     }
 
     // Execute
-    if let Some(f) = program.functions().first() {
+/*    if let Some(f) = program.functions().first() {
         // Initialize the private key.
         let pkey = PrivateKey::new(rng).unwrap();
 
@@ -55,5 +55,5 @@ pub fn fuzz_program(program: Program<CurrentNetwork>) {
         } else {
             // ignore
         }
-    }
+    }*/
 }
