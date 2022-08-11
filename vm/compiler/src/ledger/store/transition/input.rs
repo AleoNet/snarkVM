@@ -25,7 +25,7 @@ use console::{
 };
 
 use anyhow::Result;
-use std::borrow::Cow;
+use std::{borrow::Cow, iter};
 
 /// A trait for transition input store.
 pub trait InputStorage<N: Network>: Clone + Sync {
@@ -187,30 +187,54 @@ pub trait InputStorage<N: Network>: Clone + Sync {
     }
 
     /// Returns an iterator over the constant inputs, for all transitions.
-    fn constant_inputs(&self) -> <Self::ConstantMap as MapRead<Field<N>, Option<Plaintext<N>>>>::Values {
-        self.constant_map().values().flat_map(|input| match input {
+    fn constant_inputs<'a>(
+        &'a self,
+    ) -> iter::FlatMap<
+        <<Self as InputStorage<N>>::ConstantMap as MapRead<'a, Field<N>, Option<Plaintext<N>>>>::Values,
+        Option<Cow<'a, Plaintext<N>>>,
+        Box<dyn FnMut(Cow<'a, Option<Plaintext<N>>>) -> Option<Cow<'a, Plaintext<N>>>>,
+    > {
+        let map = Box::new(|input| match input {
             Cow::Borrowed(Some(input)) => Some(Cow::Borrowed(input)),
             Cow::Owned(Some(input)) => Some(Cow::Owned(input)),
             _ => None,
-        })
+        });
+
+        self.constant_map().values().flat_map(map)
     }
 
     /// Returns an iterator over the constant inputs, for all transitions.
-    fn public_inputs(&self) -> <Self::PublicMap as MapRead<Field<N>, Option<Plaintext<N>>>>::Values {
-        self.public_map().values().flat_map(|input| match input {
+    fn public_inputs<'a>(
+        &'a self,
+    ) -> iter::FlatMap<
+        <<Self as InputStorage<N>>::PublicMap as MapRead<'a, Field<N>, Option<Plaintext<N>>>>::Values,
+        Option<Cow<'a, Plaintext<N>>>,
+        Box<dyn FnMut(Cow<'a, Option<Plaintext<N>>>) -> Option<Cow<'a, Plaintext<N>>>>,
+    > {
+        let map = Box::new(|input| match input {
             Cow::Borrowed(Some(input)) => Some(Cow::Borrowed(input)),
             Cow::Owned(Some(input)) => Some(Cow::Owned(input)),
             _ => None,
-        })
+        });
+
+        self.public_map().values().flat_map(map)
     }
 
     /// Returns an iterator over the private inputs, for all transitions.
-    fn private_inputs(&self) -> <Self::PrivateMap as MapRead<Field<N>, Option<Ciphertext<N>>>>::Values {
-        self.private_map().values().flat_map(|input| match input {
+    fn private_inputs<'a>(
+        &'a self,
+    ) -> iter::FlatMap<
+        <<Self as InputStorage<N>>::PrivateMap as MapRead<'a, Field<N>, Option<Ciphertext<N>>>>::Values,
+        Option<Cow<'a, Ciphertext<N>>>,
+        Box<dyn FnMut(Cow<'a, Option<Ciphertext<N>>>) -> Option<Cow<'a, Ciphertext<N>>>>,
+    > {
+        let map = Box::new(|input| match input {
             Cow::Borrowed(Some(input)) => Some(Cow::Borrowed(input)),
             Cow::Owned(Some(input)) => Some(Cow::Owned(input)),
             _ => None,
-        })
+        });
+
+        self.private_map().values().flat_map(map)
     }
 
     /// Returns an iterator over the tags, for all transition inputs that are records.
@@ -219,11 +243,18 @@ pub trait InputStorage<N: Network>: Clone + Sync {
     }
 
     /// Returns an iterator over the origins, for all transition inputs that are records.
-    fn origins(&self) -> <Self::RecordMap as MapRead<Field<N>, (Field<N>, Origin<N>)>>::Values {
-        self.record_map().values().map(|input| match input {
+    fn origins<'a>(
+        &'a self,
+    ) -> iter::Map<
+        <<Self as InputStorage<N>>::RecordMap as MapRead<'a, Field<N>, (Field<N>, Origin<N>)>>::Values,
+        Box<dyn FnMut(Cow<'a, (Field<N>, Origin<N>)>) -> Cow<'a, Origin<N>>>,
+    > {
+        let map = Box::new(|input| match input {
             Cow::Borrowed((_, origin)) => Cow::Borrowed(origin),
             Cow::Owned((_, origin)) => Cow::Owned(origin),
-        })
+        });
+
+        self.record_map().values().map(map)
     }
 
     /* Write */
