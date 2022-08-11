@@ -132,6 +132,20 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
             TransactionType::Execute => self.execution_store().remove(transaction_id),
         }
     }
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.deployment_store().start_atomic();
+        self.execution_store().start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.deployment_store().finish_atomic();
+        self.execution_store().finish_atomic();
+    }
 }
 
 /// An in-memory transaction storage.
@@ -214,6 +228,16 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
         self.storage.execution_store().transition_store()
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 

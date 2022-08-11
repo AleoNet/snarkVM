@@ -21,6 +21,12 @@ use console::network::prelude::*;
 use core::{borrow::Borrow, hash::Hash};
 use std::borrow::Cow;
 
+pub enum BatchOperation<K: Copy + Clone + PartialEq + Eq + Hash + Send + Sync, V: Clone + PartialEq + Eq + Send + Sync>
+{
+    Put(K, V),
+    Delete(K),
+}
+
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
@@ -36,10 +42,18 @@ pub trait Map<
     ///
     /// Removes the key-value pair for the given key from the map.
     ///
-    fn remove<Q>(&self, key: &Q) -> Result<()>
-    where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+    fn remove(&self, key: &K) -> Result<()>;
+
+    ///
+    /// Begins an atomic operation. Any further calls to `insert` and `remove` will be queued
+    /// without an actual write taking place until `finish_atomic` is called.
+    ///
+    fn start_atomic(&self);
+
+    ///
+    /// Finishes an atomic operation, performing all the queued writes.
+    ///
+    fn finish_atomic(&self);
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.

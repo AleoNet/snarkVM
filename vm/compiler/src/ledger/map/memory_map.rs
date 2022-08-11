@@ -14,41 +14,54 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ledger::map::{Map, MapRead};
+use crate::ledger::map::{BatchOperation, Map, MapRead};
 use console::network::prelude::*;
 use indexmap::IndexMap;
 
 use core::{borrow::Borrow, hash::Hash};
 use indexmap::map;
-use parking_lot::RwLock;
-use std::{borrow::Cow, sync::Arc};
+use parking_lot::{Mutex, RwLock};
+use std::{
+    borrow::Cow,
+    mem,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[derive(Clone)]
 pub struct MemoryMap<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > {
     pub(super) map: Arc<RwLock<IndexMap<K, V>>>,
+    batch_in_progress: Arc<AtomicBool>,
+    atomic_batch: Arc<Mutex<Vec<BatchOperation<K, V>>>>,
 }
 
 impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > Default for MemoryMap<K, V>
 {
     fn default() -> Self {
-        Self { map: Default::default() }
+        Self { map: Default::default(), batch_in_progress: Default::default(), atomic_batch: Default::default() }
     }
 }
 
 impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > FromIterator<(K, V)> for MemoryMap<K, V>
 {
     /// Initializes a new `MemoryMap` from the given iterator.
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Self { map: Arc::new(RwLock::new(IndexMap::from_iter(iter))) }
+        Self {
+            map: Arc::new(RwLock::new(IndexMap::from_iter(iter))),
+            batch_in_progress: Default::default(),
+            atomic_batch: Default::default(),
+        }
     }
 }
 
@@ -62,7 +75,11 @@ impl<
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
-        self.map.write().insert(key, value);
+        if self.batch_in_progress.load(Ordering::SeqCst) {
+            self.atomic_batch.lock().push(BatchOperation::Put(key, value));
+        } else {
+            self.map.write().insert(key, value);
+        }
 
         Ok(())
     }
@@ -70,21 +87,50 @@ impl<
     ///
     /// Removes the key-value pair for the given key from the map.
     ///
-    fn remove<Q>(&self, key: &Q) -> Result<()>
-    where
-        K: Borrow<Q>,
-        Q: PartialEq + Eq + Hash + Serialize + ?Sized,
-    {
-        self.map.write().remove(key);
+    fn remove(&self, key: &K) -> Result<()> {
+        if self.batch_in_progress.load(Ordering::SeqCst) {
+            self.atomic_batch.lock().push(BatchOperation::Delete(*key));
+        } else {
+            self.map.write().remove(key);
+        }
 
         Ok(())
+    }
+
+    ///
+    /// Begins an atomic operation. Any further calls to `insert` and `remove` will be queued
+    /// without an actual write taking place until `finish_atomic` is called.
+    ///
+    fn start_atomic(&self) {
+        self.batch_in_progress.store(true, Ordering::SeqCst);
+        assert!(self.atomic_batch.lock().is_empty());
+    }
+
+    ///
+    /// Finishes an atomic operation, performing all the queued writes.
+    ///
+    fn finish_atomic(&self) {
+        let operations = mem::take(&mut *self.atomic_batch.lock());
+
+        if !operations.is_empty() {
+            let mut locked_map = self.map.write();
+
+            for op in operations {
+                match op {
+                    BatchOperation::Put(k, v) => locked_map.insert(k, v),
+                    BatchOperation::Delete(k) => locked_map.remove(&k),
+                };
+            }
+        }
+
+        self.batch_in_progress.store(false, Ordering::SeqCst);
     }
 }
 
 impl<
     'a,
-    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > MapRead<'a, K, V> for MemoryMap<K, V>
 {
     type Iterator = core::iter::Map<map::IntoIter<K, V>, fn((K, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
@@ -136,8 +182,8 @@ impl<
 }
 
 impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > Deref for MemoryMap<K, V>
 {
     type Target = Arc<RwLock<IndexMap<K, V>>>;

@@ -535,6 +535,8 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
 
         /* ATOMIC CODE SECTION */
 
+        self.start_atomic();
+
         // Add the block to the ledger. This code section executes atomically.
         {
             let mut ledger = self.clone();
@@ -569,6 +571,8 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
                 memory_pool: ledger.memory_pool,
             };
         }
+
+        self.finish_atomic();
 
         Ok(())
     }
@@ -662,6 +666,20 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     /// Returns the expected proof target given the previous block and expected next block details.
     pub fn compute_proof_target(_anchor_block_header: &Header<N>, _block_timestamp: i64, _block_height: u32) -> u64 {
         unimplemented!()
+    }
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.blocks.start_atomic();
+        self.transactions.start_atomic();
+        self.transitions.start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.blocks.finish_atomic();
+        self.transactions.finish_atomic();
+        self.transitions.finish_atomic();
     }
 
     // /// Checks the given transaction is well formed and unique.
