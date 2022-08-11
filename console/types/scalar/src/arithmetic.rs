@@ -140,7 +140,10 @@ impl<E: Environment> Div<Scalar<E>> for Scalar<E> {
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: Scalar<E>) -> Self::Output {
-        Scalar::new(self.scalar / other.scalar)
+        match other.is_zero() {
+            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
+            false => Scalar::new(self.scalar / other.scalar),
+        }
     }
 }
 
@@ -150,7 +153,10 @@ impl<E: Environment> Div<&Scalar<E>> for Scalar<E> {
     /// Returns the `quotient` of `self` and `other`.
     #[inline]
     fn div(self, other: &Scalar<E>) -> Self::Output {
-        Scalar::new(self.scalar / other.scalar)
+        match other.is_zero() {
+            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
+            false => Scalar::new(self.scalar / other.scalar),
+        }
     }
 }
 
@@ -158,7 +164,10 @@ impl<E: Environment> DivAssign<Scalar<E>> for Scalar<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: Scalar<E>) {
-        self.scalar /= other.scalar;
+        match other.is_zero() {
+            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
+            false => self.scalar /= other.scalar,
+        }
     }
 }
 
@@ -166,7 +175,10 @@ impl<E: Environment> DivAssign<&Scalar<E>> for Scalar<E> {
     /// Divides `self` by `other`.
     #[inline]
     fn div_assign(&mut self, other: &Scalar<E>) {
-        self.scalar /= other.scalar;
+        match other.is_zero() {
+            true => E::halt(format!("Scalar division by zero: {self} / {other}")),
+            false => self.scalar /= other.scalar,
+        }
     }
 }
 
