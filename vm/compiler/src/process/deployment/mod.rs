@@ -19,7 +19,10 @@ mod serialize;
 mod string;
 
 use crate::{Certificate, Program, VerifyingKey};
-use console::{network::prelude::*, program::Identifier};
+use console::{
+    network::prelude::*,
+    program::{Identifier, ProgramID},
+};
 
 use indexmap::IndexMap;
 
@@ -51,6 +54,11 @@ impl<N: Network> Deployment<N> {
     /// Returns the program.
     pub const fn program(&self) -> &Program<N> {
         &self.program
+    }
+
+    /// Returns the program.
+    pub const fn program_id(&self) -> &ProgramID<N> {
+        self.program.id()
     }
 
     /// Returns the verifying keys.

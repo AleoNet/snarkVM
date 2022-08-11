@@ -17,11 +17,12 @@
 use super::*;
 
 impl<A: Aleo> Response<A> {
-    /// Returns the injected circuit outputs, given the number of inputs, caller, tvk, outputs, and output types.
+    /// Returns the injected circuit outputs, given the number of inputs, caller, tvk, tcm, outputs, and output types.
     pub fn process_outputs_from_callback(
         program_id: &ProgramID<A>,
         num_inputs: usize,
         tvk: &Field<A>,
+        tcm: &Field<A>,
         outputs: Vec<console::Value<A::Network>>,        // Note: Console type
         output_types: &[console::ValueType<A::Network>], // Note: Console type
     ) -> Vec<Value<A>> {
@@ -31,29 +32,49 @@ impl<A: Aleo> Response<A> {
             .enumerate()
             .map(|(index, (output, output_types))| {
                 match output_types {
-                    // For a constant output, compute the hash of the output.
+                    // For a constant output, compute the hash (using `tcm`) of the output.
                     console::ValueType::Constant(..) => {
                         // Inject the output as `Mode::Constant`.
                         let output = Value::new(Mode::Constant, output.clone());
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
 
+                        // Prepare the index as a constant field element.
+                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        // Construct the preimage as `(output || tcm || index)`.
+                        let mut preimage = output.to_fields();
+                        preimage.push(tcm.clone());
+                        preimage.push(output_index);
+
                         // Hash the output to a field element.
-                        let output_hash = A::hash_bhp1024(&output.to_bits_le());
-                        // Return the output ID.
-                        Ok((OutputID::constant(output_hash), output))
+                        match &output {
+                            // Return the output ID.
+                            Value::Plaintext(..) => Ok((OutputID::constant(A::hash_psd8(&preimage)), output)),
+                            // Ensure the output is a plaintext.
+                            Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                        }
                     }
-                    // For a public output, compute the hash of the output.
+                    // For a public output, compute the hash (using `tcm`) of the output.
                     console::ValueType::Public(..) => {
                         // Inject the output as `Mode::Private`.
                         let output = Value::new(Mode::Private, output.clone());
                         // Ensure the output is a plaintext.
                         ensure!(matches!(output, Value::Plaintext(..)), "Expected a plaintext output");
 
+                        // Prepare the index as a constant field element.
+                        let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
+                        // Construct the preimage as `(output || tcm || index)`.
+                        let mut preimage = output.to_fields();
+                        preimage.push(tcm.clone());
+                        preimage.push(output_index);
+
                         // Hash the output to a field element.
-                        let output_hash = A::hash_bhp1024(&output.to_bits_le());
-                        // Return the output ID.
-                        Ok((OutputID::public(output_hash), output))
+                        match &output {
+                            // Return the output ID.
+                            Value::Plaintext(..) => Ok((OutputID::public(A::hash_psd8(&preimage)), output)),
+                            // Ensure the output is a plaintext.
+                            Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
+                        }
                     }
                     // For a private output, compute the ciphertext (using `tvk`) and hash the ciphertext.
                     console::ValueType::Private(..) => {
@@ -72,10 +93,8 @@ impl<A: Aleo> Response<A> {
                             // Ensure the output is a plaintext.
                             Value::Record(..) => A::halt("Expected a plaintext output, found a record output"),
                         };
-                        // Hash the ciphertext to a field element.
-                        let output_hash = A::hash_bhp1024(&ciphertext.to_bits_le());
                         // Return the output ID.
-                        Ok((OutputID::private(output_hash), output))
+                        Ok((OutputID::private(A::hash_psd8(&ciphertext.to_fields())), output))
                     }
                     // For a record output, compute the record commitment.
                     console::ValueType::Record(record_name) => {
@@ -95,7 +114,7 @@ impl<A: Aleo> Response<A> {
                         // Note: Because this is a callback, the output ID is an **external record** ID.
                         Ok((OutputID::external_record(commitment), output))
                     }
-                    // For an external record output, compute the commitment (using `tvk`) of the output.
+                    // For an external record output, compute the hash (using `tvk`) of the output.
                     console::ValueType::ExternalRecord(..) => {
                         // Inject the output as `Mode::Private`.
                         let output = Value::new(Mode::Private, output.clone());
@@ -104,12 +123,17 @@ impl<A: Aleo> Response<A> {
 
                         // Prepare the index as a constant field element.
                         let output_index = Field::constant(console::Field::from_u16((num_inputs + index) as u16));
-                        // Compute the commitment randomizer as `HashToScalar(tvk || index)`.
-                        let randomizer = A::hash_to_scalar_psd2(&[tvk.clone(), output_index]);
-                        // Commit the output to a field element.
-                        let commitment = A::commit_bhp1024(&output.to_bits_le(), &randomizer);
+                        // Construct the preimage as `(output || tvk || index)`.
+                        let mut preimage = output.to_fields();
+                        preimage.push(tvk.clone());
+                        preimage.push(output_index);
+
                         // Return the output ID.
-                        Ok((OutputID::external_record(commitment), output))
+                        match &output {
+                            Value::Record(..) => Ok((OutputID::external_record(A::hash_psd8(&preimage)), output)),
+                            // Ensure the output is a record.
+                            Value::Plaintext(..) => A::halt("Expected a record output, found a plaintext output"),
+                        }
                     }
                 }
             })
@@ -143,14 +167,17 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) -> Result<()> {
+        use console::Network;
+
         let rng = &mut test_crypto_rng();
 
         for i in 0..ITERATIONS {
             // Sample a `tvk`.
-            let tvk = Uniform::rand(rng);
+            let tvk = console::Field::rand(rng);
+            // Compute the transition commitment as `Hash(tvk)`.
+            let tcm = <Circuit as Environment>::Network::hash_psd2(&[tvk])?;
 
             // Compute the nonce.
-            use console::Network;
             let index = console::Field::from_u64(8);
             let randomizer = <Circuit as Environment>::Network::hash_to_scalar_psd2(&[tvk, index]).unwrap();
             let nonce = <Circuit as Environment>::Network::g_scalar_multiply(&randomizer);
@@ -192,31 +219,34 @@ mod tests {
 
             // Construct the response.
             let response =
-                console::Response::new(&program_id, 4, &tvk, outputs.clone(), &output_types, &output_registers)?;
+                console::Response::new(&program_id, 4, &tvk, &tcm, outputs.clone(), &output_types, &output_registers)?;
             // assert!(response.verify());
 
-            // Inject the program ID and `tvk`.
+            // Inject the program ID, `tvk`, `tcm`.
             let program_id = ProgramID::<Circuit>::new(mode, program_id);
             let tvk = Field::<Circuit>::new(mode, tvk);
+            let tcm = Field::<Circuit>::new(mode, tcm);
 
             Circuit::scope(format!("Response {i}"), || {
                 let outputs = Response::process_outputs_from_callback(
                     &program_id,
                     4,
                     &tvk,
+                    &tcm,
                     response.outputs().to_vec(),
                     &output_types,
                 );
                 assert_eq!(response.outputs(), outputs.eject_value());
                 match mode.is_constant() {
-                    true => assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints),
+                    true => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
                     false => assert_scope!(<=num_constants, num_public, num_private, num_constraints),
                 }
             });
 
             // Compute the response using outputs (circuit).
             let outputs = Inject::new(mode, response.outputs().to_vec());
-            let candidate_b = Response::from_outputs(&program_id, 4, &tvk, outputs, &output_types, &output_registers);
+            let candidate_b =
+                Response::from_outputs(&program_id, 4, &tvk, &tcm, outputs, &output_types, &output_registers);
             assert_eq!(response, candidate_b.eject_value());
 
             Circuit::reset();
@@ -230,16 +260,16 @@ mod tests {
 
     #[test]
     fn test_from_callback_constant() -> Result<()> {
-        check_from_callback(Mode::Constant, 19000, 4, 6200, 6200)
+        check_from_callback(Mode::Constant, 15943, 5, 4241, 4258)
     }
 
     #[test]
     fn test_from_callback_public() -> Result<()> {
-        check_from_callback(Mode::Public, 18828, 4, 8363, 8406)
+        check_from_callback(Mode::Public, 15943, 5, 5466, 5483)
     }
 
     #[test]
     fn test_from_callback_private() -> Result<()> {
-        check_from_callback(Mode::Private, 18828, 4, 8363, 8406)
+        check_from_callback(Mode::Private, 15943, 5, 5466, 5483)
     }
 }

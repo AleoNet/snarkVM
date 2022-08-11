@@ -213,6 +213,7 @@ impl<N: Network> Stack<N> {
             request.program_id(),
             num_inputs,
             request.tvk(),
+            request.tcm(),
             outputs,
             &output_types,
             output_registers,

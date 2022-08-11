@@ -33,7 +33,7 @@ pub enum OutputID<A: Aleo> {
     Private(Field<A>),
     /// The `(commitment, checksum)` tuple of the record output.
     Record(Field<A>, Field<A>),
-    /// The commitment of the external record output.
+    /// The hash of the external record output.
     ExternalRecord(Field<A>),
 }
 
@@ -44,8 +44,8 @@ impl<A: Aleo> Inject for OutputID<A> {
     /// Initializes the output ID from the given mode and console output ID.
     fn new(_: Mode, output: Self::Primitive) -> Self {
         match output {
-            // Inject the expected hash as `Mode::Constant`.
-            console::OutputID::Constant(field) => Self::Constant(Field::new(Mode::Constant, field)),
+            // Inject the expected hash as `Mode::Public`.
+            console::OutputID::Constant(field) => Self::Constant(Field::new(Mode::Public, field)),
             // Inject the expected hash as `Mode::Public`.
             console::OutputID::Public(field) => Self::Public(Field::new(Mode::Public, field)),
             // Inject the ciphertext hash as `Mode::Public`.
@@ -54,8 +54,8 @@ impl<A: Aleo> Inject for OutputID<A> {
             console::OutputID::Record(commitment, checksum) => {
                 Self::Record(Field::new(Mode::Public, commitment), Field::new(Mode::Public, checksum))
             }
-            // Inject the expected commitment as `Mode::Public`.
-            console::OutputID::ExternalRecord(commitment) => Self::ExternalRecord(Field::new(Mode::Public, commitment)),
+            // Inject the expected hash as `Mode::Public`.
+            console::OutputID::ExternalRecord(hash) => Self::ExternalRecord(Field::new(Mode::Public, hash)),
         }
     }
 }
@@ -63,8 +63,8 @@ impl<A: Aleo> Inject for OutputID<A> {
 impl<A: Aleo> OutputID<A> {
     /// Initializes a constant output ID.
     fn constant(expected_hash: Field<A>) -> Self {
-        // Inject the expected hash as `Mode::Constant`.
-        let output_hash = Field::new(Mode::Constant, expected_hash.eject_value());
+        // Inject the expected hash as `Mode::Public`.
+        let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
         // Ensure the injected hash matches the given hash.
         A::assert_eq(&output_hash, expected_hash);
         // Return the output ID.
@@ -104,13 +104,13 @@ impl<A: Aleo> OutputID<A> {
     }
 
     /// Initializes an external record output ID.
-    fn external_record(expected_commitment: Field<A>) -> Self {
-        // Inject the expected commitment as `Mode::Public`.
-        let output_commitment = Field::new(Mode::Public, expected_commitment.eject_value());
-        // Ensure the injected commitment matches the given commitment.
-        A::assert_eq(&output_commitment, expected_commitment);
+    fn external_record(expected_hash: Field<A>) -> Self {
+        // Inject the expected hash as `Mode::Public`.
+        let output_hash = Field::new(Mode::Public, expected_hash.eject_value());
+        // Ensure the injected hash matches the given commitment.
+        A::assert_eq(&output_hash, expected_hash);
         // Return the output ID.
-        Self::ExternalRecord(output_commitment)
+        Self::ExternalRecord(output_hash)
     }
 }
 
@@ -125,7 +125,7 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Public(field) => field.eject_mode(),
             Self::Private(field) => field.eject_mode(),
             Self::Record(commitment, checksum) => Mode::combine(commitment.eject_mode(), [checksum.eject_mode()]),
-            Self::ExternalRecord(commitment) => commitment.eject_mode(),
+            Self::ExternalRecord(hash) => hash.eject_mode(),
         }
     }
 
@@ -138,7 +138,7 @@ impl<A: Aleo> Eject for OutputID<A> {
             Self::Record(commitment, checksum) => {
                 console::OutputID::Record(commitment.eject_value(), checksum.eject_value())
             }
-            Self::ExternalRecord(commitment) => console::OutputID::ExternalRecord(commitment.eject_value()),
+            Self::ExternalRecord(hash) => console::OutputID::ExternalRecord(hash.eject_value()),
         }
     }
 }

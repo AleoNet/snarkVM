@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod origin;
+pub use origin::*;
+
 mod bytes;
 mod serialize;
 mod string;
@@ -25,14 +28,6 @@ use console::{
 };
 
 type Variant = u16;
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum Origin<N: Network> {
-    /// The origin is a commitment.
-    Commitment(Field<N>),
-    /// The origin is a state root.
-    StateRoot(N::StateRoot),
-}
 
 /// The transition input.
 #[derive(Clone, PartialEq, Eq)]
@@ -127,30 +122,110 @@ impl<N: Network> Input<N> {
 
     /// Returns `true` if the input is well-formed.
     /// If the optional value exists, this method checks that it hashes to the input ID.
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
-        let result = match self {
-            Input::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Input::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Input::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
+        let result = || match self {
+            Input::Constant(hash, Some(input)) => {
+                match input.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(input || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Input::Public(hash, Some(input)) => {
+                match input.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) input index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(input || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Input::Private(hash, Some(value)) => {
+                match value.to_fields() {
+                    // Ensure the hash matches.
+                    Ok(fields) => match N::hash_psd8(&fields) {
+                        Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                        Err(error) => Err(error),
+                    },
+                    Err(error) => Err(error),
+                }
+            }
             _ => Ok(true),
         };
 
-        match result {
+        match result() {
             Ok(is_hash_valid) => is_hash_valid,
             Err(error) => {
                 eprintln!("{error}");
                 false
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use console::{network::Testnet3, program::Literal};
+
+    type CurrentNetwork = Testnet3;
+
+    /// Sample the transition inputs.
+    pub(crate) fn sample_inputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Input<CurrentNetwork>)> {
+        // Sample a transition.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transition = transaction.transitions().next().unwrap();
+
+        // Retrieve the transition ID and input.
+        let transition_id = *transition.id();
+        let input = transition.inputs().iter().next().unwrap().clone();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Sample a random plaintext.
+        let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
+        let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
+        // Sample a random ciphertext.
+        let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+        let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
+        // Sample a random origin (commitment).
+        let origin_commitment = Origin::Commitment(Uniform::rand(rng));
+        // Sample a random origin (state root).
+        let origin_state_root = Origin::StateRoot(Uniform::rand(rng));
+
+        vec![
+            (transition_id, input),
+            (Uniform::rand(rng), Input::Constant(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Input::Constant(plaintext_hash, Some(plaintext.clone()))),
+            (Uniform::rand(rng), Input::Public(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Input::Public(plaintext_hash, Some(plaintext))),
+            (Uniform::rand(rng), Input::Private(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Input::Private(ciphertext_hash, Some(ciphertext))),
+            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng), origin_commitment)),
+            (Uniform::rand(rng), Input::Record(Uniform::rand(rng), Uniform::rand(rng), origin_state_root)),
+            (Uniform::rand(rng), Input::ExternalRecord(Uniform::rand(rng))),
+        ]
     }
 }

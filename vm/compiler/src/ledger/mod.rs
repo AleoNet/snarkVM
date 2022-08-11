@@ -17,16 +17,19 @@
 mod block;
 pub use block::*;
 
-mod map;
+pub mod map;
 pub use map::*;
 
 mod state_path;
 pub use state_path::*;
 
+mod store;
+pub use store::*;
+
 mod transaction;
 pub use transaction::*;
 
-mod transition;
+pub mod transition;
 pub use transition::*;
 
 mod vm;
@@ -37,22 +40,19 @@ mod get;
 mod iterators;
 mod latest;
 
-use crate::{
-    ledger::Origin,
-    memory_map::MemoryMap,
-    process::{Deployment, Execution},
-};
+use crate::program::Program;
 use console::{
     account::{GraphKey, PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Plaintext, Record},
+    program::{Ciphertext, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
 use indexmap::IndexMap;
+use std::borrow::Cow;
 use time::OffsetDateTime;
 
 #[cfg(feature = "parallel")]
@@ -80,13 +80,7 @@ pub enum OutputRecordsFilter<N: Network> {
 }
 
 #[derive(Clone)]
-pub struct Ledger<
-    N: Network,
-    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
-    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
-    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-> {
+pub struct Ledger<N: Network, B: BlockStorage<N>> {
     /// The current block hash.
     current_hash: N::BlockHash,
     /// The current block height.
@@ -95,14 +89,12 @@ pub struct Ledger<
     current_round: u64,
     /// The current block tree.
     block_tree: BlockTree<N>,
-    /// The map of previous block hashes.
-    previous_hashes: PreviousHashesMap,
-    /// The map of block headers.
-    headers: HeadersMap,
-    /// The map of block transactions.
-    transactions: TransactionsMap,
-    /// The map of block signatures.
-    signatures: SignatureMap,
+    /// The block store.
+    blocks: BlockStore<N, B>,
+    /// The transaction store.
+    transactions: TransactionStore<N, B::TransactionStorage>,
+    /// The transition store.
+    transitions: TransitionStore<N, B::TransitionStorage>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
     /// The VM state.
@@ -111,25 +103,19 @@ pub struct Ledger<
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
-impl<N: Network>
-    Ledger<
-        N,
-        MemoryMap<u32, N::BlockHash>,
-        MemoryMap<u32, Header<N>>,
-        MemoryMap<u32, Transactions<N>>,
-        MemoryMap<u32, Signature<N>>,
-    >
-{
+impl<N: Network> Ledger<N, BlockMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
         // Initialize the ledger.
-        Self::from_genesis(&genesis)
+        Self::new_with_genesis(&genesis)
     }
 
     /// Initializes a new instance of `Ledger` with the given genesis block.
-    pub fn from_genesis(genesis: &Block<N>) -> Result<Self> {
+    pub fn new_with_genesis(genesis: &Block<N>) -> Result<Self> {
+        // Initialize the block store.
+        let blocks = BlockStore::<N, BlockMemory<N>>::new();
         // Initialize a new VM.
         let vm = VM::<N>::new()?;
 
@@ -139,10 +125,9 @@ impl<N: Network>
             current_height: 0,
             current_round: 0,
             block_tree: N::merkle_tree_bhp(&[])?,
-            previous_hashes: [].into_iter().collect(),
-            headers: [].into_iter().collect(),
-            transactions: [].into_iter().collect(),
-            signatures: [].into_iter().collect(),
+            transactions: blocks.transaction_store().clone(),
+            transitions: blocks.transition_store().clone(),
+            blocks,
             vm,
             memory_pool: Default::default(),
         };
@@ -155,23 +140,11 @@ impl<N: Network>
     }
 }
 
-impl<
-    N: Network,
-    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
-    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
-    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
-{
-    /// Initializes a new instance of `Ledger` from the given maps.
-    pub fn from_maps(
-        previous_hashes: PreviousHashesMap,
-        headers: HeadersMap,
-        transactions: TransactionsMap,
-        signatures: SignatureMap,
-    ) -> Result<Self> {
+impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+    /// Initializes the `Ledger` from storage.
+    pub fn from(blocks: BlockStore<N, B>) -> Result<Self> {
         // Initialize a new VM.
-        let vm = VM::<N>::new()?;
+        let vm = VM::<N>::from(&blocks)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -179,28 +152,22 @@ impl<
             current_height: 0,
             current_round: 0,
             block_tree: N::merkle_tree_bhp(&[])?,
-            previous_hashes,
-            headers,
-            transactions,
-            signatures,
+            transactions: blocks.transaction_store().clone(),
+            transitions: blocks.transition_store().clone(),
+            blocks,
             vm,
             memory_pool: Default::default(),
         };
 
         // Fetch the latest height.
-        let latest_height = match ledger.previous_hashes.keys().max() {
+        let latest_height = match ledger.blocks.heights().max() {
             Some(height) => *height,
             // If there are no previous hashes, add the genesis block.
             None => {
                 // Load the genesis block.
                 let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
-
                 // Add the genesis block.
-                ledger.previous_hashes.insert(genesis.height(), genesis.previous_hash())?;
-                ledger.headers.insert(genesis.height(), *genesis.header())?;
-                ledger.transactions.insert(genesis.height(), genesis.transactions().clone())?;
-                ledger.signatures.insert(genesis.height(), *genesis.signature())?;
-
+                ledger.blocks.insert(&genesis)?;
                 // Return the genesis height.
                 genesis.height()
             }
@@ -214,26 +181,14 @@ impl<
         ledger.current_height = block.height();
         ledger.current_round = block.round();
 
+        // TODO (howardwu): Improve the performance here by using iterators.
         // Generate the block tree.
-        ledger.block_tree = N::merkle_tree_bhp(
-            &ledger
-                .previous_hashes
-                .values()
-                .skip(1)
-                .map(|hash| (*hash).to_bits_le())
-                .chain([(*ledger.current_hash).to_bits_le()].into_iter())
-                .collect::<Vec<_>>(),
-        )?;
-
-        // Load each transaction into the VM.
-        for transactions in ledger.transactions.values() {
-            for transaction in transactions.transactions() {
-                ledger.vm.finalize(transaction)?;
-            }
-        }
+        let hashes: Vec<_> =
+            (0..=latest_height).map(|height| ledger.get_hash(height).map(|hash| hash.to_bits_le())).try_collect()?;
+        ledger.block_tree.append(&hashes)?;
 
         // Safety check the existence of every block.
-        (0..=ledger.latest_height()).into_par_iter().try_for_each(|height| {
+        (0..=latest_height).into_par_iter().try_for_each(|height| {
             ledger.get_block(height)?;
             Ok::<_, Error>(())
         })?;
@@ -253,31 +208,65 @@ impl<
             bail!("Transaction '{}' already exists in the memory pool.", transaction.id());
         }
 
-        // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in transaction.transition_public_keys() {
-            if self.contains_transition_public_key(tpk) {
-                bail!("Transition public key '{tpk}' already exists in the ledger")
+        /* Input */
+
+        // Ensure the ledger does not already contain the given input ID.
+        for input_id in transaction.input_ids() {
+            if self.contains_input_id(input_id)? {
+                bail!("Input ID '{input_id}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given serial numbers.
         for serial_number in transaction.serial_numbers() {
-            if self.contains_serial_number(serial_number) {
+            if self.contains_serial_number(serial_number)? {
                 bail!("Serial number '{serial_number}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given tag.
+        for tag in transaction.tags() {
+            if self.contains_tag(tag)? {
+                bail!("Tag '{tag}' already exists in the ledger")
+            }
+        }
+
+        /* Output */
+
+        // Ensure the ledger does not already contain the given output ID.
+        for output_id in transaction.output_ids() {
+            if self.contains_output_id(output_id)? {
+                bail!("Output ID '{output_id}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given commitments.
         for commitment in transaction.commitments() {
-            if self.contains_commitment(commitment) {
+            if self.contains_commitment(commitment)? {
                 bail!("Commitment '{commitment}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given nonces.
         for nonce in transaction.nonces() {
-            if self.contains_nonce(nonce) {
+            if self.contains_nonce(nonce)? {
                 bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        /* Metadata */
+
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in transaction.transition_public_keys() {
+            if self.contains_tpk(tpk)? {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
+            }
+        }
+
+        // Ensure the ledger does not already contain a given transition commitment.
+        for tcm in transaction.transition_commitments() {
+            if self.contains_tcm(tcm)? {
+                bail!("Transition commitment '{tcm}' already exists in the ledger")
             }
         }
 
@@ -325,7 +314,7 @@ impl<
         }
 
         // Ensure the block hash does not already exist.
-        if self.contains_block_hash(&block.hash()) {
+        if self.contains_block_hash(&block.hash())? {
             bail!("Block hash '{}' already exists in the ledger", block.hash())
         }
 
@@ -335,7 +324,7 @@ impl<
         }
 
         // Ensure the block height does not already exist.
-        if self.contains_height(block.height())? {
+        if self.contains_block_height(block.height())? {
             bail!("Block height '{}' already exists in the ledger", block.height())
         }
 
@@ -355,24 +344,19 @@ impl<
 
         for transaction_id in block.transaction_ids() {
             // Ensure the transaction in the block do not already exist.
-            if self.contains_transaction_id(transaction_id) {
+            if self.contains_transaction_id(transaction_id)? {
                 bail!("Transaction '{transaction_id}' already exists in the ledger")
             }
         }
 
-        // Ensure the ledger does not already contain a given transition public keys.
-        for tpk in block.transition_public_keys() {
-            if self.contains_transition_public_key(tpk) {
-                bail!("Transition public key '{tpk}' already exists in the ledger")
-            }
-        }
+        /* Input */
 
         // Ensure that the origin are valid.
         for origin in block.origins() {
             match origin {
                 // Check that the commitment exists in the ledger.
                 Origin::Commitment(commitment) => {
-                    if !self.contains_commitment(commitment) {
+                    if !self.contains_commitment(commitment)? {
                         bail!("The given transaction references a non-existent commitment {}", &commitment)
                     }
                 }
@@ -386,22 +370,33 @@ impl<
 
         // Ensure the ledger does not already contain a given serial numbers.
         for serial_number in block.serial_numbers() {
-            if self.contains_serial_number(serial_number) {
+            if self.contains_serial_number(serial_number)? {
                 bail!("Serial number '{serial_number}' already exists in the ledger")
             }
         }
 
+        /* Output */
+
         // Ensure the ledger does not already contain a given commitments.
         for commitment in block.commitments() {
-            if self.contains_commitment(commitment) {
+            if self.contains_commitment(commitment)? {
                 bail!("Commitment '{commitment}' already exists in the ledger")
             }
         }
 
         // Ensure the ledger does not already contain a given nonces.
         for nonce in block.nonces() {
-            if self.contains_nonce(nonce) {
+            if self.contains_nonce(nonce)? {
                 bail!("Nonce '{nonce}' already exists in the ledger")
+            }
+        }
+
+        /* Metadata */
+
+        // Ensure the ledger does not already contain a given transition public keys.
+        for tpk in block.transition_public_keys() {
+            if self.contains_tpk(tpk)? {
+                bail!("Transition public key '{tpk}' already exists in the ledger")
             }
         }
 
@@ -423,23 +418,18 @@ impl<
         // Add the block to the ledger. This code section executes atomically.
         {
             let mut ledger = self.clone();
-            let mut vm = self.vm().clone();
 
             // Update the blocks.
             ledger.current_hash = block.hash();
             ledger.current_height = block.height();
             ledger.current_round = block.round();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-            ledger.previous_hashes.insert(block.height(), block.previous_hash())?;
-            ledger.headers.insert(block.height(), *block.header())?;
-            ledger.transactions.insert(block.height(), block.transactions().clone())?;
-            ledger.signatures.insert(block.height(), *block.signature())?;
+            ledger.blocks.insert(block)?;
 
             // Update the VM.
             for transaction in block.transactions().values() {
-                vm.finalize(transaction)?;
+                ledger.vm.finalize(transaction)?;
             }
-            ledger.vm = vm;
 
             // Clear the memory pool of these transactions.
             for transaction_id in block.transaction_ids() {
@@ -451,10 +441,9 @@ impl<
                 current_height: ledger.current_height,
                 current_round: ledger.current_round,
                 block_tree: ledger.block_tree,
-                previous_hashes: ledger.previous_hashes,
-                headers: ledger.headers,
+                blocks: ledger.blocks,
                 transactions: ledger.transactions,
-                signatures: ledger.signatures,
+                transitions: ledger.transitions,
                 vm: ledger.vm,
                 memory_pool: ledger.memory_pool,
             };
@@ -470,83 +459,63 @@ impl<
 
     /// Returns a state path for the given commitment.
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
-        // Find the transaction that contains the record commitment.
-        let transaction = self
-            .transactions()
-            .filter(|transaction| transaction.commitments().contains(&commitment))
-            .map(|transaction| transaction.into_owned())
-            .collect::<Vec<Transaction<N>>>();
+        // Find the transition that contains the commitment.
+        let transition_id = self.transitions.find_transition_id(commitment)?;
+        // Find the transaction that contains the transition.
+        let transaction_id = match self.transactions.find_transaction_id(&transition_id)? {
+            Some(transaction_id) => transaction_id,
+            None => bail!("The transaction ID for commitment '{commitment}' is not in the ledger"),
+        };
+        // Find the block that contains the transaction.
+        let block_hash = match self.blocks.find_block_hash(&transaction_id)? {
+            Some(block_hash) => block_hash,
+            None => bail!("The block hash for commitment '{commitment}' is not in the ledger"),
+        };
 
-        if transaction.len() != 1 {
-            bail!("Multiple transactions associated with commitment {}", commitment.to_string())
-        }
-
-        let transaction = &transaction[0];
-
-        // Find the block height that contains the record transaction id.
-        let block_height = self
-            .transactions
-            .iter()
-            .filter_map(|(block_height, transactions)| {
-                match transactions.transaction_ids().contains(&transaction.id()) {
-                    true => Some(block_height),
-                    false => None,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        if block_height.len() != 1 {
-            bail!("Multiple block heights associated with transaction id {}", transaction.id().to_string())
-        }
-
-        let block_height = *block_height[0];
-        let block_header = self.get_header(block_height)?;
-
-        // Find the transition that contains the record commitment.
-        let transition = transaction
-            .transitions()
-            .filter(|transition| transition.commitments().contains(&commitment))
-            .collect::<Vec<_>>();
-
-        if transition.len() != 1 {
-            bail!("Multiple transitions associated with commitment {}", commitment.to_string())
-        }
-
-        let transition = transition[0];
-        let transition_id = transition.id();
+        // Retrieve the transition.
+        let transition = match self.transitions.get_transition(&transition_id)? {
+            Some(transition) => transition,
+            None => bail!("The transition '{transition_id}' for commitment '{commitment}' is not in the ledger"),
+        };
+        // Retrieve the transaction.
+        let transaction = match self.transactions.get_transaction(&transaction_id)? {
+            Some(transaction) => transaction,
+            None => bail!("The transaction '{transaction_id}' for commitment '{commitment}' is not in the ledger"),
+        };
+        // Retrieve the block.
+        let block = match self.blocks.get_block(&block_hash)? {
+            Some(block) => block,
+            None => bail!("The block '{block_hash}' for commitment '{commitment}' is not in the ledger"),
+        };
 
         // Construct the transition path and transaction leaf.
         let transition_leaf = transition.to_leaf(commitment, false)?;
         let transition_path = transition.to_path(&transition_leaf)?;
 
         // Construct the transaction path and transaction leaf.
-        let transaction_leaf = transaction.to_leaf(transition_id)?;
+        let transaction_leaf = transaction.to_leaf(transition.id())?;
         let transaction_path = transaction.to_path(&transaction_leaf)?;
 
         // Construct the transactions path.
-        let transactions = self.get_transactions(block_height)?;
+        let transactions = block.transactions();
         let transaction_index = transactions.iter().position(|(id, _)| id == &transaction.id()).unwrap();
         let transactions_path = transactions.to_path(transaction_index, *transaction.id())?;
 
         // Construct the block header path.
+        let block_header = block.header();
         let header_root = block_header.to_root()?;
         let header_leaf = HeaderLeaf::<N>::new(1, *block_header.transactions_root());
         let header_path = block_header.to_path(&header_leaf)?;
 
-        // Construct the block path.
-        let latest_block_height = self.latest_height();
-        let latest_block_hash = self.latest_hash();
-        let previous_block_hash = self.get_previous_hash(latest_block_height)?;
-
         // Construct the state root and block path.
-        let state_root = *self.latest_state_root();
-        let block_path = self.block_tree.prove(latest_block_height as usize, &latest_block_hash.to_bits_le())?;
+        let state_root = *self.block_tree.root();
+        let block_path = self.block_tree.prove(block.height() as usize, &block.hash().to_bits_le())?;
 
         StatePath::new(
             state_root.into(),
             block_path,
-            latest_block_hash,
-            previous_block_hash,
+            block.hash(),
+            block.previous_hash(),
             header_root,
             header_path,
             header_leaf,
@@ -568,25 +537,148 @@ impl<
     pub fn compute_proof_target(_anchor_block_header: &Header<N>, _block_timestamp: i64, _block_height: u32) -> u64 {
         unimplemented!()
     }
+
+    // /// Checks the given transaction is well formed and unique.
+    // pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
+    //     let transaction_id = transaction.id();
+    //     if self.contains_transaction_id(&transaction_id)? {
+    //         bail!("Transaction '{transaction_id}' already exists in the ledger")
+    //     }
+    //
+    //     // Ensure the ledger does not already contain a given transition public keys.
+    //     for tpk in transaction.transition_public_keys() {
+    //         if self.contains_transition_public_key(tpk)? {
+    //             bail!("Transition public key '{tpk}' already exists in the ledger")
+    //         }
+    //     }
+    //
+    //     // Ensure that the origin are valid.
+    //     for origin in transaction.origins() {
+    //         if !self.contains_origin(origin)? {
+    //             bail!("The given transaction references a non-existent origin {}", &origin)
+    //         }
+    //
+    //         match origin {
+    //             // Check that the commitment exists in the ledger.
+    //             Origin::Commitment(commitment) => {
+    //                 if !self.contains_commitment(commitment)? {
+    //                     bail!("The given transaction references a non-existent commitment {}", &commitment)
+    //                 }
+    //             }
+    //             // TODO (raychu86): Ensure that the state root exists in the ledger.
+    //             // Check that the state root is an existing state root.
+    //             Origin::StateRoot(_state_root) => {
+    //                 bail!("State roots are currently not supported (yet)")
+    //             }
+    //         }
+    //     }
+    //
+    //     // Ensure the ledger does not already contain a given serial numbers.
+    //     for serial_number in transaction.serial_numbers() {
+    //         if self.contains_serial_number(serial_number)? {
+    //             bail!("Serial number '{serial_number}' already exists in the ledger")
+    //         }
+    //     }
+    //
+    //     // Ensure the ledger does not already contain a given commitments.
+    //     for commitment in transaction.commitments() {
+    //         if self.contains_commitment(commitment)? {
+    //             bail!("Commitment '{commitment}' already exists in the ledger")
+    //         }
+    //     }
+    //
+    //     // Ensure the ledger does not already contain a given nonces.
+    //     for nonce in transaction.nonces() {
+    //         if self.contains_nonce(nonce)? {
+    //             bail!("Nonce '{nonce}' already exists in the ledger")
+    //         }
+    //     }
+    //
+    //     Ok(())
+    // }
+    //
+    // /// Adds the given transaction to the transaction store.
+    // pub fn insert(&mut self, transaction: Transaction<N>) -> Result<()> {
+    //     // Check that there are not collisions with existing transactions.
+    //     self.check_transaction(&transaction)?;
+    //
+    //     /* ATOMIC CODE SECTION */
+    //
+    //     // Insert the transaction. This code section executes atomically.
+    //     {
+    //         let mut transaction_store = self.clone();
+    //
+    //         for transition in transaction.transitions() {
+    //             let transition_id = transition.id();
+    //
+    //             // Insert the transitions.
+    //             transaction_store.transitions.insert(*transition_id, transition.clone())?;
+    //
+    //             // Insert the transition public key.
+    //             transaction_store.transition_public_keys.insert(*transition.tpk(), *transition_id)?;
+    //
+    //             // Insert the serial numbers.
+    //             for serial_number in transition.serial_numbers() {
+    //                 transaction_store.serial_numbers.insert(*serial_number, *transition_id)?;
+    //             }
+    //
+    //             // Insert the commitments.
+    //             for commitment in transition.commitments() {
+    //                 transaction_store.commitments.insert(*commitment, *transition_id)?;
+    //             }
+    //
+    //             // Insert the origins.
+    //             for origin in transition.origins() {
+    //                 transaction_store.origins.insert(*origin, *transition_id)?;
+    //             }
+    //
+    //             // Insert the nonces.
+    //             for nonce in transition.nonces() {
+    //                 transaction_store.nonces.insert(*nonce, *transition_id)?;
+    //             }
+    //         }
+    //
+    //         // Insert the deployment or execution.
+    //         match transaction {
+    //             Transaction::Deploy(transaction_id, deployment, additional_fee) => {
+    //                 transaction_store.deployments.insert(transaction_id, (deployment, *additional_fee.id()))?;
+    //             }
+    //             Transaction::Execute(transaction_id, execution, additional_fee) => {
+    //                 let transition_ids = execution.iter().map(|transition| *transition.id()).collect();
+    //
+    //                 transaction_store
+    //                     .executions
+    //                     .insert(transaction_id, (transition_ids, additional_fee.map(|t| *t.id())))?;
+    //             }
+    //         }
+    //
+    //         *self = Self {
+    //             deployments: transaction_store.deployments,
+    //             executions: transaction_store.executions,
+    //             transitions: transaction_store.transitions,
+    //             transition_public_keys: transaction_store.transition_public_keys,
+    //             origins: transaction_store.origins,
+    //             serial_numbers: transaction_store.serial_numbers,
+    //             commitments: transaction_store.commitments,
+    //             nonces: transaction_store.nonces,
+    //         };
+    //     }
+    //
+    //     Ok(())
+    // }
 }
 
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::ledger::{memory_map::MemoryMap, Block};
+    use crate::ledger::Block;
     use console::{account::PrivateKey, network::Testnet3};
     use snarkvm_utilities::test_crypto_rng_fixed;
 
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentLedger = Ledger<
-        CurrentNetwork,
-        MemoryMap<u32, <CurrentNetwork as Network>::BlockHash>,
-        MemoryMap<u32, Header<CurrentNetwork>>,
-        MemoryMap<u32, Transactions<CurrentNetwork>>,
-        MemoryMap<u32, Signature<CurrentNetwork>>,
-    >;
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>>;
 
     pub(crate) fn sample_genesis_private_key() -> PrivateKey<CurrentNetwork> {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
@@ -622,7 +714,7 @@ pub(crate) mod test_helpers {
                 let genesis = sample_genesis_block();
 
                 // Initialize the ledger with the genesis block.
-                let ledger = CurrentLedger::from_genesis(&genesis).unwrap();
+                let ledger = CurrentLedger::new_with_genesis(&genesis).unwrap();
                 assert_eq!(0, ledger.latest_height());
                 assert_eq!(genesis.hash(), ledger.latest_hash());
                 assert_eq!(genesis.round(), ledger.latest_round());
@@ -651,7 +743,7 @@ mod tests {
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a ledger with the genesis block.
-        let ledger = CurrentLedger::from_genesis(&genesis).unwrap();
+        let ledger = CurrentLedger::new_with_genesis(&genesis).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
@@ -664,22 +756,14 @@ mod tests {
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a ledger without the genesis block.
-        let ledger =
-            CurrentLedger::from_maps(Default::default(), Default::default(), Default::default(), Default::default())
-                .unwrap();
+        let ledger = CurrentLedger::from(BlockStore::<CurrentNetwork, BlockMemory<CurrentNetwork>>::new()).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
         assert_eq!(ledger.latest_block().unwrap(), genesis);
 
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::from_maps(
-            [(genesis.height(), genesis.previous_hash())].into_iter().collect(),
-            [(genesis.height(), *genesis.header())].into_iter().collect(),
-            [(genesis.height(), genesis.transactions().clone())].into_iter().collect(),
-            [(genesis.height(), *genesis.signature())].into_iter().collect(),
-        )
-        .unwrap();
+        let ledger = CurrentLedger::new_with_genesis(&genesis).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
@@ -721,6 +805,9 @@ mod tests {
         ledger.add_next_block(&next_block).unwrap();
         assert_eq!(ledger.latest_height(), 1);
         assert_eq!(ledger.latest_hash(), next_block.hash());
+        assert!(ledger.contains_transaction_id(&transaction.id()).unwrap());
+        assert!(transaction.input_ids().count() > 0);
+        assert!(ledger.contains_input_id(transaction.input_ids().next().unwrap()).unwrap());
 
         // Ensure that the VM can't re-deploy the same program.
         assert!(ledger.vm.finalize(&transaction).is_err());

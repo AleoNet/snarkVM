@@ -18,19 +18,14 @@ mod bytes;
 mod serialize;
 mod string;
 
-use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
+use console::{network::prelude::*, types::Field};
+
+type Variant = u16;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum InputID<N: Network> {
-    /// The hash of the constant input.
-    Constant(Field<N>),
-    /// The hash of the public input.
-    Public(Field<N>),
-    /// The ciphertext hash of the private input.
-    Private(Field<N>),
-    /// The commitment, gamma, serial number, and tag of the record input.
-    Record(Field<N>, Group<N>, Field<N>, Field<N>),
-    /// The hash of the external record input.
-    ExternalRecord(Field<N>),
+pub enum Origin<N: Network> {
+    /// The origin is a commitment.
+    Commitment(Field<N>),
+    /// The origin is a state root.
+    StateRoot(N::StateRoot),
 }

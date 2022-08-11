@@ -144,6 +144,7 @@ impl<N: Network> Stack<N> {
             self.program.id(),
             request.inputs().len(),
             request.tvk(),
+            request.tcm(),
             outputs,
             &function.output_types(),
             output_registers,

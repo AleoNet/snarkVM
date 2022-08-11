@@ -2287,6 +2287,7 @@ dependencies = [
  "rand",
  "rayon",
  "regex",
+ "serde",
  "serde_json",
  "snarkvm-algorithms",
  "snarkvm-circuit",

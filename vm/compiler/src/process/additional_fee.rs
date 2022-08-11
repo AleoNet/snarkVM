@@ -88,11 +88,17 @@ impl<N: Network> Process<N> {
         ensure!(additional_fee.outputs().len() <= N::MAX_INPUTS, "Additional fee exceeded maximum number of outputs");
 
         // Ensure each input is valid.
-        if additional_fee.inputs().iter().any(|input| !input.verify()) {
+        if additional_fee.inputs().iter().enumerate().any(|(index, input)| !input.verify(additional_fee.tcm(), index)) {
             bail!("Failed to verify an additional fee input")
         }
         // Ensure each output is valid.
-        if additional_fee.outputs().iter().any(|output| !output.verify()) {
+        let num_inputs = additional_fee.inputs().len();
+        if additional_fee
+            .outputs()
+            .iter()
+            .enumerate()
+            .any(|(index, output)| !output.verify(additional_fee.tcm(), num_inputs + index))
+        {
             bail!("Failed to verify an additional fee output")
         }
 

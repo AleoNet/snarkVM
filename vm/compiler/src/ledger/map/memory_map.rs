@@ -14,47 +14,55 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ledger::map::{
-    iterators::{Iter, Keys, Values},
-    Map,
-    MapReader,
-};
+use crate::ledger::map::{Map, MapRead};
 use console::network::prelude::*;
 use indexmap::IndexMap;
 
 use core::{borrow::Borrow, hash::Hash};
-use std::borrow::Cow;
+use indexmap::map;
+use parking_lot::RwLock;
+use std::{borrow::Cow, sync::Arc};
 
 #[derive(Clone)]
 pub struct MemoryMap<
-    K: PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
-    V: PartialEq + Eq + Serialize + for<'de> Deserialize<'de>,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > {
-    pub(super) map: IndexMap<K, V>,
+    pub(super) map: Arc<RwLock<IndexMap<K, V>>>,
 }
 
 impl<
-    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+> Default for MemoryMap<K, V>
+{
+    fn default() -> Self {
+        Self { map: Default::default() }
+    }
+}
+
+impl<
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > FromIterator<(K, V)> for MemoryMap<K, V>
 {
     /// Initializes a new `MemoryMap` from the given iterator.
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Self { map: IndexMap::from_iter(iter) }
+        Self { map: Arc::new(RwLock::new(IndexMap::from_iter(iter))) }
     }
 }
 
 impl<
     'a,
-    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert(&mut self, key: K, value: V) -> Result<()> {
-        self.map.insert(key, value);
+    fn insert(&self, key: K, value: V) -> Result<()> {
+        self.map.write().insert(key, value);
 
         Ok(())
     }
@@ -62,12 +70,12 @@ impl<
     ///
     /// Removes the key-value pair for the given key from the map.
     ///
-    fn remove<Q>(&mut self, key: &Q) -> Result<()>
+    fn remove<Q>(&self, key: &Q) -> Result<()>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        self.map.remove(key);
+        self.map.write().remove(key);
 
         Ok(())
     }
@@ -75,13 +83,13 @@ impl<
 
 impl<
     'a,
-    K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: 'a + Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
     V: 'a + Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
-> MapReader<'a, K, V> for MemoryMap<K, V>
+> MapRead<'a, K, V> for MemoryMap<K, V>
 {
-    type Iterator = Iter<'a, K, V>;
-    type Keys = Keys<'a, K, V>;
-    type Values = Values<'a, K, V>;
+    type Iterator = core::iter::Map<map::IntoIter<K, V>, fn((K, V)) -> (Cow<'a, K>, Cow<'a, V>)>;
+    type Keys = core::iter::Map<map::IntoKeys<K, V>, fn(K) -> Cow<'a, K>>;
+    type Values = core::iter::Map<map::IntoValues<K, V>, fn(V) -> Cow<'a, V>>;
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -91,7 +99,7 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.contains_key(key))
+        Ok(self.map.read().contains_key(key))
     }
 
     ///
@@ -102,37 +110,39 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.get(key).map(Cow::Borrowed))
+        Ok(self.map.read().get(key).cloned().map(Cow::Owned))
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
-        Iter::new(self.map.iter())
+        self.map.read().clone().into_iter().map(|(k, v)| (Cow::Owned(k), Cow::Owned(v)))
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
     fn keys(&'a self) -> Self::Keys {
-        Keys::new(self.iter())
+        self.map.read().clone().into_keys().map(Cow::Owned)
     }
 
     ///
     /// Returns an iterator over each value in the map.
     ///
     fn values(&'a self) -> Self::Values {
-        Values::new(self.iter())
+        self.map.read().clone().into_values().map(Cow::Owned)
     }
 }
 
 impl<
-    K: Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
+    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
-> Default for MemoryMap<K, V>
+> Deref for MemoryMap<K, V>
 {
-    fn default() -> Self {
-        Self { map: Default::default() }
+    type Target = Arc<RwLock<IndexMap<K, V>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
     }
 }

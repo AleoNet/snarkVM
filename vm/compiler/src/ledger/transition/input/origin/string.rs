@@ -14,23 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod serialize;
-mod string;
+use super::*;
 
-use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
+impl<N: Network> FromStr for Origin<N> {
+    type Err = Error;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum InputID<N: Network> {
-    /// The hash of the constant input.
-    Constant(Field<N>),
-    /// The hash of the public input.
-    Public(Field<N>),
-    /// The ciphertext hash of the private input.
-    Private(Field<N>),
-    /// The commitment, gamma, serial number, and tag of the record input.
-    Record(Field<N>, Group<N>, Field<N>, Field<N>),
-    /// The hash of the external record input.
-    ExternalRecord(Field<N>),
+    /// Initializes the origin from a JSON-string.
+    fn from_str(origin: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(origin)?)
+    }
+}
+
+impl<N: Network> Debug for Origin<N> {
+    /// Prints the origin as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl<N: Network> Display for Origin<N> {
+    /// Displays the origin as a JSON-string.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(ser::Error::custom)?)
+    }
 }

@@ -53,6 +53,7 @@ use std::sync::Arc;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
+#[derive(Clone)]
 pub struct Process<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
@@ -472,7 +473,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            format!("'token.aleo/genesis' is not satisfied on the given inputs (27632 constraints).")
+            format!("'token.aleo/genesis' is not satisfied on the given inputs (26479 constraints).")
         );
     }
 

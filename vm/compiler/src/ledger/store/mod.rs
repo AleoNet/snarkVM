@@ -14,23 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod bytes;
-mod serialize;
-mod string;
+mod block;
+pub use block::*;
 
-use snarkvm_console_network::Network;
-use snarkvm_console_types::prelude::*;
+mod transaction;
+pub use transaction::*;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum InputID<N: Network> {
-    /// The hash of the constant input.
-    Constant(Field<N>),
-    /// The hash of the public input.
-    Public(Field<N>),
-    /// The ciphertext hash of the private input.
-    Private(Field<N>),
-    /// The commitment, gamma, serial number, and tag of the record input.
-    Record(Field<N>, Group<N>, Field<N>, Field<N>),
-    /// The hash of the external record input.
-    ExternalRecord(Field<N>),
+mod transition;
+pub use transition::*;
+
+#[macro_export]
+macro_rules! cow_to_copied {
+    ($cow:expr) => {
+        match $cow {
+            std::borrow::Cow::Borrowed(inner) => *inner,
+            std::borrow::Cow::Owned(inner) => inner,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! cow_to_cloned {
+    ($cow:expr) => {
+        match $cow {
+            std::borrow::Cow::Borrowed(inner) => (*inner).clone(),
+            std::borrow::Cow::Owned(inner) => inner,
+        }
+    };
 }
