@@ -37,7 +37,7 @@ use indexmap::IndexMap;
 use std::borrow::Cow;
 
 /// A trait for deployment storage.
-pub trait DeploymentStorage<N: Network>: Clone {
+pub trait DeploymentStorage<N: Network>: Clone + Sync {
     /// The mapping of `transaction ID` to `program ID`.
     type IDMap: for<'a> Map<'a, N::TransactionID, ProgramID<N>>;
     /// The mapping of `program ID` to `edition`.
@@ -54,6 +54,9 @@ pub trait DeploymentStorage<N: Network>: Clone {
     type AdditionalFeeMap: for<'a> Map<'a, N::TransactionID, N::TransitionID>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
+
+    /// Creates a new deployment storage.
+    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -357,9 +360,19 @@ pub struct DeploymentMemory<N: Network> {
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
 
-impl<N: Network> DeploymentMemory<N> {
-    /// Creates a new in-memory deployment storage.
-    pub fn new(transition_store: TransitionStore<N, TransitionMemory<N>>) -> Self {
+#[rustfmt::skip]
+impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
+    type IDMap = MemoryMap<N::TransactionID, ProgramID<N>>;
+    type EditionMap = MemoryMap<ProgramID<N>, u16>;
+    type ReverseIDMap = MemoryMap<(ProgramID<N>, u16), N::TransactionID>;
+    type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
+    type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
+    type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
+    type AdditionalFeeMap = MemoryMap<N::TransactionID, N::TransitionID>;
+    type TransitionStorage = TransitionMemory<N>;
+
+    /// Creates a new deployment storage.
+    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self {
         Self {
             id_map: MemoryMap::default(),
             edition_map: MemoryMap::default(),
@@ -371,18 +384,6 @@ impl<N: Network> DeploymentMemory<N> {
             transition_store,
         }
     }
-}
-
-#[rustfmt::skip]
-impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, ProgramID<N>>;
-    type EditionMap = MemoryMap<ProgramID<N>, u16>;
-    type ReverseIDMap = MemoryMap<(ProgramID<N>, u16), N::TransactionID>;
-    type ProgramMap = MemoryMap<(ProgramID<N>, u16), Program<N>>;
-    type VerifyingKeyMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), VerifyingKey<N>>;
-    type CertificateMap = MemoryMap<(ProgramID<N>, Identifier<N>, u16), Certificate<N>>;
-    type AdditionalFeeMap = MemoryMap<N::TransactionID, N::TransitionID>;
-    type TransitionStorage = TransitionMemory<N>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
@@ -436,7 +437,15 @@ pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Initializes a new deployment store.
-    pub fn new(storage: D) -> Self {
+    pub fn new(transition_store: TransitionStore<N, D::TransitionStorage>) -> Self {
+        // Initialize the deployment storage.
+        let storage = D::new(transition_store);
+        // Return the deployment store.
+        Self { storage, _phantom: PhantomData }
+    }
+
+    /// Initializes a deployment store from storage.
+    pub fn from(storage: D) -> Self {
         Self { storage, _phantom: PhantomData }
     }
 
@@ -558,7 +567,7 @@ mod tests {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new(TransitionMemory::new());
+        let transition_store = TransitionStore::new();
         // Initialize a new deployment store.
         let deployment_store = DeploymentMemory::new(transition_store);
 
@@ -592,7 +601,7 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new(TransitionMemory::new());
+        let transition_store = TransitionStore::new();
         // Initialize a new deployment store.
         let deployment_store = DeploymentMemory::new(transition_store);
 

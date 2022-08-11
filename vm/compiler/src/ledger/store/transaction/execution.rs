@@ -32,7 +32,7 @@ use anyhow::Result;
 use core::marker::PhantomData;
 
 /// A trait for execution storage.
-pub trait ExecutionStorage<N: Network>: Clone {
+pub trait ExecutionStorage<N: Network>: Clone + Sync {
     /// The mapping of `transaction ID` to `([transition ID], (optional) transition ID)`.
     type IDMap: for<'a> Map<'a, N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
     /// The mapping of `transition ID` to `transaction ID`.
@@ -41,6 +41,9 @@ pub trait ExecutionStorage<N: Network>: Clone {
     type EditionMap: for<'a> Map<'a, N::TransactionID, u16>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
+
+    /// Creates a new execution storage.
+    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -229,9 +232,15 @@ pub struct ExecutionMemory<N: Network> {
     transition_store: TransitionStore<N, TransitionMemory<N>>,
 }
 
-impl<N: Network> ExecutionMemory<N> {
-    /// Creates a new in-memory execution storage.
-    pub fn new(transition_store: TransitionStore<N, TransitionMemory<N>>) -> Self {
+#[rustfmt::skip]
+impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
+    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
+    type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
+    type EditionMap = MemoryMap<N::TransactionID, u16>;
+    type TransitionStorage = TransitionMemory<N>;
+
+    /// Creates a new execution storage.
+    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self {
         Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -239,14 +248,6 @@ impl<N: Network> ExecutionMemory<N> {
             transition_store,
         }
     }
-}
-
-#[rustfmt::skip]
-impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
-    type IDMap = MemoryMap<N::TransactionID, (Vec<N::TransitionID>, Option<N::TransitionID>)>;
-    type ReverseIDMap = MemoryMap<N::TransitionID, N::TransactionID>;
-    type EditionMap = MemoryMap<N::TransactionID, u16>;
-    type TransitionStorage = TransitionMemory<N>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
@@ -271,16 +272,24 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
 
 /// The execution store.
 #[derive(Clone)]
-pub struct ExecutionStore<N: Network, D: ExecutionStorage<N>> {
+pub struct ExecutionStore<N: Network, E: ExecutionStorage<N>> {
     /// The execution storage.
-    storage: D,
+    storage: E,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
 
-impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
+impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Initializes a new execution store.
-    pub fn new(storage: D) -> Self {
+    pub fn new(transition_store: TransitionStore<N, E::TransitionStorage>) -> Self {
+        // Initialize the execution storage.
+        let storage = E::new(transition_store);
+        // Return the execution store.
+        Self { storage, _phantom: PhantomData }
+    }
+
+    /// Initializes an execution store from storage.
+    pub fn from(storage: E) -> Self {
         Self { storage, _phantom: PhantomData }
     }
 
@@ -295,12 +304,12 @@ impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
     }
 
     /// Returns the transition store.
-    pub fn transition_store(&self) -> &TransitionStore<N, D::TransitionStorage> {
+    pub fn transition_store(&self) -> &TransitionStore<N, E::TransitionStorage> {
         self.storage.transition_store()
     }
 }
 
-impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
+impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the transaction for the given `transaction ID`.
     pub fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
         self.storage.get_transaction(transaction_id)
@@ -341,7 +350,7 @@ impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
     }
 }
 
-impl<N: Network, D: ExecutionStorage<N>> ExecutionStore<N, D> {
+impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the transaction ID that executed the given `transition ID`.
     pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
         self.storage.find_transaction_id(transition_id)
@@ -359,7 +368,7 @@ mod tests {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new(TransitionMemory::new());
+        let transition_store = TransitionStore::new();
         // Initialize a new execution store.
         let execution_store = ExecutionMemory::new(transition_store);
 
@@ -395,7 +404,7 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new(TransitionMemory::new());
+        let transition_store = TransitionStore::new();
         // Initialize a new execution store.
         let execution_store = ExecutionMemory::new(transition_store);
 

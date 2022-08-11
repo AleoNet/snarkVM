@@ -47,7 +47,7 @@ macro_rules! bail_with_block {
 }
 
 /// A trait for block storage.
-pub trait BlockStorage<N: Network>: Clone {
+pub trait BlockStorage<N: Network>: Clone + Sync {
     /// The mapping of `block height` to `block hash`.
     type IDMap: for<'a> Map<'a, u32, N::BlockHash>;
     /// The mapping of `block hash` to `block height`.
@@ -64,6 +64,9 @@ pub trait BlockStorage<N: Network>: Clone {
     type TransitionStorage: TransitionStorage<N>;
     /// The mapping of `block hash` to `block signature`.
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
+
+    /// Creates a new block storage.
+    fn new() -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -272,21 +275,6 @@ pub struct BlockMemory<N: Network> {
     signature_map: MemoryMap<N::BlockHash, Signature<N>>,
 }
 
-impl<N: Network> BlockMemory<N> {
-    /// Creates a new in-memory block storage.
-    pub fn new(transaction_store: TransactionStore<N, TransactionMemory<N>>) -> Self {
-        Self {
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            header_map: MemoryMap::default(),
-            transactions_map: MemoryMap::default(),
-            reverse_transactions_map: MemoryMap::default(),
-            transaction_store,
-            signature_map: MemoryMap::default(),
-        }
-    }
-}
-
 #[rustfmt::skip]
 impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type IDMap = MemoryMap<u32, N::BlockHash>;
@@ -297,6 +285,24 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type TransactionStorage = TransactionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
+
+    /// Creates a new block storage.
+    fn new() -> Self {
+        // Initialize the transition store.
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::new();
+        // Initialize the transaction store.
+        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::new(transition_store);
+        // Return the block storage.
+        Self {
+            id_map: MemoryMap::default(),
+            reverse_id_map: MemoryMap::default(),
+            header_map: MemoryMap::default(),
+            transactions_map: MemoryMap::default(),
+            reverse_transactions_map: MemoryMap::default(),
+            transaction_store,
+            signature_map: MemoryMap::default(),
+        }
+    }
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
@@ -343,9 +349,19 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
     _phantom: PhantomData<N>,
 }
 
-impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+impl<N: Network> BlockStore<N, BlockMemory<N>> {
     /// Initializes a new block store.
-    pub fn new(storage: B) -> Self {
+    pub fn new() -> Self {
+        // Initialize the block storage.
+        let storage = BlockMemory::<N>::new();
+        // Return the block store.
+        Self { storage, _phantom: PhantomData }
+    }
+}
+
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
+    /// Initializes a block store from storage.
+    pub fn from(storage: B) -> Self {
         Self { storage, _phantom: PhantomData }
     }
 
@@ -437,132 +453,3 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.reverse_id_map().keys()
     }
 }
-
-// /// Checks the given transaction is well formed and unique.
-// pub fn check_transaction(&self, transaction: &Transaction<N>) -> Result<()> {
-//     let transaction_id = transaction.id();
-//     if self.contains_transaction_id(&transaction_id)? {
-//         bail!("Transaction '{transaction_id}' already exists in the ledger")
-//     }
-//
-//     // Ensure the ledger does not already contain a given transition public keys.
-//     for tpk in transaction.transition_public_keys() {
-//         if self.contains_transition_public_key(tpk)? {
-//             bail!("Transition public key '{tpk}' already exists in the ledger")
-//         }
-//     }
-//
-//     // Ensure that the origin are valid.
-//     for origin in transaction.origins() {
-//         if !self.contains_origin(origin)? {
-//             bail!("The given transaction references a non-existent origin {}", &origin)
-//         }
-//
-//         match origin {
-//             // Check that the commitment exists in the ledger.
-//             Origin::Commitment(commitment) => {
-//                 if !self.contains_commitment(commitment)? {
-//                     bail!("The given transaction references a non-existent commitment {}", &commitment)
-//                 }
-//             }
-//             // TODO (raychu86): Ensure that the state root exists in the ledger.
-//             // Check that the state root is an existing state root.
-//             Origin::StateRoot(_state_root) => {
-//                 bail!("State roots are currently not supported (yet)")
-//             }
-//         }
-//     }
-//
-//     // Ensure the ledger does not already contain a given serial numbers.
-//     for serial_number in transaction.serial_numbers() {
-//         if self.contains_serial_number(serial_number)? {
-//             bail!("Serial number '{serial_number}' already exists in the ledger")
-//         }
-//     }
-//
-//     // Ensure the ledger does not already contain a given commitments.
-//     for commitment in transaction.commitments() {
-//         if self.contains_commitment(commitment)? {
-//             bail!("Commitment '{commitment}' already exists in the ledger")
-//         }
-//     }
-//
-//     // Ensure the ledger does not already contain a given nonces.
-//     for nonce in transaction.nonces() {
-//         if self.contains_nonce(nonce)? {
-//             bail!("Nonce '{nonce}' already exists in the ledger")
-//         }
-//     }
-//
-//     Ok(())
-// }
-//
-// /// Adds the given transaction to the transaction store.
-// pub fn insert(&mut self, transaction: Transaction<N>) -> Result<()> {
-//     // Check that there are not collisions with existing transactions.
-//     self.check_transaction(&transaction)?;
-//
-//     /* ATOMIC CODE SECTION */
-//
-//     // Insert the transaction. This code section executes atomically.
-//     {
-//         let mut transaction_store = self.clone();
-//
-//         for transition in transaction.transitions() {
-//             let transition_id = transition.id();
-//
-//             // Insert the transitions.
-//             transaction_store.transitions.insert(*transition_id, transition.clone())?;
-//
-//             // Insert the transition public key.
-//             transaction_store.transition_public_keys.insert(*transition.tpk(), *transition_id)?;
-//
-//             // Insert the serial numbers.
-//             for serial_number in transition.serial_numbers() {
-//                 transaction_store.serial_numbers.insert(*serial_number, *transition_id)?;
-//             }
-//
-//             // Insert the commitments.
-//             for commitment in transition.commitments() {
-//                 transaction_store.commitments.insert(*commitment, *transition_id)?;
-//             }
-//
-//             // Insert the origins.
-//             for origin in transition.origins() {
-//                 transaction_store.origins.insert(*origin, *transition_id)?;
-//             }
-//
-//             // Insert the nonces.
-//             for nonce in transition.nonces() {
-//                 transaction_store.nonces.insert(*nonce, *transition_id)?;
-//             }
-//         }
-//
-//         // Insert the deployment or execution.
-//         match transaction {
-//             Transaction::Deploy(transaction_id, deployment, additional_fee) => {
-//                 transaction_store.deployments.insert(transaction_id, (deployment, *additional_fee.id()))?;
-//             }
-//             Transaction::Execute(transaction_id, execution, additional_fee) => {
-//                 let transition_ids = execution.iter().map(|transition| *transition.id()).collect();
-//
-//                 transaction_store
-//                     .executions
-//                     .insert(transaction_id, (transition_ids, additional_fee.map(|t| *t.id())))?;
-//             }
-//         }
-//
-//         *self = Self {
-//             deployments: transaction_store.deployments,
-//             executions: transaction_store.executions,
-//             transitions: transaction_store.transitions,
-//             transition_public_keys: transaction_store.transition_public_keys,
-//             origins: transaction_store.origins,
-//             serial_numbers: transaction_store.serial_numbers,
-//             commitments: transaction_store.commitments,
-//             nonces: transaction_store.nonces,
-//         };
-//     }
-//
-//     Ok(())
-// }

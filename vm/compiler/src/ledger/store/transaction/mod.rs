@@ -50,7 +50,7 @@ pub enum TransactionType {
 }
 
 /// A trait for transaction storage.
-pub trait TransactionStorage<N: Network>: Clone {
+pub trait TransactionStorage<N: Network>: Clone + Sync {
     /// The mapping of `transaction ID` to `transaction type`.
     type IDMap: for<'a> Map<'a, N::TransactionID, TransactionType>;
     /// The deployment storage.
@@ -59,6 +59,9 @@ pub trait TransactionStorage<N: Network>: Clone {
     type ExecutionStorage: ExecutionStorage<N, TransitionStorage = Self::TransitionStorage>;
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
+
+    /// Creates a new transaction storage.
+    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -142,22 +145,22 @@ pub struct TransactionMemory<N: Network> {
     execution_store: ExecutionStore<N, ExecutionMemory<N>>,
 }
 
-impl<N: Network> TransactionMemory<N> {
-    /// Creates a new in-memory transaction storage.
-    pub fn new(
-        deployment_store: DeploymentStore<N, DeploymentMemory<N>>,
-        execution_store: ExecutionStore<N, ExecutionMemory<N>>,
-    ) -> Self {
-        Self { id_map: MemoryMap::default(), deployment_store, execution_store }
-    }
-}
-
 #[rustfmt::skip]
 impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type IDMap = MemoryMap<N::TransactionID, TransactionType>;
     type DeploymentStorage = DeploymentMemory<N>;
     type ExecutionStorage = ExecutionMemory<N>;
     type TransitionStorage = TransitionMemory<N>;
+
+    /// Creates a new transaction storage.
+    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self {
+        // Initialize the deployment store.
+        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::new(transition_store.clone());
+        // Initialize the execution store.
+        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::new(transition_store);
+        // Return the transaction storage.
+        Self { id_map: MemoryMap::default(), deployment_store, execution_store }
+    }
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
@@ -186,7 +189,15 @@ pub struct TransactionStore<N: Network, T: TransactionStorage<N>> {
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Initializes a new transaction store.
-    pub fn new(storage: T) -> Self {
+    pub fn new(transition_store: TransitionStore<N, T::TransitionStorage>) -> Self {
+        // Initialize the transaction storage.
+        let storage = T::new(transition_store);
+        // Return the transaction store.
+        Self { transaction_ids: storage.id_map().clone(), storage }
+    }
+
+    /// Initializes a transaction store from storage.
+    pub fn from(storage: T) -> Self {
         Self { transaction_ids: storage.id_map().clone(), storage }
     }
 
@@ -370,7 +381,6 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ledger::store::{TransitionMemory, TransitionStore};
 
     #[test]
     fn test_insert_get_remove() {
@@ -382,14 +392,9 @@ mod tests {
             let transaction_id = transaction.id();
 
             // Initialize a new transition store.
-            let transition_store = TransitionStore::new(TransitionMemory::new());
-            // Initialize a new deployment store.
-            let deployment_store = DeploymentStore::new(DeploymentMemory::new(transition_store.clone()));
-            // Initialize a new execution store.
-            let execution_store = ExecutionStore::new(ExecutionMemory::new(transition_store));
-
+            let transition_store = TransitionStore::<_, TransitionMemory<_>>::new();
             // Initialize a new transaction store.
-            let transaction_store = TransactionStore::new(TransactionMemory::new(deployment_store, execution_store));
+            let transaction_store = TransactionStore::<_, TransactionMemory<_>>::new(transition_store);
 
             // Ensure the transaction does not exist.
             let candidate = transaction_store.get_transaction(&transaction_id).unwrap();
@@ -424,14 +429,9 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new(TransitionMemory::new());
-        // Initialize a new deployment store.
-        let deployment_store = DeploymentStore::new(DeploymentMemory::new(transition_store.clone()));
-        // Initialize a new execution store.
-        let execution_store = ExecutionStore::new(ExecutionMemory::new(transition_store));
-
+        let transition_store = TransitionStore::<_, TransitionMemory<_>>::new();
         // Initialize a new transaction store.
-        let transaction_store = TransactionStore::new(TransactionMemory::new(deployment_store, execution_store));
+        let transaction_store = TransactionStore::<_, TransactionMemory<_>>::new(transition_store);
 
         // Ensure the execution transaction does not exist.
         let candidate = transaction_store.get_transaction(&transaction_id).unwrap();

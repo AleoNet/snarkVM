@@ -15,7 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ledger::{AdditionalFee, Transaction},
+    ledger::{
+        store::{BlockStorage, BlockStore},
+        AdditionalFee,
+        Transaction,
+    },
     process::{Authorization, Deployment, Execution, Process},
     program::Program,
 };
@@ -32,21 +36,21 @@ use std::sync::Arc;
 /// A helper macro to downcast a `$variable` to `$object<$network>`.
 macro_rules! cast_ref {
     // Example: cast_ref!((foo.bar()) as Bar<Testnet3>)
-    (($variable:expr) as $object:ident<$network:path>) => {{
+    (($variable:expr) as $object:ident<$($network:path),+>) => {{
         (&$variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$network>>()
+            .downcast_ref::<$object<$($network),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
     // Example: cast_ref!(bar as Bar<Testnet3>)
-    ($variable:ident as $object:ident<$network:path>) => {{
+    ($variable:ident as $object:ident<$($network:path),+>) => {{
         (&$variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$network>>()
+            .downcast_ref::<$object<$($network),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
     // Example: cast_ref!(&bar as Bar<Testnet3>)
-    (&$variable:ident as $object:ident<$network:path>) => {{
+    (&$variable:ident as $object:ident<$($network:path),+>) => {{
         ($variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$network>>()
+            .downcast_ref::<$object<$($network),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
 }
@@ -92,6 +96,48 @@ impl<N: Network> VM<N> {
     #[inline]
     pub fn new() -> Result<Self> {
         Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), _phantom: PhantomData })
+    }
+
+    /// Initializes the VM from storage.
+    #[inline]
+    pub fn from<B: BlockStorage<N>>(blocks: &BlockStore<N, B>) -> Result<Self> {
+        // Retrieve the transaction store.
+        let transaction_store = blocks.transaction_store();
+
+        // Initialize a new process.
+        let mut process = Process::load()?;
+
+        // Load the deployments from the store.
+        for program in transaction_store.programs() {
+            // Add the program to the process.
+            process.add_program(&*program)?;
+
+            // Retrieve the program ID.
+            let program_id = program.id();
+            // Iterate through the function names.
+            for function_name in program.functions().keys() {
+                // Retrieve the verifying key for the function.
+                match transaction_store.get_verifying_key(program_id, function_name)? {
+                    // Add the verifying key to the process.
+                    Some(verifying_key) => process.insert_verifying_key(program_id, function_name, verifying_key)?,
+                    // Throw an error if the verifying key is not found.
+                    None => bail!("Missing a verifying key in storage for {program_id}/{function_name}"),
+                }
+            }
+        }
+
+        // Cast the process into the appropriate network.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Prepare the process.
+                let process = cast_ref!(process as Process<$network>);
+
+                // Return the new VM.
+                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), _phantom: PhantomData })
+            }};
+        }
+        // Process the logic.
+        process!(self, logic)
     }
 
     /// Deploys a program with the given program ID.

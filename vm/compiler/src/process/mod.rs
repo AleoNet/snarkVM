@@ -53,6 +53,7 @@ use std::sync::Arc;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
+#[derive(Clone)]
 pub struct Process<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,

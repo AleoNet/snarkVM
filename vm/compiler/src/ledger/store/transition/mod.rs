@@ -42,7 +42,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition storage.
-pub trait TransitionStorage<N: Network>: Clone {
+pub trait TransitionStorage<N: Network>: Clone + Sync {
     /// The transition program IDs and function names.
     type LocatorMap: for<'a> Map<'a, N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     /// The transition inputs.
@@ -61,6 +61,9 @@ pub trait TransitionStorage<N: Network>: Clone {
     type ReverseTCMMap: for<'a> Map<'a, Field<N>, N::TransitionID>;
     /// The transition fees.
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
+
+    /// Creates a new transition storage.
+    fn new() -> Self;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -209,29 +212,6 @@ pub struct TransitionMemory<N: Network> {
     fee_map: MemoryMap<N::TransitionID, i64>,
 }
 
-impl<N: Network> TransitionMemory<N> {
-    /// Creates a new in-memory transition storage.
-    pub fn new() -> Self {
-        Self {
-            locator_map: MemoryMap::default(),
-            input_store: InputStore::new(InputMemory::new()),
-            output_store: OutputStore::new(OutputMemory::new()),
-            proof_map: MemoryMap::default(),
-            tpk_map: MemoryMap::default(),
-            reverse_tpk_map: MemoryMap::default(),
-            tcm_map: MemoryMap::default(),
-            reverse_tcm_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
-        }
-    }
-}
-
-impl<N: Network> Default for TransitionMemory<N> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[rustfmt::skip]
 impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
@@ -243,6 +223,21 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type TCMMap = MemoryMap<N::TransitionID, Field<N>>;
     type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
     type FeeMap = MemoryMap<N::TransitionID, i64>;
+
+    /// Creates a new transition storage.
+    fn new() -> Self {
+        Self {
+            locator_map: MemoryMap::default(),
+            input_store: InputStore::new(),
+            output_store: OutputStore::new(),
+            proof_map: MemoryMap::default(),
+            tpk_map: MemoryMap::default(),
+            reverse_tpk_map: MemoryMap::default(),
+            tcm_map: MemoryMap::default(),
+            reverse_tcm_map: MemoryMap::default(),
+            fee_map: MemoryMap::default(),
+        }
+    }
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap {
@@ -317,7 +312,26 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes a new transition store.
-    pub fn new(storage: T) -> Self {
+    pub fn new() -> Self {
+        // Initialize the transition storage.
+        let storage = T::new();
+        // Return the transition store.
+        Self {
+            locator: storage.locator_map().clone(),
+            inputs: (*storage.input_store()).clone(),
+            outputs: (*storage.output_store()).clone(),
+            proof: storage.proof_map().clone(),
+            tpk: storage.tpk_map().clone(),
+            reverse_tpk: storage.reverse_tpk_map().clone(),
+            tcm: storage.tcm_map().clone(),
+            reverse_tcm: storage.reverse_tcm_map().clone(),
+            fee: storage.fee_map().clone(),
+            storage,
+        }
+    }
+
+    /// Initializes a transition store from storage.
+    pub fn from(storage: T) -> Self {
         Self {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),

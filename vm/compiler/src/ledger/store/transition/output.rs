@@ -28,7 +28,7 @@ use anyhow::Result;
 use std::borrow::Cow;
 
 /// A trait for transition output storage.
-pub trait OutputStorage<N: Network>: Clone {
+pub trait OutputStorage<N: Network>: Clone + Sync {
     /// The mapping of `transition ID` to `output IDs`.
     type IDMap: for<'a> Map<'a, N::TransitionID, Vec<Field<N>>>;
     /// The mapping of `output ID` to `transition ID`.
@@ -45,6 +45,9 @@ pub trait OutputStorage<N: Network>: Clone {
     type RecordNonceMap: for<'a> Map<'a, Group<N>, Field<N>>;
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
+
+    /// Creates a new transition output storage.
+    fn new() -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -195,7 +198,7 @@ pub trait OutputStorage<N: Network>: Clone {
 }
 
 /// An in-memory transition output storage.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 #[allow(clippy::type_complexity)]
 pub struct OutputMemory<N: Network> {
     /// The mapping of `transition ID` to `output IDs`.
@@ -216,9 +219,19 @@ pub struct OutputMemory<N: Network> {
     external_record: MemoryMap<Field<N>, ()>,
 }
 
-impl<N: Network> OutputMemory<N> {
-    /// Creates a new in-memory transition output storage.
-    pub fn new() -> Self {
+#[rustfmt::skip]
+impl<N: Network> OutputStorage<N> for OutputMemory<N> {
+    type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;
+    type ReverseIDMap = MemoryMap<Field<N>, N::TransitionID>;
+    type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
+    type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
+    type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
+    type RecordMap = MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
+    type RecordNonceMap = MemoryMap<Group<N>, Field<N>>;
+    type ExternalRecordMap = MemoryMap<Field<N>, ()>;
+
+    /// Creates a new transition output storage.
+    fn new() -> Self {
         Self {
             id_map: Default::default(),
             reverse_id_map: Default::default(),
@@ -230,18 +243,6 @@ impl<N: Network> OutputMemory<N> {
             external_record: Default::default(),
         }
     }
-}
-
-#[rustfmt::skip]
-impl<N: Network> OutputStorage<N> for OutputMemory<N> {
-    type IDMap = MemoryMap<N::TransitionID, Vec<Field<N>>>;
-    type ReverseIDMap = MemoryMap<Field<N>, N::TransitionID>;
-    type ConstantMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
-    type PublicMap = MemoryMap<Field<N>, Option<Plaintext<N>>>;
-    type PrivateMap = MemoryMap<Field<N>, Option<Ciphertext<N>>>;
-    type RecordMap = MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
-    type RecordNonceMap = MemoryMap<Group<N>, Field<N>>;
-    type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap {
@@ -304,8 +305,24 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
 }
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
-    /// Initializes a new output store.
-    pub fn new(storage: O) -> Self {
+    /// Initializes a new transition output store.
+    pub fn new() -> Self {
+        // Initialize a new transition output storage.
+        let storage = O::new();
+        // Return the transition output store.
+        Self {
+            constant: storage.constant_map().clone(),
+            public: storage.public_map().clone(),
+            private: storage.private_map().clone(),
+            record: storage.record_map().clone(),
+            record_nonce: storage.record_nonce_map().clone(),
+            external_record: storage.external_record_map().clone(),
+            storage,
+        }
+    }
+
+    /// Initializes a transition output store from storage.
+    pub fn from(storage: O) -> Self {
         Self {
             constant: storage.constant_map().clone(),
             public: storage.public_map().clone(),

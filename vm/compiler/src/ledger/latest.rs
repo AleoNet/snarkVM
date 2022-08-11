@@ -16,8 +16,6 @@
 
 use super::*;
 
-use std::borrow::Cow;
-
 impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     /// Returns the latest state root.
     pub const fn latest_state_root(&self) -> &Field<N> {
