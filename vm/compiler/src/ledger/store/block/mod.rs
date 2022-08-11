@@ -451,3 +451,75 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
         self.storage.reverse_id_map().keys()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_insert_get_remove() {
+        // Sample the block.
+        let block = crate::ledger::test_helpers::sample_genesis_block();
+        let block_hash = block.hash();
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<_, BlockMemory<_>>::new();
+
+        // Ensure the block does not exist.
+        let candidate = block_store.get_block(&block_hash).unwrap();
+        assert_eq!(None, candidate);
+
+        // Insert the block.
+        block_store.insert(&block).unwrap();
+
+        // Retrieve the block.
+        let candidate = block_store.get_block(&block_hash).unwrap();
+        assert_eq!(Some(block), candidate);
+
+        // Remove the block.
+        block_store.remove(&block_hash).unwrap();
+
+        // Ensure the block does not exist.
+        let candidate = block_store.get_block(&block_hash).unwrap();
+        assert_eq!(None, candidate);
+    }
+
+    #[test]
+    fn test_find_block_hash() {
+        // Sample the block.
+        let block = crate::ledger::test_helpers::sample_genesis_block();
+        let block_hash = block.hash();
+        assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
+
+        // Initialize a new block store.
+        let block_store = BlockStore::<_, BlockMemory<_>>::new();
+
+        // Ensure the block does not exist.
+        let candidate = block_store.get_block(&block_hash).unwrap();
+        assert_eq!(None, candidate);
+
+        for transaction_id in block.transaction_ids() {
+            // Ensure the block hash is not found.
+            let candidate = block_store.find_block_hash(transaction_id).unwrap();
+            assert_eq!(None, candidate);
+        }
+
+        // Insert the block.
+        block_store.insert(&block).unwrap();
+
+        for transaction_id in block.transaction_ids() {
+            // Find the block hash.
+            let candidate = block_store.find_block_hash(transaction_id).unwrap();
+            assert_eq!(Some(block_hash), candidate);
+        }
+
+        // Remove the block.
+        block_store.remove(&block_hash).unwrap();
+
+        for transaction_id in block.transaction_ids() {
+            // Ensure the block hash is not found.
+            let candidate = block_store.find_block_hash(transaction_id).unwrap();
+            assert_eq!(None, candidate);
+        }
+    }
+}
