@@ -55,8 +55,8 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
     /// The transition storage.
     type TransitionStorage: TransitionStorage<N>;
 
-    /// Creates a new deployment storage.
-    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self;
+    /// Initializes the deployment storage.
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -371,9 +371,9 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type AdditionalFeeMap = MemoryMap<N::TransactionID, N::TransitionID>;
     type TransitionStorage = TransitionMemory<N>;
 
-    /// Creates a new deployment storage.
-    fn new(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self {
-        Self {
+    /// Initializes the deployment storage.
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        Ok(Self {
             id_map: MemoryMap::default(),
             edition_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -382,7 +382,7 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
             certificate_map: MemoryMap::default(),
             additional_fee_map: MemoryMap::default(),
             transition_store,
-        }
+        })
     }
 
     /// Returns the ID map.
@@ -436,12 +436,12 @@ pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
-    /// Initializes a new deployment store.
-    pub fn new(transition_store: TransitionStore<N, D::TransitionStorage>) -> Self {
+    /// Initializes the deployment store.
+    pub fn open(transition_store: TransitionStore<N, D::TransitionStorage>) -> Result<Self> {
         // Initialize the deployment storage.
-        let storage = D::new(transition_store);
+        let storage = D::open(transition_store)?;
         // Return the deployment store.
-        Self { storage, _phantom: PhantomData }
+        Ok(Self { storage, _phantom: PhantomData })
     }
 
     /// Initializes a deployment store from storage.
@@ -567,9 +567,9 @@ mod tests {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new();
+        let transition_store = TransitionStore::open().unwrap();
         // Initialize a new deployment store.
-        let deployment_store = DeploymentMemory::new(transition_store);
+        let deployment_store = DeploymentMemory::open(transition_store).unwrap();
 
         // Ensure the deployment transaction does not exist.
         let candidate = deployment_store.get_transaction(&transaction_id).unwrap();
@@ -601,9 +601,9 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::new();
+        let transition_store = TransitionStore::open().unwrap();
         // Initialize a new deployment store.
-        let deployment_store = DeploymentMemory::new(transition_store);
+        let deployment_store = DeploymentMemory::open(transition_store).unwrap();
 
         // Ensure the deployment transaction does not exist.
         let candidate = deployment_store.get_transaction(&transaction_id).unwrap();

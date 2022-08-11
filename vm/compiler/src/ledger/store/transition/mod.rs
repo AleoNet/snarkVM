@@ -62,8 +62,8 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     /// The transition fees.
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
-    /// Creates a new transition storage.
-    fn new() -> Self;
+    /// Initializes the transition storage.
+    fn open() -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -224,19 +224,19 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type ReverseTCMMap = MemoryMap<Field<N>, N::TransitionID>;
     type FeeMap = MemoryMap<N::TransitionID, i64>;
 
-    /// Creates a new transition storage.
-    fn new() -> Self {
-        Self {
+    /// Initializes the transition storage.
+    fn open() -> Result<Self> {
+        Ok(Self {
             locator_map: MemoryMap::default(),
-            input_store: InputStore::new(),
-            output_store: OutputStore::new(),
+            input_store: InputStore::open()?,
+            output_store: OutputStore::open()?,
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
             reverse_tcm_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
-        }
+        })
     }
 
     /// Returns the transition program IDs and function names.
@@ -286,7 +286,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
 }
 
 /// The transition store.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     /// The map of transition program IDs and function names.
     locator: T::LocatorMap,
@@ -311,12 +311,12 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 }
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
-    /// Initializes a new transition store.
-    pub fn new() -> Self {
+    /// Initializes the transition store.
+    pub fn open() -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::new();
+        let storage = T::open()?;
         // Return the transition store.
-        Self {
+        Ok(Self {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
@@ -327,7 +327,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tcm: storage.reverse_tcm_map().clone(),
             fee: storage.fee_map().clone(),
             storage,
-        }
+        })
     }
 
     /// Initializes a transition store from storage.
@@ -656,7 +656,7 @@ mod tests {
         assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
 
         // Initialize a new transition store.
-        let transition_store = TransitionMemory::new();
+        let transition_store = TransitionMemory::open().unwrap();
 
         // Test each transition in isolation.
         for transition in transitions.iter() {

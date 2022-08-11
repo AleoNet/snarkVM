@@ -115,7 +115,7 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
     /// Initializes a new instance of `Ledger` with the given genesis block.
     pub fn new_with_genesis(genesis: &Block<N>) -> Result<Self> {
         // Initialize the block store.
-        let blocks = BlockStore::<N, BlockMemory<N>>::new();
+        let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
         // Initialize a new VM.
         let vm = VM::<N>::new()?;
 
@@ -141,6 +141,14 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
 }
 
 impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+    /// Initializes the `Ledger` from storage.
+    pub fn open() -> Result<Self> {
+        // Initialize the block store.
+        let blocks = BlockStore::<N, B>::open()?;
+        // Return the ledger.
+        Self::from(blocks)
+    }
+
     /// Initializes the `Ledger` from storage.
     pub fn from(blocks: BlockStore<N, B>) -> Result<Self> {
         // Initialize a new VM.
@@ -756,7 +764,7 @@ mod tests {
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a ledger without the genesis block.
-        let ledger = CurrentLedger::from(BlockStore::<CurrentNetwork, BlockMemory<CurrentNetwork>>::new()).unwrap();
+        let ledger = CurrentLedger::from(BlockStore::<_, BlockMemory<_>>::open().unwrap()).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
