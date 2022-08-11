@@ -142,6 +142,14 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
 
 impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     /// Initializes the `Ledger` from storage.
+    pub fn open() -> Result<Self> {
+        // Initialize the block store.
+        let blocks = BlockStore::<N, B>::open()?;
+        // Return the ledger.
+        Self::from(blocks)
+    }
+
+    /// Initializes the `Ledger` from storage.
     pub fn from(blocks: BlockStore<N, B>) -> Result<Self> {
         // Initialize a new VM.
         let vm = VM::<N>::from(&blocks)?;
