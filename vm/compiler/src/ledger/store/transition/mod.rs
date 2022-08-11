@@ -68,7 +68,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
     /// Returns the transition input store.
-    fn input_store(&self) -> &InputStore<N, Self::InputStorage>;
+    fn input_store(&self) -> &Self::InputStorage;
     /// Returns the transition output store.
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage>;
     /// Returns the transition proofs.
@@ -195,7 +195,7 @@ pub struct TransitionMemory<N: Network> {
     /// The transition program IDs and function names.
     locator_map: MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>,
     /// The transition input store.
-    input_store: InputStore<N, InputMemory<N>>,
+    input_store: InputMemory<N>,
     /// The transition output store.
     output_store: OutputStore<N, OutputMemory<N>>,
     /// The transition proofs.
@@ -228,7 +228,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     fn open() -> Self {
         Self {
             locator_map: MemoryMap::default(),
-            input_store: InputStore::open(),
+            input_store: Self::InputStorage::open(),
             output_store: OutputStore::open(),
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
@@ -245,7 +245,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     }
 
     /// Returns the transition input store.
-    fn input_store(&self) -> &InputStore<N, Self::InputStorage> {
+    fn input_store(&self) -> &Self::InputStorage {
         &self.input_store
     }
 
@@ -291,7 +291,7 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     /// The map of transition program IDs and function names.
     locator: T::LocatorMap,
     /// The map of transition inputs.
-    inputs: InputStore<N, T::InputStorage>,
+    inputs: T::InputStorage,
     /// The map of transition outputs.
     outputs: OutputStore<N, T::OutputStorage>,
     /// The map of transition proofs.
