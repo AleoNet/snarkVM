@@ -258,7 +258,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
 
         // Ensure the ledger does not already contain a given transition public keys.
         for tpk in transaction.transition_public_keys() {
-            if self.contains_tpk(&tpk)? {
+            if self.contains_tpk(tpk)? {
                 bail!("Transition public key '{tpk}' already exists in the ledger")
             }
         }
@@ -807,7 +807,7 @@ mod tests {
         assert_eq!(ledger.latest_hash(), next_block.hash());
         assert!(ledger.contains_transaction_id(&transaction.id()).unwrap());
         assert!(transaction.input_ids().count() > 0);
-        assert!(ledger.contains_input_id(&transaction.input_ids().next().unwrap()).unwrap());
+        assert!(ledger.contains_input_id(transaction.input_ids().next().unwrap()).unwrap());
 
         // Ensure that the VM can't re-deploy the same program.
         assert!(ledger.vm.finalize(&transaction).is_err());

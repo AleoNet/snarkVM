@@ -213,7 +213,7 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
 
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
-        &self.storage.execution_store().transition_store()
+        self.storage.execution_store().transition_store()
     }
 }
 

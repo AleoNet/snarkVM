@@ -18,7 +18,7 @@ use super::*;
 
 impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     /// Returns `true` if the given state root exists.
-    pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
+    pub fn contains_state_root(&self, _state_root: &Field<N>) -> bool {
         todo!()
         // state_root == self.latest_state_root()
         //     || self.headers.values().any(|h| Header::previous_state_root(&h) == state_root)

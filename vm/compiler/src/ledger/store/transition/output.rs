@@ -286,7 +286,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
 }
 
 /// The transition output store.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct OutputStore<N: Network, O: OutputStorage<N>> {
     /// The map of constant outputs.
     constant: O::ConstantMap,

@@ -281,7 +281,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
 }
 
 /// The transition input store.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct InputStore<N: Network, I: InputStorage<N>> {
     /// The map of constant inputs.
     constant: I::ConstantMap,

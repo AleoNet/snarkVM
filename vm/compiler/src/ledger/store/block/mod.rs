@@ -341,7 +341,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
 }
 
 /// The block store.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BlockStore<N: Network, B: BlockStorage<N>> {
     /// The block storage.
     storage: B,
@@ -349,17 +349,15 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
     _phantom: PhantomData<N>,
 }
 
-impl<N: Network> BlockStore<N, BlockMemory<N>> {
+impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes a new block store.
     pub fn new() -> Self {
         // Initialize the block storage.
-        let storage = BlockMemory::<N>::new();
+        let storage = B::new();
         // Return the block store.
         Self { storage, _phantom: PhantomData }
     }
-}
 
-impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes a block store from storage.
     pub fn from(storage: B) -> Self {
         Self { storage, _phantom: PhantomData }
@@ -377,12 +375,12 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
 
     /// Returns the transaction store.
     pub fn transaction_store(&self) -> &TransactionStore<N, B::TransactionStorage> {
-        &self.storage.transaction_store()
+        self.storage.transaction_store()
     }
 
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, B::TransitionStorage> {
-        &self.storage.transaction_store().transition_store()
+        self.storage.transaction_store().transition_store()
     }
 }
 

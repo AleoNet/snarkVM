@@ -286,7 +286,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
 }
 
 /// The transition store.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     /// The map of transition program IDs and function names.
     locator: T::LocatorMap,
