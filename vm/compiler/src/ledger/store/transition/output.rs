@@ -46,8 +46,8 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
-    /// Creates a new transition output storage.
-    fn new() -> Self;
+    /// Initializes the transition output storage.
+    fn open() -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -230,8 +230,8 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type RecordNonceMap = MemoryMap<Group<N>, Field<N>>;
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
-    /// Creates a new transition output storage.
-    fn new() -> Self {
+    /// Initializes the transition output storage.
+    fn open() -> Self {
         Self {
             id_map: Default::default(),
             reverse_id_map: Default::default(),
@@ -286,7 +286,7 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
 }
 
 /// The transition output store.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct OutputStore<N: Network, O: OutputStorage<N>> {
     /// The map of constant outputs.
     constant: O::ConstantMap,
@@ -305,10 +305,10 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
 }
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
-    /// Initializes a new transition output store.
-    pub fn new() -> Self {
+    /// Initializes the transition output store.
+    pub fn open() -> Self {
         // Initialize a new transition output storage.
-        let storage = O::new();
+        let storage = O::open();
         // Return the transition output store.
         Self {
             constant: storage.constant_map().clone(),
@@ -494,7 +494,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in crate::ledger::transition::output::test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let output_store = OutputMemory::new();
+            let output_store = OutputMemory::open();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();
@@ -521,7 +521,7 @@ mod tests {
         // Sample the transition outputs.
         for (transition_id, output) in crate::ledger::transition::output::test_helpers::sample_outputs() {
             // Initialize a new output store.
-            let output_store = OutputMemory::new();
+            let output_store = OutputMemory::open();
 
             // Ensure the transition output does not exist.
             let candidate = output_store.get(&transition_id).unwrap();

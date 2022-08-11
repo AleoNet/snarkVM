@@ -46,8 +46,8 @@ pub trait InputStorage<N: Network>: Clone + Sync {
     /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
-    /// Creates a new transition input storage.
-    fn new() -> Self;
+    /// Initializes the transition input storage.
+    fn open() -> Self;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -225,8 +225,8 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type RecordTagMap = MemoryMap<Field<N>, Field<N>>;
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
-    /// Creates a new transition input storage.
-    fn new() -> Self {
+    /// Initializes the transition input storage.
+    fn open() -> Self {
         Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
@@ -281,7 +281,7 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
 }
 
 /// The transition input store.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct InputStore<N: Network, I: InputStorage<N>> {
     /// The map of constant inputs.
     constant: I::ConstantMap,
@@ -300,10 +300,10 @@ pub struct InputStore<N: Network, I: InputStorage<N>> {
 }
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
-    /// Initializes a new transition input store.
-    pub fn new() -> Self {
+    /// Initializes the transition input store.
+    pub fn open() -> Self {
         // Initialize a new transition input storage.
-        let storage = I::new();
+        let storage = I::open();
         // Return the transition input store.
         Self {
             constant: storage.constant_map().clone(),
@@ -459,7 +459,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let input_store = InputMemory::new();
+            let input_store = InputMemory::open();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();
@@ -486,7 +486,7 @@ mod tests {
         // Sample the transition inputs.
         for (transition_id, input) in crate::ledger::transition::input::test_helpers::sample_inputs() {
             // Initialize a new input store.
-            let input_store = InputMemory::new();
+            let input_store = InputMemory::open();
 
             // Ensure the transition input does not exist.
             let candidate = input_store.get(&transition_id).unwrap();
