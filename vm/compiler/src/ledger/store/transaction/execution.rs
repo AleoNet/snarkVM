@@ -43,7 +43,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the execution storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self;
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -240,13 +240,13 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the execution storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Self {
-        Self {
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+        Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
             edition_map: MemoryMap::default(),
             transition_store,
-        }
+        })
     }
 
     /// Returns the ID map.
@@ -281,11 +281,11 @@ pub struct ExecutionStore<N: Network, E: ExecutionStorage<N>> {
 
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Initializes the execution store.
-    pub fn open(transition_store: TransitionStore<N, E::TransitionStorage>) -> Self {
+    pub fn open(transition_store: TransitionStore<N, E::TransitionStorage>) -> Result<Self> {
         // Initialize the execution storage.
-        let storage = E::open(transition_store);
+        let storage = E::open(transition_store)?;
         // Return the execution store.
-        Self { storage, _phantom: PhantomData }
+        Ok(Self { storage, _phantom: PhantomData })
     }
 
     /// Initializes an execution store from storage.
@@ -368,9 +368,9 @@ mod tests {
         let transaction_id = transaction.id();
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open();
+        let transition_store = TransitionStore::open().unwrap();
         // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(transition_store);
+        let execution_store = ExecutionMemory::open(transition_store).unwrap();
 
         // Ensure the execution transaction does not exist.
         let candidate = execution_store.get_transaction(&transaction_id).unwrap();
@@ -404,9 +404,9 @@ mod tests {
         };
 
         // Initialize a new transition store.
-        let transition_store = TransitionStore::open();
+        let transition_store = TransitionStore::open().unwrap();
         // Initialize a new execution store.
-        let execution_store = ExecutionMemory::open(transition_store);
+        let execution_store = ExecutionMemory::open(transition_store).unwrap();
 
         // Ensure the execution transaction does not exist.
         let candidate = execution_store.get_transaction(&transaction_id).unwrap();

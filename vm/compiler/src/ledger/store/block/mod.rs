@@ -66,7 +66,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
-    fn open() -> Self;
+    fn open() -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -287,13 +287,13 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
-    fn open() -> Self {
+    fn open() -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open();
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open()?;
         // Initialize the transaction store.
-        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store);
+        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
         // Return the block storage.
-        Self {
+        Ok(Self {
             id_map: MemoryMap::default(),
             reverse_id_map: MemoryMap::default(),
             header_map: MemoryMap::default(),
@@ -301,7 +301,7 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
             reverse_transactions_map: MemoryMap::default(),
             transaction_store,
             signature_map: MemoryMap::default(),
-        }
+        })
     }
 
     /// Returns the ID map.
@@ -351,11 +351,11 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open() -> Self {
+    pub fn open() -> Result<Self> {
         // Initialize the block storage.
-        let storage = B::open();
+        let storage = B::open()?;
         // Return the block store.
-        Self { storage, _phantom: PhantomData }
+        Ok(Self { storage, _phantom: PhantomData })
     }
 
     /// Initializes a block store from storage.
@@ -463,7 +463,7 @@ mod tests {
         let block_hash = block.hash();
 
         // Initialize a new block store.
-        let block_store = BlockStore::<_, BlockMemory<_>>::open();
+        let block_store = BlockStore::<_, BlockMemory<_>>::open().unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();
@@ -492,7 +492,7 @@ mod tests {
         assert!(block.transactions().len() > 0, "This test must be run with at least one transaction.");
 
         // Initialize a new block store.
-        let block_store = BlockStore::<_, BlockMemory<_>>::open();
+        let block_store = BlockStore::<_, BlockMemory<_>>::open().unwrap();
 
         // Ensure the block does not exist.
         let candidate = block_store.get_block(&block_hash).unwrap();

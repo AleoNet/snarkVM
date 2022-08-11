@@ -63,7 +63,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
     /// Initializes the transition storage.
-    fn open() -> Self;
+    fn open() -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -225,18 +225,18 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type FeeMap = MemoryMap<N::TransitionID, i64>;
 
     /// Initializes the transition storage.
-    fn open() -> Self {
-        Self {
+    fn open() -> Result<Self> {
+        Ok(Self {
             locator_map: MemoryMap::default(),
-            input_store: InputStore::open(),
-            output_store: OutputStore::open(),
+            input_store: InputStore::open()?,
+            output_store: OutputStore::open()?,
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
             tcm_map: MemoryMap::default(),
             reverse_tcm_map: MemoryMap::default(),
             fee_map: MemoryMap::default(),
-        }
+        })
     }
 
     /// Returns the transition program IDs and function names.
@@ -312,11 +312,11 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open() -> Self {
+    pub fn open() -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open();
+        let storage = T::open()?;
         // Return the transition store.
-        Self {
+        Ok(Self {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
@@ -327,7 +327,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             reverse_tcm: storage.reverse_tcm_map().clone(),
             fee: storage.fee_map().clone(),
             storage,
-        }
+        })
     }
 
     /// Initializes a transition store from storage.
@@ -656,7 +656,7 @@ mod tests {
         assert!(transitions.len() > 1, "\n\nNumber of transitions: {}\n", transitions.len());
 
         // Initialize a new transition store.
-        let transition_store = TransitionMemory::open();
+        let transition_store = TransitionMemory::open().unwrap();
 
         // Test each transition in isolation.
         for transition in transitions.iter() {
