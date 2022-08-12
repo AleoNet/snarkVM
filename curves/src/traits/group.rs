@@ -252,7 +252,7 @@ pub trait PairingCurve: AffineCurve {
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult;
 }
 
-pub trait ModelParameters: Send + Sync + 'static + Sized {
+pub trait ModelParameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
     type BaseField: Field + SquareRootField;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
@@ -281,7 +281,7 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     fn is_in_correct_subgroup_assuming_on_curve(p: &short_weierstrass_jacobian::Affine<Self>) -> bool;
 }
 
-pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
+pub trait TwistedEdwardsParameters: ModelParameters {
     const COEFF_A: Self::BaseField;
     const COEFF_D: Self::BaseField;
     const COFACTOR: &'static [u64];

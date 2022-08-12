@@ -2506,7 +2506,6 @@ version = "0.7.5"
 dependencies = [
  "bincode",
  "criterion",
- "derivative",
  "rand",
  "rand_xorshift",
  "rustc_version",

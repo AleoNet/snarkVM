@@ -21,24 +21,18 @@ use crate::{
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::Uniform, serialize::*, FromBytes, ToBytes};
 
+use core::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    hash::{Hash, Hasher},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug)]
 pub struct Projective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -75,6 +69,14 @@ impl<P: Parameters> Display for Projective<P> {
         write!(f, "{}", self.to_affine())
     }
 }
+
+impl<P: Parameters> Hash for Projective<P> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_affine().hash(state);
+    }
+}
+
+impl<P: Parameters> Eq for Projective<P> {}
 
 impl<P: Parameters> PartialEq for Projective<P> {
     fn eq(&self, other: &Self) -> bool {

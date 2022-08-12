@@ -41,15 +41,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Derivative, Serialize, Deserialize)]
-#[derivative(
-    Copy(bound = "P: Parameters"),
-    Clone(bound = "P: Parameters"),
-    PartialEq(bound = "P: Parameters"),
-    Eq(bound = "P: Parameters"),
-    Debug(bound = "P: Parameters"),
-    Hash(bound = "P: Parameters")
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,

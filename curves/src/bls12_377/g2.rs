@@ -26,7 +26,7 @@ use crate::{
     AffineCurve,
 };
 
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Bls12_377G2Parameters;
 
 impl ModelParameters for Bls12_377G2Parameters {
