@@ -579,6 +579,11 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
 
     /// Returns a state path for the given commitment.
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        // Ensure the commitment exists.
+        if !self.contains_commitment(commitment)? {
+            bail!("Commitment '{commitment}' does not exist");
+        }
+
         // Find the transition that contains the commitment.
         let transition_id = self.transitions.find_transition_id(commitment)?;
         // Find the transaction that contains the transition.

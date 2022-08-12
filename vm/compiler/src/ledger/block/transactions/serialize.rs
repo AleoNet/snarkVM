@@ -72,7 +72,7 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    const ITERATIONS: usize = 25;
+    const ITERATIONS: usize = 100;
 
     #[test]
     fn test_serde_json() {
