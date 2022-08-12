@@ -861,6 +861,22 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
+    fn test_validators() {
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Sample the private key, view key, and address.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let view_key = ViewKey::try_from(private_key).unwrap();
+        let address = Address::try_from(&view_key).unwrap();
+
+        // Create a genesis block.
+        let genesis = Block::genesis(&VM::new().unwrap(), &private_key, rng).unwrap();
+        // Initialize the ledger.
+        let ledger = Ledger::new_with_genesis(&genesis, address).unwrap();
+    }
+
+    #[test]
     fn test_new() {
         // Load the genesis block.
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
