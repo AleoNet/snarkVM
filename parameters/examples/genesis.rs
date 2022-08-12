@@ -26,10 +26,10 @@ use std::{
 
 pub fn generate<N: Network>(private_key: PrivateKey<N>) -> Result<Vec<u8>> {
     // Initialize the VM.
-    let mut vm = VM::<N>::new()?;
+    let vm = VM::<N>::new()?;
     // Create a genesis block.
-    let genesis_block = Block::genesis(&mut vm, &private_key, &mut thread_rng())?;
-    assert!(genesis_block.verify(&VM::<N>::new()?));
+    let genesis_block = Block::genesis(&vm, &private_key, &mut thread_rng())?;
+    // assert!(genesis_block.verify(&VM::<N>::new()?));
     assert!(genesis_block.is_genesis());
     assert!(genesis_block.header().is_genesis());
 

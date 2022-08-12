@@ -146,3 +146,27 @@ impl<
         &self.map
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use console::{account::Address, network::Testnet3};
+
+    type CurrentNetwork = Testnet3;
+
+    #[test]
+    fn test_contains_key() {
+        // Initialize an address.
+        let address =
+            Address::<CurrentNetwork>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")
+                .unwrap();
+
+        // Sanity check.
+        let addresses: IndexMap<Address<CurrentNetwork>, ()> = [(address, ())].into_iter().collect();
+        assert!(addresses.contains_key(&address));
+
+        // Initialize a map.
+        let map: MemoryMap<Address<CurrentNetwork>, ()> = [(address, ())].into_iter().collect();
+        assert!(map.contains_key(&address).unwrap());
+    }
+}
