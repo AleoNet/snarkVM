@@ -16,44 +16,44 @@
 
 use super::*;
 
-#[cfg(feature = "private_key")]
-impl<N: Network> TryFrom<PrivateKey<N>> for GraphKey<N> {
+#[cfg(feature = "view_key")]
+impl<N: Network> TryFrom<ViewKey<N>> for GraphKey<N> {
     type Error = Error;
 
-    /// Derives the account graph key from an account private key.
-    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
-        Self::try_from(&private_key)
+    /// Derives the account graph key from an account view key.
+    fn try_from(view_key: ViewKey<N>) -> Result<Self, Self::Error> {
+        Self::try_from(&view_key)
     }
 }
 
-#[cfg(feature = "private_key")]
-impl<N: Network> TryFrom<&PrivateKey<N>> for GraphKey<N> {
+#[cfg(feature = "view_key")]
+impl<N: Network> TryFrom<&ViewKey<N>> for GraphKey<N> {
     type Error = Error;
 
-    /// Derives the account graph key from an account private key.
-    fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
-        // Compute sk_tag := T^sk_sig.
-        let sk_tag = N::t_scalar_multiply(&private_key.sk_sig());
+    /// Derives the account graph key from an account view key.
+    fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
+        // Compute sk_tag := Hash(view_key || ctr).
+        let sk_tag = N::hash_psd4(&[N::graph_key_domain(), view_key.to_field()?, Field::zero()])?;
         // Output the graph key.
         Self::try_from(sk_tag)
     }
 }
 
-impl<N: Network> TryFrom<Group<N>> for GraphKey<N> {
+impl<N: Network> TryFrom<Field<N>> for GraphKey<N> {
     type Error = Error;
 
     /// Derives the account graph key from `sk_tag`.
-    fn try_from(sk_tag: Group<N>) -> Result<Self> {
+    fn try_from(sk_tag: Field<N>) -> Result<Self> {
         // Output the graph key.
         Ok(Self { sk_tag })
     }
 }
 
-impl<N: Network> TryFrom<&Group<N>> for GraphKey<N> {
+impl<N: Network> TryFrom<&Field<N>> for GraphKey<N> {
     type Error = Error;
 
     /// Derives the account graph key from `sk_tag`.
-    fn try_from(sk_tag: &Group<N>) -> Result<Self> {
+    fn try_from(sk_tag: &Field<N>) -> Result<Self> {
         Self::try_from(*sk_tag)
     }
 }
@@ -61,6 +61,7 @@ impl<N: Network> TryFrom<&Group<N>> for GraphKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -72,7 +73,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new graph key.
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let candidate = GraphKey::try_from(private_key)?;
+            let view_key = ViewKey::try_from(private_key)?;
+            let candidate = GraphKey::try_from(view_key)?;
 
             // Check that graph key is derived correctly from `sk_tag`.
             assert_eq!(candidate, GraphKey::try_from(candidate.sk_tag())?);

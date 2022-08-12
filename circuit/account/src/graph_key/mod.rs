@@ -14,18 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod from_private_key;
-
 #[cfg(test)]
 use snarkvm_circuit_types::environment::assert_scope;
 
-use crate::PrivateKey;
 use snarkvm_circuit_network::Aleo;
-use snarkvm_circuit_types::{environment::prelude::*, Group};
+use snarkvm_circuit_types::{environment::prelude::*, Field};
 
 pub struct GraphKey<A: Aleo> {
-    /// The graph key `sk_tag` := G^sk_sig.
-    sk_tag: Group<A>,
+    /// The graph key `sk_tag` := Hash(view_key || ctr).
+    sk_tag: Field<A>,
 }
 
 #[cfg(console)]
@@ -35,7 +32,7 @@ impl<A: Aleo> Inject for GraphKey<A> {
     /// Initializes an account graph key from the given mode and native graph key.
     fn new(mode: Mode, graph_key: Self::Primitive) -> Self {
         // Inject `sk_tag`.
-        let sk_tag = Group::new(mode, graph_key.sk_tag());
+        let sk_tag = Field::new(mode, graph_key.sk_tag());
         // Output the graph key.
         Self { sk_tag }
     }
@@ -43,7 +40,7 @@ impl<A: Aleo> Inject for GraphKey<A> {
 
 impl<A: Aleo> GraphKey<A> {
     /// Returns the graph key.
-    pub const fn sk_tag(&self) -> &Group<A> {
+    pub const fn sk_tag(&self) -> &Field<A> {
         &self.sk_tag
     }
 }
@@ -83,9 +80,9 @@ pub(crate) mod tests {
         num_constraints: u64,
     ) -> Result<()> {
         for i in 0..ITERATIONS {
-            // Generate a private key and graph key.
-            let (private_key, _, _, _) = generate_account()?;
-            let graph_key = console::GraphKey::try_from(&private_key)?;
+            // Generate a view key and graph key.
+            let (_, _, view_key, _) = generate_account()?;
+            let graph_key = console::GraphKey::try_from(&view_key)?;
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = GraphKey::<Circuit>::new(mode, graph_key);
@@ -103,16 +100,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_graph_key_new_constant() -> Result<()> {
-        check_new(Mode::Constant, 4, 0, 0, 0)
+        check_new(Mode::Constant, 1, 0, 0, 0)
     }
 
     #[test]
     fn test_graph_key_new_public() -> Result<()> {
-        check_new(Mode::Public, 2, 2, 2, 3)
+        check_new(Mode::Public, 0, 1, 0, 0)
     }
 
     #[test]
     fn test_graph_key_new_private() -> Result<()> {
-        check_new(Mode::Private, 2, 0, 4, 3)
+        check_new(Mode::Private, 0, 0, 1, 0)
     }
 }

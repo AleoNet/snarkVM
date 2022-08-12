@@ -41,8 +41,12 @@ impl<N: Network> Request<N> {
 
         // Retrieve `sk_sig`.
         let sk_sig = private_key.sk_sig();
+
+        // Derive the view key.
+        let view_key = ViewKey::try_from(private_key)?;
         // Derive `sk_tag` from the graph key.
-        let sk_tag = GraphKey::try_from(private_key)?.sk_tag().to_x_coordinate();
+        let sk_tag = GraphKey::try_from(view_key)?.sk_tag();
+
         // Derive the compute key.
         let compute_key = ComputeKey::try_from(private_key)?;
         // Retrieve `pk_sig`.

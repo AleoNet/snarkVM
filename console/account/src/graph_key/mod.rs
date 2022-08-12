@@ -19,23 +19,23 @@ mod serialize;
 mod string;
 mod try_from;
 
-#[cfg(feature = "private_key")]
-use crate::PrivateKey;
+#[cfg(feature = "view_key")]
+use crate::ViewKey;
 
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Group};
+use snarkvm_console_types::Field;
 
 use base58::{FromBase58, ToBase58};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct GraphKey<N: Network> {
-    /// The graph key `sk_tag` := T^sk_sig.
-    sk_tag: Group<N>,
+    /// The graph key `sk_tag` := Hash(view_key || ctr).
+    sk_tag: Field<N>,
 }
 
 impl<N: Network> GraphKey<N> {
     /// Returns the graph key.
-    pub const fn sk_tag(&self) -> Group<N> {
+    pub const fn sk_tag(&self) -> Field<N> {
         self.sk_tag
     }
 }
