@@ -66,7 +66,7 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
-pub enum OutputRecordsFilter<N: Network> {
+pub enum RecordsFilter<N: Network> {
     /// Returns all output records associated with the account.
     All,
     /// Returns all output records associated with the account that are **spent**.
@@ -579,6 +579,11 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
 
     /// Returns a state path for the given commitment.
     pub fn to_state_path(&self, commitment: &Field<N>) -> Result<StatePath<N>> {
+        // Ensure the commitment exists.
+        if !self.contains_commitment(commitment)? {
+            bail!("Commitment '{commitment}' does not exist");
+        }
+
         // Find the transition that contains the commitment.
         let transition_id = self.transitions.find_transition_id(commitment)?;
         // Find the transaction that contains the transition.
