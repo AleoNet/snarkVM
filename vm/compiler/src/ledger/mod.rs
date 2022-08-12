@@ -872,8 +872,23 @@ mod tests {
 
         // Create a genesis block.
         let genesis = Block::genesis(&VM::new().unwrap(), &private_key, rng).unwrap();
-        // Initialize the ledger.
-        let ledger = Ledger::new_with_genesis(&genesis, address).unwrap();
+
+        // Initialize the validators.
+        let validators: IndexMap<Address<_>, ()> = [(address, ())].into_iter().collect();
+
+        // Ensure the block is signed by an authorized validator.
+        let signer = genesis.signature().to_address();
+        if !validators.contains_key(&signer) {
+            let validator = validators.iter().next().unwrap().0;
+            eprintln!("{} {} {} {}", *validator, signer, *validator == signer, validators.contains_key(&signer));
+            eprintln!(
+                "Block {} ({}) is signed by an unauthorized validator ({})",
+                genesis.height(),
+                genesis.hash(),
+                signer
+            );
+        }
+        assert!(validators.contains_key(&signer));
     }
 
     #[test]
