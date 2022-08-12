@@ -18,6 +18,7 @@ use std::{env, fs};
 use clap::StructOpt;
 use snarkvm::prelude::{Parser, Program};
 use snarkvm_fuzz::harness::FuzzNetwork;
+use std::str::FromStr;
 
 #[derive(Debug, StructOpt)]
 pub struct SeedCli {
@@ -35,7 +36,7 @@ impl SeedCli {
 
             if path.is_file() {
                 let result = fs::read_to_string(path).unwrap();
-                let program = Program::<FuzzNetwork>::parse(&result).unwrap();
+                let program = Program::<FuzzNetwork>::from_str(&result).unwrap();
 
             }
 

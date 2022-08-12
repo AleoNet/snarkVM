@@ -20,13 +20,14 @@ use std::process::abort;
 use once_cell::sync::OnceCell;
 use snarkvm::circuit::Parser;
 use snarkvm::compiler::Program;
-use snarkvm::prelude::{Environment, test_crypto_rng, Testnet3, VM};
+use snarkvm::prelude::{circuit, Environment, PrivateKey, test_crypto_rng, Testnet3, VM};
+use std::str::FromStr;
 
 pub fn harness(buf: &[u8]) {
     if let Ok(s) =  std::str::from_utf8(buf) {
 
         let result = panic::catch_unwind(|| {
-            if let Ok((s, program)) = Program::<FuzzNetwork>::parse(&s) {
+            if let Ok(program) = Program::<FuzzNetwork>::from_str(&s) {
                 fuzz_program(program);
             }
         });
@@ -68,12 +69,12 @@ pub fn fuzz_program(program: Program<FuzzNetwork>) {
     //let private_key = circuit::PrivateKey::<AleoV0>::new(Mode::Private, pkey);
 
     // Deploy.
-    /*    if let Ok(deployment) = vm.deploy(&program, rng) {
+/*        if let Ok(deployment) = vm.deploy(&program, rng) {
             vm.verify_deployment(&deployment);
         }
-    */
+*/
     // Execute
-    /*    if let Some(f) = program.functions().first() {
+    if let Some(f) = program.functions().first() {
             // Initialize the private key.
             let pkey = PrivateKey::new(rng).unwrap();
 
@@ -82,5 +83,5 @@ pub fn fuzz_program(program: Program<FuzzNetwork>) {
             } else {
                 // ignore
             }
-        }*/
+        }
 }
