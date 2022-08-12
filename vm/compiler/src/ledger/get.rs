@@ -95,7 +95,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     pub fn find_records<'a>(
         &'a self,
         view_key: &'a ViewKey<N>,
-        filter: OutputRecordsFilter<N>,
+        filter: RecordsFilter<N>,
     ) -> impl '_ + Iterator<Item = (Field<N>, Record<N, Plaintext<N>>)> {
         // Derive the address from the view key.
         let address = view_key.to_address();
@@ -126,8 +126,8 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
 
             // Determine whether to decrypt this record (or not), based on the filter.
             let commitment = match filter {
-                OutputRecordsFilter::All => commitment,
-                OutputRecordsFilter::AllSpent(private_key) => {
+                RecordsFilter::All => commitment,
+                RecordsFilter::AllSpent(private_key) => {
                     // Derive the serial number.
                     match serial_number(private_key, commitment) {
                         // Determine if the record is spent.
@@ -145,7 +145,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
                         }
                     }
                 }
-                OutputRecordsFilter::AllUnspent(private_key) => {
+                RecordsFilter::AllUnspent(private_key) => {
                     // Derive the serial number.
                     match serial_number(private_key, commitment) {
                         // Determine if the record is spent.
@@ -163,7 +163,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
                         }
                     }
                 }
-                OutputRecordsFilter::Spent(graph_key) => {
+                RecordsFilter::Spent(graph_key) => {
                     // Compute the `sk_tag` from the graph key.
                     let sk_tag = graph_key.sk_tag().to_x_coordinate();
                     // Derive the serial number.
@@ -183,7 +183,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
                         }
                     }
                 }
-                OutputRecordsFilter::Unspent(graph_key) => {
+                RecordsFilter::Unspent(graph_key) => {
                     // Compute the `sk_tag` from the graph key.
                     let sk_tag = graph_key.sk_tag().to_x_coordinate();
                     // Derive the serial number.

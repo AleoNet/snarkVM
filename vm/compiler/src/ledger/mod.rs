@@ -66,7 +66,7 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
-pub enum OutputRecordsFilter<N: Network> {
+pub enum RecordsFilter<N: Network> {
     /// Returns all output records associated with the account.
     All,
     /// Returns all output records associated with the account that are **spent**.
