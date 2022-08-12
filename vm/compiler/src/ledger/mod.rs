@@ -815,7 +815,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let mut vm = VM::<CurrentNetwork>::new().unwrap();
+                let vm = VM::<CurrentNetwork>::new().unwrap();
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng_fixed();
                 // Initialize a new caller.
