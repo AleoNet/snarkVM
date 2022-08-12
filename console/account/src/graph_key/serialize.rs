@@ -33,6 +33,7 @@ impl<'de, N: Network> Deserialize<'de> for GraphKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -44,7 +45,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new graph key.
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let expected = GraphKey::try_from(private_key)?;
+            let view_key = ViewKey::try_from(private_key)?;
+            let expected = GraphKey::try_from(view_key)?;
 
             // Serialize
             let expected_bytes = expected.to_bytes_le()?;

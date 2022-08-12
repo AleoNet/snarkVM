@@ -542,7 +542,8 @@ function compute:
 
                 // Fetch the unspent records.
                 let records = ledger
-                    .find_records(&caller_view_key, RecordsFilter::AllUnspent(caller_private_key))
+                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
+                    .unwrap()
                     .filter(|(_, record)| !record.gates().is_zero())
                     .collect::<indexmap::IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);
@@ -579,7 +580,8 @@ function compute:
 
                 // Fetch the unspent records.
                 let records = ledger
-                    .find_records(&caller_view_key, RecordsFilter::AllUnspent(caller_private_key))
+                    .find_records(&caller_view_key, RecordsFilter::SlowUnspent(caller_private_key))
+                    .unwrap()
                     .filter(|(_, record)| !record.gates().is_zero())
                     .collect::<indexmap::IndexMap<_, _>>();
                 trace!("Unspent Records:\n{:#?}", records);

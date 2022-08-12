@@ -49,15 +49,13 @@ type E = Circuit;
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static GENERATOR_G: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::g_powers().to_vec());
-    /// The group bases for the Aleo tag scheme.
-    static GENERATOR_T: Vec<Group<AleoV0>> = Vec::constant(<console::Testnet3 as console::Network>::t_powers().to_vec());
 
     /// The balance commitment domain as a constant field element.
     static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
-    /// The MAC domain as a constant field element.
-    static MAC_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::mac_domain());
+    /// The graph key domain as a constant field element.
+    static GRAPH_KEY_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::graph_key_domain());
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
     /// The balance commitment randomizer domain as a constant field element.
@@ -104,9 +102,9 @@ impl Aleo for AleoV0 {
         ENCRYPTION_DOMAIN.with(|domain| domain.clone())
     }
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self> {
-        MAC_DOMAIN.with(|domain| domain.clone())
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self> {
+        GRAPH_KEY_DOMAIN.with(|domain| domain.clone())
     }
 
     /// Returns the randomizer domain as a constant field element.
@@ -128,16 +126,6 @@ impl Aleo for AleoV0 {
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
         GENERATOR_G.with(|bases| {
-            bases
-                .iter()
-                .zip_eq(&scalar.to_bits_le())
-                .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
-        })
-    }
-
-    /// Returns the scalar multiplication on the generator `T` (for tags).
-    fn t_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
-        GENERATOR_T.with(|bases| {
             bases
                 .iter()
                 .zip_eq(&scalar.to_bits_le())

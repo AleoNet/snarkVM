@@ -31,7 +31,7 @@ impl<N: Network> FromStr for GraphKey<N> {
             bail!("Invalid account graph key prefix: found {:?}, expected {:?}", &data[0..9], GRAPH_KEY_PREFIX)
         }
         // Output the graph key.
-        Self::try_from(Group::read_le(&data[9..41])?)
+        Self::try_from(Field::read_le(&data[9..41])?)
     }
 }
 
@@ -50,6 +50,7 @@ impl<N: Network> fmt::Display for GraphKey<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PrivateKey;
     use snarkvm_console_network::Testnet3;
 
     type CurrentNetwork = Testnet3;
@@ -61,7 +62,8 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a new graph key.
             let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-            let expected = GraphKey::try_from(private_key)?;
+            let view_key = ViewKey::try_from(private_key)?;
+            let expected = GraphKey::try_from(view_key)?;
 
             // Check the string representation.
             let candidate = format!("{expected}");

@@ -36,6 +36,7 @@ mod vm;
 pub use vm::*;
 
 mod contains;
+mod find;
 mod get;
 mod iterators;
 mod latest;
@@ -67,16 +68,16 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
 pub enum RecordsFilter<N: Network> {
-    /// Returns all output records associated with the account.
+    /// Returns all records associated with the account.
     All,
-    /// Returns all output records associated with the account that are **spent**.
-    AllSpent(PrivateKey<N>),
-    /// Returns all output records associated with the account that are **not spent**.
-    AllUnspent(PrivateKey<N>),
-    /// Returns only output records associated with the account that are **spent** with the given graph key.
-    Spent(GraphKey<N>),
-    /// Returns only output records associated with the account that are **not spent** with the given graph key.
-    Unspent(GraphKey<N>),
+    /// Returns all records associated with the account that are **spent** with the given private key.
+    SlowSpent(PrivateKey<N>),
+    /// Returns all records associated with the account that are **not spent** with the given private key.
+    SlowUnspent(PrivateKey<N>),
+    /// Returns only records associated with the account that are **spent** with the graph key.
+    Spent,
+    /// Returns only records associated with the account that are **not spent** with the graph key.
+    Unspent,
 }
 
 #[derive(Clone)]
