@@ -30,6 +30,7 @@ pub type G2Affine<P> = Affine<<P as Bls12Parameters>::G2Parameters>;
 pub type G2Projective<P> = Projective<<P as Bls12Parameters>::G2Parameters>;
 type CoeffTriplet<T> = (Fp2<T>, Fp2<T>, Fp2<T>);
 
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct G2Prepared<P: Bls12Parameters> {
     // Stores the coefficients of the line evaluations as calculated in
