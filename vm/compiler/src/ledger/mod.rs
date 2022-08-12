@@ -36,6 +36,7 @@ mod vm;
 pub use vm::*;
 
 mod contains;
+mod find;
 mod get;
 mod iterators;
 mod latest;
