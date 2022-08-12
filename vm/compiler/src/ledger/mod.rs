@@ -42,10 +42,10 @@ mod latest;
 
 use crate::program::Program;
 use console::{
-    account::{GraphKey, PrivateKey, Signature, ViewKey},
+    account::{Address, GraphKey, PrivateKey, Signature, ViewKey},
     collections::merkle_tree::MerklePath,
     network::{prelude::*, BHPMerkleTree},
-    program::{Ciphertext, Plaintext, ProgramID, Record},
+    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
     types::{Field, Group},
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
@@ -95,6 +95,9 @@ pub struct Ledger<N: Network, B: BlockStorage<N>> {
     transactions: TransactionStore<N, B::TransactionStorage>,
     /// The transition store.
     transitions: TransitionStore<N, B::TransitionStorage>,
+    /// The validators.
+    // TODO (howardwu): Update this to retrieve from a validators store.
+    validators: IndexMap<Address<N>, ()>,
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
     /// The VM state.
@@ -108,12 +111,14 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
     pub fn new() -> Result<Self> {
         // Load the genesis block.
         let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+        // Initialize the address.
+        let address = Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?;
         // Initialize the ledger.
-        Self::new_with_genesis(&genesis)
+        Self::new_with_genesis(&genesis, address)
     }
 
     /// Initializes a new instance of `Ledger` with the given genesis block.
-    pub fn new_with_genesis(genesis: &Block<N>) -> Result<Self> {
+    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
         // Initialize the block store.
         let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
         // Initialize a new VM.
@@ -128,6 +133,8 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
             transactions: blocks.transaction_store().clone(),
             transitions: blocks.transition_store().clone(),
             blocks,
+            // TODO (howardwu): Update this to retrieve from a validators store.
+            validators: [(address, ())].into_iter().collect(),
             vm,
             memory_pool: Default::default(),
         };
@@ -163,6 +170,13 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
             transactions: blocks.transaction_store().clone(),
             transitions: blocks.transition_store().clone(),
             blocks,
+            // TODO (howardwu): Update this to retrieve from a validators store.
+            validators: [(
+                Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?,
+                (),
+            )]
+            .into_iter()
+            .collect(),
             vm,
             memory_pool: Default::default(),
         };
@@ -408,9 +422,106 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
             }
         }
 
-        // Ensure the block is valid.
-        if !block.verify(&self.vm) {
-            bail!("The given block is invalid")
+        /* Block Header */
+
+        // If the block is the genesis block, check that it is valid.
+        if block.height() == 0 && !block.is_genesis() {
+            bail!("Invalid genesis block");
+        }
+
+        // Ensure the block header is valid.
+        if !block.header().is_valid() {
+            bail!("Invalid block header: {:?}", block.header());
+        }
+
+        /* Block Hash */
+
+        // Compute the Merkle root of the block header.
+        let header_root = match block.header().to_root() {
+            Ok(root) => root,
+            Err(error) => bail!("Failed to compute the Merkle root of the block header: {error}"),
+        };
+
+        // Check the block hash.
+        match N::hash_bhp1024(&[block.previous_hash().to_bits_le(), header_root.to_bits_le()].concat()) {
+            Ok(candidate_hash) => {
+                // Ensure the block hash matches the one in the block.
+                if candidate_hash != *block.hash() {
+                    bail!("Block {} ({}) has an incorrect block hash.", block.height(), block.hash());
+                }
+            }
+            Err(error) => {
+                bail!("Unable to compute block hash for block {} ({}): {error}", block.height(), block.hash())
+            }
+        };
+
+        /* Signature */
+
+        // Ensure the block is signed by an authorized validator.
+        let signer = block.signature().to_address();
+        if !self.validators.contains_key(&signer) {
+            let validator = self.validators.iter().next().unwrap().0;
+            eprintln!("{} {} {} {}", *validator, signer, *validator == signer, self.validators.contains_key(&signer));
+            bail!("Block {} ({}) is signed by an unauthorized validator ({})", block.height(), block.hash(), signer);
+        }
+
+        // Check the signature.
+        if !block.signature().verify(&signer, &[*block.hash()]) {
+            bail!("Invalid signature for block {} ({})", block.height(), block.hash());
+        }
+
+        /* Transactions */
+
+        // Compute the transactions root.
+        match block.transactions().to_root() {
+            // Ensure the transactions root matches the one in the block header.
+            Ok(root) => {
+                if &root != block.header().transactions_root() {
+                    bail!(
+                        "Block {} ({}) has an incorrect transactions root: expected {}",
+                        block.height(),
+                        block.hash(),
+                        block.header().transactions_root()
+                    );
+                }
+            }
+            Err(error) => bail!("Failed to compute the Merkle root of the block transactions: {error}"),
+        };
+
+        // Ensure the transactions list is not empty.
+        if block.transactions().is_empty() {
+            bail!("Cannot validate an empty transactions list");
+        }
+
+        // Ensure the number of transactions is within the allowed range.
+        if block.transactions().len() > Transactions::<N>::MAX_TRANSACTIONS {
+            bail!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
+        }
+
+        // Ensure each transaction is well-formed.
+        if !block.transactions().par_iter().all(|(_, transaction)| self.vm.verify(transaction)) {
+            bail!("Invalid transaction found in the transactions list");
+        }
+
+        /* Fees */
+
+        // Prepare the block height, credits program ID, and genesis function name.
+        let height = block.height();
+        let credits_program_id = ProgramID::from_str("credits.aleo")?;
+        let credits_genesis = Identifier::from_str("genesis")?;
+
+        // Ensure the fee is correct for each transition.
+        for transition in block.transitions() {
+            if height > 0 {
+                // Ensure the genesis function is not called.
+                if *transition.program_id() == credits_program_id && *transition.function_name() == credits_genesis {
+                    bail!("The genesis function cannot be called.");
+                }
+                // Ensure the transition fee is not negative.
+                if transition.fee().is_negative() {
+                    bail!("The transition fee cannot be negative.");
+                }
+            }
         }
 
         Ok(())
@@ -452,6 +563,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
                 blocks: ledger.blocks,
                 transactions: ledger.transactions,
                 transitions: ledger.transitions,
+                validators: ledger.validators,
                 vm: ledger.vm,
                 memory_pool: ledger.memory_pool,
             };
@@ -703,13 +815,13 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let mut vm = VM::<CurrentNetwork>::new().unwrap();
+                let vm = VM::<CurrentNetwork>::new().unwrap();
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng_fixed();
                 // Initialize a new caller.
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
                 // Return the block.
-                Block::genesis(&mut vm, &caller_private_key, rng).unwrap()
+                Block::genesis(&vm, &caller_private_key, rng).unwrap()
             })
             .clone()
     }
@@ -720,9 +832,12 @@ pub(crate) mod test_helpers {
             .get_or_init(|| {
                 // Sample the genesis block.
                 let genesis = sample_genesis_block();
+                // Sample the genesis address.
+                let private_key = sample_genesis_private_key();
+                let address = Address::try_from(&private_key).unwrap();
 
                 // Initialize the ledger with the genesis block.
-                let ledger = CurrentLedger::new_with_genesis(&genesis).unwrap();
+                let ledger = CurrentLedger::new_with_genesis(&genesis, address).unwrap();
                 assert_eq!(0, ledger.latest_height());
                 assert_eq!(genesis.hash(), ledger.latest_hash());
                 assert_eq!(genesis.round(), ledger.latest_round());
@@ -746,12 +861,43 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_from_genesis() {
+    fn test_validators() {
+        // Initialize an RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Sample the private key, view key, and address.
+        let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let view_key = ViewKey::try_from(private_key).unwrap();
+        let address = Address::try_from(&view_key).unwrap();
+
+        // Create a genesis block.
+        let genesis = Block::genesis(&VM::new().unwrap(), &private_key, rng).unwrap();
+
+        // Initialize the validators.
+        let validators: IndexMap<Address<_>, ()> = [(address, ())].into_iter().collect();
+
+        // Ensure the block is signed by an authorized validator.
+        let signer = genesis.signature().to_address();
+        if !validators.contains_key(&signer) {
+            let validator = validators.iter().next().unwrap().0;
+            eprintln!("{} {} {} {}", *validator, signer, *validator == signer, validators.contains_key(&signer));
+            eprintln!(
+                "Block {} ({}) is signed by an unauthorized validator ({})",
+                genesis.height(),
+                genesis.hash(),
+                signer
+            );
+        }
+        assert!(validators.contains_key(&signer));
+    }
+
+    #[test]
+    fn test_new() {
         // Load the genesis block.
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
 
         // Initialize a ledger with the genesis block.
-        let ledger = CurrentLedger::new_with_genesis(&genesis).unwrap();
+        let ledger = CurrentLedger::new().unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());
@@ -759,9 +905,13 @@ mod tests {
     }
 
     #[test]
-    fn test_from_maps() {
+    fn test_from() {
         // Load the genesis block.
         let genesis = Block::<CurrentNetwork>::from_bytes_le(GenesisBytes::load_bytes()).unwrap();
+        // Initialize the address.
+        let address =
+            Address::<CurrentNetwork>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")
+                .unwrap();
 
         // Initialize a ledger without the genesis block.
         let ledger = CurrentLedger::from(BlockStore::<_, BlockMemory<_>>::open().unwrap()).unwrap();
@@ -771,7 +921,7 @@ mod tests {
         assert_eq!(ledger.latest_block().unwrap(), genesis);
 
         // Initialize the ledger with the genesis block.
-        let ledger = CurrentLedger::new_with_genesis(&genesis).unwrap();
+        let ledger = CurrentLedger::new_with_genesis(&genesis, address).unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());

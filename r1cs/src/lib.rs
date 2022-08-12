@@ -47,8 +47,6 @@ pub use test_constraint_system::{Fr, TestConstraintSystem};
 mod test_constraint_checker;
 pub use test_constraint_checker::TestConstraintChecker;
 
-pub use snarkvm_fields::ToConstraintField;
-
 use snarkvm_utilities::serialize::*;
 
 use std::cmp::Ordering;

@@ -21,9 +21,6 @@
 #![doc = include_str!("../documentation/the_aleo_curves/00_overview.md")]
 
 #[macro_use]
-extern crate derivative;
-
-#[macro_use]
 extern crate thiserror;
 
 pub mod bls12_377;
