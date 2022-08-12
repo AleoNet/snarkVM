@@ -90,7 +90,7 @@ pub use rand::{
 pub use serde::{
     de,
     de::DeserializeOwned,
-    ser::{self, SerializeStruct},
+    ser::{self, SerializeSeq, SerializeStruct},
     Deserialize,
     Deserializer,
     Serialize,
