@@ -81,10 +81,10 @@ pub enum Instruction<N: Network> {
     CommitBHP768(CommitBHP768<N>),
     /// Performs a BHP commitment on inputs of 1024-bit chunks.
     CommitBHP1024(CommitBHP1024<N>),
-    // /// Performs a Pedersen commitment on up to a 64-bit input.
-    // CommitPed64(CommitPed64<N>),
-    // /// Performs a Pedersen commitment on up to a 128-bit input.
-    // CommitPed128(CommitPed128<N>),
+    /// Performs a Pedersen commitment on up to a 64-bit input.
+    CommitPED64(CommitPED64<N>),
+    /// Performs a Pedersen commitment on up to a 128-bit input.
+    CommitPED128(CommitPED128<N>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<N>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -209,8 +209,8 @@ macro_rules! instruction {
             CommitBHP512,
             CommitBHP768,
             CommitBHP1024,
-            // CommitPed64,
-            // CommitPed128,
+            CommitPED64,
+            CommitPED128,
             Div,
             DivWrapped,
             Double,
@@ -398,7 +398,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            52,
+            54,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
