@@ -16,18 +16,26 @@
 
 use super::*;
 
-impl<N: Network> Visibility for Ciphertext<N> {
-    type Boolean = Boolean<N>;
+impl<A: Aleo> Equal<Self> for Ciphertext<A> {
+    type Output = Boolean<A>;
 
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> Result<u16> {
-        // Retrieve the number of field elements.
-        let num_fields = self.0.len();
-        // Ensure the number of field elements does not exceed the maximum allowed size.
-        match num_fields <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
-            // Return the number of field elements.
-            true => Ok(num_fields as u16),
-            false => bail!("Ciphertext is too large to encode in field elements."),
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        // Check each field element for equality.
+        let mut equal = Boolean::constant(true);
+        for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
+            equal &= a.is_equal(b);
         }
+        equal
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        // Recursively check each member for inequality.
+        let mut not_equal = Boolean::constant(false);
+        for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
+            not_equal |= a.is_not_equal(b);
+        }
+        not_equal
     }
 }

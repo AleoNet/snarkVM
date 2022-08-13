@@ -67,6 +67,8 @@ impl<E: Environment, I: IntegerType> IntegerTrait<I, U8<E>, U16<E>, U32<E>> for 
 impl<E: Environment, I: IntegerType> IntegerCore<I> for Integer<E, I> {}
 
 impl<E: Environment, I: IntegerType> Visibility for Integer<E, I> {
+    type Boolean = Boolean<E>;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         Ok(1)

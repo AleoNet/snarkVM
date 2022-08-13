@@ -63,7 +63,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             3 => Opcode::Commit("commit.bhp1024"),
             4 => Opcode::Commit("commit.ped64"),
             5 => Opcode::Commit("commit.ped128"),
-            _ => panic!("Invalid commit instruction opcode"),
+            _ => panic!("Invalid 'commit' instruction opcode"),
         }
     }
 
@@ -114,12 +114,10 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
             4 => Literal::Group(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
             5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
-            _ => bail!("Invalid commit variant: {VARIANT}"),
+            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
-        // Convert the output to a stack value.
-        let output = Value::Plaintext(Plaintext::Literal(output, Default::default()));
         // Store the output.
-        registers.store(stack, &self.destination, output)
+        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
 
     /// Executes the instruction.
@@ -157,7 +155,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             3 => circuit::Literal::Field(A::commit_bhp1024(&input.to_bits_le(), &randomizer)),
             4 => circuit::Literal::Group(A::commit_ped64(&input.to_bits_le(), &randomizer)),
             5 => circuit::Literal::Group(A::commit_ped128(&input.to_bits_le(), &randomizer)),
-            _ => bail!("Invalid commit variant: {VARIANT}"),
+            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
         // Convert the output to a stack value.
         let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
@@ -181,7 +179,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
 
         match VARIANT {
             0 | 1 | 2 | 3 | 4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
-            _ => bail!("Invalid commit variant: {VARIANT}"),
+            _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         }
     }
 }

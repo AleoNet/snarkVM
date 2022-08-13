@@ -51,6 +51,8 @@ pub struct Group<E: Environment> {
 impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Visibility for Group<E> {
+    type Boolean = Boolean<E>;
+
     /// Returns the number of field elements to encode `self`.
     fn size_in_fields(&self) -> Result<u16> {
         Ok(1)

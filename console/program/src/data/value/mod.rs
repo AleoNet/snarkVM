@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod bytes;
+mod equal;
 mod find;
 mod parse;
 mod serialize;
@@ -25,7 +26,7 @@ use crate::{Entry, Identifier, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum Value<N: Network> {
     /// A plaintext value.
     Plaintext(Plaintext<N>),

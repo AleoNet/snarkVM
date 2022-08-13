@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use super::*;
 
-pub trait Visibility:
-    Equal<Self, Output = Self::Boolean> + ToBytes + FromBytes + ToBits + FromBits + ToFields + FromFields
-{
-    type Boolean: BooleanTrait;
+impl<A: Aleo> Equal<Self> for Identifier<A> {
+    type Output = Boolean<A>;
 
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> Result<u16>;
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        self.0.is_equal(&other.0)
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        self.0.is_not_equal(&other.0)
+    }
 }

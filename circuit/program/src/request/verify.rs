@@ -158,7 +158,7 @@ impl<A: Aleo> Request<A> {
                             // Ensure the candidate tag matches the expected tag.
                             & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
-                            & record.owner().is_equal(&self.caller)
+                            & record.owner().deref().is_equal(&self.caller)
                             // Ensure the record gates is less than or equal to 2^52.
                             & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }
@@ -337,7 +337,7 @@ impl<A: Aleo> Request<A> {
                             // Ensure the candidate tag matches the expected tag.
                             & tag.is_equal(&candidate_tag)
                             // Ensure the record belongs to the caller.
-                            & record.owner().is_equal(caller)
+                            & record.owner().deref().is_equal(caller)
                             // Ensure the record gates is less than or equal to 2^52.
                             & !(**record.gates()).to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit)
                     }

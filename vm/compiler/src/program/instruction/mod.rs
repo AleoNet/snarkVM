@@ -69,6 +69,10 @@ pub enum Instruction<N: Network> {
     AddWrapped(AddWrapped<N>),
     /// Performs a bitwise `and` operation on `first` and `second`, storing the outcome in `destination`.
     And(And<N>),
+    /// Asserts `first` and `second` are equal.
+    AssertEq(AssertEq<N>),
+    /// Asserts `first` and `second` are **not** equal.
+    AssertNeq(AssertNeq<N>),
     /// Calls a closure on the operands.
     Call(Call<N>),
     /// Casts the operands into the declared type.
@@ -116,9 +120,9 @@ pub enum Instruction<N: Network> {
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
-    IsEqual(IsEqual<N>),
+    IsEq(IsEq<N>),
     /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
-    IsNotEqual(IsNotEqual<N>),
+    IsNeq(IsNeq<N>),
     /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
     LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
@@ -203,6 +207,8 @@ macro_rules! instruction {
             Add,
             AddWrapped,
             And,
+            AssertEq,
+            AssertNeq,
             Call,
             Cast,
             CommitBHP256,
@@ -226,8 +232,8 @@ macro_rules! instruction {
             HashPSD4,
             HashPSD8,
             Inv,
-            IsEqual,
-            IsNotEqual,
+            IsEq,
+            IsNeq,
             LessThan,
             LessThanOrEqual,
             Modulo,
@@ -398,7 +404,7 @@ mod tests {
     fn test_opcodes() {
         // Sanity check the number of instructions is unchanged.
         assert_eq!(
-            54,
+            56,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );
