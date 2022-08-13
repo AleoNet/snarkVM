@@ -320,19 +320,19 @@ impl<N: Network> Stack<N> {
             Opcode::Assert(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if !["assert.eq", "assert.neq"].contains(&opcode) {
-                    bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
                 }
                 // Ensure the instruction is the correct one.
                 match opcode {
                     "assert.eq" => ensure!(
                         matches!(instruction, Instruction::AssertEq(..)),
-                        "Instruction '{instruction}' is not the opcode '{opcode}'."
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
                     "assert.neq" => ensure!(
                         matches!(instruction, Instruction::AssertNeq(..)),
-                        "Instruction '{instruction}' is not the opcode '{opcode}'."
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
                     ),
-                    _ => bail!("Instruction '{instruction}' is not the opcode '{opcode}'."),
+                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
             Opcode::Call => {
@@ -443,15 +443,36 @@ impl<N: Network> Stack<N> {
                 ]
                 .contains(&opcode)
                 {
-                    bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
                 }
                 // Ensure the instruction is the correct one.
-                // match opcode {
-                //     "commit.bhp256" => ensure!(
-                //         matches!(instruction, Instruction::CommitBHP256(..)),
-                //         "Instruction '{instruction}' is not the opcode '{opcode}'."
-                //     ),
-                // }
+                match opcode {
+                    "commit.bhp256" => ensure!(
+                        matches!(instruction, Instruction::CommitBHP256(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "commit.bhp512" => ensure!(
+                        matches!(instruction, Instruction::CommitBHP512(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "commit.bhp768" => ensure!(
+                        matches!(instruction, Instruction::CommitBHP768(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "commit.bhp1024" => ensure!(
+                        matches!(instruction, Instruction::CommitBHP1024(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "commit.ped64" => ensure!(
+                        matches!(instruction, Instruction::CommitPED64(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "commit.ped128" => ensure!(
+                        matches!(instruction, Instruction::CommitPED128(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+                }
             }
             Opcode::Hash(opcode) => {
                 // Ensure the instruction belongs to the defined set.
@@ -468,15 +489,66 @@ impl<N: Network> Stack<N> {
                 ]
                 .contains(&opcode)
                 {
-                    bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
                 }
                 // Ensure the instruction is the correct one.
-                // match opcode {
-                //     "hash.bhp256" => ensure!(
-                //         matches!(instruction, Instruction::HashBHP256(..)),
-                //         "Instruction '{instruction}' is not the opcode '{opcode}'."
-                //     ),
-                // }
+                match opcode {
+                    "hash.bhp256" => ensure!(
+                        matches!(instruction, Instruction::HashBHP256(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.bhp512" => ensure!(
+                        matches!(instruction, Instruction::HashBHP512(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.bhp768" => ensure!(
+                        matches!(instruction, Instruction::HashBHP768(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.bhp1024" => ensure!(
+                        matches!(instruction, Instruction::HashBHP1024(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.ped64" => ensure!(
+                        matches!(instruction, Instruction::HashPED64(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.ped128" => ensure!(
+                        matches!(instruction, Instruction::HashPED128(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.psd2" => ensure!(
+                        matches!(instruction, Instruction::HashPSD2(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.psd4" => ensure!(
+                        matches!(instruction, Instruction::HashPSD4(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "hash.psd8" => ensure!(
+                        matches!(instruction, Instruction::HashPSD8(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+                }
+            }
+            Opcode::Is(opcode) => {
+                // Ensure the instruction belongs to the defined set.
+                if !["is.eq", "is.neq"].contains(&opcode) {
+                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
+                }
+                // Ensure the instruction is the correct one.
+                match opcode {
+                    "is.eq" => ensure!(
+                        matches!(instruction, Instruction::IsEq(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    "is.neq" => ensure!(
+                        matches!(instruction, Instruction::IsNeq(..)),
+                        "Instruction '{instruction}' is not for opcode '{opcode}'."
+                    ),
+                    _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
+                }
             }
         }
         Ok(())

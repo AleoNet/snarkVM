@@ -116,10 +116,8 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
             5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
             _ => bail!("Invalid 'commit' variant: {VARIANT}"),
         };
-        // Convert the output to a stack value.
-        let output = Value::Plaintext(Plaintext::Literal(output, Default::default()));
         // Store the output.
-        registers.store(stack, &self.destination, output)
+        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(output)))
     }
 
     /// Executes the instruction.

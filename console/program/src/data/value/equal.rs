@@ -16,26 +16,33 @@
 
 use super::*;
 
-impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Entry<A, Private> {
-    type Output = Boolean<A>;
+impl<N: Network> Eq for Value<N> {}
+
+impl<N: Network> PartialEq for Value<N> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        *self.is_equal(other)
+    }
+}
+
+impl<N: Network> Equal<Self> for Value<N> {
+    type Output = Boolean<N>;
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
-            (Self::Constant(a), Self::Constant(b)) => a.is_equal(b),
-            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
-            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
-            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(false),
+            (Self::Plaintext(a), Self::Plaintext(b)) => a.is_equal(b),
+            (Self::Record(a), Self::Record(b)) => a.is_equal(b),
+            (Self::Plaintext(..), _) | (Self::Record(..), _) => Boolean::new(false),
         }
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         match (self, other) {
-            (Self::Constant(a), Self::Constant(b)) => a.is_not_equal(b),
-            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
-            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
-            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(true),
+            (Self::Plaintext(a), Self::Plaintext(b)) => a.is_not_equal(b),
+            (Self::Record(a), Self::Record(b)) => a.is_not_equal(b),
+            (Self::Plaintext(..), _) | (Self::Record(..), _) => Boolean::new(true),
         }
     }
 }

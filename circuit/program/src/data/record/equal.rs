@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<A: Aleo> Equal<Self> for Record<A, Plaintext<A>> {
+impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Record<A, Private> {
     type Output = Boolean<A>;
 
     /// Returns `true` if `self` and `other` are equal.
@@ -26,25 +26,31 @@ impl<A: Aleo> Equal<Self> for Record<A, Plaintext<A>> {
         // Recursively check each entry for equality.
         let mut equal = Boolean::constant(true);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            equal = equal & name_a.to_field().is_equal(&name_b.to_field()) & entry_a.is_equal(entry_b);
+            equal = equal & name_a.is_equal(&name_b) & entry_a.is_equal(entry_b);
         }
 
-        // Note: This equality *skips* the `nonce` check.
-        self.owner.is_equal(&other.owner) & self.gates.is_equal(&other.gates) & equal
+        // Check the `owner`, `gates`, `data`, and `nonce`.
+        self.owner.is_equal(&other.owner)
+            & self.gates.is_equal(&other.gates)
+            & equal
+            & self.nonce.is_equal(&other.nonce)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     ///
     /// Note: This method does **not** check the `nonce` equality.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        // Recursively check each entry for equality.
+        // Recursively check each entry for inequality.
         let mut not_equal = Boolean::constant(false);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            not_equal = not_equal | name_a.to_field().is_not_equal(&name_b.to_field()) | entry_a.is_not_equal(entry_b);
+            not_equal = not_equal | name_a.is_not_equal(&name_b) | entry_a.is_not_equal(entry_b);
         }
 
-        // Note: This equality *skips* the `nonce` check.
-        self.owner.is_not_equal(&other.owner) | self.gates.is_not_equal(&other.gates) | not_equal
+        // Check the `owner`, `gates`, `data`, and `nonce`.
+        self.owner.is_not_equal(&other.owner)
+            | self.gates.is_not_equal(&other.gates)
+            | not_equal
+            | self.nonce.is_not_equal(&other.nonce)
     }
 }
 
@@ -153,31 +159,31 @@ mod tests {
 
     #[test]
     fn test_is_equal_constant() -> Result<()> {
-        check_is_equal(Mode::Constant, 7, 0, 30, 39)
+        check_is_equal(Mode::Constant, 7, 0, 36, 47)
     }
 
     #[test]
     fn test_is_equal_public() -> Result<()> {
-        check_is_equal(Mode::Public, 7, 0, 30, 39)
+        check_is_equal(Mode::Public, 7, 0, 36, 47)
     }
 
     #[test]
     fn test_is_equal_private() -> Result<()> {
-        check_is_equal(Mode::Private, 7, 0, 30, 39)
+        check_is_equal(Mode::Private, 7, 0, 36, 47)
     }
 
     #[test]
     fn test_is_not_equal_constant() -> Result<()> {
-        check_is_not_equal(Mode::Constant, 7, 0, 25, 34)
+        check_is_not_equal(Mode::Constant, 7, 0, 30, 41)
     }
 
     #[test]
     fn test_is_not_equal_public() -> Result<()> {
-        check_is_not_equal(Mode::Public, 7, 0, 25, 34)
+        check_is_not_equal(Mode::Public, 7, 0, 30, 41)
     }
 
     #[test]
     fn test_is_not_equal_private() -> Result<()> {
-        check_is_not_equal(Mode::Private, 7, 0, 25, 34)
+        check_is_not_equal(Mode::Private, 7, 0, 30, 41)
     }
 }

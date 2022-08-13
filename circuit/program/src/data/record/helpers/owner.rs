@@ -59,6 +59,19 @@ impl<A: Aleo> Inject for Owner<A, Ciphertext<A>> {
     }
 }
 
+impl<A: Aleo> Deref for Owner<A, Plaintext<A>> {
+    type Target = Address<A>;
+
+    /// Returns the address of the owner.
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Public(public) => public,
+            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address,
+            _ => A::halt("Internal error: plaintext deref corrupted in record owner"),
+        }
+    }
+}
+
 impl<A: Aleo, Private: Visibility<A>> Owner<A, Private> {
     /// Returns `true` if `self` is public.
     pub fn is_public(&self) -> Boolean<A> {
@@ -81,20 +94,7 @@ impl<A: Aleo> Owner<A, Plaintext<A>> {
     }
 }
 
-impl<A: Aleo> Deref for Owner<A, Plaintext<A>> {
-    type Target = Address<A>;
-
-    /// Returns the address of the owner.
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Public(public) => public,
-            Self::Private(Plaintext::Literal(Literal::Address(address), ..)) => address,
-            _ => A::halt("Internal error: plaintext deref corrupted in record owner"),
-        }
-    }
-}
-
-impl<A: Aleo> Equal<Self> for Owner<A, Plaintext<A>> {
+impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Owner<A, Private> {
     type Output = Boolean<A>;
 
     /// Returns `true` if `self` and `other` are equal.

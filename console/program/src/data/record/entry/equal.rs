@@ -16,8 +16,17 @@
 
 use super::*;
 
-impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Entry<A, Private> {
-    type Output = Boolean<A>;
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Eq for Entry<N, Private> {}
+
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> PartialEq for Entry<N, Private> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        *self.is_equal(other)
+    }
+}
+
+impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Entry<N, Private> {
+    type Output = Boolean<N>;
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
@@ -25,7 +34,7 @@ impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Entry<A, Private> {
             (Self::Constant(a), Self::Constant(b)) => a.is_equal(b),
             (Self::Public(a), Self::Public(b)) => a.is_equal(b),
             (Self::Private(a), Self::Private(b)) => a.is_equal(b),
-            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(false),
+            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::new(false),
         }
     }
 
@@ -35,7 +44,7 @@ impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Entry<A, Private> {
             (Self::Constant(a), Self::Constant(b)) => a.is_not_equal(b),
             (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
             (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
-            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(true),
+            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::new(true),
         }
     }
 }

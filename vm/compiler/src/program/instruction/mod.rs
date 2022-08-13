@@ -120,9 +120,9 @@ pub enum Instruction<N: Network> {
     /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
     Inv(Inv<N>),
     /// Computes whether `first` equals `second` as a boolean, storing the outcome in `destination`.
-    IsEqual(IsEqual<N>),
+    IsEq(IsEq<N>),
     /// Computes whether `first` does **not** equals `second` as a boolean, storing the outcome in `destination`.
-    IsNotEqual(IsNotEqual<N>),
+    IsNeq(IsNeq<N>),
     /// Computes whether `first` is less than `second` as a boolean, storing the outcome in `destination`.
     LessThan(LessThan<N>),
     /// Computes whether `first` is less than or equal to `second` as a boolean, storing the outcome in `destination`.
@@ -232,8 +232,8 @@ macro_rules! instruction {
             HashPSD4,
             HashPSD8,
             Inv,
-            IsEqual,
-            IsNotEqual,
+            IsEq,
+            IsNeq,
             LessThan,
             LessThanOrEqual,
             Modulo,

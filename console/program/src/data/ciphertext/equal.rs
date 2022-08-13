@@ -16,26 +16,35 @@
 
 use super::*;
 
-impl<A: Aleo, Private: Visibility<A>> Equal<Self> for Entry<A, Private> {
-    type Output = Boolean<A>;
+impl<N: Network> Eq for Ciphertext<N> {}
+
+impl<N: Network> PartialEq for Ciphertext<N> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        *self.is_equal(other)
+    }
+}
+
+impl<N: Network> Equal<Self> for Ciphertext<N> {
+    type Output = Boolean<N>;
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
-        match (self, other) {
-            (Self::Constant(a), Self::Constant(b)) => a.is_equal(b),
-            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
-            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
-            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(false),
+        // Check each field element for equality.
+        let mut equal = Boolean::new(true);
+        for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
+            equal = equal & a.is_equal(b);
         }
+        equal
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        match (self, other) {
-            (Self::Constant(a), Self::Constant(b)) => a.is_not_equal(b),
-            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
-            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
-            (Self::Constant(_), _) | (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(true),
+        // Recursively check each member for inequality.
+        let mut not_equal = Boolean::new(false);
+        for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
+            not_equal = not_equal | a.is_not_equal(b);
         }
+        not_equal
     }
 }

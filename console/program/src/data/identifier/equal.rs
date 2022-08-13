@@ -16,18 +16,31 @@
 
 use super::*;
 
-impl<N: Network> Visibility for Ciphertext<N> {
-    type Boolean = Boolean<N>;
+impl<N: Network> Eq for Identifier<N> {}
 
-    /// Returns the number of field elements to encode `self`.
-    fn size_in_fields(&self) -> Result<u16> {
-        // Retrieve the number of field elements.
-        let num_fields = self.0.len();
-        // Ensure the number of field elements does not exceed the maximum allowed size.
-        match num_fields <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
-            // Return the number of field elements.
-            true => Ok(num_fields as u16),
-            false => bail!("Ciphertext is too large to encode in field elements."),
-        }
+impl<N: Network> PartialEq for Identifier<N> {
+    /// Returns `true` if `self` and `other` are equal.
+    fn eq(&self, other: &Self) -> bool {
+        *self.is_equal(other)
+    }
+}
+
+impl<N: Network> core::hash::Hash for Identifier<N> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
+
+impl<N: Network> Equal<Self> for Identifier<N> {
+    type Output = Boolean<N>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self.0 == other.0)
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        Boolean::new(self.0 != other.0)
     }
 }

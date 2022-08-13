@@ -123,10 +123,8 @@ impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {
             8 => N::hash_psd8(&input.to_fields()?)?,
             _ => bail!("Invalid 'hash' variant: {VARIANT}"),
         };
-        // Convert the output to a stack value.
-        let output = Value::Plaintext(Plaintext::Literal(Literal::Field(output), Default::default()));
         // Store the output.
-        registers.store(stack, &self.destination, output)
+        registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(output))))
     }
 
     /// Executes the instruction.
