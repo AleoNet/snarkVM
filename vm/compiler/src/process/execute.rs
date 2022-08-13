@@ -28,14 +28,6 @@ impl<N: Network> Process<N> {
         let request = authorization.peek_next()?;
         // Prepare the stack.
         let stack = self.get_stack(request.program_id())?;
-
-        // Ensure the network ID matches.
-        ensure!(
-            **request.network_id() == N::ID,
-            "Network ID mismatch. Expected {}, but found {}",
-            N::ID,
-            request.network_id()
-        );
         // Ensure that the function exists.
         if !stack.program().contains_function(request.function_name()) {
             bail!("Function '{}' does not exist.", request.function_name())

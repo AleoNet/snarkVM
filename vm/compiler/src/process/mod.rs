@@ -38,7 +38,7 @@ mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{AdditionalFee, Certificate, Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
+use crate::{AdditionalFee, Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,

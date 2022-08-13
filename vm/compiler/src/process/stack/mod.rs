@@ -24,6 +24,7 @@ use crate::{
     CallOperator,
     Certificate,
     Closure,
+    Deployment,
     Execution,
     Function,
     Instruction,
@@ -180,6 +181,16 @@ impl<N: Network> Stack<N> {
         ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
+
+        // Serialize the program into bytes.
+        let program_bytes = program.to_bytes_le()?;
+        // Ensure the program deserializes from bytes correctly.
+        ensure!(program == &Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
+
+        // Serialize the program into string.
+        let program_string = program.to_string();
+        // Ensure the program deserializes from a string correctly.
+        ensure!(program == &Program::from_str(&program_string)?, "Program string serialization failed");
 
         // Construct the stack for the program.
         let mut stack = Self {

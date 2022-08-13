@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod helpers;
+
 use crate::{
+    cast_ref,
     ledger::{
         store::{BlockStorage, BlockStore},
         AdditionalFee,
         Transaction,
     },
+    process,
     process::{Authorization, Deployment, Execution, Process},
+    process_mut,
     program::Program,
 };
 use console::{
@@ -32,56 +37,6 @@ use console::{
 use core::marker::PhantomData;
 use parking_lot::RwLock;
 use std::sync::Arc;
-
-/// A helper macro to downcast a `$variable` to `$object<$network>`.
-macro_rules! cast_ref {
-    // Example: cast_ref!((foo.bar()) as Bar<Testnet3>)
-    (($variable:expr) as $object:ident<$($network:path),+>) => {{
-        (&$variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$($network),+>>()
-            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
-    }};
-    // Example: cast_ref!(bar as Bar<Testnet3>)
-    ($variable:ident as $object:ident<$($network:path),+>) => {{
-        (&$variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$($network),+>>()
-            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
-    }};
-    // Example: cast_ref!(&bar as Bar<Testnet3>)
-    (&$variable:ident as $object:ident<$($network:path),+>) => {{
-        ($variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$($network),+>>()
-            .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
-    }};
-}
-
-/// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
-macro_rules! process {
-    // Example: process!(logic)
-    ($self:ident, $logic:ident) => {{
-        // Process the logic.
-        match N::ID {
-            console::network::Testnet3::ID => {
-                $logic!($self.process.read(), console::network::Testnet3, circuit::AleoV0)
-            }
-            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
-        }
-    }};
-}
-
-/// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
-macro_rules! process_mut {
-    // Example: process!(logic)
-    ($self:ident, $logic:ident) => {{
-        // Process the logic.
-        match N::ID {
-            console::network::Testnet3::ID => {
-                $logic!($self.process.write(), console::network::Testnet3, circuit::AleoV0)
-            }
-            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
-        }
-    }};
-}
 
 #[derive(Clone)]
 pub struct VM<N: Network> {
@@ -466,13 +421,8 @@ impl<N: Network> VM<N> {
             ($process:expr, $network:path, $aleo:path) => {{
                 // Prepare the deployment.
                 let deployment = cast_ref!(&deployment as Deployment<$network>);
-                // Add the program.
-                $process.add_program(deployment.program())?;
-                // Insert the verifying keys.
-                for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-                    $process.insert_verifying_key(deployment.program().id(), function_name, verifying_key.clone())?;
-                }
-                Ok(())
+                // Finalize the deployment.
+                $process.finalize_deployment(deployment)
             }};
         }
         // Process the logic.
