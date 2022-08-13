@@ -69,22 +69,13 @@ impl<N: Network> VM<N> {
         let mut process = Process::load()?;
 
         // Load the deployments from the store.
-        for program in transaction_store.programs() {
-            // Add the program to the process.
-            process.add_program(&*program)?;
-
-            // Retrieve the program ID.
-            let program_id = program.id();
-            // Iterate through the function names.
-            for function_name in program.functions().keys() {
-                // Retrieve the verifying key for the function.
-                match transaction_store.get_verifying_key(program_id, function_name)? {
-                    // Add the verifying key to the process.
-                    Some(verifying_key) => process.insert_verifying_key(program_id, function_name, verifying_key)?,
-                    // Throw an error if the verifying key is not found.
-                    None => bail!("Missing a verifying key in storage for {program_id}/{function_name}"),
-                }
-            }
+        for transaction_id in transaction_store.deployment_ids() {
+            // Retrieve the deployment.
+            match transaction_store.get_deployment(&*transaction_id)? {
+                // Finalize the deployment.
+                Some(deployment) => process.finalize_deployment(&deployment)?,
+                None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
+            };
         }
 
         // Cast the process into the appropriate network.

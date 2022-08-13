@@ -23,11 +23,11 @@ mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{AdditionalFee, Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
+use crate::{AdditionalFee, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value, ValueType},
+    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{I64, U64},
 };
 
@@ -190,52 +190,6 @@ impl<N: Network> Process<N> {
     ) -> Result<()> {
         // Synthesize the proving and verifying key.
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
-    }
-}
-
-impl<N: Network> Process<N> {
-    /// Returns the program, function, and input types for the given program ID and function name.
-    #[inline]
-    #[allow(clippy::type_complexity)]
-    fn get_function_info(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-    ) -> Result<(&Program<N>, Function<N>, Vec<ValueType<N>>, Vec<ValueType<N>>)> {
-        // Ensure the program exists.
-        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
-        // Retrieve the program.
-        let program = self.get_program(program_id)?;
-        // Ensure the function exists.
-        if !program.contains_function(function_name) {
-            bail!("Function '{function_name}' does not exist in the program '{program_id}'.")
-        }
-
-        // Retrieve the function.
-        let function = program.get_function(function_name)?;
-        // Retrieve the input types.
-        let input_types = function.input_types();
-        // Retrieve the output types.
-        let output_types = function.output_types();
-
-        // Ensure the number of inputs matches the number of input types.
-        if function.inputs().len() != input_types.len() {
-            bail!(
-                "Function '{function_name}' in program '{program_id}' expects {} inputs, but {} types were found.",
-                function.inputs().len(),
-                input_types.len()
-            )
-        }
-        // Ensure the number of outputs matches the number of output types.
-        if function.outputs().len() != output_types.len() {
-            bail!(
-                "Function '{function_name}' in program '{program_id}' expects {} outputs, but {} types were found.",
-                function.outputs().len(),
-                output_types.len()
-            )
-        }
-
-        Ok((program, function, input_types, output_types))
     }
 }
 
