@@ -18,6 +18,7 @@
 #![cfg_attr(test, allow(clippy::assertions_on_result_states))]
 
 mod helpers;
+mod equal;
 
 #[cfg(test)]
 use console::test_rng;

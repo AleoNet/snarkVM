@@ -91,6 +91,28 @@ impl<A: Aleo> Deref for Balance<A, Plaintext<A>> {
     }
 }
 
+impl<A: Aleo> Equal<Self> for Balance<A, Plaintext<A>> {
+    type Output = Boolean<A>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(false),
+        }
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(true),
+        }
+    }
+}
+
 impl<A: Aleo> Balance<A, Plaintext<A>> {
     /// Encrypts the balance under the given randomizer.
     pub fn encrypt(&self, randomizer: &[Field<A>]) -> Balance<A, Ciphertext<A>> {

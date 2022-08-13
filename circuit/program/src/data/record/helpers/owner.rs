@@ -94,6 +94,28 @@ impl<A: Aleo> Deref for Owner<A, Plaintext<A>> {
     }
 }
 
+impl<A: Aleo> Equal<Self> for Owner<A, Plaintext<A>> {
+    type Output = Boolean<A>;
+
+    /// Returns `true` if `self` and `other` are equal.
+    fn is_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(false),
+        }
+    }
+
+    /// Returns `true` if `self` and `other` are *not* equal.
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        match (self, other) {
+            (Self::Public(a), Self::Public(b)) => a.is_not_equal(b),
+            (Self::Private(a), Self::Private(b)) => a.is_not_equal(b),
+            (Self::Public(_), _) | (Self::Private(_), _) => Boolean::constant(true),
+        }
+    }
+}
+
 impl<A: Aleo> Owner<A, Plaintext<A>> {
     /// Encrypts `self` under the given randomizer.
     pub fn encrypt(&self, randomizer: &[Field<A>]) -> Owner<A, Ciphertext<A>> {
