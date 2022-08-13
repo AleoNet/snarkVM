@@ -14,17 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod authorization;
+pub use authorization::*;
+
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod register_types;
+pub use register_types::*;
+
+mod registers;
+pub use registers::*;
+
+mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
 mod helpers;
 
 use crate::{
-    Authorization,
     CallOperator,
     Certificate,
     Closure,
-    Execution,
     Function,
     Instruction,
     Opcode,
@@ -32,8 +46,6 @@ use crate::{
     Process,
     Program,
     ProvingKey,
-    RegisterTypes,
-    Registers,
     Transition,
     UniversalSRS,
     VerifyingKey,
@@ -181,39 +193,18 @@ impl<N: Network> Stack<N> {
         // Ensure the program contains functions.
         ensure!(!program.functions().is_empty(), "No functions present in the deployment for program '{program_id}'");
 
-        // Construct the stack for the program.
-        let mut stack = Self {
-            program: program.clone(),
-            external_stacks: Default::default(),
-            program_types: Default::default(),
-            universal_srs: process.universal_srs().clone(),
-            proving_keys: Default::default(),
-            verifying_keys: Default::default(),
-        };
+        // Serialize the program into bytes.
+        let program_bytes = program.to_bytes_le()?;
+        // Ensure the program deserializes from bytes correctly.
+        ensure!(program == &Program::from_bytes_le(&program_bytes)?, "Program byte serialization failed");
 
-        // Add all of the imports into the stack.
-        for import in program.imports().keys() {
-            // Ensure the program imports all exist in the process already.
-            if !process.contains_program(import) {
-                bail!("Cannot add program '{program_id}' because its import '{import}' must be added first")
-            }
-            // Retrieve the external stack for the import program ID.
-            let external_stack = process.get_stack(import)?;
-            // Add the external stack to the stack.
-            stack.insert_external_stack(external_stack.clone())?;
-        }
-        // Add the program closures to the stack.
-        for closure in program.closures().values() {
-            // Add the closure to the stack.
-            stack.insert_closure(closure)?;
-        }
-        // Add the program functions to the stack.
-        for function in program.functions().values() {
-            // Add the function to the stack.
-            stack.insert_function(function)?;
-        }
+        // Serialize the program into string.
+        let program_string = program.to_string();
+        // Ensure the program deserializes from a string correctly.
+        ensure!(program == &Program::from_str(&program_string)?, "Program string serialization failed");
+
         // Return the stack.
-        Ok(stack)
+        Stack::initialize(process, program)
     }
 
     /// Returns the program.
@@ -269,7 +260,11 @@ impl<N: Network> Stack<N> {
     /// Returns the function with the given function name.
     #[inline]
     pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
-        self.program.get_function(function_name)
+        // Ensure the function exists.
+        match self.program.contains_function(function_name) {
+            true => self.program.get_function(function_name),
+            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
+        }
     }
 
     /// Returns the expected number of calls for the given function name.
@@ -335,14 +330,30 @@ impl<N: Network> Stack<N> {
 
     /// Inserts the given proving key for the given function name.
     #[inline]
-    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) {
+    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the proving key.
         self.proving_keys.write().insert(*function_name, proving_key);
+        Ok(())
     }
 
     /// Inserts the given verifying key for the given function name.
     #[inline]
-    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) {
+    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the verifying key.
         self.verifying_keys.write().insert(*function_name, verifying_key);
+        Ok(())
     }
 
     /// Removes the proving key for the given function name.

@@ -112,7 +112,7 @@ impl<N: Network> Stack<N> {
         );
 
         // Retrieve the function from the program.
-        let function = self.program.get_function(console_request.function_name())?;
+        let function = self.get_function(console_request.function_name())?;
         // Retrieve the number of inputs.
         let num_inputs = function.inputs().len();
         // Ensure the number of inputs matches the number of input statements.

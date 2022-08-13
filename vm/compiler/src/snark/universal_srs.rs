@@ -28,7 +28,9 @@ impl<N: Network> UniversalSRS<N> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
 
-        let universal_srs = Self::read_le(&*snarkvm_parameters::testnet3::TrialSRS::load_bytes()?)?;
+        static UNIVERSAL_SRS: OnceCell<Vec<u8>> = OnceCell::new();
+        let srs = UNIVERSAL_SRS.get_or_try_init(snarkvm_parameters::testnet3::TrialSRS::load_bytes)?;
+        let universal_srs = Self::from_bytes_le(srs)?;
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());

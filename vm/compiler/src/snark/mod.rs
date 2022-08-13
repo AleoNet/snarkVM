@@ -21,6 +21,7 @@ use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
 use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
+use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]

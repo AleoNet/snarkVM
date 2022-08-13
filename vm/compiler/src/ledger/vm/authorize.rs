@@ -16,10 +16,10 @@
 
 use super::*;
 
-impl<N: Network> Process<N> {
+impl<N: Network> VM<N> {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
-    pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+    pub fn authorize<R: Rng + CryptoRng>(
         &self,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
@@ -27,7 +27,26 @@ impl<N: Network> Process<N> {
         inputs: &[Value<N>],
         rng: &mut R,
     ) -> Result<Authorization<N>> {
-        // Authorize the call.
-        self.get_stack(program_id)?.authorize::<A, R>(private_key, function_name, inputs, rng)
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                let inputs = inputs.to_vec();
+
+                // Prepare the inputs.
+                let private_key = cast_ref!(&private_key as PrivateKey<$network>);
+                let program_id = cast_ref!(&program_id as ProgramID<$network>);
+                let function_name = cast_ref!(function_name as Identifier<$network>);
+                let inputs = cast_ref!(inputs as Vec<Value<$network>>);
+
+                // Compute the authorization.
+                let authorization =
+                    $process.authorize::<$aleo, _>(private_key, program_id, function_name.clone(), inputs, rng)?;
+
+                // Return the authorization.
+                Ok(cast_ref!(authorization as Authorization<N>).clone())
+            }};
+        }
+        // Process the logic.
+        process!(self, logic)
     }
 }

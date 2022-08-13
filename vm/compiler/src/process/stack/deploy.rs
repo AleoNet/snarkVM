@@ -17,20 +17,61 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
+    /// Deploys the given program ID, if it does not exist.
+    #[inline]
+    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
+        &self,
+        program: &Program<N>,
+        rng: &mut R,
+    ) -> Result<Deployment<N>> {
+        // Ensure the program contains functions.
+        ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
+
+        // Initialize a mapping for the bundle.
+        let mut bundle = IndexMap::with_capacity(program.functions().len());
+
+        for function_name in program.functions().keys() {
+            // Synthesize the proving and verifying key.
+            self.synthesize_key::<A, R>(function_name, rng)?;
+
+            // Retrieve the proving key.
+            let proving_key = self.get_proving_key(function_name)?;
+            // Retrieve the verifying key.
+            let verifying_key = self.get_verifying_key(function_name)?;
+
+            // Certify the circuit.
+            let certificate = Certificate::certify(function_name, &proving_key, &verifying_key)?;
+
+            // Add the verifying key and certificate to the bundle.
+            bundle.insert(*function_name, (verifying_key, certificate));
+        }
+
+        // Return the deployment.
+        Deployment::new(N::EDITION, program.clone(), bundle)
+    }
+
     /// Checks each function in the program on the given verifying key and certificate.
     #[inline]
     pub fn verify_deployment<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
         &self,
-        verifying_keys: &IndexMap<Identifier<N>, (VerifyingKey<N>, Certificate<N>)>,
+        deployment: &Deployment<N>,
         rng: &mut R,
     ) -> Result<()> {
+        // Retrieve the edition.
+        let edition = deployment.edition();
         // Retrieve the program.
         let program = &self.program;
         // Retrieve the program ID.
         let program_id = program.id();
+        // Retrieve the verifying keys.
+        let verifying_keys = deployment.verifying_keys();
 
         // Sanity Checks //
 
+        // Ensure the edition matches.
+        ensure!(edition == N::EDITION, "Deployed the wrong edition (expected '{}', found '{edition}').", N::EDITION);
+        // Ensure the program matches.
+        ensure!(program == deployment.program(), "The stack program does not match the deployment program");
         // Ensure the program network-level domain (NLD) is correct.
         ensure!(program_id.is_aleo(), "Program '{program_id}' has an incorrect network-level domain (NLD)");
         // Ensure the program contains functions.

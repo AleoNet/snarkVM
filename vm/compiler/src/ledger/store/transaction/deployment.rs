@@ -525,6 +525,11 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
 }
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
+    /// Returns an iterator over the deployment transaction IDs, for all deployments.
+    pub fn deployment_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.id_map().keys()
+    }
+
     /// Returns an iterator over the program IDs, for all deployments.
     pub fn program_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, ProgramID<N>>> {
         self.storage.id_map().values().map(|id| match id {

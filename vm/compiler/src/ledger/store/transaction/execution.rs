@@ -30,6 +30,7 @@ use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
+use std::borrow::Cow;
 
 /// A trait for execution storage.
 pub trait ExecutionStorage<N: Network>: Clone + Sync {
@@ -354,6 +355,13 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the transaction ID that executed the given `transition ID`.
     pub fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
         self.storage.find_transaction_id(transition_id)
+    }
+}
+
+impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
+    /// Returns an iterator over the execution transaction IDs, for all executions.
+    pub fn execution_ids(&self) -> impl '_ + Iterator<Item = Cow<'_, N::TransactionID>> {
+        self.storage.edition_map().keys()
     }
 }
 

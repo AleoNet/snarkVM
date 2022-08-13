@@ -14,21 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod deployment;
-pub use deployment::*;
-
-mod execution;
-pub use execution::*;
-
-mod helpers;
-pub use helpers::*;
-
-mod register_types;
-pub use register_types::*;
-
-mod registers;
-pub use registers::*;
-
 mod stack;
 pub use stack::*;
 
@@ -38,11 +23,11 @@ mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{AdditionalFee, Certificate, Function, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
+use crate::{AdditionalFee, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
 use console::{
     account::PrivateKey,
     network::prelude::*,
-    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value, ValueType},
+    program::{Identifier, Plaintext, ProgramID, Record, Request, Response, Value},
     types::{I64, U64},
 };
 
@@ -64,11 +49,22 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn setup() -> Result<Self> {
+    pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
-        // Add the 'credits.aleo' program to the process.
-        process.add_program(&Program::credits()?)?;
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+
+        // Synthesize the 'credits.aleo' circuit keys.
+        for function_name in program.functions().keys() {
+            stack.synthesize_key::<A, _>(function_name, rng)?;
+        }
+
+        // Add the 'credits.aleo' stack to the process.
+        process.stacks.insert(*program.id(), stack);
         // Return the process.
         Ok(process)
     }
@@ -82,17 +78,29 @@ impl<N: Network> Process<N> {
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
         // Compute the 'credits.aleo' program stack.
-        let mut stack = Stack::new(&process, &program)?;
-        // Load the 'credits.aleo' program.
-        stack.load_credits_program()?;
+        let stack = Stack::new(&process, &program)?;
+
+        // Synthesize the 'credits.aleo' circuit keys.
+        for function_name in program.functions().keys() {
+            // TODO (howardwu): Abstract this into the `Network` trait.
+            // Load the proving and verifying key bytes.
+            let (proving_key, verifying_key) = snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
+                .get(&function_name.to_string())
+                .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
+
+            // Insert the proving and verifying key.
+            stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
+            stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
+        }
+
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
-
         // Return the process.
         Ok(process)
     }
 
     /// Adds a new program to the process.
+    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
         // Compute the program stack.
@@ -115,19 +123,21 @@ impl<N: Network> Process<N> {
         self.stacks.contains_key(program_id)
     }
 
-    /// Returns the program for the given program ID.
-    #[inline]
-    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
-        self.stacks
-            .get(program_id)
-            .map(|stack| stack.program())
-            .ok_or_else(|| anyhow!("Program '{program_id}' not found"))
-    }
-
     /// Returns the stack for the given program ID.
     #[inline]
     pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
-        self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' not found"))
+        // Retrieve the stack.
+        let stack = self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        // Ensure the program ID matches.
+        ensure!(stack.program_id() == program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
+        // Return the stack.
+        Ok(stack)
+    }
+
+    /// Returns the program for the given program ID.
+    #[inline]
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+        self.get_stack(program_id).map(Stack::program)
     }
 
     /// Returns the proving key for the given program ID and function name.
@@ -156,9 +166,7 @@ impl<N: Network> Process<N> {
         function_name: &Identifier<N>,
         proving_key: ProvingKey<N>,
     ) -> Result<()> {
-        // Add the proving key to the mapping.
-        self.get_stack(program_id)?.insert_proving_key(function_name, proving_key);
-        Ok(())
+        self.get_stack(program_id)?.insert_proving_key(function_name, proving_key)
     }
 
     /// Inserts the given verifying key, for the given program ID and function name.
@@ -169,9 +177,7 @@ impl<N: Network> Process<N> {
         function_name: &Identifier<N>,
         verifying_key: VerifyingKey<N>,
     ) -> Result<()> {
-        // Add the verifying key to the mapping.
-        self.get_stack(program_id)?.insert_verifying_key(function_name, verifying_key);
-        Ok(())
+        self.get_stack(program_id)?.insert_verifying_key(function_name, verifying_key)
     }
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.
@@ -184,52 +190,6 @@ impl<N: Network> Process<N> {
     ) -> Result<()> {
         // Synthesize the proving and verifying key.
         self.get_stack(program_id)?.synthesize_key::<A, R>(function_name, rng)
-    }
-}
-
-impl<N: Network> Process<N> {
-    /// Returns the program, function, and input types for the given program ID and function name.
-    #[inline]
-    #[allow(clippy::type_complexity)]
-    fn get_function_info(
-        &self,
-        program_id: &ProgramID<N>,
-        function_name: &Identifier<N>,
-    ) -> Result<(&Program<N>, Function<N>, Vec<ValueType<N>>, Vec<ValueType<N>>)> {
-        // Ensure the program exists.
-        ensure!(self.contains_program(program_id), "Program '{program_id}' does not exist in the VM.");
-        // Retrieve the program.
-        let program = self.get_program(program_id)?;
-        // Ensure the function exists.
-        if !program.contains_function(function_name) {
-            bail!("Function '{function_name}' does not exist in the program '{program_id}'.")
-        }
-
-        // Retrieve the function.
-        let function = program.get_function(function_name)?;
-        // Retrieve the input types.
-        let input_types = function.input_types();
-        // Retrieve the output types.
-        let output_types = function.output_types();
-
-        // Ensure the number of inputs matches the number of input types.
-        if function.inputs().len() != input_types.len() {
-            bail!(
-                "Function '{function_name}' in program '{program_id}' expects {} inputs, but {} types were found.",
-                function.inputs().len(),
-                input_types.len()
-            )
-        }
-        // Ensure the number of outputs matches the number of output types.
-        if function.outputs().len() != output_types.len() {
-            bail!(
-                "Function '{function_name}' in program '{program_id}' expects {} outputs, but {} types were found.",
-                function.outputs().len(),
-                output_types.len()
-            )
-        }
-
-        Ok((program, function, input_types, output_types))
     }
 }
 

@@ -196,6 +196,8 @@ function fee:
         // Attempt to retrieve the interface.
         let interface =
             self.interfaces.get(name).cloned().ok_or_else(|| anyhow!("Interface '{name}' is not defined."))?;
+        // Ensure the interface name matches.
+        ensure!(interface.name() == name, "Expected interface '{name}', but found interface '{}'", interface.name());
         // Ensure the interface contains members.
         ensure!(!interface.members().is_empty(), "Interface '{name}' is missing members.");
         // Return the interface.
@@ -204,13 +206,20 @@ function fee:
 
     /// Returns the record with the given name.
     pub fn get_record(&self, name: &Identifier<N>) -> Result<RecordType<N>> {
-        self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))
+        // Attempt to retrieve the record.
+        let record = self.records.get(name).cloned().ok_or_else(|| anyhow!("Record '{name}' is not defined."))?;
+        // Ensure the record name matches.
+        ensure!(record.name() == name, "Expected record '{name}', but found record '{}'", record.name());
+        // Return the record.
+        Ok(record)
     }
 
     /// Returns the closure with the given name.
     pub fn get_closure(&self, name: &Identifier<N>) -> Result<Closure<N>> {
         // Attempt to retrieve the closure.
         let closure = self.closures.get(name).cloned().ok_or_else(|| anyhow!("Closure '{name}' is not defined."))?;
+        // Ensure the closure name matches.
+        ensure!(closure.name() == name, "Expected closure '{name}', but found closure '{}'", closure.name());
         // Ensure there are input statements in the closure.
         ensure!(!closure.inputs().is_empty(), "Cannot evaluate a closure without input statements");
         // Ensure the number of inputs is within the allowed range.
@@ -227,6 +236,8 @@ function fee:
     pub fn get_function(&self, name: &Identifier<N>) -> Result<Function<N>> {
         // Attempt to retrieve the function.
         let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
+        // Ensure the function name matches.
+        ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
         // Ensure there are input statements in the function.
         ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
         // Ensure the number of inputs is within the allowed range.

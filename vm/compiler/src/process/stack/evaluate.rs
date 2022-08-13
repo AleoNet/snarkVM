@@ -69,15 +69,9 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn evaluate_function<A: circuit::Aleo<Network = N>>(&self, call_stack: CallStack<N>) -> Result<Response<N>> {
         // Retrieve the next request, based on the call stack mode.
-        let (call_stack, request) = match &call_stack {
-            CallStack::Evaluate(authorization) => {
-                let request = authorization.next()?;
-                (call_stack, request)
-            }
-            CallStack::Execute(authorization, ..) => {
-                let request = authorization.peek_next()?;
-                (call_stack.replicate(), request)
-            }
+        let (request, call_stack) = match &call_stack {
+            CallStack::Evaluate(authorization) => (authorization.next()?, call_stack),
+            CallStack::Execute(authorization, ..) => (authorization.peek_next()?, call_stack.replicate()),
             _ => bail!("Illegal operation: call stack must be `Evaluate` or `Execute` in `evaluate_function`."),
         };
 
@@ -90,7 +84,7 @@ impl<N: Network> Stack<N> {
         );
 
         // Retrieve the function, inputs, and transition view key.
-        let function = self.program.get_function(request.function_name())?;
+        let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
         let tvk = *request.tvk();
 
