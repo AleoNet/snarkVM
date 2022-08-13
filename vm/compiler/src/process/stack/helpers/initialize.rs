@@ -24,7 +24,7 @@ impl<N: Network> Stack<N> {
         let mut stack = Self {
             program: program.clone(),
             external_stacks: Default::default(),
-            program_types: Default::default(),
+            register_types: Default::default(),
             universal_srs: process.universal_srs().clone(),
             proving_keys: Default::default(),
             verifying_keys: Default::default(),
@@ -80,12 +80,12 @@ impl<N: Network> Stack<N> {
         // Retrieve the closure name.
         let name = closure.name();
         // Ensure the closure name is not already added.
-        ensure!(!self.program_types.contains_key(name), "Closure '{name}' already exists");
+        ensure!(!self.register_types.contains_key(name), "Closure '{name}' already exists");
 
         // Compute the register types.
         let register_types = self.compute_closure_types(closure)?;
         // Add the closure name and register types to the stack.
-        self.program_types.insert(*name, register_types);
+        self.register_types.insert(*name, register_types);
         // Return success.
         Ok(())
     }
@@ -96,12 +96,12 @@ impl<N: Network> Stack<N> {
         // Retrieve the function name.
         let name = function.name();
         // Ensure the function name is not already added.
-        ensure!(!self.program_types.contains_key(name), "Function '{name}' already exists");
+        ensure!(!self.register_types.contains_key(name), "Function '{name}' already exists");
 
         // Compute the register types.
         let register_types = self.compute_function_types(function)?;
         // Add the function name and register types to the stack.
-        self.program_types.insert(*name, register_types);
+        self.register_types.insert(*name, register_types);
         // Return success.
         Ok(())
     }

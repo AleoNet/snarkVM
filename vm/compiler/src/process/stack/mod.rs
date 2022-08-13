@@ -171,7 +171,7 @@ pub struct Stack<N: Network> {
     /// The mapping of external stacks as `(program ID, stack)`.
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
-    program_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of function name to proving key.
@@ -293,7 +293,7 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
-        self.program_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+        self.register_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
     }
 
     /// Returns `true` if the proving key for the given function name exists.
@@ -373,7 +373,7 @@ impl<N: Network> PartialEq for Stack<N> {
     fn eq(&self, other: &Self) -> bool {
         self.program == other.program
             && self.external_stacks == other.external_stacks
-            && self.program_types == other.program_types
+            && self.register_types == other.register_types
     }
 }
 

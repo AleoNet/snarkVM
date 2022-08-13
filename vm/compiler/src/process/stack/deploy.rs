@@ -19,18 +19,14 @@ use super::*;
 impl<N: Network> Stack<N> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
-    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
-        &self,
-        program: &Program<N>,
-        rng: &mut R,
-    ) -> Result<Deployment<N>> {
+    pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Deployment<N>> {
         // Ensure the program contains functions.
         ensure!(!self.program.functions().is_empty(), "Program '{}' has no functions", self.program.id());
 
         // Initialize a mapping for the bundle.
-        let mut bundle = IndexMap::with_capacity(program.functions().len());
+        let mut bundle = IndexMap::with_capacity(self.program.functions().len());
 
-        for function_name in program.functions().keys() {
+        for function_name in self.program.functions().keys() {
             // Synthesize the proving and verifying key.
             self.synthesize_key::<A, R>(function_name, rng)?;
 
@@ -47,7 +43,7 @@ impl<N: Network> Stack<N> {
         }
 
         // Return the deployment.
-        Deployment::new(N::EDITION, program.clone(), bundle)
+        Deployment::new(N::EDITION, self.program.clone(), bundle)
     }
 
     /// Checks each function in the program on the given verifying key and certificate.

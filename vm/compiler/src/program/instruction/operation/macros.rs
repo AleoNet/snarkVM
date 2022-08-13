@@ -342,22 +342,22 @@ mod tests {
     macro_rules! sample_literals {
         ($network:ident, $rng:expr) => {
             [
-                console::program::Literal::<$network>::Address(Address::new(Uniform::rand($rng))),
-                console::program::Literal::Boolean(Boolean::rand($rng)),
-                console::program::Literal::Field(Field::rand($rng)),
-                console::program::Literal::Group(Group::rand($rng)),
-                console::program::Literal::I8(I8::rand($rng)),
-                console::program::Literal::I16(I16::rand($rng)),
-                console::program::Literal::I32(I32::rand($rng)),
-                console::program::Literal::I64(I64::rand($rng)),
-                console::program::Literal::I128(I128::rand($rng)),
-                console::program::Literal::U8(U8::rand($rng)),
-                console::program::Literal::U16(U16::rand($rng)),
-                console::program::Literal::U32(U32::rand($rng)),
-                console::program::Literal::U64(U64::rand($rng)),
-                console::program::Literal::U128(U128::rand($rng)),
-                console::program::Literal::Scalar(Scalar::rand($rng)),
-                console::program::Literal::String(StringType::rand($rng)),
+                console::program::Literal::<$network>::Address(console::types::Address::new(Uniform::rand($rng))),
+                console::program::Literal::Boolean(console::types::Boolean::rand($rng)),
+                console::program::Literal::Field(console::types::Field::rand($rng)),
+                console::program::Literal::Group(console::types::Group::rand($rng)),
+                console::program::Literal::I8(console::types::I8::rand($rng)),
+                console::program::Literal::I16(console::types::I16::rand($rng)),
+                console::program::Literal::I32(console::types::I32::rand($rng)),
+                console::program::Literal::I64(console::types::I64::rand($rng)),
+                console::program::Literal::I128(console::types::I128::rand($rng)),
+                console::program::Literal::U8(console::types::U8::rand($rng)),
+                console::program::Literal::U16(console::types::U16::rand($rng)),
+                console::program::Literal::U32(console::types::U32::rand($rng)),
+                console::program::Literal::U64(console::types::U64::rand($rng)),
+                console::program::Literal::U128(console::types::U128::rand($rng)),
+                console::program::Literal::Scalar(console::types::Scalar::rand($rng)),
+                console::program::Literal::String(console::types::StringType::rand($rng)),
             ]
         };
     }

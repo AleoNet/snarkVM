@@ -27,7 +27,7 @@ impl<N: Network> Process<N> {
         // Compute the stack.
         let stack = Stack::new(self, program)?;
         // Return the deployment.
-        stack.deploy::<A, R>(program, rng)
+        stack.deploy::<A, R>(rng)
     }
 
     /// Verifies the given deployment is well-formed.
