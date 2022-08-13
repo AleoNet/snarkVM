@@ -261,6 +261,7 @@ mod tests {
     type CurrentAleo = AleoV0;
 
     /// Samples the stack. Note: Do not replicate this for real program use, it is insecure.
+    #[allow(clippy::type_complexity)]
     fn sample_stack(
         opcode: Opcode,
         type_a: LiteralType,

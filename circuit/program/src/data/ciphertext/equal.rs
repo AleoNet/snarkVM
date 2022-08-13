@@ -24,7 +24,7 @@ impl<A: Aleo> Equal<Self> for Ciphertext<A> {
         // Check each field element for equality.
         let mut equal = Boolean::constant(true);
         for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
-            equal = equal & a.is_equal(b);
+            equal &= a.is_equal(b);
         }
         equal
     }
@@ -34,7 +34,7 @@ impl<A: Aleo> Equal<Self> for Ciphertext<A> {
         // Recursively check each member for inequality.
         let mut not_equal = Boolean::constant(false);
         for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
-            not_equal = not_equal | a.is_not_equal(b);
+            not_equal |= a.is_not_equal(b);
         }
         not_equal
     }

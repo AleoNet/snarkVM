@@ -21,18 +21,32 @@ impl<E: Environment> Equal<Self> for StringType<E> {
 
     /// Returns `true` if `self` and `other` are equal.
     fn is_equal(&self, other: &Self) -> Self::Output {
-        self.to_fields()
-            .iter()
-            .zip_eq(&other.to_fields())
-            .fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
+        // Convert each string type into fields.
+        let this = self.to_fields();
+        let that = other.to_fields();
+
+        // Return `false` if the length of the strings are equal.
+        if this.len() != that.len() {
+            return Boolean::constant(false);
+        }
+
+        // Check if the string contents are equal.
+        this.iter().zip_eq(&that).fold(Boolean::constant(true), |acc, (a, b)| acc & a.is_equal(b))
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_not_equal(&self, other: &Self) -> Self::Output {
-        self.to_fields()
-            .iter()
-            .zip_eq(&other.to_fields())
-            .fold(Boolean::constant(false), |acc, (a, b)| acc | a.is_not_equal(b))
+        // Convert each string type into fields.
+        let this = self.to_fields();
+        let that = other.to_fields();
+
+        // Return `true` if the length of the strings are *not* equal.
+        if this.len() != that.len() {
+            return Boolean::constant(true);
+        }
+
+        // Check if the string contents are *not* equal.
+        this.iter().zip_eq(&that).fold(Boolean::constant(false), |acc, (a, b)| acc | a.is_not_equal(b))
     }
 }
 

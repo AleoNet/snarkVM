@@ -35,7 +35,7 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
         // Recursively check each entry for equality.
         let mut equal = Boolean::new(true);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            equal = equal & name_a.is_equal(&name_b) & entry_a.is_equal(entry_b);
+            equal = equal & name_a.is_equal(name_b) & entry_a.is_equal(entry_b);
         }
 
         // Check the `owner`, `gates`, `data`, and `nonce`.
@@ -52,7 +52,7 @@ impl<N: Network, Private: Visibility<Boolean = Boolean<N>>> Equal<Self> for Reco
         // Recursively check each entry for inequality.
         let mut not_equal = Boolean::new(false);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            not_equal = not_equal | name_a.is_not_equal(&name_b) | entry_a.is_not_equal(entry_b);
+            not_equal = not_equal | name_a.is_not_equal(name_b) | entry_a.is_not_equal(entry_b);
         }
 
         // Check the `owner`, `gates`, `data`, and `nonce`.

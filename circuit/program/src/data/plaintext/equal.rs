@@ -28,7 +28,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                     // Recursively check each member for equality.
                     let mut equal = Boolean::constant(true);
                     for ((name_a, plaintext_a), (name_b, plaintext_b)) in a.iter().zip_eq(b.iter()) {
-                        equal = equal & name_a.is_equal(&name_b) & plaintext_a.is_equal(plaintext_b);
+                        equal = equal & name_a.is_equal(name_b) & plaintext_a.is_equal(plaintext_b);
                     }
                     equal
                 }
@@ -47,7 +47,7 @@ impl<A: Aleo> Equal<Self> for Plaintext<A> {
                     // Recursively check each member for inequality.
                     let mut not_equal = Boolean::constant(false);
                     for ((name_a, plaintext_a), (name_b, plaintext_b)) in a.iter().zip_eq(b.iter()) {
-                        not_equal = not_equal | name_a.is_not_equal(&name_b) | plaintext_a.is_not_equal(plaintext_b);
+                        not_equal = not_equal | name_a.is_not_equal(name_b) | plaintext_a.is_not_equal(plaintext_b);
                     }
                     not_equal
                 }
