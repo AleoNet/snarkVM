@@ -14,21 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod deployment;
-pub use deployment::*;
-
-mod execution;
-pub use execution::*;
-
-mod helpers;
-pub use helpers::*;
-
-mod register_types;
-pub use register_types::*;
-
-mod registers;
-pub use registers::*;
-
 mod stack;
 pub use stack::*;
 

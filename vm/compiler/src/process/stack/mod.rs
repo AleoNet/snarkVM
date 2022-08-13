@@ -14,18 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod authorization;
+pub use authorization::*;
+
+mod deployment;
+pub use deployment::*;
+
+mod execution;
+pub use execution::*;
+
+mod register_types;
+pub use register_types::*;
+
+mod registers;
+pub use registers::*;
+
 mod deploy;
 mod evaluate;
 mod execute;
 mod helpers;
 
 use crate::{
-    Authorization,
     CallOperator,
     Certificate,
     Closure,
-    Deployment,
-    Execution,
     Function,
     Instruction,
     Opcode,
@@ -33,8 +45,6 @@ use crate::{
     Process,
     Program,
     ProvingKey,
-    RegisterTypes,
-    Registers,
     Transition,
     UniversalSRS,
     VerifyingKey,
