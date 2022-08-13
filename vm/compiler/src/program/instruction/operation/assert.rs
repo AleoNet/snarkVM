@@ -322,8 +322,8 @@ mod tests {
         let value_b = Value::Plaintext(Plaintext::from(literal_b));
 
         // Store the values in the console registers.
-        registers.store(&stack, &r0, value_a.clone())?;
-        registers.store(&stack, &r1, value_b.clone())?;
+        registers.store(stack, &r0, value_a.clone())?;
+        registers.store(stack, &r1, value_b.clone())?;
 
         if let (Some(mode_a), Some(mode_b)) = (mode_a, mode_b) {
             use circuit::Inject;
@@ -333,8 +333,8 @@ mod tests {
             let circuit_b = circuit::Value::new(mode_b, value_b);
 
             // Store the values in the circuit registers.
-            registers.store_circuit(&stack, &r0, circuit_a)?;
-            registers.store_circuit(&stack, &r1, circuit_b)?;
+            registers.store_circuit(stack, &r0, circuit_a)?;
+            registers.store_circuit(stack, &r1, circuit_b)?;
         }
 
         Ok(registers)
