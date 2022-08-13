@@ -71,7 +71,7 @@ impl<N: Network> VM<N> {
         // Load the deployments from the store.
         for transaction_id in transaction_store.deployment_ids() {
             // Retrieve the deployment.
-            match transaction_store.get_deployment(&*transaction_id)? {
+            match transaction_store.get_deployment(&transaction_id)? {
                 // Finalize the deployment.
                 Some(deployment) => process.finalize_deployment(&deployment)?,
                 None => bail!("Deployment transaction '{transaction_id}' is not found in storage."),
