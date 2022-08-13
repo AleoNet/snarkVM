@@ -26,14 +26,11 @@ impl<A: Aleo> Equal<Self> for Record<A, Plaintext<A>> {
         // Recursively check each entry for equality.
         let mut equal = Boolean::constant(true);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            equal =
-                equal & name_a.to_field().is_equal(&name_b.to_field()) & entry_a.is_equal(entry_b);
+            equal = equal & name_a.to_field().is_equal(&name_b.to_field()) & entry_a.is_equal(entry_b);
         }
 
         // Note: This equality *skips* the `nonce` check.
-        self.owner.is_equal(&other.owner)
-            & self.gates.is_equal(&other.gates)
-            & equal
+        self.owner.is_equal(&other.owner) & self.gates.is_equal(&other.gates) & equal
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
@@ -43,15 +40,11 @@ impl<A: Aleo> Equal<Self> for Record<A, Plaintext<A>> {
         // Recursively check each entry for equality.
         let mut not_equal = Boolean::constant(false);
         for ((name_a, entry_a), (name_b, entry_b)) in self.data.iter().zip_eq(other.data.iter()) {
-            not_equal = not_equal
-                | name_a.to_field().is_not_equal(&name_b.to_field())
-                | entry_a.is_not_equal(entry_b);
+            not_equal = not_equal | name_a.to_field().is_not_equal(&name_b.to_field()) | entry_a.is_not_equal(entry_b);
         }
 
         // Note: This equality *skips* the `nonce` check.
-        self.owner.is_not_equal(&other.owner)
-            | self.gates.is_not_equal(&other.gates)
-            | not_equal
+        self.owner.is_not_equal(&other.owner) | self.gates.is_not_equal(&other.gates) | not_equal
     }
 }
 
@@ -61,7 +54,10 @@ mod tests {
     use crate::Circuit;
 
     fn sample_record(mode: Mode) -> Record<Circuit, Plaintext<Circuit>> {
-        let record = console::Record::<<Circuit as Environment>::Network, console::Plaintext::<<Circuit as Environment>::Network>>::from_str(
+        let record = console::Record::<
+            <Circuit as Environment>::Network,
+            console::Plaintext<<Circuit as Environment>::Network>,
+        >::from_str(
             r"{
     owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
     gates: 0u64.private,
@@ -81,7 +77,10 @@ mod tests {
     }
 
     fn sample_mismatched_record(mode: Mode) -> Record<Circuit, Plaintext<Circuit>> {
-        let record = console::Record::<<Circuit as Environment>::Network, console::Plaintext::<<Circuit as Environment>::Network>>::from_str(
+        let record = console::Record::<
+            <Circuit as Environment>::Network,
+            console::Plaintext<<Circuit as Environment>::Network>,
+        >::from_str(
             r"{
     owner: aleo14tlamssdmg3d0p5zmljma573jghe2q9n6wz29qf36re2glcedcpqfg4add.private,
     gates: 0u64.private,

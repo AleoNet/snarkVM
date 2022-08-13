@@ -317,6 +317,24 @@ impl<N: Network> Stack<N> {
                     "Instruction '{instruction}' has multiple destinations."
                 );
             }
+            Opcode::Assert(opcode) => {
+                // Ensure the instruction belongs to the defined set.
+                if !["assert.eq", "assert.neq"].contains(&opcode) {
+                    bail!("Instruction '{instruction}' is not the opcode '{opcode}'.");
+                }
+                // Ensure the instruction is the correct one.
+                match opcode {
+                    "assert.eq" => ensure!(
+                        matches!(instruction, Instruction::AssertEq(..)),
+                        "Instruction '{instruction}' is not the opcode '{opcode}'."
+                    ),
+                    "assert.neq" => ensure!(
+                        matches!(instruction, Instruction::AssertNeq(..)),
+                        "Instruction '{instruction}' is not the opcode '{opcode}'."
+                    ),
+                    _ => bail!("Instruction '{instruction}' is not the opcode '{opcode}'."),
+                }
+            }
             Opcode::Call => {
                 // Retrieve the call operation.
                 let call = match instruction {

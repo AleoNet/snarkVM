@@ -17,53 +17,34 @@
 use crate::{Opcode, Operand, Registers, Stack};
 use console::{
     network::prelude::*,
-    program::{Literal, LiteralType, Plaintext, PlaintextType, Register, RegisterType, Value},
+    program::{Register, RegisterType},
 };
 
-/// BHP256 is a collision-resistant function that processes inputs in 256-bit chunks.
-pub type CommitBHP256<N> = CommitInstruction<N, { Committer::BHP256 as u8 }>;
-/// BHP512 is a collision-resistant function that processes inputs in 512-bit chunks.
-pub type CommitBHP512<N> = CommitInstruction<N, { Committer::BHP512 as u8 }>;
-/// BHP768 is a collision-resistant function that processes inputs in 768-bit chunks.
-pub type CommitBHP768<N> = CommitInstruction<N, { Committer::BHP768 as u8 }>;
-/// BHP1024 is a collision-resistant function that processes inputs in 1024-bit chunks.
-pub type CommitBHP1024<N> = CommitInstruction<N, { Committer::BHP1024 as u8 }>;
+/// Asserts two operands are equal to each other.
+pub type AssertEq<N> = AssertInstruction<N, { Variant::AssertEq as u8 }>;
+/// Asserts two operands are **not** equal to each other.
+pub type AssertNeq<N> = AssertInstruction<N, { Variant::AssertNeq as u8 }>;
 
-/// Pedersen64 is a collision-resistant function that processes inputs in 64-bit chunks.
-pub type CommitPED64<N> = CommitInstruction<N, { Committer::PED64 as u8 }>;
-/// Pedersen128 is a collision-resistant function that processes inputs in 128-bit chunks.
-pub type CommitPED128<N> = CommitInstruction<N, { Committer::PED128 as u8 }>;
-
-enum Committer {
-    BHP256,
-    BHP512,
-    BHP768,
-    BHP1024,
-    PED64,
-    PED128,
+enum Variant {
+    AssertEq,
+    AssertNeq,
 }
 
-/// Commits the operand into the declared type.
+/// Asserts an operation on two operands.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct CommitInstruction<N: Network, const VARIANT: u8> {
+pub struct AssertInstruction<N: Network, const VARIANT: u8> {
     /// The operand as `input`.
     operands: Vec<Operand<N>>,
-    /// The destination register.
-    destination: Register<N>,
 }
 
-impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
         match VARIANT {
-            0 => Opcode::Commit("commit.bhp256"),
-            1 => Opcode::Commit("commit.bhp512"),
-            2 => Opcode::Commit("commit.bhp768"),
-            3 => Opcode::Commit("commit.bhp1024"),
-            4 => Opcode::Commit("commit.ped64"),
-            5 => Opcode::Commit("commit.ped128"),
-            _ => panic!("Invalid commit instruction opcode"),
+            0 => Opcode::Assert("assert.eq"),
+            1 => Opcode::Assert("assert.neq"),
+            _ => panic!("Invalid 'assert' instruction opcode"),
         }
     }
 
@@ -71,7 +52,7 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     #[inline]
     pub fn operands(&self) -> &[Operand<N>] {
         // Sanity check that the operands is exactly two inputs.
-        debug_assert!(self.operands.len() == 2, "Commit operations must have two operands");
+        debug_assert!(self.operands.len() == 2, "Assert operations must have two operands");
         // Return the operands.
         &self.operands
     }
@@ -79,11 +60,11 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
     /// Returns the destination register.
     #[inline]
     pub fn destinations(&self) -> Vec<Register<N>> {
-        vec![self.destination.clone()]
+        vec![]
     }
 }
 
-impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> AssertInstruction<N, VARIANT> {
     /// Evaluates the instruction.
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(
@@ -98,28 +79,24 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
 
         // Load the operands values.
         let inputs: Vec<_> = self.operands.iter().map(|operand| registers.load(stack, operand)).try_collect()?;
-        // Retrieve the input and randomizer.
-        let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
-        // Retrieve the randomizer.
-        let randomizer = match randomizer {
-            Value::Plaintext(Plaintext::Literal(Literal::Scalar(randomizer), ..)) => randomizer,
-            _ => bail!("Invalid randomizer type for the commit evaluation, expected a scalar"),
-        };
+        // Retrieve the inputs.
+        let (input_a, input_b) = (inputs[0].clone(), inputs[1].clone());
 
-        // Commit the input.
-        let output = match VARIANT {
-            0 => Literal::Field(N::commit_bhp256(&input.to_bits_le(), &randomizer)?),
-            1 => Literal::Field(N::commit_bhp512(&input.to_bits_le(), &randomizer)?),
-            2 => Literal::Field(N::commit_bhp768(&input.to_bits_le(), &randomizer)?),
-            3 => Literal::Field(N::commit_bhp1024(&input.to_bits_le(), &randomizer)?),
-            4 => Literal::Group(N::commit_ped64(&input.to_bits_le(), &randomizer)?),
-            5 => Literal::Group(N::commit_ped128(&input.to_bits_le(), &randomizer)?),
-            _ => bail!("Invalid commit variant: {VARIANT}"),
-        };
-        // Convert the output to a stack value.
-        let output = Value::Plaintext(Plaintext::Literal(output, Default::default()));
-        // Store the output.
-        registers.store(stack, &self.destination, output)
+        // Assert the inputs.
+        match VARIANT {
+            0 => {
+                if input_a != input_b {
+                    bail!("'{}' failed: '{input_a}' is not equal to '{input_b}' (should be equal)", Self::opcode())
+                }
+            }
+            1 => {
+                if input_a == input_b {
+                    bail!("'{}' failed: '{input_a}' is equal to '{input_b}' (should not be equal)", Self::opcode())
+                }
+            }
+            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
+        }
+        Ok(())
     }
 
     /// Executes the instruction.
@@ -129,8 +106,6 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         stack: &Stack<N>,
         registers: &mut Registers<N, A>,
     ) -> Result<()> {
-        use circuit::ToBits;
-
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
@@ -139,30 +114,16 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         // Load the operands values.
         let inputs: Vec<_> =
             self.operands.iter().map(|operand| registers.load_circuit(stack, operand)).try_collect()?;
-        // Retrieve the input and randomizer.
-        let (input, randomizer) = (inputs[0].clone(), inputs[1].clone());
-        // Retrieve the randomizer.
-        let randomizer = match randomizer {
-            circuit::Value::Plaintext(circuit::Plaintext::Literal(circuit::Literal::Scalar(randomizer), ..)) => {
-                randomizer
-            }
-            _ => bail!("Invalid randomizer type for the commit execution, expected a scalar"),
-        };
+        // Retrieve the inputs.
+        let (input_a, input_b) = (inputs[0].clone(), inputs[1].clone());
 
-        // Commits the input.
-        let output = match VARIANT {
-            0 => circuit::Literal::Field(A::commit_bhp256(&input.to_bits_le(), &randomizer)),
-            1 => circuit::Literal::Field(A::commit_bhp512(&input.to_bits_le(), &randomizer)),
-            2 => circuit::Literal::Field(A::commit_bhp768(&input.to_bits_le(), &randomizer)),
-            3 => circuit::Literal::Field(A::commit_bhp1024(&input.to_bits_le(), &randomizer)),
-            4 => circuit::Literal::Group(A::commit_ped64(&input.to_bits_le(), &randomizer)),
-            5 => circuit::Literal::Group(A::commit_ped128(&input.to_bits_le(), &randomizer)),
-            _ => bail!("Invalid commit variant: {VARIANT}"),
-        };
-        // Convert the output to a stack value.
-        let output = circuit::Value::Plaintext(circuit::Plaintext::Literal(output, Default::default()));
-        // Store the output.
-        registers.store_circuit(stack, &self.destination, output)
+        // Assert the inputs.
+        match VARIANT {
+            0 => A::assert(input_a.is_equal(&input_b)),
+            1 => A::assert(input_a.is_not_equal(&input_b)),
+            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
+        }
+        Ok(())
     }
 
     /// Returns the output type from the given program and input types.
@@ -172,21 +133,28 @@ impl<N: Network, const VARIANT: u8> CommitInstruction<N, VARIANT> {
         if input_types.len() != 2 {
             bail!("Instruction '{}' expects 2 inputs, found {} inputs", Self::opcode(), input_types.len())
         }
+        // Ensure the operands are of the same type.
+        if input_types[0] != input_types[1] {
+            bail!(
+                "Instruction '{}' expects inputs of the same type, found inputs of type {} and {}",
+                Self::opcode(),
+                input_types[0],
+                input_types[1]
+            )
+        }
         // Ensure the number of operands is correct.
         if self.operands.len() != 2 {
             bail!("Instruction '{}' expects 2 operands, found {} operands", Self::opcode(), self.operands.len())
         }
 
-        // TODO (howardwu): If the operation is Pedersen, check that it is within the number of bits.
-
         match VARIANT {
-            0 | 1 | 2 | 3 | 4 | 5 => Ok(vec![RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Field))]),
-            _ => bail!("Invalid commit variant: {VARIANT}"),
+            0 | 1 => Ok(vec![]),
+            _ => bail!("Invalid 'assert' variant: {VARIANT}"),
         }
     }
 }
 
-impl<N: Network, const VARIANT: u8> Parser for CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> Parser for AssertInstruction<N, VARIANT> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -200,20 +168,12 @@ impl<N: Network, const VARIANT: u8> Parser for CommitInstruction<N, VARIANT> {
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
         // Parse the second operand from the string.
         let (string, second) = Operand::parse(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the "into" from the string.
-        let (string, _) = tag("into")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the destination register from the string.
-        let (string, destination) = Register::parse(string)?;
 
-        Ok((string, Self { operands: vec![first, second], destination }))
+        Ok((string, Self { operands: vec![first, second] }))
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromStr for CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FromStr for AssertInstruction<N, VARIANT> {
     type Err = Error;
 
     /// Parses a string into an operation.
@@ -231,14 +191,14 @@ impl<N: Network, const VARIANT: u8> FromStr for CommitInstruction<N, VARIANT> {
     }
 }
 
-impl<N: Network, const VARIANT: u8> Debug for CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> Debug for AssertInstruction<N, VARIANT> {
     /// Prints the operation as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network, const VARIANT: u8> Display for CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> Display for AssertInstruction<N, VARIANT> {
     /// Prints the operation to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Ensure the number of operands is 2.
@@ -248,12 +208,11 @@ impl<N: Network, const VARIANT: u8> Display for CommitInstruction<N, VARIANT> {
         }
         // Print the operation.
         write!(f, "{} ", Self::opcode())?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))?;
-        write!(f, "into {}", self.destination)
+        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))
     }
 }
 
-impl<N: Network, const VARIANT: u8> FromBytes for CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> FromBytes for AssertInstruction<N, VARIANT> {
     /// Reads the operation from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Initialize the vector for the operands.
@@ -262,15 +221,13 @@ impl<N: Network, const VARIANT: u8> FromBytes for CommitInstruction<N, VARIANT> 
         for _ in 0..2 {
             operands.push(Operand::read_le(&mut reader)?);
         }
-        // Read the destination register.
-        let destination = Register::read_le(&mut reader)?;
 
         // Return the operation.
-        Ok(Self { operands, destination })
+        Ok(Self { operands })
     }
 }
 
-impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
+impl<N: Network, const VARIANT: u8> ToBytes for AssertInstruction<N, VARIANT> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the number of operands is 2.
@@ -278,9 +235,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for CommitInstruction<N, VARIANT> {
             return Err(error(format!("The number of operands must be 2, found {}", self.operands.len())));
         }
         // Write the operands.
-        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))?;
-        // Write the destination register.
-        self.destination.write_le(&mut writer)
+        self.operands.iter().try_for_each(|operand| operand.write_le(&mut writer))
     }
 }
 
@@ -293,11 +248,16 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, commit) = CommitBHP512::<CurrentNetwork>::parse("commit.bhp512 r0 r1 into r2").unwrap();
+        let (string, assert) = AssertEq::<CurrentNetwork>::parse("assert.eq r0 r1").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(commit.operands.len(), 2, "The number of operands is incorrect");
-        assert_eq!(commit.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(commit.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
-        assert_eq!(commit.destination, Register::Locator(2), "The destination register is incorrect");
+        assert_eq!(assert.operands.len(), 2, "The number of operands is incorrect");
+        assert_eq!(assert.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(assert.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+
+        let (string, assert) = AssertNeq::<CurrentNetwork>::parse("assert.neq r0 r1").unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(assert.operands.len(), 2, "The number of operands is incorrect");
+        assert_eq!(assert.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(assert.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
     }
 }
