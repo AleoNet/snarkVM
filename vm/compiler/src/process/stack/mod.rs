@@ -202,39 +202,8 @@ impl<N: Network> Stack<N> {
         // Ensure the program deserializes from a string correctly.
         ensure!(program == &Program::from_str(&program_string)?, "Program string serialization failed");
 
-        // Construct the stack for the program.
-        let mut stack = Self {
-            program: program.clone(),
-            external_stacks: Default::default(),
-            program_types: Default::default(),
-            universal_srs: process.universal_srs().clone(),
-            proving_keys: Default::default(),
-            verifying_keys: Default::default(),
-        };
-
-        // Add all of the imports into the stack.
-        for import in program.imports().keys() {
-            // Ensure the program imports all exist in the process already.
-            if !process.contains_program(import) {
-                bail!("Cannot add program '{program_id}' because its import '{import}' must be added first")
-            }
-            // Retrieve the external stack for the import program ID.
-            let external_stack = process.get_stack(import)?;
-            // Add the external stack to the stack.
-            stack.insert_external_stack(external_stack.clone())?;
-        }
-        // Add the program closures to the stack.
-        for closure in program.closures().values() {
-            // Add the closure to the stack.
-            stack.insert_closure(closure)?;
-        }
-        // Add the program functions to the stack.
-        for function in program.functions().values() {
-            // Add the function to the stack.
-            stack.insert_function(function)?;
-        }
         // Return the stack.
-        Ok(stack)
+        Stack::initialize(process, program)
     }
 
     /// Returns the program.

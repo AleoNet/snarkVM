@@ -129,7 +129,7 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
     // Initialize an RNG.
     let rng = &mut snarkvm_utilities::test_crypto_rng_fixed();
     // Initialize the process.
-    let process = Process::setup()?;
+    let process = Process::setup::<A, _>(rng)?;
     // Initialize the program.
     let program = Program::<N>::credits()?;
     let program_id = program.id();
@@ -139,9 +139,9 @@ pub fn credits_program<N: Network, A: Aleo<Network = N>>() -> Result<()> {
 
     // Synthesize the 'credits.aleo' function keys.
     for (function_name, _) in program.functions().iter() {
-        let timer = std::time::Instant::now();
-        process.synthesize_key::<A, _>(program_id, function_name, rng)?;
-        println!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
+        // let timer = std::time::Instant::now();
+        // process.synthesize_key::<A, _>(program_id, function_name, rng)?;
+        // println!("Synthesized '{}': {} ms", function_name, timer.elapsed().as_millis());
 
         let proving_key = process.get_proving_key(program_id, function_name)?;
         let proving_key_bytes = proving_key.to_bytes_le()?;

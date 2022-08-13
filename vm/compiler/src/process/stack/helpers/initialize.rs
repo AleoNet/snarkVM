@@ -17,9 +17,49 @@
 use super::*;
 
 impl<N: Network> Stack<N> {
+    /// Initializes a new stack, given the process and program.
+    #[inline]
+    pub(crate) fn initialize(process: &Process<N>, program: &Program<N>) -> Result<Self> {
+        // Construct the stack for the program.
+        let mut stack = Self {
+            program: program.clone(),
+            external_stacks: Default::default(),
+            program_types: Default::default(),
+            universal_srs: process.universal_srs().clone(),
+            proving_keys: Default::default(),
+            verifying_keys: Default::default(),
+        };
+
+        // Add all of the imports into the stack.
+        for import in program.imports().keys() {
+            // Ensure the program imports all exist in the process already.
+            if !process.contains_program(import) {
+                bail!("Cannot add program '{}' because its import '{import}' must be added first", program.id())
+            }
+            // Retrieve the external stack for the import program ID.
+            let external_stack = process.get_stack(import)?;
+            // Add the external stack to the stack.
+            stack.insert_external_stack(external_stack.clone())?;
+        }
+        // Add the program closures to the stack.
+        for closure in program.closures().values() {
+            // Add the closure to the stack.
+            stack.insert_closure(closure)?;
+        }
+        // Add the program functions to the stack.
+        for function in program.functions().values() {
+            // Add the function to the stack.
+            stack.insert_function(function)?;
+        }
+        // Return the stack.
+        Ok(stack)
+    }
+}
+
+impl<N: Network> Stack<N> {
     /// Inserts the given external stack to the stack.
     #[inline]
-    pub(crate) fn insert_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
+    fn insert_external_stack(&mut self, external_stack: Stack<N>) -> Result<()> {
         // Retrieve the program ID.
         let program_id = *external_stack.program_id();
         // Ensure the external stack is not already added.
@@ -36,7 +76,7 @@ impl<N: Network> Stack<N> {
 
     /// Inserts the given closure to the stack.
     #[inline]
-    pub(crate) fn insert_closure(&mut self, closure: &Closure<N>) -> Result<()> {
+    fn insert_closure(&mut self, closure: &Closure<N>) -> Result<()> {
         // Retrieve the closure name.
         let name = closure.name();
         // Ensure the closure name is not already added.
@@ -52,7 +92,7 @@ impl<N: Network> Stack<N> {
 
     /// Adds the given function name and register types to the stack.
     #[inline]
-    pub(crate) fn insert_function(&mut self, function: &Function<N>) -> Result<()> {
+    fn insert_function(&mut self, function: &Function<N>) -> Result<()> {
         // Retrieve the function name.
         let name = function.name();
         // Ensure the function name is not already added.

@@ -49,11 +49,24 @@ pub struct Process<N: Network> {
 impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
-    pub fn setup() -> Result<Self> {
+    pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         // Initialize the process.
         let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+
+        // Initialize the 'credits.aleo' program.
+        let program = Program::credits()?;
+        // Compute the 'credits.aleo' program stack.
+        let stack = Stack::new(&process, &program)?;
+
         // Add the 'credits.aleo' program to the process.
-        process.add_program(&Program::credits()?)?;
+        process.add_program(&program)?;
+        // Synthesize the 'credits.aleo' circuit keys.
+        for function_name in program.functions().keys() {
+            stack.synthesize_key::<A, _>(function_name, rng)?;
+        }
+
+        // Add the stack to the process.
+        process.stacks.insert(*program.id(), stack);
         // Return the process.
         Ok(process)
     }
@@ -67,12 +80,23 @@ impl<N: Network> Process<N> {
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
         // Compute the 'credits.aleo' program stack.
-        let mut stack = Stack::new(&process, &program)?;
-        // Load the 'credits.aleo' program.
-        stack.load_credits_program()?;
+        let stack = Stack::new(&process, &program)?;
+
+        // Synthesize the 'credits.aleo' circuit keys.
+        for function_name in program.functions().keys() {
+            // TODO (howardwu): Abstract this into the `Network` trait.
+            // Load the proving and verifying key bytes.
+            let (proving_key, verifying_key) = snarkvm_parameters::testnet3::TESTNET3_CREDITS_PROGRAM
+                .get(&function_name.to_string())
+                .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
+
+            // Insert the proving and verifying key.
+            stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?);
+            stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?);
+        }
+
         // Add the stack to the process.
         process.stacks.insert(*program.id(), stack);
-
         // Return the process.
         Ok(process)
     }
