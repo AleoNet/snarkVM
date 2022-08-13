@@ -58,14 +58,12 @@ impl<N: Network> Process<N> {
         // Compute the 'credits.aleo' program stack.
         let stack = Stack::new(&process, &program)?;
 
-        // Add the 'credits.aleo' program to the process.
-        process.add_program(&program)?;
         // Synthesize the 'credits.aleo' circuit keys.
         for function_name in program.functions().keys() {
             stack.synthesize_key::<A, _>(function_name, rng)?;
         }
 
-        // Add the stack to the process.
+        // Add the 'credits.aleo' stack to the process.
         process.stacks.insert(*program.id(), stack);
         // Return the process.
         Ok(process)
@@ -91,8 +89,8 @@ impl<N: Network> Process<N> {
                 .ok_or_else(|| anyhow!("Circuit keys for credits.aleo/{function_name}' not found"))?;
 
             // Insert the proving and verifying key.
-            stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?);
-            stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?);
+            stack.insert_proving_key(function_name, ProvingKey::from_bytes_le(proving_key)?)?;
+            stack.insert_verifying_key(function_name, VerifyingKey::from_bytes_le(verifying_key)?)?;
         }
 
         // Add the stack to the process.
@@ -102,6 +100,7 @@ impl<N: Network> Process<N> {
     }
 
     /// Adds a new program to the process.
+    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
     #[inline]
     pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
         // Compute the program stack.
@@ -124,19 +123,21 @@ impl<N: Network> Process<N> {
         self.stacks.contains_key(program_id)
     }
 
-    /// Returns the program for the given program ID.
-    #[inline]
-    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
-        self.stacks
-            .get(program_id)
-            .map(|stack| stack.program())
-            .ok_or_else(|| anyhow!("Program '{program_id}' not found"))
-    }
-
     /// Returns the stack for the given program ID.
     #[inline]
     pub fn get_stack(&self, program_id: &ProgramID<N>) -> Result<&Stack<N>> {
-        self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' not found"))
+        // Retrieve the stack.
+        let stack = self.stacks.get(program_id).ok_or_else(|| anyhow!("Program '{program_id}' does not exist"))?;
+        // Ensure the program ID matches.
+        ensure!(stack.program_id() == program_id, "Expected program '{}', found '{program_id}'", stack.program_id());
+        // Return the stack.
+        Ok(stack)
+    }
+
+    /// Returns the program for the given program ID.
+    #[inline]
+    pub fn get_program(&self, program_id: &ProgramID<N>) -> Result<&Program<N>> {
+        self.get_stack(program_id).map(Stack::program)
     }
 
     /// Returns the proving key for the given program ID and function name.
@@ -165,9 +166,7 @@ impl<N: Network> Process<N> {
         function_name: &Identifier<N>,
         proving_key: ProvingKey<N>,
     ) -> Result<()> {
-        // Add the proving key to the mapping.
-        self.get_stack(program_id)?.insert_proving_key(function_name, proving_key);
-        Ok(())
+        self.get_stack(program_id)?.insert_proving_key(function_name, proving_key)
     }
 
     /// Inserts the given verifying key, for the given program ID and function name.
@@ -178,9 +177,7 @@ impl<N: Network> Process<N> {
         function_name: &Identifier<N>,
         verifying_key: VerifyingKey<N>,
     ) -> Result<()> {
-        // Add the verifying key to the mapping.
-        self.get_stack(program_id)?.insert_verifying_key(function_name, verifying_key);
-        Ok(())
+        self.get_stack(program_id)?.insert_verifying_key(function_name, verifying_key)
     }
 
     /// Synthesizes the proving and verifying key for the given program ID and function name.

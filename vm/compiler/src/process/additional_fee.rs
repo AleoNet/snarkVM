@@ -40,10 +40,10 @@ impl<N: Network> Process<N> {
         let request = Request::sign(private_key, *program.id(), *function.name(), &inputs, &input_types, rng)?;
         // Initialize the authorization.
         let authorization = Authorization::new(&[request.clone()]);
+        // Construct the call stack.
+        let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
         // Construct the authorization from the function.
-        let _response = self
-            .get_stack(program.id())?
-            .execute_function::<A, R>(CallStack::Authorize(vec![request], *private_key, authorization.clone()), rng)?;
+        let _response = self.get_stack(program.id())?.execute_function::<A, R>(call_stack, rng)?;
 
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;

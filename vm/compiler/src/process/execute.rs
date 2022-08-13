@@ -26,18 +26,14 @@ impl<N: Network> Process<N> {
     ) -> Result<(Response<N>, Execution<N>)> {
         // Retrieve the main request (without popping it).
         let request = authorization.peek_next()?;
-        // Prepare the stack.
-        let stack = self.get_stack(request.program_id())?;
-        // Ensure that the function exists.
-        if !stack.program().contains_function(request.function_name()) {
-            bail!("Function '{}' does not exist.", request.function_name())
-        }
 
         #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Executing '{}/{}'...", request.program_id(), request.function_name()).dimmed());
 
         // Initialize the execution.
         let execution = Arc::new(RwLock::new(Execution::new()));
+        // Retrieve the stack.
+        let stack = self.get_stack(request.program_id())?;
         // Execute the circuit.
         let response = stack.execute_function::<A, R>(CallStack::execute(authorization, execution.clone())?, rng)?;
         // Extract the execution.

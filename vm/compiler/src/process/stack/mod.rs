@@ -29,6 +29,7 @@ pub use register_types::*;
 mod registers;
 pub use registers::*;
 
+mod authorize;
 mod deploy;
 mod evaluate;
 mod execute;
@@ -259,7 +260,11 @@ impl<N: Network> Stack<N> {
     /// Returns the function with the given function name.
     #[inline]
     pub fn get_function(&self, function_name: &Identifier<N>) -> Result<Function<N>> {
-        self.program.get_function(function_name)
+        // Ensure the function exists.
+        match self.program.contains_function(function_name) {
+            true => self.program.get_function(function_name),
+            false => bail!("Function '{function_name}' does not exist in program '{}'.", self.program.id()),
+        }
     }
 
     /// Returns the expected number of calls for the given function name.
@@ -325,14 +330,30 @@ impl<N: Network> Stack<N> {
 
     /// Inserts the given proving key for the given function name.
     #[inline]
-    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) {
+    pub fn insert_proving_key(&self, function_name: &Identifier<N>, proving_key: ProvingKey<N>) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the proving key.
         self.proving_keys.write().insert(*function_name, proving_key);
+        Ok(())
     }
 
     /// Inserts the given verifying key for the given function name.
     #[inline]
-    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) {
+    pub fn insert_verifying_key(&self, function_name: &Identifier<N>, verifying_key: VerifyingKey<N>) -> Result<()> {
+        // Ensure the function name exists in the program.
+        ensure!(
+            self.program.contains_function(function_name),
+            "Function '{function_name}' does not exist in program '{}'.",
+            self.program.id()
+        );
+        // Insert the verifying key.
         self.verifying_keys.write().insert(*function_name, verifying_key);
+        Ok(())
     }
 
     /// Removes the proving key for the given function name.

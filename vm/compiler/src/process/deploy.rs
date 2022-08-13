@@ -51,12 +51,14 @@ impl<N: Network> Process<N> {
     /// Adds the newly-deployed program.
     #[inline]
     pub fn finalize_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
-        // Add the program.
-        self.add_program(deployment.program())?;
+        // Compute the program stack.
+        let stack = Stack::new(self, deployment.program())?;
         // Insert the verifying keys.
         for (function_name, (verifying_key, _)) in deployment.verifying_keys() {
-            self.insert_verifying_key(deployment.program().id(), function_name, verifying_key.clone())?;
+            stack.insert_verifying_key(function_name, verifying_key.clone())?;
         }
+        // Add the stack to the process.
+        self.stacks.insert(*deployment.program_id(), stack);
         Ok(())
     }
 }
