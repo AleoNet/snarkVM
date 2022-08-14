@@ -22,7 +22,7 @@ use console::{
     program::{FinalizeType, Register},
 };
 
-/// An input statement defines an input argument to a function, and is of the form
+/// An input statement defines an input argument to finalize, and is of the form
 /// `input {register} as {finalize_type}`.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Input<N: Network> {

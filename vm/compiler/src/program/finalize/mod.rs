@@ -49,44 +49,44 @@ pub struct Finalize<N: Network> {
 }
 
 impl<N: Network> Finalize<N> {
-    /// Initializes a new function with the given name.
+    /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
         Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new() }
     }
 
-    /// Returns the name of the function.
+    /// Returns the name of the associated function.
     pub const fn name(&self) -> &Identifier<N> {
         &self.name
     }
 
-    /// Returns the function inputs.
+    /// Returns the finalize inputs.
     pub const fn inputs(&self) -> &IndexSet<Input<N>> {
         &self.inputs
     }
 
-    /// Returns the function input types.
+    /// Returns the finalize input types.
     pub fn input_types(&self) -> Vec<FinalizeType<N>> {
         self.inputs.iter().map(|input| *input.finalize_type()).collect()
     }
 
-    /// Returns the function instructions.
+    /// Returns the finalize instructions.
     pub fn instructions(&self) -> &[Instruction<N>] {
         &self.instructions
     }
 
-    /// Returns the function outputs.
+    /// Returns the finalize outputs.
     pub const fn outputs(&self) -> &IndexSet<Output<N>> {
         &self.outputs
     }
 
-    /// Returns the function output types.
+    /// Returns the finalize output types.
     pub fn output_types(&self) -> Vec<FinalizeType<N>> {
         self.outputs.iter().map(|output| *output.finalize_type()).collect()
     }
 }
 
 impl<N: Network> Finalize<N> {
-    /// Adds the input statement to the function.
+    /// Adds the input statement to finalize.
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements already.
@@ -111,7 +111,7 @@ impl<N: Network> Finalize<N> {
         Ok(())
     }
 
-    /// Adds the given instruction to the function.
+    /// Adds the given instruction to finalize.
     ///
     /// # Errors
     /// This method will halt if the maximum number of instructions has been reached.
@@ -134,7 +134,7 @@ impl<N: Network> Finalize<N> {
         Ok(())
     }
 
-    /// Adds the output statement to the function.
+    /// Adds the output statement to finalize.
     ///
     /// # Errors
     /// This method will halt if there are no instructions in memory.

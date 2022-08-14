@@ -21,7 +21,7 @@ impl<N: Network> Parser for Input<N> {
     /// The input statement is of the form `input {register} as {finalize_type};`.
     ///
     /// # Errors
-    /// This function will halt if the given register is a register member.
+    /// This finalize will halt if the given register is a register member.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
