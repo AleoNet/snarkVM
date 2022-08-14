@@ -120,8 +120,13 @@ impl<N: Network> RegisterTypes<N> {
                     "Casting to a record requires the first operand to be an address"
                 );
             }
-            // These operand types are always addresses.
-            Operand::ProgramID(..) | Operand::Caller => {} // Note: The ProgramID is rendered as an address.
+            Operand::ProgramID(program_id) => {
+                // Note: While the ProgramID is rendered as an address, this address is not recoverable
+                // from a private key. Furthermore, programs are not allowed to own any records.
+                // They must hold all necessary state in storage instead.
+                bail!("Forbidden operation: Cannot cast a program ID ('{program_id}') as a record owner")
+            }
+            Operand::Caller => {}
         }
 
         // Ensure the second input type is a u64.
