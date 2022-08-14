@@ -37,6 +37,7 @@ impl<'de, N: Network> Deserialize<'de> for FinalizeType<N> {
 }
 
 #[cfg(test)]
+#[allow(clippy::single_element_loop)]
 mod tests {
     use super::*;
     use snarkvm_console_network::Testnet3;
