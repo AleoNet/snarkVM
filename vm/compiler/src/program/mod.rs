@@ -518,9 +518,11 @@ impl<N: Network> Program<N> {
         "interface",
         "closure",
         "program",
-        "global",
-        // Reserved (catch all)
         "aleo",
+        "self",
+        "storage",
+        // Reserved (catch all)
+        "global",
         "return",
         "break",
         "assert",

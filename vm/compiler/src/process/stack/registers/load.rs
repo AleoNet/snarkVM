@@ -45,6 +45,12 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             Operand::Literal(literal) => return Ok(Value::Plaintext(Plaintext::from(literal))),
             // If the operand is a register, load the value from the register.
             Operand::Register(register) => register,
+            // If the operand is the program ID, load the program address.
+            Operand::ProgramID(program_id) => {
+                return Ok(Value::Plaintext(Plaintext::from(Literal::Address(program_id.to_address()?))));
+            }
+            // If the operand is the caller, load the value of the caller.
+            Operand::Caller => return Ok(Value::Plaintext(Plaintext::from(Literal::Address(self.caller()?)))),
         };
 
         // Retrieve the stack value.
@@ -117,6 +123,18 @@ impl<N: Network, A: circuit::Aleo<Network = N>> Registers<N, A> {
             }
             // If the operand is a register, load the value from the register.
             Operand::Register(register) => register,
+            // If the operand is the program ID, load the program address.
+            Operand::ProgramID(program_id) => {
+                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::constant(
+                    Literal::Address(program_id.to_address()?),
+                ))));
+            }
+            // If the operand is the caller, load the value of the caller.
+            Operand::Caller => {
+                return Ok(circuit::Value::Plaintext(circuit::Plaintext::from(circuit::Literal::Address(
+                    self.caller_circuit()?,
+                ))));
+            }
         };
 
         // Retrieve the circuit value.

@@ -626,16 +626,18 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, is) = IsEq::<CurrentNetwork>::parse("is.eq r0 r1").unwrap();
+        let (string, is) = IsEq::<CurrentNetwork>::parse("is.eq r0 r1 into r2").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(is.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(is.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(is.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(is.destination, Register::Locator(2), "The destination register is incorrect");
 
-        let (string, is) = IsNeq::<CurrentNetwork>::parse("is.neq r0 r1").unwrap();
+        let (string, is) = IsNeq::<CurrentNetwork>::parse("is.neq r0 r1 into r2").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
         assert_eq!(is.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(is.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(is.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(is.destination, Register::Locator(2), "The destination register is incorrect");
     }
 }

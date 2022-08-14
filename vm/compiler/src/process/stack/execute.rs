@@ -27,6 +27,7 @@ impl<N: Network> Stack<N> {
         closure: &Closure<N>,
         inputs: &[circuit::Value<A>],
         call_stack: CallStack<N>,
+        caller: circuit::Address<A>,
         tvk: circuit::Field<A>,
     ) -> Result<Vec<circuit::Value<A>>> {
         // Ensure the call stack is not `Evaluate`.
@@ -42,6 +43,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition caller, as a circuit.
+        registers.set_caller_circuit(caller);
         // Set the transition view key, as a circuit.
         registers.set_tvk_circuit(tvk);
 
@@ -144,6 +147,11 @@ impl<N: Network> Stack<N> {
         let request = circuit::Request::new(circuit::Mode::Private, console_request.clone());
         // Ensure the request has a valid signature, inputs, and transition view key.
         A::assert(request.verify(&input_types, &tpk));
+
+        // Set the transition caller.
+        registers.set_caller(*console_request.caller());
+        // Set the transition caller, as a circuit.
+        registers.set_caller_circuit(request.caller().clone());
 
         // Set the transition view key.
         registers.set_tvk(*console_request.tvk());

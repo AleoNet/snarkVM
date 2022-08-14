@@ -278,6 +278,8 @@ impl<N: Network> Stack<N> {
             operand_types.push(match operand {
                 Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
                 Operand::Register(register) => register_types.get_type(self, register)?,
+                Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+                Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
             });
         }
 
