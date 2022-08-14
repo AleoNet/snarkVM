@@ -59,6 +59,7 @@ use console::{
         EntryType,
         Identifier,
         Literal,
+        LiteralType,
         Locator,
         Owner,
         Plaintext,

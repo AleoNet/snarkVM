@@ -27,6 +27,7 @@ impl<N: Network> Stack<N> {
         closure: &Closure<N>,
         inputs: &[Value<N>],
         call_stack: CallStack<N>,
+        caller: Address<N>,
         tvk: Field<N>,
     ) -> Result<Vec<Value<N>>> {
         // Ensure the number of inputs matches the number of input statements.
@@ -36,6 +37,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(closure.name())?.clone());
+        // Set the transition caller.
+        registers.set_caller(caller);
         // Set the transition view key.
         registers.set_tvk(tvk);
 
@@ -86,6 +89,7 @@ impl<N: Network> Stack<N> {
         // Retrieve the function, inputs, and transition view key.
         let function = self.get_function(request.function_name())?;
         let inputs = request.inputs();
+        let caller = *request.caller();
         let tvk = *request.tvk();
 
         // Ensure the number of inputs matches.
@@ -101,6 +105,8 @@ impl<N: Network> Stack<N> {
 
         // Initialize the registers.
         let mut registers = Registers::<N, A>::new(call_stack, self.get_register_types(function.name())?.clone());
+        // Set the transition caller.
+        registers.set_caller(caller);
         // Set the transition view key.
         registers.set_tvk(tvk);
 

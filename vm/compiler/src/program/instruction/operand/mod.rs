@@ -19,7 +19,7 @@ mod parse;
 
 use console::{
     network::prelude::*,
-    program::{Literal, Register},
+    program::{Literal, ProgramID, Register},
 };
 
 /// The `Operand` enum represents the options for an operand in an instruction.
@@ -30,6 +30,10 @@ pub enum Operand<N: Network> {
     Literal(Literal<N>),
     /// The operand is a register.
     Register(Register<N>),
+    /// The operand is the program ID.
+    ProgramID(ProgramID<N>),
+    /// The operand is the caller address.
+    Caller,
 }
 
 impl<N: Network> From<Literal<N>> for Operand<N> {

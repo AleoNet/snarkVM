@@ -17,15 +17,15 @@
 mod bytes;
 mod parse;
 mod serialize;
+mod to_address;
 mod to_bits;
 mod to_fields;
 
 use crate::Identifier;
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::Field;
+use snarkvm_console_types::{Address, Field};
 
 /// A program ID is of the form `{name}.{network}`.
-/// If no `network`-level domain is specified, the default network is used.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProgramID<N: Network> {
     /// The program name.
