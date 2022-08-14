@@ -568,6 +568,89 @@ function hello_world:
     }
 
     #[test]
+    fn test_process_self_caller() {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program caller.aleo;
+
+  record data:
+    owner as address.private;
+    gates as u64.private;
+
+  function initialize:
+    input r0 as data.record;
+    cast self.caller r0.gates into r1 as data.record;
+    output r1 as data.record;",
+        )
+        .unwrap();
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("initialize").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Construct the process.
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let input =
+            Value::from_str(&format!("{{ owner: {caller}.private, gates: 1234u64.private, _nonce: 0group.public }}"))
+                .unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[input], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+        let request = authorization.peek_next().unwrap();
+
+        // Compute the encryption randomizer as `HashToScalar(tvk || index)`.
+        let randomizer = CurrentNetwork::hash_to_scalar_psd2(&[*request.tvk(), Field::from_u64(1)]).unwrap();
+        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
+
+        // Declare the output value.
+        let output =
+            Value::from_str(&format!("{{ owner: {caller}.private, gates: 1234u64.private, _nonce: {nonce}.public }}"))
+                .unwrap();
+
+        // Check again to make sure we didn't modify the authorization before calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(output, candidate[0]);
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(output, candidate[0]);
+
+        assert!(process.verify_execution(&execution).is_ok());
+
+        // use circuit::Environment;
+        //
+        // assert_eq!(20060, CurrentAleo::num_constants());
+        // assert_eq!(12, CurrentAleo::num_public());
+        // assert_eq!(57602, CurrentAleo::num_private());
+        // assert_eq!(57684, CurrentAleo::num_constraints());
+        // assert_eq!(178189, CurrentAleo::num_gates());
+    }
+
+    #[test]
     fn test_process_execute_call_closure() {
         // Initialize a new program.
         let (string, program) = Program::<CurrentNetwork>::parse(
