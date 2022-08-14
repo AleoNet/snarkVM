@@ -17,12 +17,18 @@
 mod finalize;
 pub use finalize::*;
 
+mod increment;
+use increment::*;
+
 use crate::program::Instruction;
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Command<N: Network> {
+    /// Evaluates the instruction.
     Instruction(Instruction<N>),
+    /// Increments the value stored at the `first` operand in `storage` by the amount in the `second` operand.
+    Increment(Increment<N>),
 }
 
 impl<N: Network> FromBytes for Command<N> {
@@ -31,12 +37,12 @@ impl<N: Network> FromBytes for Command<N> {
         // Read the variant.
         let variant = u8::read_le(&mut reader)?;
         match variant {
-            0 => {
-                // Read the instruction.
-                let instruction = Instruction::read_le(&mut reader)?;
-                Ok(Self::Instruction(instruction))
-            }
-            1.. => Err(error(format!("Invalid command variant: {}", variant))),
+            // Read the instruction.
+            0 => Ok(Self::Instruction(Instruction::read_le(&mut reader)?)),
+            // Read the increment.
+            1 => Ok(Self::Increment(Increment::read_le(&mut reader)?)),
+            // Invalid variant.
+            2.. => Err(error(format!("Invalid command variant: {}", variant))),
         }
     }
 }
@@ -51,6 +57,12 @@ impl<N: Network> ToBytes for Command<N> {
                 // Write the instruction.
                 instruction.write_le(&mut writer)
             }
+            Self::Increment(increment) => {
+                // Write the variant.
+                1u8.write_le(&mut writer)?;
+                // Write the increment.
+                increment.write_le(&mut writer)
+            }
         }
     }
 }
@@ -59,7 +71,10 @@ impl<N: Network> Parser for Command<N> {
     /// Parses the string into the command.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        alt((map(Instruction::parse, |instruction| Self::Instruction(instruction)),))(string)
+        alt((
+            map(Instruction::parse, |instruction| Self::Instruction(instruction)),
+            map(Increment::parse, |increment| Self::Increment(increment)),
+        ))(string)
     }
 }
 
@@ -93,6 +108,7 @@ impl<N: Network> Display for Command<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Instruction(instruction) => Display::fmt(instruction, f),
+            Self::Increment(increment) => Display::fmt(increment, f),
         }
     }
 }
@@ -111,6 +127,12 @@ mod tests {
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         let bytes = command.to_bytes_le().unwrap();
         assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
+
+        // Increment
+        let expected = "increment object[r0] by r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        let bytes = command.to_bytes_le().unwrap();
+        assert_eq!(command, Command::from_bytes_le(&bytes).unwrap());
     }
 
     #[test]
@@ -119,6 +141,12 @@ mod tests {
         let expected = "add r0 r1 into r2;";
         let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(Command::Instruction(Instruction::from_str(expected).unwrap()), command);
+        assert_eq!(expected, command.to_string());
+
+        // Increment
+        let expected = "increment object[r0] by r1;";
+        let command = Command::<CurrentNetwork>::parse(expected).unwrap().1;
+        assert_eq!(Command::Increment(Increment::from_str(expected).unwrap()), command);
         assert_eq!(expected, command.to_string());
     }
 }

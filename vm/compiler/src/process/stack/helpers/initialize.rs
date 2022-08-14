@@ -433,6 +433,9 @@ impl<N: Network> Stack<N> {
                     }
                 }
             }
+            Opcode::Command(opcode) => {
+                bail!("Forbidden operation: Instruction '{instruction}' cannot invoke command '{opcode}'.");
+            }
             Opcode::Commit(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if ![
@@ -477,10 +480,11 @@ impl<N: Network> Stack<N> {
                 }
             }
             Opcode::Finalize(opcode) => {
-                // Ensure the opcode is correct.
-                if opcode != "finalize" {
-                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
-                }
+                bail!("Forbidden operation: Instruction '{instruction}' cannot invoke command '{opcode}'.");
+                // // Ensure the opcode is correct.
+                // if opcode != "finalize" {
+                //     bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
+                // }
             }
             Opcode::Hash(opcode) => {
                 // Ensure the instruction belongs to the defined set.
