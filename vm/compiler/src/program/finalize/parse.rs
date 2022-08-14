@@ -35,8 +35,8 @@ impl<N: Network> Parser for Finalize<N> {
 
         // Parse the inputs from the string.
         let (string, inputs) = many0(Input::parse)(string)?;
-        // Parse the instructions from the string.
-        let (string, instructions) = many1(Instruction::parse)(string)?;
+        // Parse the commands from the string.
+        let (string, commands) = many1(Command::parse)(string)?;
         // Parse the outputs from the string.
         let (string, outputs) = many0(Output::parse)(string)?;
 
@@ -47,9 +47,7 @@ impl<N: Network> Parser for Finalize<N> {
                 eprintln!("{error}");
                 return Err(error);
             }
-            if let Err(error) =
-                instructions.iter().cloned().try_for_each(|instruction| finalize.add_instruction(instruction))
-            {
+            if let Err(error) = commands.iter().cloned().try_for_each(|command| finalize.add_command(command)) {
                 eprintln!("{error}");
                 return Err(error);
             }
@@ -91,9 +89,9 @@ impl<N: Network> Display for Finalize<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the finalize to a string.
         write!(f, "{} {}:", Self::type_name(), self.name)?;
-        self.inputs.iter().try_for_each(|input| write!(f, "\n    {}", input))?;
-        self.instructions.iter().try_for_each(|instruction| write!(f, "\n    {}", instruction))?;
-        self.outputs.iter().try_for_each(|output| write!(f, "\n    {}", output))
+        self.inputs.iter().try_for_each(|input| write!(f, "\n    {input}"))?;
+        self.commands.iter().try_for_each(|command| write!(f, "\n    {command}"))?;
+        self.outputs.iter().try_for_each(|output| write!(f, "\n    {output}"))
     }
 }
 
@@ -110,15 +108,15 @@ mod tests {
             r"
 finalize foo:
     input r0 as field.public;
-    input r1 as field.private;
+    input r1 as field.public;
     add r0 r1 into r2;
-    output r2 as field.private;",
+    output r2 as field.public;",
         )
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
         assert_eq!(2, finalize.inputs.len());
-        assert_eq!(1, finalize.instructions.len());
+        assert_eq!(1, finalize.commands.len());
         assert_eq!(1, finalize.outputs.len());
 
         // Finalize with 0 inputs.
@@ -126,13 +124,13 @@ finalize foo:
             r"
 finalize foo:
     add 1u32 2u32 into r0;
-    output r0 as u32.private;",
+    output r0 as u32.public;",
         )
         .unwrap()
         .1;
         assert_eq!("foo", finalize.name().to_string());
         assert_eq!(0, finalize.inputs.len());
-        assert_eq!(1, finalize.instructions.len());
+        assert_eq!(1, finalize.commands.len());
         assert_eq!(1, finalize.outputs.len());
     }
 
@@ -149,7 +147,7 @@ finalize foo:
         .1;
         assert_eq!("foo", finalize.name().to_string());
         assert_eq!(1, finalize.inputs.len());
-        assert_eq!(1, finalize.instructions.len());
+        assert_eq!(1, finalize.commands.len());
         assert_eq!(1, finalize.outputs.len());
     }
 
@@ -157,9 +155,9 @@ finalize foo:
     fn test_finalize_display() {
         let expected = r"finalize foo:
     input r0 as field.public;
-    input r1 as field.private;
+    input r1 as field.public;
     add r0 r1 into r2;
-    output r2 as field.private;";
+    output r2 as field.public;";
         let finalize = Finalize::<CurrentNetwork>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{finalize}"),);
     }

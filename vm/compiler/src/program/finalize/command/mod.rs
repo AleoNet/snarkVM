@@ -18,7 +18,7 @@ mod finalize;
 pub use finalize::*;
 
 mod increment;
-use increment::*;
+pub use increment::*;
 
 use crate::program::Instruction;
 use console::network::prelude::*;

@@ -30,14 +30,14 @@ impl<N: Network> FromBytes for Finalize<N> {
             inputs.push(Input::read_le(&mut reader)?);
         }
 
-        // Read the instructions.
-        let num_instructions = u32::read_le(&mut reader)?;
-        if num_instructions > N::MAX_FUNCTION_INSTRUCTIONS as u32 {
-            return Err(error(format!("Failed to deserialize finalize: too many instructions ({num_instructions})")));
+        // Read the commands.
+        let num_commands = u32::read_le(&mut reader)?;
+        if num_commands > N::MAX_FUNCTION_INSTRUCTIONS as u32 {
+            return Err(error(format!("Failed to deserialize finalize: too many commands ({num_commands})")));
         }
-        let mut instructions = Vec::with_capacity(num_instructions as usize);
-        for _ in 0..num_instructions {
-            instructions.push(Instruction::read_le(&mut reader)?);
+        let mut commands = Vec::with_capacity(num_commands as usize);
+        for _ in 0..num_commands {
+            commands.push(Command::read_le(&mut reader)?);
         }
 
         // Read the outputs.
@@ -50,10 +50,7 @@ impl<N: Network> FromBytes for Finalize<N> {
         // Initialize a new finalize.
         let mut finalize = Self::new(name);
         inputs.into_iter().try_for_each(|input| finalize.add_input(input)).map_err(|e| error(e.to_string()))?;
-        instructions
-            .into_iter()
-            .try_for_each(|instruction| finalize.add_instruction(instruction))
-            .map_err(|e| error(e.to_string()))?;
+        commands.into_iter().try_for_each(|command| finalize.add_command(command)).map_err(|e| error(e.to_string()))?;
         outputs.into_iter().try_for_each(|output| finalize.add_output(output)).map_err(|e| error(e.to_string()))?;
 
         Ok(finalize)
@@ -79,16 +76,16 @@ impl<N: Network> ToBytes for Finalize<N> {
             input.write_le(&mut writer)?;
         }
 
-        // Write the number of instructions for the finalize.
-        let num_instructions = self.instructions.len();
-        match num_instructions <= N::MAX_FUNCTION_INSTRUCTIONS {
-            true => (num_instructions as u32).write_le(&mut writer)?,
-            false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
+        // Write the number of commands for the finalize.
+        let num_commands = self.commands.len();
+        match num_commands <= N::MAX_FUNCTION_INSTRUCTIONS {
+            true => (num_commands as u32).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_commands} commands as bytes"))),
         }
 
-        // Write the instructions.
-        for instruction in self.instructions.iter() {
-            instruction.write_le(&mut writer)?;
+        // Write the commands.
+        for command in self.commands.iter() {
+            command.write_le(&mut writer)?;
         }
 
         // Write the number of outputs for the finalize.
@@ -119,7 +116,7 @@ mod tests {
         let finalize_string = r"
 finalize main:
     input r0 as field.public;
-    input r1 as field.private;
+    input r1 as field.public;
     add r0 r1 into r2;
     add r0 r1 into r3;
     add r0 r1 into r4;
@@ -130,7 +127,7 @@ finalize main:
     add r0 r1 into r9;
     add r0 r1 into r10;
     add r0 r1 into r11;
-    output r11 as field.private;";
+    output r11 as field.public;";
 
         let expected = Finalize::<CurrentNetwork>::from_str(finalize_string)?;
         let expected_bytes = expected.to_bytes_le()?;

@@ -23,6 +23,9 @@ pub use deployment::*;
 mod execution;
 pub use execution::*;
 
+mod finalize_types;
+pub use finalize_types::*;
+
 mod register_types;
 pub use register_types::*;
 
@@ -41,7 +44,6 @@ use crate::{
     Closure,
     Function,
     Instruction,
-    Opcode,
     Operand,
     Process,
     Program,
@@ -59,7 +61,6 @@ use console::{
         EntryType,
         Identifier,
         Literal,
-        LiteralType,
         Locator,
         Owner,
         Plaintext,
@@ -67,7 +68,6 @@ use console::{
         ProgramID,
         Record,
         RecordType,
-        Register,
         RegisterType,
         Request,
         Response,
@@ -173,6 +173,8 @@ pub struct Stack<N: Network> {
     external_stacks: IndexMap<ProgramID<N>, Stack<N>>,
     /// The mapping of closure and function names to their register types.
     register_types: IndexMap<Identifier<N>, RegisterTypes<N>>,
+    /// The mapping of finalize names to their register types.
+    finalize_types: IndexMap<Identifier<N>, FinalizeTypes<N>>,
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of function name to proving key.
@@ -294,7 +296,14 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn get_register_types(&self, name: &Identifier<N>) -> Result<&RegisterTypes<N>> {
         // Retrieve the register types.
-        self.register_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' does not exist"))
+        self.register_types.get(name).ok_or_else(|| anyhow!("Register types for '{name}' do not exist"))
+    }
+
+    /// Returns the register types for the given finalize name.
+    #[inline]
+    pub fn get_finalize_types(&self, name: &Identifier<N>) -> Result<&FinalizeTypes<N>> {
+        // Retrieve the finalize types.
+        self.finalize_types.get(name).ok_or_else(|| anyhow!("Finalize types for '{name}' do not exist"))
     }
 
     /// Returns `true` if the proving key for the given function name exists.

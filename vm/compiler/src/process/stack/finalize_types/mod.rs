@@ -17,45 +17,35 @@
 mod initialize;
 mod matches;
 
-use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, Stack};
+use crate::{
+    finalize::{Command, Finalize, Increment},
+    Instruction,
+    Opcode,
+    Operand,
+    Program,
+    Stack,
+};
 use console::{
     network::prelude::*,
-    program::{
-        EntryType,
-        Identifier,
-        Interface,
-        LiteralType,
-        PlaintextType,
-        RecordType,
-        Register,
-        RegisterType,
-        ValueType,
-    },
+    program::{EntryType, Identifier, Interface, LiteralType, PlaintextType, RecordType, Register, RegisterType},
 };
 
 use indexmap::IndexMap;
 
 #[derive(Clone, Default, PartialEq, Eq)]
-pub struct RegisterTypes<N: Network> {
+pub struct FinalizeTypes<N: Network> {
     /// The mapping of all input registers to their defined types.
     inputs: IndexMap<u64, RegisterType<N>>,
     /// The mapping of all destination registers to their defined types.
     destinations: IndexMap<u64, RegisterType<N>>,
 }
 
-impl<N: Network> RegisterTypes<N> {
-    /// Initializes a new instance of `RegisterTypes` for the given closure.
-    /// Checks that the given closure is well-formed for the given stack.
+impl<N: Network> FinalizeTypes<N> {
+    /// Initializes a new instance of `FinalizeTypes` for the given finalize.
+    /// Checks that the given finalize is well-formed for the given stack.
     #[inline]
-    pub fn from_closure(stack: &Stack<N>, closure: &Closure<N>) -> Result<Self> {
-        Self::initialize_closure_types(stack, closure)
-    }
-
-    /// Initializes a new instance of `RegisterTypes` for the given function.
-    /// Checks that the given function is well-formed for the given stack.
-    #[inline]
-    pub fn from_function(stack: &Stack<N>, function: &Function<N>) -> Result<Self> {
-        Self::initialize_function_types(stack, function)
+    pub fn from_finalize(stack: &Stack<N>, finalize: &Finalize<N>) -> Result<Self> {
+        Self::initialize_finalize_types(stack, finalize)
     }
 
     /// Returns `true` if the given register exists.

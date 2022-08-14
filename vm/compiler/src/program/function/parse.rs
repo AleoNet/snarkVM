@@ -203,7 +203,7 @@ finalize foo:
         assert_eq!(1, function.instructions.len());
         assert_eq!(0, function.outputs.len());
         assert_eq!(1, function.finalize().unwrap().inputs().len());
-        assert_eq!(1, function.finalize().unwrap().instructions().len());
+        assert_eq!(1, function.finalize().unwrap().commands().len());
     }
 
     #[test]

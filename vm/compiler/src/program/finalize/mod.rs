@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod command;
-// use command::*;
-pub use command::FinalizeCommand;
+pub use command::*;
 
 mod input;
 use input::*;
@@ -42,8 +41,8 @@ pub struct Finalize<N: Network> {
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
     inputs: IndexSet<Input<N>>,
-    /// The instructions, in order of execution.
-    instructions: Vec<Instruction<N>>,
+    /// The commands, in order of execution.
+    commands: Vec<Command<N>>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
 }
@@ -51,7 +50,7 @@ pub struct Finalize<N: Network> {
 impl<N: Network> Finalize<N> {
     /// Initializes a new finalize with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new() }
+        Self { name, inputs: IndexSet::new(), commands: Vec::new(), outputs: IndexSet::new() }
     }
 
     /// Returns the name of the associated function.
@@ -69,9 +68,9 @@ impl<N: Network> Finalize<N> {
         self.inputs.iter().map(|input| *input.finalize_type()).collect()
     }
 
-    /// Returns the finalize instructions.
-    pub fn instructions(&self) -> &[Instruction<N>] {
-        &self.instructions
+    /// Returns the finalize commands.
+    pub fn commands(&self) -> &[Command<N>] {
+        &self.commands
     }
 
     /// Returns the finalize outputs.
@@ -89,13 +88,13 @@ impl<N: Network> Finalize<N> {
     /// Adds the input statement to finalize.
     ///
     /// # Errors
-    /// This method will halt if there are instructions or output statements already.
+    /// This method will halt if there are commands or output statements already.
     /// This method will halt if the maximum number of inputs has been reached.
     /// This method will halt if the input statement was previously added.
     #[inline]
     fn add_input(&mut self, input: Input<N>) -> Result<()> {
-        // Ensure there are no instructions or output statements in memory.
-        ensure!(self.instructions.is_empty(), "Cannot add inputs after instructions have been added");
+        // Ensure there are no commands or output statements in memory.
+        ensure!(self.commands.is_empty(), "Cannot add inputs after commands have been added");
         ensure!(self.outputs.is_empty(), "Cannot add inputs after outputs have been added");
 
         // Ensure the maximum number of inputs has not been exceeded.
@@ -111,38 +110,47 @@ impl<N: Network> Finalize<N> {
         Ok(())
     }
 
-    /// Adds the given instruction to finalize.
+    /// Adds the given command to finalize.
     ///
     /// # Errors
-    /// This method will halt if the maximum number of instructions has been reached.
+    /// This method will halt if the maximum number of commands has been reached.
     #[inline]
-    pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
-        // Ensure the maximum number of instructions has not been exceeded.
+    pub fn add_command(&mut self, command: Command<N>) -> Result<()> {
+        // Ensure the maximum number of commands has not been exceeded.
         ensure!(
-            self.instructions.len() <= N::MAX_FUNCTION_INSTRUCTIONS,
-            "Cannot add more than {} instructions",
+            self.commands.len() <= N::MAX_FUNCTION_INSTRUCTIONS,
+            "Cannot add more than {} commands",
             N::MAX_FUNCTION_INSTRUCTIONS
         );
 
-        // Ensure the destination register is a locator.
-        for register in instruction.destinations() {
-            ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+        // If the command is an instruction, perform additional checks.
+        if let Command::Instruction(instruction) = &command {
+            // Ensure the instruction is not a `call`.
+            ensure!(
+                !matches!(instruction, Instruction::Call(..)),
+                "Forbidden operation: Finalize cannot invoke a 'call'"
+            );
+
+            // Ensure the destination register is a locator.
+            for register in instruction.destinations() {
+                ensure!(matches!(register, Register::Locator(..)), "Destination register must be a locator");
+            }
         }
 
-        // Insert the instruction.
-        self.instructions.push(instruction);
+        // Insert the command.
+        self.commands.push(command);
         Ok(())
     }
 
     /// Adds the output statement to finalize.
     ///
     /// # Errors
-    /// This method will halt if there are no instructions in memory.
+    /// This method will halt if there are no commands in memory.
     /// This method will halt if the maximum number of outputs has been reached.
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
-        // Ensure there are instructions in memory.
-        ensure!(!self.instructions.is_empty(), "Cannot add outputs before instructions have been added");
+        // Ensure there are commands in memory.
+        ensure!(!self.commands.is_empty(), "Cannot add outputs before commands have been added");
 
         // Ensure the maximum number of outputs has not been exceeded.
         ensure!(self.outputs.len() <= N::MAX_OUTPUTS, "Cannot add more than {} outputs", N::MAX_OUTPUTS);
