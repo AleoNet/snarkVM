@@ -22,7 +22,7 @@ impl<N: Network> Parser for ProgramID<N> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the name from the string.
         let (string, name) = Identifier::parse(string)?;
-        // Parse the optional "." and network-level domain (NLD) from the string.
+        // Parse the "." and network-level domain (NLD) from the string.
         let (string, (_, network)) = pair(tag("."), Identifier::parse)(string)?;
         // Return the program ID.
         Ok((string, Self { name, network }))

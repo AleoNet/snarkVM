@@ -476,6 +476,12 @@ impl<N: Network> Stack<N> {
                     _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
                 }
             }
+            Opcode::Finalize(opcode) => {
+                // Ensure the opcode is correct.
+                if opcode != "finalize" {
+                    bail!("Instruction '{instruction}' is not for opcode '{opcode}'.");
+                }
+            }
             Opcode::Hash(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if ![

@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod finalize_type;
-pub use finalize_type::FinalizeType;
+mod bytes;
+mod parse;
+mod serialize;
 
-mod interface;
-pub use interface::Interface;
+use crate::{Identifier, Locator, PlaintextType};
+use snarkvm_console_network::prelude::*;
 
-mod literal_type;
-pub use literal_type::LiteralType;
+use enum_index::EnumIndex;
 
-mod plaintext_type;
-pub use plaintext_type::PlaintextType;
-
-mod record_type;
-pub use record_type::{EntryType, RecordType};
-
-mod register_type;
-pub use register_type::RegisterType;
-
-mod value_type;
-pub use value_type::ValueType;
+#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
+pub enum FinalizeType<N: Network> {
+    /// A publicly-visible type.
+    Public(PlaintextType<N>),
+    /// A record type inherits its visibility from the record definition.
+    Record(Identifier<N>),
+    /// An external record type inherits its visibility from its record definition.
+    ExternalRecord(Locator<N>),
+}

@@ -14,23 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod finalize_type;
-pub use finalize_type::FinalizeType;
-
-mod interface;
-pub use interface::Interface;
-
-mod literal_type;
-pub use literal_type::LiteralType;
-
-mod plaintext_type;
-pub use plaintext_type::PlaintextType;
-
-mod record_type;
-pub use record_type::{EntryType, RecordType};
-
-mod register_type;
-pub use register_type::RegisterType;
-
-mod value_type;
-pub use value_type::ValueType;
+mod finalize;
+pub use finalize::*;

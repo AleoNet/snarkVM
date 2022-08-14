@@ -16,31 +16,27 @@
 
 use super::*;
 
-impl<N: Network> ToBytes for ValueType<N> {
-    /// Writes the value type to a buffer.
+impl<N: Network> ToBytes for FinalizeType<N> {
+    /// Writes the finalize type to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.enum_index() as u8).write_le(&mut writer)?;
         match self {
-            Self::Constant(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Public(plaintext_type) => plaintext_type.write_le(&mut writer),
-            Self::Private(plaintext_type) => plaintext_type.write_le(&mut writer),
             Self::Record(identifier) => identifier.write_le(&mut writer),
             Self::ExternalRecord(locator) => locator.write_le(&mut writer),
         }
     }
 }
 
-impl<N: Network> FromBytes for ValueType<N> {
-    /// Reads the value type from a buffer.
+impl<N: Network> FromBytes for FinalizeType<N> {
+    /// Reads the finalize type from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
-            0 => Ok(Self::Constant(PlaintextType::read_le(&mut reader)?)),
-            1 => Ok(Self::Public(PlaintextType::read_le(&mut reader)?)),
-            2 => Ok(Self::Private(PlaintextType::read_le(&mut reader)?)),
-            3 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
-            4 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
-            5.. => Err(error(format!("Failed to deserialize value type variant {}", variant))),
+            0 => Ok(Self::Public(PlaintextType::read_le(&mut reader)?)),
+            1 => Ok(Self::Record(Identifier::read_le(&mut reader)?)),
+            2 => Ok(Self::ExternalRecord(Locator::read_le(&mut reader)?)),
+            3.. => Err(error(format!("Failed to deserialize finalize type variant {}", variant))),
         }
     }
 }

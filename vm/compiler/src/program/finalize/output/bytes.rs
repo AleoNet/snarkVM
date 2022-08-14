@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod finalize_type;
-pub use finalize_type::FinalizeType;
+use super::*;
 
-mod interface;
-pub use interface::Interface;
+impl<N: Network> FromBytes for Output<N> {
+    /// Reads the output from a buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let register = FromBytes::read_le(&mut reader)?;
+        let finalize_type = FromBytes::read_le(&mut reader)?;
+        Ok(Self { register, finalize_type })
+    }
+}
 
-mod literal_type;
-pub use literal_type::LiteralType;
-
-mod plaintext_type;
-pub use plaintext_type::PlaintextType;
-
-mod record_type;
-pub use record_type::{EntryType, RecordType};
-
-mod register_type;
-pub use register_type::RegisterType;
-
-mod value_type;
-pub use value_type::ValueType;
+impl<N: Network> ToBytes for Output<N> {
+    /// Writes the output to a buffer.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.register.write_le(&mut writer)?;
+        self.finalize_type.write_le(&mut writer)
+    }
+}

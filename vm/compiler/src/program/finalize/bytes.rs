@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<N: Network> FromBytes for Function<N> {
-    /// Reads the function from a buffer.
+impl<N: Network> FromBytes for Finalize<N> {
+    /// Reads the finalize from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the function name.
+        // Read the associated function name.
         let name = Identifier::<N>::read_le(&mut reader)?;
 
         // Read the inputs.
@@ -33,7 +33,7 @@ impl<N: Network> FromBytes for Function<N> {
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
         if num_instructions > N::MAX_FUNCTION_INSTRUCTIONS as u32 {
-            return Err(error(format!("Failed to deserialize a function: too many instructions ({num_instructions})")));
+            return Err(error(format!("Failed to deserialize finalize: too many instructions ({num_instructions})")));
         }
         let mut instructions = Vec::with_capacity(num_instructions as usize);
         for _ in 0..num_instructions {
@@ -47,36 +47,27 @@ impl<N: Network> FromBytes for Function<N> {
             outputs.push(Output::read_le(&mut reader)?);
         }
 
-        // Determine if there is a finalize scope.
-        let variant = u8::read_le(&mut reader)?;
-        let finalize = match variant {
-            0 => None,
-            1 => Some((FinalizeCommand::read_le(&mut reader)?, Finalize::read_le(&mut reader)?)),
-            _ => return Err(error(format!("Failed to deserialize a function: invalid finalize variant ({variant})"))),
-        };
-
-        // Initialize a new function.
-        let mut function = Self::new(name);
-        inputs.into_iter().try_for_each(|input| function.add_input(input)).map_err(|e| error(e.to_string()))?;
+        // Initialize a new finalize.
+        let mut finalize = Self::new(name);
+        inputs.into_iter().try_for_each(|input| finalize.add_input(input)).map_err(|e| error(e.to_string()))?;
         instructions
             .into_iter()
-            .try_for_each(|instruction| function.add_instruction(instruction))
+            .try_for_each(|instruction| finalize.add_instruction(instruction))
             .map_err(|e| error(e.to_string()))?;
-        outputs.into_iter().try_for_each(|output| function.add_output(output)).map_err(|e| error(e.to_string()))?;
-        finalize.map(|(command, finalize)| function.add_finalize(command, finalize));
+        outputs.into_iter().try_for_each(|output| finalize.add_output(output)).map_err(|e| error(e.to_string()))?;
 
-        Ok(function)
+        Ok(finalize)
     }
 }
 
-impl<N: Network> ToBytes for Function<N> {
-    /// Writes the function to a buffer.
+impl<N: Network> ToBytes for Finalize<N> {
+    /// Writes the finalize to a buffer.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the function name.
+        // Write the associated function name.
         self.name.write_le(&mut writer)?;
 
-        // Write the number of inputs for the function.
+        // Write the number of inputs for the finalize.
         let num_inputs = self.inputs.len();
         match num_inputs <= N::MAX_INPUTS {
             true => (num_inputs as u16).write_le(&mut writer)?,
@@ -88,7 +79,7 @@ impl<N: Network> ToBytes for Function<N> {
             input.write_le(&mut writer)?;
         }
 
-        // Write the number of instructions for the function.
+        // Write the number of instructions for the finalize.
         let num_instructions = self.instructions.len();
         match num_instructions <= N::MAX_FUNCTION_INSTRUCTIONS {
             true => (num_instructions as u32).write_le(&mut writer)?,
@@ -100,7 +91,7 @@ impl<N: Network> ToBytes for Function<N> {
             instruction.write_le(&mut writer)?;
         }
 
-        // Write the number of outputs for the function.
+        // Write the number of outputs for the finalize.
         let num_outputs = self.outputs.len();
         match num_outputs <= N::MAX_OUTPUTS {
             true => (num_outputs as u16).write_le(&mut writer)?,
@@ -110,18 +101,6 @@ impl<N: Network> ToBytes for Function<N> {
         // Write the outputs.
         for output in self.outputs.iter() {
             output.write_le(&mut writer)?;
-        }
-
-        // If the finalize scope exists, write it.
-        match &self.finalize {
-            None => 0u8.write_le(&mut writer)?,
-            Some((command, logic)) => {
-                1u8.write_le(&mut writer)?;
-                // Write the finalize scope command.
-                command.write_le(&mut writer)?;
-                // Write the finalize scope logic.
-                logic.write_le(&mut writer)?;
-            }
         }
 
         Ok(())
@@ -136,9 +115,9 @@ mod tests {
     type CurrentNetwork = Testnet3;
 
     #[test]
-    fn test_function_bytes() -> Result<()> {
-        let function_string = r"
-function main:
+    fn test_finalize_bytes() -> Result<()> {
+        let finalize_string = r"
+finalize main:
     input r0 as field.public;
     input r1 as field.private;
     add r0 r1 into r2;
@@ -153,11 +132,11 @@ function main:
     add r0 r1 into r11;
     output r11 as field.private;";
 
-        let expected = Function::<CurrentNetwork>::from_str(function_string)?;
+        let expected = Finalize::<CurrentNetwork>::from_str(finalize_string)?;
         let expected_bytes = expected.to_bytes_le()?;
-        println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), expected_bytes.len());
+        println!("String size: {:?}, Bytecode size: {:?}", finalize_string.as_bytes().len(), expected_bytes.len());
 
-        let candidate = Function::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
+        let candidate = Finalize::<CurrentNetwork>::from_bytes_le(&expected_bytes)?;
         assert_eq!(expected.to_string(), candidate.to_string());
         assert_eq!(expected_bytes, candidate.to_bytes_le()?);
         Ok(())

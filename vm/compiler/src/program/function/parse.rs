@@ -40,6 +40,21 @@ impl<N: Network> Parser for Function<N> {
         // Parse the outputs from the string.
         let (string, outputs) = many0(Output::parse)(string)?;
 
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse an optional finalize command from the string.
+        let (string, command) = opt(FinalizeCommand::parse)(string)?;
+        // If there is a finalize command, parse the finalize scope.
+        let (string, finalize) = match command {
+            Some(command) => {
+                // Parse the finalize scope from the string.
+                let (string, finalize) = Finalize::parse(string)?;
+                // Return the finalize command and logic.
+                (string, Some((command, finalize)))
+            }
+            None => (string, None),
+        };
+
         map_res(take(0usize), move |_| {
             // Initialize a new function.
             let mut function = Self::new(name);
@@ -56,6 +71,12 @@ impl<N: Network> Parser for Function<N> {
             if let Err(error) = outputs.iter().cloned().try_for_each(|output| function.add_output(output)) {
                 eprintln!("{error}");
                 return Err(error);
+            }
+            if let Some((command, finalize)) = &finalize {
+                if let Err(error) = function.add_finalize(command.clone(), finalize.clone()) {
+                    eprintln!("{error}");
+                    return Err(error);
+                }
             }
             Ok::<_, Error>(function)
         })(string)
@@ -91,9 +112,17 @@ impl<N: Network> Display for Function<N> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Write the function to a string.
         write!(f, "{} {}:", Self::type_name(), self.name)?;
-        self.inputs.iter().try_for_each(|input| write!(f, "\n    {}", input))?;
-        self.instructions.iter().try_for_each(|instruction| write!(f, "\n    {}", instruction))?;
-        self.outputs.iter().try_for_each(|output| write!(f, "\n    {}", output))
+        self.inputs.iter().try_for_each(|input| write!(f, "\n    {input}"))?;
+        self.instructions.iter().try_for_each(|instruction| write!(f, "\n    {instruction}"))?;
+        self.outputs.iter().try_for_each(|output| write!(f, "\n    {output}"))?;
+
+        // If finalize exists, write it out.
+        if let Some((command, finalize)) = &self.finalize {
+            write!(f, "\n   {command}")?;
+            write!(f, "\n\n")?;
+            write!(f, "{finalize}")?;
+        }
+        Ok(())
     }
 }
 
@@ -151,6 +180,30 @@ function foo:
         assert_eq!(1, function.inputs.len());
         assert_eq!(1, function.instructions.len());
         assert_eq!(1, function.outputs.len());
+    }
+
+    #[test]
+    fn test_function_parse_finalize() {
+        let function = Function::<CurrentNetwork>::parse(
+            r"
+function foo:
+    input r0 as token.record;
+    cast r0.owner r0.gates r0.token_amount into r1 as token.record;
+    finalize r1.token_amount;
+
+finalize foo:
+    input r0 as u64.public;
+    add r0 r0 into r1;
+",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("foo", function.name().to_string());
+        assert_eq!(1, function.inputs.len());
+        assert_eq!(1, function.instructions.len());
+        assert_eq!(0, function.outputs.len());
+        assert_eq!(1, function.finalize().unwrap().inputs().len());
+        assert_eq!(1, function.finalize().unwrap().instructions().len());
     }
 
     #[test]

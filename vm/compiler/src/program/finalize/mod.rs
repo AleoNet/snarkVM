@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod command;
+// use command::*;
+pub use command::FinalizeCommand;
+
 mod input;
 use input::*;
 
@@ -23,20 +27,17 @@ use output::*;
 mod bytes;
 mod parse;
 
-use crate::{
-    program::finalize::{Finalize, FinalizeCommand},
-    Instruction,
-};
+use crate::Instruction;
 use console::{
     network::prelude::*,
-    program::{Identifier, Register, ValueType},
+    program::{FinalizeType, Identifier, Register},
 };
 
 use indexmap::IndexSet;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Function<N: Network> {
-    /// The name of the function.
+pub struct Finalize<N: Network> {
+    /// The name of the associated function.
     name: Identifier<N>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
@@ -45,14 +46,12 @@ pub struct Function<N: Network> {
     instructions: Vec<Instruction<N>>,
     /// The output statements, in order of the desired output.
     outputs: IndexSet<Output<N>>,
-    /// The optional finalize command and logic.
-    finalize: Option<(FinalizeCommand<N>, Finalize<N>)>,
 }
 
-impl<N: Network> Function<N> {
+impl<N: Network> Finalize<N> {
     /// Initializes a new function with the given name.
     pub fn new(name: Identifier<N>) -> Self {
-        Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new(), finalize: None }
+        Self { name, inputs: IndexSet::new(), instructions: Vec::new(), outputs: IndexSet::new() }
     }
 
     /// Returns the name of the function.
@@ -66,8 +65,8 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the function input types.
-    pub fn input_types(&self) -> Vec<ValueType<N>> {
-        self.inputs.iter().map(|input| *input.value_type()).collect()
+    pub fn input_types(&self) -> Vec<FinalizeType<N>> {
+        self.inputs.iter().map(|input| *input.finalize_type()).collect()
     }
 
     /// Returns the function instructions.
@@ -81,29 +80,18 @@ impl<N: Network> Function<N> {
     }
 
     /// Returns the function output types.
-    pub fn output_types(&self) -> Vec<ValueType<N>> {
-        self.outputs.iter().map(|output| *output.value_type()).collect()
-    }
-
-    /// Returns the function finalize command.
-    pub fn finalize_command(&self) -> Option<&FinalizeCommand<N>> {
-        self.finalize.as_ref().map(|(command, _)| command)
-    }
-
-    /// Returns the function finalize logic.
-    pub fn finalize(&self) -> Option<&Finalize<N>> {
-        self.finalize.as_ref().map(|(_, finalize)| finalize)
+    pub fn output_types(&self) -> Vec<FinalizeType<N>> {
+        self.outputs.iter().map(|output| *output.finalize_type()).collect()
     }
 }
 
-impl<N: Network> Function<N> {
+impl<N: Network> Finalize<N> {
     /// Adds the input statement to the function.
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements already.
     /// This method will halt if the maximum number of inputs has been reached.
     /// This method will halt if the input statement was previously added.
-    /// This method will halt if a finalize command has been added.
     #[inline]
     fn add_input(&mut self, input: Input<N>) -> Result<()> {
         // Ensure there are no instructions or output statements in memory.
@@ -114,9 +102,6 @@ impl<N: Network> Function<N> {
         ensure!(self.inputs.len() <= N::MAX_INPUTS, "Cannot add more than {} inputs", N::MAX_INPUTS);
         // Ensure the input statement was not previously added.
         ensure!(!self.inputs.contains(&input), "Cannot add duplicate input statement");
-
-        // Ensure a finalize command has not been added.
-        ensure!(self.finalize.is_none(), "Cannot add instructions after finalize command has been added");
 
         // Ensure the input register is a locator.
         ensure!(matches!(input.register(), Register::Locator(..)), "Input register must be a locator");
@@ -130,7 +115,6 @@ impl<N: Network> Function<N> {
     ///
     /// # Errors
     /// This method will halt if the maximum number of instructions has been reached.
-    /// This method will halt if a finalize command has been added.
     #[inline]
     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
         // Ensure the maximum number of instructions has not been exceeded.
@@ -139,9 +123,6 @@ impl<N: Network> Function<N> {
             "Cannot add more than {} instructions",
             N::MAX_FUNCTION_INSTRUCTIONS
         );
-
-        // Ensure a finalize command has not been added.
-        ensure!(self.finalize.is_none(), "Cannot add instructions after finalize command has been added");
 
         // Ensure the destination register is a locator.
         for register in instruction.destinations() {
@@ -158,7 +139,6 @@ impl<N: Network> Function<N> {
     /// # Errors
     /// This method will halt if there are no instructions in memory.
     /// This method will halt if the maximum number of outputs has been reached.
-    /// This method will halt if a finalize command has been added.
     #[inline]
     fn add_output(&mut self, output: Output<N>) -> Result<()> {
         // Ensure there are instructions in memory.
@@ -169,36 +149,16 @@ impl<N: Network> Function<N> {
         // Ensure the output statement was not previously added.
         ensure!(!self.outputs.contains(&output), "Cannot add duplicate output statement");
 
-        // Ensure a finalize command has not been added.
-        ensure!(self.finalize.is_none(), "Cannot add instructions after finalize command has been added");
-
         // Insert the output statement.
         self.outputs.insert(output);
         Ok(())
     }
-
-    /// Adds the finalize scope to the function.
-    ///
-    /// # Errors
-    /// This method will halt if a finalize scope has already been added.
-    /// This method will halt if name in the finalize scope does not match the function name.
-    #[inline]
-    fn add_finalize(&mut self, command: FinalizeCommand<N>, finalize: Finalize<N>) -> Result<()> {
-        // Ensure there is no finalize scope in memory.
-        ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
-        // Ensure the finalize scope name matches the function name.
-        ensure!(*finalize.name() == self.name, "Finalize scope name must match function name '{}'", self.name);
-
-        // Insert the finalize scope.
-        self.finalize = Some((command, finalize));
-        Ok(())
-    }
 }
 
-impl<N: Network> TypeName for Function<N> {
+impl<N: Network> TypeName for Finalize<N> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
-        "function"
+        "finalize"
     }
 }
