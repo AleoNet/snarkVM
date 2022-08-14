@@ -640,14 +640,68 @@ function hello_world:
         assert_eq!(output, candidate[0]);
 
         assert!(process.verify_execution(&execution).is_ok());
+    }
 
-        // use circuit::Environment;
-        //
-        // assert_eq!(20060, CurrentAleo::num_constants());
-        // assert_eq!(12, CurrentAleo::num_public());
-        // assert_eq!(57602, CurrentAleo::num_private());
-        // assert_eq!(57684, CurrentAleo::num_constraints());
-        // assert_eq!(178189, CurrentAleo::num_gates());
+    #[test]
+    fn test_process_program_id() {
+        // Initialize a new program.
+        let program = Program::<CurrentNetwork>::from_str(
+            r"program id.aleo;
+
+  interface data:
+    owner as address;
+
+  function initialize:
+    cast id.aleo into r0 as data;
+    output r0 as data.private;",
+        )
+        .unwrap();
+
+        // Declare the program ID.
+        let program_id = ProgramID::from_str("id.aleo").unwrap();
+        assert_eq!(*program.id(), program_id);
+
+        // Declare the function name.
+        let function_name = Identifier::from_str("initialize").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Construct the process.
+        let mut process = Process::<CurrentNetwork>::load().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+
+        // Authorize the function call.
+        let authorization =
+            process.authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[], rng).unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Declare the output value.
+        let output = Value::from_str(&format!("{{ owner: {} }}", program_id.to_address().unwrap())).unwrap();
+
+        // Check again to make sure we didn't modify the authorization before calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(output, candidate[0]);
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(1, candidate.len());
+        assert_eq!(output, candidate[0]);
+
+        assert!(process.verify_execution(&execution).is_ok());
     }
 
     #[test]

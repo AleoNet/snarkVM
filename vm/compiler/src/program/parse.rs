@@ -216,6 +216,26 @@ function compute:
     }
 
     #[test]
+    fn test_program_parse_function_zero_inputs() -> Result<()> {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program to_parse.aleo;
+
+function compute:
+    add 1u32 2u32 into r0;
+    output r0 as u32.private;",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Ensure the program contains the function.
+        assert!(program.contains_function(&Identifier::from_str("compute")?));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_program_display() -> Result<()> {
         let expected = r"program to_parse.aleo;
 

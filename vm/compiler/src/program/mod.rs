@@ -238,8 +238,6 @@ function fee:
         let function = self.functions.get(name).cloned().ok_or_else(|| anyhow!("Function '{name}' is not defined."))?;
         // Ensure the function name matches.
         ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
-        // Ensure there are input statements in the function.
-        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
         // Ensure the number of inputs is within the allowed range.
         ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
         // Ensure there are instructions in the function.
@@ -456,8 +454,6 @@ impl<N: Network> Program<N> {
         // Ensure the function name is not a reserved keyword.
         ensure!(!Self::is_reserved_keyword(&function_name), "'{function_name}' is a reserved keyword.");
 
-        // Ensure there are input statements in the function.
-        ensure!(!function.inputs().is_empty(), "Cannot evaluate a function without input statements");
         // Ensure the number of inputs is within the allowed range.
         ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
         // Ensure there are instructions in the function.

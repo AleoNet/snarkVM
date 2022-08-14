@@ -34,7 +34,7 @@ impl<N: Network> Parser for Function<N> {
         let (string, _) = tag(":")(string)?;
 
         // Parse the inputs from the string.
-        let (string, inputs) = many1(Input::parse)(string)?;
+        let (string, inputs) = many0(Input::parse)(string)?;
         // Parse the instructions from the string.
         let (string, instructions) = many1(Instruction::parse)(string)?;
         // Parse the outputs from the string.
@@ -118,6 +118,20 @@ function foo:
         .1;
         assert_eq!("foo", function.name().to_string());
         assert_eq!(2, function.inputs.len());
+        assert_eq!(1, function.instructions.len());
+        assert_eq!(1, function.outputs.len());
+
+        // Function with 0 inputs.
+        let function = Function::<CurrentNetwork>::parse(
+            r"
+function foo:
+    add 1u32 2u32 into r0;
+    output r0 as u32.private;",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("foo", function.name().to_string());
+        assert_eq!(0, function.inputs.len());
         assert_eq!(1, function.instructions.len());
         assert_eq!(1, function.outputs.len());
     }
