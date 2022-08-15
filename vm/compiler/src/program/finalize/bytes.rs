@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for Finalize<N> {
 
         // Read the commands.
         let num_commands = u16::read_le(&mut reader)?;
-        if num_commands > N::MAX_FINALIZE_INSTRUCTIONS as u16 {
+        if num_commands > N::MAX_COMMANDS as u16 {
             return Err(error(format!("Failed to deserialize finalize: too many commands ({num_commands})")));
         }
         let mut commands = Vec::with_capacity(num_commands as usize);
@@ -78,7 +78,7 @@ impl<N: Network> ToBytes for Finalize<N> {
 
         // Write the number of commands for the finalize.
         let num_commands = self.commands.len();
-        match num_commands <= N::MAX_FINALIZE_INSTRUCTIONS {
+        match num_commands <= N::MAX_COMMANDS {
             true => (num_commands as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_commands} commands as bytes"))),
         }

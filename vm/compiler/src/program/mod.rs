@@ -270,8 +270,8 @@ function fee:
         ensure!(function.name() == name, "Expected function '{name}', but found function '{}'", function.name());
         // Ensure the number of inputs is within the allowed range.
         ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
-        // Ensure there are instructions in the function.
-        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Ensure the number of instructions is within the allowed range.
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
         ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
         // Return the function.
@@ -514,8 +514,8 @@ impl<N: Network> Program<N> {
 
         // Ensure the number of inputs is within the allowed range.
         ensure!(function.inputs().len() <= N::MAX_INPUTS, "Function exceeds maximum number of inputs");
-        // Ensure there are instructions in the function.
-        ensure!(!function.instructions().is_empty(), "Cannot evaluate a function without instructions");
+        // Ensure the number of instructions is within the allowed range.
+        ensure!(function.instructions().len() <= N::MAX_INSTRUCTIONS, "Function exceeds maximum instructions");
         // Ensure the number of outputs is within the allowed range.
         ensure!(function.outputs().len() <= N::MAX_OUTPUTS, "Function exceeds maximum number of outputs");
 

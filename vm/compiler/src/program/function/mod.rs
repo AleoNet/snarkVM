@@ -140,9 +140,9 @@ impl<N: Network> Function<N> {
     pub fn add_instruction(&mut self, instruction: Instruction<N>) -> Result<()> {
         // Ensure the maximum number of instructions has not been exceeded.
         ensure!(
-            self.instructions.len() <= N::MAX_FUNCTION_INSTRUCTIONS,
+            self.instructions.len() <= N::MAX_INSTRUCTIONS,
             "Cannot add more than {} instructions",
-            N::MAX_FUNCTION_INSTRUCTIONS
+            N::MAX_INSTRUCTIONS
         );
 
         // Ensure a finalize command has not been added.
