@@ -14,12 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod initialize;
 mod matches;
 
-use crate::{Operand, Program, Stack};
+use crate::{CallOperator, Closure, Function, Instruction, Opcode, Operand, Program, Stack};
 use console::{
     network::prelude::*,
-    program::{EntryType, Identifier, Interface, LiteralType, PlaintextType, RecordType, Register, RegisterType},
+    program::{
+        EntryType,
+        Identifier,
+        Interface,
+        LiteralType,
+        PlaintextType,
+        RecordType,
+        Register,
+        RegisterType,
+        ValueType,
+    },
 };
 
 use indexmap::IndexMap;
@@ -33,9 +44,18 @@ pub struct RegisterTypes<N: Network> {
 }
 
 impl<N: Network> RegisterTypes<N> {
-    /// Initializes a new instance of `RegisterTypes`.
-    pub fn new() -> Self {
-        Self { inputs: IndexMap::new(), destinations: IndexMap::new() }
+    /// Initializes a new instance of `RegisterTypes` for the given closure.
+    /// Checks that the given closure is well-formed for the given stack.
+    #[inline]
+    pub fn from_closure(stack: &Stack<N>, closure: &Closure<N>) -> Result<Self> {
+        Self::initialize_closure_types(stack, closure)
+    }
+
+    /// Initializes a new instance of `RegisterTypes` for the given function.
+    /// Checks that the given function is well-formed for the given stack.
+    #[inline]
+    pub fn from_function(stack: &Stack<N>, function: &Function<N>) -> Result<Self> {
+        Self::initialize_function_types(stack, function)
     }
 
     /// Returns `true` if the given register exists.
@@ -52,52 +72,14 @@ impl<N: Network> RegisterTypes<N> {
         self.inputs.contains_key(&register.locator())
     }
 
-    /// Inserts the given input register and type into the registers.
-    /// Note: The given input register must be a `Register::Locator`.
-    pub fn add_input(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
-        // Ensure there are no destination registers set yet.
-        ensure!(self.destinations.is_empty(), "Cannot add input registers after destination registers.");
-
-        // Check the input register.
-        match register {
-            Register::Locator(locator) => {
-                // Ensure the registers are monotonically increasing.
-                ensure!(self.inputs.len() as u64 == locator, "Register '{register}' is out of order");
-
-                // Insert the input register and type.
-                match self.inputs.insert(locator, register_type) {
-                    // If the register already exists, throw an error.
-                    Some(..) => bail!("Input '{register}' already exists"),
-                    // If the register does not exist, return success.
-                    None => Ok(()),
-                }
-            }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
-        }
-    }
-
-    /// Inserts the given destination register and type into the registers.
-    /// Note: The given destination register must be a `Register::Locator`.
-    pub fn add_destination(&mut self, register: Register<N>, register_type: RegisterType<N>) -> Result<()> {
-        // Check the destination register.
-        match register {
-            Register::Locator(locator) => {
-                // Ensure the registers are monotonically increasing.
-                let expected_locator = (self.inputs.len() as u64) + self.destinations.len() as u64;
-                ensure!(expected_locator == locator, "Register '{register}' is out of order");
-
-                // Insert the destination register and type.
-                match self.destinations.insert(locator, register_type) {
-                    // If the register already exists, throw an error.
-                    Some(..) => bail!("Destination '{register}' already exists"),
-                    // If the register does not exist, return success.
-                    None => Ok(()),
-                }
-            }
-            // Ensure the register is a locator, and not a member.
-            Register::Member(..) => bail!("Register '{register}' must be a locator."),
-        }
+    /// Returns the register type of the given operand.
+    pub fn get_type_from_operand(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<RegisterType<N>> {
+        Ok(match operand {
+            Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
+            Operand::Register(register) => self.get_type(stack, register)?,
+            Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+            Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+        })
     }
 
     /// Returns the register type of the given register.

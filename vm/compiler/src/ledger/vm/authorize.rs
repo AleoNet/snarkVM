@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> VM<N> {
+impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
     pub fn authorize<R: Rng + CryptoRng>(

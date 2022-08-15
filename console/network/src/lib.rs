@@ -75,8 +75,10 @@ pub trait Network:
 
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
-    /// The maximum number of instructions in a function.
-    const MAX_FUNCTION_INSTRUCTIONS: usize = u16::MAX as usize;
+    /// The maximum number of instructions in a closure or function.
+    const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
+    /// The maximum number of commands in finalize.
+    const MAX_COMMANDS: usize = u8::MAX as usize;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 8;

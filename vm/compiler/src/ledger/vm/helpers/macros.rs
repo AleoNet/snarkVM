@@ -18,21 +18,21 @@
 #[macro_export]
 macro_rules! cast_ref {
     // Example: cast_ref!((foo.bar()) as Bar<Testnet3>)
-    (($variable:expr) as $object:ident<$($network:path),+>) => {{
+    (($variable:expr) as $object:ident<$($traits:path),+>) => {{
         (&$variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$($network),+>>()
+            .downcast_ref::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
     // Example: cast_ref!(bar as Bar<Testnet3>)
-    ($variable:ident as $object:ident<$($network:path),+>) => {{
+    ($variable:ident as $object:ident<$($traits:path),+>) => {{
         (&$variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$($network),+>>()
+            .downcast_ref::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
     // Example: cast_ref!(&bar as Bar<Testnet3>)
-    (&$variable:ident as $object:ident<$($network:path),+>) => {{
+    (&$variable:ident as $object:ident<$($traits:path),+>) => {{
         ($variable as &dyn std::any::Any)
-            .downcast_ref::<$object<$($network),+>>()
+            .downcast_ref::<$object<$($traits),+>>()
             .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!($variable)))?
     }};
 }
@@ -40,7 +40,7 @@ macro_rules! cast_ref {
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
 #[macro_export]
 macro_rules! process {
-    // Example: process!(logic)
+    // Example: process!(self, logic)
     ($self:ident, $logic:ident) => {{
         // Process the logic.
         match N::ID {
@@ -55,7 +55,7 @@ macro_rules! process {
 /// A helper macro to dedup the `Network` trait and `Aleo` trait and process its given logic.
 #[macro_export]
 macro_rules! process_mut {
-    // Example: process!(logic)
+    // Example: process!(self, logic)
     ($self:ident, $logic:ident) => {{
         // Process the logic.
         match N::ID {

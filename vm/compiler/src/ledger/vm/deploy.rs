@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> VM<N> {
+impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Deploys a program with the given program ID.
     #[inline]
     pub fn deploy<R: Rng + CryptoRng>(&self, program: &Program<N>, rng: &mut R) -> Result<Deployment<N>> {

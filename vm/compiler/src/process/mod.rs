@@ -23,7 +23,16 @@ mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{AdditionalFee, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
+use crate::{
+    ledger::{ProgramStorage, ProgramStore},
+    AdditionalFee,
+    Instruction,
+    Operand,
+    Program,
+    ProvingKey,
+    UniversalSRS,
+    VerifyingKey,
+};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -69,6 +78,20 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
+    /// Adds a new program to the process.
+    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
+    #[inline]
+    pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
+        // Compute the program stack.
+        let stack = Stack::new(self, program)?;
+        // Add the stack to the process.
+        self.stacks.insert(*program.id(), stack);
+        // Return success.
+        Ok(())
+    }
+}
+
+impl<N: Network> Process<N> {
     /// Initializes a new process.
     #[inline]
     pub fn load() -> Result<Self> {
@@ -97,18 +120,6 @@ impl<N: Network> Process<N> {
         process.stacks.insert(*program.id(), stack);
         // Return the process.
         Ok(process)
-    }
-
-    /// Adds a new program to the process.
-    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
-    #[inline]
-    pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Compute the program stack.
-        let stack = Stack::new(self, program)?;
-        // Add the stack to the process.
-        self.stacks.insert(*program.id(), stack);
-        // Return success.
-        Ok(())
     }
 
     /// Returns the universal SRS.
@@ -238,9 +249,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::load().unwrap();
-                // Add the program to the process.
-                process.add_program(&program).unwrap();
+                let process = sample_process(&program);
 
                 // Synthesize a proving and verifying key.
                 process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
@@ -281,9 +290,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::load().unwrap();
-                // Add the program to the process.
-                process.add_program(&program).unwrap();
+                let process = sample_process(&program);
                 // Authorize the function call.
                 let authorization = process
                     .authorize::<CurrentAleo, _>(
@@ -315,16 +322,27 @@ function compute:
         // Return the transition.
         execution.pop().unwrap()
     }
+
+    /// Initializes a new process with the given program.
+    pub(crate) fn sample_process(program: &Program<CurrentNetwork>) -> Process<CurrentNetwork> {
+        // Construct a new process.
+        let mut process = Process::load().unwrap();
+        // Add the program to the process.
+        process.add_program(program).unwrap();
+        // Return the process.
+        process
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ProgramMemory;
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
         network::Testnet3,
-        program::{Identifier, Value},
+        program::{Identifier, Literal, Value},
         types::Field,
     };
 
@@ -347,7 +365,7 @@ mod tests {
         let r1 = Value::<CurrentNetwork>::from_str("1_100_000_000_000_000_u64").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
+        let mut process = Process::load().unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -456,9 +474,7 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
     }
@@ -494,9 +510,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -591,9 +605,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -668,9 +680,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -748,16 +758,12 @@ function compute:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -861,10 +867,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program0).unwrap();
-
+        let mut process = super::test_helpers::sample_process(&program0);
         // Initialize another program.
         let (string, program1) = Program::<CurrentNetwork>::parse(
             r"
@@ -975,5 +978,313 @@ function transfer:
         // assert_eq!(58791, CurrentAleo::num_private());
         // assert_eq!(58855, CurrentAleo::num_constraints());
         // assert_eq!(215810, CurrentAleo::num_gates());
+    }
+
+    #[test]
+    fn test_process_execute_and_finalize_increment() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program testing.aleo;
+
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
+
+function compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    input r2 as u64.public;
+    add r1 r2 into r3;
+    finalize r0 r3;
+
+finalize compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    increment account[r0] by r1;
+",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the program ID.
+        let program_id = program.id();
+        // Declare the mapping.
+        let mapping_name = Identifier::from_str("account").unwrap();
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let mut process = Process::load().unwrap();
+
+        // Initialize a new program store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+
+        // Add the program to the process.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+        // Check that the deployment verifies.
+        process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+        // Finalize the deployment.
+        process.finalize_deployment(&store, &deployment).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("3u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("5u64").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Verify the execution.
+        assert!(process.verify_execution(&execution).is_ok());
+
+        // Now, finalize the execution.
+        process.finalize_execution(&store, &execution).unwrap();
+
+        // Check that the account balance is now 8.
+        let candidate =
+            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        assert_eq!(candidate, Value::from_str("8u64").unwrap());
+    }
+
+    #[test]
+    fn test_process_execute_and_finalize_increment_decrement() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program testing.aleo;
+
+mapping account:
+    key owner as address.public;
+    value amount as u64.public;
+
+function compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    input r2 as u64.public;
+    add r1 r2 into r3;
+    finalize r0 r3;
+
+finalize compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    increment account[r0] by r1;
+    decrement account[r0] by r1;
+",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the program ID.
+        let program_id = program.id();
+        // Declare the mapping.
+        let mapping_name = Identifier::from_str("account").unwrap();
+        // Declare the function name.
+        let function_name = Identifier::from_str("compute").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let mut process = Process::load().unwrap();
+
+        // Initialize a new program store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+
+        // Add the program to the process.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+        // Check that the deployment verifies.
+        process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+        // Finalize the deployment.
+        process.finalize_deployment(&store, &deployment).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("3u64").unwrap();
+        let r2 = Value::<CurrentNetwork>::from_str("5u64").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1, r2], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Verify the execution.
+        assert!(process.verify_execution(&execution).is_ok());
+
+        // Now, finalize the execution.
+        process.finalize_execution(&store, &execution).unwrap();
+
+        // Check that the account balance is now 0.
+        let candidate =
+            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        assert_eq!(candidate, Value::from_str("0u64").unwrap());
+    }
+
+    #[test]
+    fn test_process_execute_mint_public() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program token.aleo;
+
+// On-chain storage of an `account` map, with `owner` as the key,
+// and `amount` as the value.
+mapping account:
+    // The token owner.
+    key owner as address.public;
+    // The token amount.
+    value amount as u64.public;
+
+// The function `mint_public` issues the specified token amount
+// for the token receiver publicly on the network.
+function mint_public:
+    // Input the token receiver.
+    input r0 as address.public;
+    // Input the token amount.
+    input r1 as u64.public;
+    // Mint the tokens publicly.
+    finalize r0 r1;
+
+// The finalize scope of `mint_public` increments the
+// `account` of the token receiver by the specified amount.
+finalize mint_public:
+    // Input the token receiver.
+    input r0 as address.public;
+    // Input the token amount.
+    input r1 as u64.public;
+
+    // Increments `account[r0]` by `r1`.
+    // If `account[r0]` does not exist, it will be created.
+    // If `account[r0] + r1` overflows, `mint_public` is reverted.
+    increment account[r0] by r1;
+",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the program ID.
+        let program_id = program.id();
+        // Declare the mapping.
+        let mapping_name = Identifier::from_str("account").unwrap();
+        // Declare the function name.
+        let function_name = Identifier::from_str("mint_public").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let mut process = Process::load().unwrap();
+
+        // Initialize a new program store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+
+        // Add the program to the process.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+        // Check that the deployment verifies.
+        process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+        // Finalize the deployment.
+        process.finalize_deployment(&store, &deployment).unwrap();
+
+        // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
+        //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
+        //  the correctness of the synthesizer.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("3u64").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Verify the execution.
+        assert!(process.verify_execution(&execution).is_ok());
+
+        // Now, finalize the execution.
+        process.finalize_execution(&store, &execution).unwrap();
+
+        // Check the account balance.
+        let candidate =
+            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        assert_eq!(candidate, Value::from_str("3u64").unwrap());
     }
 }

@@ -34,7 +34,7 @@ use crate::{
 };
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record},
+    program::{Ciphertext, Identifier, Plaintext, ProgramID, Record, Value},
     types::{Field, Group},
 };
 
@@ -49,6 +49,8 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     type InputStorage: InputStorage<N>;
     /// The transition outputs.
     type OutputStorage: OutputStorage<N>;
+    /// The transition finalize inputs.
+    type FinalizeMap: for<'a> Map<'a, N::TransitionID, Option<Vec<Value<N>>>>;
     /// The transition proofs.
     type ProofMap: for<'a> Map<'a, N::TransitionID, Proof<N>>;
     /// The transition public keys.
@@ -71,13 +73,15 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     fn input_store(&self) -> &InputStore<N, Self::InputStorage>;
     /// Returns the transition output store.
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage>;
-    /// Returns the transition proofs.
+    /// Returns the transition finalize inputs map.
+    fn finalize_map(&self) -> &Self::FinalizeMap;
+    /// Returns the transition proofs map.
     fn proof_map(&self) -> &Self::ProofMap;
-    /// Returns the transition public keys.
+    /// Returns the transition public keys map.
     fn tpk_map(&self) -> &Self::TPKMap;
     /// Returns the reverse `tpk` map.
     fn reverse_tpk_map(&self) -> &Self::ReverseTPKMap;
-    /// Returns the transition commitments.
+    /// Returns the transition commitments map.
     fn tcm_map(&self) -> &Self::TCMMap;
     /// Returns the reverse `tcm` map.
     fn reverse_tcm_map(&self) -> &Self::ReverseTCMMap;
@@ -95,6 +99,8 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         let inputs = self.input_store().get_inputs(transition_id)?;
         // Retrieve the outputs.
         let outputs = self.output_store().get_outputs(transition_id)?;
+        // Retrieve the finalize inputs.
+        let finalize = self.finalize_map().get(transition_id)?;
         // Retrieve the proof.
         let proof = self.proof_map().get(transition_id)?;
         // Retrieve `tpk`.
@@ -104,14 +110,15 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         // Retrieve the fee.
         let fee = self.fee_map().get(transition_id)?;
 
-        match (proof, tpk, tcm, fee) {
-            (Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
+        match (finalize, proof, tpk, tcm, fee) {
+            (Some(finalize), Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
                 // Construct the transition.
                 let transition = Transition::new(
                     program_id,
                     function_name,
                     inputs,
                     outputs,
+                    cow_to_cloned!(finalize),
                     cow_to_cloned!(proof),
                     cow_to_cloned!(tpk),
                     cow_to_cloned!(tcm),
@@ -137,6 +144,8 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.input_store().insert(transition_id, transition.inputs())?;
         // Store the outputs.
         self.output_store().insert(transition_id, transition.outputs())?;
+        // Store the finalize inputs.
+        self.finalize_map().insert(transition_id, transition.finalize().clone())?;
         // Store the proof.
         self.proof_map().insert(transition_id, transition.proof().clone())?;
         // Store `tpk`.
@@ -172,6 +181,8 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.input_store().remove(transition_id)?;
         // Remove the outputs.
         self.output_store().remove(transition_id)?;
+        // Remove the finalize inputs.
+        self.finalize_map().remove(transition_id)?;
         // Remove the proof.
         self.proof_map().remove(transition_id)?;
         // Remove `tpk`.
@@ -198,6 +209,8 @@ pub struct TransitionMemory<N: Network> {
     input_store: InputStore<N, InputMemory<N>>,
     /// The transition output store.
     output_store: OutputStore<N, OutputMemory<N>>,
+    /// The transition finalize inputs.
+    finalize_map: MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>,
     /// The transition proofs.
     proof_map: MemoryMap<N::TransitionID, Proof<N>>,
     /// The transition public keys.
@@ -217,6 +230,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type LocatorMap = MemoryMap<N::TransitionID, (ProgramID<N>, Identifier<N>)>;
     type InputStorage = InputMemory<N>;
     type OutputStorage = OutputMemory<N>;
+    type FinalizeMap = MemoryMap<N::TransitionID, Option<Vec<Value<N>>>>;
     type ProofMap = MemoryMap<N::TransitionID, Proof<N>>;
     type TPKMap = MemoryMap<N::TransitionID, Group<N>>;
     type ReverseTPKMap = MemoryMap<Group<N>, N::TransitionID>;
@@ -230,6 +244,7 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
             locator_map: MemoryMap::default(),
             input_store: InputStore::open()?,
             output_store: OutputStore::open()?,
+            finalize_map: MemoryMap::default(),
             proof_map: MemoryMap::default(),
             tpk_map: MemoryMap::default(),
             reverse_tpk_map: MemoryMap::default(),
@@ -252,6 +267,11 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     /// Returns the transition output store.
     fn output_store(&self) -> &OutputStore<N, Self::OutputStorage> {
         &self.output_store
+    }
+
+    /// Returns the transition finalize inputs.
+    fn finalize_map(&self) -> &Self::FinalizeMap {
+        &self.finalize_map
     }
 
     /// Returns the transition proofs.
@@ -294,6 +314,8 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
     inputs: InputStore<N, T::InputStorage>,
     /// The map of transition outputs.
     outputs: OutputStore<N, T::OutputStorage>,
+    /// The map of transition finalize inputs.
+    finalize: T::FinalizeMap,
     /// The map of transition proofs.
     proof: T::ProofMap,
     /// The map of transition public keys.
@@ -320,6 +342,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
+            finalize: storage.finalize_map().clone(),
             proof: storage.proof_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
@@ -336,6 +359,7 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
             locator: storage.locator_map().clone(),
             inputs: (*storage.input_store()).clone(),
             outputs: (*storage.output_store()).clone(),
+            finalize: storage.finalize_map().clone(),
             proof: storage.proof_map().clone(),
             tpk: storage.tpk_map().clone(),
             reverse_tpk: storage.reverse_tpk_map().clone(),
@@ -413,6 +437,14 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Returns the outputs for the given `transition ID`.
     pub fn get_outputs(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
         self.outputs.get_outputs(transition_id)
+    }
+
+    /// Returns the finalize inputs for the given `transition ID`.
+    pub fn get_finalize(&self, transition_id: &N::TransitionID) -> Result<Option<Vec<Value<N>>>> {
+        match self.finalize.get(transition_id)? {
+            Some(finalize) => Ok(cow_to_cloned!(finalize)),
+            None => bail!("Missing transition '{transition_id}' - cannot get finalize inputs"),
+        }
     }
 
     /// Returns the record for the given `commitment`.

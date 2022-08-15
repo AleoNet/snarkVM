@@ -158,7 +158,7 @@ impl<N: Network> Package<N> {
         }
 
         // Create the process.
-        let mut process = Process::<N>::load()?;
+        let mut process = Process::load()?;
 
         // Prepare the imports directory.
         let imports_directory = self.imports_directory();

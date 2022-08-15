@@ -17,6 +17,9 @@
 mod block;
 pub use block::*;
 
+mod program;
+pub use program::*;
+
 mod transaction;
 pub use transaction::*;
 

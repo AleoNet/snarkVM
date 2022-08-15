@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> VM<N> {
+impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Executes a call to the program function for the given inputs.
     #[inline]
     pub fn execute<R: Rng + CryptoRng>(
