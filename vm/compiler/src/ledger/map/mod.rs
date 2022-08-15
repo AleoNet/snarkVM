@@ -51,6 +51,11 @@ pub trait Map<
     fn start_atomic(&self);
 
     ///
+    /// Aborts the current atomic operation.
+    ///
+    fn abort_atomic(&self);
+
+    ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self);

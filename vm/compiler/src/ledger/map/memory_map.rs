@@ -107,6 +107,14 @@ impl<
     }
 
     ///
+    /// Aborts the current atomic operation.
+    ///
+    fn abort_atomic(&self) {
+        self.atomic_batch.lock().clear();
+        self.batch_in_progress.store(false, Ordering::SeqCst);
+    }
+
+    ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) {
