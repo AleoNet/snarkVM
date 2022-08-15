@@ -48,6 +48,9 @@ pub mod polycommit;
 #[cfg(feature = "snark")]
 pub mod snark;
 
+#[cfg(feature = "posw")]
+pub mod posw;
+
 pub mod traits;
 pub use traits::*;
 
