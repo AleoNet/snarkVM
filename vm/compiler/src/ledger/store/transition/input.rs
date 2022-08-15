@@ -43,7 +43,7 @@ pub trait InputStorage<N: Network>: Clone + Sync {
     type RecordMap: for<'a> Map<'a, Field<N>, (Field<N>, Origin<N>)>;
     /// The mapping of `tag` to `serial number`.
     type RecordTagMap: for<'a> Map<'a, Field<N>, Field<N>>;
-    /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
+    /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition input storage.
@@ -210,7 +210,7 @@ pub struct InputMemory<N: Network> {
     record: MemoryMap<Field<N>, (Field<N>, Origin<N>)>,
     /// The mapping of `record tag` to `serial number`.
     record_tag: MemoryMap<Field<N>, Field<N>>,
-    /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
+    /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
 }
 

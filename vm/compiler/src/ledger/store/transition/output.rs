@@ -43,7 +43,7 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
     type RecordMap: for<'a> Map<'a, Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>;
     /// The mapping of `record nonce` to `commitment`.
     type RecordNonceMap: for<'a> Map<'a, Group<N>, Field<N>>;
-    /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
+    /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition output storage.
@@ -215,7 +215,7 @@ pub struct OutputMemory<N: Network> {
     record: MemoryMap<Field<N>, (Field<N>, Option<Record<N, Ciphertext<N>>>)>,
     /// The mapping of `record nonce` to `commitment`.
     record_nonce: MemoryMap<Group<N>, Field<N>>,
-    /// The mapping of `external commitment` to `()`. Note: This is **not** the record commitment.
+    /// The mapping of `external hash` to `()`. Note: This is **not** the record commitment.
     external_record: MemoryMap<Field<N>, ()>,
 }
 
