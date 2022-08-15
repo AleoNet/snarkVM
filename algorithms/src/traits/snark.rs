@@ -150,7 +150,9 @@ pub trait SNARK {
         input: &[B],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
+        let preparation_time = start_timer!(|| "Preparing vk");
         let processed_verifying_key = verifying_key.prepare();
+        end_timer!(preparation_time);
         Self::verify_batch_prepared(fs_parameters, &processed_verifying_key, input, proof)
     }
 

@@ -64,6 +64,11 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             EvaluationDomain::new(index_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
         end_timer!(non_zero_c_time);
 
+        let input_domain_time = start_timer!(|| "Constructing input domain");
+        let input_domain =
+            EvaluationDomain::new(index_info.num_public_inputs).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+        end_timer!(input_domain_time);
+
         let squeeze_time = start_timer!(|| "Squeezing challenges");
         let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1, OptimizationType::Weight)?;
         let (first, rest) = elems.split_at(3);
@@ -80,6 +85,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
         let new_state = State {
             batch_size,
+            input_domain,
             constraint_domain,
             non_zero_a_domain,
             non_zero_b_domain,
