@@ -231,7 +231,10 @@ impl<N: Network> Stack<N> {
         Self::log_circuit::<A, _>("Response");
 
         // If the circuit is in `Execute` mode, then prepare the 'finalize' scope if it exists.
-        let finalize = if let CallStack::Execute(..) = registers.call_stack() {
+        let finalize = if matches!(registers.call_stack(), CallStack::Synthesize(..))
+            || matches!(registers.call_stack(), CallStack::CheckDeployment(..))
+            || matches!(registers.call_stack(), CallStack::Execute(..))
+        {
             // If this function has the finalize command, then construct the finalize inputs.
             if let Some(command) = function.finalize_command() {
                 use circuit::ToBits;

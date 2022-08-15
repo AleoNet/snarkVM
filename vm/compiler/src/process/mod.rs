@@ -1172,4 +1172,119 @@ finalize compute:
             store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
         assert_eq!(candidate, Value::from_str("0u64").unwrap());
     }
+
+    #[test]
+    fn test_process_execute_mint_public() {
+        // Initialize a new program.
+        let (string, program) = Program::<CurrentNetwork>::parse(
+            r"
+program token.aleo;
+
+// On-chain storage of an `account` map, with `owner` as the key,
+// and `amount` as the value.
+mapping account:
+    // The token owner.
+    key owner as address.public;
+    // The token amount.
+    value amount as u64.public;
+
+// The function `mint_public` issues the specified token amount
+// for the token receiver publicly on the network.
+function mint_public:
+    // Input the token receiver.
+    input r0 as address.public;
+    // Input the token amount.
+    input r1 as u64.public;
+    // Mint the tokens publicly.
+    finalize r0 r1;
+
+// The finalize scope of `mint_public` increments the
+// `account` of the token receiver by the specified amount.
+finalize mint_public:
+    // Input the token receiver.
+    input r0 as address.public;
+    // Input the token amount.
+    input r1 as u64.public;
+
+    // Increments `account[r0]` by `r1`.
+    // If `account[r0]` does not exist, it will be created.
+    // If `account[r0] + r1` overflows, `mint_public` is reverted.
+    increment account[r0] by r1;
+",
+        )
+        .unwrap();
+        assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+
+        // Declare the program ID.
+        let program_id = program.id();
+        // Declare the mapping.
+        let mapping_name = Identifier::from_str("account").unwrap();
+        // Declare the function name.
+        let function_name = Identifier::from_str("mint_public").unwrap();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Construct the process.
+        let process = super::test_helpers::sample_process(&program);
+        // Check that the circuit key can be synthesized.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Reset the process.
+        let mut process = Process::load().unwrap();
+
+        // Initialize a new program store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
+
+        // Add the program to the process.
+        let deployment = process.deploy::<CurrentAleo, _>(&program, rng).unwrap();
+        // Check that the deployment verifies.
+        process.verify_deployment::<CurrentAleo, _>(&deployment, rng).unwrap();
+        // Finalize the deployment.
+        process.finalize_deployment(&store, &deployment).unwrap();
+
+        // TODO (howardwu): Remove this. I call this to synthesize the proving key independent of the assignment from 'execute'.
+        //  In general, we should update all tests to utilize a presynthesized proving key, before execution, to test
+        //  the correctness of the synthesizer.
+        process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
+
+        // Initialize a new caller account.
+        let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+        let _caller_view_key = ViewKey::try_from(&caller_private_key).unwrap();
+        let caller = Address::try_from(&caller_private_key).unwrap();
+
+        // Declare the input value.
+        let r0 = Value::<CurrentNetwork>::from_str(&caller.to_string()).unwrap();
+        let r1 = Value::<CurrentNetwork>::from_str("3u64").unwrap();
+
+        // Authorize the function call.
+        let authorization = process
+            .authorize::<CurrentAleo, _>(&caller_private_key, program.id(), function_name, &[r0, r1], rng)
+            .unwrap();
+        assert_eq!(authorization.len(), 1);
+
+        // Compute the output value.
+        let response = process.evaluate::<CurrentAleo>(authorization.replicate()).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Check again to make sure we didn't modify the authorization after calling `evaluate`.
+        assert_eq!(authorization.len(), 1);
+
+        // Execute the request.
+        let (response, execution) = process.execute::<CurrentAleo, _>(authorization, rng).unwrap();
+        let candidate = response.outputs();
+        assert_eq!(0, candidate.len());
+
+        // Verify the execution.
+        assert!(process.verify_execution(&execution).is_ok());
+
+        // Now, finalize the execution.
+        process.finalize_execution(&store, &execution).unwrap();
+
+        // Check the account balance.
+        let candidate =
+            store.get_value(program_id, &mapping_name, &Plaintext::from(Literal::Address(caller))).unwrap().unwrap();
+        assert_eq!(candidate, Value::from_str("3u64").unwrap());
+    }
 }
