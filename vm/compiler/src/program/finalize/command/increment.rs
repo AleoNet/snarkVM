@@ -20,11 +20,11 @@ use console::{
     program::{Identifier, Register},
 };
 
-/// Increments the value stored at the `first` operand in `storage` by the amount in the `second` operand.
+/// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Increment<N: Network> {
-    /// The storage name.
-    storage: Identifier<N>,
+    /// The mapping name.
+    mapping: Identifier<N>,
     /// The first operand.
     first: Operand<N>,
     /// The second operand.
@@ -42,6 +42,24 @@ impl<N: Network> Increment<N> {
     #[inline]
     pub fn operands(&self) -> Vec<Operand<N>> {
         vec![self.first.clone(), self.second.clone()]
+    }
+
+    /// Returns the mapping name.
+    #[inline]
+    pub const fn mapping_name(&self) -> &Identifier<N> {
+        &self.mapping
+    }
+
+    /// Returns the operand containing the key.
+    #[inline]
+    pub const fn key(&self) -> &Operand<N> {
+        &self.first
+    }
+
+    /// Returns the operand containing the value.
+    #[inline]
+    pub const fn value(&self) -> &Operand<N> {
+        &self.second
     }
 }
 
@@ -72,8 +90,8 @@ impl<N: Network> Parser for Increment<N> {
         // Parse the whitespace from the string.
         let (string, _) = Sanitizer::parse_whitespaces(string)?;
 
-        // Parse the storage name from the string.
-        let (string, storage) = Identifier::parse(string)?;
+        // Parse the mapping name from the string.
+        let (string, mapping) = Identifier::parse(string)?;
         // Parse the "[" from the string.
         let (string, _) = tag("[")(string)?;
         // Parse the whitespace from the string.
@@ -99,7 +117,7 @@ impl<N: Network> Parser for Increment<N> {
         // Parse the ";" from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { storage, first, second }))
+        Ok((string, Self { mapping, first, second }))
     }
 }
 
@@ -134,7 +152,7 @@ impl<N: Network> Display for Increment<N> {
         // Print the command.
         write!(f, "{} ", Self::opcode())?;
         // Print the first operand.
-        write!(f, "{}[{}] ", self.storage, self.first)?;
+        write!(f, "{}[{}] ", self.mapping, self.first)?;
         // Print the "by" operand.
         write!(f, "by ")?;
         // Print the second operand.
@@ -145,22 +163,22 @@ impl<N: Network> Display for Increment<N> {
 impl<N: Network> FromBytes for Increment<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the storage name.
-        let storage = Identifier::read_le(&mut reader)?;
+        // Read the mapping name.
+        let mapping = Identifier::read_le(&mut reader)?;
         // Read the first operand.
         let first = Operand::read_le(&mut reader)?;
         // Read the second operand.
         let second = Operand::read_le(&mut reader)?;
         // Return the command.
-        Ok(Self { storage, first, second })
+        Ok(Self { mapping, first, second })
     }
 }
 
 impl<N: Network> ToBytes for Increment<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the storage name.
-        self.storage.write_le(&mut writer)?;
+        // Write the mapping name.
+        self.mapping.write_le(&mut writer)?;
         // Write the first operand.
         self.first.write_le(&mut writer)?;
         // Write the second operand.
@@ -179,7 +197,7 @@ mod tests {
     fn test_parse() {
         let (string, increment) = Increment::<CurrentNetwork>::parse("increment account[r0] by r1;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(increment.storage, Identifier::from_str("account").unwrap());
+        assert_eq!(increment.mapping, Identifier::from_str("account").unwrap());
         assert_eq!(increment.operands().len(), 2, "The number of operands is incorrect");
         assert_eq!(increment.first, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(increment.second, Operand::Register(Register::Locator(1)), "The second operand is incorrect");

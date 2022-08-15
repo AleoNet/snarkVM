@@ -27,7 +27,7 @@ use console::network::prelude::*;
 pub enum Command<N: Network> {
     /// Evaluates the instruction.
     Instruction(Instruction<N>),
-    /// Increments the value stored at the `first` operand in `storage` by the amount in the `second` operand.
+    /// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
     Increment(Increment<N>),
 }
 

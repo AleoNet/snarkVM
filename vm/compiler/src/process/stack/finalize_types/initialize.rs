@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use circuit::Plaintext;
 
 impl<N: Network> FinalizeTypes<N> {
     /// Initializes a new instance of `FinalizeTypes` for the given finalize.
@@ -192,19 +193,59 @@ impl<N: Network> FinalizeTypes<N> {
 
     /// Ensures the given increment command is well-formed.
     #[inline]
-    fn check_increment(
-        &mut self,
-        stack: &Stack<N>,
-        finalize_name: &Identifier<N>,
-        increment: &Increment<N>,
-    ) -> Result<()> {
-        // Ensure the storage is defined in the program.
+    fn check_increment(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, increment: &Increment<N>) -> Result<()> {
+        // Ensure the declared mapping in increment is defined in the program.
+        if !stack.program().contains_mapping(increment.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", increment.mapping_name(), stack.program_id())
+        }
 
-        // Ensure the key type matches in storage.
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, increment.key())?;
+        // Ensure the key is not a record or external record.
+        match key_type {
+            RegisterType::Plaintext(..) => (),
+            RegisterType::Record(..) => bail!("Increment cannot use a 'record' as a key (found at '{increment}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Increment cannot use an 'external record' as a key (found at '{increment}')")
+            }
+        }
 
-        // Ensure the value type matches in storage.
+        // Retrieve the register type of the value.
+        let value_type = self.get_type_from_operand(stack, increment.value())?;
+        // Ensure the increment value type is a literal that implements the `Add` operation.
+        match value_type {
+            RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => {
+                match literal_type {
+                    LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
+                        bail!("Increment cannot increment by a(n) '{literal_type}' (found at '{increment}')")
+                    }
+                    LiteralType::Field
+                    | LiteralType::Group
+                    | LiteralType::Scalar
+                    | LiteralType::I8
+                    | LiteralType::I16
+                    | LiteralType::I32
+                    | LiteralType::I64
+                    | LiteralType::I128
+                    | LiteralType::U8
+                    | LiteralType::U16
+                    | LiteralType::U32
+                    | LiteralType::U64
+                    | LiteralType::U128 => {
+                        // These literal types are valid for the 'increment' command.
+                        ()
+                    }
+                }
+            }
+            RegisterType::Plaintext(PlaintextType::Interface(..)) => {
+                bail!("Increment cannot increment by an 'interface' (found at '{increment}')")
+            }
+            RegisterType::Record(..) => bail!("Increment cannot increment by a 'record' (found at '{increment}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Increment cannot increment by an 'external record' (found at '{increment}')")
+            }
+        }
 
-        // Ensure the value type is a type that implements the `Add` operation.
         Ok(())
     }
 
@@ -224,12 +265,7 @@ impl<N: Network> FinalizeTypes<N> {
         // Iterate over the operands, and retrieve the register type of each operand.
         for operand in instruction.operands() {
             // Retrieve and append the register type.
-            operand_types.push(match operand {
-                Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                Operand::Register(register) => self.get_type(stack, register)?,
-                Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-                Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-            });
+            operand_types.push(self.get_type_from_operand(stack, operand)?);
         }
 
         // Compute the destination register types.

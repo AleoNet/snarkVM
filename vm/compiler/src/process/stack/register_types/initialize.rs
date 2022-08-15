@@ -231,12 +231,7 @@ impl<N: Network> RegisterTypes<N> {
         // Iterate over the operands, and retrieve the register type of each operand.
         for operand in instruction.operands() {
             // Retrieve and append the register type.
-            operand_types.push(match operand {
-                Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
-                Operand::Register(register) => self.get_type(stack, register)?,
-                Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-                Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
-            });
+            operand_types.push(self.get_type_from_operand(stack, operand)?);
         }
 
         // Compute the destination register types.

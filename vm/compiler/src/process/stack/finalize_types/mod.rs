@@ -62,6 +62,16 @@ impl<N: Network> FinalizeTypes<N> {
         self.inputs.contains_key(&register.locator())
     }
 
+    /// Returns the register type of the given operand.
+    pub fn get_type_from_operand(&self, stack: &Stack<N>, operand: &Operand<N>) -> Result<RegisterType<N>> {
+        Ok(match operand {
+            Operand::Literal(literal) => RegisterType::Plaintext(PlaintextType::from(literal.to_type())),
+            Operand::Register(register) => self.get_type(stack, register)?,
+            Operand::ProgramID(_) => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+            Operand::Caller => RegisterType::Plaintext(PlaintextType::Literal(LiteralType::Address)),
+        })
+    }
+
     /// Returns the register type of the given register.
     pub fn get_type(&self, stack: &Stack<N>, register: &Register<N>) -> Result<RegisterType<N>> {
         // Initialize a tracker for the register type.
