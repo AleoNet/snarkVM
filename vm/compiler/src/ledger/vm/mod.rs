@@ -25,7 +25,7 @@ mod verify;
 use crate::{
     cast_ref,
     ledger::{
-        store::{BlockStorage, BlockStore},
+        store::{BlockStorage, BlockStore, ProgramStorage, ProgramStore},
         AdditionalFee,
         Transaction,
     },
@@ -45,23 +45,25 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct VM<N: Network> {
+pub struct VM<N: Network, P: ProgramStorage<N>> {
     /// The process for Aleo Testnet3 (V0).
     process: Arc<RwLock<Process<console::network::Testnet3>>>,
+    /// The program store.
+    store: ProgramStore<N, P>,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
 
-impl<N: Network> VM<N> {
+impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Initializes a new VM.
     #[inline]
-    pub fn new() -> Result<Self> {
-        Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), _phantom: PhantomData })
+    pub fn new(store: ProgramStore<N, P>) -> Result<Self> {
+        Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), store, _phantom: PhantomData })
     }
 
     /// Initializes the VM from storage.
     #[inline]
-    pub fn from<B: BlockStorage<N>>(blocks: &BlockStore<N, B>) -> Result<Self> {
+    pub fn from<B: BlockStorage<N>>(blocks: &BlockStore<N, B>, store: ProgramStore<N, P>) -> Result<Self> {
         // Retrieve the transaction store.
         let transaction_store = blocks.transaction_store();
 
@@ -85,7 +87,7 @@ impl<N: Network> VM<N> {
                 let process = cast_ref!(process as Process<$network>);
 
                 // Return the new VM.
-                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), _phantom: PhantomData })
+                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), store, _phantom: PhantomData })
             }};
         }
         // Process the logic.
@@ -121,7 +123,7 @@ impl<N: Network> VM<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{program::Program, RecordsFilter};
+    use crate::{program::Program, ProgramMemory, RecordsFilter};
     use console::{
         account::{Address, ViewKey},
         network::Testnet3,
@@ -131,6 +133,10 @@ pub(crate) mod test_helpers {
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
+
+    pub(crate) fn sample_vm() -> VM<CurrentNetwork, ProgramMemory<CurrentNetwork>> {
+        VM::new(ProgramStore::open().unwrap()).unwrap()
+    }
 
     pub(crate) fn sample_program() -> Program<CurrentNetwork> {
         static INSTANCE: OnceCell<Program<CurrentNetwork>> = OnceCell::new();
@@ -193,7 +199,7 @@ function compute:
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
                 // Initialize the VM.
-                let vm = VM::<CurrentNetwork>::new().unwrap();
+                let vm = sample_vm();
                 // Deploy.
                 let transaction = Transaction::deploy(&vm, &caller_private_key, &program, additional_fee, rng).unwrap();
                 // Verify.
@@ -229,7 +235,7 @@ function compute:
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
                 // Initialize the VM.
-                let vm = VM::<CurrentNetwork>::new().unwrap();
+                let vm = sample_vm();
 
                 // Authorize.
                 let authorization = vm

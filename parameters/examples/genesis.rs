@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm::compiler::{Block, VM};
+use snarkvm::compiler::{Block, ProgramMemory, ProgramStore, VM};
 use snarkvm_console::{account::PrivateKey, network::Testnet3, prelude::*};
 
 use rand::thread_rng;
@@ -25,8 +25,10 @@ use std::{
 };
 
 pub fn generate<N: Network>(private_key: PrivateKey<N>) -> Result<Vec<u8>> {
+    // Initialize the program store.
+    let store = ProgramStore::<N, ProgramMemory<N>>::open()?;
     // Initialize the VM.
-    let vm = VM::<N>::new()?;
+    let vm = VM::new(store)?;
     // Create a genesis block.
     let genesis_block = Block::genesis(&vm, &private_key, &mut thread_rng())?;
     // assert!(genesis_block.verify(&VM::<N>::new()?));

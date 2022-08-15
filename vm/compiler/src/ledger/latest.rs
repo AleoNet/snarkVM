@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns the latest state root.
     pub const fn latest_state_root(&self) -> &Field<N> {
         self.block_tree.root()

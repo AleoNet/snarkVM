@@ -194,7 +194,7 @@ impl<N: Network> ToBytes for ProverFile<N> {
 mod tests {
     use super::*;
     use crate::prelude::{test_crypto_rng, FromStr, Parser};
-    use snarkvm_compiler::Process;
+    use snarkvm_compiler::{Process, ProgramMemory, ProgramStore};
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::AleoV0;
@@ -226,7 +226,7 @@ function compute:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
+        let mut process = Process::load().unwrap();
         // Add the program to the process.
         process.add_program(&program).unwrap();
 

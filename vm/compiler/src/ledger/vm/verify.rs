@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> VM<N> {
+impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Verifies the transaction in the VM.
     #[inline]
     pub fn verify(&self, transaction: &Transaction<N>) -> bool {
@@ -181,15 +181,12 @@ impl<N: Network> VM<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ledger::vm::test_helpers::sample_program, VM};
-    use console::network::Testnet3;
+    use crate::ledger::vm::test_helpers::sample_program;
     use snarkvm_utilities::test_crypto_rng;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_verify() {
-        let vm = VM::<CurrentNetwork>::new().unwrap();
+        let vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
@@ -205,7 +202,7 @@ mod tests {
     #[test]
     fn test_verify_deployment() {
         let rng = &mut test_crypto_rng();
-        let vm = VM::<CurrentNetwork>::new().unwrap();
+        let vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch the program from the deployment.
         let program = sample_program();

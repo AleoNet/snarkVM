@@ -39,7 +39,17 @@ use crate::{
         Value,
     },
 };
-use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
+use snarkvm_compiler::{
+    CallOperator,
+    Execution,
+    Instruction,
+    Process,
+    Program,
+    ProgramMemory,
+    ProgramStore,
+    ProvingKey,
+    VerifyingKey,
+};
 
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;
@@ -158,7 +168,7 @@ impl<N: Network> Package<N> {
         }
 
         // Create the process.
-        let mut process = Process::<N>::load()?;
+        let mut process = Process::load()?;
 
         // Prepare the imports directory.
         let imports_directory = self.imports_directory();

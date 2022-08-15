@@ -18,7 +18,7 @@ use super::*;
 
 use std::borrow::Cow;
 
-impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns the records that belong to the given view key.
     pub fn find_records<'a>(
         &'a self,

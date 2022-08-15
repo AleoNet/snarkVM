@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> VM<N> {
+impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Finalizes the transaction into the VM.
     /// This method assumes the given transaction **is valid**.
     #[inline]
@@ -49,15 +49,12 @@ impl<N: Network> VM<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ledger::vm::test_helpers::sample_program, VM};
-    use console::network::Testnet3;
+    use crate::ledger::vm::test_helpers::sample_program;
     use snarkvm_utilities::test_crypto_rng;
-
-    type CurrentNetwork = Testnet3;
 
     #[test]
     fn test_finalize() {
-        let mut vm = VM::<CurrentNetwork>::new().unwrap();
+        let mut vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch a deployment transaction.
         let deployment_transaction = crate::ledger::vm::test_helpers::sample_deployment_transaction();
@@ -72,7 +69,7 @@ mod tests {
     #[test]
     fn test_finalize_deployment() {
         let rng = &mut test_crypto_rng();
-        let mut vm = VM::<CurrentNetwork>::new().unwrap();
+        let mut vm = crate::ledger::vm::test_helpers::sample_vm();
 
         // Fetch the program from the deployment.
         let program = sample_program();

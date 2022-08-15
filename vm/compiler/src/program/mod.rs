@@ -580,7 +580,7 @@ impl<N: Network> TypeName for Program<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CallStack, Execution, Process};
+    use crate::{CallStack, Execution};
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey},
@@ -757,9 +757,7 @@ function swap:
         ];
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Compute the authorization.
         let authorization = {
@@ -825,9 +823,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("5field").unwrap());
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Compute the authorization.
         let authorization = {
@@ -903,9 +899,7 @@ function compute:
         let expected = Value::Plaintext(Plaintext::from_str("200u64").unwrap());
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Authorize the function call.
         let authorization = process
@@ -973,17 +967,13 @@ function compute:
 
         {
             // Construct the process.
-            let mut process = Process::<CurrentNetwork>::load().unwrap();
-            // Add the program to the process.
-            process.add_program(&program).unwrap();
+            let process = crate::process::test_helpers::sample_process(&program);
             // Check that the circuit key can be synthesized.
             process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
         }
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Compute the authorization.
         let authorization = {
@@ -1095,9 +1085,7 @@ function compute:
         let input = Value::<CurrentNetwork>::Record(input_record);
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = crate::process::test_helpers::sample_process(&program);
 
         // Authorize the function call.
         let authorization = process

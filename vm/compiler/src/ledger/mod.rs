@@ -81,7 +81,7 @@ pub enum RecordsFilter<N: Network> {
 }
 
 #[derive(Clone)]
-pub struct Ledger<N: Network, B: BlockStorage<N>> {
+pub struct Ledger<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> {
     /// The current block hash.
     current_hash: N::BlockHash,
     /// The current block height.
@@ -102,12 +102,12 @@ pub struct Ledger<N: Network, B: BlockStorage<N>> {
     /// The memory pool of unconfirmed transactions.
     memory_pool: IndexMap<N::TransactionID, Transaction<N>>,
     /// The VM state.
-    vm: VM<N>,
+    vm: VM<N, P>,
     // /// The mapping of program IDs to their global state.
     // states: MemoryMap<ProgramID<N>, IndexMap<Identifier<N>, Plaintext<N>>>,
 }
 
-impl<N: Network> Ledger<N, BlockMemory<N>> {
+impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
@@ -122,8 +122,10 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
     pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
         // Initialize the block store.
         let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
+        // Initialize the program store.
+        let store = ProgramStore::<N, ProgramMemory<N>>::open()?;
         // Initialize a new VM.
-        let vm = VM::<N>::new()?;
+        let vm = VM::new(store)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -148,19 +150,21 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
     }
 }
 
-impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Initializes the `Ledger` from storage.
     pub fn open() -> Result<Self> {
         // Initialize the block store.
         let blocks = BlockStore::<N, B>::open()?;
+        // Initialize the program store.
+        let store = ProgramStore::open()?;
         // Return the ledger.
-        Self::from(blocks)
+        Self::from(blocks, store)
     }
 
     /// Initializes the `Ledger` from storage.
-    pub fn from(blocks: BlockStore<N, B>) -> Result<Self> {
+    pub fn from(blocks: BlockStore<N, B>, store: ProgramStore<N, P>) -> Result<Self> {
         // Initialize a new VM.
-        let vm = VM::<N>::from(&blocks)?;
+        let vm = VM::<N, P>::from(&blocks, store)?;
 
         // Initialize the ledger.
         let mut ledger = Self {
@@ -220,7 +224,7 @@ impl<N: Network, B: BlockStorage<N>> Ledger<N, B> {
     }
 
     /// Returns the VM.
-    pub fn vm(&self) -> &VM<N> {
+    pub fn vm(&self) -> &VM<N, P> {
         &self.vm
     }
 
@@ -804,7 +808,7 @@ pub(crate) mod test_helpers {
     use once_cell::sync::OnceCell;
 
     type CurrentNetwork = Testnet3;
-    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>>;
+    pub(crate) type CurrentLedger = Ledger<CurrentNetwork, BlockMemory<CurrentNetwork>, ProgramMemory<CurrentNetwork>>;
 
     pub(crate) fn sample_genesis_private_key() -> PrivateKey<CurrentNetwork> {
         static INSTANCE: OnceCell<PrivateKey<CurrentNetwork>> = OnceCell::new();
@@ -821,7 +825,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 // Initialize the VM.
-                let vm = VM::<CurrentNetwork>::new().unwrap();
+                let vm = crate::ledger::vm::test_helpers::sample_vm();
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng_fixed();
                 // Initialize a new caller.
@@ -876,8 +880,11 @@ mod tests {
         let view_key = ViewKey::try_from(private_key).unwrap();
         let address = Address::try_from(&view_key).unwrap();
 
+        // Initialize the VM.
+        let vm = crate::ledger::vm::test_helpers::sample_vm();
+
         // Create a genesis block.
-        let genesis = Block::genesis(&VM::new().unwrap(), &private_key, rng).unwrap();
+        let genesis = Block::genesis(&vm, &private_key, rng).unwrap();
 
         // Initialize the validators.
         let validators: IndexMap<Address<_>, ()> = [(address, ())].into_iter().collect();
@@ -920,7 +927,11 @@ mod tests {
                 .unwrap();
 
         // Initialize a ledger without the genesis block.
-        let ledger = CurrentLedger::from(BlockStore::<_, BlockMemory<_>>::open().unwrap()).unwrap();
+        let ledger = CurrentLedger::from(
+            BlockStore::<_, BlockMemory<_>>::open().unwrap(),
+            ProgramStore::<_, ProgramMemory<_>>::open().unwrap(),
+        )
+        .unwrap();
         assert_eq!(ledger.latest_hash(), genesis.hash());
         assert_eq!(ledger.latest_height(), genesis.height());
         assert_eq!(ledger.latest_round(), genesis.round());

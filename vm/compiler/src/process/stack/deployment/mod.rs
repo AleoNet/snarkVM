@@ -100,7 +100,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let process = Process::<CurrentNetwork>::load().unwrap();
+                let process = Process::load().unwrap();
                 // Compute the deployment.
                 process.deploy::<CurrentAleo, _>(&program, rng).unwrap()
             })

@@ -23,7 +23,15 @@ mod deploy;
 mod evaluate;
 mod execute;
 
-use crate::{AdditionalFee, Instruction, Program, ProvingKey, UniversalSRS, VerifyingKey};
+use crate::{
+    ledger::{ProgramStorage, ProgramStore},
+    AdditionalFee,
+    Instruction,
+    Program,
+    ProvingKey,
+    UniversalSRS,
+    VerifyingKey,
+};
 use console::{
     account::PrivateKey,
     network::prelude::*,
@@ -238,9 +246,7 @@ function compute:
                 let rng = &mut test_crypto_rng();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::load().unwrap();
-                // Add the program to the process.
-                process.add_program(&program).unwrap();
+                let process = sample_process(&program);
 
                 // Synthesize a proving and verifying key.
                 process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
@@ -281,9 +287,7 @@ function compute:
                 let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
                 // Construct the process.
-                let mut process = Process::<CurrentNetwork>::load().unwrap();
-                // Add the program to the process.
-                process.add_program(&program).unwrap();
+                let process = sample_process(&program);
                 // Authorize the function call.
                 let authorization = process
                     .authorize::<CurrentAleo, _>(
@@ -314,6 +318,16 @@ function compute:
         assert!(!execution.is_empty());
         // Return the transition.
         execution.pop().unwrap()
+    }
+
+    /// Initializes a new process with the given program.
+    pub(crate) fn sample_process(program: &Program<CurrentNetwork>) -> Process<CurrentNetwork> {
+        // Construct a new process.
+        let mut process = Process::load().unwrap();
+        // Add the program to the process.
+        process.add_program(&program).unwrap();
+        // Return the process.
+        process
     }
 }
 
@@ -347,7 +361,7 @@ mod tests {
         let r1 = Value::<CurrentNetwork>::from_str("1_100_000_000_000_000_u64").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
+        let mut process = Process::load().unwrap();
 
         // Authorize the function call.
         let authorization = process
@@ -456,9 +470,7 @@ function hello_world:
         let function_name = Identifier::from_str("hello_world").unwrap();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, &mut test_crypto_rng()).unwrap();
     }
@@ -494,9 +506,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -591,9 +601,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -668,9 +676,7 @@ function hello_world:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -748,16 +754,12 @@ function compute:
         let rng = &mut test_crypto_rng();
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
         // Check that the circuit key can be synthesized.
         process.synthesize_key::<CurrentAleo, _>(program.id(), &function_name, rng).unwrap();
 
         // Reset the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program).unwrap();
+        let process = super::test_helpers::sample_process(&program);
 
         // Initialize a new caller account.
         let caller_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -861,10 +863,7 @@ function transfer:
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
 
         // Construct the process.
-        let mut process = Process::<CurrentNetwork>::load().unwrap();
-        // Add the program to the process.
-        process.add_program(&program0).unwrap();
-
+        let mut process = super::test_helpers::sample_process(&program0);
         // Initialize another program.
         let (string, program1) = Program::<CurrentNetwork>::parse(
             r"
