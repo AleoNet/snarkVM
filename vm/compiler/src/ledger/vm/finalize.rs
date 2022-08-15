@@ -51,17 +51,20 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// This method assumes the given execution **is valid**.
     #[inline]
     fn finalize_execution(&mut self, execution: &Execution<N>) -> Result<()> {
-        // Compute the core logic.
-        macro_rules! logic {
-            ($process:expr, $network:path, $aleo:path) => {{
-                // Prepare the execution.
-                let execution = cast_ref!(&execution as Execution<$network>);
-                // Finalize the execution.
-                $process.finalize_execution(execution)
-            }};
-        }
+        // TODO (howardwu): TEMPORARY - Find a proper workaround for trait `P: ProgramStorage<N>`
+        //   requiring trait `N: Network` instead of `console::network::Testnet3`.
         // Process the logic.
-        process_mut!(self, logic)
+        match N::ID {
+            console::network::Testnet3::ID => {
+                // let process = cast_ref!((self.process) as Arc<RwLock<Process<N>>>);
+                let process = (&self.process as &dyn std::any::Any)
+                    .downcast_ref::<Arc<RwLock<Process<N>>>>()
+                    .ok_or_else(|| anyhow!("Failed to downcast {}", stringify!(self.process)))?;
+
+                process.write().finalize_execution::<P>(&self.store, execution)
+            }
+            _ => Err(anyhow!("Unsupported VM configuration for network: {}", N::ID)),
+        }
     }
 }
 

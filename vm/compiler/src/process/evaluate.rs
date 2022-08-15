@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
+impl<N: Network> Process<N> {
     /// Evaluates a program function on the given request.
     #[inline]
     pub fn evaluate<A: circuit::Aleo<Network = N>>(&self, authorization: Authorization<N>) -> Result<Response<N>> {

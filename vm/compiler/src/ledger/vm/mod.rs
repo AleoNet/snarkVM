@@ -47,7 +47,9 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct VM<N: Network, P: ProgramStorage<N>> {
     /// The process for Aleo Testnet3 (V0).
-    process: Arc<RwLock<Process<console::network::Testnet3, P>>>,
+    process: Arc<RwLock<Process<console::network::Testnet3>>>,
+    /// The program store.
+    store: ProgramStore<N, P>,
     /// PhantomData.
     _phantom: PhantomData<N>,
 }
@@ -56,7 +58,7 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// Initializes a new VM.
     #[inline]
     pub fn new(store: ProgramStore<N, P>) -> Result<Self> {
-        Ok(Self { process: Arc::new(RwLock::new(Process::load(store)?)), _phantom: PhantomData })
+        Ok(Self { process: Arc::new(RwLock::new(Process::load()?)), store, _phantom: PhantomData })
     }
 
     /// Initializes the VM from storage.
@@ -66,7 +68,7 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
         let transaction_store = blocks.transaction_store();
 
         // Initialize a new process.
-        let mut process = Process::load(store)?;
+        let mut process = Process::load()?;
 
         // Load the deployments from the store.
         for transaction_id in transaction_store.deployment_ids() {
@@ -85,7 +87,7 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
                 let process = cast_ref!(process as Process<$network>);
 
                 // Return the new VM.
-                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), _phantom: PhantomData })
+                Ok(Self { process: Arc::new(RwLock::new((*process).clone())), store, _phantom: PhantomData })
             }};
         }
         // Process the logic.

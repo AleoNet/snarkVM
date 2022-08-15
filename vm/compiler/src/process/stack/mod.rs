@@ -47,7 +47,6 @@ use crate::{
     Operand,
     Process,
     Program,
-    ProgramStorage,
     ProvingKey,
     Transition,
     UniversalSRS,
@@ -187,7 +186,7 @@ pub struct Stack<N: Network> {
 impl<N: Network> Stack<N> {
     /// Initializes a new stack, if it does not already exist, given the process and the program.
     #[inline]
-    pub fn new<P: ProgramStorage<N>>(process: &Process<N, P>, program: &Program<N>) -> Result<Self> {
+    pub fn new(process: &Process<N>, program: &Program<N>) -> Result<Self> {
         // Retrieve the program ID.
         let program_id = program.id();
         // Ensure the program does not already exist in the process.

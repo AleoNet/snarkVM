@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
+impl<N: Network> Process<N> {
     /// Authorizes a call to the program function for the given inputs.
     #[inline]
     pub fn authorize<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(

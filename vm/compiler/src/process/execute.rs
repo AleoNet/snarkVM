@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
+impl<N: Network> Process<N> {
     /// Executes the given authorization.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
@@ -192,7 +192,11 @@ impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
     /// Finalizes the execution.
     /// This method assumes the given execution **is valid**.
     #[inline]
-    pub fn finalize_execution(&mut self, execution: &Execution<N>) -> Result<()> {
+    pub fn finalize_execution<P: ProgramStorage<N>>(
+        &mut self,
+        store: &ProgramStore<N, P>,
+        execution: &Execution<N>,
+    ) -> Result<()> {
         Ok(())
     }
 }

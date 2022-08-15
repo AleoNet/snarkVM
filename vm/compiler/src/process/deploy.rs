@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
+impl<N: Network> Process<N> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
