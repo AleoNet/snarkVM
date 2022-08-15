@@ -85,13 +85,18 @@ impl<N: Network> Function<N> {
         self.outputs.iter().map(|output| *output.value_type()).collect()
     }
 
+    /// Returns the function finalize logic.
+    pub const fn finalize(&self) -> &Option<(FinalizeCommand<N>, Finalize<N>)> {
+        &self.finalize
+    }
+
     /// Returns the function finalize command.
     pub fn finalize_command(&self) -> Option<&FinalizeCommand<N>> {
         self.finalize.as_ref().map(|(command, _)| command)
     }
 
     /// Returns the function finalize logic.
-    pub fn finalize(&self) -> Option<&Finalize<N>> {
+    pub fn finalize_logic(&self) -> Option<&Finalize<N>> {
         self.finalize.as_ref().map(|(_, finalize)| finalize)
     }
 }
@@ -182,12 +187,23 @@ impl<N: Network> Function<N> {
     /// # Errors
     /// This method will halt if a finalize scope has already been added.
     /// This method will halt if name in the finalize scope does not match the function name.
+    /// This method will halt if the maximum number of finalize inputs has been reached.
+    /// This method will halt if the number of finalize operands does not match the number of finalize inputs.
     #[inline]
     fn add_finalize(&mut self, command: FinalizeCommand<N>, finalize: Finalize<N>) -> Result<()> {
         // Ensure there is no finalize scope in memory.
         ensure!(self.finalize.is_none(), "Cannot add multiple finalize scopes to function '{}'", self.name);
         // Ensure the finalize scope name matches the function name.
         ensure!(*finalize.name() == self.name, "Finalize scope name must match function name '{}'", self.name);
+        // Ensure the number of finalize inputs has not been exceeded.
+        ensure!(finalize.inputs().len() <= N::MAX_INPUTS, "Cannot add more than {} inputs to finalize", N::MAX_INPUTS);
+        // Ensure the finalize command has the same number of operands as the finalize inputs.
+        ensure!(
+            command.operands().len() == finalize.inputs().len(),
+            "The 'finalize' command has {} operands, but 'finalize' takes {} inputs",
+            command.operands().len(),
+            finalize.inputs().len()
+        );
 
         // Insert the finalize scope.
         self.finalize = Some((command, finalize));

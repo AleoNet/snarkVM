@@ -77,6 +77,49 @@ impl<N: Network> RegisterTypes<N> {
             register_types.check_output(stack, output.register(), &RegisterType::from(*output.value_type()))?;
         }
 
+        // Step 4. If the function has a finalize command, check that its operands are all defined.
+        if let Some((command, _)) = function.finalize() {
+            // Ensure the number of finalize operands is within bounds.
+            ensure!(
+                command.operands().len() <= N::MAX_INPUTS,
+                "Function '{}' has too many finalize operands",
+                function.name()
+            );
+
+            // Check the type of each finalize operand.
+            for operand in command.operands() {
+                // Retrieve the register type from the operand.
+                let register_type = register_types.get_type_from_operand(stack, operand)?;
+                // TODO (howardwu): Expand the scope of 'finalize' to support other register types.
+                //  See `Stack::execute_function()` for the same set of checks.
+                // Ensure the register type is a literal (for now).
+                match register_type {
+                    RegisterType::Plaintext(PlaintextType::Literal(..)) => (),
+                    RegisterType::Plaintext(PlaintextType::Interface(..)) => {
+                        bail!(
+                            "'{}/{}' attempts to pass an 'interface' into 'finalize'",
+                            stack.program_id(),
+                            function.name()
+                        );
+                    }
+                    RegisterType::Record(..) => {
+                        bail!(
+                            "'{}/{}' attempts to pass a 'record' into 'finalize'",
+                            stack.program_id(),
+                            function.name()
+                        );
+                    }
+                    RegisterType::ExternalRecord(..) => {
+                        bail!(
+                            "'{}/{}' attempts to pass an 'external record' into 'finalize'",
+                            stack.program_id(),
+                            function.name()
+                        );
+                    }
+                }
+            }
+        }
+
         Ok(register_types)
     }
 }

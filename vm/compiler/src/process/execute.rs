@@ -80,7 +80,6 @@ impl<N: Network> Process<N> {
 
             // Ensure the transition ID is correct.
             ensure!(**transition.id() == transition.to_root()?, "The transition ID is incorrect");
-
             // Ensure the number of inputs is within the allowed range.
             ensure!(transition.inputs().len() <= N::MAX_INPUTS, "Transition exceeded maximum number of inputs");
             // Ensure the number of outputs is within the allowed range.
@@ -110,9 +109,9 @@ impl<N: Network> Process<N> {
             // Compute the x- and y-coordinate of `tpk`.
             let (tpk_x, tpk_y) = transition.tpk().to_xy_coordinate();
 
-            // Construct the public inputs to verify the proof.
+            // [Inputs] Construct the verifier inputs to verify the proof.
             let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **transition.tcm()];
-            // Extend the inputs with the input IDs.
+            // [Inputs] Extend the verifier inputs with the input IDs.
             inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
 
             // Retrieve the stack.
@@ -134,14 +133,46 @@ impl<N: Network> Process<N> {
                 // This loop takes the last `num_function_call` transitions, and reverses them
                 // to order them in the order they were defined in the function.
                 for transition in (*queue).iter().rev().take(num_function_calls).rev() {
-                    // Extend the inputs with the input and output IDs of the external call.
+                    // [Inputs] Extend the verifier inputs with the input IDs of the external call.
                     inputs.extend(transition.inputs().iter().flat_map(|input| input.verifier_inputs()));
+                    // [Inputs] Extend the verifier inputs with the output IDs of the external call.
                     inputs.extend(transition.output_ids().map(|id| **id));
                 }
             }
 
-            // Lastly, extend the inputs with the output IDs and fee.
+            // [Inputs] Extend the verifier inputs with the output IDs.
             inputs.extend(transition.outputs().iter().flat_map(|output| output.verifier_inputs()));
+
+            // Ensure the transition contains finalize inputs, if the function has a finalize scope.
+            if let Some((command, logic)) = function.finalize() {
+                // Ensure the transition contains finalize inputs.
+                match transition.finalize() {
+                    Some(finalize) => {
+                        // Retrieve the number of operands.
+                        let num_operands = command.operands().len();
+                        // Retrieve the number of inputs.
+                        let num_inputs = logic.inputs().len();
+
+                        // Ensure the number of inputs for finalize is within the allowed range.
+                        ensure!(finalize.len() <= N::MAX_INPUTS, "Transition exceeds maximum inputs for finalize");
+                        // Ensure the number of inputs for finalize matches in the finalize command.
+                        ensure!(finalize.len() == num_operands, "The number of inputs for finalize is incorrect");
+                        // Ensure the number of inputs for finalize matches in the finalize logic.
+                        ensure!(finalize.len() == num_inputs, "The number of inputs for finalize is incorrect");
+
+                        // Convert the finalize inputs into concatenated bits.
+                        let finalize_bits = finalize.iter().flat_map(ToBits::to_bits_le).collect::<Vec<_>>();
+                        // Compute the checksum of the finalize inputs.
+                        let checksum = N::hash_bhp1024(&finalize_bits)?;
+
+                        // [Inputs] Extend the verifier inputs with the inputs for finalize.
+                        inputs.push(*checksum);
+                    }
+                    None => bail!("The transition is missing inputs for 'finalize'"),
+                }
+            }
+
+            // [Inputs] Extend the verifier inputs with the fee.
             inputs.push(*I64::<N>::new(*transition.fee()).to_field()?);
 
             #[cfg(debug_assertions)]

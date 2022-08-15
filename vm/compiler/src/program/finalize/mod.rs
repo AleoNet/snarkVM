@@ -118,9 +118,9 @@ impl<N: Network> Finalize<N> {
     pub fn add_command(&mut self, command: Command<N>) -> Result<()> {
         // Ensure the maximum number of commands has not been exceeded.
         ensure!(
-            self.commands.len() <= N::MAX_FUNCTION_INSTRUCTIONS,
+            self.commands.len() <= N::MAX_FINALIZE_INSTRUCTIONS,
             "Cannot add more than {} commands",
-            N::MAX_FUNCTION_INSTRUCTIONS
+            N::MAX_FINALIZE_INSTRUCTIONS
         );
 
         // If the command is an instruction, perform additional checks.
