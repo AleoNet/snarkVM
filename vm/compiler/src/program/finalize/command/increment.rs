@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, Registers, Stack};
+use crate::{FinalizeRegisters, Opcode, Operand, ProgramStorage, ProgramStore, Stack};
 use console::{
     network::prelude::*,
-    program::{Identifier, Register},
+    program::{Identifier, Literal, Plaintext, Register, Value},
 };
 
 /// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
@@ -66,17 +66,53 @@ impl<N: Network> Increment<N> {
 impl<N: Network> Increment<N> {
     /// Evaluates the command.
     #[inline]
-    pub fn evaluate<A: circuit::Aleo<Network = N>>(
+    pub fn evaluate_finalize<P: ProgramStorage<N>>(
         &self,
         stack: &Stack<N>,
-        registers: &mut Registers<N, A>,
+        store: &ProgramStore<N, P>,
+        registers: &mut FinalizeRegisters<N>,
     ) -> Result<()> {
-        // Load the first operand.
-        let _first = registers.load(stack, &self.first)?;
-        // Load the second operand.
-        let _second = registers.load(stack, &self.second)?;
-        // // Store the output.
-        // registers.store(stack, &self.destination, Value::Plaintext(Plaintext::from(Literal::Field(output))))
+        // Ensure the mapping exists in storage.
+        if !store.contains_mapping(stack.program_id(), &self.mapping)? {
+            bail!("Mapping '{}/{}' does not exist in storage", stack.program_id(), self.mapping);
+        }
+
+        // Load the first operand as a plaintext.
+        let key = registers.load_plaintext(stack, &self.first)?;
+        // Load the second operand as a literal.
+        let increment = registers.load_literal(stack, &self.second)?;
+
+        // Retrieve the starting value from storage as a literal.
+        let start = match store.get_value(stack.program_id(), &self.mapping, &key)? {
+            Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
+            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'increment' by an 'interface'"),
+            Some(Value::Record(..)) => bail!("Cannot 'increment' by a 'record'"),
+            None => bail!("Key '{key}' does not exist in mapping '{}/{}'", stack.program_id(), self.mapping),
+        };
+
+        // Increment the value.
+        let outcome = match (start, increment) {
+            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.add(b)),
+            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a.add(b)),
+            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a.add(b)),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add(b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.add(b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.add(b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.add(b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.add(b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.add(b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.add(b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.add(b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.add(b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.add(b)),
+            (a, b) => bail!("Cannot 'increment' '{a}' by '{b}'"),
+        };
+
+        // Construct the value.
+        let value = Value::Plaintext(Plaintext::from(outcome));
+        // Update the value in storage.
+        store.update_key_value(stack.program_id(), &self.mapping, key, value)?;
+
         Ok(())
     }
 }

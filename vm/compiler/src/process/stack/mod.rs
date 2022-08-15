@@ -23,6 +23,9 @@ pub use deployment::*;
 mod execution;
 pub use execution::*;
 
+mod finalize_registers;
+pub use finalize_registers::*;
+
 mod finalize_types;
 pub use finalize_types::*;
 

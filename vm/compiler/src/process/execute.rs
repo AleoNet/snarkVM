@@ -197,6 +197,78 @@ impl<N: Network> Process<N> {
         store: &ProgramStore<N, P>,
         execution: &Execution<N>,
     ) -> Result<()> {
+        // Ensure the execution contains transitions.
+        ensure!(!execution.is_empty(), "There are no transitions in the execution");
+
+        // Ensure the number of transitions matches the program function.
+        {
+            // Retrieve the transition (without popping it).
+            let transition = execution.peek()?;
+            // Retrieve the stack.
+            let stack = self.get_stack(transition.program_id())?;
+            // Ensure the number of calls matches the number of transitions.
+            let number_of_calls = stack.get_number_of_calls(transition.function_name())?;
+            ensure!(
+                number_of_calls == execution.len(),
+                "The number of transitions in the execution is incorrect. Expected {number_of_calls}, but found {}",
+                execution.len()
+            );
+        }
+
+        // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
+        //  Currently this loop assumes a linearly execution stack.
+        // Finalize each transition, starting from the last one.
+        for transition in execution.into_iter().rev() {
+            #[cfg(debug_assertions)]
+            println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
+
+            // Retrieve the stack.
+            let stack = self.get_stack(transition.program_id())?;
+            // Retrieve the function name.
+            let function_name = transition.function_name();
+
+            // If there is a finalize scope, finalize the function.
+            if let Some((_, finalize)) = stack.get_function(function_name)?.finalize() {
+                // Retrieve the finalize inputs.
+                let inputs = match transition.finalize() {
+                    Some(inputs) => inputs,
+                    // Ensure the transition contains finalize inputs.
+                    None => bail!("The transition is missing inputs for 'finalize'"),
+                };
+
+                // Initialize the registers.
+                let mut registers = FinalizeRegisters::<N>::new(stack.get_finalize_types(finalize.name())?.clone());
+
+                // Store the inputs.
+                finalize.inputs().iter().map(|i| i.register()).zip_eq(inputs).try_for_each(|(register, input)| {
+                    // Assign the input value to the register.
+                    registers.store(stack, register, input.clone())
+                })?;
+
+                // Evaluate the commands.
+                for command in finalize.commands() {
+                    // If the evaluation fails, bail and return the error.
+                    if let Err(error) = command.evaluate_finalize(stack, store, &mut registers) {
+                        bail!("'finalize' failed to evaluate command ({command}): {error}");
+                    }
+                }
+
+                // Retrieve the output registers.
+                let output_registers =
+                    &finalize.outputs().iter().map(|output| output.register().clone()).collect::<Vec<_>>();
+
+                // TODO (howardwu): Save the outputs in ProgramStore.
+                // Load the outputs.
+                let _outputs = output_registers
+                    .iter()
+                    .map(|register| {
+                        // Retrieve the stack value from the register.
+                        registers.load(stack, &Operand::Register(register.clone()))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+            }
+        }
+
         Ok(())
     }
 }

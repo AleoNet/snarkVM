@@ -27,6 +27,7 @@ use crate::{
     ledger::{ProgramStorage, ProgramStore},
     AdditionalFee,
     Instruction,
+    Operand,
     Program,
     ProvingKey,
     UniversalSRS,

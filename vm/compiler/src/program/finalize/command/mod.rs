@@ -20,7 +20,7 @@ pub use finalize::*;
 mod increment;
 pub use increment::*;
 
-use crate::program::Instruction;
+use crate::{program::Instruction, FinalizeRegisters, ProgramStorage, ProgramStore, Stack};
 use console::network::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -29,6 +29,24 @@ pub enum Command<N: Network> {
     Instruction(Instruction<N>),
     /// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
     Increment(Increment<N>),
+}
+
+impl<N: Network> Command<N> {
+    /// Evaluates the command.
+    #[inline]
+    pub fn evaluate_finalize<P: ProgramStorage<N>>(
+        &self,
+        stack: &Stack<N>,
+        store: &ProgramStore<N, P>,
+        registers: &mut FinalizeRegisters<N>,
+    ) -> Result<()> {
+        match self {
+            // TODO (howardwu): Implement support for instructions (consider using a trait for `Registers::load/store`).
+            // Command::Instruction(instruction) => instruction.evaluate_finalize(stack, registers),
+            Command::Instruction(_) => bail!("Instructions in 'finalize' are not supported (yet)."),
+            Command::Increment(increment) => increment.evaluate_finalize(stack, store, registers),
+        }
+    }
 }
 
 impl<N: Network> FromBytes for Command<N> {

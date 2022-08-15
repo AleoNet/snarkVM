@@ -218,6 +218,7 @@ impl<N: Network> FinalizeTypes<N> {
                     LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
                         bail!("Increment cannot increment by a(n) '{literal_type}' (found at '{increment}')")
                     }
+                    // These literal types are valid for the 'increment' command.
                     LiteralType::Field
                     | LiteralType::Group
                     | LiteralType::Scalar
@@ -230,10 +231,7 @@ impl<N: Network> FinalizeTypes<N> {
                     | LiteralType::U16
                     | LiteralType::U32
                     | LiteralType::U64
-                    | LiteralType::U128 => {
-                        // These literal types are valid for the 'increment' command.
-                        ()
-                    }
+                    | LiteralType::U128 => {}
                 }
             }
             RegisterType::Plaintext(PlaintextType::Interface(..)) => {
