@@ -18,7 +18,7 @@ use crate::{
     fft::DensePolynomial,
     msm::variable_base::VariableBase,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
-    snark::marlin::{params::OptimizationType, FiatShamirRng},
+    snark::marlin::FiatShamirRng,
 };
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -385,6 +385,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 query_comms.push(*comm);
             }
             let (polynomial, rand) = Self::combine_for_open(ck, query_polys, query_rands, fs_rng)?;
+            let _randomizer = fs_rng.squeeze_short_nonnative_field_element()?;
 
             pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
@@ -431,26 +432,6 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut combined_witness = E::G1Projective::zero();
         let mut combined_adjusted_witness = E::G1Projective::zero();
 
-        let sponge_timer = start_timer!(|| "Sponge");
-        let sponge_init_timer = start_timer!(|| "Sponge::init");
-        let mut batch_kzg_check_fs_rng = S::new();
-        end_timer!(sponge_init_timer);
-
-        let absorb_queries_time = start_timer!(|| "Absorbing queries");
-        let unique_queries = query_set.iter().map(|(_, (_, q))| *q).collect::<BTreeSet<_>>();
-        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(unique_queries, OptimizationType::Weight);
-        end_timer!(absorb_queries_time);
-
-        let absorb_values_time = start_timer!(|| "Absorbing evaluations");
-        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(values.values().copied(), OptimizationType::Weight);
-        end_timer!(absorb_values_time);
-
-        let absorb_proof_time = start_timer!(|| "Absorbing proof");
-        proof.absorb_into_sponge(&mut batch_kzg_check_fs_rng)?;
-        end_timer!(absorb_proof_time);
-
-        end_timer!(sponge_timer);
-
         for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
@@ -479,7 +460,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 fs_rng,
             );
 
-            randomizer = batch_kzg_check_fs_rng.squeeze_short_nonnative_field_element()?;
+            randomizer = fs_rng.squeeze_short_nonnative_field_element()?;
         }
 
         let result = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);

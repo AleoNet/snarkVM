@@ -43,7 +43,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
 {
     type Parameters = ();
 
-    fn new() -> Self {
+    fn parameters() -> Self::Parameters {}
+
+    fn new_with_parameters(_parameters: &Self::Parameters) -> Self {
         Self { r: None, seed: None, _phantom: PhantomData }
     }
 

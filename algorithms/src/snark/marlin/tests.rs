@@ -68,6 +68,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 mod marlin {
     use super::*;
     use crate::snark::marlin::{
+        traits::FiatShamirRng,
         AHPForR1CS,
         CircuitVerifyingKey,
         FiatShamirAlgebraicSpongeRng,
@@ -95,6 +96,7 @@ mod marlin {
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
+                    let fs_parameters = FS::parameters();
 
                     for _ in 0..50 {
                         let a = Fr::rand(rng);
@@ -109,16 +111,16 @@ mod marlin {
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
 
-                        let certificate = $marlin_inst::prove_vk(&index_vk, &index_pk).unwrap();
-                        assert!($marlin_inst::verify_vk(&circ, &index_vk, &certificate).unwrap());
+                        let certificate = $marlin_inst::prove_vk(&fs_parameters, &index_vk, &index_pk).unwrap();
+                        assert!($marlin_inst::verify_vk(&fs_parameters, &circ, &index_vk, &certificate).unwrap());
 
-                        let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
+                        let proof = $marlin_inst::prove(&fs_parameters, &index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&index_vk, [c, d], &proof).unwrap());
+                        assert!($marlin_inst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&index_vk, [a, a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&fs_parameters, &index_vk, [a, a], &proof).unwrap());
                     }
 
                     for _ in 0..10 {
@@ -140,17 +142,19 @@ mod marlin {
                                 $marlin_inst::circuit_setup(&universal_srs, &circuit_batch[0]).unwrap();
                             println!("Called circuit setup");
 
-                            let proof = $marlin_inst::prove_batch(&index_pk, &circuit_batch, rng).unwrap();
+                            let proof =
+                                $marlin_inst::prove_batch(&fs_parameters, &index_pk, &circuit_batch, rng).unwrap();
                             println!("Called prover");
 
                             assert!(
-                                $marlin_inst::verify_batch(&index_vk, &input_batch, &proof).unwrap(),
+                                $marlin_inst::verify_batch(&fs_parameters, &index_vk, &input_batch, &proof).unwrap(),
                                 "Batch verification failed with {batch_size} inputs"
                             );
                             println!("Called verifier");
                             println!("\nShould not verify (i.e. verifier messages should print below):");
                             assert!(
                                 !$marlin_inst::verify_batch(
+                                    &fs_parameters,
                                     &index_vk,
                                     &vec![[Fr::rand(rng), Fr::rand(rng)]; batch_size],
                                     &proof
@@ -303,6 +307,7 @@ mod marlin_recursion {
             ahp::AHPForR1CS,
             fiat_shamir::FiatShamirAlgebraicSpongeRng,
             CircuitVerifyingKey,
+            FiatShamirRng,
             MarlinHidingMode,
             MarlinSNARK,
         },
@@ -317,14 +322,15 @@ mod marlin_recursion {
     use core::ops::MulAssign;
     use std::str::FromStr;
 
-    type MarlinInst =
-        MarlinSNARK<Bls12_377, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>, MarlinHidingMode, [Fr]>;
+    type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_crypto_rng();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+        let fs_parameters = FS::parameters();
 
         for _ in 0..100 {
             let a = Fr::rand(rng);
@@ -339,13 +345,13 @@ mod marlin_recursion {
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &circuit, rng).unwrap();
+            let proof = MarlinInst::prove(&fs_parameters, &index_pk, &circuit, rng).unwrap();
             println!("Called prover");
 
-            assert!(MarlinInst::verify(&index_vk, [c, d], &proof).unwrap());
+            assert!(MarlinInst::verify(&fs_parameters, &index_vk, [c, d], &proof).unwrap());
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&index_vk, [a, a], &proof).unwrap());
+            assert!(!MarlinInst::verify(&fs_parameters, &index_vk, [a, a], &proof).unwrap());
         }
     }
 

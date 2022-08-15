@@ -26,8 +26,16 @@ use smallvec::SmallVec;
 pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone + Debug {
     type Parameters;
 
+    /// Returns the parameters of the RNG.
+    fn parameters() -> Self::Parameters;
+
     /// Initializes an RNG.
-    fn new() -> Self;
+    fn new_with_parameters(parameters: &Self::Parameters) -> Self;
+
+    /// Initializes an RNG.
+    fn new() -> Self {
+        Self::new_with_parameters(&Self::parameters())
+    }
 
     /// Takes in field elements.
     fn absorb_nonnative_field_elements(

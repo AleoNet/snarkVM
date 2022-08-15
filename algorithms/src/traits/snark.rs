@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SNARKError;
+use crate::{errors::SNARKError, snark::marlin::FiatShamirRng};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::{CryptoRng, Rng};
@@ -69,6 +69,9 @@ pub trait SNARK {
         + ToConstraintField<Self::BaseField>
         + ToMinimalBits;
 
+    type FiatShamirRng: FiatShamirRng<Self::ScalarField, Self::BaseField, Parameters = Self::FSParameters>;
+    type FSParameters;
+
     fn universal_setup<R: Rng + CryptoRng>(
         config: &Self::UniversalSetupConfig,
         rng: &mut R,
@@ -80,27 +83,31 @@ pub trait SNARK {
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
     fn prove_vk(
+        fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError>;
 
     fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         input_and_witness: &[C],
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_batch_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
+        Self::prove_batch_with_terminator(fs_parameters, proving_key, input_and_witness, &AtomicBool::new(false), rng)
     }
 
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_batch(proving_key, std::slice::from_ref(input_and_witness), rng)
+        Self::prove_batch(fs_parameters, proving_key, std::slice::from_ref(input_and_witness), rng)
     }
 
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         input_and_witness: &[C],
         terminator: &AtomicBool,
@@ -108,40 +115,51 @@ pub trait SNARK {
     ) -> Result<Self::Proof, SNARKError>;
 
     fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        fs_parameters: &Self::FSParameters,
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_batch_with_terminator(proving_key, std::slice::from_ref(input_and_witness), terminator, rng)
+        Self::prove_batch_with_terminator(
+            fs_parameters,
+            proving_key,
+            std::slice::from_ref(input_and_witness),
+            terminator,
+            rng,
+        )
     }
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        fs_parameters: &Self::FSParameters,
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError>;
 
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
+        fs_parameters: &Self::FSParameters,
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
         input: &[B],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
     fn verify_batch<B: Borrow<Self::VerifierInput>>(
+        fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         input: &[B],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let processed_verifying_key = verifying_key.prepare();
-        Self::verify_batch_prepared(&processed_verifying_key, input, proof)
+        Self::verify_batch_prepared(fs_parameters, &processed_verifying_key, input, proof)
     }
 
     fn verify<B: Borrow<Self::VerifierInput>>(
+        fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         input: B,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        Self::verify_batch(verifying_key, &[input], proof)
+        Self::verify_batch(fs_parameters, verifying_key, &[input], proof)
     }
 }

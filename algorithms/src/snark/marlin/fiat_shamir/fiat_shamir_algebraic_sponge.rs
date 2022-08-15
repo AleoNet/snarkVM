@@ -50,8 +50,12 @@ where
 {
     type Parameters = S::Parameters;
 
-    fn new() -> Self {
-        Self { s: S::new(&S::sample_parameters()), _phantom: PhantomData }
+    fn parameters() -> Self::Parameters {
+        S::sample_parameters()
+    }
+
+    fn new_with_parameters(parameters: &Self::Parameters) -> Self {
+        Self { s: S::new(&parameters), _phantom: PhantomData }
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: impl IntoIterator<Item = TargetField>, ty: OptimizationType) {

@@ -151,11 +151,12 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     }
 
     fn init_sponge(
+        fs_parameters: &FS::Parameters,
         batch_size: usize,
         circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>],
         inputs: &[Vec<E::Fr>],
     ) -> FS {
-        let mut sponge = FS::new();
+        let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         sponge.absorb_bytes(&batch_size.to_le_bytes());
         sponge.absorb_native_field_elements(circuit_commitments);
@@ -165,8 +166,11 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         sponge
     }
 
-    fn init_sponge_for_certificate(circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>]) -> FS {
-        let mut sponge = FS::new();
+    fn init_sponge_for_certificate(
+        fs_parameters: &FS::Parameters,
+        circuit_commitments: &[crate::polycommit::sonic_pc::Commitment<E>],
+    ) -> FS {
+        let mut sponge = FS::new_with_parameters(fs_parameters);
         sponge.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         sponge.absorb_native_field_elements(circuit_commitments);
         sponge
@@ -210,6 +214,8 @@ where
 {
     type BaseField = E::Fq;
     type Certificate = Certificate<E>;
+    type FSParameters = FS::Parameters;
+    type FiatShamirRng = FS;
     type Proof = Proof<E>;
     type ProvingKey = CircuitProvingKey<E, MM>;
     type ScalarField = E::Fr;
@@ -241,11 +247,12 @@ where
     }
 
     fn prove_vk(
+        fs_parameters: &Self::FSParameters,
         verifying_key: &Self::VerifyingKey,
         proving_key: &Self::ProvingKey,
     ) -> Result<Self::Certificate, SNARKError> {
         // Initialize sponge
-        let mut sponge = Self::init_sponge_for_certificate(&verifying_key.circuit_commitments);
+        let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
@@ -284,13 +291,14 @@ where
     }
 
     fn verify_vk<C: ConstraintSynthesizer<Self::ScalarField>>(
+        fs_parameters: &Self::FSParameters,
         circuit: &C,
         verifying_key: &Self::VerifyingKey,
         certificate: &Self::Certificate,
     ) -> Result<bool, SNARKError> {
         let info = AHPForR1CS::<E::Fr, MM>::index_polynomial_info();
         // Initialize sponge.
-        let mut sponge = Self::init_sponge_for_certificate(&verifying_key.circuit_commitments);
+        let mut sponge = Self::init_sponge_for_certificate(fs_parameters, &verifying_key.circuit_commitments);
         // Compute challenges for linear combination, and the point to evaluate the polynomials at.
         // The linear combination requires `num_polynomials - 1` coefficients
         // (since the first coeff is 1), and so we squeeze out `num_polynomials` points.
@@ -334,6 +342,7 @@ where
 
     #[allow(clippy::only_used_in_recursion)]
     fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+        fs_parameters: &Self::FSParameters,
         circuit_proving_key: &CircuitProvingKey<E, MM>,
         circuits: &[C],
         terminator: &AtomicBool,
@@ -353,6 +362,7 @@ where
         assert_eq!(prover_state.batch_size, batch_size);
 
         let mut sponge = Self::init_sponge(
+            fs_parameters,
             batch_size,
             &circuit_proving_key.circuit_verifying_key.circuit_commitments,
             &padded_public_input,
@@ -573,6 +583,7 @@ where
     }
 
     fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
+        fs_parameters: &Self::FSParameters,
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
         public_inputs: &[B],
         proof: &Self::Proof,
@@ -657,8 +668,12 @@ where
                 .unzip()
         };
 
-        let mut sponge =
-            Self::init_sponge(batch_size, &circuit_verifying_key.circuit_commitments, &padded_public_inputs);
+        let mut sponge = Self::init_sponge(
+            fs_parameters,
+            batch_size,
+            &circuit_verifying_key.circuit_commitments,
+            &padded_public_inputs,
+        );
 
         // --------------------------------------------------------------------
         // First round
@@ -835,10 +850,14 @@ pub mod test {
             let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific(&mut rng)).unwrap();
 
             // Test native proof and verification.
+            let fs_parameters = FS::parameters();
 
-            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+            let proof = TestSNARK::prove(&fs_parameters, &pk, &circ, &mut rng).unwrap();
 
-            assert!(TestSNARK::verify(&vk.clone(), &vec![c], &proof).unwrap(), "The native verification check fails.");
+            assert!(
+                TestSNARK::verify(&fs_parameters, &vk.clone(), &vec![c], &proof).unwrap(),
+                "The native verification check fails."
+            );
         }
     }
 }
