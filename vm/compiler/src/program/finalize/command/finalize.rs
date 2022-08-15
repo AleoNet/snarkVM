@@ -145,8 +145,9 @@ impl<N: Network, const VARIANT: u8> Display for FinalizeOperation<N, VARIANT> {
             return Err(fmt::Error);
         }
         // Print the operation.
-        write!(f, "{} ", Self::opcode())?;
-        self.operands.iter().try_for_each(|operand| write!(f, "{} ", operand))
+        write!(f, "{}", Self::opcode())?;
+        self.operands.iter().try_for_each(|operand| write!(f, " {}", operand))?;
+        write!(f, ";")
     }
 }
 
@@ -393,8 +394,10 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, finalize) = FinalizeCommand::<CurrentNetwork>::parse("finalize r0 r1;").unwrap();
+        let expected = "finalize r0 r1;";
+        let (string, finalize) = FinalizeCommand::<CurrentNetwork>::parse(expected).unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
+        assert_eq!(expected, finalize.to_string(), "Display.fmt() did not match expected: '{string}'");
         assert_eq!(finalize.operands.len(), 2, "The number of operands is incorrect");
         assert_eq!(finalize.operands[0], Operand::Register(Register::Locator(0)), "The first operand is incorrect");
         assert_eq!(finalize.operands[1], Operand::Register(Register::Locator(1)), "The second operand is incorrect");

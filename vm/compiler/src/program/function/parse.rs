@@ -204,6 +204,29 @@ finalize foo:
         assert_eq!(0, function.outputs.len());
         assert_eq!(1, function.finalize_logic().as_ref().unwrap().inputs().len());
         assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
+
+        let function = Function::<CurrentNetwork>::parse(
+            r"
+function compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    input r2 as u64.public;
+    add r1 r2 into r3;
+    finalize r0 r3;
+
+finalize compute:
+    input r0 as address.public;
+    input r1 as u64.public;
+    increment account[r0] by r1;
+    ",
+        )
+        .unwrap()
+        .1;
+        assert_eq!(3, function.inputs.len());
+        assert_eq!(1, function.instructions.len());
+        assert_eq!(0, function.outputs.len());
+        assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
+        assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
     }
 
     #[test]

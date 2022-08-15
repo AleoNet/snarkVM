@@ -193,7 +193,7 @@ impl<N: Network> Process<N> {
     /// This method assumes the given execution **is valid**.
     #[inline]
     pub fn finalize_execution<P: ProgramStorage<N>>(
-        &mut self,
+        &self,
         store: &ProgramStore<N, P>,
         execution: &Execution<N>,
     ) -> Result<()> {

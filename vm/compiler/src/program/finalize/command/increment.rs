@@ -87,14 +87,32 @@ impl<N: Network> Increment<N> {
             Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
             Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'increment' by an 'interface'"),
             Some(Value::Record(..)) => bail!("Cannot 'increment' by a 'record'"),
-            None => bail!("Key '{key}' does not exist in mapping '{}/{}'", stack.program_id(), self.mapping),
+            // If the key does not exist, set the starting value to 0.
+            // Infer the starting type from the increment type.
+            None => match increment {
+                Literal::Address(..) => bail!("Cannot 'increment' by an 'address'"),
+                Literal::Boolean(..) => bail!("Cannot 'increment' by a 'boolean'"),
+                Literal::Field(..) => Literal::Field(Zero::zero()),
+                Literal::Group(..) => Literal::Group(Zero::zero()),
+                Literal::I8(..) => Literal::I8(Zero::zero()),
+                Literal::I16(..) => Literal::I16(Zero::zero()),
+                Literal::I32(..) => Literal::I32(Zero::zero()),
+                Literal::I64(..) => Literal::I64(Zero::zero()),
+                Literal::I128(..) => Literal::I128(Zero::zero()),
+                Literal::U8(..) => Literal::U8(Zero::zero()),
+                Literal::U16(..) => Literal::U16(Zero::zero()),
+                Literal::U32(..) => Literal::U32(Zero::zero()),
+                Literal::U64(..) => Literal::U64(Zero::zero()),
+                Literal::U128(..) => Literal::U128(Zero::zero()),
+                Literal::Scalar(..) => Literal::Scalar(Zero::zero()),
+                Literal::String(..) => bail!("Cannot 'increment' by a 'string'"),
+            },
         };
 
         // Increment the value.
         let outcome = match (start, increment) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.add(b)),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a.add(b)),
-            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a.add(b)),
             (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add(b)),
             (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.add(b)),
             (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.add(b)),
@@ -105,6 +123,7 @@ impl<N: Network> Increment<N> {
             (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.add(b)),
             (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.add(b)),
             (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.add(b)),
+            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a.add(b)),
             (a, b) => bail!("Cannot 'increment' '{a}' by '{b}'"),
         };
 
@@ -121,6 +140,8 @@ impl<N: Network> Parser for Increment<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
         // Parse the opcode from the string.
         let (string, _) = tag(*Self::opcode())(string)?;
         // Parse the whitespace from the string.

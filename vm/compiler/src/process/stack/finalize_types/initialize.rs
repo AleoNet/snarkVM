@@ -350,7 +350,7 @@ impl<N: Network> FinalizeTypes<N> {
                         // Ensure the operand types match the interface.
                         self.matches_interface(stack, instruction.operands(), &interface)?;
                     }
-                    RegisterType::Record(record_name) => {
+                    RegisterType::Record(..) => {
                         bail!("Unsupported operation: Cannot cast to a record (yet).")
                         // // Ensure the record type is defined in the program.
                         // if !stack.program().contains_record(record_name) {
@@ -366,7 +366,9 @@ impl<N: Network> FinalizeTypes<N> {
                     }
                 }
             }
-            Opcode::Command(opcode) => {}
+            Opcode::Command(opcode) => {
+                bail!("Fatal error: Cannot check command '{opcode}' as an instruction in 'finalize {finalize_name}'.")
+            }
             Opcode::Commit(opcode) => {
                 // Ensure the instruction belongs to the defined set.
                 if ![
