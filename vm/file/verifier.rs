@@ -194,7 +194,7 @@ impl<N: Network> ToBytes for VerifierFile<N> {
 mod tests {
     use super::*;
     use crate::prelude::{test_crypto_rng, FromStr, Parser};
-    use snarkvm_compiler::{Process, ProgramMemory, ProgramStore};
+    use snarkvm_compiler::Process;
 
     type CurrentNetwork = snarkvm_console::network::Testnet3;
     type CurrentAleo = snarkvm_circuit::AleoV0;

@@ -39,17 +39,7 @@ use crate::{
         Value,
     },
 };
-use snarkvm_compiler::{
-    CallOperator,
-    Execution,
-    Instruction,
-    Process,
-    Program,
-    ProgramMemory,
-    ProgramStore,
-    ProvingKey,
-    VerifyingKey,
-};
+use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
 
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;

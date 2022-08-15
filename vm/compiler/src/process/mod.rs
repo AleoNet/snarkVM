@@ -325,7 +325,7 @@ function compute:
         // Construct a new process.
         let mut process = Process::load().unwrap();
         // Add the program to the process.
-        process.add_program(&program).unwrap();
+        process.add_program(program).unwrap();
         // Return the process.
         process
     }
