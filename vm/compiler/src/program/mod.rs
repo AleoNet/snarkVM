@@ -44,6 +44,8 @@ use indexmap::IndexMap;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum ProgramDefinition {
+    /// A program mapping.
+    Mapping,
     /// A program interface.
     Interface,
     /// A program record.
@@ -62,6 +64,8 @@ pub struct Program<N: Network> {
     imports: IndexMap<ProgramID<N>, Import<N>>,
     /// A map of identifiers to their program declaration.
     identifiers: IndexMap<Identifier<N>, ProgramDefinition>,
+    /// A map of the declared mappings for the program.
+    mappings: IndexMap<Identifier<N>, Mapping<N>>,
     /// A map of the declared interfaces for the program.
     interfaces: IndexMap<Identifier<N>, Interface<N>>,
     /// A map of the declared record types for the program.
@@ -85,6 +89,7 @@ impl<N: Network> Program<N> {
             id,
             imports: IndexMap::new(),
             identifiers: IndexMap::new(),
+            mappings: IndexMap::new(),
             interfaces: IndexMap::new(),
             records: IndexMap::new(),
             closures: IndexMap::new(),
@@ -161,6 +166,11 @@ function fee:
         &self.imports
     }
 
+    /// Returns the mappings in the program.
+    pub const fn mappings(&self) -> &IndexMap<Identifier<N>, Mapping<N>> {
+        &self.mappings
+    }
+
     /// Returns the closures in the program.
     pub const fn closures(&self) -> &IndexMap<Identifier<N>, Closure<N>> {
         &self.closures
@@ -174,6 +184,11 @@ function fee:
     /// Returns `true` if the program contains an import with the given program ID.
     pub fn contains_import(&self, id: &ProgramID<N>) -> bool {
         self.imports.contains_key(id)
+    }
+
+    /// Returns `true` if the program contains a mapping with the given name.
+    pub fn contains_mapping(&self, name: &Identifier<N>) -> bool {
+        self.mappings.contains_key(name)
     }
 
     /// Returns `true` if the program contains a interface with the given name.
@@ -194,6 +209,16 @@ function fee:
     /// Returns `true` if the program contains a function with the given name.
     pub fn contains_function(&self, name: &Identifier<N>) -> bool {
         self.functions.contains_key(name)
+    }
+
+    /// Returns the mapping with the given name.
+    pub fn get_mapping(&self, name: &Identifier<N>) -> Result<Mapping<N>> {
+        // Attempt to retrieve the mapping.
+        let mapping = self.mappings.get(name).cloned().ok_or_else(|| anyhow!("Mapping '{name}' is not defined."))?;
+        // Ensure the mapping name matches.
+        ensure!(mapping.name() == name, "Expected mapping '{name}', but found mapping '{}'", mapping.name());
+        // Return the mapping.
+        Ok(mapping)
     }
 
     /// Returns the interface with the given name.
@@ -281,6 +306,34 @@ impl<N: Network> Program<N> {
         // Add the import statement to the program.
         if self.imports.insert(*import.program_id(), import.clone()).is_some() {
             bail!("'{}' already exists in the program.", import.program_id())
+        }
+        Ok(())
+    }
+
+    /// Adds a new mapping to the program.
+    ///
+    /// # Errors
+    /// This method will halt if the mapping name is already in use.
+    /// This method will halt if the mapping name is a reserved opcode or keyword.
+    #[inline]
+    fn add_mapping(&mut self, mapping: Mapping<N>) -> Result<()> {
+        // Retrieve the mapping name.
+        let mapping_name = *mapping.name();
+
+        // Ensure the mapping name is new.
+        ensure!(self.is_unique_name(&mapping_name), "'{mapping_name}' is already in use.");
+        // Ensure the mapping name is not a reserved keyword.
+        ensure!(!Self::is_reserved_keyword(&mapping_name), "'{mapping_name}' is a reserved keyword.");
+        // Ensure the mapping name is not a reserved opcode.
+        ensure!(!Self::is_reserved_opcode(&mapping_name.to_string()), "'{mapping_name}' is a reserved opcode.");
+
+        // Add the mapping name to the identifiers.
+        if self.identifiers.insert(mapping_name, ProgramDefinition::Mapping).is_some() {
+            bail!("'{mapping_name}' already exists in the program.")
+        }
+        // Add the mapping to the program.
+        if self.mappings.insert(mapping_name, mapping).is_some() {
+            bail!("'{mapping_name}' already exists in the program.")
         }
         Ok(())
     }
@@ -600,6 +653,29 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
     type CurrentAleo = AleoV0;
+
+    #[test]
+    fn test_program_mapping() -> Result<()> {
+        // Create a new mapping.
+        let mapping = Mapping::<CurrentNetwork>::from_str(
+            r"
+mapping message:
+    key first as field.public;
+    value second as field.public;",
+        )?;
+
+        // Initialize a new program.
+        let mut program = Program::<CurrentNetwork>::new(ProgramID::from_str("unknown.aleo")?)?;
+
+        // Add the mapping to the program.
+        program.add_mapping(mapping.clone())?;
+        // Ensure the mapping was added.
+        assert!(program.contains_mapping(&Identifier::from_str("message")?));
+        // Ensure the retrieved mapping matches.
+        assert_eq!(mapping, program.get_mapping(&Identifier::from_str("message")?)?);
+
+        Ok(())
+    }
 
     #[test]
     fn test_program_interface() -> Result<()> {
