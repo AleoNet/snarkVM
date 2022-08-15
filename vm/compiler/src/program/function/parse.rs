@@ -36,7 +36,7 @@ impl<N: Network> Parser for Function<N> {
         // Parse the inputs from the string.
         let (string, inputs) = many0(Input::parse)(string)?;
         // Parse the instructions from the string.
-        let (string, instructions) = many1(Instruction::parse)(string)?;
+        let (string, instructions) = many0(Instruction::parse)(string)?;
         // Parse the outputs from the string.
         let (string, outputs) = many0(Output::parse)(string)?;
 
@@ -180,6 +180,21 @@ function foo:
         assert_eq!(1, function.inputs.len());
         assert_eq!(1, function.instructions.len());
         assert_eq!(1, function.outputs.len());
+    }
+
+    #[test]
+    fn test_function_parse_no_instruction_or_output() {
+        let function = Function::<CurrentNetwork>::parse(
+            r"
+function foo:
+    input r0 as token.record;",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("foo", function.name().to_string());
+        assert_eq!(1, function.inputs.len());
+        assert_eq!(0, function.instructions.len());
+        assert_eq!(0, function.outputs.len());
     }
 
     #[test]
