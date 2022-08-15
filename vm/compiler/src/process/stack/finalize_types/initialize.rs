@@ -184,9 +184,66 @@ impl<N: Network> FinalizeTypes<N> {
     #[inline]
     fn check_command(&mut self, stack: &Stack<N>, finalize_name: &Identifier<N>, command: &Command<N>) -> Result<()> {
         match command {
+            Command::Decrement(decrement) => self.check_decrement(stack, finalize_name, decrement)?,
             Command::Instruction(instruction) => self.check_instruction(stack, finalize_name, instruction)?,
             Command::Increment(increment) => self.check_increment(stack, finalize_name, increment)?,
         }
+        Ok(())
+    }
+
+    /// Ensures the given decrement command is well-formed.
+    #[inline]
+    fn check_decrement(&self, stack: &Stack<N>, finalize_name: &Identifier<N>, decrement: &Decrement<N>) -> Result<()> {
+        // Ensure the declared mapping in decrement is defined in the program.
+        if !stack.program().contains_mapping(decrement.mapping_name()) {
+            bail!("Mapping '{}' in '{}/{finalize_name}' is not defined.", decrement.mapping_name(), stack.program_id())
+        }
+
+        // Retrieve the register type of the key.
+        let key_type = self.get_type_from_operand(stack, decrement.key())?;
+        // Ensure the key is not a record or external record.
+        match key_type {
+            RegisterType::Plaintext(..) => (),
+            RegisterType::Record(..) => bail!("Decrement cannot use a 'record' as a key (found at '{decrement}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Decrement cannot use an 'external record' as a key (found at '{decrement}')")
+            }
+        }
+
+        // Retrieve the register type of the value.
+        let value_type = self.get_type_from_operand(stack, decrement.value())?;
+        // Ensure the decrement value type is a literal that implements the `Add` operation.
+        match value_type {
+            RegisterType::Plaintext(PlaintextType::Literal(literal_type)) => {
+                match literal_type {
+                    LiteralType::Address | LiteralType::Boolean | LiteralType::String => {
+                        bail!("Decrement cannot decrement by a(n) '{literal_type}' (found at '{decrement}')")
+                    }
+                    // These literal types are valid for the 'decrement' command.
+                    LiteralType::Field
+                    | LiteralType::Group
+                    | LiteralType::Scalar
+                    | LiteralType::I8
+                    | LiteralType::I16
+                    | LiteralType::I32
+                    | LiteralType::I64
+                    | LiteralType::I128
+                    | LiteralType::U8
+                    | LiteralType::U16
+                    | LiteralType::U32
+                    | LiteralType::U64
+                    | LiteralType::U128 => {}
+                }
+            }
+            RegisterType::Plaintext(PlaintextType::Interface(..)) => {
+                bail!("Decrement cannot decrement by an 'interface' (found at '{decrement}')")
+            }
+            RegisterType::Record(..) => bail!("Decrement cannot decrement by a 'record' (found at '{decrement}')"),
+            RegisterType::ExternalRecord(..) => {
+                bail!("Decrement cannot decrement by an 'external record' (found at '{decrement}')")
+            }
+        }
+
         Ok(())
     }
 

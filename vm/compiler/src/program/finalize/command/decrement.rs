@@ -20,9 +20,9 @@ use console::{
     program::{Identifier, Literal, Plaintext, Value},
 };
 
-/// Increments the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
+/// Decrements the value stored at the `first` operand in `mapping` by the amount in the `second` operand.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Increment<N: Network> {
+pub struct Decrement<N: Network> {
     /// The mapping name.
     mapping: Identifier<N>,
     /// The first operand.
@@ -31,11 +31,11 @@ pub struct Increment<N: Network> {
     second: Operand<N>,
 }
 
-impl<N: Network> Increment<N> {
+impl<N: Network> Decrement<N> {
     /// Returns the opcode.
     #[inline]
     pub const fn opcode() -> Opcode {
-        Opcode::Command("increment")
+        Opcode::Command("decrement")
     }
 
     /// Returns the operands in the operation.
@@ -63,7 +63,7 @@ impl<N: Network> Increment<N> {
     }
 }
 
-impl<N: Network> Increment<N> {
+impl<N: Network> Decrement<N> {
     /// Evaluates the command.
     #[inline]
     pub fn evaluate_finalize<P: ProgramStorage<N>>(
@@ -80,18 +80,18 @@ impl<N: Network> Increment<N> {
         // Load the first operand as a plaintext.
         let key = registers.load_plaintext(stack, &self.first)?;
         // Load the second operand as a literal.
-        let increment = registers.load_literal(stack, &self.second)?;
+        let decrement = registers.load_literal(stack, &self.second)?;
 
         // Retrieve the starting value from storage as a literal.
         let start = match store.get_value(stack.program_id(), &self.mapping, &key)? {
             Some(Value::Plaintext(Plaintext::Literal(literal, _))) => literal,
-            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'increment' by an 'interface'"),
-            Some(Value::Record(..)) => bail!("Cannot 'increment' by a 'record'"),
+            Some(Value::Plaintext(Plaintext::Interface(..))) => bail!("Cannot 'decrement' by an 'interface'"),
+            Some(Value::Record(..)) => bail!("Cannot 'decrement' by a 'record'"),
             // If the key does not exist, set the starting value to 0.
-            // Infer the starting type from the increment type.
-            None => match increment {
-                Literal::Address(..) => bail!("Cannot 'increment' by an 'address'"),
-                Literal::Boolean(..) => bail!("Cannot 'increment' by a 'boolean'"),
+            // Infer the starting type from the decrement type.
+            None => match decrement {
+                Literal::Address(..) => bail!("Cannot 'decrement' by an 'address'"),
+                Literal::Boolean(..) => bail!("Cannot 'decrement' by a 'boolean'"),
                 Literal::Field(..) => Literal::Field(Zero::zero()),
                 Literal::Group(..) => Literal::Group(Zero::zero()),
                 Literal::I8(..) => Literal::I8(Zero::zero()),
@@ -105,26 +105,26 @@ impl<N: Network> Increment<N> {
                 Literal::U64(..) => Literal::U64(Zero::zero()),
                 Literal::U128(..) => Literal::U128(Zero::zero()),
                 Literal::Scalar(..) => Literal::Scalar(Zero::zero()),
-                Literal::String(..) => bail!("Cannot 'increment' by a 'string'"),
+                Literal::String(..) => bail!("Cannot 'decrement' by a 'string'"),
             },
         };
 
-        // Increment the value.
-        let outcome = match (start, increment) {
-            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.add(b)),
-            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a.add(b)),
-            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add(b)),
-            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.add(b)),
-            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.add(b)),
-            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.add(b)),
-            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.add(b)),
-            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.add(b)),
-            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.add(b)),
-            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.add(b)),
-            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.add(b)),
-            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.add(b)),
-            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a.add(b)),
-            (a, b) => bail!("Cannot 'increment' '{a}' by '{b}'"),
+        // Decrement the value.
+        let outcome = match (start, decrement) {
+            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.sub(b)),
+            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a.sub(b)),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.sub(b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.sub(b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.sub(b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.sub(b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.sub(b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.sub(b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.sub(b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.sub(b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.sub(b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.sub(b)),
+            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a.sub(b)),
+            (a, b) => bail!("Cannot 'decrement' '{a}' by '{b}'"),
         };
 
         // Construct the value.
@@ -136,7 +136,7 @@ impl<N: Network> Increment<N> {
     }
 }
 
-impl<N: Network> Parser for Increment<N> {
+impl<N: Network> Parser for Decrement<N> {
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -178,7 +178,7 @@ impl<N: Network> Parser for Increment<N> {
     }
 }
 
-impl<N: Network> FromStr for Increment<N> {
+impl<N: Network> FromStr for Decrement<N> {
     type Err = Error;
 
     /// Parses a string into the command.
@@ -196,14 +196,14 @@ impl<N: Network> FromStr for Increment<N> {
     }
 }
 
-impl<N: Network> Debug for Increment<N> {
+impl<N: Network> Debug for Decrement<N> {
     /// Prints the command as a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         Display::fmt(self, f)
     }
 }
 
-impl<N: Network> Display for Increment<N> {
+impl<N: Network> Display for Decrement<N> {
     /// Prints the command to a string.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Print the command.
@@ -217,7 +217,7 @@ impl<N: Network> Display for Increment<N> {
     }
 }
 
-impl<N: Network> FromBytes for Increment<N> {
+impl<N: Network> FromBytes for Decrement<N> {
     /// Reads the command from a buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the mapping name.
@@ -231,7 +231,7 @@ impl<N: Network> FromBytes for Increment<N> {
     }
 }
 
-impl<N: Network> ToBytes for Increment<N> {
+impl<N: Network> ToBytes for Decrement<N> {
     /// Writes the operation to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write the mapping name.
@@ -252,11 +252,11 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (string, increment) = Increment::<CurrentNetwork>::parse("increment account[r0] by r1;").unwrap();
+        let (string, decrement) = Decrement::<CurrentNetwork>::parse("decrement account[r0] by r1;").unwrap();
         assert!(string.is_empty(), "Parser did not consume all of the string: '{string}'");
-        assert_eq!(increment.mapping, Identifier::from_str("account").unwrap());
-        assert_eq!(increment.operands().len(), 2, "The number of operands is incorrect");
-        assert_eq!(increment.first, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
-        assert_eq!(increment.second, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
+        assert_eq!(decrement.mapping, Identifier::from_str("account").unwrap());
+        assert_eq!(decrement.operands().len(), 2, "The number of operands is incorrect");
+        assert_eq!(decrement.first, Operand::Register(Register::Locator(0)), "The first operand is incorrect");
+        assert_eq!(decrement.second, Operand::Register(Register::Locator(1)), "The second operand is incorrect");
     }
 }
