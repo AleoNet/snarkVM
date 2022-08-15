@@ -31,7 +31,7 @@ use console::{
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///
@@ -49,12 +49,10 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     type ProgramIDMap: for<'a> Map<'a, ProgramID<N>, IndexSet<Identifier<N>>>;
     /// The mapping of `(program ID, mapping name)` to `mapping ID`.
     type MappingIDMap: for<'a> Map<'a, (ProgramID<N>, Identifier<N>), Field<N>>;
-    /// The mapping of `mapping ID` to `[key ID]`.
-    type KeyIDMap: for<'a> Map<'a, Field<N>, IndexSet<Field<N>>>;
+    /// The mapping of `mapping ID` to `[(key ID, value ID)]`.
+    type KeyValueIDMap: for<'a> Map<'a, Field<N>, IndexMap<Field<N>, Field<N>>>;
     /// The mapping of `key ID` to `key`.
     type KeyMap: for<'a> Map<'a, Field<N>, Plaintext<N>>;
-    /// The mapping of `key ID` to `value ID`.
-    type ValueIDMap: for<'a> Map<'a, Field<N>, Field<N>>;
     /// The mapping of `key ID` to `value`.
     type ValueMap: for<'a> Map<'a, Field<N>, Value<N>>;
 
@@ -65,12 +63,10 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     fn program_id_map(&self) -> &Self::ProgramIDMap;
     /// Returns the mapping ID map.
     fn mapping_id_map(&self) -> &Self::MappingIDMap;
-    /// Returns the key ID map.
-    fn key_id_map(&self) -> &Self::KeyIDMap;
+    /// Returns the key-value ID map.
+    fn key_value_id_map(&self) -> &Self::KeyValueIDMap;
     /// Returns the key map.
     fn key_map(&self) -> &Self::KeyMap;
-    /// Returns the value ID map.
-    fn value_id_map(&self) -> &Self::ValueIDMap;
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap;
 
@@ -84,7 +80,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Compute the mapping ID.
         let mapping_id = N::hash_bhp1024(&(program_id, mapping_name).to_bits_le())?;
         // Ensure the mapping ID does not already exist.
-        if self.key_id_map().contains_key(&mapping_id)? {
+        if self.key_value_id_map().contains_key(&mapping_id)? {
             bail!("Illegal operation: mapping ID '{mapping_id}' already exists in storage - cannot initialize again.")
         }
 
@@ -102,8 +98,8 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         self.program_id_map().insert(*program_id, mapping_names)?;
         // Initialize the mapping ID map.
         self.mapping_id_map().insert((*program_id, *mapping_name), mapping_id)?;
-        // Initialize the key ID map.
-        self.key_id_map().insert(mapping_id, IndexSet::new())?;
+        // Initialize the key-value ID map.
+        self.key_value_id_map().insert(mapping_id, IndexMap::new())?;
 
         Ok(())
     }
@@ -131,24 +127,22 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         if self.key_map().contains_key(&key_id)? {
             bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot insert again.")
         }
-        // Retrieve the key IDs for the mapping ID.
-        let mut key_ids = match self.key_id_map().get(&mapping_id)? {
-            Some(key_ids) => cow_to_cloned!(key_ids),
-            None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot insert key ID."),
+        // Retrieve the key-value IDs for the mapping ID.
+        let mut key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+            Some(key_value_ids) => cow_to_cloned!(key_value_ids),
+            None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot insert key-value."),
         };
         // Ensure the key ID does not already exist.
-        if key_ids.contains(&key_id) {
+        if key_value_ids.contains_key(&key_id) {
             bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot insert key-value.");
         }
-        // Insert the new key ID.
-        key_ids.insert(key_id);
+        // Insert the new key-value ID.
+        key_value_ids.insert(key_id, value_id);
 
-        // Update the key ID map with the new key ID.
-        self.key_id_map().insert(mapping_id, key_ids)?;
+        // Update the key-value ID map with the new key-value ID.
+        self.key_value_id_map().insert(mapping_id, key_value_ids)?;
         // Insert the key.
         self.key_map().insert(key_id, key)?;
-        // Insert the value ID.
-        self.value_id_map().insert(key_id, value_id)?;
         // Insert the value.
         self.value_map().insert(key_id, value)?;
 
@@ -175,29 +169,28 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Compute the value ID.
         let value_id = N::hash_bhp1024(&(key_id, N::hash_bhp1024(&value.to_bits_le())?).to_bits_le())?;
 
-        // If the key ID does not exist, insert it in the key ID map.
-        if !self.key_map().contains_key(&key_id)? {
-            // Retrieve the key IDs for the mapping ID.
-            let mut key_ids = match self.key_id_map().get(&mapping_id)? {
-                Some(key_ids) => cow_to_cloned!(key_ids),
-                None => {
-                    bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot insert key ID.")
-                }
-            };
-            // Ensure the key ID does not already exist.
-            if key_ids.contains(&key_id) {
-                bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot insert key-value.");
+        // Retrieve the key-value IDs for the mapping ID.
+        let mut key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+            Some(key_value_ids) => cow_to_cloned!(key_value_ids),
+            None => {
+                bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot update key-value.")
             }
-            // Insert the new key ID.
-            key_ids.insert(key_id);
-            // Update the key ID map with the new key ID.
-            self.key_id_map().insert(mapping_id, key_ids)?;
+        };
+        // If the key ID does not exist, insert it in the key-value ID map.
+        if !self.key_map().contains_key(&key_id)? {
+            // Ensure the key ID does not already exist.
+            // If this fails, then there is inconsistent state, and likely data corruption.
+            if key_value_ids.contains_key(&key_id) {
+                bail!("Illegal operation: key ID '{key_id}' already exists in storage - cannot update key-value.");
+            }
         }
+        // Insert the new key-value ID.
+        key_value_ids.insert(key_id, value_id);
 
+        // Update the key-value ID map with the new key-value ID.
+        self.key_value_id_map().insert(mapping_id, key_value_ids)?;
         // Insert the key.
         self.key_map().insert(key_id, key)?;
-        // Insert the value ID.
-        self.value_id_map().insert(key_id, value_id)?;
         // Insert the value.
         self.value_map().insert(key_id, value)?;
 
@@ -218,24 +211,22 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         };
         // Compute the key ID.
         let key_id = N::hash_bhp1024(&(mapping_id, N::hash_bhp1024(&key.to_bits_le())?).to_bits_le())?;
-        // Retrieve the key IDs for the mapping ID.
-        let mut key_ids = match self.key_id_map().get(&mapping_id)? {
-            Some(key_ids) => cow_to_cloned!(key_ids),
+        // Retrieve the key-value IDs for the mapping ID.
+        let mut key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+            Some(key_value_ids) => cow_to_cloned!(key_value_ids),
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove key-value."),
         };
         // Ensure the key ID exists.
-        if !key_ids.contains(&key_id) {
+        if !key_value_ids.contains_key(&key_id) {
             bail!("Illegal operation: key ID '{key_id}' does not exist in storage - cannot remove key-value.");
         }
         // Remove the key ID.
-        key_ids.remove(&key_id);
+        key_value_ids.remove(&key_id);
 
-        // Update the key ID map with the new key ID.
-        self.key_id_map().insert(mapping_id, key_ids)?;
+        // Update the key-value ID map with the new key ID.
+        self.key_value_id_map().insert(mapping_id, key_value_ids)?;
         // Remove the key.
         self.key_map().remove(&key_id)?;
-        // Remove the value ID.
-        self.value_id_map().remove(&key_id)?;
         // Remove the value.
         self.value_map().remove(&key_id)?;
 
@@ -250,9 +241,9 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             Some(mapping_id) => mapping_id,
             None => bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping."),
         };
-        // Retrieve the key IDs for the mapping ID.
-        let key_ids = match self.key_id_map().get(&mapping_id)? {
-            Some(key_ids) => key_ids,
+        // Retrieve the key-value IDs for the mapping ID.
+        let key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+            Some(key_value_ids) => key_value_ids,
             None => bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping."),
         };
 
@@ -273,11 +264,10 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Remove the mapping ID.
         self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
         // Remove the key IDs.
-        self.key_id_map().remove(&mapping_id)?;
+        self.key_value_id_map().remove(&mapping_id)?;
         // Remove the keys.
-        for key_id in key_ids.iter() {
+        for key_id in key_value_ids.keys() {
             self.key_map().remove(key_id)?;
-            self.value_id_map().remove(key_id)?;
             self.value_map().remove(key_id)?;
         }
 
@@ -305,9 +295,9 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
                     bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
                 }
             };
-            // Retrieve the key IDs for the mapping ID.
-            let key_ids = match self.key_id_map().get(&mapping_id)? {
-                Some(key_ids) => key_ids,
+            // Retrieve the key-value IDs for the mapping ID.
+            let key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+                Some(key_value_ids) => key_value_ids,
                 None => {
                     bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
                 }
@@ -316,11 +306,10 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             // Remove the mapping ID.
             self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
             // Remove the key IDs.
-            self.key_id_map().remove(&mapping_id)?;
+            self.key_value_id_map().remove(&mapping_id)?;
             // Remove the keys.
-            for key_id in key_ids.iter() {
+            for key_id in key_value_ids.keys() {
                 self.key_map().remove(key_id)?;
-                self.value_id_map().remove(key_id)?;
                 self.value_map().remove(key_id)?;
             }
         }
@@ -402,14 +391,6 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         }
     }
 
-    /// Returns the value ID for the given `key ID`.
-    fn get_value_id(&self, key_id: &Field<N>) -> Result<Option<Field<N>>> {
-        match self.value_id_map().get(key_id)? {
-            Some(value_id) => Ok(Some(cow_to_copied!(value_id))),
-            None => Ok(None),
-        }
-    }
-
     /// Returns the value for the given `program ID`, `mapping name`, and `key`.
     fn get_value(
         &self,
@@ -432,6 +413,28 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             None => Ok(None),
         }
     }
+
+    /// Returns the checksum.
+    fn get_checksum(&self) -> Result<Field<N>> {
+        // Compute all mapping checksums.
+        let preimage: BTreeMap<_, _> = self
+            .key_value_id_map()
+            .iter()
+            .map(|(mapping_id, key_value_ids)| {
+                // Convert the mapping ID and all value IDs to concatenated bits.
+                let preimage = mapping_id
+                    .to_bits_le()
+                    .into_iter()
+                    .chain(key_value_ids.values().flat_map(|value_id| value_id.to_bits_le()));
+                // Compute the mapping checksum as `Hash( mapping_id || all value IDs )`.
+                let mapping_checksum = N::hash_bhp1024(&preimage.collect::<Vec<_>>())?;
+                // Return the mapping ID and mapping checksum.
+                Ok::<_, Error>((mapping_id, mapping_checksum.to_bits_le()))
+            })
+            .try_collect()?;
+        // Compute the checksum as `Hash( all mapping checksums )`.
+        N::hash_bhp1024(&preimage.into_values().flatten().collect::<Vec<_>>())
+    }
 }
 
 /// An in-memory program state storage.
@@ -441,12 +444,10 @@ pub struct ProgramMemory<N: Network> {
     program_id_map: MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>,
     /// The mapping ID map.
     mapping_id_map: MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>,
-    /// The key ID map.
-    key_id_map: MemoryMap<Field<N>, IndexSet<Field<N>>>,
+    /// The key-value ID map.
+    key_value_id_map: MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>,
     /// The key map.
     key_map: MemoryMap<Field<N>, Plaintext<N>>,
-    /// The value ID map.
-    value_id_map: MemoryMap<Field<N>, Field<N>>,
     /// The value map.
     value_map: MemoryMap<Field<N>, Value<N>>,
 }
@@ -455,9 +456,8 @@ pub struct ProgramMemory<N: Network> {
 impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
     type ProgramIDMap = MemoryMap<ProgramID<N>, IndexSet<Identifier<N>>>;
     type MappingIDMap = MemoryMap<(ProgramID<N>, Identifier<N>), Field<N>>;
-    type KeyIDMap = MemoryMap<Field<N>, IndexSet<Field<N>>>;
+    type KeyValueIDMap = MemoryMap<Field<N>, IndexMap<Field<N>, Field<N>>>;
     type KeyMap = MemoryMap<Field<N>, Plaintext<N>>;
-    type ValueIDMap = MemoryMap<Field<N>, Field<N>>;
     type ValueMap = MemoryMap<Field<N>, Value<N>>;
 
     /// Initializes the program state storage.
@@ -465,9 +465,8 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
         Ok(Self {
             program_id_map: MemoryMap::default(),
             mapping_id_map: MemoryMap::default(),
-            key_id_map: MemoryMap::default(),
+            key_value_id_map: MemoryMap::default(),
             key_map: MemoryMap::default(),
-            value_id_map: MemoryMap::default(),
             value_map: MemoryMap::default(),
         })
     }
@@ -482,19 +481,14 @@ impl<N: Network> ProgramStorage<N> for ProgramMemory<N> {
         &self.mapping_id_map
     }
 
-    /// Returns the key ID map.
-    fn key_id_map(&self) -> &Self::KeyIDMap {
-        &self.key_id_map
+    /// Returns the key-value ID map.
+    fn key_value_id_map(&self) -> &Self::KeyValueIDMap {
+        &self.key_value_id_map
     }
 
     /// Returns the key map.
     fn key_map(&self) -> &Self::KeyMap {
         &self.key_map
-    }
-
-    /// Returns the value ID map.
-    fn value_id_map(&self) -> &Self::ValueIDMap {
-        &self.value_id_map
     }
 
     /// Returns the value map.
