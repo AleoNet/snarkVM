@@ -47,19 +47,23 @@ use std::sync::Arc;
 use colored::Colorize;
 
 #[derive(Clone)]
-pub struct Process<N: Network> {
+pub struct Process<N: Network, P: ProgramStorage<N>> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
+    /// The program store.
+    store: ProgramStore<N, P>,
 }
 
-impl<N: Network> Process<N> {
+impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
     /// Initializes a new process.
     #[inline]
     pub fn setup<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
+        // Initialize the store.
+        let store = ProgramStore::open();
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new(), store };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -77,11 +81,25 @@ impl<N: Network> Process<N> {
         Ok(process)
     }
 
+    /// Adds a new program to the process.
+    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
+    #[inline]
+    pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
+        // Compute the program stack.
+        let stack = Stack::new(self, program)?;
+        // Add the stack to the process.
+        self.stacks.insert(*program.id(), stack);
+        // Return success.
+        Ok(())
+    }
+}
+
+impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
     /// Initializes a new process.
     #[inline]
-    pub fn load() -> Result<Self> {
+    pub fn load(store: ProgramStore<N, P>) -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new(), store };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -105,18 +123,6 @@ impl<N: Network> Process<N> {
         process.stacks.insert(*program.id(), stack);
         // Return the process.
         Ok(process)
-    }
-
-    /// Adds a new program to the process.
-    /// If you intend to `execute` the program, use `deploy` and `finalize_deployment` instead.
-    #[inline]
-    pub fn add_program(&mut self, program: &Program<N>) -> Result<()> {
-        // Compute the program stack.
-        let stack = Stack::new(self, program)?;
-        // Add the stack to the process.
-        self.stacks.insert(*program.id(), stack);
-        // Return success.
-        Ok(())
     }
 
     /// Returns the universal SRS.
@@ -204,7 +210,7 @@ impl<N: Network> Process<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program, Transition};
+    use crate::{Process, Program, ProgramMemory, Transition};
     use console::{
         account::PrivateKey,
         network::Testnet3,
@@ -321,9 +327,13 @@ function compute:
     }
 
     /// Initializes a new process with the given program.
-    pub(crate) fn sample_process(program: &Program<CurrentNetwork>) -> Process<CurrentNetwork> {
+    pub(crate) fn sample_process(
+        program: &Program<CurrentNetwork>,
+    ) -> Process<CurrentNetwork, ProgramMemory<CurrentNetwork>> {
+        // Initialize the store.
+        let store = ProgramStore::open().unwrap();
         // Construct a new process.
-        let mut process = Process::load().unwrap();
+        let mut process = Process::load(store).unwrap();
         // Add the program to the process.
         process.add_program(program).unwrap();
         // Return the process.
@@ -334,6 +344,7 @@ function compute:
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ProgramMemory;
     use circuit::network::AleoV0;
     use console::{
         account::{Address, PrivateKey, ViewKey},
@@ -360,8 +371,10 @@ mod tests {
         let r0 = Value::<CurrentNetwork>::from_str(&format!("{caller}")).unwrap();
         let r1 = Value::<CurrentNetwork>::from_str("1_100_000_000_000_000_u64").unwrap();
 
+        // Initialize the store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
         // Construct the process.
-        let mut process = Process::load().unwrap();
+        let mut process = Process::load(store).unwrap();
 
         // Authorize the function call.
         let authorization = process

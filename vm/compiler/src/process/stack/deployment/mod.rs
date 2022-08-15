@@ -70,7 +70,7 @@ impl<N: Network> Deployment<N> {
 #[cfg(test)]
 pub(crate) mod test_helpers {
     use super::*;
-    use crate::{Process, Program};
+    use crate::{Process, Program, ProgramMemory, ProgramStore};
     use console::network::Testnet3;
 
     use once_cell::sync::OnceCell;
@@ -99,8 +99,10 @@ function compute:
                 // Initialize the RNG.
                 let rng = &mut test_crypto_rng();
 
+                // Initialize the store.
+                let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
                 // Construct the process.
-                let process = Process::load().unwrap();
+                let process = Process::load(store).unwrap();
                 // Compute the deployment.
                 process.deploy::<CurrentAleo, _>(&program, rng).unwrap()
             })

@@ -39,7 +39,17 @@ use crate::{
         Value,
     },
 };
-use snarkvm_compiler::{CallOperator, Execution, Instruction, Process, Program, ProvingKey, VerifyingKey};
+use snarkvm_compiler::{
+    CallOperator,
+    Execution,
+    Instruction,
+    Process,
+    Program,
+    ProgramMemory,
+    ProgramStore,
+    ProvingKey,
+    VerifyingKey,
+};
 
 use anyhow::{bail, ensure, Error, Result};
 use colored::Colorize;
@@ -149,7 +159,7 @@ impl<N: Network> Package<N> {
     }
 
     /// Returns a new process for the package.
-    pub fn get_process(&self) -> Result<Process<N>> {
+    pub fn get_process(&self) -> Result<Process<N, ProgramMemory<N>>> {
         // Prepare the build directory.
         let build_directory = self.build_directory();
         // Ensure the build directory exists.
@@ -157,8 +167,10 @@ impl<N: Network> Package<N> {
             bail!("Build directory does not exist: {}", build_directory.display());
         }
 
+        // Initialize the store.
+        let store = ProgramStore::open()?;
         // Create the process.
-        let mut process = Process::load()?;
+        let mut process = Process::load(store)?;
 
         // Prepare the imports directory.
         let imports_directory = self.imports_directory();

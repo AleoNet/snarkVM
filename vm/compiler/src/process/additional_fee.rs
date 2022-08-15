@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Process<N> {
+impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
     /// Returns an additional fee given the credits record and the additional fee amount (in gates).
     #[inline]
     pub fn execute_additional_fee<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(

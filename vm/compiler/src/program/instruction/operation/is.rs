@@ -254,6 +254,7 @@ impl<N: Network, const VARIANT: u8> ToBytes for IsInstruction<N, VARIANT> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ProgramMemory, ProgramStore};
     use circuit::AleoV0;
     use console::network::Testnet3;
 
@@ -298,8 +299,10 @@ mod tests {
         let operand_b = Operand::Register(r1);
         let operands = vec![operand_a, operand_b];
 
+        // Initialize the store.
+        let store = ProgramStore::<_, ProgramMemory<_>>::open().unwrap();
         // Initialize the stack.
-        let stack = Stack::new(&Process::load()?, &program)?;
+        let stack = Stack::new(&Process::load(store)?, &program)?;
 
         Ok((stack, operands, r2))
     }

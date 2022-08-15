@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Process<N> {
+impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
     /// Executes the given authorization.
     #[inline]
     pub fn execute<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
@@ -186,6 +186,13 @@ impl<N: Network> Process<N> {
                 "Transition is invalid"
             );
         }
+        Ok(())
+    }
+
+    /// Finalizes the execution.
+    /// This method assumes the given execution **is valid**.
+    #[inline]
+    pub fn finalize_execution(&mut self, execution: &Execution<N>) -> Result<()> {
         Ok(())
     }
 }

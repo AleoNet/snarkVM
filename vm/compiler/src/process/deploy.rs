@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<N: Network> Process<N> {
+impl<N: Network, P: ProgramStorage<N>> Process<N, P> {
     /// Deploys the given program ID, if it does not exist.
     #[inline]
     pub fn deploy<A: circuit::Aleo<Network = N>, R: Rng + CryptoRng>(
@@ -49,6 +49,7 @@ impl<N: Network> Process<N> {
     }
 
     /// Adds the newly-deployed program.
+    /// This method assumes the given deployment **is valid**.
     #[inline]
     pub fn finalize_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
         // Compute the program stack.

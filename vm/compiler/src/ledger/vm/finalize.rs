@@ -26,11 +26,12 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
         // Finalize the transaction.
         match transaction {
             Transaction::Deploy(_, deployment, _) => self.finalize_deployment(deployment),
-            Transaction::Execute(_, _execution, _) => Ok(()), // self.finalize_execution(execution),
+            Transaction::Execute(_, execution, _) => self.finalize_execution(execution),
         }
     }
 
-    /// Adds the newly-deployed program into the VM.
+    /// Finalizes the deployment in the VM.
+    /// This method assumes the given deployment **is valid**.
     #[inline]
     fn finalize_deployment(&mut self, deployment: &Deployment<N>) -> Result<()> {
         // Compute the core logic.
@@ -40,6 +41,23 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
                 let deployment = cast_ref!(&deployment as Deployment<$network>);
                 // Finalize the deployment.
                 $process.finalize_deployment(deployment)
+            }};
+        }
+        // Process the logic.
+        process_mut!(self, logic)
+    }
+
+    /// Finalizes the execution in the VM.
+    /// This method assumes the given execution **is valid**.
+    #[inline]
+    fn finalize_execution(&mut self, execution: &Execution<N>) -> Result<()> {
+        // Compute the core logic.
+        macro_rules! logic {
+            ($process:expr, $network:path, $aleo:path) => {{
+                // Prepare the execution.
+                let execution = cast_ref!(&execution as Execution<$network>);
+                // Finalize the execution.
+                $process.finalize_execution(execution)
             }};
         }
         // Process the logic.
