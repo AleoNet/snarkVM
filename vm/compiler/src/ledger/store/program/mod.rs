@@ -17,21 +17,18 @@
 use crate::{
     cow_to_cloned,
     cow_to_copied,
-    ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
-        transition::{Input, Origin},
-    },
+    ledger::map::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{
     network::prelude::*,
-    program::{Ciphertext, Identifier, Plaintext, ProgramID, Value},
+    program::{Identifier, Plaintext, ProgramID, Value},
     types::Field,
 };
 
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::{IndexMap, IndexSet};
-use std::{borrow::Cow, collections::BTreeMap};
+use std::collections::BTreeMap;
 
 /// A trait for program state storage. Note: For the program logic, see `DeploymentStorage`.
 ///
@@ -248,7 +245,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         };
 
         // Retrieve the mapping names.
-        let mut mapping_names = match self.program_id_map().get(&program_id)? {
+        let mut mapping_names = match self.program_id_map().get(program_id)? {
             Some(mapping_names) => cow_to_cloned!(mapping_names),
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
@@ -278,7 +275,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     /// along with all associated mappings and key-value pairs in storage.
     fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
         // Retrieve the mapping names.
-        let mapping_names = match self.program_id_map().get(&program_id)? {
+        let mapping_names = match self.program_id_map().get(program_id)? {
             Some(mapping_names) => mapping_names,
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
@@ -402,7 +399,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         match self.get_key_id(program_id, mapping_name, key)? {
             // Retrieve the value.
             Some(key_id) => self.get_value_from_key_id(&key_id),
-            None => return Ok(None),
+            None => Ok(None),
         }
     }
 
@@ -619,8 +616,8 @@ mod tests {
     /// Checks `initialize_mapping`, `insert_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_insert_remove<N: Network>(
         program_store: &ProgramMemory<N>,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) {
         // Prepare a key and value.
         let key = Plaintext::from_str("123456789field").unwrap();
@@ -692,8 +689,8 @@ mod tests {
     /// Checks `initialize_mapping`, `update_key_value`, `remove_key_value`, and `remove_mapping`.
     fn check_initialize_update_remove<N: Network>(
         program_store: &ProgramMemory<N>,
-        program_id: &ProgramID<N>,
-        mapping_name: &Identifier<N>,
+        program_id: ProgramID<N>,
+        mapping_name: Identifier<N>,
     ) {
         // Prepare a key and value.
         let key = Plaintext::from_str("123456789field").unwrap();
@@ -813,7 +810,7 @@ mod tests {
         // Initialize a new program store.
         let program_store = ProgramMemory::open().unwrap();
         // Check the operations.
-        check_initialize_insert_remove(&program_store, &program_id, &mapping_name);
+        check_initialize_insert_remove(&program_store, program_id, mapping_name);
     }
 
     #[test]
@@ -825,7 +822,7 @@ mod tests {
         // Initialize a new program store.
         let program_store = ProgramMemory::open().unwrap();
         // Check the operations.
-        check_initialize_update_remove(&program_store, &program_id, &mapping_name);
+        check_initialize_update_remove(&program_store, program_id, mapping_name);
     }
 
     #[test]
@@ -1040,7 +1037,7 @@ mod tests {
             // Ensure inserting a (key, value) before initializing the mapping fails.
             let key = Plaintext::from_str("123456789field").unwrap();
             let value = Value::from_str("987654321u128").unwrap();
-            assert!(program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
+            assert!(program_store.insert_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
 
             // Ensure the program ID did not get initialized.
             assert!(!program_store.contains_program(&program_id).unwrap());
@@ -1059,7 +1056,7 @@ mod tests {
             // Ensure updating a (key, value) before initializing the mapping fails.
             let key = Plaintext::from_str("987654321field").unwrap();
             let value = Value::from_str("123456789u128").unwrap();
-            assert!(program_store.update_key_value(&program_id, &mapping_name, key.clone(), value.clone()).is_err());
+            assert!(program_store.update_key_value(&program_id, &mapping_name, key.clone(), value).is_err());
 
             // Ensure the program ID did not get initialized.
             assert!(!program_store.contains_program(&program_id).unwrap());
@@ -1076,7 +1073,7 @@ mod tests {
         }
 
         // Ensure program storage still behaves correctly after the above operations.
-        check_initialize_insert_remove(&program_store, &program_id, &mapping_name);
-        check_initialize_update_remove(&program_store, &program_id, &mapping_name);
+        check_initialize_insert_remove(&program_store, program_id, mapping_name);
+        check_initialize_update_remove(&program_store, program_id, mapping_name);
     }
 }
