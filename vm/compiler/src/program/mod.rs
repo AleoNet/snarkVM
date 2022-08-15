@@ -28,6 +28,9 @@ pub use import::*;
 mod instruction;
 pub use instruction::*;
 
+mod mapping;
+pub use mapping::*;
+
 mod bytes;
 mod parse;
 mod serialize;
@@ -519,6 +522,9 @@ impl<N: Network> Program<N> {
         "aleo",
         "self",
         "storage",
+        "mapping",
+        "key",
+        "value",
         // Reserved (catch all)
         "global",
         "return",
