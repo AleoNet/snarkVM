@@ -201,6 +201,40 @@ function foo:
     fn test_function_parse_finalize() {
         let function = Function::<CurrentNetwork>::parse(
             r"
+function mint_public:
+    // Input the token receiver.
+    input r0 as address.public;
+    // Input the token amount.
+    input r1 as u64.public;
+    // Mint the tokens publicly.
+    finalize r0 r1;
+
+// The finalize scope of `mint_public` increments the
+// `account` of the token receiver by the specified amount.
+finalize mint_public:
+    // Input the token receiver.
+    input r0 as address.public;
+    // Input the token amount.
+    input r1 as u64.public;
+
+    // Increments `account[r0]` by `r1`.
+    // If `account[r0]` does not exist, it will be created.
+    // If `account[r0] + r1` overflows, `mint_public` is reverted.
+    increment account[r0] by r1;
+",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("mint_public", function.name().to_string());
+        assert_eq!(2, function.inputs.len());
+        assert_eq!(0, function.instructions.len());
+        assert_eq!(0, function.outputs.len());
+        assert!(function.finalize_command().is_some());
+        assert_eq!(2, function.finalize_logic().as_ref().unwrap().inputs().len());
+        assert_eq!(1, function.finalize_logic().as_ref().unwrap().commands().len());
+
+        let function = Function::<CurrentNetwork>::parse(
+            r"
 function foo:
     input r0 as token.record;
     cast r0.owner r0.gates r0.token_amount into r1 as token.record;
