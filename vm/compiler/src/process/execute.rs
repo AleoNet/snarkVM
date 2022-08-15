@@ -218,6 +218,7 @@ impl<N: Network> Process<N> {
         // TODO (howardwu): This is a temporary approach. We should create a "CallStack" and recurse through the stack.
         //  Currently this loop assumes a linearly execution stack.
         // Finalize each transition, starting from the last one.
+        #[allow(clippy::into_iter_on_ref)]
         for transition in execution.into_iter().rev() {
             #[cfg(debug_assertions)]
             println!("Finalizing transition for {}/{}...", transition.program_id(), transition.function_name());
