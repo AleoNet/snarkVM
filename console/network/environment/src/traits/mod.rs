@@ -52,7 +52,7 @@ pub use visibility::*;
 
 pub mod integers {
     pub use super::{
-        integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
+        integer_type::{CheckedPow, CheckedShl, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
         magnitude::Magnitude,
     };
 }

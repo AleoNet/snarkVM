@@ -21,14 +21,18 @@ impl<N: Network> Serialize for Transition<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transition = serializer.serialize_struct("Transition", 8)?;
+                let mut transition = serializer.serialize_struct("Transition", 10)?;
                 transition.serialize_field("id", &self.id)?;
                 transition.serialize_field("program", &self.program_id)?;
                 transition.serialize_field("function", &self.function_name)?;
                 transition.serialize_field("inputs", &self.inputs)?;
                 transition.serialize_field("outputs", &self.outputs)?;
+                if let Some(finalize) = &self.finalize {
+                    transition.serialize_field("finalize", &finalize)?;
+                }
                 transition.serialize_field("proof", &self.proof)?;
                 transition.serialize_field("tpk", &self.tpk)?;
+                transition.serialize_field("tcm", &self.tcm)?;
                 transition.serialize_field("fee", &self.fee)?;
                 transition.end()
             }
@@ -58,10 +62,17 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     serde_json::from_value(transition["inputs"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the outputs.
                     serde_json::from_value(transition["outputs"].clone()).map_err(de::Error::custom)?,
+                    // Retrieve the finalize inputs.
+                    match transition.get("finalize") {
+                        Some(finalize) => Some(serde_json::from_value(finalize.clone()).map_err(de::Error::custom)?),
+                        None => None,
+                    },
                     // Retrieve the proof.
                     serde_json::from_value(transition["proof"].clone()).map_err(de::Error::custom)?,
-                    // Retrieve the TPK.
+                    // Retrieve the `tpk`.
                     serde_json::from_value(transition["tpk"].clone()).map_err(de::Error::custom)?,
+                    // Retrieve the `tcm`.
+                    serde_json::from_value(transition["tcm"].clone()).map_err(de::Error::custom)?,
                     // Retrieve the fee.
                     serde_json::from_value(transition["fee"].clone()).map_err(de::Error::custom)?,
                 )

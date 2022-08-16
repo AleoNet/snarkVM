@@ -32,7 +32,7 @@ impl<N: Network> FromBytes for Function<N> {
 
         // Read the instructions.
         let num_instructions = u32::read_le(&mut reader)?;
-        if num_instructions > N::MAX_FUNCTION_INSTRUCTIONS as u32 {
+        if num_instructions > N::MAX_INSTRUCTIONS as u32 {
             return Err(error(format!("Failed to deserialize a function: too many instructions ({num_instructions})")));
         }
         let mut instructions = Vec::with_capacity(num_instructions as usize);
@@ -47,6 +47,14 @@ impl<N: Network> FromBytes for Function<N> {
             outputs.push(Output::read_le(&mut reader)?);
         }
 
+        // Determine if there is a finalize scope.
+        let variant = u8::read_le(&mut reader)?;
+        let finalize = match variant {
+            0 => None,
+            1 => Some((FinalizeCommand::read_le(&mut reader)?, Finalize::read_le(&mut reader)?)),
+            _ => return Err(error(format!("Failed to deserialize a function: invalid finalize variant ({variant})"))),
+        };
+
         // Initialize a new function.
         let mut function = Self::new(name);
         inputs.into_iter().try_for_each(|input| function.add_input(input)).map_err(|e| error(e.to_string()))?;
@@ -55,6 +63,7 @@ impl<N: Network> FromBytes for Function<N> {
             .try_for_each(|instruction| function.add_instruction(instruction))
             .map_err(|e| error(e.to_string()))?;
         outputs.into_iter().try_for_each(|output| function.add_output(output)).map_err(|e| error(e.to_string()))?;
+        finalize.map(|(command, finalize)| function.add_finalize(command, finalize));
 
         Ok(function)
     }
@@ -81,7 +90,7 @@ impl<N: Network> ToBytes for Function<N> {
 
         // Write the number of instructions for the function.
         let num_instructions = self.instructions.len();
-        match num_instructions <= N::MAX_FUNCTION_INSTRUCTIONS {
+        match num_instructions <= N::MAX_INSTRUCTIONS {
             true => (num_instructions as u32).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }
@@ -101,6 +110,18 @@ impl<N: Network> ToBytes for Function<N> {
         // Write the outputs.
         for output in self.outputs.iter() {
             output.write_le(&mut writer)?;
+        }
+
+        // If the finalize scope exists, write it.
+        match &self.finalize {
+            None => 0u8.write_le(&mut writer)?,
+            Some((command, logic)) => {
+                1u8.write_le(&mut writer)?;
+                // Write the finalize scope command.
+                command.write_le(&mut writer)?;
+                // Write the finalize scope logic.
+                logic.write_le(&mut writer)?;
+            }
         }
 
         Ok(())

@@ -28,6 +28,7 @@ use crate::{
     ledger::{vm::VM, Origin, Transition},
     process::{Authorization, Deployment, Execution},
     program::Program,
+    ProgramStorage,
 };
 use console::{
     account::PrivateKey,
@@ -75,8 +76,8 @@ impl<N: Network> Transaction<N> {
     const MAX_TRANSITIONS: usize = usize::pow(2, TRANSACTION_DEPTH as u32);
 
     /// Initializes a new deployment transaction.
-    pub fn deploy<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn deploy<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         private_key: &PrivateKey<N>,
         program: &Program<N>,
         (credits, additional_fee_in_gates): (Record<N, Plaintext<N>>, u64),
@@ -91,8 +92,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction from an authorization.
-    pub fn execute_authorization<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn execute_authorization<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         authorization: Authorization<N>,
         rng: &mut R,
     ) -> Result<Self> {
@@ -103,8 +104,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction from an authorization and additional fee.
-    pub fn execute_authorization_with_additional_fee<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn execute_authorization_with_additional_fee<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         private_key: &PrivateKey<N>,
         authorization: Authorization<N>,
         additional_fee: Option<(Record<N, Plaintext<N>>, u64)>,
@@ -124,8 +125,8 @@ impl<N: Network> Transaction<N> {
     }
 
     /// Initializes a new execution transaction.
-    pub fn execute<R: Rng + CryptoRng>(
-        vm: &VM<N>,
+    pub fn execute<P: ProgramStorage<N>, R: Rng + CryptoRng>(
+        vm: &VM<N, P>,
         private_key: &PrivateKey<N>,
         program_id: &ProgramID<N>,
         function_name: Identifier<N>,
@@ -149,7 +150,7 @@ impl<N: Network> Transaction<N> {
         }
     }
 
-    /// Returns an iterator over all executed transitions.
+    /// Returns an iterator over all transitions.
     pub fn transitions(&self) -> impl '_ + Iterator<Item = &Transition<N>> {
         match self {
             Self::Deploy(_, _, additional_fee) => [].iter().chain([Some(additional_fee)].into_iter().flatten()),
@@ -164,9 +165,21 @@ impl<N: Network> Transaction<N> {
         self.transitions().map(Transition::id)
     }
 
-    /// Returns an iterator over the transition public keys, for all transitions.
-    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
-        self.transitions().map(Transition::tpk)
+    /* Input */
+
+    /// Returns an iterator over the input IDs, for all transition inputs that are records.
+    pub fn input_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().flat_map(Transition::input_ids)
+    }
+
+    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
+    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().flat_map(Transition::serial_numbers)
+    }
+
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().flat_map(Transition::tags)
     }
 
     /// Returns an iterator over the origins, for all transition inputs that are records.
@@ -174,9 +187,11 @@ impl<N: Network> Transaction<N> {
         self.transitions().flat_map(Transition::origins)
     }
 
-    /// Returns an iterator over the serial numbers, for all transition inputs that are records.
-    pub fn serial_numbers(&self) -> impl '_ + Iterator<Item = &Field<N>> {
-        self.transitions().flat_map(Transition::serial_numbers)
+    /* Output */
+
+    /// Returns an iterator over the output IDs, for all transition inputs that are records.
+    pub fn output_ids(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().flat_map(Transition::output_ids)
     }
 
     /// Returns an iterator over the commitments, for all transition outputs that are records.
@@ -189,8 +204,81 @@ impl<N: Network> Transaction<N> {
         self.transitions().flat_map(Transition::nonces)
     }
 
+    /// Returns an iterator over the transition public keys, for all transitions.
+    pub fn transition_public_keys(&self) -> impl '_ + Iterator<Item = &Group<N>> {
+        self.transitions().map(Transition::tpk)
+    }
+
+    /// Returns an iterator over the transition commitments, for all transitions.
+    pub fn transition_commitments(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transitions().map(Transition::tcm)
+    }
+
     /// Returns an iterator over the fees, for all transitions.
     pub fn fees(&self) -> impl '_ + Iterator<Item = &i64> {
         self.transitions().map(Transition::fee)
+    }
+}
+
+impl<N: Network> Transaction<N> {
+    /// Returns a consuming iterator over all transitions.
+    pub fn into_transitions(self) -> impl Iterator<Item = Transition<N>> {
+        enum IterWrap<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> {
+            Deploy(I1),
+            Execute(I2),
+        }
+
+        impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for IterWrap<T, I1, I2> {
+            type Item = T;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self {
+                    Self::Deploy(iter) => iter.next(),
+                    Self::Execute(iter) => iter.next(),
+                }
+            }
+        }
+
+        match self {
+            Self::Deploy(_, _, additional_fee) => IterWrap::Deploy(Some(additional_fee).into_iter()),
+            Self::Execute(_, execution, additional_fee) => {
+                IterWrap::Execute(execution.into_transitions().chain(additional_fee))
+            }
+        }
+    }
+
+    /// Returns a consuming iterator over the transition IDs, for all transitions.
+    pub fn into_transition_ids(self) -> impl Iterator<Item = N::TransitionID> {
+        self.into_transitions().map(Transition::into_id)
+    }
+
+    /// Returns a consuming iterator over the transition public keys, for all transitions.
+    pub fn into_transition_public_keys(self) -> impl Iterator<Item = Group<N>> {
+        self.into_transitions().map(Transition::into_tpk)
+    }
+
+    /// Returns a consuming iterator over the origins, for all transition inputs that are records.
+    pub fn into_origins(self) -> impl Iterator<Item = Origin<N>> {
+        self.into_transitions().flat_map(Transition::into_origins)
+    }
+
+    /// Returns a consuming iterator over the tags, for all transition inputs that are records.
+    pub fn into_tags(self) -> impl Iterator<Item = Field<N>> {
+        self.into_transitions().flat_map(Transition::into_tags)
+    }
+
+    /// Returns a consuming iterator over the serial numbers, for all transition inputs that are records.
+    pub fn into_serial_numbers(self) -> impl Iterator<Item = Field<N>> {
+        self.into_transitions().flat_map(Transition::into_serial_numbers)
+    }
+
+    /// Returns a consuming iterator over the commitments, for all transition outputs that are records.
+    pub fn into_commitments(self) -> impl Iterator<Item = Field<N>> {
+        self.into_transitions().flat_map(Transition::into_commitments)
+    }
+
+    /// Returns a consuming iterator over the nonces, for all transition outputs that are records.
+    pub fn into_nonces(self) -> impl Iterator<Item = Group<N>> {
+        self.into_transitions().flat_map(Transition::into_nonces)
     }
 }

@@ -32,12 +32,9 @@ use crate::{
 use console::{
     account::{Address, PrivateKey, Signature},
     network::prelude::*,
-    program::{Identifier, ProgramID, Value},
+    program::Value,
     types::{Field, Group},
 };
-
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Block<N: Network> {
@@ -93,130 +90,6 @@ impl<N: Network> Block<N> {
         ensure!(signature.verify(&address, &[block_hash]), "Invalid signature for block {}", header.height());
         // Construct the block.
         Ok(Self { block_hash: block_hash.into(), previous_hash, header, transactions, signature })
-    }
-
-    /// Returns `true` if the block is well-formed.
-    pub fn verify(&self, vm: &VM<N>) -> bool {
-        //** Header **//
-
-        // If the block is the genesis block, check that it is valid.
-        if self.header.height() == 0 && !self.is_genesis() {
-            warn!("Invalid genesis block");
-            return false;
-        }
-
-        // Ensure the block header is valid.
-        if !self.header.is_valid() {
-            warn!("Invalid block header: {:?}", self.header);
-            return false;
-        }
-
-        //** Block Hash **//
-
-        // Compute the Merkle root of the block header.
-        let header_root = match self.header.to_root() {
-            Ok(root) => root,
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the block header: {error}");
-                return false;
-            }
-        };
-
-        // Check the block hash.
-        match N::hash_bhp1024(&[self.previous_hash.to_bits_le(), header_root.to_bits_le()].concat()) {
-            Ok(candidate_hash) => {
-                // Ensure the block hash matches the one in the block.
-                if candidate_hash != *self.block_hash {
-                    warn!("Block {} ({}) has an incorrect block hash.", self.height(), self.block_hash);
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Unable to compute block hash for block {} ({}): {error}", self.height(), self.block_hash);
-                return false;
-            }
-        };
-
-        //** Signature **//
-
-        // TODO (howardwu): TRIAL - Update this to the validator set.
-        // Ensure the block is signed by an authorized validator.
-        let signer = self.signature.to_address();
-        if !cfg!(test) && signer.to_string() != "aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8" {
-            warn!("Block {} ({}) is signed by an unauthorized validator: {}", self.height(), self.block_hash, signer);
-            return false;
-        }
-
-        // Check the signature.
-        if !self.signature.verify(&signer, &[*self.block_hash]) {
-            warn!("Invalid signature for block {} ({})", self.height(), self.block_hash);
-            return false;
-        }
-
-        //** Transactions **//
-
-        // Compute the transactions root.
-        match self.transactions.to_root() {
-            // Ensure the transactions root matches the one in the block header.
-            Ok(root) => {
-                if &root != self.header.transactions_root() {
-                    warn!(
-                        "Block {} ({}) has an incorrect transactions root: expected {}",
-                        self.height(),
-                        self.block_hash,
-                        self.header.transactions_root()
-                    );
-                    return false;
-                }
-            }
-            Err(error) => {
-                warn!("Failed to compute the Merkle root of the block transactions: {error}");
-                return false;
-            }
-        };
-
-        // Ensure the transactions list is not empty.
-        if self.transactions.is_empty() {
-            warn!("Cannot validate an empty transactions list");
-            return false;
-        }
-
-        // Ensure the number of transactions is within the allowed range.
-        if self.transactions.len() > Transactions::<N>::MAX_TRANSACTIONS {
-            warn!("Cannot validate a block with more than {} transactions", Transactions::<N>::MAX_TRANSACTIONS);
-            return false;
-        }
-
-        // Ensure each transaction is well-formed.
-        if !self.transactions.par_iter().all(|(_, transaction)| vm.verify(transaction)) {
-            warn!("Invalid transaction found in the transactions list");
-            return false;
-        }
-
-        //** Fees **//
-
-        // Prepare the block height, credits program ID, and genesis function name.
-        let height = self.height();
-        let credits_program_id = ProgramID::from_str("credits.aleo").expect("Failed to parse the credits program ID");
-        let credits_genesis = Identifier::from_str("genesis").expect("Failed to parse the genesis function name");
-
-        // Ensure the fee is correct for each transition.
-        for transition in self.transitions() {
-            if height > 0 {
-                // Ensure the genesis function is not called.
-                if *transition.program_id() == credits_program_id && *transition.function_name() == credits_genesis {
-                    warn!("The genesis function cannot be called.");
-                    return false;
-                }
-                // Ensure the transition fee is not negative.
-                if transition.fee().is_negative() {
-                    warn!("The transition fee cannot be negative.");
-                    return false;
-                }
-            }
-        }
-
-        true
     }
 }
 
@@ -328,6 +201,11 @@ impl<N: Network> Block<N> {
     /// Returns an iterator over the origins, for all transition inputs that are records.
     pub fn origins(&self) -> impl '_ + Iterator<Item = &Origin<N>> {
         self.transactions.origins()
+    }
+
+    /// Returns an iterator over the tags, for all transition inputs that are records.
+    pub fn tags(&self) -> impl '_ + Iterator<Item = &Field<N>> {
+        self.transactions.tags()
     }
 
     /// Returns an iterator over the serial numbers, for all transition inputs that are records.

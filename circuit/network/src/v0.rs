@@ -54,8 +54,8 @@ thread_local! {
     static BCM_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::bcm_domain());
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::encryption_domain());
-    /// The MAC domain as a constant field element.
-    static MAC_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::mac_domain());
+    /// The graph key domain as a constant field element.
+    static GRAPH_KEY_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::graph_key_domain());
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<AleoV0> = Field::constant(<console::Testnet3 as console::Network>::randomizer_domain());
     /// The balance commitment randomizer domain as a constant field element.
@@ -102,9 +102,9 @@ impl Aleo for AleoV0 {
         ENCRYPTION_DOMAIN.with(|domain| domain.clone())
     }
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self> {
-        MAC_DOMAIN.with(|domain| domain.clone())
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self> {
+        GRAPH_KEY_DOMAIN.with(|domain| domain.clone())
     }
 
     /// Returns the randomizer domain as a constant field element.
@@ -122,7 +122,7 @@ impl Aleo for AleoV0 {
         SERIAL_NUMBER_DOMAIN.with(|domain| domain.clone())
     }
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the scalar multiplication on the generator `G`.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
         GENERATOR_G.with(|bases| {

@@ -33,8 +33,8 @@ pub trait Aleo: Environment {
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self>;
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self>;
 
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Field<Self>;
@@ -45,7 +45,7 @@ pub trait Aleo: Environment {
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.

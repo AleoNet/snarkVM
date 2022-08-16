@@ -27,6 +27,11 @@ pub mod compute_key;
 #[cfg(feature = "compute_key")]
 pub use compute_key::*;
 
+#[cfg(feature = "graph_key")]
+pub mod graph_key;
+#[cfg(feature = "graph_key")]
+pub use graph_key::*;
+
 #[cfg(feature = "private_key")]
 pub mod private_key;
 #[cfg(feature = "private_key")]

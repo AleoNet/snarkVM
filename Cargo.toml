@@ -75,6 +75,8 @@ full = ["algorithms", "circuit", "console", "curves", "fields", "parameters", "r
 
 ## snarkVM CLI ##
 cli = ["anyhow", "circuit", "console", "clap", "colored", "rand", "self_update", "serde_json", "thiserror"]
+# Toggles CLI logging.
+aleo-cli = ["snarkvm-compiler/aleo-cli"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
@@ -143,7 +145,7 @@ version = "1.0.57"
 optional = true
 
 [dependencies.clap]
-version = "3.1"
+version = "3.2"
 features = ["derive"]
 optional = true
 

@@ -65,7 +65,7 @@ version = "1.13"
 version = "0.12"
 
 [dependencies.paste]
-version = "1.0.7"
+version = "1.0.8"
 
 [dependencies.rand]
 version = "0.8"
@@ -74,11 +74,14 @@ version = "0.8"
 version = "1"
 optional = true
 
+[dependencies.serde]
+version = "1.0"
+
 [dependencies.serde_json]
 version = "1.0"
 
 [dependencies.time]
-version = "0.3.12"
+version = "0.3.13"
 
 [dependencies.tracing]
 version = "0.1"
@@ -96,3 +99,6 @@ version = "0.2"
 [features]
 default = ["parallel"]
 parallel = ["rayon", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]
+# Toggles CLI logging.
+aleo-cli = []
+

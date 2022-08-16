@@ -73,8 +73,25 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Consumes `self` and returns the commitment and record, if the output is a record.
+    #[allow(clippy::type_complexity)]
+    pub fn into_record(self) -> Option<(Field<N>, Record<N, Ciphertext<N>>)> {
+        match self {
+            Output::Record(commitment, _, Some(record)) => Some((commitment, record)),
+            _ => None,
+        }
+    }
+
     /// Returns the commitment, if the output is a record.
     pub const fn commitment(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(commitment, ..) => Some(commitment),
+            _ => None,
+        }
+    }
+
+    /// Returns the commitment, if the output is a record, and consumes `self`.
+    pub fn into_commitment(self) -> Option<Field<N>> {
         match self {
             Output::Record(commitment, ..) => Some(commitment),
             _ => None,
@@ -89,8 +106,24 @@ impl<N: Network> Output<N> {
         }
     }
 
+    /// Returns the nonce, if the output is a record, and consumes `self`.
+    pub fn into_nonce(self) -> Option<Group<N>> {
+        match self {
+            Output::Record(_, _, Some(record)) => Some(record.into_nonce()),
+            _ => None,
+        }
+    }
+
     /// Returns the checksum, if the output is a record.
     pub const fn checksum(&self) -> Option<&Field<N>> {
+        match self {
+            Output::Record(_, checksum, ..) => Some(checksum),
+            _ => None,
+        }
+    }
+
+    /// Returns the checksum, if the output is a record, and consumes `self`.
+    pub fn into_checksum(self) -> Option<Field<N>> {
         match self {
             Output::Record(_, checksum, ..) => Some(checksum),
             _ => None,
@@ -107,21 +140,55 @@ impl<N: Network> Output<N> {
 
     /// Returns `true` if the output is well-formed.
     /// If the optional value exists, this method checks that it hashes to the output ID.
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self, tcm: &Field<N>, index: usize) -> bool {
         // Ensure the hash of the value (if the value exists) is correct.
         let result = match self {
-            Output::Constant(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Output::Public(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
-            Output::Private(hash, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
-                Ok(candidate_hash) => Ok(hash == &candidate_hash),
-                Err(error) => Err(error),
-            },
+            Output::Constant(hash, Some(output)) => {
+                match output.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(output || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Output::Public(hash, Some(output)) => {
+                match output.to_fields() {
+                    Ok(fields) => {
+                        // Construct the (console) output index as a field element.
+                        let index = Field::from_u16(index as u16);
+                        // Construct the preimage as `(output || tcm || index)`.
+                        let mut preimage = fields;
+                        preimage.push(*tcm);
+                        preimage.push(index);
+                        // Ensure the hash matches.
+                        match N::hash_psd8(&preimage) {
+                            Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                            Err(error) => Err(error),
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+            Output::Private(hash, Some(value)) => {
+                match value.to_fields() {
+                    // Ensure the hash matches.
+                    Ok(fields) => match N::hash_psd8(&fields) {
+                        Ok(candidate_hash) => Ok(hash == &candidate_hash),
+                        Err(error) => Err(error),
+                    },
+                    Err(error) => Err(error),
+                }
+            }
             Output::Record(_, checksum, Some(value)) => match N::hash_bhp1024(&value.to_bits_le()) {
                 Ok(candidate_hash) => Ok(checksum == &candidate_hash),
                 Err(error) => Err(error),
@@ -136,5 +203,55 @@ impl<N: Network> Output<N> {
                 false
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_helpers {
+    use super::*;
+    use console::{network::Testnet3, program::Literal};
+
+    type CurrentNetwork = Testnet3;
+
+    /// Sample the transition outputs.
+    pub(crate) fn sample_outputs() -> Vec<(<CurrentNetwork as Network>::TransitionID, Output<CurrentNetwork>)> {
+        // Sample a transition.
+        let transaction = crate::ledger::vm::test_helpers::sample_execution_transaction();
+        let transition = transaction.transitions().next().unwrap();
+
+        // Retrieve the transition ID and input.
+        let transition_id = *transition.id();
+        let input = transition.outputs().iter().next().unwrap().clone();
+
+        // Initialize the RNG.
+        let rng = &mut test_crypto_rng();
+
+        // Sample a random plaintext.
+        let plaintext = Plaintext::Literal(Literal::Field(Uniform::rand(rng)), Default::default());
+        let plaintext_hash = CurrentNetwork::hash_bhp1024(&plaintext.to_bits_le()).unwrap();
+        // Sample a random ciphertext.
+        let ciphertext = Ciphertext::from_fields(&vec![Uniform::rand(rng); 10]).unwrap();
+        let ciphertext_hash = CurrentNetwork::hash_bhp1024(&ciphertext.to_bits_le()).unwrap();
+        // Sample a random record.
+        let randomizer = Uniform::rand(rng);
+        let nonce = CurrentNetwork::g_scalar_multiply(&randomizer);
+        let record = Record::<CurrentNetwork, Plaintext<CurrentNetwork>>::from_str(
+            &format!("{{ owner: aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.private, gates: 5u64.private, token_amount: 100u64.private, _nonce: {nonce}.public }}"),
+        ).unwrap();
+        let record_ciphertext = record.encrypt(randomizer).unwrap();
+        let record_checksum = CurrentNetwork::hash_bhp1024(&record_ciphertext.to_bits_le()).unwrap();
+
+        vec![
+            (transition_id, input),
+            (Uniform::rand(rng), Output::Constant(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Output::Constant(plaintext_hash, Some(plaintext.clone()))),
+            (Uniform::rand(rng), Output::Public(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Output::Public(plaintext_hash, Some(plaintext))),
+            (Uniform::rand(rng), Output::Private(Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Output::Private(ciphertext_hash, Some(ciphertext))),
+            (Uniform::rand(rng), Output::Record(Uniform::rand(rng), Uniform::rand(rng), None)),
+            (Uniform::rand(rng), Output::Record(Uniform::rand(rng), record_checksum, Some(record_ciphertext))),
+            (Uniform::rand(rng), Output::ExternalRecord(Uniform::rand(rng))),
+        ]
     }
 }

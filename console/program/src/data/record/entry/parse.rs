@@ -67,6 +67,8 @@ impl<N: Network> Parser for Entry<N, Plaintext<N>> {
             let (string, _) = Sanitizer::parse(string)?;
             // Parse the "{" from the string.
             let (string, _) = tag("{")(string)?;
+            // Parse the whitespace from the string.
+            let (string, _) = Sanitizer::parse_whitespaces(string)?;
             // Parse the members.
             let (string, (members, mode)) = map_res(separated_list1(tag(","), parse_pair), |members: Vec<_>| {
                 // Ensure the members has no duplicate names.

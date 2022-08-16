@@ -23,6 +23,7 @@ pub use helpers::{Balance, Owner};
 mod bytes;
 mod decrypt;
 mod encrypt;
+mod equal;
 mod find;
 mod is_owner;
 mod num_randomizers;
@@ -36,12 +37,12 @@ mod to_fields;
 use crate::{Ciphertext, Identifier, Literal, Plaintext, ProgramID};
 use snarkvm_console_account::{Address, ViewKey};
 use snarkvm_console_network::prelude::*;
-use snarkvm_console_types::{Field, Group, Scalar, U64};
+use snarkvm_console_types::{Boolean, Field, Group, Scalar, U64};
 
 use indexmap::IndexMap;
 
 /// A value stored in program record.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Record<N: Network, Private: Visibility> {
     /// The owner of the program record.
     owner: Owner<N, Private>,
@@ -106,5 +107,27 @@ impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Returns the nonce of the program record.
     pub const fn nonce(&self) -> &Group<N> {
         &self.nonce
+    }
+}
+
+impl<N: Network, Private: Visibility> Record<N, Private> {
+    /// Returns the owner of the program record, and consumes `self`.
+    pub fn into_owner(self) -> Owner<N, Private> {
+        self.owner
+    }
+
+    /// Returns the gates of the program record, and consumes `self`.
+    pub fn into_gates(self) -> Balance<N, Private> {
+        self.gates
+    }
+
+    /// Returns the program data, and consumes `self`.
+    pub fn into_data(self) -> IndexMap<Identifier<N>, Entry<N, Private>> {
+        self.data
+    }
+
+    /// Returns the nonce of the program record, and consumes `self`.
+    pub fn into_nonce(self) -> Group<N> {
+        self.nonce
     }
 }

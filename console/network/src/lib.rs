@@ -84,8 +84,10 @@ pub trait Network:
 
     /// The maximum number of operands in an instruction.
     const MAX_OPERANDS: usize = Self::MAX_INPUTS;
-    /// The maximum number of instructions in a function.
-    const MAX_FUNCTION_INSTRUCTIONS: usize = u16::MAX as usize;
+    /// The maximum number of instructions in a closure or function.
+    const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
+    /// The maximum number of commands in finalize.
+    const MAX_COMMANDS: usize = u8::MAX as usize;
 
     /// The maximum number of inputs per transition.
     const MAX_INPUTS: usize = 8;
@@ -107,8 +109,8 @@ pub trait Network:
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 
-    /// Returns the MAC domain as a constant field element.
-    fn mac_domain() -> Field<Self>;
+    /// Returns the graph key domain as a constant field element.
+    fn graph_key_domain() -> Field<Self>;
 
     /// Returns the randomizer domain as a constant field element.
     fn randomizer_domain() -> Field<Self>;
@@ -119,10 +121,10 @@ pub trait Network:
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
 
-    /// Returns the powers of G.
+    /// Returns the powers of `G`.
     fn g_powers() -> &'static Vec<Group<Self>>;
 
-    /// Returns the scalar multiplication on the group bases.
+    /// Returns the scalar multiplication on the generator `G`.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.

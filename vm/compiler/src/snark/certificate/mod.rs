@@ -39,9 +39,13 @@ impl<N: Network> Certificate<N> {
         verifying_key: &VerifyingKey<N>,
     ) -> Result<Certificate<N>> {
         // Compute the certificate.
+        #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
         let certificate = Marlin::<N>::prove_vk(N::marlin_fs_parameters(), verifying_key, proving_key)?;
+
+        #[cfg(feature = "aleo-cli")]
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
+
         Ok(Self::new(certificate))
     }
 
@@ -53,14 +57,20 @@ impl<N: Network> Certificate<N> {
         verifying_key: &VerifyingKey<N>,
     ) -> bool {
         // Verify the certificate.
+        #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
         match Marlin::<N>::verify_vk(N::marlin_fs_parameters(), assignment, verifying_key, self) {
             Ok(is_valid) => {
-                let elapsed = timer.elapsed().as_millis();
-                println!("{}", format!(" • Verified certificate for '{function_name}': {} ms", elapsed).dimmed());
+                #[cfg(feature = "aleo-cli")]
+                {
+                    let elapsed = timer.elapsed().as_millis();
+                    println!("{}", format!(" • Verified certificate for '{function_name}': {} ms", elapsed).dimmed());
+                }
+
                 is_valid
             }
             Err(error) => {
+                #[cfg(feature = "aleo-cli")]
                 println!("{}", format!(" • Certificate verification failed: {error}").dimmed());
                 false
             }

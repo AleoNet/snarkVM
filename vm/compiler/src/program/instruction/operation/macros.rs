@@ -342,22 +342,22 @@ mod tests {
     macro_rules! sample_literals {
         ($network:ident, $rng:expr) => {
             [
-                console::program::Literal::<$network>::Address(Address::new(Uniform::rand($rng))),
-                console::program::Literal::Boolean(Boolean::rand($rng)),
-                console::program::Literal::Field(Field::rand($rng)),
-                console::program::Literal::Group(Group::rand($rng)),
-                console::program::Literal::I8(I8::rand($rng)),
-                console::program::Literal::I16(I16::rand($rng)),
-                console::program::Literal::I32(I32::rand($rng)),
-                console::program::Literal::I64(I64::rand($rng)),
-                console::program::Literal::I128(I128::rand($rng)),
-                console::program::Literal::U8(U8::rand($rng)),
-                console::program::Literal::U16(U16::rand($rng)),
-                console::program::Literal::U32(U32::rand($rng)),
-                console::program::Literal::U64(U64::rand($rng)),
-                console::program::Literal::U128(U128::rand($rng)),
-                console::program::Literal::Scalar(Scalar::rand($rng)),
-                console::program::Literal::String(StringType::rand($rng)),
+                console::program::Literal::<$network>::Address(console::types::Address::new(Uniform::rand($rng))),
+                console::program::Literal::Boolean(console::types::Boolean::rand($rng)),
+                console::program::Literal::Field(console::types::Field::rand($rng)),
+                console::program::Literal::Group(console::types::Group::rand($rng)),
+                console::program::Literal::I8(console::types::I8::rand($rng)),
+                console::program::Literal::I16(console::types::I16::rand($rng)),
+                console::program::Literal::I32(console::types::I32::rand($rng)),
+                console::program::Literal::I64(console::types::I64::rand($rng)),
+                console::program::Literal::I128(console::types::I128::rand($rng)),
+                console::program::Literal::U8(console::types::U8::rand($rng)),
+                console::program::Literal::U16(console::types::U16::rand($rng)),
+                console::program::Literal::U32(console::types::U32::rand($rng)),
+                console::program::Literal::U64(console::types::U64::rand($rng)),
+                console::program::Literal::U128(console::types::U128::rand($rng)),
+                console::program::Literal::Scalar(console::types::Scalar::rand($rng)),
+                console::program::Literal::String(console::types::StringType::rand($rng)),
             ]
         };
     }
@@ -729,29 +729,7 @@ mod tests {
                             ("ensure shifting past boundary halts") => {
                                 match *<$operation as $crate::Operation<_, _, _, 2>>::OPCODE {
                                     // Note that this case needs special handling, since the desired behavior of `checked_shl` deviates from Rust semantics.
-                                    "shl" => {
-                                        // Instantiate two as a constant.
-                                        let zero = $input_a::<CurrentNetwork>::zero();
-                                        let two = $input_a::<CurrentNetwork>::one() + $input_a::one();
-                                        should_succeed &= match *a < *zero {
-                                            // For positive values, perform a checked exponentiation and multiplication.
-                                            false => (*two).checked_pow(*b as u32).and_then(|x| (*a).checked_mul(x)).is_some(),
-                                            true => {
-                                                // Compute a wrapping exponentiation.
-                                                let factor = (*two).wrapping_pow(*b as u32);
-                                                match factor.cmp(&0) {
-                                                    // If `factor` is equal to zero, the exponentiation above overflowed.
-                                                    Ordering::Equal => false,
-                                                    // If `factor` is less than zero, then `b` is equal to 1 - bitwidth(a).
-                                                    // In this case, negate `a` to balance signs.
-                                                    Ordering::Less => (a.wrapping_neg()).checked_mul(factor).is_some(),
-                                                    // If `factor` is greater than zero, then the above exponentiation did not overflow
-                                                    // Then, perform a checked multiplication.
-                                                    Ordering::Greater => (*a).checked_mul(factor).is_some(),
-                                                }
-                                            }
-                                        };
-                                    }
+                                    "shl" => should_succeed &= console::prelude::traits::integers::CheckedShl::checked_shl(&*a, &(*b as u32)).is_some(),
                                     "shr" => should_succeed &= (*a).checked_shr(*b as u32).is_some(),
                                     _ => panic!("Unsupported test enforcement for '{}'", <$operation as $crate::Operation<_, _, _, 2>>::OPCODE),
                                 }

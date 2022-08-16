@@ -16,70 +16,89 @@
 
 use super::*;
 
-impl<
-    N: Network,
-    PreviousHashesMap: for<'a> Map<'a, u32, N::BlockHash>,
-    HeadersMap: for<'a> Map<'a, u32, Header<N>>,
-    TransactionsMap: for<'a> Map<'a, u32, Transactions<N>>,
-    SignatureMap: for<'a> Map<'a, u32, Signature<N>>,
-> Ledger<N, PreviousHashesMap, HeadersMap, TransactionsMap, SignatureMap>
-{
+impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     /// Returns `true` if the given state root exists.
-    pub fn contains_state_root(&self, state_root: &Field<N>) -> bool {
-        state_root == self.latest_state_root()
-            || self.headers.values().any(|h| Header::previous_state_root(&h) == state_root)
+    pub fn contains_state_root(&self, _state_root: &Field<N>) -> bool {
+        todo!()
+        // state_root == self.latest_state_root()
+        //     || self.headers.values().any(|h| Header::previous_state_root(&h) == state_root)
     }
 
     /// Returns `true` if the given block hash exists.
-    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> bool {
-        self.current_hash == *block_hash || self.previous_hashes.values().any(|hash| *hash == *block_hash)
+    pub fn contains_block_hash(&self, block_hash: &N::BlockHash) -> Result<bool> {
+        self.blocks.contains_block_hash(block_hash)
     }
 
     /// Returns `true` if the given block height exists.
-    pub fn contains_height(&self, height: u32) -> Result<bool> {
-        self.previous_hashes
-            .contains_key(&height)
-            .or_else(|_| self.headers.contains_key(&height))
-            .or_else(|_| self.transactions.contains_key(&height))
-    }
-
-    /// Returns `true` if the given transaction exists.
-    pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        self.transaction_ids().contains(&transaction.id())
+    pub fn contains_block_height(&self, height: u32) -> Result<bool> {
+        self.blocks.contains_block_height(height)
     }
 
     /// Returns `true` if the given transaction ID exists.
-    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> bool {
-        self.transaction_ids().contains(transaction_id)
+    pub fn contains_transaction_id(&self, transaction_id: &N::TransactionID) -> Result<bool> {
+        self.transactions.contains_transaction_id(transaction_id)
     }
 
-    /// Returns `true` if the given transition exists.
-    pub fn contains_transition(&self, transition: &Transition<N>) -> bool {
-        self.transition_ids().contains(transition.id())
+    /// Returns `true` if the given program ID exists.
+    pub fn contains_program_id(&self, program_id: &ProgramID<N>) -> Result<bool> {
+        self.transactions.contains_program_id(program_id)
     }
+
+    /* Transition */
 
     /// Returns `true` if the given transition ID exists.
-    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> bool {
-        self.transition_ids().contains(transition_id)
+    pub fn contains_transition_id(&self, transition_id: &N::TransitionID) -> Result<bool> {
+        self.transitions.contains_transition_id(transition_id)
     }
 
-    /// Returns `true` if the given transition public key exists.
-    pub fn contains_transition_public_key(&self, tpk: &Group<N>) -> bool {
-        self.transition_public_keys().contains(tpk)
+    /* Input */
+
+    /// Returns `true` if the given input ID exists.
+    pub fn contains_input_id(&self, input_id: &Field<N>) -> Result<bool> {
+        self.transitions.contains_input_id(input_id)
     }
 
     /// Returns `true` if the given serial number exists.
-    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> bool {
-        self.serial_numbers().contains(serial_number)
+    pub fn contains_serial_number(&self, serial_number: &Field<N>) -> Result<bool> {
+        self.transitions.contains_serial_number(serial_number)
+    }
+
+    /// Returns `true` if the given tag exists.
+    pub fn contains_tag(&self, tag: &Field<N>) -> Result<bool> {
+        self.transitions.contains_tag(tag)
+    }
+
+    /* Output */
+
+    /// Returns `true` if the given output ID exists.
+    pub fn contains_output_id(&self, output_id: &Field<N>) -> Result<bool> {
+        self.transitions.contains_output_id(output_id)
     }
 
     /// Returns `true` if the given commitment exists.
-    pub fn contains_commitment(&self, commitment: &Field<N>) -> bool {
-        self.commitments().contains(commitment)
+    pub fn contains_commitment(&self, commitment: &Field<N>) -> Result<bool> {
+        self.transitions.contains_commitment(commitment)
+    }
+
+    /// Returns `true` if the given checksum exists.
+    pub fn contains_checksum(&self, checksum: &Field<N>) -> bool {
+        self.transitions.contains_checksum(checksum)
     }
 
     /// Returns `true` if the given nonce exists.
-    pub fn contains_nonce(&self, nonce: &Group<N>) -> bool {
-        self.nonces().contains(nonce)
+    pub fn contains_nonce(&self, nonce: &Group<N>) -> Result<bool> {
+        self.transitions.contains_nonce(nonce)
+    }
+
+    /* Metadata */
+
+    /// Returns `true` if the given transition public key exists.
+    pub fn contains_tpk(&self, tpk: &Group<N>) -> Result<bool> {
+        self.transitions.contains_tpk(tpk)
+    }
+
+    /// Returns `true` if the given transition commitment exists.
+    pub fn contains_tcm(&self, tcm: &Field<N>) -> Result<bool> {
+        self.transitions.contains_tcm(tcm)
     }
 }

@@ -28,7 +28,7 @@ use std::str::FromStr;
 pub type EdwardsAffine = Affine<EdwardsParameters>;
 pub type EdwardsProjective = Projective<EdwardsParameters>;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EdwardsParameters;
 
 impl ModelParameters for EdwardsParameters {

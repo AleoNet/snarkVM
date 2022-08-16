@@ -32,15 +32,12 @@ path = "../utilities"
 version = "0.7.5"
 default-features = false
 
-[dependencies.derivative]
-version = "2"
-
 [dependencies.rand]
 version = "0.8"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.141"
+version = "1.0.143"
 default-features = false
 features = [ "derive" ]
 
