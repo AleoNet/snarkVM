@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
+
 use console::{network::prelude::*, program::Identifier};
 use snarkvm_algorithms::{snark::marlin, traits::SNARK};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
