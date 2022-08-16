@@ -25,16 +25,15 @@ use crate::{
             AHPError,
             AHPForR1CS,
         },
-        params::OptimizationType,
-        traits::FiatShamirRng,
         MarlinMode,
     },
+    AlgebraicSponge,
 };
 use snarkvm_fields::PrimeField;
 
 impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+    pub fn verifier_first_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         index_info: CircuitInfo<TargetField>,
         batch_size: usize,
         fs_rng: &mut R,
@@ -70,7 +69,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         end_timer!(input_domain_time);
 
         let squeeze_time = start_timer!(|| "Squeezing challenges");
-        let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1, OptimizationType::Weight)?;
+        let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1);
         let (first, rest) = elems.split_at(3);
         let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
         let mut batch_combiners = vec![TargetField::one()];
@@ -101,11 +100,11 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the second message and next round state.
-    pub fn verifier_second_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+    pub fn verifier_second_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
+        let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let beta = elems[0];
         assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
@@ -116,11 +115,11 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+    pub fn verifier_third_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(2, OptimizationType::Weight)?;
+        let elems = fs_rng.squeeze_nonnative_field_elements(2);
         let r_b = elems[0];
         let r_c = elems[1];
         let message = ThirdMessage { r_b, r_c };
@@ -130,11 +129,11 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_fourth_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+    pub fn verifier_fourth_round<BaseField: PrimeField, R: AlgebraicSponge<BaseField, 2>>(
         mut state: State<TargetField, MM>,
         fs_rng: &mut R,
     ) -> Result<State<TargetField, MM>, AHPError> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
+        let elems = fs_rng.squeeze_nonnative_field_elements(1);
         let gamma = elems[0];
 
         state.gamma = Some(gamma);

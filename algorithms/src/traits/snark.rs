@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SNARKError, snark::marlin::FiatShamirRng};
+use crate::{errors::SNARKError, AlgebraicSponge};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, FromBytes, ToBytes, ToMinimalBits};
 
 use rand::{CryptoRng, Rng};
@@ -69,7 +69,7 @@ pub trait SNARK {
         + ToConstraintField<Self::BaseField>
         + ToMinimalBits;
 
-    type FiatShamirRng: FiatShamirRng<Self::ScalarField, Self::BaseField, Parameters = Self::FSParameters>;
+    type FiatShamirRng: AlgebraicSponge<Self::BaseField, 2, Parameters = Self::FSParameters>;
     type FSParameters;
 
     fn universal_setup<R: Rng + CryptoRng>(

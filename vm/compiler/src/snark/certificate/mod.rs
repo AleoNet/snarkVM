@@ -40,7 +40,7 @@ impl<N: Network> Certificate<N> {
     ) -> Result<Certificate<N>> {
         // Compute the certificate.
         let timer = std::time::Instant::now();
-        let certificate = Marlin::<N>::prove_vk(verifying_key, proving_key)?;
+        let certificate = Marlin::<N>::prove_vk(N::marlin_fs_parameters(), verifying_key, proving_key)?;
         println!("{}", format!(" • Certified '{function_name}': {} ms", timer.elapsed().as_millis()).dimmed());
         Ok(Self::new(certificate))
     }
@@ -54,7 +54,7 @@ impl<N: Network> Certificate<N> {
     ) -> bool {
         // Verify the certificate.
         let timer = std::time::Instant::now();
-        match Marlin::<N>::verify_vk(assignment, verifying_key, self) {
+        match Marlin::<N>::verify_vk(N::marlin_fs_parameters(), assignment, verifying_key, self) {
             Ok(is_valid) => {
                 let elapsed = timer.elapsed().as_millis();
                 println!("{}", format!(" • Verified certificate for '{function_name}': {} ms", elapsed).dimmed());

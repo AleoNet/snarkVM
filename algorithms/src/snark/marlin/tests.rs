@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::SNARK;
+use crate::traits::{AlgebraicSponge, SNARK};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
@@ -67,15 +67,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 
 mod marlin {
     use super::*;
-    use crate::snark::marlin::{
-        traits::FiatShamirRng,
-        AHPForR1CS,
-        CircuitVerifyingKey,
-        FiatShamirAlgebraicSpongeRng,
-        MarlinHidingMode,
-        MarlinNonHidingMode,
-        MarlinSNARK,
-    };
+    use crate::snark::marlin::{AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{test_crypto_rng, Uniform};
 
@@ -85,7 +77,7 @@ mod marlin {
 
     type MarlinSonicPoswInst = MarlinSNARK<Bls12_377, FS, MarlinNonHidingMode, [Fr]>;
 
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, crate::crypto_hash::PoseidonSponge<Fq, 2, 1>>;
+    type FS = crate::crypto_hash::PoseidonSponge<Fq, 2, 1>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
@@ -96,7 +88,7 @@ mod marlin {
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
-                    let fs_parameters = FS::parameters();
+                    let fs_parameters = FS::sample_parameters();
 
                     for _ in 0..50 {
                         let a = Fr::rand(rng);
@@ -303,14 +295,7 @@ mod marlin_recursion {
     use super::*;
     use crate::{
         crypto_hash::PoseidonSponge,
-        snark::marlin::{
-            ahp::AHPForR1CS,
-            fiat_shamir::FiatShamirAlgebraicSpongeRng,
-            CircuitVerifyingKey,
-            FiatShamirRng,
-            MarlinHidingMode,
-            MarlinSNARK,
-        },
+        snark::marlin::{ahp::AHPForR1CS, CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
@@ -323,14 +308,14 @@ mod marlin_recursion {
     use std::str::FromStr;
 
     type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>;
+    type FS = PoseidonSponge<Fq, 2, 1>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_crypto_rng();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-        let fs_parameters = FS::parameters();
+        let fs_parameters = FS::sample_parameters();
 
         for _ in 0..100 {
             let a = Fr::rand(rng);

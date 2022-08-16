@@ -34,14 +34,23 @@ pub mod prelude {
 }
 
 use crate::environment::prelude::*;
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
+use snarkvm_curves::PairingEngine;
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
 /// A helper type for the Poseidon Merkle tree.
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
+
+type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
+
+pub type FS<N> = PoseidonSponge<Fq<N>, 2, 1>;
+
+/// A helper type representing the parameters for the Marlin SNARK.
+pub type FSParameters<N> = <FS<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
 
 pub trait Network:
     'static
@@ -209,4 +218,7 @@ pub trait Network:
         root: &Field<Self>,
         leaf: &Vec<Field<Self>>,
     ) -> bool;
+
+    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
+    fn marlin_fs_parameters() -> &'static FSParameters<Self>;
 }

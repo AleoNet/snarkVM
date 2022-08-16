@@ -19,7 +19,8 @@ extern crate criterion;
 
 use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
-    snark::marlin::{ahp::AHPForR1CS, FiatShamirAlgebraicSpongeRng, FiatShamirRng, MarlinHidingMode, MarlinSNARK},
+    snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode, MarlinSNARK},
+    AlgebraicSponge,
     SNARK,
 };
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
@@ -31,7 +32,7 @@ use criterion::Criterion;
 use rand::{self, thread_rng};
 
 type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
-type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>;
+type FS = PoseidonSponge<Fq, 2, 1>;
 
 #[derive(Copy, Clone)]
 pub struct Benchmark<F: Field> {
@@ -106,7 +107,7 @@ fn snark_vk_prove(c: &mut Criterion) {
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-    let fs_parameters = FS::parameters();
+    let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
 
     for size in [100, 1_000, 10_000, 100_000] {
@@ -129,7 +130,7 @@ fn snark_vk_verify(c: &mut Criterion) {
 
     let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
     let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-    let fs_parameters = FS::parameters();
+    let fs_parameters = FS::sample_parameters();
     let fs_p = &fs_parameters;
 
     for size in [100, 1_000, 10_000, 100_000] {
@@ -156,7 +157,7 @@ fn snark_prove(c: &mut Criterion) {
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-        let fs_parameters = FS::parameters();
+        let fs_parameters = FS::sample_parameters();
 
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
 
@@ -178,7 +179,7 @@ fn snark_verify(c: &mut Criterion) {
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 100, 100).unwrap();
         let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-        let fs_parameters = FS::parameters();
+        let fs_parameters = FS::sample_parameters();
 
         let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
 

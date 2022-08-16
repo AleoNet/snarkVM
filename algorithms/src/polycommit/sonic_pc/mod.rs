@@ -18,7 +18,7 @@ use crate::{
     fft::DensePolynomial,
     msm::variable_base::VariableBase,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
-    snark::marlin::FiatShamirRng,
+    AlgebraicSponge,
 };
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -51,11 +51,11 @@ pub use polynomial::*;
 /// [al]: https://eprint.iacr.org/2019/601
 /// [marlin]: https://eprint.iacr.org/2019/1047
 #[derive(Clone, Debug)]
-pub struct SonicKZG10<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> {
+pub struct SonicKZG10<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> {
     _engine: PhantomData<(E, S)>,
 }
 
-impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
+impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     pub fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalParams<E>, PCError> {
         kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, true, rng).map_err(Into::into)
     }
@@ -331,7 +331,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 p,
             )
             .unwrap();
-            let challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
+            let challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
             (challenge, p.polynomial().as_dense().unwrap(), r)
         })))
     }
@@ -385,7 +385,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 query_comms.push(*comm);
             }
             let (polynomial, rand) = Self::combine_for_open(ck, query_polys, query_rands, fs_rng)?;
-            let _randomizer = fs_rng.squeeze_short_nonnative_field_element()?;
+            let _randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
 
             pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
@@ -460,7 +460,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 fs_rng,
             );
 
-            randomizer = fs_rng.squeeze_short_nonnative_field_element()?;
+            randomizer = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
         }
 
         let result = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
@@ -616,7 +616,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     }
 }
 
-impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
+impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     fn combine_polynomials<'a>(
         coeffs_polys_rands: impl IntoIterator<Item = (E::Fr, &'a DensePolynomial<E::Fr>, &'a Randomness<E>)>,
     ) -> (DensePolynomial<E::Fr>, Randomness<E>) {
@@ -648,7 +648,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     }
 }
 
-impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
+impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
     #[allow(clippy::too_many_arguments)]
     fn accumulate_elems<'a>(
         combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
@@ -669,7 +669,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip_eq(values) {
             let acc_timer = start_timer!(|| format!("Accumulating {}", labeled_comm.label()));
-            let curr_challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
+            let curr_challenge = fs_rng.squeeze_short_nonnative_field_element::<E::Fr>();
 
             combined_values += &(value * curr_challenge);
 
@@ -748,17 +748,13 @@ mod tests {
     #![allow(non_camel_case_types)]
 
     use super::{CommitterKey, SonicKZG10};
-    use crate::{
-        crypto_hash::PoseidonSponge,
-        polycommit::test_templates::*,
-        snark::marlin::FiatShamirAlgebraicSpongeRng,
-    };
-    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use crate::{crypto_hash::PoseidonSponge, polycommit::test_templates::*};
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq};
     use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
 
     use rand::distributions::Distribution;
 
-    type Sponge = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 2, 1>>;
+    type Sponge = PoseidonSponge<Fq, 2, 1>;
     type PC_Bls12_377 = SonicKZG10<Bls12_377, Sponge>;
 
     #[test]

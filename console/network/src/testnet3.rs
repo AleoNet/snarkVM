@@ -65,6 +65,8 @@ lazy_static! {
     pub static ref POSEIDON_4: Poseidon4<Testnet3> = Poseidon4::<Testnet3>::setup("AleoPoseidon4").expect("Failed to setup Poseidon4");
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
+    /// The Sponge parameters for Marlin.
+    pub static ref MARLIN_FS_PARAMETERS: FSParameters<Testnet3> = FS::<Testnet3>::sample_parameters();
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -307,6 +309,11 @@ impl Network for Testnet3 {
         leaf: &Vec<Field<Self>>,
     ) -> bool {
         path.verify(&*POSEIDON_4, &*POSEIDON_2, root, leaf)
+    }
+
+    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
+    fn marlin_fs_parameters() -> &'static FSParameters<Self> {
+        &MARLIN_FS_PARAMETERS
     }
 }
 
