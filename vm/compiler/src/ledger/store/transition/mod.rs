@@ -102,6 +102,20 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.fee_map().start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.locator_map().is_atomic_in_progress()
+            || self.input_store().is_atomic_in_progress()
+            || self.output_store().is_atomic_in_progress()
+            || self.finalize_map().is_atomic_in_progress()
+            || self.proof_map().is_atomic_in_progress()
+            || self.tpk_map().is_atomic_in_progress()
+            || self.reverse_tpk_map().is_atomic_in_progress()
+            || self.tcm_map().is_atomic_in_progress()
+            || self.reverse_tcm_map().is_atomic_in_progress()
+            || self.fee_map().is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.locator_map().abort_atomic();
@@ -132,28 +146,51 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `transition` into storage.
     fn insert(&self, transition: Transition<N>) -> Result<()> {
-        // Retrieve the transition ID.
-        let transition_id = *transition.id();
-        // Store the program ID and function name.
-        self.locator_map().insert(transition_id, (*transition.program_id(), *transition.function_name()))?;
-        // Store the inputs.
-        self.input_store().insert(transition_id, transition.inputs())?;
-        // Store the outputs.
-        self.output_store().insert(transition_id, transition.outputs())?;
-        // Store the finalize inputs.
-        self.finalize_map().insert(transition_id, transition.finalize().clone())?;
-        // Store the proof.
-        self.proof_map().insert(transition_id, transition.proof().clone())?;
-        // Store `tpk`.
-        self.tpk_map().insert(transition_id, *transition.tpk())?;
-        // Store the reverse `tpk` entry.
-        self.reverse_tpk_map().insert(*transition.tpk(), transition_id)?;
-        // Store `tcm`.
-        self.tcm_map().insert(transition_id, *transition.tcm())?;
-        // Store the reverse `tcm` entry.
-        self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
-        // Store the fee.
-        self.fee_map().insert(transition_id, *transition.fee())?;
+        // Check if an atomic batch write is already in progress.
+        let is_part_of_atomic_batch = self.is_atomic_in_progress();
+
+        // Start an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.start_atomic();
+        }
+
+        let run_atomic_ops = || -> Result<()> {
+            // Retrieve the transition ID.
+            let transition_id = *transition.id();
+            // Store the program ID and function name.
+            self.locator_map().insert(transition_id, (*transition.program_id(), *transition.function_name()))?;
+            // Store the inputs.
+            self.input_store().insert(transition_id, transition.inputs())?;
+            // Store the outputs.
+            self.output_store().insert(transition_id, transition.outputs())?;
+            // Store the finalize inputs.
+            self.finalize_map().insert(transition_id, transition.finalize().clone())?;
+            // Store the proof.
+            self.proof_map().insert(transition_id, transition.proof().clone())?;
+            // Store `tpk`.
+            self.tpk_map().insert(transition_id, *transition.tpk())?;
+            // Store the reverse `tpk` entry.
+            self.reverse_tpk_map().insert(*transition.tpk(), transition_id)?;
+            // Store `tcm`.
+            self.tcm_map().insert(transition_id, *transition.tcm())?;
+            // Store the reverse `tcm` entry.
+            self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
+            // Store the fee.
+            self.fee_map().insert(transition_id, *transition.fee())?;
+
+            Ok(())
+        };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            self.abort_atomic();
+            err
+        })?;
+
+        // Finish an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.finish_atomic()?;
+        }
 
         Ok(())
     }
@@ -171,26 +208,49 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
-        // Remove the program ID and function name.
-        self.locator_map().remove(transition_id)?;
-        // Remove the inputs.
-        self.input_store().remove(transition_id)?;
-        // Remove the outputs.
-        self.output_store().remove(transition_id)?;
-        // Remove the finalize inputs.
-        self.finalize_map().remove(transition_id)?;
-        // Remove the proof.
-        self.proof_map().remove(transition_id)?;
-        // Remove `tpk`.
-        self.tpk_map().remove(transition_id)?;
-        // Remove the reverse `tpk` entry.
-        self.reverse_tpk_map().remove(&tpk)?;
-        // Remove `tcm`.
-        self.tcm_map().remove(transition_id)?;
-        // Remove the reverse `tcm` entry.
-        self.reverse_tcm_map().remove(&tcm)?;
-        // Remove the fee.
-        self.fee_map().remove(transition_id)?;
+        // Check if an atomic batch write is already in progress.
+        let is_part_of_atomic_batch = self.is_atomic_in_progress();
+
+        // Start an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.start_atomic();
+        }
+
+        let run_atomic_ops = || -> Result<()> {
+            // Remove the program ID and function name.
+            self.locator_map().remove(transition_id)?;
+            // Remove the inputs.
+            self.input_store().remove(transition_id)?;
+            // Remove the outputs.
+            self.output_store().remove(transition_id)?;
+            // Remove the finalize inputs.
+            self.finalize_map().remove(transition_id)?;
+            // Remove the proof.
+            self.proof_map().remove(transition_id)?;
+            // Remove `tpk`.
+            self.tpk_map().remove(transition_id)?;
+            // Remove the reverse `tpk` entry.
+            self.reverse_tpk_map().remove(&tpk)?;
+            // Remove `tcm`.
+            self.tcm_map().remove(transition_id)?;
+            // Remove the reverse `tcm` entry.
+            self.reverse_tcm_map().remove(&tcm)?;
+            // Remove the fee.
+            self.fee_map().remove(transition_id)?;
+
+            Ok(())
+        };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            self.abort_atomic();
+            err
+        })?;
+
+        // Finish an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.finish_atomic()?;
+        }
 
         Ok(())
     }
@@ -425,6 +485,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.

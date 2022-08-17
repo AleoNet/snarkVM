@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    atomic_write_batch,
     cow_to_cloned,
     cow_to_copied,
     ledger::{
@@ -94,6 +95,17 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         self.signature_map().start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.id_map().is_atomic_in_progress()
+            || self.reverse_id_map().is_atomic_in_progress()
+            || self.header_map().is_atomic_in_progress()
+            || self.transactions_map().is_atomic_in_progress()
+            || self.reverse_transactions_map().is_atomic_in_progress()
+            || self.transaction_store().is_atomic_in_progress()
+            || self.signature_map().is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -118,10 +130,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `block` into storage.
     fn insert(&self, block: &Block<N>) -> Result<()> {
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_write_batch!(self, {
             // Store the block hash.
             self.id_map().insert(block.height(), block.hash())?;
             // Store the block height.
@@ -144,16 +153,9 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
             self.signature_map().insert(block.hash(), *block.signature())?;
 
             Ok(())
-        };
+        });
 
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the block for the given `block hash`.
@@ -169,10 +171,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
-        let run_atomic_ops = || -> Result<()> {
+        atomic_write_batch!(self, {
             // Remove the block hash.
             self.id_map().remove(&height)?;
             // Remove the block height.
@@ -195,16 +194,9 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
             self.signature_map().remove(block_hash)?;
 
             Ok(())
-        };
+        });
 
-        // Abort if any of the underlying operations has failed.
-        run_atomic_ops().map_err(|err| {
-            self.abort_atomic();
-            err
-        })?;
-
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Returns the block hash that contains the given `transaction ID`.

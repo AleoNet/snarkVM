@@ -78,6 +78,18 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
         self.external_record_map().start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.id_map().is_atomic_in_progress()
+            || self.reverse_id_map().is_atomic_in_progress()
+            || self.constant_map().is_atomic_in_progress()
+            || self.public_map().is_atomic_in_progress()
+            || self.private_map().is_atomic_in_progress()
+            || self.record_map().is_atomic_in_progress()
+            || self.record_nonce_map().is_atomic_in_progress()
+            || self.external_record_map().is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -104,28 +116,51 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `(transition ID, output)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
-        // Store the output IDs.
-        self.id_map().insert(transition_id, outputs.iter().map(Output::id).copied().collect())?;
+        // Check if an atomic batch write is already in progress.
+        let is_part_of_atomic_batch = self.is_atomic_in_progress();
 
-        // Store the outputs.
-        for output in outputs {
-            // Store the reverse output ID.
-            self.reverse_id_map().insert(*output.id(), transition_id)?;
-            // Store the output.
-            match output.clone() {
-                Output::Constant(output_id, constant) => self.constant_map().insert(output_id, constant)?,
-                Output::Public(output_id, public) => self.public_map().insert(output_id, public)?,
-                Output::Private(output_id, private) => self.private_map().insert(output_id, private)?,
-                Output::Record(commitment, checksum, optional_record) => {
-                    // If the optional record exists, insert the record nonce.
-                    if let Some(record) = &optional_record {
-                        self.record_nonce_map().insert(*record.nonce(), commitment)?;
+        // Start an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.start_atomic();
+        }
+
+        let run_atomic_ops = || -> Result<()> {
+            // Store the output IDs.
+            self.id_map().insert(transition_id, outputs.iter().map(Output::id).copied().collect())?;
+
+            // Store the outputs.
+            for output in outputs {
+                // Store the reverse output ID.
+                self.reverse_id_map().insert(*output.id(), transition_id)?;
+                // Store the output.
+                match output.clone() {
+                    Output::Constant(output_id, constant) => self.constant_map().insert(output_id, constant)?,
+                    Output::Public(output_id, public) => self.public_map().insert(output_id, public)?,
+                    Output::Private(output_id, private) => self.private_map().insert(output_id, private)?,
+                    Output::Record(commitment, checksum, optional_record) => {
+                        // If the optional record exists, insert the record nonce.
+                        if let Some(record) = &optional_record {
+                            self.record_nonce_map().insert(*record.nonce(), commitment)?;
+                        }
+                        // Insert the record entry.
+                        self.record_map().insert(commitment, (checksum, optional_record))?
                     }
-                    // Insert the record entry.
-                    self.record_map().insert(commitment, (checksum, optional_record))?
+                    Output::ExternalRecord(output_id) => self.external_record_map().insert(output_id, ())?,
                 }
-                Output::ExternalRecord(output_id) => self.external_record_map().insert(output_id, ())?,
             }
+
+            Ok(())
+        };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            self.abort_atomic();
+            err
+        })?;
+
+        // Finish an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.finish_atomic()?;
         }
 
         Ok(())
@@ -140,27 +175,50 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
-        // Remove the output IDs.
-        self.id_map().remove(transition_id)?;
+        // Check if an atomic batch write is already in progress.
+        let is_part_of_atomic_batch = self.is_atomic_in_progress();
 
-        // Remove the outputs.
-        for output_id in output_ids {
-            // Remove the reverse output ID.
-            self.reverse_id_map().remove(&output_id)?;
+        // Start an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.start_atomic();
+        }
 
-            // If the output is a record, remove the record nonce.
-            if let Some(record) = self.record_map().get(&output_id)? {
-                if let Some(record) = &record.1 {
-                    self.record_nonce_map().remove(record.nonce())?;
+        let run_atomic_ops = || -> Result<()> {
+            // Remove the output IDs.
+            self.id_map().remove(transition_id)?;
+
+            // Remove the outputs.
+            for output_id in output_ids {
+                // Remove the reverse output ID.
+                self.reverse_id_map().remove(&output_id)?;
+
+                // If the output is a record, remove the record nonce.
+                if let Some(record) = self.record_map().get(&output_id)? {
+                    if let Some(record) = &record.1 {
+                        self.record_nonce_map().remove(record.nonce())?;
+                    }
                 }
+
+                // Remove the output.
+                self.constant_map().remove(&output_id)?;
+                self.public_map().remove(&output_id)?;
+                self.private_map().remove(&output_id)?;
+                self.record_map().remove(&output_id)?;
+                self.external_record_map().remove(&output_id)?;
             }
 
-            // Remove the output.
-            self.constant_map().remove(&output_id)?;
-            self.public_map().remove(&output_id)?;
-            self.private_map().remove(&output_id)?;
-            self.record_map().remove(&output_id)?;
-            self.external_record_map().remove(&output_id)?;
+            Ok(())
+        };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            self.abort_atomic();
+            err
+        })?;
+
+        // Finish an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            self.finish_atomic()?;
         }
 
         Ok(())
@@ -384,6 +442,11 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.

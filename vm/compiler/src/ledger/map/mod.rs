@@ -51,6 +51,13 @@ pub trait Map<
     fn start_atomic(&self);
 
     ///
+    /// Checks whether an atomic operation is currently in progress. This can be done to ensure
+    /// that lower-level operations don't start or finish their individual atomic write batch
+    /// if they are already part of a larger one.
+    ///
+    fn is_atomic_in_progress(&self) -> bool;
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self);
@@ -102,4 +109,35 @@ pub trait MapRead<
     /// Returns an iterator over each value in the map.
     ///
     fn values(&'a self) -> Self::Values;
+}
+
+/// This macro executes the given block of operations as a new atomic write batch IFF there is no
+/// atomic write batch in progress yet. This ensures that complex atomic operations consisting of
+/// multiple lower-level operations - which might also need to be atomic if executed individually -
+/// are executed as a single large atomic operation regardless.
+#[macro_export]
+macro_rules! atomic_write_batch {
+    ($self:expr, $ops:block) => {
+        // Check if an atomic batch write is already in progress.
+        let is_part_of_atomic_batch = $self.is_atomic_in_progress();
+
+        // Start an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            $self.start_atomic();
+        }
+
+        // Wrap the operations in a closure to know if any of them has failed.
+        let run_atomic_ops = || -> Result<()> { $ops };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            $self.abort_atomic();
+            err
+        })?;
+
+        // Finish an atomic batch write operation IFF it's not already part of one.
+        if !is_part_of_atomic_batch {
+            $self.finish_atomic()?;
+        }
+    };
 }

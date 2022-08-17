@@ -21,6 +21,7 @@ mod execution;
 pub use execution::*;
 
 use crate::{
+    atomic_write_batch,
     cow_to_copied,
     ledger::{
         map::{memory_map::MemoryMap, Map, MapRead},
@@ -77,6 +78,13 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
         self.execution_store().start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.id_map().is_atomic_in_progress()
+            || self.deployment_store().is_atomic_in_progress()
+            || self.execution_store().is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -93,20 +101,24 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `transaction` into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
-        match transaction {
-            Transaction::Deploy(..) => {
-                // Store the transaction type.
-                self.id_map().insert(transaction.id(), TransactionType::Deploy)?;
-                // Store the deployment transaction.
-                self.deployment_store().insert(transaction)?;
+        atomic_write_batch!(self, {
+            match transaction {
+                Transaction::Deploy(..) => {
+                    // Store the transaction type.
+                    self.id_map().insert(transaction.id(), TransactionType::Deploy)?;
+                    // Store the deployment transaction.
+                    self.deployment_store().insert(transaction)?;
+                }
+                Transaction::Execute(..) => {
+                    // Store the transaction type.
+                    self.id_map().insert(transaction.id(), TransactionType::Execute)?;
+                    // Store the execution transaction.
+                    self.execution_store().insert(transaction)?;
+                }
             }
-            Transaction::Execute(..) => {
-                // Store the transaction type.
-                self.id_map().insert(transaction.id(), TransactionType::Execute)?;
-                // Store the execution transaction.
-                self.execution_store().insert(transaction)?;
-            }
-        }
+
+            Ok(())
+        });
 
         Ok(())
     }
@@ -119,15 +131,19 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
 
-        // Remove the transaction type.
-        self.id_map().remove(transaction_id)?;
-        // Remove the transaction.
-        match transaction_type {
-            // Remove the deployment transaction.
-            TransactionType::Deploy => self.deployment_store().remove(transaction_id)?,
-            // Remove the execution transaction.
-            TransactionType::Execute => self.execution_store().remove(transaction_id)?,
-        };
+        atomic_write_batch!(self, {
+            // Remove the transaction type.
+            self.id_map().remove(transaction_id)?;
+            // Remove the transaction.
+            match transaction_type {
+                // Remove the deployment transaction.
+                TransactionType::Deploy => self.deployment_store().remove(transaction_id)?,
+                // Remove the execution transaction.
+                TransactionType::Execute => self.execution_store().remove(transaction_id)?,
+            };
+
+            Ok(())
+        });
 
         Ok(())
     }
@@ -244,6 +260,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.

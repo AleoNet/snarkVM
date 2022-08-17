@@ -118,6 +118,15 @@ impl<
     }
 
     ///
+    /// Checks whether an atomic operation is currently in progress. This can be done to ensure
+    /// that lower-level operations don't start and finish their individual atomic write batch
+    /// if they are already part of a larger one.
+    ///
+    fn is_atomic_in_progress(&self) -> bool {
+        self.batch_in_progress.load(Ordering::SeqCst)
+    }
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {

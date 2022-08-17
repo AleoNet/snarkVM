@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead},
-    transition::{Input, Origin},
+use crate::{
+    atomic_write_batch,
+    ledger::{
+        map::{memory_map::MemoryMap, Map, MapRead},
+        transition::{Input, Origin},
+    },
 };
 use console::{
     network::prelude::*,
@@ -78,6 +81,18 @@ pub trait InputStorage<N: Network>: Clone + Sync {
         self.external_record_map().start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.id_map().is_atomic_in_progress()
+            || self.reverse_id_map().is_atomic_in_progress()
+            || self.constant_map().is_atomic_in_progress()
+            || self.public_map().is_atomic_in_progress()
+            || self.private_map().is_atomic_in_progress()
+            || self.record_map().is_atomic_in_progress()
+            || self.record_tag_map().is_atomic_in_progress()
+            || self.external_record_map().is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -104,27 +119,31 @@ pub trait InputStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `(transition ID, input)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
-        // Store the input IDs.
-        self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
+        atomic_write_batch!(self, {
+            // Store the input IDs.
+            self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
 
-        // Store the inputs.
-        for input in inputs {
-            // Store the reverse input ID.
-            self.reverse_id_map().insert(*input.id(), transition_id)?;
-            // Store the input.
-            match input.clone() {
-                Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
-                Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
-                Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
-                Input::Record(serial_number, tag, origin) => {
-                    // Store the record tag.
-                    self.record_tag_map().insert(tag, serial_number)?;
-                    // Store the record.
-                    self.record_map().insert(serial_number, (tag, origin))?
+            // Store the inputs.
+            for input in inputs {
+                // Store the reverse input ID.
+                self.reverse_id_map().insert(*input.id(), transition_id)?;
+                // Store the input.
+                match input.clone() {
+                    Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
+                    Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
+                    Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
+                    Input::Record(serial_number, tag, origin) => {
+                        // Store the record tag.
+                        self.record_tag_map().insert(tag, serial_number)?;
+                        // Store the record.
+                        self.record_map().insert(serial_number, (tag, origin))?
+                    }
+                    Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
                 }
-                Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
             }
-        }
+
+            Ok(())
+        });
 
         Ok(())
     }
@@ -138,26 +157,30 @@ pub trait InputStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
-        // Remove the input IDs.
-        self.id_map().remove(transition_id)?;
+        atomic_write_batch!(self, {
+            // Remove the input IDs.
+            self.id_map().remove(transition_id)?;
 
-        // Remove the inputs.
-        for input_id in input_ids {
-            // Remove the reverse input ID.
-            self.reverse_id_map().remove(&input_id)?;
+            // Remove the inputs.
+            for input_id in input_ids {
+                // Remove the reverse input ID.
+                self.reverse_id_map().remove(&input_id)?;
 
-            // If the input is a record, remove the record tag.
-            if let Some(record) = self.record_map().get(&input_id)? {
-                self.record_tag_map().remove(&record.0)?;
+                // If the input is a record, remove the record tag.
+                if let Some(record) = self.record_map().get(&input_id)? {
+                    self.record_tag_map().remove(&record.0)?;
+                }
+
+                // Remove the input.
+                self.constant_map().remove(&input_id)?;
+                self.public_map().remove(&input_id)?;
+                self.private_map().remove(&input_id)?;
+                self.record_map().remove(&input_id)?;
+                self.external_record_map().remove(&input_id)?;
             }
 
-            // Remove the input.
-            self.constant_map().remove(&input_id)?;
-            self.public_map().remove(&input_id)?;
-            self.private_map().remove(&input_id)?;
-            self.record_map().remove(&input_id)?;
-            self.external_record_map().remove(&input_id)?;
-        }
+            Ok(())
+        });
 
         Ok(())
     }
@@ -379,6 +402,11 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
     }
 
     /// Aborts an atomic batch write operation.
