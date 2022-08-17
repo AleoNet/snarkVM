@@ -45,7 +45,7 @@ path = "../../utilities"
 version = "0.7.5"
 
 [dependencies.anyhow]
-version = "1.0.61"
+version = "1.0.62"
 
 [dependencies.itertools]
 version = "0.10.1"

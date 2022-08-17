@@ -49,7 +49,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.61"
+version = "1.0.62"
 
 [dependencies.colored]
 version = "2"
