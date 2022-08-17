@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    snark::marlin::{ahp::AHPError, fiat_shamir::FiatShamirError},
-    SNARKError,
-};
+use crate::{snark::marlin::ahp::AHPError, SNARKError};
 
 use core::fmt::Debug;
 
@@ -28,8 +25,6 @@ pub enum MarlinError {
     IndexTooLarge(usize, usize),
     /// There was an error in the underlying holographic IOP.
     AHPError(AHPError),
-    /// There was an error in Fiat-Shamir.
-    FiatShamirError(FiatShamirError),
     /// There was a synthesis error.
     R1CSError(snarkvm_r1cs::SynthesisError),
     /// There was an error in the underlying polynomial commitment.
@@ -40,12 +35,6 @@ pub enum MarlinError {
 impl From<AHPError> for MarlinError {
     fn from(err: AHPError) -> Self {
         MarlinError::AHPError(err)
-    }
-}
-
-impl From<FiatShamirError> for MarlinError {
-    fn from(err: FiatShamirError) -> Self {
-        MarlinError::FiatShamirError(err)
     }
 }
 

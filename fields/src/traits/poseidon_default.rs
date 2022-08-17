@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{PoseidonGrainLFSR, PrimeField};
+use crate::{serial_batch_inversion_and_mul, PoseidonGrainLFSR, PrimeField};
+use aleo_std::{end_timer, start_timer};
+use itertools::Itertools;
 
 use anyhow::{bail, Result};
 
@@ -49,18 +51,23 @@ pub trait PoseidonDefaultField {
             partial_rounds: u64,
             skip_matrices: u64,
         ) -> Result<(Vec<Vec<F>>, Vec<Vec<F>>)> {
+            let lfsr_time = start_timer!(|| "LFSR Init");
             let mut lfsr =
                 PoseidonGrainLFSR::new(false, F::size_in_bits() as u64, (RATE + 1) as u64, full_rounds, partial_rounds);
+            end_timer!(lfsr_time);
 
-            let mut ark = Vec::<Vec<F>>::new();
+            let ark_time = start_timer!(|| "Constructing ARK");
+            let mut ark = Vec::with_capacity((full_rounds + partial_rounds) as usize);
             for _ in 0..(full_rounds + partial_rounds) {
                 ark.push(lfsr.get_field_elements_rejection_sampling(RATE + 1)?);
             }
+            end_timer!(ark_time);
 
-            let mut mds = vec![vec![F::zero(); RATE + 1]; RATE + 1];
+            let skip_time = start_timer!(|| "Skipping matrices");
             for _ in 0..skip_matrices {
                 let _ = lfsr.get_field_elements_mod_p::<F>(2 * (RATE + 1))?;
             }
+            end_timer!(skip_time);
 
             // A qualifying matrix must satisfy the following requirements:
             // - There is no duplication among the elements in x or y.
@@ -70,11 +77,16 @@ pub trait PoseidonDefaultField {
             let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1)?;
             let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1)?;
 
-            for (i, x) in xs.iter().enumerate().take(RATE + 1) {
-                for (j, y) in ys.iter().enumerate().take(RATE + 1) {
-                    mds[i][j] = (*x + y).inverse().unwrap();
+            let mds_time = start_timer!(|| "Construct MDS");
+            let mut mds_flattened = vec![F::zero(); (RATE + 1) * (RATE + 1)];
+            for (x, mds_row_i) in xs.iter().take(RATE + 1).zip_eq(mds_flattened.chunks_mut(RATE + 1)) {
+                for (y, e) in ys.iter().take(RATE + 1).zip_eq(mds_row_i) {
+                    *e = *x + y;
                 }
             }
+            serial_batch_inversion_and_mul(&mut mds_flattened, &F::one());
+            let mds = mds_flattened.chunks(RATE + 1).map(|row| row.to_vec()).collect();
+            end_timer!(mds_time);
 
             Ok((ark, mds))
         }

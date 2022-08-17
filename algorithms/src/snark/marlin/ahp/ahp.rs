@@ -156,6 +156,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let non_zero_a_domain = state.non_zero_a_domain;
         let non_zero_b_domain = state.non_zero_b_domain;
         let non_zero_c_domain = state.non_zero_c_domain;
+        let input_domain = state.input_domain;
 
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
@@ -167,8 +168,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
             })
             .collect::<Result<Vec<_>, _>>()?;
-
-        let input_domain = EvaluationDomain::new(public_inputs[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+        assert_eq!(public_inputs[0].len(), input_domain.size());
 
         let first_round_msg = state.first_round_message.as_ref().unwrap();
         let alpha = first_round_msg.alpha;
@@ -191,6 +191,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mut linear_combinations = BTreeMap::new();
 
+        let lincheck_time = start_timer!(|| "Lincheck");
         // Lincheck sumcheck:
         let z_b_s = (0..state.batch_size)
             .map(|i| {
@@ -200,10 +201,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .collect::<Vec<_>>();
         let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
+        let bivariate_poly_time = start_timer!(|| "Bivariate poly");
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
+        end_timer!(bivariate_poly_time);
+
+        let v_H_at_alpha_time = start_timer!(|| "v_H_at_alpha");
         let v_H_at_alpha = constraint_domain.evaluate_vanishing_polynomial(alpha);
+        end_timer!(v_H_at_alpha_time);
+
+        let v_H_at_beta_time = start_timer!(|| "v_H_at_beta");
         let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
+        end_timer!(v_H_at_beta_time);
+
+        let v_X_at_beta_time = start_timer!(|| "v_X_at_beta");
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
+        end_timer!(v_X_at_beta_time);
 
         let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<_>, _>>()?;
         let batch_z_b_at_beta: F =
@@ -242,6 +254,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         linear_combinations.insert("g_1".into(), g_1);
         linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
+        end_timer!(lincheck_time);
 
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");

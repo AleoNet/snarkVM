@@ -2366,6 +2366,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "serde",
+ "snarkvm-algorithms",
  "snarkvm-console-algorithms",
  "snarkvm-console-collections",
  "snarkvm-console-network-environment",
@@ -2519,8 +2520,10 @@ dependencies = [
 name = "snarkvm-fields"
 version = "0.7.5"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "derivative",
+ "itertools",
  "num-traits",
  "rand",
  "rayon",

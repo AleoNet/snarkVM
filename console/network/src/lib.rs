@@ -34,14 +34,21 @@ pub mod prelude {
 }
 
 use crate::environment::prelude::*;
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_console_algorithms::{Poseidon2, Poseidon4, BHP1024, BHP512};
 use snarkvm_console_collections::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_console_types::{Field, Group, Scalar};
+use snarkvm_curves::PairingEngine;
 
 /// A helper type for the BHP Merkle tree.
 pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>, DEPTH>;
 /// A helper type for the Poseidon Merkle tree.
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
+
+/// Helper types for the Marlin parameters.
+type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
+pub type FiatShamir<N> = PoseidonSponge<Fq<N>, 2, 1>;
+pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
 
 pub trait Network:
     'static
@@ -94,6 +101,15 @@ pub trait Network:
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
 
+    /// Returns the powers of `G`.
+    fn g_powers() -> &'static Vec<Group<Self>>;
+
+    /// Returns the scalar multiplication on the generator `G`.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns the sponge parameters for Marlin.
+    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
+
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self>;
 
@@ -111,12 +127,6 @@ pub trait Network:
 
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
-
-    /// Returns the powers of `G`.
-    fn g_powers() -> &'static Vec<Group<Self>>;
-
-    /// Returns the scalar multiplication on the generator `G`.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;

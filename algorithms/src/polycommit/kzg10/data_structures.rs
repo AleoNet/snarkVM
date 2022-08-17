@@ -16,7 +16,7 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
+    AlgebraicSponge,
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
@@ -529,12 +529,11 @@ pub struct Proof<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Proof<E> {
-    pub fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(&self, sponge: &mut S) -> Result<(), FiatShamirError> {
-        sponge.absorb_native_field_elements(&self.w.to_field_elements()?);
+    pub fn absorb_into_sponge(&self, sponge: &mut impl AlgebraicSponge<E::Fq, 2>) {
+        sponge.absorb_native_field_elements(&self.w.to_field_elements().unwrap());
         if let Some(random_v) = self.random_v {
-            sponge.absorb_nonnative_field_elements([random_v], OptimizationType::Weight);
+            sponge.absorb_nonnative_field_elements([random_v]);
         }
-        Ok(())
     }
 }
 

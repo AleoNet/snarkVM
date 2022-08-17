@@ -17,7 +17,7 @@
 #![allow(dead_code)]
 
 use crate::{FieldParameters, PrimeField};
-use snarkvm_utilities::{cmp::Ordering, vec::Vec, FromBits};
+use snarkvm_utilities::{vec::Vec, FromBits};
 
 use anyhow::{bail, Result};
 
@@ -104,19 +104,20 @@ impl PoseidonGrainLFSR {
         }
 
         let mut output = Vec::with_capacity(num_elements);
+        let mut bits = Vec::with_capacity(self.field_size_in_bits as usize);
         for _ in 0..num_elements {
             // Perform rejection sampling.
             loop {
                 // Obtain `n` bits and make it most-significant-bit first.
-                let bits = self.get_bits(self.field_size_in_bits as usize);
+                bits.extend(self.get_bits(self.field_size_in_bits as usize));
+                bits.reverse();
                 // Construct the number.
-                let bigint = F::BigInteger::from_bits_be(&bits)?;
+                let bigint = F::BigInteger::from_bits_le(&bits)?;
+                bits.clear();
                 // Ensure the number is in the field.
-                if bigint.cmp(&F::Parameters::MODULUS) == Ordering::Less {
-                    if let Some(element) = F::from_repr(bigint) {
-                        output.push(element);
-                        break;
-                    }
+                if let Some(element) = F::from_repr(bigint) {
+                    output.push(element);
+                    break;
                 }
             }
         }
@@ -132,7 +133,7 @@ impl PoseidonGrainLFSR {
         let mut output = Vec::with_capacity(num_elems);
         for _ in 0..num_elems {
             // Obtain `n` bits and make it most-significant-bit first.
-            let mut bits = self.get_bits(self.field_size_in_bits as usize);
+            let mut bits = self.get_bits(self.field_size_in_bits as usize).collect::<Vec<_>>();
             bits.reverse();
 
             let bytes = bits
@@ -157,26 +158,8 @@ impl PoseidonGrainLFSR {
 
 impl PoseidonGrainLFSR {
     #[inline]
-    fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
-        let mut bits = Vec::with_capacity(num_bits);
-
-        for _ in 0..num_bits {
-            // Obtain the first bit
-            let mut new_bit = self.next_bit();
-
-            // Loop until the first bit is true
-            while !new_bit {
-                // Discard the second bit
-                let _ = self.next_bit();
-                // Obtain another first bit
-                new_bit = self.next_bit();
-            }
-
-            // Obtain the second bit
-            bits.push(self.next_bit());
-        }
-
-        bits
+    fn get_bits(&mut self, num_bits: usize) -> LFSRIter<'_> {
+        LFSRIter { lfsr: self, num_bits, current_bit: 0 }
     }
 
     #[inline]
@@ -192,5 +175,36 @@ impl PoseidonGrainLFSR {
         self.head %= 80;
 
         next_bit
+    }
+}
+
+pub struct LFSRIter<'a> {
+    lfsr: &'a mut PoseidonGrainLFSR,
+    num_bits: usize,
+    current_bit: usize,
+}
+
+impl<'a> Iterator for LFSRIter<'a> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_bit < self.num_bits {
+            // Obtain the first bit
+            let mut new_bit = self.lfsr.next_bit();
+
+            // Loop until the first bit is true
+            while !new_bit {
+                // Discard the second bit
+                let _ = self.lfsr.next_bit();
+                // Obtain another first bit
+                new_bit = self.lfsr.next_bit();
+            }
+            self.current_bit += 1;
+
+            // Obtain the second bit
+            Some(self.lfsr.next_bit())
+        } else {
+            None
+        }
     }
 }

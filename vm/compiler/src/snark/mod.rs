@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(unused_variables)]
+#![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
-use console::{network::prelude::*, program::Identifier};
-use snarkvm_algorithms::{crypto_hash::PoseidonSponge, snark::marlin, SNARK};
-use snarkvm_curves::PairingEngine;
+use console::{
+    network::{prelude::*, FiatShamir},
+    program::Identifier,
+};
+use snarkvm_algorithms::{snark::marlin, traits::SNARK};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
 use once_cell::sync::OnceCell;
@@ -27,10 +29,9 @@ use std::sync::Arc;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
-type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
 type Fr<N> = <N as Environment>::Field;
-type FS<N> = marlin::fiat_shamir::FiatShamirAlgebraicSpongeRng<Fr<N>, Fq<N>, PoseidonSponge<Fq<N>, 6, 1>>;
-type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, marlin::MarlinHidingMode, [Fr<N>]>;
+type Marlin<N> =
+    marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode, [Fr<N>]>;
 
 mod certificate;
 pub use certificate::Certificate;

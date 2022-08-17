@@ -151,7 +151,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
         let mut output = Projective::zero();
-        for i in bits {
+        for i in bits.skip_while(|b| !b) {
             output.double_in_place();
             if i {
                 output.add_assign_mixed(self);
@@ -161,7 +161,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
-        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
+        self.mul_bits(BitIteratorBE::new_without_leading_zeros(P::COFACTOR))
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
@@ -274,7 +274,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Projective<P>;
 
     fn mul(self, other: P::ScalarField) -> Self::Output {
-        self.mul_bits(BitIteratorBE::new(other.to_repr()))
+        self.mul_bits(BitIteratorBE::new_without_leading_zeros(other.to_repr()))
     }
 }
 
