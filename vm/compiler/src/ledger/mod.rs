@@ -67,17 +67,18 @@ pub type BlockTree<N> = BHPMerkleTree<N, BLOCKS_DEPTH>;
 /// The Merkle path for the state tree blocks.
 pub type BlockPath<N> = MerklePath<N, BLOCKS_DEPTH>;
 
+#[derive(Copy, Clone, Debug)]
 pub enum RecordsFilter<N: Network> {
     /// Returns all records associated with the account.
     All,
-    /// Returns all records associated with the account that are **spent** with the given private key.
-    SlowSpent(PrivateKey<N>),
-    /// Returns all records associated with the account that are **not spent** with the given private key.
-    SlowUnspent(PrivateKey<N>),
     /// Returns only records associated with the account that are **spent** with the graph key.
     Spent,
     /// Returns only records associated with the account that are **not spent** with the graph key.
     Unspent,
+    /// Returns all records associated with the account that are **spent** with the given private key.
+    SlowSpent(PrivateKey<N>),
+    /// Returns all records associated with the account that are **not spent** with the given private key.
+    SlowUnspent(PrivateKey<N>),
 }
 
 #[derive(Clone)]
