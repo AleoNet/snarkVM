@@ -66,6 +66,101 @@ pub trait InputStorage<N: Network>: Clone + Sync {
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
 
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.constant_map().start_atomic();
+        self.public_map().start_atomic();
+        self.private_map().start_atomic();
+        self.record_map().start_atomic();
+        self.record_tag_map().start_atomic();
+        self.external_record_map().start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.id_map().abort_atomic();
+        self.reverse_id_map().abort_atomic();
+        self.constant_map().abort_atomic();
+        self.public_map().abort_atomic();
+        self.private_map().abort_atomic();
+        self.record_map().abort_atomic();
+        self.record_tag_map().abort_atomic();
+        self.external_record_map().abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.constant_map().finish_atomic();
+        self.public_map().finish_atomic();
+        self.private_map().finish_atomic();
+        self.record_map().finish_atomic();
+        self.record_tag_map().finish_atomic();
+        self.external_record_map().finish_atomic();
+    }
+
+    /// Stores the given `(transition ID, input)` pair into storage.
+    fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
+        // Store the input IDs.
+        self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
+
+        // Store the inputs.
+        for input in inputs {
+            // Store the reverse input ID.
+            self.reverse_id_map().insert(*input.id(), transition_id)?;
+            // Store the input.
+            match input.clone() {
+                Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
+                Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
+                Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
+                Input::Record(serial_number, tag, origin) => {
+                    // Store the record tag.
+                    self.record_tag_map().insert(tag, serial_number)?;
+                    // Store the record.
+                    self.record_map().insert(serial_number, (tag, origin))?
+                }
+                Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Removes the input for the given `transition ID`.
+    fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
+        // Retrieve the input IDs.
+        let input_ids: Vec<_> = match self.id_map().get(transition_id)? {
+            Some(Cow::Borrowed(ids)) => ids.to_vec(),
+            Some(Cow::Owned(ids)) => ids.into_iter().collect(),
+            None => return Ok(()),
+        };
+
+        // Remove the input IDs.
+        self.id_map().remove(transition_id)?;
+
+        // Remove the inputs.
+        for input_id in input_ids {
+            // Remove the reverse input ID.
+            self.reverse_id_map().remove(&input_id)?;
+
+            // If the input is a record, remove the record tag.
+            if let Some(record) = self.record_map().get(&input_id)? {
+                self.record_tag_map().remove(&record.0)?;
+            }
+
+            // Remove the input.
+            self.constant_map().remove(&input_id)?;
+            self.public_map().remove(&input_id)?;
+            self.private_map().remove(&input_id)?;
+            self.record_map().remove(&input_id)?;
+            self.external_record_map().remove(&input_id)?;
+        }
+
+        Ok(())
+    }
+
     /// Returns the transition ID that contains the given `input ID`.
     fn find_transition_id(&self, input_id: &Field<N>) -> Result<Option<N::TransitionID>> {
         match self.reverse_id_map().get(input_id)? {
@@ -131,89 +226,6 @@ pub trait InputStorage<N: Network>: Clone + Sync {
             Some(Cow::Owned(ids)) => ids.iter().map(|input_id| construct_input(*input_id)).collect(),
             None => Ok(vec![]),
         }
-    }
-
-    /// Stores the given `(transition ID, input)` pair into storage.
-    fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
-        // Store the input IDs.
-        self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
-
-        // Store the inputs.
-        for input in inputs {
-            // Store the reverse input ID.
-            self.reverse_id_map().insert(*input.id(), transition_id)?;
-            // Store the input.
-            match input.clone() {
-                Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
-                Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
-                Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
-                Input::Record(serial_number, tag, origin) => {
-                    // Store the record tag.
-                    self.record_tag_map().insert(tag, serial_number)?;
-                    // Store the record.
-                    self.record_map().insert(serial_number, (tag, origin))?
-                }
-                Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
-            }
-        }
-        Ok(())
-    }
-
-    /// Removes the input for the given `transition ID`.
-    fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
-        // Retrieve the input IDs.
-        let input_ids: Vec<_> = match self.id_map().get(transition_id)? {
-            Some(Cow::Borrowed(ids)) => ids.to_vec(),
-            Some(Cow::Owned(ids)) => ids.into_iter().collect(),
-            None => return Ok(()),
-        };
-
-        // Remove the input IDs.
-        self.id_map().remove(transition_id)?;
-
-        // Remove the inputs.
-        for input_id in input_ids {
-            // Remove the reverse input ID.
-            self.reverse_id_map().remove(&input_id)?;
-
-            // If the input is a record, remove the record tag.
-            if let Some(record) = self.record_map().get(&input_id)? {
-                self.record_tag_map().remove(&record.0)?;
-            }
-
-            // Remove the input.
-            self.constant_map().remove(&input_id)?;
-            self.public_map().remove(&input_id)?;
-            self.private_map().remove(&input_id)?;
-            self.record_map().remove(&input_id)?;
-            self.external_record_map().remove(&input_id)?;
-        }
-
-        Ok(())
-    }
-
-    /// Starts an atomic batch write operation.
-    fn start_atomic(&self) {
-        self.id_map().start_atomic();
-        self.reverse_id_map().start_atomic();
-        self.constant_map().start_atomic();
-        self.public_map().start_atomic();
-        self.private_map().start_atomic();
-        self.record_map().start_atomic();
-        self.record_tag_map().start_atomic();
-        self.external_record_map().start_atomic();
-    }
-
-    /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.reverse_id_map().finish_atomic();
-        self.constant_map().finish_atomic();
-        self.public_map().finish_atomic();
-        self.private_map().finish_atomic();
-        self.record_map().finish_atomic();
-        self.record_tag_map().finish_atomic();
-        self.external_record_map().finish_atomic();
     }
 }
 
@@ -366,6 +378,11 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.

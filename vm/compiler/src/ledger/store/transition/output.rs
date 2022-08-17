@@ -66,71 +66,40 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
     /// Returns the external record map.
     fn external_record_map(&self) -> &Self::ExternalRecordMap;
 
-    /// Returns the transition ID that contains the given `output ID`.
-    fn find_transition_id(&self, output_id: &Field<N>) -> Result<Option<N::TransitionID>> {
-        match self.reverse_id_map().get(output_id)? {
-            Some(Cow::Borrowed(transition_id)) => Ok(Some(*transition_id)),
-            Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
-            None => Ok(None),
-        }
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.constant_map().start_atomic();
+        self.public_map().start_atomic();
+        self.private_map().start_atomic();
+        self.record_map().start_atomic();
+        self.record_nonce_map().start_atomic();
+        self.external_record_map().start_atomic();
     }
 
-    /// Returns the output IDs for the given `transition ID`.
-    fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
-        // Retrieve the output IDs.
-        match self.id_map().get(transition_id)? {
-            Some(Cow::Borrowed(outputs)) => Ok(outputs.to_vec()),
-            Some(Cow::Owned(outputs)) => Ok(outputs),
-            None => Ok(vec![]),
-        }
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.id_map().abort_atomic();
+        self.reverse_id_map().abort_atomic();
+        self.constant_map().abort_atomic();
+        self.public_map().abort_atomic();
+        self.private_map().abort_atomic();
+        self.record_map().abort_atomic();
+        self.record_nonce_map().abort_atomic();
+        self.external_record_map().abort_atomic();
     }
 
-    /// Returns the output for the given `transition ID`.
-    fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
-        // Constructs the output given the output ID and output value.
-        macro_rules! into_output {
-            (Output::Record($output_id:ident, $output:expr)) => {
-                match $output {
-                    Cow::Borrowed((checksum, opt_record)) => Output::Record($output_id, *checksum, opt_record.clone()),
-                    Cow::Owned((checksum, opt_record)) => Output::Record($output_id, checksum, opt_record),
-                }
-            };
-            (Output::$Variant:ident($output_id:ident, $output:expr)) => {
-                match $output {
-                    Cow::Borrowed(output) => Output::$Variant($output_id, output.clone()),
-                    Cow::Owned(output) => Output::$Variant($output_id, output),
-                }
-            };
-        }
-
-        // A helper function to construct the output given the output ID.
-        let construct_output = |output_id| {
-            let constant = self.constant_map().get(&output_id)?;
-            let public = self.public_map().get(&output_id)?;
-            let private = self.private_map().get(&output_id)?;
-            let record = self.record_map().get(&output_id)?;
-            let external_record = self.external_record_map().get(&output_id)?;
-
-            // Retrieve the output.
-            let output = match (constant, public, private, record, external_record) {
-                (Some(constant), None, None, None, None) => into_output!(Output::Constant(output_id, constant)),
-                (None, Some(public), None, None, None) => into_output!(Output::Public(output_id, public)),
-                (None, None, Some(private), None, None) => into_output!(Output::Private(output_id, private)),
-                (None, None, None, Some(record), None) => into_output!(Output::Record(output_id, record)),
-                (None, None, None, None, Some(_)) => Output::ExternalRecord(output_id),
-                (None, None, None, None, None) => bail!("Missing output '{output_id}' in transition '{transition_id}'"),
-                _ => bail!("Found multiple outputs for the output ID '{output_id}' in transition '{transition_id}'"),
-            };
-
-            Ok(output)
-        };
-
-        // Retrieve the output IDs.
-        match self.id_map().get(transition_id)? {
-            Some(Cow::Borrowed(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
-            Some(Cow::Owned(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
-            None => Ok(vec![]),
-        }
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.constant_map().finish_atomic();
+        self.public_map().finish_atomic();
+        self.private_map().finish_atomic();
+        self.record_map().finish_atomic();
+        self.record_nonce_map().finish_atomic();
+        self.external_record_map().finish_atomic();
     }
 
     /// Stores the given `(transition ID, output)` pair into storage.
@@ -196,28 +165,71 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
         Ok(())
     }
 
-    /// Starts an atomic batch write operation.
-    fn start_atomic(&self) {
-        self.id_map().start_atomic();
-        self.reverse_id_map().start_atomic();
-        self.constant_map().start_atomic();
-        self.public_map().start_atomic();
-        self.private_map().start_atomic();
-        self.record_map().start_atomic();
-        self.record_nonce_map().start_atomic();
-        self.external_record_map().start_atomic();
+    /// Returns the transition ID that contains the given `output ID`.
+    fn find_transition_id(&self, output_id: &Field<N>) -> Result<Option<N::TransitionID>> {
+        match self.reverse_id_map().get(output_id)? {
+            Some(Cow::Borrowed(transition_id)) => Ok(Some(*transition_id)),
+            Some(Cow::Owned(transition_id)) => Ok(Some(transition_id)),
+            None => Ok(None),
+        }
     }
 
-    /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.reverse_id_map().finish_atomic();
-        self.constant_map().finish_atomic();
-        self.public_map().finish_atomic();
-        self.private_map().finish_atomic();
-        self.record_map().finish_atomic();
-        self.record_nonce_map().finish_atomic();
-        self.external_record_map().finish_atomic();
+    /// Returns the output IDs for the given `transition ID`.
+    fn get_ids(&self, transition_id: &N::TransitionID) -> Result<Vec<Field<N>>> {
+        // Retrieve the output IDs.
+        match self.id_map().get(transition_id)? {
+            Some(Cow::Borrowed(outputs)) => Ok(outputs.to_vec()),
+            Some(Cow::Owned(outputs)) => Ok(outputs),
+            None => Ok(vec![]),
+        }
+    }
+
+    /// Returns the output for the given `transition ID`.
+    fn get(&self, transition_id: &N::TransitionID) -> Result<Vec<Output<N>>> {
+        // Constructs the output given the output ID and output value.
+        macro_rules! into_output {
+            (Output::Record($output_id:ident, $output:expr)) => {
+                match $output {
+                    Cow::Borrowed((checksum, opt_record)) => Output::Record($output_id, *checksum, opt_record.clone()),
+                    Cow::Owned((checksum, opt_record)) => Output::Record($output_id, checksum, opt_record),
+                }
+            };
+            (Output::$Variant:ident($output_id:ident, $output:expr)) => {
+                match $output {
+                    Cow::Borrowed(output) => Output::$Variant($output_id, output.clone()),
+                    Cow::Owned(output) => Output::$Variant($output_id, output),
+                }
+            };
+        }
+
+        // A helper function to construct the output given the output ID.
+        let construct_output = |output_id| {
+            let constant = self.constant_map().get(&output_id)?;
+            let public = self.public_map().get(&output_id)?;
+            let private = self.private_map().get(&output_id)?;
+            let record = self.record_map().get(&output_id)?;
+            let external_record = self.external_record_map().get(&output_id)?;
+
+            // Retrieve the output.
+            let output = match (constant, public, private, record, external_record) {
+                (Some(constant), None, None, None, None) => into_output!(Output::Constant(output_id, constant)),
+                (None, Some(public), None, None, None) => into_output!(Output::Public(output_id, public)),
+                (None, None, Some(private), None, None) => into_output!(Output::Private(output_id, private)),
+                (None, None, None, Some(record), None) => into_output!(Output::Record(output_id, record)),
+                (None, None, None, None, Some(_)) => Output::ExternalRecord(output_id),
+                (None, None, None, None, None) => bail!("Missing output '{output_id}' in transition '{transition_id}'"),
+                _ => bail!("Found multiple outputs for the output ID '{output_id}' in transition '{transition_id}'"),
+            };
+
+            Ok(output)
+        };
+
+        // Retrieve the output IDs.
+        match self.id_map().get(transition_id)? {
+            Some(Cow::Borrowed(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
+            Some(Cow::Owned(ids)) => ids.iter().map(|output_id| construct_output(*output_id)).collect(),
+            None => Ok(vec![]),
+        }
     }
 }
 
@@ -371,6 +383,11 @@ impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.

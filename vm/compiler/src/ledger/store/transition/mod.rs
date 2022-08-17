@@ -88,50 +88,43 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     /// Returns the transition fees.
     fn fee_map(&self) -> &Self::FeeMap;
 
-    /// Returns the transition for the given `transition ID`.
-    fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
-        // Retrieve the program ID and function name.
-        let (program_id, function_name) = match self.locator_map().get(transition_id)? {
-            Some(locator) => cow_to_cloned!(locator),
-            None => return Ok(None),
-        };
-        // Retrieve the inputs.
-        let inputs = self.input_store().get_inputs(transition_id)?;
-        // Retrieve the outputs.
-        let outputs = self.output_store().get_outputs(transition_id)?;
-        // Retrieve the finalize inputs.
-        let finalize = self.finalize_map().get(transition_id)?;
-        // Retrieve the proof.
-        let proof = self.proof_map().get(transition_id)?;
-        // Retrieve `tpk`.
-        let tpk = self.tpk_map().get(transition_id)?;
-        // Retrieve `tcm`.
-        let tcm = self.tcm_map().get(transition_id)?;
-        // Retrieve the fee.
-        let fee = self.fee_map().get(transition_id)?;
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.locator_map().start_atomic();
+        self.input_store().start_atomic();
+        self.output_store().start_atomic();
+        self.proof_map().start_atomic();
+        self.tpk_map().start_atomic();
+        self.reverse_tpk_map().start_atomic();
+        self.tcm_map().start_atomic();
+        self.reverse_tcm_map().start_atomic();
+        self.fee_map().start_atomic();
+    }
 
-        match (finalize, proof, tpk, tcm, fee) {
-            (Some(finalize), Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
-                // Construct the transition.
-                let transition = Transition::new(
-                    program_id,
-                    function_name,
-                    inputs,
-                    outputs,
-                    cow_to_cloned!(finalize),
-                    cow_to_cloned!(proof),
-                    cow_to_cloned!(tpk),
-                    cow_to_cloned!(tcm),
-                    cow_to_cloned!(fee),
-                )?;
-                // Ensure the transition ID matches.
-                match transition.id() == transition_id {
-                    true => Ok(Some(transition)),
-                    false => bail!("Mismatch in the transition ID '{transition_id}'"),
-                }
-            }
-            _ => bail!("Transition '{transition_id}' is missing some data (possible corruption)"),
-        }
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.locator_map().abort_atomic();
+        self.input_store().abort_atomic();
+        self.output_store().abort_atomic();
+        self.proof_map().abort_atomic();
+        self.tpk_map().abort_atomic();
+        self.reverse_tpk_map().abort_atomic();
+        self.tcm_map().abort_atomic();
+        self.reverse_tcm_map().abort_atomic();
+        self.fee_map().abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.locator_map().finish_atomic();
+        self.input_store().finish_atomic();
+        self.output_store().finish_atomic();
+        self.proof_map().finish_atomic();
+        self.tpk_map().finish_atomic();
+        self.reverse_tpk_map().finish_atomic();
+        self.tcm_map().finish_atomic();
+        self.reverse_tcm_map().finish_atomic();
+        self.fee_map().finish_atomic();
     }
 
     /// Stores the given `transition` into storage.
@@ -199,30 +192,50 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         Ok(())
     }
 
-    /// Starts an atomic batch write operation.
-    fn start_atomic(&self) {
-        self.locator_map().start_atomic();
-        self.input_store().start_atomic();
-        self.output_store().start_atomic();
-        self.proof_map().start_atomic();
-        self.tpk_map().start_atomic();
-        self.reverse_tpk_map().start_atomic();
-        self.tcm_map().start_atomic();
-        self.reverse_tcm_map().start_atomic();
-        self.fee_map().start_atomic();
-    }
+    /// Returns the transition for the given `transition ID`.
+    fn get(&self, transition_id: &N::TransitionID) -> Result<Option<Transition<N>>> {
+        // Retrieve the program ID and function name.
+        let (program_id, function_name) = match self.locator_map().get(transition_id)? {
+            Some(locator) => cow_to_cloned!(locator),
+            None => return Ok(None),
+        };
+        // Retrieve the inputs.
+        let inputs = self.input_store().get_inputs(transition_id)?;
+        // Retrieve the outputs.
+        let outputs = self.output_store().get_outputs(transition_id)?;
+        // Retrieve the finalize inputs.
+        let finalize = self.finalize_map().get(transition_id)?;
+        // Retrieve the proof.
+        let proof = self.proof_map().get(transition_id)?;
+        // Retrieve `tpk`.
+        let tpk = self.tpk_map().get(transition_id)?;
+        // Retrieve `tcm`.
+        let tcm = self.tcm_map().get(transition_id)?;
+        // Retrieve the fee.
+        let fee = self.fee_map().get(transition_id)?;
 
-    /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.locator_map().finish_atomic();
-        self.input_store().finish_atomic();
-        self.output_store().finish_atomic();
-        self.proof_map().finish_atomic();
-        self.tpk_map().finish_atomic();
-        self.reverse_tpk_map().finish_atomic();
-        self.tcm_map().finish_atomic();
-        self.reverse_tcm_map().finish_atomic();
-        self.fee_map().finish_atomic();
+        match (finalize, proof, tpk, tcm, fee) {
+            (Some(finalize), Some(proof), Some(tpk), Some(tcm), Some(fee)) => {
+                // Construct the transition.
+                let transition = Transition::new(
+                    program_id,
+                    function_name,
+                    inputs,
+                    outputs,
+                    cow_to_cloned!(finalize),
+                    cow_to_cloned!(proof),
+                    cow_to_cloned!(tpk),
+                    cow_to_cloned!(tcm),
+                    cow_to_cloned!(fee),
+                )?;
+                // Ensure the transition ID matches.
+                match transition.id() == transition_id {
+                    true => Ok(Some(transition)),
+                    false => bail!("Mismatch in the transition ID '{transition_id}'"),
+                }
+            }
+            _ => bail!("Transition '{transition_id}' is missing some data (possible corruption)"),
+        }
     }
 }
 
@@ -409,6 +422,11 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.

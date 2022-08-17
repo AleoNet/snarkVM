@@ -67,6 +67,33 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     /// Returns the value map.
     fn value_map(&self) -> &Self::ValueMap;
 
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.program_id_map().start_atomic();
+        self.mapping_id_map().start_atomic();
+        self.key_value_id_map().start_atomic();
+        self.key_map().start_atomic();
+        self.value_map().start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.program_id_map().abort_atomic();
+        self.mapping_id_map().abort_atomic();
+        self.key_value_id_map().abort_atomic();
+        self.key_map().abort_atomic();
+        self.value_map().abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.program_id_map().finish_atomic();
+        self.mapping_id_map().finish_atomic();
+        self.key_value_id_map().finish_atomic();
+        self.key_map().finish_atomic();
+        self.value_map().finish_atomic();
+    }
+
     /// Initializes the given `program ID` and `mapping name` in storage.
     fn initialize_mapping(&self, program_id: &ProgramID<N>, mapping_name: &Identifier<N>) -> Result<()> {
         // Ensure the mapping name does not already exist.
@@ -564,6 +591,21 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     /// along with all associated mappings and key-value pairs in storage.
     pub fn remove_program(&self, program_id: &ProgramID<N>) -> Result<()> {
         self.storage.remove_program(program_id)
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 

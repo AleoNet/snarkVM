@@ -70,30 +70,25 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
     /// Returns the execution store.
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage>;
 
-    /// Returns the transaction ID that contains the given `transition ID`.
-    fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
-        self.execution_store().find_transaction_id(transition_id)
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.deployment_store().start_atomic();
+        self.execution_store().start_atomic();
     }
 
-    /// Returns the transaction ID that contains the given `program ID`.
-    fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
-        self.deployment_store().find_transaction_id(program_id)
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.id_map().abort_atomic();
+        self.deployment_store().abort_atomic();
+        self.execution_store().abort_atomic();
     }
 
-    /// Returns the transaction for the given `transaction ID`.
-    fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
-        // Retrieve the transaction type.
-        let transaction_type = match self.id_map().get(transaction_id)? {
-            Some(transaction_type) => cow_to_copied!(transaction_type),
-            None => return Ok(None),
-        };
-        // Retrieve the transaction.
-        match transaction_type {
-            // Return the deployment transaction.
-            TransactionType::Deploy => self.deployment_store().get_transaction(transaction_id),
-            // Return the execution transaction.
-            TransactionType::Execute => self.execution_store().get_transaction(transaction_id),
-        }
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.deployment_store().finish_atomic();
+        self.execution_store().finish_atomic();
     }
 
     /// Stores the given `transaction` into storage.
@@ -133,18 +128,30 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
         }
     }
 
-    /// Starts an atomic batch write operation.
-    fn start_atomic(&self) {
-        self.id_map().start_atomic();
-        self.deployment_store().start_atomic();
-        self.execution_store().start_atomic();
+    /// Returns the transaction ID that contains the given `transition ID`.
+    fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
+        self.execution_store().find_transaction_id(transition_id)
     }
 
-    /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.deployment_store().finish_atomic();
-        self.execution_store().finish_atomic();
+    /// Returns the transaction ID that contains the given `program ID`.
+    fn find_deployment_id(&self, program_id: &ProgramID<N>) -> Result<Option<N::TransactionID>> {
+        self.deployment_store().find_transaction_id(program_id)
+    }
+
+    /// Returns the transaction for the given `transaction ID`.
+    fn get_transaction(&self, transaction_id: &N::TransactionID) -> Result<Option<Transaction<N>>> {
+        // Retrieve the transaction type.
+        let transaction_type = match self.id_map().get(transaction_id)? {
+            Some(transaction_type) => cow_to_copied!(transaction_type),
+            None => return Ok(None),
+        };
+        // Retrieve the transaction.
+        match transaction_type {
+            // Return the deployment transaction.
+            TransactionType::Deploy => self.deployment_store().get_transaction(transaction_id),
+            // Return the execution transaction.
+            TransactionType::Execute => self.execution_store().get_transaction(transaction_id),
+        }
     }
 }
 
@@ -233,6 +240,11 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Starts an atomic batch write operation.
     pub fn start_atomic(&self) {
         self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
