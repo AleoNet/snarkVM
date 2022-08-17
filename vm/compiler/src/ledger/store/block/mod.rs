@@ -106,14 +106,14 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
     }
 
     /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.reverse_id_map().finish_atomic();
-        self.header_map().finish_atomic();
-        self.transactions_map().finish_atomic();
-        self.reverse_transactions_map().finish_atomic();
-        self.transaction_store().finish_atomic();
-        self.signature_map().finish_atomic();
+    fn finish_atomic(&self) -> Result<()> {
+        self.id_map().finish_atomic()?;
+        self.reverse_id_map().finish_atomic()?;
+        self.header_map().finish_atomic()?;
+        self.transactions_map().finish_atomic()?;
+        self.reverse_transactions_map().finish_atomic()?;
+        self.transaction_store().finish_atomic()?;
+        self.signature_map().finish_atomic()
     }
 
     /// Stores the given `block` into storage.
@@ -145,9 +145,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         self.signature_map().insert(block.hash(), *block.signature()).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the block for the given `block hash`.
@@ -188,9 +186,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         self.signature_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Returns the block hash that contains the given `transaction ID`.
@@ -441,8 +437,8 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) {
-        self.storage.finish_atomic();
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
     }
 }
 

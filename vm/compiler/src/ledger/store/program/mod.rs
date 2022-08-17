@@ -86,12 +86,12 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
     }
 
     /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.program_id_map().finish_atomic();
-        self.mapping_id_map().finish_atomic();
-        self.key_value_id_map().finish_atomic();
-        self.key_map().finish_atomic();
-        self.value_map().finish_atomic();
+    fn finish_atomic(&self) -> Result<()> {
+        self.program_id_map().finish_atomic()?;
+        self.mapping_id_map().finish_atomic()?;
+        self.key_value_id_map().finish_atomic()?;
+        self.key_map().finish_atomic()?;
+        self.value_map().finish_atomic()
     }
 
     /// Initializes the given `program ID` and `mapping name` in storage.
@@ -129,9 +129,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         self.key_value_id_map().insert(mapping_id, IndexMap::new()).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -180,9 +178,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         self.value_map().insert(key_id, value).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -234,9 +230,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         self.value_map().insert(key_id, value).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -276,9 +270,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         self.value_map().remove(&key_id).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
@@ -323,9 +315,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         }
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the program for the given `program ID` from storage,
@@ -372,9 +362,7 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         }
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Returns `true` if the given `program ID` exist.
@@ -640,8 +628,8 @@ impl<N: Network, P: ProgramStorage<N>> ProgramStore<N, P> {
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) {
-        self.storage.finish_atomic();
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
     }
 }
 

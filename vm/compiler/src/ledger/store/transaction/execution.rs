@@ -72,11 +72,11 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
     }
 
     /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.reverse_id_map().finish_atomic();
-        self.edition_map().finish_atomic();
-        self.transition_store().finish_atomic();
+    fn finish_atomic(&self) -> Result<()> {
+        self.id_map().finish_atomic()?;
+        self.reverse_id_map().finish_atomic()?;
+        self.edition_map().finish_atomic()?;
+        self.transition_store().finish_atomic()
     }
 
     /// Stores the given `execution transaction` pair into storage.
@@ -127,9 +127,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
         }
 
         // Finish an atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the execution transaction for the given `transaction ID`.
@@ -165,9 +163,7 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
         }
 
         // Finish an atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.
@@ -358,8 +354,8 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) {
-        self.storage.finish_atomic();
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
     }
 }
 

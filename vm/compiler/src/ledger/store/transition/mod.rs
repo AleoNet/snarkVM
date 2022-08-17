@@ -117,17 +117,17 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     }
 
     /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.locator_map().finish_atomic();
-        self.input_store().finish_atomic();
-        self.output_store().finish_atomic();
-        self.finalize_map().finish_atomic();
-        self.proof_map().finish_atomic();
-        self.tpk_map().finish_atomic();
-        self.reverse_tpk_map().finish_atomic();
-        self.tcm_map().finish_atomic();
-        self.reverse_tcm_map().finish_atomic();
-        self.fee_map().finish_atomic();
+    fn finish_atomic(&self) -> Result<()> {
+        self.locator_map().finish_atomic()?;
+        self.input_store().finish_atomic()?;
+        self.output_store().finish_atomic()?;
+        self.finalize_map().finish_atomic()?;
+        self.proof_map().finish_atomic()?;
+        self.tpk_map().finish_atomic()?;
+        self.reverse_tpk_map().finish_atomic()?;
+        self.tcm_map().finish_atomic()?;
+        self.reverse_tcm_map().finish_atomic()?;
+        self.fee_map().finish_atomic()
     }
 
     /// Stores the given `transition` into storage.
@@ -161,9 +161,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.fee_map().insert(transition_id, *transition.fee()).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the input for the given `transition ID`.
@@ -204,9 +202,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.fee_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Returns the transition for the given `transition ID`.
@@ -447,8 +443,8 @@ impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) {
-        self.storage.finish_atomic();
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
     }
 }
 

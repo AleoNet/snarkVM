@@ -100,15 +100,15 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
     }
 
     /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.edition_map().finish_atomic();
-        self.reverse_id_map().finish_atomic();
-        self.program_map().finish_atomic();
-        self.verifying_key_map().finish_atomic();
-        self.certificate_map().finish_atomic();
-        self.additional_fee_map().finish_atomic();
-        self.transition_store().finish_atomic();
+    fn finish_atomic(&self) -> Result<()> {
+        self.id_map().finish_atomic()?;
+        self.edition_map().finish_atomic()?;
+        self.reverse_id_map().finish_atomic()?;
+        self.program_map().finish_atomic()?;
+        self.verifying_key_map().finish_atomic()?;
+        self.certificate_map().finish_atomic()?;
+        self.additional_fee_map().finish_atomic()?;
+        self.transition_store().finish_atomic()
     }
 
     /// Stores the given `deployment transaction` pair into storage.
@@ -172,9 +172,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
         self.transition_store().insert(additional_fee.clone()).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Removes the deployment transaction for the given `transaction ID`.
@@ -227,9 +225,7 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
         self.transition_store().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
 
         // Finish the atomic batch write operation.
-        self.finish_atomic();
-
-        Ok(())
+        self.finish_atomic()
     }
 
     /// Returns the transaction ID that contains the given `program ID`.
@@ -522,8 +518,8 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) {
-        self.storage.finish_atomic();
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
     }
 }
 

@@ -74,7 +74,7 @@ pub trait Map<
     ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
-    fn finish_atomic(&self);
+    fn finish_atomic(&self) -> Result<()>;
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.
