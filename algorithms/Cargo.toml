@@ -109,7 +109,7 @@ version = "1"
 optional = true
 
 [dependencies.once_cell]
-version = "1.12"
+version = "1.13"
 
 [dependencies.parking_lot]
 version = "0.12"
