@@ -118,7 +118,8 @@ pub trait MapRead<
 #[macro_export]
 macro_rules! atomic_write_batch {
     ($self:expr, $ops:block) => {
-        // Check if an atomic batch write is already in progress.
+        // Check if an atomic batch write is already in progress. If there isn't one, this means
+        // this operation is a "top-level" one and is the one to start and finalize the batch.
         let is_part_of_atomic_batch = $self.is_atomic_in_progress();
 
         // Start an atomic batch write operation IFF it's not already part of one.
@@ -126,16 +127,19 @@ macro_rules! atomic_write_batch {
             $self.start_atomic();
         }
 
-        // Wrap the operations in a closure to know if any of them has failed.
+        // Wrap the operations that should be batched in a closure to be able to abort the entire
+        // write batch if any of them fails.
         let run_atomic_ops = || -> Result<()> { $ops };
 
-        // Abort if any of the underlying operations has failed.
+        // Abort the batch if any of the associated operations has failed. It's crucial that there
+        // is an early return (via `?`) here, in order for any higher-level atomic write batch to
+        // also abort, cascading to all the owned storage objects.
         run_atomic_ops().map_err(|err| {
             $self.abort_atomic();
             err
         })?;
 
-        // Finish an atomic batch write operation IFF it's not already part of one.
+        // Finish an atomic batch write operation IFF it's not already part of a larger one.
         if !is_part_of_atomic_batch {
             $self.finish_atomic()?;
         }
