@@ -184,6 +184,9 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
             self.external_record_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
         }
 
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
+
         Ok(())
     }
 
