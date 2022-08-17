@@ -50,18 +50,18 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
         0x26ba558ae9562a,
     ];
     /// COFACTOR_INV = COFACTOR^{-1} mod r
-    /// = 6764900296503390671038341982857278410319949526107311149686707033187604810669
+    ///              = 6764900296503390671038341982857278410319949526107311149686707033187604810669
     const COFACTOR_INV: Fr = field!(
         Fr,
         BigInteger256([15499857013495546999, 4613531467548868169, 14546778081091178013, 549402535258503313,])
     );
-    /// COEFF_A = [0, 0]
+    /// WEIERSTRASS_A = [0, 0]
     const WEIERSTRASS_A: Fq2 = field!(Fq2, Bls12_377G1Parameters::WEIERSTRASS_A, Bls12_377G1Parameters::WEIERSTRASS_A,);
     // As per https://eprint.iacr.org/2012/072.pdf,
     // this curve has b' = b/i, where b is the COEFF_B of G1, and x^6 -i is
     // the irreducible poly used to extend from Fp2 to Fp12.
     // In our case, i = u (App A.3, T_6).
-    /// COEFF_B = [0,
+    /// WEIERSTRASS_B = [0,
     /// 155198655607781456406391640216936120121836107652948796323930557600032281009004493664981332883744016074664192874906]
     const WEIERSTRASS_B: Fq2 = field!(
         Fq2,

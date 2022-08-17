@@ -40,14 +40,14 @@ impl ShortWeierstrassParameters for Bls12_377G1Parameters {
     /// COFACTOR = (x - 1)^2 / 3  = 30631250834960419227450344600217059328
     const COFACTOR: &'static [u64] = &[0x0, 0x170b5d4430000000];
     /// COFACTOR_INV = COFACTOR^{-1} mod r
-    /// = 5285428838741532253824584287042945485047145357130994810877
+    ///              = 5285428838741532253824584287042945485047145357130994810877
     const COFACTOR_INV: Fr = field!(
         Fr,
         BigInteger256([2013239619100046060, 4201184776506987597, 2526766393982337036, 1114629510922847535,])
     );
-    /// COEFF_A = 0
+    /// WEIERSTRASS_A = 0
     const WEIERSTRASS_A: Fq = field!(Fq, BigInteger384([0x0, 0x0, 0x0, 0x0, 0x0, 0x0]));
-    /// COEFF_B = 1
+    /// WEIERSTRASS_B = 1
     const WEIERSTRASS_B: Fq = field!(
         Fq,
         BigInteger384([
