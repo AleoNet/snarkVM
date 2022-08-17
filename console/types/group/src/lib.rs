@@ -23,7 +23,7 @@ mod from_bits;
 mod from_field;
 mod from_fields;
 mod from_x_coordinate;
-mod from_xy_coordinate;
+mod from_xy_coordinates;
 mod parse;
 mod random;
 mod serialize;
@@ -90,10 +90,6 @@ impl<E: Environment> Group<E> {
 
     /// Returns `self / COFACTOR`.
     pub fn div_by_cofactor(&self) -> Self {
-        // (For advanced users) The cofactor for this curve is `4`. Thus doubling is used to be performant.
-        // See unit tests below, which sanity check that this condition holds.
-        debug_assert!(E::Affine::cofactor().len() == 1 && E::Affine::cofactor()[0] == 4);
-
         Self { group: self.group.to_affine().mul_by_cofactor_inv().into() }
     }
 }

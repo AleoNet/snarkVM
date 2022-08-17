@@ -20,28 +20,8 @@ impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
-        //
-        // Check the point is on the curve.
-        //
-        // Ensure ax^2 + y^2 = 1 + dx^2y^2
-        // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
-        //
-        {
-            let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
-            let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
-
-            let x2 = x.square();
-            let y2 = y.square();
-
-            let first = y2;
-            let second = (d * &x2) - &Field::one();
-            let third = (a * x2) - Field::one();
-
-            // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
-            E::enforce(|| (first, second, third));
-        }
-
-        Self { x, y }
+        // Recover point from the `(x, y)` coordinates as a witness.
+        witness!(|x, y| console::Group::from_xy_coordinates(x, y))
     }
 }
 
