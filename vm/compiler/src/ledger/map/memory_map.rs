@@ -23,7 +23,6 @@ use indexmap::map;
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
-    mem,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -75,12 +74,17 @@ impl<
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
-        if self.batch_in_progress.load(Ordering::SeqCst) {
-            self.atomic_batch.lock().push(BatchOperation::Put(key, value));
-        } else {
-            self.map.write().insert(key, value);
-        }
+        // Determine if an atomic batch is in progress.
+        let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
 
+        match is_batch {
+            // If a batch is in progress, add the key-value pair to the batch.
+            true => self.atomic_batch.lock().push(BatchOperation::Insert(key, value)),
+            // Otherwise, insert the key-value pair directly into the map.
+            false => {
+                self.map.write().insert(key, value);
+            }
+        }
         Ok(())
     }
 
@@ -88,12 +92,17 @@ impl<
     /// Removes the key-value pair for the given key from the map.
     ///
     fn remove(&self, key: &K) -> Result<()> {
-        if self.batch_in_progress.load(Ordering::SeqCst) {
-            self.atomic_batch.lock().push(BatchOperation::Delete(*key));
-        } else {
-            self.map.write().remove(key);
-        }
+        // Determine if an atomic batch is in progress.
+        let is_batch = self.batch_in_progress.load(Ordering::SeqCst);
 
+        match is_batch {
+            // If a batch is in progress, add the key-value pair to the batch.
+            true => self.atomic_batch.lock().push(BatchOperation::Remove(*key)),
+            // Otherwise, remove the key-value pair directly from the map.
+            false => {
+                self.map.write().remove(key);
+            }
+        }
         Ok(())
     }
 
@@ -102,7 +111,9 @@ impl<
     /// without an actual write taking place until `finish_atomic` is called.
     ///
     fn start_atomic(&self) {
+        // Set the atomic batch flag to `true`.
         self.batch_in_progress.store(true, Ordering::SeqCst);
+        // Ensure that the atomic batch is empty.
         assert!(self.atomic_batch.lock().is_empty());
     }
 
@@ -110,7 +121,9 @@ impl<
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
+        // Clear the atomic batch.
         self.atomic_batch.lock().clear();
+        // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
     }
 
@@ -118,19 +131,21 @@ impl<
     /// Finishes an atomic operation, performing all the queued writes.
     ///
     fn finish_atomic(&self) {
-        let operations = mem::take(&mut *self.atomic_batch.lock());
+        // Retrieve the atomic batch.
+        let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
         if !operations.is_empty() {
+            // Acquire a write lock on the map.
             let mut locked_map = self.map.write();
-
-            for op in operations {
-                match op {
-                    BatchOperation::Put(k, v) => locked_map.insert(k, v),
-                    BatchOperation::Delete(k) => locked_map.remove(&k),
+            // Perform all the queued operations.
+            for operation in operations {
+                match operation {
+                    BatchOperation::Insert(key, value) => locked_map.insert(key, value),
+                    BatchOperation::Remove(key) => locked_map.remove(&key),
                 };
             }
         }
-
+        // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
     }
 }

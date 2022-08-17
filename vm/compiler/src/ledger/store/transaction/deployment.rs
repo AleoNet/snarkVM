@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         transaction::{AdditionalFee, Transaction},
     },
@@ -141,28 +141,38 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
             }
         }
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Store the program ID.
-        self.id_map().insert(*transaction_id, program_id)?;
+        self.id_map().insert(*transaction_id, program_id).or_abort(|| self.abort_atomic())?;
         // Store the edition.
-        self.edition_map().insert(program_id, edition)?;
+        self.edition_map().insert(program_id, edition).or_abort(|| self.abort_atomic())?;
 
         // Store the reverse program ID.
-        self.reverse_id_map().insert((program_id, edition), *transaction_id)?;
+        self.reverse_id_map().insert((program_id, edition), *transaction_id).or_abort(|| self.abort_atomic())?;
         // Store the program.
-        self.program_map().insert((program_id, edition), program.clone())?;
+        self.program_map().insert((program_id, edition), program.clone()).or_abort(|| self.abort_atomic())?;
 
         // Store the verifying keys and certificates.
         for (function_name, (verifying_key, certificate)) in deployment.verifying_keys() {
             // Store the verifying key.
-            self.verifying_key_map().insert((program_id, *function_name, edition), verifying_key.clone())?;
+            self.verifying_key_map()
+                .insert((program_id, *function_name, edition), verifying_key.clone())
+                .or_abort(|| self.abort_atomic())?;
             // Store the certificate.
-            self.certificate_map().insert((program_id, *function_name, edition), certificate.clone())?;
+            self.certificate_map()
+                .insert((program_id, *function_name, edition), certificate.clone())
+                .or_abort(|| self.abort_atomic())?;
         }
 
         // Store the additional fee ID.
-        self.additional_fee_map().insert(*transaction_id, *additional_fee.id())?;
+        self.additional_fee_map().insert(*transaction_id, *additional_fee.id()).or_abort(|| self.abort_atomic())?;
         // Store the additional fee transition.
-        self.transition_store().insert(additional_fee.clone())?;
+        self.transition_store().insert(additional_fee.clone()).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
         store::{
             TransactionMemory,
             TransactionStorage,
@@ -118,26 +118,34 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `block` into storage.
     fn insert(&self, block: &Block<N>) -> Result<()> {
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Store the block hash.
-        self.id_map().insert(block.height(), block.hash())?;
+        self.id_map().insert(block.height(), block.hash()).or_abort(|| self.abort_atomic())?;
         // Store the block height.
-        self.reverse_id_map().insert(block.hash(), block.height())?;
+        self.reverse_id_map().insert(block.hash(), block.height()).or_abort(|| self.abort_atomic())?;
         // Store the block header.
-        self.header_map().insert(block.hash(), *block.header())?;
+        self.header_map().insert(block.hash(), *block.header()).or_abort(|| self.abort_atomic())?;
 
         // Store the transaction IDs.
-        self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
+        self.transactions_map()
+            .insert(block.hash(), block.transaction_ids().copied().collect())
+            .or_abort(|| self.abort_atomic())?;
 
         // Store the block transactions.
         for transaction in block.transactions().values() {
             // Store the reverse transaction ID.
-            self.reverse_transactions_map().insert(transaction.id(), block.hash())?;
+            self.reverse_transactions_map().insert(transaction.id(), block.hash()).or_abort(|| self.abort_atomic())?;
             // Store the transaction.
-            self.transaction_store().insert(transaction)?;
+            self.transaction_store().insert(transaction).or_abort(|| self.abort_atomic())?;
         }
 
         // Store the block signature.
-        self.signature_map().insert(block.hash(), *block.signature())?;
+        self.signature_map().insert(block.hash(), *block.signature()).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

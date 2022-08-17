@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead},
+    map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
     transition::{Input, Origin},
 };
 use console::{
@@ -104,27 +104,44 @@ pub trait InputStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `(transition ID, input)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Store the input IDs.
-        self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
+        self.id_map()
+            .insert(transition_id, inputs.iter().map(Input::id).copied().collect())
+            .or_abort(|| self.abort_atomic())?;
 
         // Store the inputs.
         for input in inputs {
             // Store the reverse input ID.
-            self.reverse_id_map().insert(*input.id(), transition_id)?;
+            self.reverse_id_map().insert(*input.id(), transition_id).or_abort(|| self.abort_atomic())?;
             // Store the input.
             match input.clone() {
-                Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
-                Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
-                Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
+                Input::Constant(input_id, constant) => {
+                    self.constant_map().insert(input_id, constant).or_abort(|| self.abort_atomic())?
+                }
+                Input::Public(input_id, public) => {
+                    self.public_map().insert(input_id, public).or_abort(|| self.abort_atomic())?
+                }
+                Input::Private(input_id, private) => {
+                    self.private_map().insert(input_id, private).or_abort(|| self.abort_atomic())?
+                }
                 Input::Record(serial_number, tag, origin) => {
                     // Store the record tag.
-                    self.record_tag_map().insert(tag, serial_number)?;
+                    self.record_tag_map().insert(tag, serial_number).or_abort(|| self.abort_atomic())?;
                     // Store the record.
-                    self.record_map().insert(serial_number, (tag, origin))?
+                    self.record_map().insert(serial_number, (tag, origin)).or_abort(|| self.abort_atomic())?
                 }
-                Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
+                Input::ExternalRecord(input_id) => {
+                    self.external_record_map().insert(input_id, ()).or_abort(|| self.abort_atomic())?
+                }
             }
         }
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
+
         Ok(())
     }
 

@@ -24,7 +24,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
         Input,
         Origin,
         Output,
@@ -132,28 +132,36 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `transition` into storage.
     fn insert(&self, transition: Transition<N>) -> Result<()> {
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Retrieve the transition ID.
         let transition_id = *transition.id();
         // Store the program ID and function name.
-        self.locator_map().insert(transition_id, (*transition.program_id(), *transition.function_name()))?;
+        self.locator_map()
+            .insert(transition_id, (*transition.program_id(), *transition.function_name()))
+            .or_abort(|| self.abort_atomic())?;
         // Store the inputs.
-        self.input_store().insert(transition_id, transition.inputs())?;
+        self.input_store().insert(transition_id, transition.inputs()).or_abort(|| self.abort_atomic())?;
         // Store the outputs.
-        self.output_store().insert(transition_id, transition.outputs())?;
+        self.output_store().insert(transition_id, transition.outputs()).or_abort(|| self.abort_atomic())?;
         // Store the finalize inputs.
-        self.finalize_map().insert(transition_id, transition.finalize().clone())?;
+        self.finalize_map().insert(transition_id, transition.finalize().clone()).or_abort(|| self.abort_atomic())?;
         // Store the proof.
-        self.proof_map().insert(transition_id, transition.proof().clone())?;
+        self.proof_map().insert(transition_id, transition.proof().clone()).or_abort(|| self.abort_atomic())?;
         // Store `tpk`.
-        self.tpk_map().insert(transition_id, *transition.tpk())?;
+        self.tpk_map().insert(transition_id, *transition.tpk()).or_abort(|| self.abort_atomic())?;
         // Store the reverse `tpk` entry.
-        self.reverse_tpk_map().insert(*transition.tpk(), transition_id)?;
+        self.reverse_tpk_map().insert(*transition.tpk(), transition_id).or_abort(|| self.abort_atomic())?;
         // Store `tcm`.
-        self.tcm_map().insert(transition_id, *transition.tcm())?;
+        self.tcm_map().insert(transition_id, *transition.tcm()).or_abort(|| self.abort_atomic())?;
         // Store the reverse `tcm` entry.
-        self.reverse_tcm_map().insert(*transition.tcm(), transition_id)?;
+        self.reverse_tcm_map().insert(*transition.tcm(), transition_id).or_abort(|| self.abort_atomic())?;
         // Store the fee.
-        self.fee_map().insert(transition_id, *transition.fee())?;
+        self.fee_map().insert(transition_id, *transition.fee()).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

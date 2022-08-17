@@ -23,8 +23,24 @@ use std::borrow::Cow;
 
 pub enum BatchOperation<K: Copy + Clone + PartialEq + Eq + Hash + Send + Sync, V: Clone + PartialEq + Eq + Send + Sync>
 {
-    Put(K, V),
-    Delete(K),
+    Insert(K, V),
+    Remove(K),
+}
+
+/// A trait to unwrap a `Result` or `Reject`.
+pub trait OrAbort<T> {
+    /// Returns the result if it is successful, otherwise aborts the operation and returns the error.
+    fn or_abort(self, abort: impl FnOnce()) -> Result<T>;
+}
+
+impl<T> OrAbort<T> for Result<T> {
+    /// Returns the result if it is successful, otherwise aborts the operation and returns the error.
+    fn or_abort(self, abort: impl FnOnce()) -> Result<T> {
+        self.map_err(|e| {
+            abort();
+            e
+        })
+    }
 }
 
 /// A trait representing map-like storage operations with read-write capabilities.

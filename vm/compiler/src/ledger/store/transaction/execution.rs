@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
@@ -100,26 +100,34 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
         // Retrieve the optional additional fee ID.
         let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Store the transition IDs.
-        self.id_map().insert(*transaction_id, (transition_ids, optional_additional_fee_id))?;
+        self.id_map()
+            .insert(*transaction_id, (transition_ids, optional_additional_fee_id))
+            .or_abort(|| self.abort_atomic())?;
         // Store the edition.
-        self.edition_map().insert(*transaction_id, edition)?;
+        self.edition_map().insert(*transaction_id, edition).or_abort(|| self.abort_atomic())?;
 
         // Store the execution.
         for transition in transitions {
             // Store the transition ID.
-            self.reverse_id_map().insert(*transition.id(), *transaction_id)?;
+            self.reverse_id_map().insert(*transition.id(), *transaction_id).or_abort(|| self.abort_atomic())?;
             // Store the transition.
-            self.transition_store().insert(transition)?;
+            self.transition_store().insert(transition).or_abort(|| self.abort_atomic())?;
         }
 
         // Store the additional fee, if one exists.
         if let Some(additional_fee) = optional_additional_fee {
             // Store the additional fee ID.
-            self.reverse_id_map().insert(*additional_fee.id(), *transaction_id)?;
+            self.reverse_id_map().insert(*additional_fee.id(), *transaction_id).or_abort(|| self.abort_atomic())?;
             // Store the additional fee transition.
-            self.transition_store().insert(additional_fee.clone())?;
+            self.transition_store().insert(additional_fee.clone()).or_abort(|| self.abort_atomic())?;
         }
+
+        // Finish an atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }
