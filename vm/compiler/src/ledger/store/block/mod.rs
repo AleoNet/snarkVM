@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
         store::{
             TransactionMemory,
             TransactionStorage,
@@ -82,6 +82,116 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
     fn transaction_store(&self) -> &TransactionStore<N, Self::TransactionStorage>;
     /// Returns the signature map.
     fn signature_map(&self) -> &Self::SignatureMap;
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.header_map().start_atomic();
+        self.transactions_map().start_atomic();
+        self.reverse_transactions_map().start_atomic();
+        self.transaction_store().start_atomic();
+        self.signature_map().start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.id_map().abort_atomic();
+        self.reverse_id_map().abort_atomic();
+        self.header_map().abort_atomic();
+        self.transactions_map().abort_atomic();
+        self.reverse_transactions_map().abort_atomic();
+        self.transaction_store().abort_atomic();
+        self.signature_map().abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.header_map().finish_atomic();
+        self.transactions_map().finish_atomic();
+        self.reverse_transactions_map().finish_atomic();
+        self.transaction_store().finish_atomic();
+        self.signature_map().finish_atomic();
+    }
+
+    /// Stores the given `block` into storage.
+    fn insert(&self, block: &Block<N>) -> Result<()> {
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
+        // Store the block hash.
+        self.id_map().insert(block.height(), block.hash()).or_abort(|| self.abort_atomic())?;
+        // Store the block height.
+        self.reverse_id_map().insert(block.hash(), block.height()).or_abort(|| self.abort_atomic())?;
+        // Store the block header.
+        self.header_map().insert(block.hash(), *block.header()).or_abort(|| self.abort_atomic())?;
+
+        // Store the transaction IDs.
+        self.transactions_map()
+            .insert(block.hash(), block.transaction_ids().copied().collect())
+            .or_abort(|| self.abort_atomic())?;
+
+        // Store the block transactions.
+        for transaction in block.transactions().values() {
+            // Store the reverse transaction ID.
+            self.reverse_transactions_map().insert(transaction.id(), block.hash()).or_abort(|| self.abort_atomic())?;
+            // Store the transaction.
+            self.transaction_store().insert(transaction).or_abort(|| self.abort_atomic())?;
+        }
+
+        // Store the block signature.
+        self.signature_map().insert(block.hash(), *block.signature()).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
+
+        Ok(())
+    }
+
+    /// Removes the block for the given `block hash`.
+    fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
+        // Retrieve the block height.
+        let height = match self.get_block_height(block_hash)? {
+            Some(height) => height,
+            None => bail!("Failed to remove block: missing block height for block hash '{block_hash}'"),
+        };
+        // Retrieve the transaction IDs.
+        let transaction_ids = match self.transactions_map().get(block_hash)? {
+            Some(transaction_ids) => transaction_ids,
+            None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
+        };
+
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
+        // Remove the block hash.
+        self.id_map().remove(&height).or_abort(|| self.abort_atomic())?;
+        // Remove the block height.
+        self.reverse_id_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+        // Remove the block header.
+        self.header_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+
+        // Remove the transaction IDs.
+        self.transactions_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+
+        // Remove the block transactions.
+        for transaction_id in transaction_ids.iter() {
+            // Remove the reverse transaction ID.
+            self.reverse_transactions_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
+            // Remove the transaction.
+            self.transaction_store().remove(transaction_id).or_abort(|| self.abort_atomic())?;
+        }
+
+        // Remove the block signature.
+        self.signature_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
+
+        Ok(())
+    }
 
     /// Returns the block hash that contains the given `transaction ID`.
     fn find_block_hash(&self, transaction_id: &N::TransactionID) -> Result<Option<N::BlockHash>> {
@@ -190,69 +300,6 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
 
         // Return the block.
         Ok(Some(Block::from(previous_hash, header, transactions, signature)?))
-    }
-
-    /// Stores the given `block` into storage.
-    fn insert(&self, block: &Block<N>) -> Result<()> {
-        // Store the block hash.
-        self.id_map().insert(block.height(), block.hash())?;
-        // Store the block height.
-        self.reverse_id_map().insert(block.hash(), block.height())?;
-        // Store the block header.
-        self.header_map().insert(block.hash(), *block.header())?;
-
-        // Store the transaction IDs.
-        self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
-
-        // Store the block transactions.
-        for transaction in block.transactions().values() {
-            // Store the reverse transaction ID.
-            self.reverse_transactions_map().insert(transaction.id(), block.hash())?;
-            // Store the transaction.
-            self.transaction_store().insert(transaction)?;
-        }
-
-        // Store the block signature.
-        self.signature_map().insert(block.hash(), *block.signature())?;
-
-        Ok(())
-    }
-
-    /// Removes the block for the given `block hash`.
-    fn remove(&self, block_hash: &N::BlockHash) -> Result<()> {
-        // Retrieve the block height.
-        let height = match self.get_block_height(block_hash)? {
-            Some(height) => height,
-            None => bail!("Failed to remove block: missing block height for block hash '{block_hash}'"),
-        };
-        // Retrieve the transaction IDs.
-        let transaction_ids = match self.transactions_map().get(block_hash)? {
-            Some(transaction_ids) => transaction_ids,
-            None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
-        };
-
-        // Remove the block hash.
-        self.id_map().remove(&height)?;
-        // Remove the block height.
-        self.reverse_id_map().remove(block_hash)?;
-        // Remove the block header.
-        self.header_map().remove(block_hash)?;
-
-        // Remove the transaction IDs.
-        self.transactions_map().remove(block_hash)?;
-
-        // Remove the block transactions.
-        for transaction_id in transaction_ids.iter() {
-            // Remove the reverse transaction ID.
-            self.reverse_transactions_map().remove(transaction_id)?;
-            // Remove the transaction.
-            self.transaction_store().remove(transaction_id)?;
-        }
-
-        // Remove the block signature.
-        self.signature_map().remove(block_hash)?;
-
-        Ok(())
     }
 }
 
@@ -381,6 +428,21 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, B::TransitionStorage> {
         self.storage.transaction_store().transition_store()
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 

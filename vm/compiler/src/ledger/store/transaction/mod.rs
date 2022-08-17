@@ -23,7 +23,7 @@ pub use execution::*;
 use crate::{
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
@@ -70,6 +70,84 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
     /// Returns the execution store.
     fn execution_store(&self) -> &ExecutionStore<N, Self::ExecutionStorage>;
 
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.deployment_store().start_atomic();
+        self.execution_store().start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    fn abort_atomic(&self) {
+        self.id_map().abort_atomic();
+        self.deployment_store().abort_atomic();
+        self.execution_store().abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.deployment_store().finish_atomic();
+        self.execution_store().finish_atomic();
+    }
+
+    /// Stores the given `transaction` into storage.
+    fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
+        match transaction {
+            Transaction::Deploy(..) => {
+                // Store the transaction type.
+                self.id_map().insert(transaction.id(), TransactionType::Deploy).or_abort(|| self.abort_atomic())?;
+                // Store the deployment transaction.
+                self.deployment_store().insert(transaction).or_abort(|| self.abort_atomic())?;
+            }
+            Transaction::Execute(..) => {
+                // Store the transaction type.
+                self.id_map().insert(transaction.id(), TransactionType::Execute).or_abort(|| self.abort_atomic())?;
+                // Store the execution transaction.
+                self.execution_store().insert(transaction).or_abort(|| self.abort_atomic())?;
+            }
+        }
+
+        // Finish an atomic batch write operation.
+        self.finish_atomic();
+
+        Ok(())
+    }
+
+    /// Removes the transaction for the given `transaction ID`.
+    fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
+        // Retrieve the transaction type.
+        let transaction_type = match self.id_map().get(transaction_id)? {
+            Some(transaction_type) => cow_to_copied!(transaction_type),
+            None => bail!("Failed to get the type for transaction '{transaction_id}'"),
+        };
+
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
+        // Remove the transaction type.
+        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
+        // Remove the transaction.
+        match transaction_type {
+            // Remove the deployment transaction.
+            TransactionType::Deploy => {
+                self.deployment_store().remove(transaction_id).or_abort(|| self.abort_atomic())?
+            }
+            // Remove the execution transaction.
+            TransactionType::Execute => {
+                self.execution_store().remove(transaction_id).or_abort(|| self.abort_atomic())?
+            }
+        };
+
+        // Finish an atomic batch write operation.
+        self.finish_atomic();
+
+        Ok(())
+    }
+
     /// Returns the transaction ID that contains the given `transition ID`.
     fn find_transaction_id(&self, transition_id: &N::TransitionID) -> Result<Option<N::TransactionID>> {
         self.execution_store().find_transaction_id(transition_id)
@@ -93,43 +171,6 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
             TransactionType::Deploy => self.deployment_store().get_transaction(transaction_id),
             // Return the execution transaction.
             TransactionType::Execute => self.execution_store().get_transaction(transaction_id),
-        }
-    }
-
-    /// Stores the given `transaction` into storage.
-    fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
-        match transaction {
-            Transaction::Deploy(..) => {
-                // Store the transaction type.
-                self.id_map().insert(transaction.id(), TransactionType::Deploy)?;
-                // Store the deployment transaction.
-                self.deployment_store().insert(transaction)
-            }
-            Transaction::Execute(..) => {
-                // Store the transaction type.
-                self.id_map().insert(transaction.id(), TransactionType::Execute)?;
-                // Store the execution transaction.
-                self.execution_store().insert(transaction)
-            }
-        }
-    }
-
-    /// Removes the transaction for the given `transaction ID`.
-    fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
-        // Retrieve the transaction type.
-        let transaction_type = match self.id_map().get(transaction_id)? {
-            Some(transaction_type) => cow_to_copied!(transaction_type),
-            None => bail!("Failed to get the type for transaction '{transaction_id}'"),
-        };
-
-        // Remove the transaction type.
-        self.id_map().remove(transaction_id)?;
-        // Remove the transaction.
-        match transaction_type {
-            // Remove the deployment transaction.
-            TransactionType::Deploy => self.deployment_store().remove(transaction_id),
-            // Remove the execution transaction.
-            TransactionType::Execute => self.execution_store().remove(transaction_id),
         }
     }
 }
@@ -214,6 +255,21 @@ impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, T::TransitionStorage> {
         self.storage.execution_store().transition_store()
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Aborts an atomic batch write operation.
+    pub fn abort_atomic(&self) {
+        self.storage.abort_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 
