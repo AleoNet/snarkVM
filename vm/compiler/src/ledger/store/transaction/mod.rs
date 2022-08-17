@@ -23,7 +23,7 @@ pub use execution::*;
 use crate::{
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+        map::{memory_map::MemoryMap, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
@@ -93,26 +93,22 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `transaction` into storage.
     fn insert(&self, transaction: &Transaction<N>) -> Result<()> {
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         match transaction {
             Transaction::Deploy(..) => {
                 // Store the transaction type.
-                self.id_map().insert(transaction.id(), TransactionType::Deploy).or_abort(|| self.abort_atomic())?;
+                self.id_map().insert(transaction.id(), TransactionType::Deploy)?;
                 // Store the deployment transaction.
-                self.deployment_store().insert(transaction).or_abort(|| self.abort_atomic())?;
+                self.deployment_store().insert(transaction)?;
             }
             Transaction::Execute(..) => {
                 // Store the transaction type.
-                self.id_map().insert(transaction.id(), TransactionType::Execute).or_abort(|| self.abort_atomic())?;
+                self.id_map().insert(transaction.id(), TransactionType::Execute)?;
                 // Store the execution transaction.
-                self.execution_store().insert(transaction).or_abort(|| self.abort_atomic())?;
+                self.execution_store().insert(transaction)?;
             }
         }
 
-        // Finish an atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the transaction for the given `transaction ID`.
@@ -123,25 +119,17 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Remove the transaction type.
-        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
+        self.id_map().remove(transaction_id)?;
         // Remove the transaction.
         match transaction_type {
             // Remove the deployment transaction.
-            TransactionType::Deploy => {
-                self.deployment_store().remove(transaction_id).or_abort(|| self.abort_atomic())?
-            }
+            TransactionType::Deploy => self.deployment_store().remove(transaction_id)?,
             // Remove the execution transaction.
-            TransactionType::Execute => {
-                self.execution_store().remove(transaction_id).or_abort(|| self.abort_atomic())?
-            }
+            TransactionType::Execute => self.execution_store().remove(transaction_id)?,
         };
 
-        // Finish an atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+    map::{memory_map::MemoryMap, Map, MapRead},
     transition::{Input, Origin},
 };
 use console::{
@@ -104,43 +104,29 @@ pub trait InputStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `(transition ID, input)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, inputs: &[Input<N>]) -> Result<()> {
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Store the input IDs.
-        self.id_map()
-            .insert(transition_id, inputs.iter().map(Input::id).copied().collect())
-            .or_abort(|| self.abort_atomic())?;
+        self.id_map().insert(transition_id, inputs.iter().map(Input::id).copied().collect())?;
 
         // Store the inputs.
         for input in inputs {
             // Store the reverse input ID.
-            self.reverse_id_map().insert(*input.id(), transition_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().insert(*input.id(), transition_id)?;
             // Store the input.
             match input.clone() {
-                Input::Constant(input_id, constant) => {
-                    self.constant_map().insert(input_id, constant).or_abort(|| self.abort_atomic())?
-                }
-                Input::Public(input_id, public) => {
-                    self.public_map().insert(input_id, public).or_abort(|| self.abort_atomic())?
-                }
-                Input::Private(input_id, private) => {
-                    self.private_map().insert(input_id, private).or_abort(|| self.abort_atomic())?
-                }
+                Input::Constant(input_id, constant) => self.constant_map().insert(input_id, constant)?,
+                Input::Public(input_id, public) => self.public_map().insert(input_id, public)?,
+                Input::Private(input_id, private) => self.private_map().insert(input_id, private)?,
                 Input::Record(serial_number, tag, origin) => {
                     // Store the record tag.
-                    self.record_tag_map().insert(tag, serial_number).or_abort(|| self.abort_atomic())?;
+                    self.record_tag_map().insert(tag, serial_number)?;
                     // Store the record.
-                    self.record_map().insert(serial_number, (tag, origin)).or_abort(|| self.abort_atomic())?
+                    self.record_map().insert(serial_number, (tag, origin))?
                 }
-                Input::ExternalRecord(input_id) => {
-                    self.external_record_map().insert(input_id, ()).or_abort(|| self.abort_atomic())?
-                }
+                Input::ExternalRecord(input_id) => self.external_record_map().insert(input_id, ())?,
             }
         }
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the input for the given `transition ID`.
@@ -152,32 +138,28 @@ pub trait InputStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Remove the input IDs.
-        self.id_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
+        self.id_map().remove(transition_id)?;
 
         // Remove the inputs.
         for input_id in input_ids {
             // Remove the reverse input ID.
-            self.reverse_id_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().remove(&input_id)?;
 
             // If the input is a record, remove the record tag.
-            if let Some(record) = self.record_map().get(&input_id).or_abort(|| self.abort_atomic())? {
-                self.record_tag_map().remove(&record.0).or_abort(|| self.abort_atomic())?;
+            if let Some(record) = self.record_map().get(&input_id)? {
+                self.record_tag_map().remove(&record.0)?;
             }
 
             // Remove the input.
-            self.constant_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
-            self.public_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
-            self.private_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
-            self.record_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
-            self.external_record_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
+            self.constant_map().remove(&input_id)?;
+            self.public_map().remove(&input_id)?;
+            self.private_map().remove(&input_id)?;
+            self.record_map().remove(&input_id)?;
+            self.external_record_map().remove(&input_id)?;
         }
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Returns the transition ID that contains the given `input ID`.

@@ -17,7 +17,7 @@
 use crate::{
     cow_to_cloned,
     cow_to_copied,
-    ledger::map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+    ledger::map::{memory_map::MemoryMap, Map, MapRead},
 };
 use console::{
     network::prelude::*,
@@ -118,18 +118,14 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Insert the new mapping name.
         mapping_names.insert(*mapping_name);
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Update the program ID map with the new mapping name.
-        self.program_id_map().insert(*program_id, mapping_names).or_abort(|| self.abort_atomic())?;
+        self.program_id_map().insert(*program_id, mapping_names)?;
         // Initialize the mapping ID map.
-        self.mapping_id_map().insert((*program_id, *mapping_name), mapping_id).or_abort(|| self.abort_atomic())?;
+        self.mapping_id_map().insert((*program_id, *mapping_name), mapping_id)?;
         // Initialize the key-value ID map.
-        self.key_value_id_map().insert(mapping_id, IndexMap::new()).or_abort(|| self.abort_atomic())?;
+        self.key_value_id_map().insert(mapping_id, IndexMap::new())?;
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -167,18 +163,14 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Insert the new key-value ID.
         key_value_ids.insert(key_id, value_id);
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Update the key-value ID map with the new key-value ID.
-        self.key_value_id_map().insert(mapping_id, key_value_ids).or_abort(|| self.abort_atomic())?;
+        self.key_value_id_map().insert(mapping_id, key_value_ids)?;
         // Insert the key.
-        self.key_map().insert(key_id, key).or_abort(|| self.abort_atomic())?;
+        self.key_map().insert(key_id, key)?;
         // Insert the value.
-        self.value_map().insert(key_id, value).or_abort(|| self.abort_atomic())?;
+        self.value_map().insert(key_id, value)?;
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Stores the given `(key, value)` pair at the given `program ID` and `mapping name` in storage.
@@ -219,18 +211,14 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Insert the new key-value ID.
         key_value_ids.insert(key_id, value_id);
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Update the key-value ID map with the new key-value ID.
-        self.key_value_id_map().insert(mapping_id, key_value_ids).or_abort(|| self.abort_atomic())?;
+        self.key_value_id_map().insert(mapping_id, key_value_ids)?;
         // Insert the key.
-        self.key_map().insert(key_id, key).or_abort(|| self.abort_atomic())?;
+        self.key_map().insert(key_id, key)?;
         // Insert the value.
-        self.value_map().insert(key_id, value).or_abort(|| self.abort_atomic())?;
+        self.value_map().insert(key_id, value)?;
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the key-value pair for the given `program ID`, `mapping name`, and `key` from storage.
@@ -259,18 +247,14 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Remove the key ID.
         key_value_ids.remove(&key_id);
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Update the key-value ID map with the new key ID.
-        self.key_value_id_map().insert(mapping_id, key_value_ids).or_abort(|| self.abort_atomic())?;
+        self.key_value_id_map().insert(mapping_id, key_value_ids)?;
         // Remove the key.
-        self.key_map().remove(&key_id).or_abort(|| self.abort_atomic())?;
+        self.key_map().remove(&key_id)?;
         // Remove the value.
-        self.value_map().remove(&key_id).or_abort(|| self.abort_atomic())?;
+        self.value_map().remove(&key_id)?;
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the mapping for the given `program ID` and `mapping name` from storage,
@@ -299,23 +283,19 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
         // Remove the mapping name.
         mapping_names.remove(mapping_name);
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Update the mapping names.
-        self.program_id_map().insert(*program_id, mapping_names).or_abort(|| self.abort_atomic())?;
+        self.program_id_map().insert(*program_id, mapping_names)?;
         // Remove the mapping ID.
-        self.mapping_id_map().remove(&(*program_id, *mapping_name)).or_abort(|| self.abort_atomic())?;
+        self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
         // Remove the key IDs.
-        self.key_value_id_map().remove(&mapping_id).or_abort(|| self.abort_atomic())?;
+        self.key_value_id_map().remove(&mapping_id)?;
         // Remove the keys.
         for key_id in key_value_ids.keys() {
-            self.key_map().remove(key_id).or_abort(|| self.abort_atomic())?;
-            self.value_map().remove(key_id).or_abort(|| self.abort_atomic())?;
+            self.key_map().remove(key_id)?;
+            self.value_map().remove(key_id)?;
         }
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the program for the given `program ID` from storage,
@@ -327,23 +307,20 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Update the mapping names.
-        self.program_id_map().remove(program_id).or_abort(|| self.abort_atomic())?;
+        self.program_id_map().remove(program_id)?;
 
         // Remove each mapping.
         for mapping_name in mapping_names.iter() {
             // Retrieve the mapping ID.
-            let mapping_id = match self.get_mapping_id(program_id, mapping_name).or_abort(|| self.abort_atomic())? {
+            let mapping_id = match self.get_mapping_id(program_id, mapping_name)? {
                 Some(mapping_id) => mapping_id,
                 None => {
                     bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
                 }
             };
             // Retrieve the key-value IDs for the mapping ID.
-            let key_value_ids = match self.key_value_id_map().get(&mapping_id).or_abort(|| self.abort_atomic())? {
+            let key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
                 Some(key_value_ids) => key_value_ids,
                 None => {
                     bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
@@ -351,18 +328,17 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             };
 
             // Remove the mapping ID.
-            self.mapping_id_map().remove(&(*program_id, *mapping_name)).or_abort(|| self.abort_atomic())?;
+            self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
             // Remove the key IDs.
-            self.key_value_id_map().remove(&mapping_id).or_abort(|| self.abort_atomic())?;
+            self.key_value_id_map().remove(&mapping_id)?;
             // Remove the keys.
             for key_id in key_value_ids.keys() {
-                self.key_map().remove(key_id).or_abort(|| self.abort_atomic())?;
-                self.value_map().remove(key_id).or_abort(|| self.abort_atomic())?;
+                self.key_map().remove(key_id)?;
+                self.value_map().remove(key_id)?;
             }
         }
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Returns `true` if the given `program ID` exist.

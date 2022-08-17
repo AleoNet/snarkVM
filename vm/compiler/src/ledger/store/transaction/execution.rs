@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+        map::{memory_map::MemoryMap, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
@@ -100,34 +100,28 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
         // Retrieve the optional additional fee ID.
         let optional_additional_fee_id = optional_additional_fee.as_ref().map(|additional_fee| *additional_fee.id());
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Store the transition IDs.
-        self.id_map()
-            .insert(*transaction_id, (transition_ids, optional_additional_fee_id))
-            .or_abort(|| self.abort_atomic())?;
+        self.id_map().insert(*transaction_id, (transition_ids, optional_additional_fee_id))?;
         // Store the edition.
-        self.edition_map().insert(*transaction_id, edition).or_abort(|| self.abort_atomic())?;
+        self.edition_map().insert(*transaction_id, edition)?;
 
         // Store the execution.
         for transition in transitions {
             // Store the transition ID.
-            self.reverse_id_map().insert(*transition.id(), *transaction_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().insert(*transition.id(), *transaction_id)?;
             // Store the transition.
-            self.transition_store().insert(transition).or_abort(|| self.abort_atomic())?;
+            self.transition_store().insert(transition)?;
         }
 
         // Store the additional fee, if one exists.
         if let Some(additional_fee) = optional_additional_fee {
             // Store the additional fee ID.
-            self.reverse_id_map().insert(*additional_fee.id(), *transaction_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().insert(*additional_fee.id(), *transaction_id)?;
             // Store the additional fee transition.
-            self.transition_store().insert(additional_fee.clone()).or_abort(|| self.abort_atomic())?;
+            self.transition_store().insert(additional_fee.clone())?;
         }
 
-        // Finish an atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the execution transaction for the given `transaction ID`.
@@ -138,32 +132,28 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Remove the transition IDs.
-        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
+        self.id_map().remove(transaction_id)?;
         // Remove the edition.
-        self.edition_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
+        self.edition_map().remove(transaction_id)?;
 
         // Remove the execution.
         for transition_id in transition_ids {
             // Remove the transition ID.
-            self.reverse_id_map().remove(&transition_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().remove(&transition_id)?;
             // Remove the transition.
-            self.transition_store().remove(&transition_id).or_abort(|| self.abort_atomic())?;
+            self.transition_store().remove(&transition_id)?;
         }
 
         // Remove the additional fee ID, if one exists.
         if let Some(additional_fee_id) = optional_additional_fee_id {
             // Remove the additional fee ID.
-            self.reverse_id_map().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().remove(&additional_fee_id)?;
             // Remove the additional fee transition.
-            self.transition_store().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
+            self.transition_store().remove(&additional_fee_id)?;
         }
 
-        // Finish an atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.

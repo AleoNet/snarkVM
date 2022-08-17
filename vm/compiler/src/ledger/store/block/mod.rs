@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+        map::{memory_map::MemoryMap, Map, MapRead},
         store::{
             TransactionMemory,
             TransactionStorage,
@@ -121,28 +121,36 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         // Start an atomic batch write operation.
         self.start_atomic();
 
-        // Store the block hash.
-        self.id_map().insert(block.height(), block.hash()).or_abort(|| self.abort_atomic())?;
-        // Store the block height.
-        self.reverse_id_map().insert(block.hash(), block.height()).or_abort(|| self.abort_atomic())?;
-        // Store the block header.
-        self.header_map().insert(block.hash(), *block.header()).or_abort(|| self.abort_atomic())?;
+        let run_atomic_ops = || -> Result<()> {
+            // Store the block hash.
+            self.id_map().insert(block.height(), block.hash())?;
+            // Store the block height.
+            self.reverse_id_map().insert(block.hash(), block.height())?;
+            // Store the block header.
+            self.header_map().insert(block.hash(), *block.header())?;
 
-        // Store the transaction IDs.
-        self.transactions_map()
-            .insert(block.hash(), block.transaction_ids().copied().collect())
-            .or_abort(|| self.abort_atomic())?;
+            // Store the transaction IDs.
+            self.transactions_map().insert(block.hash(), block.transaction_ids().copied().collect())?;
 
-        // Store the block transactions.
-        for transaction in block.transactions().values() {
-            // Store the reverse transaction ID.
-            self.reverse_transactions_map().insert(transaction.id(), block.hash()).or_abort(|| self.abort_atomic())?;
-            // Store the transaction.
-            self.transaction_store().insert(transaction).or_abort(|| self.abort_atomic())?;
-        }
+            // Store the block transactions.
+            for transaction in block.transactions().values() {
+                // Store the reverse transaction ID.
+                self.reverse_transactions_map().insert(transaction.id(), block.hash())?;
+                // Store the transaction.
+                self.transaction_store().insert(transaction)?;
+            }
 
-        // Store the block signature.
-        self.signature_map().insert(block.hash(), *block.signature()).or_abort(|| self.abort_atomic())?;
+            // Store the block signature.
+            self.signature_map().insert(block.hash(), *block.signature())?;
+
+            Ok(())
+        };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            self.abort_atomic();
+            err
+        })?;
 
         // Finish the atomic batch write operation.
         self.finish_atomic()
@@ -164,26 +172,36 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
         // Start an atomic batch write operation.
         self.start_atomic();
 
-        // Remove the block hash.
-        self.id_map().remove(&height).or_abort(|| self.abort_atomic())?;
-        // Remove the block height.
-        self.reverse_id_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
-        // Remove the block header.
-        self.header_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+        let run_atomic_ops = || -> Result<()> {
+            // Remove the block hash.
+            self.id_map().remove(&height)?;
+            // Remove the block height.
+            self.reverse_id_map().remove(block_hash)?;
+            // Remove the block header.
+            self.header_map().remove(block_hash)?;
 
-        // Remove the transaction IDs.
-        self.transactions_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+            // Remove the transaction IDs.
+            self.transactions_map().remove(block_hash)?;
 
-        // Remove the block transactions.
-        for transaction_id in transaction_ids.iter() {
-            // Remove the reverse transaction ID.
-            self.reverse_transactions_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
-            // Remove the transaction.
-            self.transaction_store().remove(transaction_id).or_abort(|| self.abort_atomic())?;
-        }
+            // Remove the block transactions.
+            for transaction_id in transaction_ids.iter() {
+                // Remove the reverse transaction ID.
+                self.reverse_transactions_map().remove(transaction_id)?;
+                // Remove the transaction.
+                self.transaction_store().remove(transaction_id)?;
+            }
 
-        // Remove the block signature.
-        self.signature_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+            // Remove the block signature.
+            self.signature_map().remove(block_hash)?;
+
+            Ok(())
+        };
+
+        // Abort if any of the underlying operations has failed.
+        run_atomic_ops().map_err(|err| {
+            self.abort_atomic();
+            err
+        })?;
 
         // Finish the atomic batch write operation.
         self.finish_atomic()

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+    map::{memory_map::MemoryMap, Map, MapRead},
     transition::Output,
 };
 use console::{
@@ -104,47 +104,31 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
 
     /// Stores the given `(transition ID, output)` pair into storage.
     fn insert(&self, transition_id: N::TransitionID, outputs: &[Output<N>]) -> Result<()> {
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Store the output IDs.
-        self.id_map()
-            .insert(transition_id, outputs.iter().map(Output::id).copied().collect())
-            .or_abort(|| self.abort_atomic())?;
+        self.id_map().insert(transition_id, outputs.iter().map(Output::id).copied().collect())?;
 
         // Store the outputs.
         for output in outputs {
             // Store the reverse output ID.
-            self.reverse_id_map().insert(*output.id(), transition_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().insert(*output.id(), transition_id)?;
             // Store the output.
             match output.clone() {
-                Output::Constant(output_id, constant) => {
-                    self.constant_map().insert(output_id, constant).or_abort(|| self.abort_atomic())?
-                }
-                Output::Public(output_id, public) => {
-                    self.public_map().insert(output_id, public).or_abort(|| self.abort_atomic())?
-                }
-                Output::Private(output_id, private) => {
-                    self.private_map().insert(output_id, private).or_abort(|| self.abort_atomic())?
-                }
+                Output::Constant(output_id, constant) => self.constant_map().insert(output_id, constant)?,
+                Output::Public(output_id, public) => self.public_map().insert(output_id, public)?,
+                Output::Private(output_id, private) => self.private_map().insert(output_id, private)?,
                 Output::Record(commitment, checksum, optional_record) => {
                     // If the optional record exists, insert the record nonce.
                     if let Some(record) = &optional_record {
-                        self.record_nonce_map().insert(*record.nonce(), commitment).or_abort(|| self.abort_atomic())?;
+                        self.record_nonce_map().insert(*record.nonce(), commitment)?;
                     }
                     // Insert the record entry.
-                    self.record_map()
-                        .insert(commitment, (checksum, optional_record))
-                        .or_abort(|| self.abort_atomic())?
+                    self.record_map().insert(commitment, (checksum, optional_record))?
                 }
-                Output::ExternalRecord(output_id) => {
-                    self.external_record_map().insert(output_id, ()).or_abort(|| self.abort_atomic())?
-                }
+                Output::ExternalRecord(output_id) => self.external_record_map().insert(output_id, ())?,
             }
         }
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Removes the output for the given `transition ID`.
@@ -156,34 +140,30 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
-
         // Remove the output IDs.
-        self.id_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
+        self.id_map().remove(transition_id)?;
 
         // Remove the outputs.
         for output_id in output_ids {
             // Remove the reverse output ID.
-            self.reverse_id_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
+            self.reverse_id_map().remove(&output_id)?;
 
             // If the output is a record, remove the record nonce.
-            if let Some(record) = self.record_map().get(&output_id).or_abort(|| self.abort_atomic())? {
+            if let Some(record) = self.record_map().get(&output_id)? {
                 if let Some(record) = &record.1 {
-                    self.record_nonce_map().remove(record.nonce()).or_abort(|| self.abort_atomic())?;
+                    self.record_nonce_map().remove(record.nonce())?;
                 }
             }
 
             // Remove the output.
-            self.constant_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
-            self.public_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
-            self.private_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
-            self.record_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
-            self.external_record_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
+            self.constant_map().remove(&output_id)?;
+            self.public_map().remove(&output_id)?;
+            self.private_map().remove(&output_id)?;
+            self.record_map().remove(&output_id)?;
+            self.external_record_map().remove(&output_id)?;
         }
 
-        // Finish the atomic batch write operation.
-        self.finish_atomic()
+        Ok(())
     }
 
     /// Returns the transition ID that contains the given `output ID`.
