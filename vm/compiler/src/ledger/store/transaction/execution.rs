@@ -140,26 +140,32 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to get the transition IDs for the transaction '{transaction_id}'"),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the transition IDs.
-        self.id_map().remove(transaction_id)?;
+        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
         // Remove the edition.
-        self.edition_map().remove(transaction_id)?;
+        self.edition_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
 
         // Remove the execution.
         for transition_id in transition_ids {
             // Remove the transition ID.
-            self.reverse_id_map().remove(&transition_id)?;
+            self.reverse_id_map().remove(&transition_id).or_abort(|| self.abort_atomic())?;
             // Remove the transition.
-            self.transition_store().remove(&transition_id)?;
+            self.transition_store().remove(&transition_id).or_abort(|| self.abort_atomic())?;
         }
 
         // Remove the additional fee ID, if one exists.
         if let Some(additional_fee_id) = optional_additional_fee_id {
             // Remove the additional fee ID.
-            self.reverse_id_map().remove(&additional_fee_id)?;
+            self.reverse_id_map().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
             // Remove the additional fee transition.
-            self.transition_store().remove(&additional_fee_id)?;
+            self.transition_store().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
         }
+
+        // Finish an atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

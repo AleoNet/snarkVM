@@ -34,7 +34,7 @@ pub struct MemoryMap<
     K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Send + Sync,
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Send + Sync,
 > {
-    pub(super) map: Arc<RwLock<IndexMap<K, V>>>,
+    map: Arc<RwLock<IndexMap<K, V>>>,
     batch_in_progress: Arc<AtomicBool>,
     atomic_batch: Arc<Mutex<Vec<BatchOperation<K, V>>>>,
 }

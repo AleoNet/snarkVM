@@ -163,26 +163,32 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to remove block: missing transactions for block '{height}' ('{block_hash}')"),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the block hash.
-        self.id_map().remove(&height)?;
+        self.id_map().remove(&height).or_abort(|| self.abort_atomic())?;
         // Remove the block height.
-        self.reverse_id_map().remove(block_hash)?;
+        self.reverse_id_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
         // Remove the block header.
-        self.header_map().remove(block_hash)?;
+        self.header_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
 
         // Remove the transaction IDs.
-        self.transactions_map().remove(block_hash)?;
+        self.transactions_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
 
         // Remove the block transactions.
         for transaction_id in transaction_ids.iter() {
             // Remove the reverse transaction ID.
-            self.reverse_transactions_map().remove(transaction_id)?;
+            self.reverse_transactions_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
             // Remove the transaction.
-            self.transaction_store().remove(transaction_id)?;
+            self.transaction_store().remove(transaction_id).or_abort(|| self.abort_atomic())?;
         }
 
         // Remove the block signature.
-        self.signature_map().remove(block_hash)?;
+        self.signature_map().remove(block_hash).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

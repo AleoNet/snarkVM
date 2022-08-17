@@ -179,26 +179,32 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the program ID and function name.
-        self.locator_map().remove(transition_id)?;
+        self.locator_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove the inputs.
-        self.input_store().remove(transition_id)?;
+        self.input_store().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove the outputs.
-        self.output_store().remove(transition_id)?;
+        self.output_store().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove the finalize inputs.
-        self.finalize_map().remove(transition_id)?;
+        self.finalize_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove the proof.
-        self.proof_map().remove(transition_id)?;
+        self.proof_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove `tpk`.
-        self.tpk_map().remove(transition_id)?;
+        self.tpk_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove the reverse `tpk` entry.
-        self.reverse_tpk_map().remove(&tpk)?;
+        self.reverse_tpk_map().remove(&tpk).or_abort(|| self.abort_atomic())?;
         // Remove `tcm`.
-        self.tcm_map().remove(transition_id)?;
+        self.tcm_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
         // Remove the reverse `tcm` entry.
-        self.reverse_tcm_map().remove(&tcm)?;
+        self.reverse_tcm_map().remove(&tcm).or_abort(|| self.abort_atomic())?;
         // Remove the fee.
-        self.fee_map().remove(transition_id)?;
+        self.fee_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

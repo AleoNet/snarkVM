@@ -154,26 +154,32 @@ pub trait InputStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the input IDs.
-        self.id_map().remove(transition_id)?;
+        self.id_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
 
         // Remove the inputs.
         for input_id in input_ids {
             // Remove the reverse input ID.
-            self.reverse_id_map().remove(&input_id)?;
+            self.reverse_id_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
 
             // If the input is a record, remove the record tag.
-            if let Some(record) = self.record_map().get(&input_id)? {
-                self.record_tag_map().remove(&record.0)?;
+            if let Some(record) = self.record_map().get(&input_id).or_abort(|| self.abort_atomic())? {
+                self.record_tag_map().remove(&record.0).or_abort(|| self.abort_atomic())?;
             }
 
             // Remove the input.
-            self.constant_map().remove(&input_id)?;
-            self.public_map().remove(&input_id)?;
-            self.private_map().remove(&input_id)?;
-            self.record_map().remove(&input_id)?;
-            self.external_record_map().remove(&input_id)?;
+            self.constant_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
+            self.public_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
+            self.private_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
+            self.record_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
+            self.external_record_map().remove(&input_id).or_abort(|| self.abort_atomic())?;
         }
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

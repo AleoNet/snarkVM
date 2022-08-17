@@ -125,15 +125,27 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to get the type for transaction '{transaction_id}'"),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the transaction type.
-        self.id_map().remove(transaction_id)?;
+        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
         // Remove the transaction.
         match transaction_type {
             // Remove the deployment transaction.
-            TransactionType::Deploy => self.deployment_store().remove(transaction_id),
+            TransactionType::Deploy => {
+                self.deployment_store().remove(transaction_id).or_abort(|| self.abort_atomic())?
+            }
             // Remove the execution transaction.
-            TransactionType::Execute => self.execution_store().remove(transaction_id),
-        }
+            TransactionType::Execute => {
+                self.execution_store().remove(transaction_id).or_abort(|| self.abort_atomic())?
+            }
+        };
+
+        // Finish an atomic batch write operation.
+        self.finish_atomic();
+
+        Ok(())
     }
 
     /// Returns the transaction ID that contains the given `transition ID`.

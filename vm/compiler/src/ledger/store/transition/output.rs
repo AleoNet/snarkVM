@@ -158,27 +158,30 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
             None => return Ok(()),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the output IDs.
-        self.id_map().remove(transition_id)?;
+        self.id_map().remove(transition_id).or_abort(|| self.abort_atomic())?;
 
         // Remove the outputs.
         for output_id in output_ids {
             // Remove the reverse output ID.
-            self.reverse_id_map().remove(&output_id)?;
+            self.reverse_id_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
 
             // If the output is a record, remove the record nonce.
-            if let Some(record) = self.record_map().get(&output_id)? {
+            if let Some(record) = self.record_map().get(&output_id).or_abort(|| self.abort_atomic())? {
                 if let Some(record) = &record.1 {
-                    self.record_nonce_map().remove(record.nonce())?;
+                    self.record_nonce_map().remove(record.nonce()).or_abort(|| self.abort_atomic())?;
                 }
             }
 
             // Remove the output.
-            self.constant_map().remove(&output_id)?;
-            self.public_map().remove(&output_id)?;
-            self.private_map().remove(&output_id)?;
-            self.record_map().remove(&output_id)?;
-            self.external_record_map().remove(&output_id)?;
+            self.constant_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
+            self.public_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
+            self.private_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
+            self.record_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
+            self.external_record_map().remove(&output_id).or_abort(|| self.abort_atomic())?;
         }
 
         Ok(())

@@ -337,20 +337,23 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             None => bail!("Illegal operation: program ID '{program_id}' is not initialized - cannot remove mapping."),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Update the mapping names.
-        self.program_id_map().remove(program_id)?;
+        self.program_id_map().remove(program_id).or_abort(|| self.abort_atomic())?;
 
         // Remove each mapping.
         for mapping_name in mapping_names.iter() {
             // Retrieve the mapping ID.
-            let mapping_id = match self.get_mapping_id(program_id, mapping_name)? {
+            let mapping_id = match self.get_mapping_id(program_id, mapping_name).or_abort(|| self.abort_atomic())? {
                 Some(mapping_id) => mapping_id,
                 None => {
                     bail!("Illegal operation: mapping '{mapping_name}' is not initialized - cannot remove mapping.")
                 }
             };
             // Retrieve the key-value IDs for the mapping ID.
-            let key_value_ids = match self.key_value_id_map().get(&mapping_id)? {
+            let key_value_ids = match self.key_value_id_map().get(&mapping_id).or_abort(|| self.abort_atomic())? {
                 Some(key_value_ids) => key_value_ids,
                 None => {
                     bail!("Illegal operation: mapping ID '{mapping_id}' is not initialized - cannot remove mapping.")
@@ -358,15 +361,18 @@ pub trait ProgramStorage<N: Network>: Clone + Sync {
             };
 
             // Remove the mapping ID.
-            self.mapping_id_map().remove(&(*program_id, *mapping_name))?;
+            self.mapping_id_map().remove(&(*program_id, *mapping_name)).or_abort(|| self.abort_atomic())?;
             // Remove the key IDs.
-            self.key_value_id_map().remove(&mapping_id)?;
+            self.key_value_id_map().remove(&mapping_id).or_abort(|| self.abort_atomic())?;
             // Remove the keys.
             for key_id in key_value_ids.keys() {
-                self.key_map().remove(key_id)?;
-                self.value_map().remove(key_id)?;
+                self.key_map().remove(key_id).or_abort(|| self.abort_atomic())?;
+                self.value_map().remove(key_id).or_abort(|| self.abort_atomic())?;
             }
         }
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }

@@ -200,28 +200,34 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to locate the additional fee ID for transaction '{transaction_id}'"),
         };
 
+        // Start an atomic batch write operation.
+        self.start_atomic();
+
         // Remove the program ID.
-        self.id_map().remove(transaction_id)?;
+        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
         // Remove the edition.
-        self.edition_map().remove(&program_id)?;
+        self.edition_map().remove(&program_id).or_abort(|| self.abort_atomic())?;
 
         // Remove the reverse program ID.
-        self.reverse_id_map().remove(&(program_id, edition))?;
+        self.reverse_id_map().remove(&(program_id, edition)).or_abort(|| self.abort_atomic())?;
         // Remove the program.
-        self.program_map().remove(&(program_id, edition))?;
+        self.program_map().remove(&(program_id, edition)).or_abort(|| self.abort_atomic())?;
 
         // Remove the verifying keys and certificates.
         for function_name in program.functions().keys() {
             // Remove the verifying key.
-            self.verifying_key_map().remove(&(program_id, *function_name, edition))?;
+            self.verifying_key_map().remove(&(program_id, *function_name, edition)).or_abort(|| self.abort_atomic())?;
             // Remove the certificate.
-            self.certificate_map().remove(&(program_id, *function_name, edition))?;
+            self.certificate_map().remove(&(program_id, *function_name, edition)).or_abort(|| self.abort_atomic())?;
         }
 
         // Remove the additional fee ID.
-        self.additional_fee_map().remove(transaction_id)?;
+        self.additional_fee_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
         // Remove the additional fee transition.
-        self.transition_store().remove(&additional_fee_id)?;
+        self.transition_store().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
+
+        // Finish the atomic batch write operation.
+        self.finish_atomic();
 
         Ok(())
     }
