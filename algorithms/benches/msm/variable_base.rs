@@ -26,7 +26,11 @@ use rayon::prelude::*;
 extern crate criterion;
 
 fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(size: usize) -> (Vec<G>, Vec<F::BigInteger>) {
-    let bases = (0..size).into_par_iter().map(|_| G::rand(&mut thread_rng())).collect::<Vec<_>>();
+    let bases =
+        std::iter::repeat((0..(size / 1000)).into_par_iter().map(|_| G::rand(&mut thread_rng())).collect::<Vec<_>>())
+            .take(1000)
+            .flatten()
+            .collect::<Vec<_>>();
     let scalars = (0..size).into_par_iter().map(|_| F::rand(&mut thread_rng()).to_repr()).collect::<Vec<_>>();
     (bases, scalars)
 }
