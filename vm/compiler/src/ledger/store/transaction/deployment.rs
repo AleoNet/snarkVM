@@ -337,6 +337,30 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
 
         Ok(())
     }
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.edition_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.program_map().start_atomic();
+        self.verifying_key_map().start_atomic();
+        self.certificate_map().start_atomic();
+        self.additional_fee_map().start_atomic();
+        self.transition_store().start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.edition_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.program_map().finish_atomic();
+        self.verifying_key_map().finish_atomic();
+        self.certificate_map().finish_atomic();
+        self.additional_fee_map().finish_atomic();
+        self.transition_store().finish_atomic();
+    }
 }
 
 /// An in-memory deployment storage.
@@ -457,6 +481,16 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Removes the transaction for the given `transaction ID`.
     pub fn remove(&self, transaction_id: &N::TransactionID) -> Result<()> {
         self.storage.remove(transaction_id)
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 

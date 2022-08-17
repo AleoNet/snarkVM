@@ -254,6 +254,28 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
 
         Ok(())
     }
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.header_map().start_atomic();
+        self.transactions_map().start_atomic();
+        self.reverse_transactions_map().start_atomic();
+        self.transaction_store().start_atomic();
+        self.signature_map().start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.header_map().finish_atomic();
+        self.transactions_map().finish_atomic();
+        self.reverse_transactions_map().finish_atomic();
+        self.transaction_store().finish_atomic();
+        self.signature_map().finish_atomic();
+    }
 }
 
 /// An in-memory block storage.
@@ -381,6 +403,16 @@ impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, B::TransitionStorage> {
         self.storage.transaction_store().transition_store()
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 

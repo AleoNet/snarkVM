@@ -217,6 +217,22 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
 
         Ok(())
     }
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.edition_map().start_atomic();
+        self.transition_store().start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.edition_map().finish_atomic();
+        self.transition_store().finish_atomic();
+    }
 }
 
 /// An in-memory execution storage.
@@ -307,6 +323,16 @@ impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Returns the transition store.
     pub fn transition_store(&self) -> &TransitionStore<N, E::TransitionStorage> {
         self.storage.transition_store()
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 

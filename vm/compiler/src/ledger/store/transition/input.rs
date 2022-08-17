@@ -191,6 +191,30 @@ pub trait InputStorage<N: Network>: Clone + Sync {
 
         Ok(())
     }
+
+    /// Starts an atomic batch write operation.
+    fn start_atomic(&self) {
+        self.id_map().start_atomic();
+        self.reverse_id_map().start_atomic();
+        self.constant_map().start_atomic();
+        self.public_map().start_atomic();
+        self.private_map().start_atomic();
+        self.record_map().start_atomic();
+        self.record_tag_map().start_atomic();
+        self.external_record_map().start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    fn finish_atomic(&self) {
+        self.id_map().finish_atomic();
+        self.reverse_id_map().finish_atomic();
+        self.constant_map().finish_atomic();
+        self.public_map().finish_atomic();
+        self.private_map().finish_atomic();
+        self.record_map().finish_atomic();
+        self.record_tag_map().finish_atomic();
+        self.external_record_map().finish_atomic();
+    }
 }
 
 /// An in-memory transition input storage.
@@ -337,6 +361,16 @@ impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Removes the input for the given `transition ID`.
     pub fn remove(&self, transition_id: &N::TransitionID) -> Result<()> {
         self.storage.remove(transition_id)
+    }
+
+    /// Starts an atomic batch write operation.
+    pub fn start_atomic(&self) {
+        self.storage.start_atomic();
+    }
+
+    /// Finishes an atomic batch write operation.
+    pub fn finish_atomic(&self) {
+        self.storage.finish_atomic();
     }
 }
 
