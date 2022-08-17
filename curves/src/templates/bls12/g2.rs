@@ -120,7 +120,7 @@ fn doubling_step<B: Bls12Parameters>(r: &mut G2HomProjective<B>, two_inv: &B::Fp
     a.mul_by_fp(two_inv);
     let b = r.y.square();
     let c = r.z.square();
-    let e = B::G2Parameters::COEFF_B * (c.double() + c);
+    let e = B::G2Parameters::WEIERSTRASS_B * (c.double() + c);
     let f = e.double() + e;
     let mut g = b + f;
     g.mul_by_fp(two_inv);

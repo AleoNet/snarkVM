@@ -2170,7 +2170,6 @@ dependencies = [
  "snarkvm-circuit-types",
  "snarkvm-console-network",
  "snarkvm-console-types",
- "snarkvm-fields",
 ]
 
 [[package]]
@@ -2240,7 +2239,6 @@ dependencies = [
  "snarkvm-circuit-types-field",
  "snarkvm-circuit-types-scalar",
  "snarkvm-console-types-group",
- "snarkvm-curves",
  "snarkvm-utilities",
 ]
 

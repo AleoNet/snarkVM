@@ -39,12 +39,13 @@ where
     P: TwistedEdwardsParameters,
 {
     // A = 2 * (a + d) / (a - d)
-    let a = P::BaseField::one().double() * (P::COEFF_A + P::COEFF_D) * (P::COEFF_A - P::COEFF_D).inverse().unwrap();
+    let a =
+        P::BaseField::one().double() * (P::EDWARDS_A + P::EDWARDS_D) * (P::EDWARDS_A - P::EDWARDS_D).inverse().unwrap();
     // B = 4 / (a - d)
-    let b = P::BaseField::one().double().double() * (P::COEFF_A - P::COEFF_D).inverse().unwrap();
+    let b = P::BaseField::one().double().double() * (P::EDWARDS_A - P::EDWARDS_D).inverse().unwrap();
 
-    assert_eq!(a, P::MontgomeryParameters::COEFF_A);
-    assert_eq!(b, P::MontgomeryParameters::COEFF_B);
+    assert_eq!(a, P::MontgomeryParameters::MONTGOMERY_A);
+    assert_eq!(b, P::MontgomeryParameters::MONTGOMERY_B);
 }
 
 pub fn edwards_test<P: TwistedEdwardsParameters>()

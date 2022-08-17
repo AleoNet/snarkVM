@@ -92,12 +92,20 @@ impl Testnet3 {
 
 impl Environment for Testnet3 {
     type Affine = <Console as Environment>::Affine;
-    type AffineParameters = <Console as Environment>::AffineParameters;
     type BigInteger = <Console as Environment>::BigInteger;
     type Field = <Console as Environment>::Field;
     type PairingCurve = <Console as Environment>::PairingCurve;
     type Projective = <Console as Environment>::Projective;
     type Scalar = <Console as Environment>::Scalar;
+
+    /// The coefficient `A` of the twisted Edwards curve.
+    const EDWARDS_A: Self::Field = Console::EDWARDS_A;
+    /// The coefficient `D` of the twisted Edwards curve.
+    const EDWARDS_D: Self::Field = Console::EDWARDS_D;
+    /// The coefficient `A` of the Montgomery curve.
+    const MONTGOMERY_A: Self::Field = Console::MONTGOMERY_A;
+    /// The coefficient `B` of the Montgomery curve.
+    const MONTGOMERY_B: Self::Field = Console::MONTGOMERY_B;
 }
 
 impl Network for Testnet3 {

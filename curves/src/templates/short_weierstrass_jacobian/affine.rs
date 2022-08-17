@@ -214,7 +214,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
                 let x_sq = b.x.square();
                 b.x -= &b.y; // x - y
                 a.x = b.y.double(); // denominator = 2y
-                a.y = x_sq.double() + x_sq + P::COEFF_A; // numerator = 3x^2 + a
+                a.y = x_sq.double() + x_sq + P::WEIERSTRASS_A; // numerator = 3x^2 + a
                 b.y -= &(a.y * half); // y - (3x^2 + a)/2
                 a.y *= *inversion_tmp; // (3x^2 + a) * tmp
                 *inversion_tmp *= &a.x; // update tmp

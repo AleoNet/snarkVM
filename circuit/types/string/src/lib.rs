@@ -63,7 +63,7 @@ impl<E: Environment> Eject for StringType<E> {
     fn eject_value(&self) -> Self::Primitive {
         // Ensure the string is within the allowed capacity.
         let num_bytes = self.bytes.len();
-        match num_bytes <= E::NUM_STRING_BYTES as usize {
+        match num_bytes <= E::MAX_STRING_BYTES as usize {
             true => console::StringType::new(
                 &String::from_utf8(self.bytes.eject_value().into_iter().map(|byte| *byte).collect())
                     .unwrap_or_else(|error| E::halt(&format!("Failed to eject a string value: {error}"))),

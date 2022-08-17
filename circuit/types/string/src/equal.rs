@@ -61,7 +61,7 @@ mod tests {
         let rng = &mut test_rng();
 
         // Sample a random string. Take 1/4th to ensure we fit for all code points.
-        let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
+        let given: String = (0..Circuit::MAX_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
         StringType::<Circuit>::new(mode, console::StringType::new(&given))
     }
 

@@ -323,7 +323,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             return;
         }
 
-        if P::COEFF_A.is_zero() {
+        if P::WEIERSTRASS_A.is_zero() {
             // A = X1^2
             let mut a = self.x.square();
 
