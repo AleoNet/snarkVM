@@ -16,7 +16,10 @@
 
 #![cfg_attr(not(feature = "aleo-cli"), allow(unused_variables))]
 
-use console::{network::prelude::*, program::Identifier};
+use console::{
+    network::{prelude::*, FiatShamir},
+    program::Identifier,
+};
 use snarkvm_algorithms::{snark::marlin, traits::SNARK};
 use snarkvm_utilities::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 
@@ -27,8 +30,8 @@ use std::sync::Arc;
 use colored::Colorize;
 
 type Fr<N> = <N as Environment>::Field;
-pub(crate) use console::network::FS;
-type Marlin<N> = marlin::MarlinSNARK<<N as Environment>::PairingCurve, FS<N>, marlin::MarlinHidingMode, [Fr<N>]>;
+type Marlin<N> =
+    marlin::MarlinSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, marlin::MarlinHidingMode, [Fr<N>]>;
 
 mod certificate;
 pub use certificate::Certificate;

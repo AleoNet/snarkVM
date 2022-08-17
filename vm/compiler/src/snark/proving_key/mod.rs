@@ -41,6 +41,8 @@ impl<N: Network> ProvingKey<N> {
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
+        // Compute the proof.
         let proof = Proof::new(Marlin::<N>::prove_batch(
             N::marlin_fs_parameters(),
             self,
@@ -62,6 +64,8 @@ impl<N: Network> ProvingKey<N> {
     ) -> Result<Proof<N>> {
         #[cfg(feature = "aleo-cli")]
         let timer = std::time::Instant::now();
+
+        // Compute the batch proof.
         let batch_proof = Proof::new(Marlin::<N>::prove_batch(N::marlin_fs_parameters(), self, assignments, rng)?);
 
         #[cfg(feature = "aleo-cli")]

@@ -45,12 +45,10 @@ pub type BHPMerkleTree<N, const DEPTH: u8> = MerkleTree<N, BHP1024<N>, BHP512<N>
 /// A helper type for the Poseidon Merkle tree.
 pub type PoseidonMerkleTree<N, const DEPTH: u8> = MerkleTree<N, Poseidon4<N>, Poseidon2<N>, DEPTH>;
 
+/// Helper types for the Marlin parameters.
 type Fq<N> = <<N as Environment>::PairingCurve as PairingEngine>::Fq;
-
-pub type FS<N> = PoseidonSponge<Fq<N>, 2, 1>;
-
-/// A helper type representing the parameters for the Marlin SNARK.
-pub type FSParameters<N> = <FS<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
+pub type FiatShamir<N> = PoseidonSponge<Fq<N>, 2, 1>;
+pub type FiatShamirParameters<N> = <FiatShamir<N> as AlgebraicSponge<Fq<N>, 2>>::Parameters;
 
 pub trait Network:
     'static
@@ -103,6 +101,15 @@ pub trait Network:
     /// The transition ID type.
     type TransitionID: Bech32ID<Field<Self>>;
 
+    /// Returns the powers of `G`.
+    fn g_powers() -> &'static Vec<Group<Self>>;
+
+    /// Returns the scalar multiplication on the generator `G`.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns the sponge parameters for Marlin.
+    fn marlin_fs_parameters() -> &'static FiatShamirParameters<Self>;
+
     /// Returns the balance commitment domain as a constant field element.
     fn bcm_domain() -> Field<Self>;
 
@@ -120,12 +127,6 @@ pub trait Network:
 
     /// Returns the serial number domain as a constant field element.
     fn serial_number_domain() -> Field<Self>;
-
-    /// Returns the powers of `G`.
-    fn g_powers() -> &'static Vec<Group<Self>>;
-
-    /// Returns the scalar multiplication on the generator `G`.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a BHP commitment with an input hasher of 256-bits.
     fn commit_bhp256(input: &[bool], randomizer: &Scalar<Self>) -> Result<Field<Self>>;
@@ -220,7 +221,4 @@ pub trait Network:
         root: &Field<Self>,
         leaf: &Vec<Field<Self>>,
     ) -> bool;
-
-    /// Returns the sponge parameters used for the sponge in the Marlin SNARK.
-    fn marlin_fs_parameters() -> &'static FSParameters<Self>;
 }
