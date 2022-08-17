@@ -1050,7 +1050,7 @@ mod tests {
             for (_, record) in records {
                 // Create a new transaction.
                 let transaction = Transaction::execute(
-                    &ledger.vm(),
+                    ledger.vm(),
                     &private_key,
                     &ProgramID::from_str("credits.aleo").unwrap(),
                     Identifier::from_str("split").unwrap(),
