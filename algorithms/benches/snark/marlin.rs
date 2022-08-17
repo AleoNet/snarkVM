@@ -99,53 +99,6 @@ fn snark_circuit_setup(c: &mut Criterion) {
     }
 }
 
-fn snark_vk_prove(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
-    let x = Fr::rand(rng);
-    let y = Fr::rand(rng);
-
-    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-    let fs_parameters = FS::sample_parameters();
-    let fs_p = &fs_parameters;
-
-    for size in [100, 1_000, 10_000, 100_000] {
-        c.bench_function(&format!("snark_vk_prove_{size}"), |b| {
-            let num_constraints = size;
-            let num_variables = size;
-            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
-            let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-
-            b.iter(|| MarlinInst::prove_vk(fs_p, &vk, &pk).unwrap())
-        });
-    }
-}
-
-fn snark_vk_verify(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
-    let x = Fr::rand(rng);
-    let y = Fr::rand(rng);
-
-    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
-    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
-    let fs_parameters = FS::sample_parameters();
-    let fs_p = &fs_parameters;
-
-    for size in [100, 1_000, 10_000, 100_000] {
-        c.bench_function(&format!("snark_vk_verify_{size}"), |b| {
-            let num_constraints = size;
-            let num_variables = size;
-            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
-            let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
-            let certificate = MarlinInst::prove_vk(fs_p, &vk, &pk).unwrap();
-
-            b.iter(|| MarlinInst::verify_vk(fs_p, &circuit, &vk, &certificate).unwrap())
-        });
-    }
-}
-
 fn snark_prove(c: &mut Criterion) {
     c.bench_function("snark_prove", move |b| {
         let num_constraints = 100;
@@ -193,10 +146,57 @@ fn snark_verify(c: &mut Criterion) {
     });
 }
 
+fn snark_certificate_prove(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+
+    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+    let fs_parameters = FS::sample_parameters();
+    let fs_p = &fs_parameters;
+
+    for size in [100, 1_000, 10_000, 100_000] {
+        c.bench_function(&format!("snark_certificate_prove_{size}"), |b| {
+            let num_constraints = size;
+            let num_variables = size;
+            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+            let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+
+            b.iter(|| MarlinInst::prove_vk(fs_p, &vk, &pk).unwrap())
+        });
+    }
+}
+
+fn snark_certificate_verify(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+
+    let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100_000, 100_000, 100_000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
+    let fs_parameters = FS::sample_parameters();
+    let fs_p = &fs_parameters;
+
+    for size in [100, 1_000, 10_000, 100_000] {
+        c.bench_function(&format!("snark_certificate_verify_{size}"), |b| {
+            let num_constraints = size;
+            let num_variables = size;
+            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
+            let (pk, vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+            let certificate = MarlinInst::prove_vk(fs_p, &vk, &pk).unwrap();
+
+            b.iter(|| MarlinInst::verify_vk(fs_p, &circuit, &vk, &certificate).unwrap())
+        });
+    }
+}
+
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_vk_prove, snark_vk_verify, snark_prove, snark_verify,
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_certificate_prove, snark_certificate_verify,
 }
 
 criterion_main!(marlin_snark);
