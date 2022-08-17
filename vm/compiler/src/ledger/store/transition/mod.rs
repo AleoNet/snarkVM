@@ -93,6 +93,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.locator_map().start_atomic();
         self.input_store().start_atomic();
         self.output_store().start_atomic();
+        self.finalize_map().start_atomic();
         self.proof_map().start_atomic();
         self.tpk_map().start_atomic();
         self.reverse_tpk_map().start_atomic();
@@ -106,6 +107,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.locator_map().abort_atomic();
         self.input_store().abort_atomic();
         self.output_store().abort_atomic();
+        self.finalize_map().abort_atomic();
         self.proof_map().abort_atomic();
         self.tpk_map().abort_atomic();
         self.reverse_tpk_map().abort_atomic();
@@ -119,6 +121,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
         self.locator_map().finish_atomic();
         self.input_store().finish_atomic();
         self.output_store().finish_atomic();
+        self.finalize_map().finish_atomic();
         self.proof_map().finish_atomic();
         self.tpk_map().finish_atomic();
         self.reverse_tpk_map().finish_atomic();
