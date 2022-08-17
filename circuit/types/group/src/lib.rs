@@ -80,8 +80,8 @@ impl<E: Environment> Inject for Group<E> {
             let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
             let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
 
-            let x2 = x_inv.square();
-            let y2 = y_inv.square();
+            let x2 = point_inv.x.square();
+            let y2 = point_inv.y.square();
 
             let first = y2;
             let second = (d * &x2) - &Field::one();
