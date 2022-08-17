@@ -2335,6 +2335,7 @@ name = "snarkvm-console-algorithms"
 version = "0.7.5"
 dependencies = [
  "blake2s_simd",
+ "criterion",
  "expect-test",
  "hex",
  "serde",
