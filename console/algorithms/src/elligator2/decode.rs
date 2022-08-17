@@ -32,7 +32,7 @@ impl<E: Environment> Elligator2<E> {
             Err(_) => bail!("Montgomery B must be invertible in order to use Elligator2"),
         };
 
-        let (x, y) = group.to_xy_coordinate();
+        let (x, y) = group.to_xy_coordinates();
 
         // Ensure that x != -A.
         ensure!(x != -a, "Elligator2 failed: x == -A");

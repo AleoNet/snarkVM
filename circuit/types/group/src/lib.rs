@@ -60,13 +60,15 @@ impl<E: Environment> Inject for Group<E> {
         // Inject the point.
         let point = {
             // Initialize the (x, y) coordinates of the point as field elements.
-            let (x, y) = group.to_xy_coordinate();
+            let (x, y) = group.to_xy_coordinates();
             // Inject the `(x, y)` coordinates as field elements.
             Self { x: Field::new(mode, x), y: Field::new(mode, y) }
         };
 
-        // Inject `(point / COFACTOR)` as a witness.
-        let point_inv: Self = witness!(|point| point.div_by_cofactor());
+        // Inject the `(x_inv, y_inv)` coordinates from `(point / COFACTOR)` as a witness.
+        let (x_inv, y_inv) = witness!(|point| point.div_by_cofactor().to_xy_coordinates());
+        // Initialize `point_inv` from `(x_inv, y_inv)`.
+        let point_inv = Self { x: x_inv, y: y_inv };
 
         //
         // Check `point_inv` is on the curve.
@@ -78,8 +80,8 @@ impl<E: Environment> Inject for Group<E> {
             let a = Field::constant(console::Field::new(E::AffineParameters::COEFF_A));
             let d = Field::constant(console::Field::new(E::AffineParameters::COEFF_D));
 
-            let x2 = point_inv.to_x_coordinate().square();
-            let y2 = point_inv.to_y_coordinate().square();
+            let x2 = x_inv.square();
+            let y2 = y_inv.square();
 
             let first = y2;
             let second = (d * &x2) - &Field::one();

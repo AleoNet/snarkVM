@@ -106,7 +106,7 @@ impl<N: Network> Process<N> {
         ensure!(additional_fee.fee() >= &0, "The fee must be zero or positive");
 
         // Compute the x- and y-coordinate of `tpk`.
-        let (tpk_x, tpk_y) = additional_fee.tpk().to_xy_coordinate();
+        let (tpk_x, tpk_y) = additional_fee.tpk().to_xy_coordinates();
 
         // Construct the public inputs to verify the proof.
         let mut inputs = vec![N::Field::one(), *tpk_x, *tpk_y, **additional_fee.tcm()];

@@ -33,7 +33,7 @@ mod to_bits;
 mod to_field;
 mod to_fields;
 mod to_x_coordinate;
-mod to_xy_coordinate;
+mod to_xy_coordinates;
 mod to_y_coordinate;
 mod zero;
 
