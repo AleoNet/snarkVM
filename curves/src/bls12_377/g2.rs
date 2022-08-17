@@ -37,29 +37,6 @@ impl ModelParameters for Bls12_377G2Parameters {
 impl ShortWeierstrassParameters for Bls12_377G2Parameters {
     /// AFFINE_GENERATOR_COEFFS = (G2_GENERATOR_X, G2_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (G2_GENERATOR_X, G2_GENERATOR_Y);
-    /// COEFF_A = [0, 0]
-    const COEFF_A: Fq2 = field!(Fq2, Bls12_377G1Parameters::COEFF_A, Bls12_377G1Parameters::COEFF_A,);
-    // As per https://eprint.iacr.org/2012/072.pdf,
-    // this curve has b' = b/i, where b is the COEFF_B of G1, and x^6 -i is
-    // the irreducible poly used to extend from Fp2 to Fp12.
-    // In our case, i = u (App A.3, T_6).
-    /// COEFF_B = [0,
-    /// 155198655607781456406391640216936120121836107652948796323930557600032281009004493664981332883744016074664192874906]
-    const COEFF_B: Fq2 = field!(
-        Fq2,
-        field!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
-        field!(
-            Fq,
-            BigInteger384([
-                9255502405446297221,
-                10229180150694123945,
-                9215585410771530959,
-                13357015519562362907,
-                5437107869987383107,
-                16259554076827459,
-            ])
-        ),
-    );
     /// COFACTOR =
     /// 7923214915284317143930293550643874566881017850177945424769256759165301436616933228209277966774092486467289478618404761412630691835764674559376407658497
     const COFACTOR: &'static [u64] = &[
@@ -77,6 +54,29 @@ impl ShortWeierstrassParameters for Bls12_377G2Parameters {
     const COFACTOR_INV: Fr = field!(
         Fr,
         BigInteger256([15499857013495546999, 4613531467548868169, 14546778081091178013, 549402535258503313,])
+    );
+    /// COEFF_A = [0, 0]
+    const WEIERSTRASS_A: Fq2 = field!(Fq2, Bls12_377G1Parameters::WEIERSTRASS_A, Bls12_377G1Parameters::WEIERSTRASS_A,);
+    // As per https://eprint.iacr.org/2012/072.pdf,
+    // this curve has b' = b/i, where b is the COEFF_B of G1, and x^6 -i is
+    // the irreducible poly used to extend from Fp2 to Fp12.
+    // In our case, i = u (App A.3, T_6).
+    /// COEFF_B = [0,
+    /// 155198655607781456406391640216936120121836107652948796323930557600032281009004493664981332883744016074664192874906]
+    const WEIERSTRASS_B: Fq2 = field!(
+        Fq2,
+        field!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
+        field!(
+            Fq,
+            BigInteger384([
+                9255502405446297221,
+                10229180150694123945,
+                9215585410771530959,
+                13357015519562362907,
+                5437107869987383107,
+                16259554076827459,
+            ])
+        ),
     );
 
     #[inline(always)]

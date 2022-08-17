@@ -33,13 +33,9 @@ pub struct Circuit;
 
 impl Environment for Circuit {
     type Affine = <console::Testnet3 as console::Environment>::Affine;
-    type AffineParameters = <console::Testnet3 as console::Environment>::AffineParameters;
     type BaseField = Field;
     type Network = console::Testnet3;
     type ScalarField = <console::Testnet3 as console::Environment>::Scalar;
-
-    /// The maximum number of characters allowed in a string.
-    const NUM_STRING_BYTES: u32 = u8::MAX as u32;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {

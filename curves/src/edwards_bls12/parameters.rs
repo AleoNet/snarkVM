@@ -41,12 +41,6 @@ impl TwistedEdwardsParameters for EdwardsParameters {
 
     /// Generated randomly
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (GENERATOR_X, GENERATOR_Y);
-    /// COEFF_A = -1
-    const COEFF_A: Fq =
-        field!(Fq, BigInteger256([0x8cf500000000000e, 0xe75281ef6000000e, 0x49dc37a90b0ba012, 0x55f8b2c6e710ab9,]));
-    /// COEFF_D = 3021
-    const COEFF_D: Fq =
-        field!(Fq, BigInteger256([0xd047ffffffff5e30, 0xf0a91026ffff57d2, 0x9013f560d102582, 0x9fd242ca7be5700,]));
     /// COFACTOR = 4
     const COFACTOR: &'static [u64] = &[4];
     /// COFACTOR_INV =
@@ -55,6 +49,12 @@ impl TwistedEdwardsParameters for EdwardsParameters {
         Fr,
         BigInteger256([10836190823041854989, 14880086764632731920, 5023208332782666747, 239524813690824359,])
     );
+    /// COEFF_A = -1
+    const EDWARDS_A: Fq =
+        field!(Fq, BigInteger256([0x8cf500000000000e, 0xe75281ef6000000e, 0x49dc37a90b0ba012, 0x55f8b2c6e710ab9,]));
+    /// COEFF_D = 3021
+    const EDWARDS_D: Fq =
+        field!(Fq, BigInteger256([0xd047ffffffff5e30, 0xf0a91026ffff57d2, 0x9013f560d102582, 0x9fd242ca7be5700,]));
 
     /// Multiplication by `a` is just negation.
     /// Is `a` 1 or -1?
@@ -69,7 +69,7 @@ impl MontgomeryParameters for EdwardsParameters {
 
     /// COEFF_A = 3990301581132929505568273333084066329187552697088022219156688740916631500114
     ///         = 0x8D26E3FADA9010A26949031ECE3971B93952AD84D4753DDEDB748DA37E8F552
-    const COEFF_A: Fq = field!(
+    const MONTGOMERY_A: Fq = field!(
         Fq,
         BigInteger256([
             13800168384327121454u64,
@@ -80,7 +80,7 @@ impl MontgomeryParameters for EdwardsParameters {
     );
     /// COEFF_B = 4454160168295440918680551605697480202188346638066041608778544715000777738925
     ///         = 0x9D8F71EEC83A44C3A1FBCEC6F5418E5C6154C2682B8AC231C5A3725C8170AAD
-    const COEFF_B: Fq = field!(
+    const MONTGOMERY_B: Fq = field!(
         Fq,
         BigInteger256([
             7239382437352637935u64,
