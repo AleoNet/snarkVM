@@ -32,12 +32,12 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: usize = 100;
 
     #[test]
     fn test_random() {
         // Initialize a set to store all seen random elements.
-        let mut set = HashSet::with_capacity(ITERATIONS as usize);
+        let mut set = HashSet::with_capacity(ITERATIONS);
 
         // Note: This test technically has a `(1 + 2 + ... + ITERATIONS) / MODULUS` probability of being flaky.
         for _ in 0..ITERATIONS {

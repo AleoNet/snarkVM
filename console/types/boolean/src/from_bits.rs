@@ -41,7 +41,7 @@ mod tests {
 
     type CurrentEnvironment = Console;
 
-    const ITERATIONS: u64 = 100;
+    const ITERATIONS: usize = 100;
 
     fn check_from_bits_le() -> Result<()> {
         for i in 1..ITERATIONS {
@@ -54,7 +54,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![false; i as usize]].concat();
+            let candidate = vec![given_bits, vec![false; i]].concat();
             assert!(Boolean::<CurrentEnvironment>::from_bits_le(&candidate).is_err());
         }
         Ok(())
@@ -71,7 +71,7 @@ mod tests {
             assert_eq!(expected, candidate);
 
             // Add excess zero bits.
-            let candidate = vec![vec![false; i as usize], given_bits].concat();
+            let candidate = vec![vec![false; i], given_bits].concat();
             assert!(Boolean::<CurrentEnvironment>::from_bits_be(&candidate).is_err());
         }
         Ok(())

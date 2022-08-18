@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
+#![warn(clippy::cast_possible_truncation)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -78,6 +79,7 @@ pub trait Network:
     /// The maximum number of values and/or entries in data.
     const MAX_DATA_ENTRIES: usize = 32;
     /// The maximum number of fields in data (must not exceed u16::MAX).
+    #[allow(clippy::cast_possible_truncation)]
     const MAX_DATA_SIZE_IN_FIELDS: u32 = ((128 * 1024 * 8) / Field::<Self>::SIZE_IN_DATA_BITS) as u32;
 
     /// The maximum number of operands in an instruction.

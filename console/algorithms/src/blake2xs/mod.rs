@@ -93,7 +93,7 @@ mod tests {
         let vectors: Vec<Case> = serde_json::from_str(include_str!("./resources/blake2-kat.json")).unwrap();
         for case in vectors.iter().filter(|v| &v.hash == "blake2xs" && v.key.is_empty()) {
             let input = hex::decode(case.input.as_bytes()).unwrap();
-            let xof_digest_length = case.output.len() as u16 / 2;
+            let xof_digest_length = u16::try_from(case.output.len()).unwrap() / 2;
             let output = hex::encode(Blake2Xs::evaluate(&input, xof_digest_length, "".as_bytes()));
             assert_eq!(output, case.output);
         }
