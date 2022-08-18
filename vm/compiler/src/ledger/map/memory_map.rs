@@ -118,6 +118,15 @@ impl<
     }
 
     ///
+    /// Checks whether an atomic operation is currently in progress. This can be done to ensure
+    /// that lower-level operations don't start and finish their individual atomic write batch
+    /// if they are already part of a larger one.
+    ///
+    fn is_atomic_in_progress(&self) -> bool {
+        self.batch_in_progress.load(Ordering::SeqCst)
+    }
+
+    ///
     /// Aborts the current atomic operation.
     ///
     fn abort_atomic(&self) {
@@ -130,7 +139,7 @@ impl<
     ///
     /// Finishes an atomic operation, performing all the queued writes.
     ///
-    fn finish_atomic(&self) {
+    fn finish_atomic(&self) -> Result<()> {
         // Retrieve the atomic batch.
         let operations = core::mem::take(&mut *self.atomic_batch.lock());
 
@@ -145,8 +154,11 @@ impl<
                 };
             }
         }
+
         // Set the atomic batch flag to `false`.
         self.batch_in_progress.store(false, Ordering::SeqCst);
+
+        Ok(())
     }
 }
 
@@ -264,7 +276,7 @@ mod tests {
         assert!(map.iter().next().is_none());
 
         // Finish the current atomic write batch.
-        map.finish_atomic();
+        map.finish_atomic().unwrap();
 
         // Check that the items are present in the map now.
         for i in 0..NUM_ITEMS {
@@ -285,7 +297,7 @@ mod tests {
         assert_eq!(map.iter().count(), NUM_ITEMS);
 
         // Finish the current atomic write batch.
-        map.finish_atomic();
+        map.finish_atomic().unwrap();
 
         // Check that the map is empty now.
         assert!(map.iter().next().is_none());
@@ -328,7 +340,7 @@ mod tests {
         }
 
         // Finish the current atomic write batch.
-        map.finish_atomic();
+        map.finish_atomic().unwrap();
 
         // The map should contain NUM_ITEMS items now.
         assert_eq!(map.iter().count(), NUM_ITEMS);

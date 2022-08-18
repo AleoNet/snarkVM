@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    atomic_write_batch,
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead, OrAbort},
+        map::{memory_map::MemoryMap, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         transaction::{AdditionalFee, Transaction},
     },
@@ -87,6 +88,18 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
         self.transition_store().start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    fn is_atomic_in_progress(&self) -> bool {
+        self.id_map().is_atomic_in_progress()
+            || self.edition_map().is_atomic_in_progress()
+            || self.reverse_id_map().is_atomic_in_progress()
+            || self.program_map().is_atomic_in_progress()
+            || self.verifying_key_map().is_atomic_in_progress()
+            || self.certificate_map().is_atomic_in_progress()
+            || self.additional_fee_map().is_atomic_in_progress()
+            || self.transition_store().is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     fn abort_atomic(&self) {
         self.id_map().abort_atomic();
@@ -100,15 +113,15 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
     }
 
     /// Finishes an atomic batch write operation.
-    fn finish_atomic(&self) {
-        self.id_map().finish_atomic();
-        self.edition_map().finish_atomic();
-        self.reverse_id_map().finish_atomic();
-        self.program_map().finish_atomic();
-        self.verifying_key_map().finish_atomic();
-        self.certificate_map().finish_atomic();
-        self.additional_fee_map().finish_atomic();
-        self.transition_store().finish_atomic();
+    fn finish_atomic(&self) -> Result<()> {
+        self.id_map().finish_atomic()?;
+        self.edition_map().finish_atomic()?;
+        self.reverse_id_map().finish_atomic()?;
+        self.program_map().finish_atomic()?;
+        self.verifying_key_map().finish_atomic()?;
+        self.certificate_map().finish_atomic()?;
+        self.additional_fee_map().finish_atomic()?;
+        self.transition_store().finish_atomic()
     }
 
     /// Stores the given `deployment transaction` pair into storage.
@@ -141,38 +154,32 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
             }
         }
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
+        atomic_write_batch!(self, {
+            // Store the program ID.
+            self.id_map().insert(*transaction_id, program_id)?;
+            // Store the edition.
+            self.edition_map().insert(program_id, edition)?;
 
-        // Store the program ID.
-        self.id_map().insert(*transaction_id, program_id).or_abort(|| self.abort_atomic())?;
-        // Store the edition.
-        self.edition_map().insert(program_id, edition).or_abort(|| self.abort_atomic())?;
+            // Store the reverse program ID.
+            self.reverse_id_map().insert((program_id, edition), *transaction_id)?;
+            // Store the program.
+            self.program_map().insert((program_id, edition), program.clone())?;
 
-        // Store the reverse program ID.
-        self.reverse_id_map().insert((program_id, edition), *transaction_id).or_abort(|| self.abort_atomic())?;
-        // Store the program.
-        self.program_map().insert((program_id, edition), program.clone()).or_abort(|| self.abort_atomic())?;
+            // Store the verifying keys and certificates.
+            for (function_name, (verifying_key, certificate)) in deployment.verifying_keys() {
+                // Store the verifying key.
+                self.verifying_key_map().insert((program_id, *function_name, edition), verifying_key.clone())?;
+                // Store the certificate.
+                self.certificate_map().insert((program_id, *function_name, edition), certificate.clone())?;
+            }
 
-        // Store the verifying keys and certificates.
-        for (function_name, (verifying_key, certificate)) in deployment.verifying_keys() {
-            // Store the verifying key.
-            self.verifying_key_map()
-                .insert((program_id, *function_name, edition), verifying_key.clone())
-                .or_abort(|| self.abort_atomic())?;
-            // Store the certificate.
-            self.certificate_map()
-                .insert((program_id, *function_name, edition), certificate.clone())
-                .or_abort(|| self.abort_atomic())?;
-        }
+            // Store the additional fee ID.
+            self.additional_fee_map().insert(*transaction_id, *additional_fee.id())?;
+            // Store the additional fee transition.
+            self.transition_store().insert(additional_fee.clone())?;
 
-        // Store the additional fee ID.
-        self.additional_fee_map().insert(*transaction_id, *additional_fee.id()).or_abort(|| self.abort_atomic())?;
-        // Store the additional fee transition.
-        self.transition_store().insert(additional_fee.clone()).or_abort(|| self.abort_atomic())?;
-
-        // Finish the atomic batch write operation.
-        self.finish_atomic();
+            Ok(())
+        });
 
         Ok(())
     }
@@ -200,34 +207,32 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
             None => bail!("Failed to locate the additional fee ID for transaction '{transaction_id}'"),
         };
 
-        // Start an atomic batch write operation.
-        self.start_atomic();
+        atomic_write_batch!(self, {
+            // Remove the program ID.
+            self.id_map().remove(transaction_id)?;
+            // Remove the edition.
+            self.edition_map().remove(&program_id)?;
 
-        // Remove the program ID.
-        self.id_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
-        // Remove the edition.
-        self.edition_map().remove(&program_id).or_abort(|| self.abort_atomic())?;
+            // Remove the reverse program ID.
+            self.reverse_id_map().remove(&(program_id, edition))?;
+            // Remove the program.
+            self.program_map().remove(&(program_id, edition))?;
 
-        // Remove the reverse program ID.
-        self.reverse_id_map().remove(&(program_id, edition)).or_abort(|| self.abort_atomic())?;
-        // Remove the program.
-        self.program_map().remove(&(program_id, edition)).or_abort(|| self.abort_atomic())?;
+            // Remove the verifying keys and certificates.
+            for function_name in program.functions().keys() {
+                // Remove the verifying key.
+                self.verifying_key_map().remove(&(program_id, *function_name, edition))?;
+                // Remove the certificate.
+                self.certificate_map().remove(&(program_id, *function_name, edition))?;
+            }
 
-        // Remove the verifying keys and certificates.
-        for function_name in program.functions().keys() {
-            // Remove the verifying key.
-            self.verifying_key_map().remove(&(program_id, *function_name, edition)).or_abort(|| self.abort_atomic())?;
-            // Remove the certificate.
-            self.certificate_map().remove(&(program_id, *function_name, edition)).or_abort(|| self.abort_atomic())?;
-        }
+            // Remove the additional fee ID.
+            self.additional_fee_map().remove(transaction_id)?;
+            // Remove the additional fee transition.
+            self.transition_store().remove(&additional_fee_id)?;
 
-        // Remove the additional fee ID.
-        self.additional_fee_map().remove(transaction_id).or_abort(|| self.abort_atomic())?;
-        // Remove the additional fee transition.
-        self.transition_store().remove(&additional_fee_id).or_abort(|| self.abort_atomic())?;
-
-        // Finish the atomic batch write operation.
-        self.finish_atomic();
+            Ok(())
+        });
 
         Ok(())
     }
@@ -516,14 +521,19 @@ impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
         self.storage.start_atomic();
     }
 
+    /// Checks if an atomic batch is in progress.
+    pub fn is_atomic_in_progress(&self) -> bool {
+        self.storage.is_atomic_in_progress()
+    }
+
     /// Aborts an atomic batch write operation.
     pub fn abort_atomic(&self) {
         self.storage.abort_atomic();
     }
 
     /// Finishes an atomic batch write operation.
-    pub fn finish_atomic(&self) {
-        self.storage.finish_atomic();
+    pub fn finish_atomic(&self) -> Result<()> {
+        self.storage.finish_atomic()
     }
 }
 
