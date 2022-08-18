@@ -85,7 +85,7 @@ impl<N: Network> ToBytes for Request<N> {
         self.function_name.write_le(&mut writer)?;
 
         // Write the number of inputs.
-        (self.input_ids.len() as u16).write_le(&mut writer)?;
+        u16::try_from(self.input_ids.len()).unwrap().write_le(&mut writer)?;
         // Ensure the input IDs and inputs are the same length.
         if self.input_ids.len() != self.inputs.len() {
             return Err(error("Invalid request: mismatching number of input IDs and inputs"));

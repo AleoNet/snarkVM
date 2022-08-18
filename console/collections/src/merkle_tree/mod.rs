@@ -303,9 +303,11 @@ impl<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHash<Hash = Field<E>
 
 /// Returns the depth of the tree, given the size of the tree.
 #[inline]
+#[allow(clippy::cast_possible_truncation)]
 fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
+    let tree_size = u64::try_from(tree_size)?;
     // Ensure the tree size is less than 2^52 (for casting to an f64).
-    let tree_depth = match (tree_size as u64) < 4503599627370496_u64 {
+    let tree_depth = match tree_size < 4503599627370496_u64 {
         // Compute the log2 of the tree size.
         true => (tree_size as f64).log2(),
         false => bail!("Tree size must be less than 2^52"),
@@ -313,11 +315,14 @@ fn tree_depth<const DEPTH: u8>(tree_size: usize) -> Result<u8> {
     // Ensure the tree depth is within a u8 range.
     match tree_depth <= u8::MAX as f64 {
         // Ensure the tree depth is within the depth bound.
-        true => match tree_depth as u8 <= DEPTH {
-            // Return the tree depth.
-            true => Ok(tree_depth as u8),
-            false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
-        },
+        true => {
+            let tree_depth = tree_depth as u8;
+            match tree_depth <= DEPTH {
+                // Return the tree depth.
+                true => Ok(tree_depth),
+                false => bail!("Merkle tree cannot exceed depth {DEPTH}: attempted to reach depth {tree_depth}"),
+            }
+        }
         false => bail!("Merkle tree depth exceeds maximum size: {}", tree_depth),
     }
 }

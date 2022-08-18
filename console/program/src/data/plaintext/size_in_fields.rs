@@ -28,7 +28,7 @@ impl<N: Network> Visibility for Plaintext<N> {
         // Ensure the number of field elements does not exceed the maximum allowed size.
         match num_fields <= N::MAX_DATA_SIZE_IN_FIELDS as usize {
             // Return the number of field elements.
-            true => Ok(u16::try_from(num_fields)?),
+            true => u16::try_from(num_fields).map_err(|_| anyhow!("Number of field elements is more than u16::MAX")),
             false => bail!("Plaintext is too large to encode in field elements."),
         }
     }

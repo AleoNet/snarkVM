@@ -61,7 +61,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
             Self::Interface(interface, ..) => {
                 1u8.write_le(&mut writer)?;
                 // Write the number of members in the interface.
-                (interface.len() as u16).write_le(&mut writer)?;
+                u16::try_from(interface.len()).unwrap().write_le(&mut writer)?;
                 // Write each member.
                 for (member_name, member_value) in interface {
                     // Write the member name.
@@ -69,7 +69,7 @@ impl<N: Network> ToBytes for Plaintext<N> {
                     // Write the member value (performed in 2 steps to prevent infinite recursion).
                     let bytes = member_value.to_bytes_le().map_err(|e| error(e.to_string()))?;
                     // Write the number of bytes.
-                    (bytes.len() as u16).write_le(&mut writer)?;
+                    u16::try_from(bytes.len()).unwrap().write_le(&mut writer)?;
                     // Write the bytes.
                     bytes.write_le(&mut writer)?;
                 }

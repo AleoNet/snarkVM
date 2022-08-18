@@ -48,7 +48,8 @@ impl<N: Network> ToBytes for Identifier<N> {
         }
 
         // Write the identifier to a buffer.
-        (string.len() as u8).write_le(&mut writer)?;
+        // `unwrap` is safe because we checked the length above.
+        u8::try_from(string.len()).unwrap().write_le(&mut writer)?;
         string.as_bytes().write_le(&mut writer)
     }
 }
