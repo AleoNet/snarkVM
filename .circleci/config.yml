@@ -2,7 +2,6 @@ version: 2.1
 
 orbs:
   windows: circleci/windows@2.4.0
-  codecov: codecov/codecov@3.2.3
 
 commands:
   check_windows:
@@ -294,21 +293,6 @@ jobs:
           workspace_member: circuit/types/string
           cache_key: snarkvm-circuit-types-string-cache
 
-  codecov:
-    docker:
-      - image: cimg/rust:1.62
-    resource_class: xlarge
-    steps:
-      - checkout
-      - run:
-          name: Install tarpaulin
-          command : cargo install cargo-tarpaulin
-      - run:
-          name: Run tarpaulin
-          no_output_timeout: 30m
-          command: cargo tarpaulin --timeout 1800
-      - codecov/upload
-
   console:
     docker:
       - image: cimg/rust:1.62
@@ -587,7 +571,6 @@ workflows:
       - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
-      - codecov
       - console
       - console-account
       - console-algorithms
