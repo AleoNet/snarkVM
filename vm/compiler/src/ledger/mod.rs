@@ -511,14 +511,13 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
 
         /* Fees */
 
-        // Prepare the block height, credits program ID, and genesis function name.
-        let height = block.height();
-        let credits_program_id = ProgramID::from_str("credits.aleo")?;
-        let credits_genesis = Identifier::from_str("genesis")?;
-
         // Ensure the fee is correct for each transition.
-        for transition in block.transitions() {
-            if height > 0 {
+        if block.height() > 0 {
+            // Prepare the credits program ID, and genesis function name.
+            let credits_program_id = ProgramID::from_str("credits.aleo")?;
+            let credits_genesis = Identifier::from_str("genesis")?;
+
+            for transition in block.transitions() {
                 // Ensure the genesis function is not called.
                 if *transition.program_id() == credits_program_id && *transition.function_name() == credits_genesis {
                     bail!("The genesis function cannot be called.");
