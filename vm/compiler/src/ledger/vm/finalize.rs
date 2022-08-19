@@ -21,8 +21,6 @@ impl<N: Network, P: ProgramStorage<N>> VM<N, P> {
     /// This method assumes the given transaction **is valid**.
     #[inline]
     pub fn finalize(&mut self, transaction: &Transaction<N>) -> Result<()> {
-        // Ensure the transaction is valid.
-        ensure!(self.verify(transaction), "Invalid transaction: failed to verify");
         // Finalize the transaction.
         match transaction {
             Transaction::Deploy(_, deployment, _) => self.finalize_deployment(deployment),
