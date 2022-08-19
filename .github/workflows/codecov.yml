@@ -1,0 +1,38 @@
+name: Codecov
+
+on:
+  push:
+    branches: [ testnet3 ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  curves:
+    name: snarkvm-curves
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: coverage
+        run: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cd curves; cargo tarpaulin -t 3600"
+
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error:     true
+
+  circuits:
+    name: snarkvm-circuits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: coverage
+        run: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cd circuits; cargo tarpaulin -t 3600"
+
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error:     true
