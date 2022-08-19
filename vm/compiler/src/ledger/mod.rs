@@ -53,7 +53,7 @@ use snarkvm_parameters::testnet3::GenesisBytes;
 
 use anyhow::Result;
 use indexmap::IndexMap;
-use std::borrow::Cow;
+use std::{borrow::Cow, mem};
 use time::OffsetDateTime;
 
 #[cfg(feature = "parallel")]
@@ -561,18 +561,8 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
                 ledger.memory_pool.remove(transaction_id);
             }
 
-            *self = Self {
-                current_hash: ledger.current_hash,
-                current_height: ledger.current_height,
-                current_round: ledger.current_round,
-                block_tree: ledger.block_tree,
-                blocks: ledger.blocks,
-                transactions: ledger.transactions,
-                transitions: ledger.transitions,
-                validators: ledger.validators,
-                vm: ledger.vm,
-                memory_pool: ledger.memory_pool,
-            };
+            // Replace `self` with the altered `Ledger`.
+            let _ = mem::replace(self, ledger);
         }
 
         Ok(())
