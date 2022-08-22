@@ -307,8 +307,8 @@ jobs:
   #     - codecov/upload
 
   codecov:
-    machine:
-      image: cimg/rust:1.62
+    docker:
+      - image: cimg/rust:1.62
     resource_class: xlarge
     steps:
       - checkout
