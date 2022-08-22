@@ -15,17 +15,47 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fft::DensePolynomial, polycommit::kzg10::Commitment};
+use blake2::{
+    digest::{Update, VariableOutput},
+    Digest,
+};
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{cfg_into_iter, CanonicalSerialize};
 
-pub fn hash_to_poly<F: PrimeField>() -> DensePolynomial<F> {
-    todo!()
+pub fn hash_to_poly<F: PrimeField>(input: &[u8], degree: usize) -> DensePolynomial<F> {
+    let input_hash: [u8; 32] = blake2::Blake2b::digest(input).try_into().unwrap();
+    let coefficients = cfg_into_iter!(0..degree)
+        .map(|i| {
+            let mut input_with_counter = [0u8; 40];
+            input_with_counter[..32].copy_from_slice(&input_hash);
+            input_with_counter[32..].copy_from_slice(&i.to_le_bytes());
+            F::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&input_with_counter))
+        })
+        .collect::<Vec<_>>();
+    DensePolynomial::from_coefficients_vec(coefficients)
 }
 
 pub fn hash_commitment<E: PairingEngine>(cm: &Commitment<E>) -> E::Fr {
-    todo!()
+    let mut bytes = Vec::with_capacity(48);
+    // This is faster than compressed serialization that's provided by `ToBytes`.
+    cm.serialize_uncompressed(&mut bytes).unwrap();
+    E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&bytes))
 }
 
-pub fn hash_commitments<E: PairingEngine>(cm: impl Iterator<Item = Commitment<E>>) -> Vec<E::Fr> {
-    todo!()
+pub fn hash_commitments<E: PairingEngine>(cms: impl ExactSizeIterator<Item = Commitment<E>>) -> Vec<E::Fr> {
+    let num_commitments = cms.len();
+    let cm_bytes = cms
+        .flat_map(|c| {
+            let mut bytes = Vec::with_capacity(48);
+            c.serialize_uncompressed(&mut bytes).unwrap();
+            bytes
+        })
+        .collect::<Vec<_>>();
+    let hash_output_byte_size = num_commitments * 64;
+    let mut hasher = blake2::Blake2sVar::new(hash_output_byte_size).unwrap();
+    hasher.update(&cm_bytes);
+    hasher.finalize_boxed().chunks(64).map(E::Fr::from_bytes_le_mod_order).collect()
 }

@@ -37,9 +37,15 @@ pub struct EpochChallenge<E: PairingEngine> {
     pub epoch_polynomial: DensePolynomial<E::Fr>,
 }
 
+impl<E: PairingEngine> EpochChallenge<E> {
+    pub fn degree(&self) -> usize {
+        self.epoch_polynomial.degree()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProverPuzzleSolution<E: PairingEngine> {
-    pub address: [u8; 32],
+    pub address: Address,
     pub nonce: u64,
     pub commitment: Commitment<E>,
     pub proof: Proof<E>,
@@ -47,6 +53,26 @@ pub struct ProverPuzzleSolution<E: PairingEngine> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedPuzzleSolution<E: PairingEngine> {
-    pub individual_puzzle_solutions: Vec<([u8; 32], u64, Commitment<E>)>,
+    pub individual_puzzle_solutions: Vec<(Address, u64, Commitment<E>)>,
     pub proof: Proof<E>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct EpochInfo {
+    epoch_number: u64,
+}
+
+impl EpochInfo {
+    pub fn to_bytes_le(&self) -> [u8; 8] {
+        self.epoch_number.to_le_bytes()
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Address(pub [u8; 32]);
+
+impl Address {
+    pub fn to_bytes_le(&self) -> [u8; 32] {
+        self.0
+    }
 }

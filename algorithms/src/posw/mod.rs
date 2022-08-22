@@ -49,31 +49,49 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
         todo!()
     }
 
+    fn sample_solution_polynomial(
+        epoch_challenge: &EpochChallenge<E>,
+        epoch_info: &EpochInfo,
+        address: &Address,
+        nonce: u64,
+    ) -> DensePolynomial<E::Fr> {
+        let poly_input = {
+            let mut bytes = [0u8; 48];
+            bytes[..8].copy_from_slice(&epoch_info.to_bytes_le());
+            bytes[8..40].copy_from_slice(&address.to_bytes_le());
+            bytes[40..].copy_from_slice(&nonce.to_le_bytes());
+            bytes
+        };
+        hash_to_poly::<E::Fr>(&poly_input, epoch_challenge.degree())
+    }
+
     pub fn prove(
         pk: &ProvingKey<E>,
         epoch_challenge: &EpochChallenge<E>,
-        _epoch_info: &[u8],
-        _address: &[u8],
+        epoch_info: &EpochInfo,
+        address: &Address,
         nonce: u64,
     ) -> ProverPuzzleSolution<E> {
-        let polynomial = hash_to_poly::<E::Fr>(); // TODO: fill in with appropriate inputs
+        let polynomial = Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, nonce);
+
         let product = Polynomial::from(&polynomial * &epoch_challenge.epoch_polynomial);
         let (commitment, _rand) = KZG10::commit(&pk.ck.powers(), &product, None, &AtomicBool::default(), None).unwrap();
         let point = hash_commitment(&commitment);
         let proof = KZG10::open(&pk.ck.powers(), product.as_dense().unwrap(), point, &_rand).unwrap();
-        ProverPuzzleSolution { address: [0u8; 32], nonce, commitment, proof }
+        ProverPuzzleSolution { address: *address, nonce, commitment, proof }
     }
 
     pub fn accumulate(
         pk: &ProvingKey<E>,
         epoch_challenge: &EpochChallenge<E>,
-        _epoch_info: &[u8],
+        epoch_info: &EpochInfo,
         prover_solutions: &[ProverPuzzleSolution<E>],
     ) -> CombinedPuzzleSolution<E> {
         let (polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
             .filter_map(|solution| {
                 // TODO: check difficulty of solution
-                let polynomial = hash_to_poly::<E::Fr>(); // TODO: fill in with appropriate inputs
+                let polynomial =
+                    Self::sample_solution_polynomial(epoch_challenge, epoch_info, &solution.address, solution.nonce);
                 let point = hash_commitment(&solution.commitment);
                 let epoch_challenge_eval = epoch_challenge.epoch_polynomial.evaluate(point);
                 let polynomial_eval = polynomial.evaluate(point);
@@ -102,13 +120,14 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
 
     pub fn verify(
         vk: &VerifyingKey<E>,
+        epoch_info: &EpochInfo,
         epoch_challenge: &EpochChallenge<E>,
         combined_solution: &CombinedPuzzleSolution<E>,
     ) -> bool {
         let polynomials: Vec<_> = cfg_iter!(combined_solution.individual_puzzle_solutions)
-            .map(|_solution| {
+            .map(|(address, nonce, _)| {
                 // TODO: check difficulty of solution
-                hash_to_poly::<E::Fr>() // TODO: fill in with appropriate inputs
+                Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, *nonce)
             })
             .collect();
 

@@ -73,6 +73,11 @@ version = "1.0"
 [dependencies.bincode]
 version = "1"
 
+
+[dependencies.blake2]
+version = "0.10"
+default-features = false
+
 [dependencies.crossbeam-channel]
 version = "0.5"
 
@@ -161,10 +166,6 @@ optional = true
 
 [dev-dependencies.expect-test ]
 version = "1.1.0"
-
-[dev-dependencies.blake2]
-version = "0.10"
-default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.5"
