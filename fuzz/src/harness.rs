@@ -19,13 +19,13 @@ use std::panic;
 use std::process::abort;
 use once_cell::sync::OnceCell;
 use snarkvm::circuit::Parser;
-use snarkvm::compiler::Program;
-use snarkvm::prelude::{circuit, Environment, PrivateKey, test_crypto_rng, Testnet3, VM};
+use snarkvm::compiler::{Program};
+use snarkvm::prelude::{circuit, Environment, Input, PrivateKey, test_crypto_rng, Testnet3, VM};
 use std::str::FromStr;
+use arbitrary::Arbitrary;
 
 pub fn harness(buf: &[u8]) {
-    if let Ok(s) =  std::str::from_utf8(buf) {
-
+    if let Ok(s) = std::str::from_utf8(buf) {
         let result = panic::catch_unwind(|| {
             if let Ok(program) = Program::<FuzzNetwork>::from_str(&s) {
                 fuzz_program(program);
@@ -50,10 +50,10 @@ pub fn harness(buf: &[u8]) {
                 } else {
 
                 }*/
-
 }
 
 static INSTANCE: OnceCell<VM<FuzzNetwork>> = OnceCell::new();
+
 pub type FuzzNetwork = Testnet3;
 
 pub fn init_vm() -> &'static VM<FuzzNetwork> {
@@ -69,19 +69,23 @@ pub fn fuzz_program(program: Program<FuzzNetwork>) {
     //let private_key = circuit::PrivateKey::<AleoV0>::new(Mode::Private, pkey);
 
     // Deploy.
-/*        if let Ok(deployment) = vm.deploy(&program, rng) {
-            vm.verify_deployment(&deployment);
-        }
-*/
+    /*        if let Ok(deployment) = vm.deploy(&program, rng) {
+                vm.verify_deployment(&deployment);
+            }
+    */
     // Execute
     if let Some(f) = program.functions().first() {
-            // Initialize the private key.
-            let pkey = PrivateKey::new(rng).unwrap();
+        // Initialize the private key.
+        let pkey = PrivateKey::new(rng).unwrap();
 
-            if let Ok(auth) = vm.authorize(&pkey, program.id(), f.0.clone(), &[], rng) {
-                vm.execute(auth, rng); // ignore unwrap
-            } else {
-                // ignore
-            }
+        //let inputs = f.1.inputs().iter().map(|_| Input::arbitrary()).collect::<Vec<_>>();
+
+        let inputs = [];
+
+        if let Ok(auth) = vm.authorize(&pkey, program.id(), f.0.clone(), &inputs, rng) {
+            vm.execute(auth, rng); // ignore unwrap
+        } else {
+            // ignore
         }
+    }
 }

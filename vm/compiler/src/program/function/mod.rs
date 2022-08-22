@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod input;
-use input::*;
+pub use input::*;
 
 mod output;
 use output::*;

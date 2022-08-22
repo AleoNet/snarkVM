@@ -47,6 +47,7 @@ use libafl::{
     state::{HasCorpus, HasMetadata, StdState},
     Error,
 };
+use libafl::corpus::CachedOnDiskCorpus;
 use libafl::corpus::ondisk::OnDiskMetadataFormat;
 
 use libafl_targets::{EDGES_MAP, MAX_EDGES_NUM};
@@ -101,11 +102,21 @@ pub struct FuzzCli {
     short,
     long,
     parse(try_from_str),
-    help = "Set the output directory, default is ./out",
+    help = "Set the output directory, default is ./objective",
     name = "OUTPUT",
-    default_value = "./out"
+    default_value = "./objective"
     )]
     output: PathBuf,
+
+    #[clap(
+    short,
+    long,
+    parse(try_from_str),
+    help = "Set the  corpus directory, default is ./corpus",
+    name = "OUTPUT",
+    default_value = "./corpus"
+    )]
+    corpus: PathBuf,
 
     #[clap(
     parse(try_from_str = timeout_from_millis_str),
@@ -182,8 +193,8 @@ impl FuzzCli {
                 StdState::new(
                     // RNG
                     StdRand::with_seed(current_nanos()),
-                    // Corpus that will be evolved, we keep it in memory for performance
-                    InMemoryCorpus::new(),
+                    // Corpus that will be evolved
+                    CachedOnDiskCorpus::new(self.corpus.clone(), 10000).unwrap(),
                     // Corpus in which we store solutions (crashes in this example),
                     // on disk so the user can get them after stopping the fuzzer
                     OnDiskCorpus::new_save_meta(
