@@ -13,3 +13,40 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::polycommit::{
+    kzg10::{Commitment, Proof},
+    sonic_pc::{CommitterKey, VerifierKey},
+};
+use snarkvm_curves::PairingEngine;
+use std::marker::PhantomData;
+
+use crate::fft::DensePolynomial;
+
+pub type SRS<E> = PhantomData<E>;
+pub type VerifyingKey<E> = crate::polycommit::sonic_pc::VerifierKey<E>;
+
+#[derive(Clone, Debug)]
+pub struct ProvingKey<E: PairingEngine> {
+    pub ck: CommitterKey<E>,
+    pub vk: VerifierKey<E>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EpochChallenge<E: PairingEngine> {
+    pub epoch_polynomial: DensePolynomial<E::Fr>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProverPuzzleSolution<E: PairingEngine> {
+    pub address: [u8; 32],
+    pub nonce: u64,
+    pub commitment: Commitment<E>,
+    pub proof: Proof<E>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CombinedPuzzleSolution<E: PairingEngine> {
+    pub individual_puzzle_solutions: Vec<([u8; 32], u64, Commitment<E>)>,
+    pub proof: Proof<E>,
+}
