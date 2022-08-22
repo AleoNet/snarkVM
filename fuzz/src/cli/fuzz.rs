@@ -113,7 +113,7 @@ pub struct FuzzCli {
     long,
     parse(try_from_str),
     help = "Set the  corpus directory, default is ./corpus",
-    name = "OUTPUT",
+    name = "CORPUS",
     default_value = "./corpus"
     )]
     corpus: PathBuf,
