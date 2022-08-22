@@ -296,17 +296,14 @@ jobs:
 
   codecov:
     docker:
-      - image: cimg/rust:1.62
+      - image: cimg/base:2022.08
     resource_class: xlarge
     steps:
       - checkout
       - run:
-          name: Install tarpaulin
-          command : cargo install cargo-tarpaulin
-      - run:
           name: Run tarpaulin
           no_output_timeout: 30m
-          command: cargo tarpaulin --timeout 1800
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin --workspace -t 1800
       - codecov/upload
 
   console:
