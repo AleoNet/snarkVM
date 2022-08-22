@@ -294,29 +294,17 @@ jobs:
           workspace_member: circuit/types/string
           cache_key: snarkvm-circuit-types-string-cache
 
-  # codecov:
-  #   machine:
-  #     image: ubuntu-2004:202010-01
-  #   resource_class: xlarge
-  #   steps:
-  #     - checkout
-  #     - run:
-  #         name: Run tarpaulin
-  #         no_output_timeout: 30m
-  #         command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cargo tarpaulin --workspace -t 3600"
-  #     - codecov/upload
-
   codecov:
-    docker:
-      - image: cimg/rust:1.62
+    machine:
+      image: ubuntu-2004:202010-01
     resource_class: xlarge
     steps:
       - checkout
       - run:
-          name: Run tests
+          name: Run tarpaulin
           no_output_timeout: 30m
-          command: cargo test --workspace
-      # - codecov/upload
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin:0.16.0 /bin/bash -c "cargo tarpaulin --workspace -t 3600"
+      - codecov/upload
 
   console:
     docker:
