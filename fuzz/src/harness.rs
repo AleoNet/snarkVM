@@ -60,22 +60,20 @@ pub fn init_vm() -> &'static VM<FuzzNetwork> {
     INSTANCE.get_or_init(|| VM::<FuzzNetwork>::new().unwrap())
 }
 
-pub fn fuzz_program(program: Program<FuzzNetwork>) {
+pub fn deploy(program: &Program<FuzzNetwork>) {
     let vm = init_vm();
-
-    // Initialize the RNG.
     let rng = &mut test_crypto_rng();
 
-    //let private_key = circuit::PrivateKey::<AleoV0>::new(Mode::Private, pkey);
+    if let Ok(deployment) = vm.deploy(&program, rng) {
+        vm.verify_deployment(&deployment);
+    }
+}
 
-    // Deploy.
-    /*        if let Ok(deployment) = vm.deploy(&program, rng) {
-                vm.verify_deployment(&deployment);
-            }
-    */
-    // Execute
+pub fn execute(program: &Program<FuzzNetwork>) {
+    let vm = init_vm();
+    let rng = &mut test_crypto_rng();
+
     if let Some(f) = program.functions().first() {
-        // Initialize the private key.
         let pkey = PrivateKey::new(rng).unwrap();
 
         //let inputs = f.1.inputs().iter().map(|_| Input::arbitrary()).collect::<Vec<_>>();
@@ -88,4 +86,8 @@ pub fn fuzz_program(program: Program<FuzzNetwork>) {
             // ignore
         }
     }
+}
+pub fn fuzz_program(program: Program<FuzzNetwork>) {
+    deploy(&program);
+    execute(&program);
 }
