@@ -303,7 +303,7 @@ jobs:
       - run:
           name: Run tarpaulin
           no_output_timeout: 30m
-          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin:0.16.0 /bin/bash -c "cargo tarpaulin -p snarkvm-circuit-types-string -t 3600"
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cargo tarpaulin -p snarkvm-circuit-types-string -t 3600"
       - codecov/upload
 
   codecov-curves:
@@ -315,7 +315,7 @@ jobs:
       - run:
           name: Run tarpaulin
           no_output_timeout: 30m
-          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin:0.16.0 /bin/bash -c "cargo tarpaulin -p snarkvm-curves -t 3600"
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cargo tarpaulin -p snarkvm-curves -t 3600"
       - codecov/upload
 
   console:
