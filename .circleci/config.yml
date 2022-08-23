@@ -294,7 +294,7 @@ jobs:
           workspace_member: circuit/types/string
           cache_key: snarkvm-circuit-types-string-cache
 
-  codecov-circuit-types-string:
+  codecov:
     machine:
       image: ubuntu-2004:202010-01
     resource_class: xlarge
@@ -303,19 +303,7 @@ jobs:
       - run:
           name: Run tarpaulin
           no_output_timeout: 30m
-          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cargo tarpaulin -p snarkvm-circuit-types-string -t 3600"
-      - codecov/upload
-
-  codecov-curves:
-    machine:
-      image: ubuntu-2004:202010-01
-    resource_class: xlarge
-    steps:
-      - checkout
-      - run:
-          name: Run tarpaulin
-          no_output_timeout: 30m
-          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "cargo tarpaulin -p snarkvm-curves -t 3600"
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin /bin/bash -c "RUST_MIN_STACK=67108864 cargo tarpaulin --workspace -t 3600"
       - codecov/upload
 
   console:
@@ -596,8 +584,7 @@ workflows:
       - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
-      - codecov-circuit-types-string
-      - codecov-curves
+      - codecov
       - console
       - console-account
       - console-algorithms
