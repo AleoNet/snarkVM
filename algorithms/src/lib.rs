@@ -48,8 +48,8 @@ pub mod polycommit;
 #[cfg(feature = "snark")]
 pub mod snark;
 
-#[cfg(feature = "posw")]
-pub mod posw;
+#[cfg(feature = "coinbase_puzzle")]
+pub mod coinbase_puzzle;
 
 pub mod traits;
 pub use traits::*;

@@ -14,39 +14,61 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{marker::PhantomData, sync::atomic::AtomicBool};
+use std::{collections::BTreeMap, marker::PhantomData, sync::atomic::AtomicBool};
 
+use rand::{CryptoRng, Rng};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::cfg_iter;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
+use crate::{
+    fft::{DensePolynomial, EvaluationDomain, Polynomial},
+    msm::VariableBase,
+    polycommit::kzg10::{self, Commitment, Randomness, KZG10},
+};
 
 mod data_structures;
 pub use data_structures::*;
 
 mod hash;
 use hash::*;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-use snarkvm_utilities::cfg_iter;
 
-use crate::{
-    fft::{DensePolynomial, Polynomial},
-    msm::VariableBase,
-    polycommit::kzg10::{Commitment, Randomness, KZG10},
-};
+#[cfg(test)]
+mod tests;
 
 pub struct CoinbasePuzzle<E: PairingEngine>(PhantomData<E>);
 
 impl<E: PairingEngine> CoinbasePuzzle<E> {
-    pub fn setup() -> SRS<E> {
-        todo!()
+    pub fn setup(max_degree: usize, rng: &mut (impl CryptoRng + Rng)) -> SRS<E> {
+        KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::None, false, rng).unwrap()
     }
 
-    pub fn trim(_degree: usize) -> (ProvingKey<E>, VerifyingKey<E>) {
-        todo!()
+    pub fn trim(srs: &SRS<E>, degree: usize) -> (ProvingKey<E>, VerifyingKey<E>) {
+        let powers_of_beta_g = srs.powers_of_beta_g(0, degree + 1).unwrap().to_vec();
+        let domain = EvaluationDomain::new(degree + 1).unwrap();
+        let lagrange_basis_at_beta_g = srs.lagrange_basis(domain).unwrap();
+
+        let vk = VerifyingKey::<E> {
+            g: srs.power_of_beta_g(0).unwrap(),
+            gamma_g: E::G1Affine::zero(), // We don't use gamma_g later on since we are not hiding.
+            h: srs.h,
+            beta_h: srs.beta_h,
+            prepared_h: srs.prepared_h.clone(),
+            prepared_beta_h: srs.prepared_beta_h.clone(),
+        };
+        let mut lagrange_basis_map = BTreeMap::new();
+        lagrange_basis_map.insert(domain.size(), lagrange_basis_at_beta_g);
+
+        let pk = ProvingKey { powers_of_beta_g, lagrange_bases_at_beta_g: lagrange_basis_map, vk: vk.clone() };
+        (pk, vk)
     }
 
-    pub fn init_for_epoch() -> EpochChallenge<E> {
-        todo!()
+    pub fn init_for_epoch(epoch_info: &EpochInfo, degree: usize) -> EpochChallenge<E> {
+        let poly_input = &epoch_info.to_bytes_le();
+        EpochChallenge { epoch_polynomial: hash_to_poly::<E::Fr>(poly_input, degree) }
     }
 
     fn sample_solution_polynomial(
@@ -67,24 +89,24 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
 
     pub fn prove(
         pk: &ProvingKey<E>,
-        epoch_challenge: &EpochChallenge<E>,
         epoch_info: &EpochInfo,
+        epoch_challenge: &EpochChallenge<E>,
         address: &Address,
         nonce: u64,
     ) -> ProverPuzzleSolution<E> {
         let polynomial = Self::sample_solution_polynomial(epoch_challenge, epoch_info, address, nonce);
 
         let product = Polynomial::from(&polynomial * &epoch_challenge.epoch_polynomial);
-        let (commitment, _rand) = KZG10::commit(&pk.ck.powers(), &product, None, &AtomicBool::default(), None).unwrap();
+        let (commitment, _rand) = KZG10::commit(&pk.powers(), &product, None, &AtomicBool::default(), None).unwrap();
         let point = hash_commitment(&commitment);
-        let proof = KZG10::open(&pk.ck.powers(), product.as_dense().unwrap(), point, &_rand).unwrap();
+        let proof = KZG10::open(&pk.powers(), product.as_dense().unwrap(), point, &_rand).unwrap();
         ProverPuzzleSolution { address: *address, nonce, commitment, proof }
     }
 
     pub fn accumulate(
         pk: &ProvingKey<E>,
-        epoch_challenge: &EpochChallenge<E>,
         epoch_info: &EpochInfo,
+        epoch_challenge: &EpochChallenge<E>,
         prover_solutions: &[ProverPuzzleSolution<E>],
     ) -> CombinedPuzzleSolution<E> {
         let (polynomials, partial_solutions): (Vec<_>, Vec<_>) = cfg_iter!(prover_solutions)
@@ -97,7 +119,7 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
                 let polynomial_eval = polynomial.evaluate(point);
                 let product_eval = epoch_challenge_eval * polynomial_eval;
                 let check_result =
-                    KZG10::check(&pk.vk.vk, &solution.commitment, point, product_eval, &solution.proof).ok();
+                    KZG10::check(&pk.vk, &solution.commitment, point, product_eval, &solution.proof).ok();
                 if let Some(true) = check_result {
                     Some((polynomial, (solution.address, solution.nonce, solution.commitment)))
                 } else {
@@ -114,7 +136,7 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
             .fold(DensePolynomial::zero, |acc, (poly, challenge)| &acc + &(poly * challenge))
             .sum();
         let combined_product = &combined_polynomial * &epoch_challenge.epoch_polynomial;
-        let proof = KZG10::open(&pk.ck.powers(), &combined_product, point, &Randomness::empty()).unwrap();
+        let proof = KZG10::open(&pk.powers(), &combined_product, point, &Randomness::empty()).unwrap();
         CombinedPuzzleSolution { individual_puzzle_solutions: partial_solutions, proof }
     }
 
@@ -149,6 +171,6 @@ impl<E: PairingEngine> CoinbasePuzzle<E> {
         let fs_challenges = fs_challenges.into_iter().map(|f| f.to_repr()).collect::<Vec<_>>();
         let combined_commitment = VariableBase::msm(&commitments, &fs_challenges);
         let combined_commitment: Commitment<E> = Commitment(combined_commitment.into());
-        KZG10::check(&vk.vk, &combined_commitment, point, combined_eval, &combined_solution.proof).unwrap()
+        KZG10::check(&vk, &combined_commitment, point, combined_eval, &combined_solution.proof).unwrap()
     }
 }

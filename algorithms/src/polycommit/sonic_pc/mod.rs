@@ -56,7 +56,7 @@ pub struct SonicKZG10<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> {
 
 impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     pub fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalParams<E>, PCError> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, true, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::Marlin, true, rng).map_err(Into::into)
     }
 
     pub fn trim(

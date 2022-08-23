@@ -14,22 +14,46 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polycommit::{
-    kzg10::{Commitment, Proof},
-    sonic_pc::{CommitterKey, VerifierKey},
+use crate::{
+    fft::EvaluationDomain,
+    polycommit::kzg10::{Commitment, LagrangeBasis, Powers, Proof, VerifierKey},
 };
 use snarkvm_curves::PairingEngine;
-use std::marker::PhantomData;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use crate::fft::DensePolynomial;
 
-pub type SRS<E> = PhantomData<E>;
-pub type VerifyingKey<E> = crate::polycommit::sonic_pc::VerifierKey<E>;
+pub use crate::polycommit::kzg10::UniversalParams as SRS;
+pub type VerifyingKey<E> = VerifierKey<E>;
 
 #[derive(Clone, Debug)]
 pub struct ProvingKey<E: PairingEngine> {
-    pub ck: CommitterKey<E>,
+    /// The key used to commit to polynomials.
+    pub powers_of_beta_g: Vec<E::G1Affine>,
+
+    /// The key used to commit to polynomials in Lagrange basis.
+    pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
+
     pub vk: VerifierKey<E>,
+}
+
+impl<E: PairingEngine> ProvingKey<E> {
+    /// Obtain powers for the underlying KZG10 construction
+    pub fn powers(&self) -> Powers<E> {
+        Powers {
+            powers_of_beta_g: self.powers_of_beta_g.as_slice().into(),
+            powers_of_beta_times_gamma_g: Cow::Owned(vec![]),
+        }
+    }
+
+    /// Obtain elements of the SRS in the lagrange basis powers.
+    pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Option<LagrangeBasis<E>> {
+        self.lagrange_bases_at_beta_g.get(&domain.size()).map(|basis| LagrangeBasis {
+            lagrange_basis_at_beta_g: Cow::Borrowed(basis),
+            powers_of_beta_times_gamma_g: Cow::Owned(vec![]),
+            domain,
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -59,7 +83,7 @@ pub struct CombinedPuzzleSolution<E: PairingEngine> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct EpochInfo {
-    epoch_number: u64,
+    pub epoch_number: u64,
 }
 
 impl EpochInfo {

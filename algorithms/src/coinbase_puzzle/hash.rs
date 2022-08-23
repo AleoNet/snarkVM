@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fft::DensePolynomial, polycommit::kzg10::Commitment};
-use blake2::{
-    digest::{Update, VariableOutput},
-    Digest,
-};
+use blake2::Digest;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use snarkvm_curves::PairingEngine;
@@ -54,8 +51,13 @@ pub fn hash_commitments<E: PairingEngine>(cms: impl ExactSizeIterator<Item = Com
             bytes
         })
         .collect::<Vec<_>>();
-    let hash_output_byte_size = num_commitments * 64;
-    let mut hasher = blake2::Blake2sVar::new(hash_output_byte_size).unwrap();
-    hasher.update(&cm_bytes);
-    hasher.finalize_boxed().chunks(64).map(E::Fr::from_bytes_le_mod_order).collect()
+    let cm_hash = blake2::Blake2s256::digest(&cm_bytes);
+    cfg_into_iter!(0..(num_commitments + 1))
+        .map(|i| {
+            let mut input_with_counter = [0u8; 40];
+            input_with_counter[..32].copy_from_slice(&cm_hash);
+            input_with_counter[32..].copy_from_slice(&i.to_le_bytes());
+            E::Fr::from_bytes_le_mod_order(&blake2::Blake2b512::digest(&input_with_counter))
+        })
+        .collect()
 }

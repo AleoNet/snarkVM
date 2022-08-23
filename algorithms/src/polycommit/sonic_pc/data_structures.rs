@@ -69,7 +69,7 @@ pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
 
-    /// The key used to commit to polynomials.
+    /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
 
     /// The key used to commit to hiding polynomials.
