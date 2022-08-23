@@ -596,7 +596,8 @@ workflows:
       - circuit-types-integers
       - circuit-types-scalar
       - circuit-types-string
-      - codecov
+      - codecov-circuit-types-string
+      - codecov-curves
       - console
       - console-account
       - console-algorithms
